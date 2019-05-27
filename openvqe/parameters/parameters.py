@@ -2,7 +2,7 @@
 Parameters for OpenVQE
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import json
 from dataclasses_json import dataclass_json
@@ -22,6 +22,9 @@ class Parameters:
         type: supported = supported.LBFGS
         maxiter: int = 2000
 
+        def sanity(self):
+            assert(self.type in self.supported)
+
     @dataclass_json
     @dataclass
     class Hamiltonian:
@@ -29,18 +32,8 @@ class Parameters:
             QC = 'QC'
             CUSTOM = 'CUSTOM'
 
-        @dataclass_json
-        @dataclass
-        class QC:
-            basis_set: str = None
-            geometry: str = None
-
         type: supported = supported.QC
-        qc_data: QC = QC()
         name: str = 'test'
-
-        def __post_init__(self):
-            if self.type is not self.supported.QC or self.type is None: self.QC = None
 
     @dataclass_json
     @dataclass
@@ -58,10 +51,31 @@ class Parameters:
 
         decomposition: supported_decompositions = supported_decompositions.FULL
 
-    optimizer: Optimizer = Optimizer()
-    hamiltonian: Hamiltonian = Hamiltonian()
-    preparation: Preparation = Preparation()
+    @dataclass_json
+    @dataclass
+    class QC:
+        basis_set: str = None
+        geometry: str = None
+
+        @staticmethod
+        def read_xyz_from_file(self, filename):
+            file = open(filename, 'r')
+            content = file.readlines()
+            natoms = int(content[0])
+            self.comment = content[1]
+            coord = ''
+            for i in range(natoms):
+                coord += content[2 + i]
+            self.geometry = coord
+
+    optimizer: Optimizer = field(default_factory=Optimizer)
+    hamiltonian: Hamiltonian = field(default_factory=Hamiltonian)
+    preparation: Preparation = field(default_factory=Preparation)
+    qc: QC = field(default_factory=QC)
     name: str = "Comment about this run"
+
+    def __post_init__(self):
+        if self.hamiltonian.type is not self.hamiltonian.supported.QC or self.hamiltonian.type is None: self.qc = None
 
     def print_to_file(self, filename, name=None, write_mode='a+'):
         """
