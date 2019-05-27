@@ -12,17 +12,17 @@ if __name__=="__main__":
     print("OpenVQE parameters (default values)\n", parameters1)
 
     #change/access parameters
-    parameters1.name="Change the name"
+    parameters1.comment= "Change the comment"
     parameters1.preparation.decomposition='TROTTER'
     parameters1.hamiltonian.name="HAMILTON"
     parameters1.optimizer.type='COBYLA'
     # access/change parameters like this
     maxiter = parameters1.optimizer.maxiter
-    parameters1.qc.basis_set='sto-3g'
+    #parameters1.qc.basis_set='sto-3g'
 
     # read in xyz file
-    parameters1.qc.geometry='data/h2o.xyz'
-    print("read in geometry is:\n", parameters1.qc.get_geometry())
+    #parameters1.qc.geometry='data/h2o.xyz'
+    #print("read in geometry is:\n", parameters1.qc.get_geometry())
 
 
     # if hamiltonian type is not QC then qc_data will not be initiallized
@@ -37,7 +37,7 @@ if __name__=="__main__":
 
     # print out a template
     defaults = Parameters()
-    defaults.print_to_file(filename='input_template', name='name', write_mode='w')
+    defaults.print_to_file(filename='input_template', name='comment', write_mode='w')
 
     # read back in
     parameters1x = Parameters.read_from_file(filename='output', name='parameters1')

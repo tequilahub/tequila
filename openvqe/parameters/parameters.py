@@ -8,6 +8,7 @@ import json
 from dataclasses_json import dataclass_json
 import numpy as np
 
+def return_none(): return None
 
 @dataclass
 @dataclass_json
@@ -33,8 +34,8 @@ class Parameters:
     @dataclass_json
     @dataclass
     class QC:
-        basis_set: str = None
-        geometry: str = None
+        basis_set: str = ''
+        geometry: str = ''
 
         @staticmethod
         def convert_to_list(geometry):
@@ -78,18 +79,18 @@ class Parameters:
                 coord += content[2 + i]
             return coord
 
-    optimizer: Optimizer = field(default_factory=Optimizer)
-    hamiltonian: Hamiltonian = field(default_factory=Hamiltonian)
-    preparation: Preparation = field(default_factory=Preparation)
-    qc: QC = field(default_factory=QC)
-    name: str = "Comment about this run"
+    optimizer: Optimizer = field(default=Optimizer())
+    hamiltonian: Hamiltonian = field(default=Hamiltonian())
+    preparation: Preparation = field(default=Preparation())
+    qc: QC = field(default=QC())
+    comment: str = "Comment about this run"
 
 
     def print_to_file(self, filename, name=None, write_mode='a+'):
         """
         Converts the Parameters class to JSON and prints it to a file
         :param filename:
-        :param name: the name of this parameter instance (converted to lowercase)
+        :param name: the comment of this parameter instance (converted to lowercase)
         if given it is printed before the content
         :param write_mode: specify if existing files shall be overwritten or appended (default)
         """
@@ -107,8 +108,8 @@ class Parameters:
         The content of the dictionary should be given in one line
         See the print_to_file function to create files which can be read by this function
         :param filename:
-        :param name: The name of the class object which was stored
-        If given, the file is first parsed for the name and the rest of the line is taken as content
+        :param name: The comment of the class object which was stored
+        If given, the file is first parsed for the comment and the rest of the line is taken as content
         Otherwise it is assumed that the file only contains the information to this dataclass
         :return: the read in parameter class (self, for chaining)
         """
