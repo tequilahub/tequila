@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import json
 from dataclasses_json import dataclass_json
+import numpy as np
 
 
 @dataclass
@@ -15,41 +16,19 @@ class Parameters:
     @dataclass_json
     @dataclass
     class Optimizer:
-        class supported(Enum):
-            LBFGS = 'LBFGS'
-            COBYLA = 'COBYLA'
-
-        type: supported = supported.LBFGS
+        type: str = 'LBFGS'
         maxiter: int = 2000
-
-        def sanity(self):
-            assert(self.type in self.supported)
 
     @dataclass_json
     @dataclass
     class Hamiltonian:
-        class supported(Enum):
-            QC = 'QC'
-            CUSTOM = 'CUSTOM'
-
-        type: supported = supported.QC
-        name: str = 'test'
+        type: str = 'QC'
 
     @dataclass_json
     @dataclass
     class Preparation:
-        class supported_ansatz(Enum):
-            UCC = 'UCC'
-            CUSTOM = 'CUSTOM'
-
-        ansatz: supported_ansatz = supported_ansatz.UCC
-
-        class supported_decompositions(Enum):
-            FULL = 'FULL'
-            UCC = 'TROTTER'
-            QDRIFT = 'QDRIFT'
-
-        decomposition: supported_decompositions = supported_decompositions.FULL
+        ansatz: str = "UCC"
+        decomposition: str = "TROTTER1"
 
     @dataclass_json
     @dataclass
@@ -58,15 +37,46 @@ class Parameters:
         geometry: str = None
 
         @staticmethod
-        def read_xyz_from_file(self, filename):
+        def convert_to_list(geometry):
+            result = []
+            for line in geometry.split('\n'):
+                words = line.split()
+                if len(words) != 4:  break
+                try:
+                    tmp = [words[0].upper(), [np.float64(words[1]), np.float64(words[2]), np.float64(words[3])]]
+                    result.append(tmp)
+                except ValueError:
+                    print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
+            return result
+
+        def get_geometry(self):
+            """
+            Returns the geometry
+            If a xyz filename was given the file is read out
+            otherwise it is assumed that the geometry was given as string
+            which is then reformated as a list usable as input for openfermion
+            :return: geometry as list
+            e.g. [[h,[0.0,0.0,0.35]],[h,[0.0,0.0,-0.35]]]
+            """
+            if(self.geometry.split('.')[-1]=='xyz'): return self.convert_to_list(self.read_xyz_from_file(self.geometry))
+            elif self.geometry is not None: return self.convert_to_list(self.geometry)
+            else: raise Exception("Parameters.qc.geometry is None")
+
+        @staticmethod
+        def read_xyz_from_file(filename):
+            """
+            Read XYZ filetype for molecular structures
+            https://en.wikipedia.org/wiki/XYZ_file_format
+            :param filename:
+            :return:
+            """
             file = open(filename, 'r')
             content = file.readlines()
             natoms = int(content[0])
-            self.comment = content[1]
             coord = ''
             for i in range(natoms):
                 coord += content[2 + i]
-            self.geometry = coord
+            return coord
 
     optimizer: Optimizer = field(default_factory=Optimizer)
     hamiltonian: Hamiltonian = field(default_factory=Hamiltonian)
@@ -74,8 +84,6 @@ class Parameters:
     qc: QC = field(default_factory=QC)
     name: str = "Comment about this run"
 
-    def __post_init__(self):
-        if self.hamiltonian.type is not self.hamiltonian.supported.QC or self.hamiltonian.type is None: self.qc = None
 
     def print_to_file(self, filename, name=None, write_mode='a+'):
         """
@@ -86,7 +94,7 @@ class Parameters:
         :param write_mode: specify if existing files shall be overwritten or appended (default)
         """
         content = self.to_json()
-        with open(filename, "a+") as file:
+        with open(filename, write_mode) as file:
             if name is not None: file.write("\n" + name.lower() + " ")
             file.write(content)
             file.write("\n")
