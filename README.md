@@ -4,8 +4,6 @@ Code for OpenVQE: framework for extending/improving VQE
 - Look into Keras, TF and how they modularized 
 
 
-@Hannah: Feel free to edit or tell me that some of those suggestions should not be included
-
 # General Structure:
 As far as I see it would make sense to subdivide into the following modules 
 -state preparation

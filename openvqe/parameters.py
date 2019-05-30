@@ -3,8 +3,6 @@ Parameters for OpenVQE
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
-import json
 from dataclasses_json import dataclass_json
 import numpy as np
 
@@ -71,13 +69,13 @@ class Parameters:
             :param filename:
             :return:
             """
-            file = open(filename, 'r')
-            content = file.readlines()
-            natoms = int(content[0])
-            coord = ''
-            for i in range(natoms):
-                coord += content[2 + i]
-            return coord
+            with open(filename, 'r') as file:
+                content = file.readlines()
+                natoms = int(content[0])
+                coord = ''
+                for i in range(natoms):
+                    coord += content[2 + i]
+                return coord
 
     optimizer: Optimizer = field(default=Optimizer())
     hamiltonian: Hamiltonian = field(default=Hamiltonian())

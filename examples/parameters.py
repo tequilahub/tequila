@@ -1,7 +1,7 @@
 """
 Example how to use parameters
 """
-from openvqe.parameters.parameters import Parameters
+from openvqe.parameters import Parameters
 
 if __name__=="__main__":
 
@@ -50,3 +50,7 @@ if __name__=="__main__":
     print(not parameters2x == parameters1)
 
     #print(type(parameters.hamiltonian.supported.qc))
+
+    # convert to dictionary
+    d = Parameters().__dict__
+    print(d)
