@@ -12,31 +12,48 @@ def return_none(): return None
 @dataclass_json
 @dataclass
 class Parameters:
+    """
+    Parameter Dataclass which holds all parameters for the OpenVQE submodules
+    Submodule classes are:
+    Optimizer:
+        Holds all parameters for the optimizer
+    Hamiltonian:
+        Holds all parameters for the Hamiltonian used in the energy evaluation
+    Preparation
+        Holds all parameters for the state preparation module
+    QC
+        Holds all Quantum Chemistry related parameters
+    """
     @dataclass_json
     @dataclass
     class Optimizer:
-        type: str = 'LBFGS'
-        maxiter: int = 2000
+        type: str = 'LBFGS' # optimizer type
+        maxiter: int = 2000 # maximal number of iterations for the optimizer
 
     @dataclass_json
     @dataclass
     class Hamiltonian:
-        type: str = 'QC'
+        type: str = 'QC' # type of the Hamiltonian
 
     @dataclass_json
     @dataclass
     class Preparation:
-        ansatz: str = "UCC"
-        decomposition: str = "TROTTER1"
+        ansatz: str = "UCC" # Ansatz for the state preparation
+        decomposition: str = "TROTTER1" # Keyword determines how the ansatz above is decomposed
 
     @dataclass_json
     @dataclass
     class QC:
-        basis_set: str = ''
-        geometry: str = ''
+        basis_set: str = '' # Quantum chemistry basis set
+        geometry: str = '' # geometry of the underlying molecule, this can be a filename leading to an .xyz file or the geometry given as a string
 
         @staticmethod
         def convert_to_list(geometry):
+            """
+            Convert a molecular structure given as a string into a list suitable for openfermion
+            :param geometry: a string specifing a mol. structure. E.g. geometry="h 0.0 0.0 0.0\n h 0.0 0.0 1.0"
+            :return: A list with the correct format for openferion E.g return [ ['h',[0.0,0.0,0.0], [..]]
+            """
             result = []
             for line in geometry.split('\n'):
                 words = line.split()
