@@ -107,6 +107,9 @@ class ParametersBase:
 
 @dataclass
 class ParametersHamiltonian(ParametersBase):
+    """
+    Enter general parameters which hold for all types of Hamiltonians
+    """
     transformation: str = "JW"
 
     # convenience functions
@@ -140,6 +143,10 @@ class ParametersPsi4(ParametersBase):
 
 @dataclass
 class ParametersQC(ParametersHamiltonian):
+    """
+    Specialization of ParametersHamiltonian
+    Parameters for the HamiltonianQC class
+    """
     psi4: ParametersPsi4 = ParametersPsi4()
     basis_set: str = ''  # Quantum chemistry basis set
     geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!), this can be a filename leading to an .xyz file or the geometry given as a string
@@ -218,3 +225,18 @@ class ParametersQC(ParametersHamiltonian):
             return coord, comment
 
 
+@dataclass
+class ParametersAnsatz(ParametersBase):
+    """
+    Enter general parameters which hold for all types of Ansatzes
+    """
+
+    whatever: int = 0
+
+
+@dataclass
+class ParametersUCC(ParametersAnsatz):
+
+    generalized: bool = False
+    order: int = 2  # order of the T operator: 1 is singles, 2 is singles+doubles etc
+    decomposition: str = "trotter1"

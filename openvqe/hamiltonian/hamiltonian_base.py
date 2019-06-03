@@ -28,7 +28,7 @@ class HamiltonianBase:
                 self.parameters.transformation)
 
     def greet(self):
-        print("This is the " + type(self).__name__ + " class")
+        print("Hello from the " + type(self).__name__ + " class")
 
     def get_hamiltonian(self):
         """

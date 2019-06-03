@@ -24,7 +24,10 @@ class TestParameters(unittest.TestCase):
 
         all_parameters = [
             param.ParametersQC,
-            param.ParametersPsi4
+            param.ParametersPsi4,
+            param.ParametersAnsatz,
+            param.ParametersUCC,
+            param.ParametersHamiltonian
         ]
 
         for c in all_parameters:
