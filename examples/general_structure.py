@@ -9,6 +9,9 @@ if __name__ == "__main__":
 
     hqc = HamiltonianQC(parameters_qc)
     hqc.greet()
-    hqc.get_molecular_Hamiltonian()
-    hqc.get_Hamiltonian()
+    print("HMOL:\n",hqc.get_molecular_Hamiltonian())
+    print("HQUBIT:\n",hqc.get_Hamiltonian())
 
+
+    molecule = HamiltonianQC.get_molecule(parameters_qc)
+    print("MOLECULE:\n", molecule)

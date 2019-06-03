@@ -31,7 +31,6 @@ class HamiltonianQC(Hamiltonian):
 
     @staticmethod
     def get_molecule(parameters: ParametersQC) -> openfermion.InteractionOperator:
-        print(parameters)
         molecule = MolecularData(geometry=parameters.get_geometry(),
                                  basis=parameters.basis_set,
                                  multiplicity=parameters.multiplicity,

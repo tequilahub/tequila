@@ -112,11 +112,24 @@ class ParametersPsi4(ParametersBase):
 class ParametersQC(ParametersBase):
     psi4: ParametersPsi4 = ParametersPsi4()
     basis_set: str = ''  # Quantum chemistry basis set
-    geometry: str = ''  # geometry of the underlying molecule, this can be a filename leading to an .xyz file or the geometry given as a string
+    geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!), this can be a filename leading to an .xyz file or the geometry given as a string
     filename: str = ''
     description: str = ''
     multiplicity: int = 1
     charge: int = 0
+
+    @staticmethod
+    def format_element_name(string):
+        """
+        OpenFermion uses case sensitive hash tables for chemical elements
+        I.e. you need to name Lithium: 'Li' and 'li' or 'LI' will not work
+        this conenience function does the naming
+        :return: first letter converted to upper rest to lower
+        """
+        assert(len(string)>0)
+        assert(isinstance(string,str))
+        fstring = string[0].upper()+string[1:].lower()
+        return fstring
 
     @staticmethod
     def convert_to_list(geometry):
@@ -130,7 +143,7 @@ class ParametersQC(ParametersBase):
             words = line.split()
             if len(words) != 4:  break
             try:
-                tmp = (words[0].upper(), (np.float64(words[1]), np.float64(words[2]), np.float64(words[3])))
+                tmp = (ParametersQC.format_element_name(words[0]), (np.float64(words[1]), np.float64(words[2]), np.float64(words[3])))
                 result.append(tmp)
             except ValueError:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
@@ -144,6 +157,7 @@ class ParametersQC(ParametersBase):
         which is then reformated as a list usable as input for openfermion
         :return: geometry as list
         e.g. [(h,(0.0,0.0,0.35)),(h,(0.0,0.0,-0.35))]
+        Units: Angstrom!
         """
         if self.geometry.split('.')[-1] == 'xyz':
             geomstring, comment = self.read_xyz_from_file(self.geometry)
@@ -159,6 +173,7 @@ class ParametersQC(ParametersBase):
         """
         Read XYZ filetype for molecular structures
         https://en.wikipedia.org/wiki/XYZ_file_format
+        Units: Angstrom!
         :param filename:
         :return:
         """
