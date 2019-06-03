@@ -1,10 +1,11 @@
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json
+from dataclasses import dataclass
 import numpy as np
 
 """
 Parameterclasses for OpenVQE modules
 All clases are derived from ParametersBase
+I/O functions are defined in ParametersBase and are inherited to all derived classes
+It is currently not possible to set the default of parameters to None (will confuse I/O routines)
 """
 
 
@@ -18,7 +19,7 @@ class ParametersBase:
         elif type(var) == bool:
             return var
         elif type(var) == str:
-            return var.lower() == 'true'
+            return var.lower() == 'true' or var.lower() == '1'
         else:
             raise Exception("ParameterBase.to_bool(var): not implemented for type(var)==", type(var))
 
@@ -28,7 +29,6 @@ class ParametersBase:
 
     def print_to_file(self, filename, write_mode='a+'):
         """
-        Converts the Parameters class to JSON and prints it to a file
         :param filename:
         :param name: the comment of this parameter instance (converted to lowercase)
         if given it is printed before the content
@@ -78,18 +78,51 @@ class ParametersBase:
             if not key in new_instance.__dict__:
                 raise Exception("Unknown key for class=" + cls.name() + " and  key=", key)
             elif keyvals[key] == 'None':
-                new_instance.__dict__[key]=None
+                new_instance.__dict__[key] = None
             elif isinstance(new_instance.__dict__[key], ParametersBase) and cls.to_bool(keyvals[key]):
                 new_instance.__dict__[key] = new_instance.__dict__[key].read_from_file(filename)
             else:
-                if isinstance(cls.__dict__[key], type(None)):
-                    raise Exception("Default values of classes derived from ParameterBase should NOT be set to None. Use __post_init()__ for that")
+
+                if key not in cls.__dict__:
+                    # try to look up base class
+                    assert (key in new_instance.__dict__)
+                    if isinstance(new_instance.__dict__[key], type(None)):
+                        raise Exception(
+                            "Currently unresolved issue: If a ParameterClass has a subclass the parameters can never be set to none"
+                        )
+                    elif isinstance(new_instance.__dict__[key], bool):
+                        new_instance.__dict__[key] = new_instance.to_bool(keyvals[key])
+                    else:
+                        new_instance.__dict__[key] = type(new_instance.__dict__[key])(keyvals[key])
+                elif isinstance(cls.__dict__[key], type(None)):
+                    raise Exception(
+                        "Default values of classes derived from ParameterBase should NOT be set to None. Use __post_init()__ for that")
                 elif isinstance(cls.__dict__[key], bool):
                     new_instance.__dict__[key] = cls.to_bool(keyvals[key])
                 else:
                     new_instance.__dict__[key] = type(cls.__dict__[key])(keyvals[key])
 
         return new_instance
+
+
+@dataclass
+class ParametersHamiltonian(ParametersBase):
+    transformation: str = "JW"
+
+    # convenience functions
+    def jordan_wigner(self):
+        if self.transformation.upper() in ["JW", "J-W", "JORDAN-WIGNER"]:
+            return True
+        else:
+            return False
+
+    # convenience functions
+    def bravyi_kitaev(self):
+        if self.transformation.upper() in ["BK", "B-K", "BRAVYI-KITAEV"]:
+            return True
+        else:
+            return False
+
 
 @dataclass
 class ParametersPsi4(ParametersBase):
@@ -103,13 +136,10 @@ class ParametersPsi4(ParametersBase):
     delete_input: bool = True
     delete_output: bool = False
     memory: int = 8000
-    template_file: str = ''
 
-    def __post_init__(self):
-        if self.template_file=='': self.template_file=None
 
 @dataclass
-class ParametersQC(ParametersBase):
+class ParametersQC(ParametersHamiltonian):
     psi4: ParametersPsi4 = ParametersPsi4()
     basis_set: str = ''  # Quantum chemistry basis set
     geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!), this can be a filename leading to an .xyz file or the geometry given as a string
@@ -126,9 +156,9 @@ class ParametersQC(ParametersBase):
         this conenience function does the naming
         :return: first letter converted to upper rest to lower
         """
-        assert(len(string)>0)
-        assert(isinstance(string,str))
-        fstring = string[0].upper()+string[1:].lower()
+        assert (len(string) > 0)
+        assert (isinstance(string, str))
+        fstring = string[0].upper() + string[1:].lower()
         return fstring
 
     @staticmethod
@@ -143,7 +173,8 @@ class ParametersQC(ParametersBase):
             words = line.split()
             if len(words) != 4:  break
             try:
-                tmp = (ParametersQC.format_element_name(words[0]), (np.float64(words[1]), np.float64(words[2]), np.float64(words[3])))
+                tmp = (ParametersQC.format_element_name(words[0]),
+                       (np.float64(words[1]), np.float64(words[2]), np.float64(words[3])))
                 result.append(tmp)
             except ValueError:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
@@ -186,27 +217,4 @@ class ParametersQC(ParametersBase):
                 coord += content[2 + i]
             return coord, comment
 
-@dataclass
-class ParametersHamiltonian:
-    type: str = 'QC'
 
-if __name__ == "__main__":
-    pqc = ParametersQC()
-    pqc.psi4 = ParametersPsi4()  # .uninitialized()
-    # pqc.psi4.run_ccsd=True
-    pqc.print_to_file(filename='test')
-
-    print(type(pqc))
-    # psi4 = ParametersQC.psi4
-    # print(isinstance(pqc, ParametersBase))
-
-    pqc2 = ParametersQC().read_from_file(filename='test')
-    print("worked=", pqc == pqc2)
-
-    print(type(pqc2.__dict__['psi4']))
-
-    # test = pqc.__dict__['psi4']()
-
-    print(pqc2)
-    print(type(pqc2))
-    print(type(type(pqc2).__class__))

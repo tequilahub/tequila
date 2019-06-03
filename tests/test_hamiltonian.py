@@ -19,13 +19,23 @@ class TestParameters(unittest.TestCase):
             '6-31g'
         ]
 
+        trafos = [
+            'JW',
+            'BK'
+        ]
+
         for geom in geomstrings:
             for basis in bases:
-                if basis!='sto-3g' and 'Li' in geom: continue
-                parameters_qc = ParametersQC(geometry=geom, basis_set=basis)
-                hqc = HamiltonianQC(parameters_qc)
-                Hmol=hqc.get_molecular_Hamiltonian()
-                H=hqc.get_Hamiltonian()
-
-                self.assertEqual(H, openfermion.jordan_wigner(openfermion.get_fermion_operator(Hmol)))
-
+                for trafo in trafos:
+                    if basis!='sto-3g' and 'Li' in geom: continue
+                    parameters_qc = ParametersQC(geometry=geom, basis_set=basis, transformation=trafo)
+                    hqc = HamiltonianQC(parameters_qc)
+                    Hmol=hqc.get_hamiltonian()
+                    H=hqc()
+                    if trafo=='JW':
+                        self.assertTrue(parameters_qc.jordan_wigner())
+                        self.assertEqual(H, openfermion.jordan_wigner(openfermion.get_fermion_operator(Hmol)))
+                    else:
+                        self.assertTrue(trafo=="BK")
+                        self.assertTrue(parameters_qc.bravyi_kitaev())
+                        self.assertEqual(H, openfermion.bravyi_kitaev(openfermion.get_fermion_operator(Hmol)))

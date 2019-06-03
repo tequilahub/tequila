@@ -23,16 +23,21 @@ class TestParameters(unittest.TestCase):
     def test_io(self):
 
         all_parameters = [
-            param.ParametersQC(),
-            param.ParametersPsi4()
+            param.ParametersQC,
+            param.ParametersPsi4
         ]
 
-        for p in all_parameters:
+        for c in all_parameters:
+            p = c()
             for i, key in enumerate(p.__dict__.keys()):
-                p.__dict__[key] = type(p.__class__.__dict__[key])(i)
+                try:
+                    p.__dict__[key] = type(c.__dict__[key])(i)
+                except KeyError:
+                    p.__dict__[key] = type(p.__dict__[key])(i)
             filename = self.create_filename(p.name())
+
             p.print_to_file(filename=filename)
-            p2 = p.__class__.read_from_file(filename=filename)
+            p2 = c.read_from_file(filename=filename)
             self.assertEqual(p, p2)
 
     def test_qcio(self):

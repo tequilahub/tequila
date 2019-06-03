@@ -5,25 +5,19 @@ Quantum Chemistry Hamiltonians for OpenVQE
 
 from openvqe.parameters import ParametersQC
 from openfermion.hamiltonians import MolecularData
-from .hamiltonian_base import Hamiltonian
+from .hamiltonian_base import HamiltonianBase
 import openfermion
 import openfermionpsi4
 
 
-class HamiltonianQC(Hamiltonian):
-
-    molecule: MolecularData = None
+class HamiltonianQC(HamiltonianBase):
 
     def __init__(self, parameters: ParametersQC):
         assert(isinstance(parameters, ParametersQC))
         self.parameters=parameters
         self.molecule=self.get_molecule(parameters)
 
-
-    def get_Hamiltonian(self) -> openfermion.QubitOperator:
-        return openfermion.jordan_wigner(openfermion.get_fermion_operator(self.get_molecular_Hamiltonian()))
-
-    def get_molecular_Hamiltonian(self) -> openfermion.InteractionOperator:
+    def get_hamiltonian(self) -> openfermion.InteractionOperator:
         # fast return if possible
         if self.molecule is None:
             self.molecule = self.get_molecule(self.parameters)
