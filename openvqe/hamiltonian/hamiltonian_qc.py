@@ -17,6 +17,7 @@ class HamiltonianQC(Hamiltonian):
     def __init__(self, parameters: ParametersQC):
         assert(isinstance(parameters, ParametersQC))
         self.parameters=parameters
+        self.molecule=self.get_molecule(parameters)
 
 
     def get_Hamiltonian(self) -> openfermion.QubitOperator:
@@ -26,8 +27,7 @@ class HamiltonianQC(Hamiltonian):
         # fast return if possible
         if self.molecule is None:
             self.molecule = self.get_molecule(self.parameters)
-        print("molecule=",molecule)
-        #return self.molecule.get_molecular_hamiltonian()
+        return self.molecule.get_molecular_hamiltonian()
 
     @staticmethod
     def get_molecule(parameters: ParametersQC) -> openfermion.InteractionOperator:

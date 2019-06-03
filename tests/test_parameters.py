@@ -29,7 +29,7 @@ class TestParameters(unittest.TestCase):
 
         for p in all_parameters:
             for i, key in enumerate(p.__dict__.keys()):
-                p.__dict__[key] = type(p.__dict__[key])(i)
+                p.__dict__[key] = type(p.__class__.__dict__[key])(i)
             filename = self.create_filename(p.name())
             p.print_to_file(filename=filename)
             p2 = p.__class__.read_from_file(filename=filename)

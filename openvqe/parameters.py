@@ -34,6 +34,7 @@ class ParametersBase:
         if given it is printed before the content
         :param write_mode: specify if existing files shall be overwritten or appended (default)
         """
+
         string = '\n'
         string += self.name() + " = {\n"
         for key in self.__dict__:
@@ -76,18 +77,19 @@ class ParametersBase:
         for key in keyvals:
             if not key in new_instance.__dict__:
                 raise Exception("Unknown key for class=" + cls.name() + " and  key=", key)
-            if isinstance(new_instance.__dict__[key], ParametersBase) and cls.to_bool(keyvals[key]):
+            elif keyvals[key] == 'None':
+                new_instance.__dict__[key]=None
+            elif isinstance(new_instance.__dict__[key], ParametersBase) and cls.to_bool(keyvals[key]):
                 new_instance.__dict__[key] = new_instance.__dict__[key].read_from_file(filename)
             else:
                 if isinstance(cls.__dict__[key], type(None)):
-                    new_instance.__dict__[key] = keyvals[key]
+                    raise Exception("Default values of classes derived from ParameterBase should NOT be set to None. Use __post_init()__ for that")
                 elif isinstance(cls.__dict__[key], bool):
                     new_instance.__dict__[key] = cls.to_bool(keyvals[key])
                 else:
                     new_instance.__dict__[key] = type(cls.__dict__[key])(keyvals[key])
 
         return new_instance
-
 
 @dataclass
 class ParametersPsi4(ParametersBase):
@@ -103,6 +105,8 @@ class ParametersPsi4(ParametersBase):
     memory: int = 8000
     template_file: str = ''
 
+    def __post_init__(self):
+        if self.template_file=='': self.template_file=None
 
 @dataclass
 class ParametersQC(ParametersBase):
