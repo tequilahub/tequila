@@ -22,7 +22,6 @@ class OvqeParameterError(OvqeException):
             parameter_name) + "=" + str(
             parameter_value) + " for " + str(parameter_class)
 
-    pass
 
 class OvqeTypeError(OvqeException):
     """
@@ -33,4 +32,3 @@ class OvqeTypeError(OvqeException):
         self.message = "OpenVQE TypeError: " + "excpected type: " + str(expected) + " but got type " + str(
             type) + " for attribute " + str(attr)
 
-    pass

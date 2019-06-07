@@ -3,6 +3,8 @@ from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, OvqePara
 
 if __name__ == "__main__":
 
+    print("Demo for QC-Hamiltonian: Get JW and BK Transformed Qubit Hamiltonians:\n")
+
     parameters_qc = ParametersQC(geometry=" h 0.0 0.0 1.0\n h 0.0 0.0 -1.0", basis_set="sto-3g")
 
     parameters_qc.transformation="JW"

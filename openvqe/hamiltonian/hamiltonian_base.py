@@ -2,21 +2,13 @@
 Base Class for OpenVQE Hamiltonians
 Implements all functions which are needed by as good as all derived classes
 """
-
+from openvqe.abc import OvqeModule
 from openvqe import OvqeParameterError, OvqeException, OvqeTypeError
 from openvqe import ParametersHamiltonian
 import openfermion
 
 
-class HamiltonianBase:
-
-    def __init__(self, parameters: ParametersHamiltonian):
-        """
-        Default constructor of the baseclass, initializes the parameters
-        :param parameters: Parameters of type or derived from ParametersHamiltonian
-        """
-        assert (isinstance(parameters, ParametersHamiltonian))
-        self.parameters = parameters
+class HamiltonianBase(OvqeModule):
 
     def __call__(self) -> openfermion.QubitOperator:
         """
@@ -32,12 +24,12 @@ class HamiltonianBase:
         elif self.parameters.bravyi_kitaev():
             return openfermion.bravyi_kitaev(openfermion.get_fermion_operator(self.get_hamiltonian()))
         else:
+            # test if an internal transformation was defined
+            transform_method = getattr(self, self.parameters.transformation, None)
+            if callable(transform_method): return transform_method(self.get_hamiltonian())
             raise OvqeParameterError(parameter_name="transformation", parameter_class=type(self.parameters),
                                      parameter_value=self.parameters.transformation,
                                      called_from=type(self).__name__ + ".__call__()")
-
-    def greet(self):
-        print("Hello from the " + type(self).__name__ + " class")
 
     def get_hamiltonian(self):
         """
@@ -56,24 +48,4 @@ class HamiltonianBase:
         """
         return self._verify(ParameterType=ParametersHamiltonian)
 
-    def _verify(self, ParameterType: type) -> bool:
-        """
-        Actual verify function
-        :return: true if sane, raises exception if not
-        """
 
-        # check if verify was called correctly
-        if not isinstance(ParameterType, type):
-            raise OvqeException(
-                "Wrong input type for " + type(self).__name__ + "._verify"
-            )
-        # check if the parameters are of the correct type
-        if not isinstance(self.parameters, ParameterType):
-            # raise OpenVQEException(
-            #     "parameters attribute of instance of class " + type(
-            #         self).__name__ + " should be of type " + ParameterType.__name__ + " but is of type " + type(
-            #         self.parameters).__name__)
-            raise OvqeTypeError(attr=type(self).__name__ + ".parameters", type=type(self.parameters),
-                            expected=ParameterType)
-
-        return True

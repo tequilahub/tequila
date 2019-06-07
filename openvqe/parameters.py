@@ -21,6 +21,7 @@ class ParametersBase:
 
     # Parameters which every module of OpenVQE needs
 
+    outfile: str = ""
     # outputlevel is stored as int to not confuse the i/o functions
     _ol: int = field(default=OutputLevel.STANDARD.value)
     def output_level(self) -> OutputLevel:
