@@ -1,5 +1,5 @@
 
-from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, ParameterError
+from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, OvqeParameterError, OvqeException
 
 if __name__ == "__main__":
 
@@ -19,23 +19,36 @@ if __name__ == "__main__":
     print("HQUBIT:\n",hqc())
 
 
-    molecule = HamiltonianQC.get_molecule(parameters_qc)
-    print("\n\nMOLECULE:\n", molecule)
-
-
     print("\nException Handling:\n")
     try:
+        print("Will initialize a parameter to an unknown command")
         parameters_qc = ParametersQC(geometry=" h 0.0 0.0 1.0\n h 0.0 0.0 -1.0", basis_set="sto-3g")
         parameters_qc.transformation = "lalala"
         hqc = HamiltonianQC(parameters_qc)
         H=hqc()
-    except ParameterError:
+    except OvqeException as e:
         print("You chose a weird parameter")
+        print(e)
 
     try:
+        print("\nWill call a method which is not implemented")
         from openvqe.hamiltonian.hamiltonian_hubbard import HamiltonianHubbard
         hqc = HamiltonianHubbard(ParametersHamiltonian())
         H = hqc.get_hamiltonian()
-    except NotImplementedError:
+    except NotImplementedError as e:
         print("Hubbard not yet implemented")
+        print(e)
+
+    try:
+        print("\nWill overwrite parameters to wrong type after correct initialization")
+        parameters_qc = ParametersQC(geometry=" h 0.0 0.0 1.0\n h 0.0 0.0 -1.0", basis_set="sto-3g")
+        parameters_qc.transformation = "JW"
+        hqc = HamiltonianQC(parameters_qc)
+        # now overwrite parameters after successful initialization
+        parameters_h = ParametersHamiltonian()
+        hqc.parameters = parameters_h
+        H=hqc() # raises exceition because the self.verify function is called here)
+    except OvqeException as e:
+        print("catched OpenVQEException")
+        print(e)
 

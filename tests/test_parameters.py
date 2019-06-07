@@ -18,7 +18,7 @@ class TestParameters(unittest.TestCase):
 
     def tearDown(self) -> None:
         import os
-        for filename in self.filenames: os.remove(filename)
+        #for filename in self.filenames: os.remove(filename)
 
     def test_io(self):
 

@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
+from enum import Enum
 
 """
 Parameterclasses for OpenVQE modules
@@ -9,11 +10,36 @@ It is currently not possible to set the default of parameters to None (will conf
 """
 
 
+class OutputLevel(Enum):
+    SILENT = 0
+    STANDARD = 1
+    DEBUG = 2
+    ALL = 3
+
 @dataclass
 class ParametersBase:
 
+    # Parameters which every module of OpenVQE needs
+
+    # outputlevel is stored as int to not confuse the i/o functions
+    _ol: int = field(default=OutputLevel.STANDARD.value)
+    def output_level(self) -> OutputLevel:
+        """
+        Enum handler
+        :return: output_level as enum for more convenience
+        """
+        return OutputLevel(self._ol)
+
     @staticmethod
     def to_bool(var):
+        """
+        Convert different types to bool
+        currently supported: int, str
+        int: 1 -> True, everything else to False
+        str: gets converted to all_lowercase then 'true' -> True, everything else to False
+        :param var: an instance of the currently supported types
+        :return: converted bool
+        """
         if type(var) == int:
             return var == 1
         elif type(var) == bool:
@@ -236,7 +262,6 @@ class ParametersAnsatz(ParametersBase):
 
 @dataclass
 class ParametersUCC(ParametersAnsatz):
-
     generalized: bool = False
     order: int = 2  # order of the T operator: 1 is singles, 2 is singles+doubles etc
     decomposition: str = "trotter1"
