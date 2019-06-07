@@ -1,12 +1,12 @@
 
-from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, OvqeParameterError, OvqeException
+from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, OvqeException
 
 if __name__ == "__main__":
 
     print("Demo for QC-Hamiltonian: Get JW and BK Transformed Qubit Hamiltonians:\n")
 
-    parameters_qc = ParametersQC(geometry=" h 0.0 0.0 1.0\n h 0.0 0.0 -1.0", basis_set="sto-3g")
-
+    # parameters_qc = ParametersQC(geometry=" h 0.0 0.0 1.0\n h 0.0 0.0 -1.0", basis_set="sto-3g") # alternative
+    parameters_qc = ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     parameters_qc.transformation="JW"
     hqc = HamiltonianQC(parameters_qc)
     hqc.greet()

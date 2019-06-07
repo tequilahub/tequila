@@ -47,11 +47,14 @@ class HamiltonianQC(HamiltonianBase):
         The molecule will be saved in parameters.filename, if this file exists before the call the molecule will be imported from the file
         :return: the molecule in openfermion.MolecularData format
         """
+        print("geom=",parameters.get_geometry())
+        print("description=",parameters.description)
+        print(parameters)
         molecule = MolecularData(geometry=parameters.get_geometry(),
                                  basis=parameters.basis_set,
                                  multiplicity=parameters.multiplicity,
                                  charge=parameters.charge,
-                                 description=parameters.description,
+                                 description=parameters.description.strip('\n'), # '\n' causes openfermion to chrash
                                  filename=parameters.filename)
 
         # try to load

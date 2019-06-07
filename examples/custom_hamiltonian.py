@@ -34,6 +34,7 @@ class MyFermionicHamiltonian(HamiltonianBase):
         return H
 
 
+
 if __name__=="__main__":
 
     print("\nDefine a customized Qubit Hamiltonian by creating a class derived from HamiltonianBase and overwriting the get_hamiltonian function:")
