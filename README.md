@@ -1,28 +1,32 @@
 # OpenVQE
-Code for OpenVQE: framework for extending/improving VQE
+Code for OpenVQE: a Python framework for extending/improving VQE
 
 - Look into Keras, TF and how they modularized 
 
-
 # General Structure:
 As far as I see it would make sense to subdivide into the following modules 
--state preparation
--hamiltonian (getting expectation values)
--optimization
--simulator
+- state preparation
+- hamiltonian (getting expectation values)
+- optimization
+- simulator
+- postprocessing
+- data storage
+- data analysis (plotter)
+
 Global Parameter Class or every module with own parameters (which might be inherited from common base or each other)?
 python dataclass structure is convenient
 
 # State Preparations
 - Classic UCC parametrization (exponential of Paulis)
-- easy to make custom made circuits
+- Easy to make custom made circuits
 - Enforcing Symmetry while reducing parameters
-  https://arxiv.org/pdf/1904.10910.pdf
-  At least the Particle-Number part looks reasonable
-  Spin part looks expensive
+  (https://arxiv.org/pdf/1904.10910.pdf). 
+  At least the Particle-Number part looks reasonable. 
+  Spin part looks expensive. 
+- Static vs. dynamic ansatz (e.g. static: UCCSD, dynamic: ADAPT-VQE?)
 
 # Hamiltonian
-- QC interfaces (psi4, pyscf) should be sufficient
+- QC interfaces (psi4, pyscf) should be sufficient. 
   Experienced difficulties with openfermionpsi4/pyscf regarding flexibility
   So we might need our own interfaces
 - Maybe include easy to use interfaces for common models
@@ -36,4 +40,13 @@ python dataclass structure is convenient
 - Testing Intel-QS right now for other project
   lets see how it performs
 - Otherwise I would include most of the default easy to use python-supported libraries
-  Cirq, forest/qvm
+  Cirq, forest/qvm, Pennylane (supports automatic differentiation)
+  
+# Postprocessing
+- Marginals (https://arxiv.org/abs/1801.03524)
+
+# Data storage
+- HDF5, like OpenFermion's `MolecularData`
+
+# Data analysis
+- Basic plotting capabilities (e.g. energy and energy error vs. bond length)
