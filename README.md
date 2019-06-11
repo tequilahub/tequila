@@ -19,23 +19,21 @@ python dataclass structure is convenient
 # State Preparations
 - Classic UCC parametrization (exponential of Paulis)
 - Easy to make custom made circuits
-- Enforcing Symmetry while reducing parameters
-  (https://arxiv.org/pdf/1904.10910.pdf). 
-  At least the Particle-Number part looks reasonable. 
-  Spin part looks expensive. 
-- Static vs. dynamic ansatz (e.g. static: UCCSD, dynamic: ADAPT-VQE?)
+- Enforcing Symmetry while reducing parameters (https://arxiv.org/pdf/1904.10910.pdf). 
+  At least the Particle-Number part looks reasonable. Spin part looks expensive. 
+- Static vs. dynamic ansatz (e.g. static: UCCSD, hardware-efficient; dynamic: ADAPT-VQE, ROTOSELECT)
 
 # Hamiltonian/Objective Function
 - QC interfaces (psi4, pyscf) should be sufficient. 
-  Experienced difficulties with openfermionpsi4/pyscf regarding flexibility
+  Experienced difficulties with openfermionpsi4/pyscf regarding flexibility.
   So we might need our own interfaces
-- Maybe include easy to use interfaces for common models
-  Hubbard, Heisenberg etc
+- Maybe include easy to use interfaces for common models: Hubbard, Heisenberg etc
 - Make it flexible (easy to define custom Hamiltonians)
 - General objective functions?
 
 # Optimization
 - Look into Keras, TF and how they modularized 
+- Analytical gradients
 
 # Simulator
 - Testing Intel-QS right now for other project. Let's see how it performs
