@@ -44,6 +44,8 @@ python dataclass structure is convenient
   
 # Postprocessing
 - Marginals (https://arxiv.org/abs/1801.03524)
+- Error mitigation techniques (IBM's extrapolation)?
+- Excited states?
 
 # Data storage
 - HDF5, like OpenFermion's `MolecularData`
