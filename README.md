@@ -13,7 +13,7 @@ As far as I see it would make sense to subdivide into the following modules
 - data storage
 - data analysis (plotter)
 
-* Should we have something like `Model` in Keras but like `VQE_Model` that takes in all the input/setting and runs the algorithm?
+(Should we have something like `Model` in Keras but like `VQE_Model` that takes in all the input/setting and runs the algorithm?)
 
 Global Parameter Class or every module with own parameters (which might be inherited from common base or each other)?
 python dataclass structure is convenient
