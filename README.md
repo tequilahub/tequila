@@ -25,22 +25,22 @@ python dataclass structure is convenient
   Spin part looks expensive. 
 - Static vs. dynamic ansatz (e.g. static: UCCSD, dynamic: ADAPT-VQE?)
 
-# Hamiltonian
+# Hamiltonian/Objective Function
 - QC interfaces (psi4, pyscf) should be sufficient. 
   Experienced difficulties with openfermionpsi4/pyscf regarding flexibility
   So we might need our own interfaces
 - Maybe include easy to use interfaces for common models
   Hubbard, Heisenberg etc
 - Make it flexible (easy to define custom Hamiltonians)
+- General objective functions?
 
 # Optimization
 - Look into Keras, TF and how they modularized 
 
 # Simulator
-- Testing Intel-QS right now for other project
-  lets see how it performs
+- Testing Intel-QS right now for other project. Let's see how it performs
 - Otherwise I would include most of the default easy to use python-supported libraries
-  Cirq, forest/qvm, Pennylane (supports automatic differentiation)
+  Cirq, Forest/qvm, Pennylane (supports automatic differentiation)
   
 # Postprocessing
 - Marginals (https://arxiv.org/abs/1801.03524)
