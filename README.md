@@ -36,6 +36,7 @@ python dataclass structure is convenient
 # Optimization
 - Look into Keras, TF and how they modularized 
 - Analytical gradients
+- Optimization strategy: layer-wise training, effective identity, ROTOSELECT
 
 # Simulator
 - Testing Intel-QS right now for other project. Let's see how it performs
