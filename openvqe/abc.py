@@ -1,7 +1,7 @@
 from openvqe.parameters import ParametersBase, OutputLevel
-from openvqe import OvqeTypeError
+from openvqe import OVQETypeError, OVQEException
 
-class OvqeModule:
+class OpenVQEModule:
     """
     Abstract Base Class for all OpenVQE modules
     """
@@ -46,16 +46,12 @@ class OvqeModule:
 
         # check if verify was called correctly
         if not isinstance(ParameterType, type):
-            raise OvqeException(
+            raise OVQEException(
                 "Wrong input type for " + type(self).__name__ + "._verify"
             )
         # check if the parameters are of the correct type
         if not isinstance(self.parameters, ParameterType):
-            # raise OpenVQEException(
-            #     "parameters attribute of instance of class " + type(
-            #         self).__name__ + " should be of type " + ParameterType.__name__ + " but is of type " + type(
-            #         self.parameters).__name__)
-            raise OvqeTypeError(attr=type(self).__name__ + ".parameters", type=type(self.parameters),
+            raise OVQETypeError(attr=type(self).__name__ + ".parameters", type=type(self.parameters),
                                 expected=ParameterType)
 
         return True

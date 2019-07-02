@@ -22,6 +22,27 @@ class HamiltonianQC(HamiltonianBase):
         self.molecule = self.make_molecule(parameters)
         super(HamiltonianQC, self).__init__(parameters)
 
+    def n_electrons(self):
+        """
+        Convenience function
+        :return: The total number of electrons
+        """
+        return self.molecule.n_electrons
+
+    def n_orbitals(self):
+        """
+        Convenience function
+        :return: The total number of (spatial) orbitals (occupied and virtual)
+        """
+        return self.molecule.n_orbitals
+
+    def n_qubits(self):
+        """
+        Convenience function
+        :return: Number of qubits needed
+        """
+        return 2*self.n_orbitals()
+
     def get_hamiltonian(self) -> openfermion.InteractionOperator:
         """
         Note that the Qubit Hamiltonian can be created over the call method which is already implemented in the baseclass
@@ -79,15 +100,15 @@ class HamiltonianQC(HamiltonianBase):
                                                 verbose=parameters.psi4.verbose,
                                                 tolerate_error=parameters.psi4.tolerate_error,
                                                 delete_input=parameters.psi4.delete_input,
-                                                delete_output=parameters.psi4.delete_input,
+                                                delete_output=parameters.psi4.delete_output,
                                                 memory=parameters.psi4.memory)
 
         molecule.save()
-
+        print("file was ", molecule.filename)
         return molecule
 
     def verify(self) -> bool:
-        from openvqe import OvqeTypeError
+        from openvqe import OVQETypeError
         """
         Overwritten verify function to check specificly for ParametersQC type
         :return:
@@ -96,7 +117,7 @@ class HamiltonianQC(HamiltonianBase):
 
         # check if the molecule was initialized
         if not isinstance(self.molecule, openfermion.MolecularData):
-            raise OvqeTypeError(attr=type(self).__name__ + ".molecule", type=type(self.molecule),
+            raise OVQETypeError(attr=type(self).__name__ + ".molecule", type=type(self.molecule),
                                 expected=type(openfermion.MolecularData))
 
         # do the standard checks for the baseclass

@@ -2,13 +2,13 @@
 Base Class for OpenVQE Hamiltonians
 Implements all functions which are needed by as good as all derived classes
 """
-from openvqe.abc import OvqeModule
-from openvqe import OvqeParameterError, OvqeException, OvqeTypeError
+from openvqe.abc import OpenVQEModule
+from openvqe import OVQEParameterError, OVQEException, OVQETypeError
 from openvqe import ParametersHamiltonian
 import openfermion
 
 
-class HamiltonianBase(OvqeModule):
+class HamiltonianBase(OpenVQEModule):
 
     def __call__(self) -> openfermion.QubitOperator:
         """
@@ -27,9 +27,17 @@ class HamiltonianBase(OvqeModule):
             # test if an internal transformation was defined
             transform_method = getattr(self, self.parameters.transformation, None)
             if callable(transform_method): return transform_method(self.get_hamiltonian())
-            raise OvqeParameterError(parameter_name="transformation", parameter_class=type(self.parameters),
+            raise OVQEParameterError(parameter_name="transformation", parameter_class=type(self.parameters),
                                      parameter_value=self.parameters.transformation,
                                      called_from=type(self).__name__ + ".__call__()")
+
+    def n_qubits(self):
+        """
+        Needs to be overwritten by specialization
+        :return: the number of qubits this hamiltonian needs
+        """
+        raise OVQEException(type(
+            self).__name__ + ": forgot to overwrite n_qubits() function or you are calling the BaseClass which you shall not do")
 
     def get_hamiltonian(self):
         """
@@ -47,5 +55,3 @@ class HamiltonianBase(OvqeModule):
         :return: true if sane, raises exception if not
         """
         return self._verify(ParameterType=ParametersHamiltonian)
-
-

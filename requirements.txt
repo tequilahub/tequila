@@ -4,3 +4,4 @@ dataclasses_json
 setuptools 
 openfermion
 openfermionpsi4
+cirq

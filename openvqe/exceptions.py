@@ -1,4 +1,4 @@
-class OvqeException(Exception):
+class OVQEException(Exception):
     """
     Base class for other exceptions
     """
@@ -12,7 +12,7 @@ class OvqeException(Exception):
     pass
 
 
-class OvqeParameterError(OvqeException):
+class OVQEParameterError(OVQEException):
     """
     Raised when a specific choice of a parameter is not accepted
     """
@@ -23,7 +23,7 @@ class OvqeParameterError(OvqeException):
             parameter_value) + " for " + str(parameter_class)
 
 
-class OvqeTypeError(OvqeException):
+class OVQETypeError(OVQEException):
     """
     Raised when an attribute is of wrong type
     """
@@ -31,4 +31,3 @@ class OvqeTypeError(OvqeException):
     def __init__(self, attr, type, expected):
         self.message = "OpenVQE TypeError: " + "excpected type: " + str(expected) + " but got type " + str(
             type) + " for attribute " + str(attr)
-

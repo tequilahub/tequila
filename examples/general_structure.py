@@ -1,5 +1,5 @@
 
-from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, OvqeException
+from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, OVQEException
 
 if __name__ == "__main__":
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
         parameters_qc.transformation = "lalala"
         hqc = HamiltonianQC(parameters_qc)
         H=hqc()
-    except OvqeException as e:
+    except OVQEException as e:
         print("You chose a weird parameter")
         print(e)
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         parameters_h = ParametersHamiltonian()
         hqc.parameters = parameters_h
         H=hqc() # raises exceition because the self.verify function is called here)
-    except OvqeException as e:
+    except OVQEException as e:
         print("catched OpenVQEException")
         print(e)
 

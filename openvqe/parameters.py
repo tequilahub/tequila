@@ -163,7 +163,7 @@ class ParametersPsi4(ParametersBase):
     run_fci: bool = False
     verbose: bool = False
     tolerate_error: bool = False
-    delete_input: bool = True
+    delete_input: bool = False
     delete_output: bool = False
     memory: int = 8000
 
@@ -258,11 +258,16 @@ class ParametersAnsatz(ParametersBase):
     Enter general parameters which hold for all types of Ansatzes
     """
 
-    whatever: int = 0
+    # have to be assigned
+    backend: str = "cirq"
 
 
 @dataclass
 class ParametersUCC(ParametersAnsatz):
-    generalized: bool = False
-    order: int = 2  # order of the T operator: 1 is singles, 2 is singles+doubles etc
-    decomposition: str = "trotter1"
+
+    # UCC specific parameters
+    # have to be assigned
+    decomposition: str = "trotter"
+    trotter_steps: int = 1
+
+
