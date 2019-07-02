@@ -28,6 +28,10 @@ if __name__ == "__main__":
     # @todo get a functioning guess factory which does not use this parser
     singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=hqc.n_orbitals()*2, n_alpha_electrons=hqc.n_electrons()//2,
                                                   n_beta_electrons=hqc.n_electrons()//2, psi_filename=filename + ".out")
+    # openfermionpsi4 scales the doubles with 1/2
+    # but the openfermion interaction operator expects unscaled amplitudes
+    # , correcting that here:
+    doubles = 2.0*doubles
 
     # long output
     #print("Singles Amplitudes:\n", singles)
@@ -50,7 +54,7 @@ if __name__ == "__main__":
     simulator = cirq.Simulator()
     result = simulator.simulate(program=circuit)
     print("resulting state is:")
-    print("|psi>=",result.dirac_notation(decimals=3))
+    print("|psi>=",result.dirac_notation(decimals=5))
 
 
     # print("Testing Exception Handling:")
