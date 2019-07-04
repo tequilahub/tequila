@@ -152,14 +152,20 @@ class AnsatzUCC(AnsatzBase):
         if angles.two_body is not None:
             double_amplitudes = angles.two_body  # (psi4 parser from opernfermion includes factor 1/2, but the uccsd_singlet_generator excpets the amplitudes only
 
-        op = openfermion.utils.uccsd_singlet_generator(
-            packed_amplitudes=openfermion.utils.uccsd_singlet_get_packed_amplitudes(
+        # #openfermions uccsd_singlet_generator does not generate singlets but broken symmetries
+        # op = openfermion.utils.uccsd_singlet_generator(
+        #     packed_amplitudes=openfermion.utils.uccsd_singlet_get_packed_amplitudes(
+        #         single_amplitudes=single_amplitudes,
+        #         double_amplitudes=double_amplitudes,
+        #         n_qubits=nq,
+        #         n_electrons=self.hamiltonian.n_electrons()
+        #     ),
+        #     n_qubits=nq, n_electrons=self.hamiltonian.n_electrons())
+
+        op = openfermion.utils.uccsd_generator(
                 single_amplitudes=single_amplitudes,
-                double_amplitudes=double_amplitudes,
-                n_qubits=nq,
-                n_electrons=self.hamiltonian.n_electrons()
-            ),
-            n_qubits=nq, n_electrons=self.hamiltonian.n_electrons())
+                double_amplitudes=double_amplitudes
+            )
 
         if self.hamiltonian.parameters.transformation.upper() == "JW":
             return openfermion.jordan_wigner(op)

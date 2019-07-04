@@ -8,6 +8,8 @@ import cirq
 if __name__ == "__main__":
     print("Demo for closed-shell UCC with psi4-CCSD trial state and first order Trotter decomposition")
 
+
+
     print("First get the Hamiltonian:")
     parameters_qc = ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     parameters_qc.transformation = "JW"
@@ -30,7 +32,7 @@ if __name__ == "__main__":
                                                   n_beta_electrons=hqc.n_electrons()//2, psi_filename=filename + ".out")
     # openfermionpsi4 scales the doubles with 1/2
     # but the openfermion interaction operator expects unscaled amplitudes
-    # , correcting that here:
+    # correcting that here:
     doubles = 2.0*doubles
 
     # long output
@@ -56,8 +58,19 @@ if __name__ == "__main__":
     print("resulting state is:")
     print("|psi>=",result.dirac_notation(decimals=5))
 
+    print("Evaluate energy:")
 
-    # print("Testing Exception Handling:")
-    # print("Wrong initialization")
-    # wrong=openvqe.HamiltonianBase(parameters=openvqe.parameters.ParametersBase())
-    # ucc2 = AnsatzUCC(parameters=parameters_ucc, hamiltonian=wrong)
+    qubits = ucc.backend_handler.qubits # [cirq.GridQubit(i, 0) for i in range(5)]
+    test = cirq.X(qubits[0])*cirq.Y(qubits[2])
+    print(type(test))
+    print(test)
+   #
+   #  pse=cirq.PauliStringExpectation(test)
+   #  print(pse)
+   #  circuit.append(pse)
+   #  print(circuit)
+   #  result = simulator.simulate(program=circuit)
+   #  print("resulting state is:")
+   # # print("|psi>=",result.dirac_notation(decimals=5))
+   #  print(result.measurements)
+
