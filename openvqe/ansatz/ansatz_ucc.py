@@ -131,7 +131,7 @@ class AnsatzUCC(AnsatzBase):
         circuit += change_basis
         circuit += cnot_cascade
         # factor 2 is since gates are defined with angle/2
-        circuit += self.backend_handler(name="Rz", angle=angle, targets=last_qubit)
+        circuit += self.backend_handler(name="Rz", angle=2.0*angle, targets=last_qubit)
         circuit += reversed_cnot
         circuit += change_basis_back
 

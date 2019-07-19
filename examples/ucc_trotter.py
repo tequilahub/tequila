@@ -4,11 +4,75 @@ from openvqe.ansatz.ansatz_ucc import ManyBodyAmplitudes
 from openvqe.ansatz.ansatz_ucc import AnsatzUCC
 import openvqe
 import cirq
+import numpy
+
+
+def expectation_value_cirq(final_state, hamiltonian, n_qubits):
+    """
+    Function from Philip to compute expectation values with cirq
+    :param final_state:
+    :param hamiltonian:
+    :param n_qubits:
+    :return:
+    """
+
+    # # get the final state:
+    # simulate_cirq(circuit=circuit, n_qubits=n_qubits, print_state=globals.print_state)
+    # assert (isinstance(circuit, cirq.Circuit))
+    # simulator = cirq.Simulator()
+    # initial_state = numpy.zeros(2 ** n_qubits, dtype=numpy.complex64)
+    # initial_state[0] = 1
+    # result = simulator.simulate(circuit, initial_state=initial_state)
+    # final_state = initial_state
+
+    # rewrite the hamiltonian as a sum of pauli strings:
+    qubits = [cirq.LineQubit(i) for i in range(n_qubits)]
+
+    coeffs = []
+    list_of_h_terms = []
+    for qubit_terms, coefficient in hamiltonian.terms.items():
+        h_terms = []
+
+        for i in range(n_qubits):
+            h_terms.append(cirq.I)
+
+        for tensor_term in qubit_terms:
+            if tensor_term[1] == 'Z':
+                h_terms[tensor_term[0]] = cirq.Z
+            elif tensor_term[1] == 'Y':
+                h_terms[tensor_term[0]] = cirq.Y
+            elif tensor_term[1] == 'X':
+                h_terms[tensor_term[0]] = cirq.X
+
+        list_of_h_terms.append(cirq.PauliString({qubits[i]: h_terms[i] for i in range(n_qubits)}))
+        coeffs.append(coefficient)
+
+    # calculate the expectation value of the Hamiltonian:
+    qubit_map = {qubits[i]: i for i in range(n_qubits)}
+    len_ham = len(coeffs)
+    energies = []
+    for i in range(len_ham):
+        num_qubits = final_state.shape[0].bit_length() - 1
+        ket = numpy.reshape(numpy.copy(final_state), (2,) * num_qubits)
+        for qubit, pauli in list_of_h_terms[i].items():
+            buffer = numpy.empty(ket.shape, dtype=final_state.dtype)
+            args = cirq.protocols.ApplyUnitaryArgs(
+                target_tensor=ket,
+                available_buffer=buffer,
+                axes=(qubit_map[qubit],)
+            )
+            ket = cirq.protocols.apply_unitary(pauli, args)
+        ket = numpy.reshape(ket, final_state.shape)
+        arr = numpy.dot(numpy.transpose(final_state.conj()), ket) * coeffs[i]
+        energies.append(arr)
+    expectation_value = numpy.real(numpy.sum(energies))
+    # print(expectation_value)
+
+    return expectation_value
+
 
 if __name__ == "__main__":
     print("Demo for closed-shell UCC with psi4-CCSD trial state and first order Trotter decomposition")
-
-
 
     print("First get the Hamiltonian:")
     parameters_qc = ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
@@ -23,21 +87,16 @@ if __name__ == "__main__":
     print("Parse Guess CCSD amplitudes from the PSI4 calculation")
     # get initial amplitudes from psi4
     filename = parameters_qc.filename
-    print("filename=", filename+".out")
+    print("filename=", filename + ".out")
     print("n_electrons=", hqc.n_electrons())
     print("n_orbitals=", hqc.n_orbitals())
 
     # @todo get a functioning guess factory which does not use this parser
-    singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=hqc.n_orbitals()*2, n_alpha_electrons=hqc.n_electrons()//2,
-                                                  n_beta_electrons=hqc.n_electrons()//2, psi_filename=filename + ".out")
-    # openfermionpsi4 scales the doubles with 1/2
-    # but the openfermion interaction operator expects unscaled amplitudes
-    # correcting that here:
-    doubles = 2.0*doubles
+    singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=hqc.n_orbitals() * 2,
+                                                  n_alpha_electrons=hqc.n_electrons() // 2,
+                                                  n_beta_electrons=hqc.n_electrons() // 2,
+                                                  psi_filename=filename + ".out")
 
-    # long output
-    #print("Singles Amplitudes:\n", singles)
-    #print("Doubles Amplitudes:\n", doubles)
 
     amplitudes = ManyBodyAmplitudes(one_body=singles, two_body=doubles)
 
@@ -51,26 +110,21 @@ if __name__ == "__main__":
     print("created the following circuit:")
     print(circuit)
 
-
     print("run the circuit:")
     simulator = cirq.Simulator()
     result = simulator.simulate(program=circuit)
     print("resulting state is:")
-    print("|psi>=",result.dirac_notation(decimals=5))
-
+    print("|psi>=", result.dirac_notation(decimals=5))
+    print("type(result):", type(result))
+    print("type(final_state)", type(result.final_simulator_state.state_vector))
+    print("final_state.state_vector:\n", result.final_simulator_state.state_vector)
     print("Evaluate energy:")
 
-    qubits = ucc.backend_handler.qubits # [cirq.GridQubit(i, 0) for i in range(5)]
-    test = cirq.X(qubits[0])*cirq.Y(qubits[2])
+    qubits = ucc.backend_handler.qubits  # [cirq.GridQubit(i, 0) for i in range(5)]
+    test = cirq.X(qubits[0]) * cirq.Y(qubits[2])
     print(type(test))
     print(test)
-   #
-   #  pse=cirq.PauliStringExpectation(test)
-   #  print(pse)
-   #  circuit.append(pse)
-   #  print(circuit)
-   #  result = simulator.simulate(program=circuit)
-   #  print("resulting state is:")
-   # # print("|psi>=",result.dirac_notation(decimals=5))
-   #  print(result.measurements)
+
+    energy = expectation_value_cirq(final_state=result.final_simulator_state.state_vector, hamiltonian=hqc(), n_qubits=hqc.n_qubits())
+    print("energy=",energy)
 
