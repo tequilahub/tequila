@@ -2,64 +2,9 @@ from openvqe import HamiltonianQC, AnsatzUCC, ParametersQC, ParametersUCC
 from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
 from openvqe.ansatz.ansatz_ucc import ManyBodyAmplitudes
 from openvqe.ansatz.ansatz_ucc import AnsatzUCC
-import openvqe
-import cirq
+from openvqe.circuit.compiler import compile_trotter_evolution
+import openvqe.circuit.circuit_cirq as cirq_interface
 import numpy
-
-
-def expectation_value_cirq(final_state, hamiltonian, n_qubits):
-    """
-    Function from Philip to compute expectation values with cirq
-    :param final_state:
-    :param hamiltonian:
-    :param n_qubits:
-    :return:
-    """
-
-    # rewrite the hamiltonian as a sum of pauli strings:
-    qubits = [cirq.LineQubit(i) for i in range(n_qubits)]
-
-    coeffs = []
-    list_of_h_terms = []
-    for qubit_terms, coefficient in hamiltonian.terms.items():
-        h_terms = []
-
-        for i in range(n_qubits):
-            h_terms.append(cirq.I)
-
-        for tensor_term in qubit_terms:
-            if tensor_term[1] == 'Z':
-                h_terms[tensor_term[0]] = cirq.Z
-            elif tensor_term[1] == 'Y':
-                h_terms[tensor_term[0]] = cirq.Y
-            elif tensor_term[1] == 'X':
-                h_terms[tensor_term[0]] = cirq.X
-
-        list_of_h_terms.append(cirq.PauliString({qubits[i]: h_terms[i] for i in range(n_qubits)}))
-        coeffs.append(coefficient)
-
-    # calculate the expectation value of the Hamiltonian:
-    qubit_map = {qubits[i]: i for i in range(n_qubits)}
-    len_ham = len(coeffs)
-    energies = []
-    for i in range(len_ham):
-        num_qubits = final_state.shape[0].bit_length() - 1
-        ket = numpy.reshape(numpy.copy(final_state), (2,) * num_qubits)
-        for qubit, pauli in list_of_h_terms[i].items():
-            buffer = numpy.empty(ket.shape, dtype=final_state.dtype)
-            args = cirq.protocols.ApplyUnitaryArgs(
-                target_tensor=ket,
-                available_buffer=buffer,
-                axes=(qubit_map[qubit],)
-            )
-            ket = cirq.protocols.apply_unitary(pauli, args)
-        ket = numpy.reshape(ket, final_state.shape)
-        arr = numpy.dot(numpy.transpose(final_state.conj()), ket) * coeffs[i]
-        energies.append(arr)
-    expectation_value = numpy.real(numpy.sum(energies))
-    # print(expectation_value)
-
-    return expectation_value
 
 
 if __name__ == "__main__":
@@ -96,14 +41,18 @@ if __name__ == "__main__":
     parameters_ucc = ParametersUCC(backend="cirq", decomposition='trotter', trotter_steps=1)
     print(parameters_ucc)
     ucc = AnsatzUCC(parameters=parameters_ucc, hamiltonian=hqc)
-    circuit = ucc(angles=amplitudes)
+    ucc_operator = ucc(angles=amplitudes)
+
+    circuit = compile_trotter_evolution(cluster_operator=ucc_operator, steps=1, anti_hermitian=True)
+
+    print("Use cirq as backend")
+    circuit = cirq_interface.make_cirq_circuit(circuit)
 
     print("created the following circuit:")
     print(circuit)
 
     print("run the circuit:")
-    simulator = cirq.Simulator()
-    result = simulator.simulate(program=circuit)
+    result=cirq_interface.simulate(circuit=circuit, initial_state=ucc.initial_state())
     print("resulting state is:")
     print("|psi>=", result.dirac_notation(decimals=5))
     print("type(result):", type(result))
@@ -111,11 +60,7 @@ if __name__ == "__main__":
     print("final_state.state_vector:\n", result.final_simulator_state.state_vector)
     print("Evaluate energy:")
 
-    qubits = ucc.backend_handler.qubits  # [cirq.GridQubit(i, 0) for i in range(5)]
-    test = cirq.X(qubits[0]) * cirq.Y(qubits[2])
-    print(type(test))
-    print(test)
-
-    energy = expectation_value_cirq(final_state=result.final_simulator_state.state_vector, hamiltonian=hqc(),
+    energy = cirq_interface.expectation_value_cirq(final_state=result.final_simulator_state.state_vector, hamiltonian=hqc(),
                                     n_qubits=hqc.n_qubits())
-    print("energy=", energy)
+
+    print("energy = ", energy)
