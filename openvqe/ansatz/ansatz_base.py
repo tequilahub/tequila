@@ -1,5 +1,5 @@
 from openvqe.abc import OpenVQEModule, OpenVQEParameters, parametrized
-from openvqe.exceptions import OVQEException
+from openvqe.exceptions import OpenVQEException
 from openvqe.ansatz.backend_handler import get_backend_hander
 from openvqe.hamiltonian.hamiltonian_base import HamiltonianBase
 from dataclasses import dataclass
@@ -43,7 +43,7 @@ class AnsatzBase(OpenVQEModule):
         :param angles:
         :return: the circuit in the correct format for the simulator backend secified by self.parameters.backend
         """
-        raise OVQEException(type(self).__name__ + ": You tried to call the ABC directly")
+        raise OpenVQEException(type(self).__name__ + ": You tried to call the ABC directly")
 
     def greet(self):
         print("Hello from the " + type(self).__name__ + " class")

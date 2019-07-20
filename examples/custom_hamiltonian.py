@@ -14,7 +14,7 @@ class MyQubitHamiltonian(HamiltonianBase):
         """
         return H
 
-    def get_hamiltonian(self):
+    def get_fermionic_hamiltonian(self):
 
         H = openfermion.QubitOperator()
         H.terms[((0, 'Z'),)] = 1.0
@@ -25,7 +25,7 @@ class MyQubitHamiltonian(HamiltonianBase):
 
 class MyFermionicHamiltonian(HamiltonianBase):
 
-    def get_hamiltonian(self):
+    def get_fermionic_hamiltonian(self):
         constant=1.0
         obt = np.zeros([2,2])
         obt[0,0]=1.0

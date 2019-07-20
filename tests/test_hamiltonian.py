@@ -29,7 +29,7 @@ class TestParameters(unittest.TestCase):
                     if basis!='sto-3g' and 'Li' in geom: continue
                     parameters_qc = ParametersQC(geometry=geom, basis_set=basis, transformation=trafo)
                     hqc = HamiltonianQC(parameters_qc)
-                    Hmol=hqc.get_hamiltonian()
+                    Hmol=hqc.get_fermionic_hamiltonian()
                     H=hqc()
                     if trafo=='JW':
                         self.assertTrue(parameters_qc.jordan_wigner())

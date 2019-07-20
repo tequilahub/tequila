@@ -1,6 +1,6 @@
 from openvqe.abc import  parametrized
 from .ansatz_base import AnsatzBase
-from openvqe.exceptions import OVQEParameterError
+from openvqe.exceptions import OpenVQEParameterError
 from openvqe import HamiltonianQC
 import numpy
 import openfermion
@@ -68,7 +68,7 @@ class AnsatzUCC(AnsatzBase):
         if self.parameters.decomposition == "trotter":
             return self.prepare_ucc_trotter(angles=angles)
         else:
-            raise OVQEParameterError(parameter_name="decomposition", parameter_value=self.parameters.decomposition, parameter_class=type(self.parameters).__name__, called_from=type(self).__name__)
+            raise OpenVQEParameterError(parameter_name="decomposition", parameter_value=self.parameters.decomposition, parameter_class=type(self.parameters).__name__, called_from=type(self).__name__)
 
     def prepare_ucc_trotter(self, angles):
         cluster_operator = self.make_cluster_operator(angles=angles)
@@ -183,10 +183,10 @@ class AnsatzUCC(AnsatzBase):
             # @todo opernfermion has some problems with bravyi_kitaev and interactionoperators
             return openfermion.bravyi_kitaev(op)
         else :
-            raise OVQEParameterError(parameter_name="transformation", parameter_class=type(self.hamiltonian.parameters).__name__, parameter_value=self.hamiltonian.parameters.transformation)
+            raise OpenVQEParameterError(parameter_name="transformation", parameter_class=type(self.hamiltonian.parameters).__name__, parameter_value=self.hamiltonian.parameters.transformation)
 
     def verify(self) -> bool:
-        from openvqe import OVQETypeError
+        from openvqe import OpenVQETypeError
         """
         Overwritten verify function to check specificly for ParametersQC type
         :return:
@@ -195,7 +195,7 @@ class AnsatzUCC(AnsatzBase):
 
         # check if the hamiltonian is the right type and call its own verify function
         if not isinstance(self.hamiltonian, HamiltonianQC):
-            raise OVQETypeError(attr=type(self).__name__+".hamiltonian", expected=type(HamiltonianQC).__name__, type=type(self.hamiltonian).__name__)
+            raise OpenVQETypeError(attr=type(self).__name__ + ".hamiltonian", expected=type(HamiltonianQC).__name__, type=type(self.hamiltonian).__name__)
 
         # do the standard checks for the baseclass
         return self._verify()

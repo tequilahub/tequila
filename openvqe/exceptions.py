@@ -1,4 +1,4 @@
-class OVQEException(Exception):
+class OpenVQEException(Exception):
     """
     Base class for other exceptions
     """
@@ -12,7 +12,7 @@ class OVQEException(Exception):
     pass
 
 
-class OVQEParameterError(OVQEException):
+class OpenVQEParameterError(OpenVQEException):
     """
     Raised when a specific choice of a parameter is not accepted
     """
@@ -23,7 +23,7 @@ class OVQEParameterError(OVQEException):
             parameter_value) + " for " + str(parameter_class)
 
 
-class OVQETypeError(OVQEException):
+class OpenVQETypeError(OpenVQEException):
     """
     Raised when an attribute is of wrong type
     """

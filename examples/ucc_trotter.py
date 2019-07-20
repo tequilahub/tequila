@@ -73,6 +73,7 @@ if __name__ == "__main__":
     parameters_qc.psi4.run_ccsd = True
     parameters_qc.filename = "psi4"
     hqc = HamiltonianQC(parameters_qc)
+    print("parameters=", hqc.parameters)
     print("The Qubit Hamiltonian is:\n", hqc())
 
     print("Parse Guess CCSD amplitudes from the PSI4 calculation")

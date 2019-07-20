@@ -111,15 +111,15 @@ class ParametersQC(ParametersHamiltonian):
             return coord, comment
 
 
-@parametrized(parameter_class=ParametersHamiltonian)
+@parametrized(parameter_class=ParametersQC)
 class HamiltonianQC(HamiltonianBase):
 
-    def __post_init__(self):
+    def __post_init__(self, molecule=None):
         """
         Constructor will run psi4 and create the molecule which is stored as member variable
         :param parameters: instance of ParametersQC which holds all necessary parameters
         """
-        self.molecule = self.make_molecule(self.parameters)
+        self.molecule = molecule
 
     def n_electrons(self):
         """
@@ -140,9 +140,9 @@ class HamiltonianQC(HamiltonianBase):
         Convenience function
         :return: Number of qubits needed
         """
-        return 2*self.n_orbitals()
+        return 2 * self.n_orbitals()
 
-    def get_hamiltonian(self) -> openfermion.InteractionOperator:
+    def get_fermionic_hamiltonian(self) -> openfermion.InteractionOperator:
         """
         Note that the Qubit Hamiltonian can be created over the call method which is already implemented in the baseclass
         :return: The fermionic Hamiltonian as InteractionOperator structure
@@ -167,14 +167,14 @@ class HamiltonianQC(HamiltonianBase):
         The molecule will be saved in parameters.filename, if this file exists before the call the molecule will be imported from the file
         :return: the molecule in openfermion.MolecularData format
         """
-        print("geom=",parameters.get_geometry())
-        print("description=",parameters.description)
+        print("geom=", parameters.get_geometry())
+        print("description=", parameters.description)
         print(parameters)
         molecule = MolecularData(geometry=parameters.get_geometry(),
                                  basis=parameters.basis_set,
                                  multiplicity=parameters.multiplicity,
                                  charge=parameters.charge,
-                                 description=parameters.description.strip('\n'), # '\n' causes openfermion to chrash
+                                 description=parameters.description.strip('\n'),  # '\n' causes openfermion to chrash
                                  filename=parameters.filename)
 
         # try to load
@@ -190,11 +190,10 @@ class HamiltonianQC(HamiltonianBase):
                 do_compute = True
 
         if do_compute:
-            molecule = openfermionpsi4.run_psi4(molecule,
-                                                run_scf=parameters.psi4.run_scf,
+            molecule = openfermionpsi4.run_psi4(molecule, run_scf=parameters.psi4.run_scf,
                                                 run_mp2=parameters.psi4.run_mp2,
-                                                run_cisd=parameters.psi4.run_cisd,
                                                 run_ccsd=parameters.psi4.run_ccsd,
+                                                run_cisd=parameters.psi4.run_cisd,
                                                 run_fci=parameters.psi4.run_fci,
                                                 verbose=parameters.psi4.verbose,
                                                 tolerate_error=parameters.psi4.tolerate_error,
@@ -205,21 +204,3 @@ class HamiltonianQC(HamiltonianBase):
         molecule.save()
         print("file was ", molecule.filename)
         return molecule
-
-    def verify(self) -> bool:
-        from openvqe import OVQETypeError
-        """
-        Overwritten verify function to check specificly for ParametersQC type
-        :return:
-        """
-        # do some verification specificaly for this class
-
-        # check if the molecule was initialized
-        if not isinstance(self.molecule, openfermion.MolecularData):
-            raise OVQETypeError(attr=type(self).__name__ + ".molecule", type=type(self.molecule),
-                                expected=type(openfermion.MolecularData))
-
-        # do the standard checks for the baseclass
-        return self._verify()
-
-

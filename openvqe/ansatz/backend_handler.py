@@ -3,7 +3,7 @@ Backend Handler:
 handles the construction of quantum circuits for different simulation backends
 """
 
-from openvqe.exceptions import OVQEException
+from openvqe.exceptions import OpenVQEException
 
 
 
@@ -18,7 +18,7 @@ class BackendHandlerABC:
             self.import_backend()
         except ImportError as e:
             print(e)
-            raise OVQEException("failed to import backed for " + type(self).__name__,
+            raise OpenVQEException("failed to import backed for " + type(self).__name__,
                                 " make sure it is available in the current environment")
         self.qubits = self.initialize_qubits(n_qubits, qubits)
 
@@ -80,7 +80,7 @@ class BackendHandlerABC:
         Initialize an circuit object
         :return: Empty Circuit for Backend
         """
-        raise OVQEException("Do not call functions BackendHandlerABC directly")
+        raise OpenVQEException("Do not call functions BackendHandlerABC directly")
 
     def non_parametrized_gate(self, name, targets, controls):
         """
@@ -89,7 +89,7 @@ class BackendHandlerABC:
         :param controls: control qubits (will be translated as self.qubits[target]
         :return: unparametrized one_qubit gates in the backend format
         """
-        raise OVQEException("Do not call functions BackendHandlerABC directly")
+        raise OpenVQEException("Do not call functions BackendHandlerABC directly")
 
     def parametrized_gate(self, name, targets, controls, angle):
         """
@@ -99,10 +99,10 @@ class BackendHandlerABC:
         :param angle: angle or exponent which parametrizes the gate
         :return: unparametrized one_qubit gates in the backend format
         """
-        raise OVQEException("Do not call functions BackendHandlerABC directly")
+        raise OpenVQEException("Do not call functions BackendHandlerABC directly")
 
     def verify(self):
-        raise OVQEException("Do not call functions BackendHandlerABC directly")
+        raise OpenVQEException("Do not call functions BackendHandlerABC directly")
 
 
 class BackendHandlerCirq(BackendHandlerABC):
@@ -163,7 +163,7 @@ class BackendHandlerCirq(BackendHandlerABC):
             try:
                 import cirq as test_cirq
             except ImportError:
-                raise OVQEException(
+                raise OpenVQEException(
                     "Could not import cirq, make sure the module is available in the current environment")
 
 

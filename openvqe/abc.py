@@ -1,5 +1,4 @@
-from openvqe.parameters import ParametersBase, OutputLevel
-from openvqe import OVQETypeError, OVQEException
+from openvqe.exceptions import OpenVQETypeError
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -141,7 +140,7 @@ def parametrized(parameter_class=OpenVQEParameters, _cls=None):
     """
 
     def decorator(cls):
-        def init(self, parameters: parameter_class, *args, **kwargs):
+        def init(self, parameters: parameter_class = None, *args, **kwargs):
             """
             Default constructor of the baseclass, initializes the parameters
             :param parameters: Parameters of type or derived from OpenVQEParameters
@@ -161,8 +160,8 @@ def parametrized(parameter_class=OpenVQEParameters, _cls=None):
             """
             # check if the parameters are of the correct type
             if not isinstance(self.parameters, parameter_class):
-                raise OVQETypeError(attr=type(self).__name__ + ".parameters", type=type(self.parameters),
-                                    expected=parameter_class)
+                raise OpenVQETypeError(attr=type(self).__name__ + ".parameters", type=type(self.parameters),
+                                       expected=parameter_class)
 
             return True
 
@@ -176,7 +175,7 @@ def parametrized(parameter_class=OpenVQEParameters, _cls=None):
     else:
         return decorator(cls=_cls)
 
-@parametrized(parameter_class=ParametersBase)
+@parametrized(OpenVQEParameters)
 class OpenVQEModule:
     """
     Abstract Base Class for all OpenVQE modules
