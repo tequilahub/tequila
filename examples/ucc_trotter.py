@@ -1,4 +1,4 @@
-from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, OVQEException, ParametersUCC
+from openvqe import HamiltonianQC, AnsatzUCC, ParametersQC, ParametersUCC
 from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
 from openvqe.ansatz.ansatz_ucc import ManyBodyAmplitudes
 from openvqe.ansatz.ansatz_ucc import AnsatzUCC
@@ -15,15 +15,6 @@ def expectation_value_cirq(final_state, hamiltonian, n_qubits):
     :param n_qubits:
     :return:
     """
-
-    # # get the final state:
-    # simulate_cirq(circuit=circuit, n_qubits=n_qubits, print_state=globals.print_state)
-    # assert (isinstance(circuit, cirq.Circuit))
-    # simulator = cirq.Simulator()
-    # initial_state = numpy.zeros(2 ** n_qubits, dtype=numpy.complex64)
-    # initial_state[0] = 1
-    # result = simulator.simulate(circuit, initial_state=initial_state)
-    # final_state = initial_state
 
     # rewrite the hamiltonian as a sum of pauli strings:
     qubits = [cirq.LineQubit(i) for i in range(n_qubits)]
@@ -97,7 +88,6 @@ if __name__ == "__main__":
                                                   n_beta_electrons=hqc.n_electrons() // 2,
                                                   psi_filename=filename + ".out")
 
-
     amplitudes = ManyBodyAmplitudes(one_body=singles, two_body=doubles)
 
     print("Construct the AnsatzUCC class")
@@ -125,6 +115,6 @@ if __name__ == "__main__":
     print(type(test))
     print(test)
 
-    energy = expectation_value_cirq(final_state=result.final_simulator_state.state_vector, hamiltonian=hqc(), n_qubits=hqc.n_qubits())
-    print("energy=",energy)
-
+    energy = expectation_value_cirq(final_state=result.final_simulator_state.state_vector, hamiltonian=hqc(),
+                                    n_qubits=hqc.n_qubits())
+    print("energy=", energy)

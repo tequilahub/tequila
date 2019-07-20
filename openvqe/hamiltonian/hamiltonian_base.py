@@ -2,12 +2,36 @@
 Base Class for OpenVQE Hamiltonians
 Implements all functions which are needed by as good as all derived classes
 """
-from openvqe.abc import OpenVQEModule
+
+from dataclasses import dataclass
+from openvqe.abc import OpenVQEModule, OpenVQEParameters, parametrized
 from openvqe import OVQEParameterError, OVQEException, OVQETypeError
-from openvqe import ParametersHamiltonian
 import openfermion
 
 
+@dataclass
+class ParametersHamiltonian(OpenVQEParameters):
+    """
+    Enter general parameters which hold for all types of Hamiltonians
+    """
+    transformation: str = "JW"
+
+    # convenience functions
+    def jordan_wigner(self):
+        if self.transformation.upper() in ["JW", "J-W", "JORDAN-WIGNER"]:
+            return True
+        else:
+            return False
+
+    # convenience functions
+    def bravyi_kitaev(self):
+        if self.transformation.upper() in ["BK", "B-K", "BRAVYI-KITAEV"]:
+            return True
+        else:
+            return False
+
+
+@parametrized(ParametersHamiltonian)
 class HamiltonianBase(OpenVQEModule):
 
     def __call__(self) -> openfermion.QubitOperator:
@@ -54,4 +78,4 @@ class HamiltonianBase(OpenVQEModule):
         check if the instance is sane, should be overwritten by derived classes
         :return: true if sane, raises exception if not
         """
-        return self._verify(ParameterType=ParametersHamiltonian)
+        return self._verify(paramtype=ParametersHamiltonian)

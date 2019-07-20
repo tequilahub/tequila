@@ -1,7 +1,6 @@
 import unittest
 # from .context import openvqe
-from openvqe.hamiltonian.hamiltonian_qc import HamiltonianQC
-from openvqe.parameters import ParametersQC, ParametersPsi4
+from openvqe.hamiltonian.hamiltonian_qc import HamiltonianQC, ParametersQC
 import openfermion
 
 class TestParameters(unittest.TestCase):

@@ -1,9 +1,19 @@
+from openvqe.abc import  parametrized
 from .ansatz_base import AnsatzBase
-from openvqe.parameters import ParametersUCC
 from openvqe.exceptions import OVQEParameterError
 from openvqe import HamiltonianQC
 import numpy
 import openfermion
+from dataclasses import dataclass
+from openvqe.ansatz.ansatz_base import ParametersAnsatz
+
+
+@dataclass
+class ParametersUCC(ParametersAnsatz):
+    # UCC specific parameters
+    # have to be assigned
+    decomposition: str = "trotter"
+    trotter_steps: int = 1
 
 
 class ManyBodyAmplitudes:
@@ -26,7 +36,7 @@ class ManyBodyAmplitudes:
     def __repr__(self):
         return self.__str__()
 
-
+@parametrized(ParametersAnsatz)
 class AnsatzUCC(AnsatzBase):
     """
     Class for UCC ansatz
@@ -40,7 +50,7 @@ class AnsatzUCC(AnsatzBase):
 
     def prepare_reference(self):
         """
-        Apply an X gate to all occupied refefence functions
+        Apply an X gate to all occupied reference functions
         which are given by the first self.parameters.n_electrons qubits
         so right now we are assuming HF as reference
         :return: A circuit which prepares the reference function (right now only closed shell HF)
@@ -188,4 +198,4 @@ class AnsatzUCC(AnsatzBase):
             raise OVQETypeError(attr=type(self).__name__+".hamiltonian", expected=type(HamiltonianQC).__name__, type=type(self.hamiltonian).__name__)
 
         # do the standard checks for the baseclass
-        return self._verify(ParameterType=ParametersUCC)
+        return self._verify()
