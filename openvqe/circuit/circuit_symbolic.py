@@ -1,4 +1,4 @@
-from qcircuit import QCircuit, QGate, H, CNOT, Ry, Ry, X
+from openvqe.circuit.circuit import QCircuit, QGate, H, CNOT, Ry, Rx, Rz, X
 import copy
 import numpy
 from numpy import isclose, sqrt
@@ -148,25 +148,40 @@ def apply_gate(state: QState, gate: QGate):
     assert (gate.max_qubit() <= state.n_qubits())
     result = QState()
     for s in state:
-        if gate.is_controled() and s.qubits[gate.control] == 0:
+        if gate.is_controled() and s.qubits[gate.control[0]] == 0:
             result += s
         elif gate.name.upper() == "H":
-            if s.qubits[gate.target] == 0:
+            if s.qubits[gate.target[0]] == 0:
                 result += s.copy(factor=SymbolicNumber(symbol="1/sqrt(2)"))
-                result += s.flip(qubit=gate.target, factor=SymbolicNumber(symbol="1/sqrt(2)"))
+                result += s.flip(qubit=gate.target[0], factor=SymbolicNumber(symbol="1/sqrt(2)"))
             else:
                 result += 1.0 / sqrt(2.0) * s.copy()
-                result += -1.0 / sqrt(2.0) * s.flip(qubit=gate.target)
+                result += -1.0 / sqrt(2.0) * s.flip(qubit=gate.target[0])
         elif gate.name.upper() == "CNOT" or gate.name.upper() == "X":
-            result += s.flip(qubit=gate.target)
-        elif gate.name.upper() == "RY":
-            if s.qubits[gate.target] == 0:
+            result += s.flip(qubit=gate.target[0])
+        elif gate.name.upper() == "RX":
+            if s.qubits[gate.target[0]] == 0:
                 result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
-                result += s.flip(qubit=gate.target, factor=apply_function(function="sin", number=0.5 * gate.angle))
+                result += s.flip(qubit=gate.target[0], factor=1j*apply_function(function="sin", number=0.5 * gate.angle))
             else:
                 result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
-                result += s.flip(qubit=gate.target,
+                result += s.flip(qubit=gate.target[0],
+                                 factor=-1j * apply_function(function="sin", number=0.5 * gate.angle))
+        elif gate.name.upper() == "RY":
+            if s.qubits[gate.target[0]] == 0:
+                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                result += s.flip(qubit=gate.target[0], factor=apply_function(function="sin", number=0.5 * gate.angle))
+            else:
+                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                result += s.flip(qubit=gate.target[0],
                                  factor=-1.0 * apply_function(function="sin", number=0.5 * gate.angle))
+        elif gate.name.upper() == "RZ":
+            if s.qubits[gate.target[0]] == 0:
+                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                result += s.copy(factor=1.0j*apply_function(function="sin", number=0.5 * gate.angle))
+            else:
+                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                result += s.copy(factor=-1.0j * apply_function(function="sin", number=0.5 * gate.angle))
         else:
             raise Exception("Gate: " + gate.name + " not yet supported in symbolic simulator")
 

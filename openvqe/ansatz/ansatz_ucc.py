@@ -51,7 +51,11 @@ class AnsatzUCC(AnsatzBase):
         """
         :return: Hatree-Fock Reference as binary-number
         """
-        return binary_to_number([1 for i in range(self.hamiltonian.n_electrons())])
+        l = [0]*self.hamiltonian.n_qubits()
+        for i in range(self.hamiltonian.n_electrons()):
+            l[i] = 1
+
+        return binary_to_number(l=l)
 
     def make_cluster_operator(self, angles: ManyBodyAmplitudes) -> openfermion.QubitOperator:
         """
