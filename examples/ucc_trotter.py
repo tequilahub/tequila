@@ -3,7 +3,9 @@ from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitude
 from openvqe.ansatz.ansatz_ucc import ManyBodyAmplitudes
 from openvqe.ansatz.ansatz_ucc import AnsatzUCC
 from openvqe.circuit.compiler import compile_trotter_evolution
-import openvqe.circuit.circuit_cirq as cirq_interface
+from openvqe.circuit.simulator_cirq import SimulatorCirq
+from openvqe.circuit.simulator_pyquil import SimulatorPyquil
+from openvqe.tools.expectation_value_cirq import expectation_value_cirq
 import numpy
 
 if __name__ == "__main__":
@@ -44,34 +46,40 @@ if __name__ == "__main__":
 
     abstract_circuit = compile_trotter_evolution(cluster_operator=ucc_operator, steps=1, anti_hermitian=True)
 
-    # next block is not needed, just to demonstrate and test
-    print("Use cirq as backend")
-    circuit = cirq_interface.make_cirq_circuit(abstract_circuit)
-    print("created the following circuit:")
-    print(circuit)
+
+    print("Simulate with Cirq:")
+    simulator = SimulatorCirq()
+
 
     print("run the circuit:")
-    result = cirq_interface.simulate(circuit=abstract_circuit, initial_state=ucc.initial_state())
+    result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, returntype=None, initial_state=ucc.initial_state())
     print("resulting state is:")
-    print("|psi>=", result.dirac_notation(decimals=5))
-    print("type(result):", type(result))
-    print("type(final_state)", type(result.final_simulator_state.state_vector))
-    print("final_state.state_vector:\n", result.final_simulator_state.state_vector)
-    print("Evaluate energy:")
+    print("|psi>=", result)
 
-    energy = cirq_interface.expectation_value_cirq(final_state=result.final_simulator_state.state_vector,
+    energy = expectation_value_cirq(final_state=result.wavefunction,
                                                    hamiltonian=hqc(),
                                                    n_qubits=hqc.n_qubits())
 
     print("energy = ", energy)
 
-    print("Symbolic computation, just for fun and to test flexibility")
+    print("\n\nSame with Pyquil:")
+    simulator = SimulatorPyquil()
+    result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=ucc.initial_state())
+    print("resulting state is:")
+    print("|psi>=", result.result)
+
+    print("\n\nSymbolic computation, just for fun and to test flexibility")
     # replacing the the circuit with something shorter
     from openvqe.circuit.circuit import QCircuit, H, CNOT, X, Ry
     import numpy
 
     abstract_circuit =  Ry(target=0, angle=0.0685 * numpy.pi) + CNOT(control=0, target=1) + CNOT(control=0,target=2) + CNOT(control=1, target=3) + X(0) + X(1)
-    from openvqe.circuit.circuit_symbolic import simulate as simulate_symbolic
 
-    result = simulate_symbolic(circuit=abstract_circuit, initial_state=0)
+    from openvqe.circuit.simulator_symbolic import SimulatorSymbolic
+
+    simulator = SimulatorSymbolic()
+    result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=0)
     print(result)
+
+
+

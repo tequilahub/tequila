@@ -1,4 +1,6 @@
+from openvqe.circuit.simulator import Simulator
 from openvqe.circuit.circuit import QCircuit, QGate, H, CNOT, Ry, Rx, Rz, X
+from openvqe.tools.convenience import number_to_binary, binary_to_number
 import copy
 import numpy
 from numpy import isclose, sqrt
@@ -144,68 +146,65 @@ class QState:
         return result
 
 
-def apply_gate(state: QState, gate: QGate):
-    assert (gate.max_qubit() <= state.n_qubits())
-    result = QState()
-    for s in state:
-        if gate.is_controled() and s.qubits[gate.control[0]] == 0:
-            result += s
-        elif gate.name.upper() == "H":
-            if s.qubits[gate.target[0]] == 0:
-                result += s.copy(factor=SymbolicNumber(symbol="1/sqrt(2)"))
-                result += s.flip(qubit=gate.target[0], factor=SymbolicNumber(symbol="1/sqrt(2)"))
+class SimulatorSymbolic(Simulator):
+
+    @staticmethod
+    def apply_gate(state: QState, gate: QGate):
+        assert (gate.max_qubit() <= state.n_qubits())
+        result = QState()
+        for s in state:
+            if gate.is_controled() and s.qubits[gate.control[0]] == 0:
+                result += s
+            elif gate.name.upper() == "H":
+                if s.qubits[gate.target[0]] == 0:
+                    result += s.copy(factor=SymbolicNumber(symbol="1/sqrt(2)"))
+                    result += s.flip(qubit=gate.target[0], factor=SymbolicNumber(symbol="1/sqrt(2)"))
+                else:
+                    result += 1.0 / sqrt(2.0) * s.copy()
+                    result += -1.0 / sqrt(2.0) * s.flip(qubit=gate.target[0])
+            elif gate.name.upper() == "CNOT" or gate.name.upper() == "X":
+                result += s.flip(qubit=gate.target[0])
+            elif gate.name.upper() == "RX":
+                if s.qubits[gate.target[0]] == 0:
+                    result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                    result += s.flip(qubit=gate.target[0],
+                                     factor=1j * apply_function(function="sin", number=0.5 * gate.angle))
+                else:
+                    result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                    result += s.flip(qubit=gate.target[0],
+                                     factor=-1j * apply_function(function="sin", number=0.5 * gate.angle))
+            elif gate.name.upper() == "RY":
+                if s.qubits[gate.target[0]] == 0:
+                    result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                    result += s.flip(qubit=gate.target[0],
+                                     factor=apply_function(function="sin", number=0.5 * gate.angle))
+                else:
+                    result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                    result += s.flip(qubit=gate.target[0],
+                                     factor=-1.0 * apply_function(function="sin", number=0.5 * gate.angle))
+            elif gate.name.upper() == "RZ":
+                if s.qubits[gate.target[0]] == 0:
+                    result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                    result += s.copy(factor=1.0j * apply_function(function="sin", number=0.5 * gate.angle))
+                else:
+                    result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
+                    result += s.copy(factor=-1.0j * apply_function(function="sin", number=0.5 * gate.angle))
             else:
-                result += 1.0 / sqrt(2.0) * s.copy()
-                result += -1.0 / sqrt(2.0) * s.flip(qubit=gate.target[0])
-        elif gate.name.upper() == "CNOT" or gate.name.upper() == "X":
-            result += s.flip(qubit=gate.target[0])
-        elif gate.name.upper() == "RX":
-            if s.qubits[gate.target[0]] == 0:
-                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
-                result += s.flip(qubit=gate.target[0], factor=1j*apply_function(function="sin", number=0.5 * gate.angle))
-            else:
-                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
-                result += s.flip(qubit=gate.target[0],
-                                 factor=-1j * apply_function(function="sin", number=0.5 * gate.angle))
-        elif gate.name.upper() == "RY":
-            if s.qubits[gate.target[0]] == 0:
-                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
-                result += s.flip(qubit=gate.target[0], factor=apply_function(function="sin", number=0.5 * gate.angle))
-            else:
-                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
-                result += s.flip(qubit=gate.target[0],
-                                 factor=-1.0 * apply_function(function="sin", number=0.5 * gate.angle))
-        elif gate.name.upper() == "RZ":
-            if s.qubits[gate.target[0]] == 0:
-                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
-                result += s.copy(factor=1.0j*apply_function(function="sin", number=0.5 * gate.angle))
-            else:
-                result += s.copy(factor=apply_function(function="cos", number=0.5 * gate.angle))
-                result += s.copy(factor=-1.0j * apply_function(function="sin", number=0.5 * gate.angle))
-        else:
-            raise Exception("Gate: " + gate.name + " not yet supported in symbolic simulator")
+                raise Exception("Gate: " + gate.name + " not yet supported in symbolic simulator")
 
-    return result
+        return result
 
-def binary_to_number(l):
-    return int("".join(str(x) for x in l), 2)
+    def simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: QState = None):
+        n_qubits = abstract_circuit.max_qubit()
+        if initial_state is None:
+            initial_state = QState(QBasisState(qubits=[0] * n_qubits))
+        elif isinstance(initial_state, int):
+            initial_state = QState(QBasisState(qubits=number_to_binary(number=initial_state, bits=n_qubits)))
 
-
-def number_to_binary(number, bits):
-    return [int(x) for x in list(bin(number)[2:].zfill(bits))]
-
-
-def simulate(circuit: QCircuit, initial_state: QState = None):
-    n_qubits = circuit.max_qubit()
-    if initial_state is None:
-        initial_state = QState(QBasisState(qubits=[0] * n_qubits))
-    elif isinstance(initial_state, int):
-        initial_state = QState(QBasisState(qubits=number_to_binary(number=initial_state, bits=n_qubits)))
-
-    result = initial_state
-    for g in circuit.gates:
-        result = apply_gate(state=result, gate=g)
-    return result
+        result = initial_state
+        for g in abstract_circuit.gates:
+            result = self.apply_gate(state=result, gate=g)
+        return result
 
 
 if __name__ == "__main__":
@@ -229,4 +228,4 @@ if __name__ == "__main__":
 
     print("succes:", False == (a == b))
     print("succes:", True == (a == a1))
-    print("succes:", True == (a == 0.5*a2))
+    print("succes:", True == (a == 0.5 * a2))
