@@ -1,6 +1,5 @@
-from openvqe.abc import OpenVQEModule, OpenVQEParameters, parametrized
-from openvqe.exceptions import OpenVQEException
-from openvqe.ansatz.backend_handler import get_backend_hander
+from openvqe.openvqe_abc import OpenVQEModule, OpenVQEParameters, parametrized
+from openvqe.openvqe_exceptions import OpenVQEException
 from openvqe.hamiltonian.hamiltonian_base import HamiltonianBase
 from dataclasses import dataclass
 
@@ -24,9 +23,9 @@ class AnsatzBase(OpenVQEModule):
 
     def __post_init__(self, hamiltonian: HamiltonianBase = None, qubits=None):
         self.hamiltonian = hamiltonian
-        self.backend_handler = get_backend_hander(backend=self.parameters.backend, n_qubits=hamiltonian.n_qubits(),
-                                                  qubits=qubits)
-        self.parameters.n_qubits = hamiltonian.n_qubits()
+        # self.backend_handler = get_backend_hander(backend=self.parameters.backend, n_qubits=hamiltonian.n_qubits(),
+        #                                           qubits=qubits)
+        #self.parameters.n_qubits = hamiltonian.n_qubits()
         self.verify()
 
     def __call__(self, angles):

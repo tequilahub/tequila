@@ -1,7 +1,6 @@
-from openvqe.abc import parametrized
+from openvqe.openvqe_abc import parametrized
 from .ansatz_base import AnsatzBase
-from openvqe.exceptions import OpenVQEParameterError
-from openvqe import HamiltonianQC
+from openvqe.openvqe_exceptions import OpenVQEParameterError
 import numpy
 import openfermion
 from dataclasses import dataclass
@@ -13,8 +12,7 @@ from openvqe.tools.convenience import binary_to_number, number_to_binary
 class ParametersUCC(ParametersAnsatz):
     # UCC specific parameters
     # have to be assigned
-    decomposition: str = "trotter"
-    trotter_steps: int = 1
+    transformation = "JW"
 
 
 class ManyBodyAmplitudes:
@@ -38,7 +36,7 @@ class ManyBodyAmplitudes:
         return self.__str__()
 
 
-@parametrized(ParametersAnsatz)
+@parametrized(ParametersUCC)
 class AnsatzUCC(AnsatzBase):
     """
     Class for UCC ansatz
@@ -47,12 +45,12 @@ class AnsatzUCC(AnsatzBase):
     def __call__(self, angles):
         return self.make_cluster_operator(angles=angles)
 
-    def initial_state(self) -> int:
+    def initial_state(self, hamiltonian) -> int:
         """
         :return: Hatree-Fock Reference as binary-number
         """
-        l = [0]*self.hamiltonian.n_qubits()
-        for i in range(self.hamiltonian.n_electrons()):
+        l = [0]*hamiltonian.n_qubits()
+        for i in range(hamiltonian.n_electrons()):
             l[i] = 1
 
         return binary_to_number(l=l)
@@ -63,10 +61,10 @@ class AnsatzUCC(AnsatzBase):
         :param angles: CCSD amplitudes
         :return: UCCSD Cluster Operator as QubitOperator
         """
-        nq = self.hamiltonian.n_qubits()
+        #nq = self.hamiltonian.n_qubits()
         # double angles are expected in iajb form
-        single_amplitudes = numpy.zeros([nq, nq])
-        double_amplitudes = numpy.zeros([nq, nq, nq, nq])
+        #single_amplitudes = numpy.zeros([nq, nq])
+        #double_amplitudes = numpy.zeros([nq, nq, nq, nq])
         if angles.one_body is not None:
             single_amplitudes = angles.one_body
         if angles.two_body is not None:
@@ -77,9 +75,9 @@ class AnsatzUCC(AnsatzBase):
             double_amplitudes=double_amplitudes
         )
 
-        if self.hamiltonian.parameters.transformation.upper() == "JW":
+        if self.parameters.transformation.upper() == "JW":
             return openfermion.jordan_wigner(op)
-        elif self.hamiltonian.parameters.transformation.lower() == "BK":
+        elif self.parameters.transformation.lower() == "BK":
             # @todo opernfermion has some problems with bravyi_kitaev and interactionoperators
             return openfermion.bravyi_kitaev(op)
         else:
@@ -93,12 +91,6 @@ class AnsatzUCC(AnsatzBase):
         Overwritten verify function to check specificly for ParametersQC type
         :return:
         """
-        # do some verification specifically for this class
-
-        # check if the hamiltonian is the right type and call its own verify function
-        if not isinstance(self.hamiltonian, HamiltonianQC):
-            raise OpenVQETypeError(attr=type(self).__name__ + ".hamiltonian", expected=type(HamiltonianQC).__name__,
-                                   type=type(self.hamiltonian).__name__)
 
         # do the standard checks for the baseclass
         return self._verify()

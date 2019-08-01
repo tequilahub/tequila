@@ -3,15 +3,15 @@ Interface to get
 Quantum Chemistry Hamiltonians for OpenVQE
 Derived class of HamiltonianBase: Overwrites the get_hamiltonian function
 """
-
-from openvqe.abc import OpenVQEParameters, parametrized
+from openvqe import OutputLevel
+from openvqe.openvqe_abc import OpenVQEParameters, parametrized
+from openvqe.ansatz import ManyBodyAmplitudes
 from dataclasses import dataclass
-from openfermion.hamiltonians import MolecularData
+from openfermion import InteractionOperator, MolecularData
+from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
+from openfermionpsi4 import run_psi4
 from .hamiltonian_base import HamiltonianBase, ParametersHamiltonian
-import openfermion
-import openfermionpsi4
-import numpy as np
-
+from numpy import float64
 
 @dataclass
 class ParametersPsi4(OpenVQEParameters):
@@ -67,7 +67,7 @@ class ParametersQC(ParametersHamiltonian):
             if len(words) != 4:  break
             try:
                 tmp = (ParametersQC.format_element_name(words[0]),
-                       (np.float64(words[1]), np.float64(words[2]), np.float64(words[3])))
+                       (float64(words[1]), float64(words[2]), float64(words[3])))
                 result.append(tmp)
             except ValueError:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
@@ -142,7 +142,7 @@ class HamiltonianQC(HamiltonianBase):
         """
         return 2 * self.n_orbitals()
 
-    def get_fermionic_hamiltonian(self) -> openfermion.InteractionOperator:
+    def get_fermionic_hamiltonian(self) -> InteractionOperator:
         """
         Note that the Qubit Hamiltonian can be created over the call method which is already implemented in the baseclass
         :return: The fermionic Hamiltonian as InteractionOperator structure
@@ -152,14 +152,8 @@ class HamiltonianQC(HamiltonianBase):
             self.molecule = self.make_molecule(self.parameters)
         return self.molecule.get_molecular_hamiltonian()
 
-    def make_molecule(self) -> openfermion.MolecularData:
-        """
-        convenience function for internal calls
-        """
-        return self.make_molecule(self.parameters)
-
     @staticmethod
-    def make_molecule(parameters: ParametersQC) -> openfermion.MolecularData:
+    def make_molecule(parameters: ParametersQC) -> MolecularData:
         """
         Creates a molecule in openfermion format by running psi4 and extracting the data
         Will check for previous outputfiles before running
@@ -190,17 +184,47 @@ class HamiltonianQC(HamiltonianBase):
                 do_compute = True
 
         if do_compute:
-            molecule = openfermionpsi4.run_psi4(molecule, run_scf=parameters.psi4.run_scf,
-                                                run_mp2=parameters.psi4.run_mp2,
-                                                run_ccsd=parameters.psi4.run_ccsd,
-                                                run_cisd=parameters.psi4.run_cisd,
-                                                run_fci=parameters.psi4.run_fci,
-                                                verbose=parameters.psi4.verbose,
-                                                tolerate_error=parameters.psi4.tolerate_error,
-                                                delete_input=parameters.psi4.delete_input,
-                                                delete_output=parameters.psi4.delete_output,
-                                                memory=parameters.psi4.memory)
+            molecule = run_psi4(molecule, run_scf=parameters.psi4.run_scf,
+                                run_mp2=parameters.psi4.run_mp2,
+                                run_ccsd=parameters.psi4.run_ccsd,
+                                run_cisd=parameters.psi4.run_cisd,
+                                run_fci=parameters.psi4.run_fci,
+                                verbose=parameters.psi4.verbose,
+                                tolerate_error=parameters.psi4.tolerate_error,
+                                delete_input=parameters.psi4.delete_input,
+                                delete_output=parameters.psi4.delete_output,
+                                memory=parameters.psi4.memory)
 
         molecule.save()
         print("file was ", molecule.filename)
         return molecule
+
+    def parse_ccsd_amplitudes(self, filename=None):
+        if filename is None:
+            filename = self.parameters.filename
+
+        from os import path, access, R_OK
+        file_exists = path.isfile("./"+filename) and access("./"+filename, R_OK)
+
+        # make sure the molecule is there, i.e. psi4 has been run
+        # and that the output was kept, as well as CCSD was actually computed
+        if not file_exists or (self.molecule is None or self.parameters.psi4.run_ccsd == False or self.parameters.psi4.delete_output):
+            self.print("Recomputing PSI4", level=OutputLevel.STANDARD)
+            self.parameters.filename = filename.strip(".out")
+            self.parameters.psi4.run_ccsd = True
+            self.parameters.psi4.delete_output = False
+            self.molecule = self.make_molecule(self.parameters)
+
+        # adapting to the openfermion parser
+        if ".out" not in filename:
+            filename += ".out"
+
+        singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=self.n_orbitals() * 2,
+                                                      n_alpha_electrons=self.n_electrons() // 2,
+                                                      n_beta_electrons=self.n_electrons() // 2,
+                                                      psi_filename=filename)
+
+        return ManyBodyAmplitudes(one_body=singles, two_body=doubles)
+
+    def parse_mp2_amplitudes(self):
+        raise NotImplementedError("not implemented yet")

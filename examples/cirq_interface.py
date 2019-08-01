@@ -1,8 +1,7 @@
-from openvqe.circuit.simulator import SimulatorReturnType
-from openvqe.circuit.simulator_cirq import SimulatorCirq
-from openvqe.circuit.circuit import QCircuit, Ry, X, CNOT
+from openvqe.simulator.simulator import SimulatorReturnType
+from openvqe.simulator.simulator_cirq import SimulatorCirq
+from openvqe.circuit.circuit import QCircuit, Ry, X
 from numpy import pi
-import cirq
 
 """
 Play around with cirq simulator interface
@@ -36,15 +35,7 @@ if __name__ == "__main__":
 
     simulator = SimulatorCirq()
 
-    full_state = simulator.simulate_wavefunction(abstract_circuit=ac, returntype="full_state", initial_state=0)
-
-    print("only_state result:\n", type(full_state), "\n", full_state)
-
-    object_state = simulator.simulate_wavefunction(abstract_circuit=ac, returntype="object", initial_state=0)
-
-    print("object result:\n", type(object_state), "\n", object_state)
-
-    custom_state = simulator.simulate_wavefunction(abstract_circuit=ac, returntype=CustomReturnType, initial_state=0)
+    custom_state = simulator.simulate_wavefunction(abstract_circuit=ac, initial_state=0)
 
     print("object result:\n", type(custom_state), "\n", custom_state)
 

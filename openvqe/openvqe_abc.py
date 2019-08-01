@@ -1,4 +1,4 @@
-from openvqe.exceptions import OpenVQETypeError
+from openvqe.openvqe_exceptions import OpenVQETypeError
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -22,7 +22,8 @@ class OpenVQEParameters:
 
     outfile: str = ""
     # outputlevel is stored as int to not confuse the i/o functions
-    _ol: int = field(default=OutputLevel.STANDARD.value)
+    # _ol: int = field(default=OutputLevel.STANDARD.value)
+    _ol = OutputLevel.STANDARD.value
 
     def output_level(self) -> OutputLevel:
         """

@@ -1,6 +1,5 @@
-from openvqe.circuit.simulator import Simulator, QCircuit, OpenVQEException, SimulatorReturnType
+from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
 import cirq
-import numpy
 
 
 class SimulatorCirq(Simulator):
@@ -56,7 +55,7 @@ class SimulatorCirq(Simulator):
     def do_simulate_wavefunction(self, circuit: cirq.Circuit, initial_state=0):
         simulator = cirq.Simulator()
         result = SimulatorReturnType(result=simulator.simulate(program=circuit, initial_state=initial_state), circuit=circuit)
-        result.wavefunction = result.result.final_simulator_state.state_vector
+        result.wavefunction = result.result.final_state
         return result
 
     def do_simulate_density_matrix(self, circuit: cirq.Circuit, initial_state=0):

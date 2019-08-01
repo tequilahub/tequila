@@ -1,7 +1,7 @@
-from openvqe.circuit.simulator import Simulator, QCircuit, OpenVQEException, SimulatorReturnType
+from openvqe.simulator.simulator import Simulator, QCircuit, OpenVQEException, SimulatorReturnType
 from openvqe.tools.convenience import number_to_binary
 import pyquil
-import numpy
+
 
 class WavefunctionPyquil(SimulatorReturnType):
 

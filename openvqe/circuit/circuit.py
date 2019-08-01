@@ -4,7 +4,8 @@ import copy
 
 class QGate:
 
-    def list_asignement(self, o):
+    @staticmethod
+    def list_assignement(o):
         """
         Helper function to make initialization with lists and single elements possible
         :param o: iterable object or single element
@@ -19,11 +20,18 @@ class QGate:
         else:
             return [o]
 
-    def __init__(self, name, target: list, control: list = None, angle=None):
+    def __init__(self, name, target: list, control: list = None, angle=None, frozen=None):
         self.name = name
-        self.target = self.list_asignement(target)
-        self.control = self.list_asignement(control)
+        self.target = self.list_assignement(target)
+        self.control = self.list_assignement(control)
         self.angle = angle
+        if frozen is None:
+            self.frozen = False
+        else:
+            self.frozen = frozen
+
+    def is_frozen(self):
+        return self.frozen
 
     def make_dagger(self):
         """
@@ -40,12 +48,14 @@ class QGate:
             return QGate(name=copy.copy(self.name), target=copy.deepcopy(self.target),
                          control=copy.deepcopy(self.control))
 
-    def is_controled(self) -> bool:
+    def is_controlled(self) -> bool:
+        """
+        :return: True if the gate is controlled
+        """
         return self.control is not None
 
     def is_parametrized(self) -> bool:
         """
-        Convenience
         :return: True if the gate is parametrized
         """
         return not self.angle is None
@@ -55,17 +65,10 @@ class QGate:
         Convenience and easier to interpret
         :return: True if the Gate only acts on one qubit (not controlled)
         """
-        return self.control is None or len(self.control) == 0
+        return (self.control is None or len(self.control) == 0) and len(self.target) == 1
 
     def verify(self):
-        """
-        Check if the Gate can be used for our purposes
-        raises exception if not
-        """
-        if self.is_parametrized() and not self.is_single_qubit_gate():
-            raise Exception(
-                "Can not compute gradient of parametrized controlled gate:" + self.__str__() + " -> recompile to something else")
-        if not self.is_controled():
+        if not self.is_controlled():
             for c in target:
                 if c in self.control:
                     raise Exception("control and target are the same qubit: " + self.__str__())
@@ -153,7 +156,7 @@ class QCircuit:
         """
         angles = []
         for i, g in enumerate(self.gates):
-            if g.is_parametrized():
+            if g.is_parametrized() and not g.is_frozen():
                 angles.append((i, g.angle))
 
         return angles
@@ -173,8 +176,11 @@ class QCircuit:
                 if not self.gates[position].is_parametrized():
                     raise Exception("You are trying to change the angle of an unparametrized gate\ngate=" + str(
                         self.gates[position]) + "\nangles=(" + str(a) + ")")
-
-                self.gates[position].angle = angle
+                elif self.gates[position].is_frozen():
+                    raise Exception("You are trying to change the angle of a frozen gate\ngate=" + str(
+                        self.gates[position]) + "\nangles=(" + str(a) + ")")
+                else:
+                    self.gates[position].angle = angle
         except IndexError as error:
             raise Exception(str(error) + "\nFailed to assign angles, you probably provided to much angles")
         except TypeError as error:
@@ -190,13 +196,15 @@ class QCircuit:
         return qmax
 
     def __add__(self, other):
-        n_qubits = max(self.max_qubit(), other.max_qubit())
+        if isinstance(other, QGate):
+            other = self.wrap_gate(other)
         result = QCircuit()
         result.gates = (self.gates + other.gates).copy()
         return result
 
     def __iadd__(self, other):
-        n_qubits = max(self.max_qubit(), other.max_qubit())
+        if isinstance(other, QGate):
+            other = self.wrap_gate(other)
         if isinstance(other, QGate):
             self.gates.append(other)
         else:
@@ -226,65 +234,57 @@ class QCircuit:
                 self.gates[index]))
 
         gates = self.gates.copy()
-        # have to shift by 2 pi because of the factor 2 convention
+        # have to shift by 2 pi/4 because of the factor 2 convention
         # i.e. angle=pi means the gate is exp(i*pi/2*Pauli)
-        gates[index].angle += 2 * numpy.pi
+        gates[index].angle += 2 * numpy.pi/4
 
-        return QCircuit(n_qubits=self.n_qubits, gates=gates)
+        return QCircuit(gates=gates)
 
     @staticmethod
-    def compile_controlled_rotation_gate(gate: QGate):
+    def wrap_gate(gate: QGate):
         """
-        Basis change into Rz then recompilation of controled Rz, then change basis back
-        :param gate: The rotational gate
-        :return: set of gates wrapped in QCircuit class
+        :param gate: Abstract Gate
+        :return: wrap gate in QCircuit structure (enable arithmetic operators)
         """
-        target = gate.target
-        control = gate.control
+        return QCircuit(gates=[gate])
 
-        if control is None:
-            raise Exception("compile_controlled_rotation_gate: control is None")
+    def recompile_gates(self, instruction):
+        """
+        Recompiles gates based on the instruction function
+        inplace operation
+        :param instruction: has to be callable
+        :return: recompiled circuit
+        """
+        for g in self.gates:
+            g = instruction(g)
+        return self
 
-        result = QCircuit()
 
-        # change basis
-        if gate.name == "Rx":
-            result += QGate(name="H", target=target)
-        elif gate.name == "Ry":
-            result += QGate(name="Rx", target=target, angle=numpy.pi / 2)
-        elif gate.name == "Rz":
-            pass
-        else:
-            raise Exception(str(gate) + " is not a rotation")
-
-        # recompile Rz part
-        result += QGate(name="Rz", target=target, angle=-gate.angle / 2.0)
-        result += QGate(name="CNOT", target=target, control=control)
-        result += QGate(name="Rz", target=target, angle=gate.angle / 2.0)
-        result += QGate(name="CNOT", target=target, control=control)
-
-        # change basis back
-        if gate.name == "Rx":
-            result += QGate(name="H", target=target)
-        elif gate.name == "Ry":
-            result += QGate(name="Rx", target=target, angle=-numpy.pi / 2)
-        elif gate.name == "Rz":
-            pass
-        else:
-            raise Exception(str(gate) + " is not a rotation")
-
-        result.n_qubits = result.max_qubit()
-        return result
 
 
 # Convenience
-def H(target: int):
-    return QCircuit(gates=[QGate(name="H", target=target)])
+def H(target: int, control: int = None):
+    return QCircuit(gates=[QGate(name="H", target=target, control=control)])
+
+
+# Convenience
+def S(target: int, control: list = None):
+    return QCircuit(gates=[QGate(name="S", target=target, control=control)])
 
 
 # Convenience
 def X(target: int, control: list = None):
     return QCircuit(gates=[QGate(name="X", target=target, control=control)])
+
+
+# Convenience
+def Y(target: int, control: list = None):
+    return QCircuit(gates=[QGate(name="Y", target=target, control=control)])
+
+
+# Convenience
+def Z(target: int, control: list = None):
+    return QCircuit(gates=[QGate(name="Z", target=target, control=control)])
 
 
 # Convenience

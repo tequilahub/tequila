@@ -4,7 +4,7 @@ Implements all functions which are needed by as good as all derived classes
 """
 
 from dataclasses import dataclass
-from openvqe.abc import OpenVQEModule, OpenVQEParameters, parametrized
+from openvqe.openvqe_abc import OpenVQEModule, OpenVQEParameters, parametrized
 from openvqe import OpenVQEParameterError, OpenVQEException, OpenVQETypeError
 import openfermion
 

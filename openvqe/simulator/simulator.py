@@ -23,22 +23,30 @@ class SimulatorReturnType:
         result = ""
         if self.abstract_circuit is not None:
             qubits = self.abstract_circuit.max_qubit()
+            
         if self.wavefunction is not None:
             for i,v in enumerate(self.wavefunction):
-                if not isclose(abs(v),0):
-                    result += str(v) + "|" + str(number_to_binary(number=i, bits=qubits)) + ">"
+                if not isclose(abs(v),0, atol=1.e-5):
+                    if isclose(v.imag,0, atol=1.e-5):
+                        result += '+({0.real:.4f})'.format(v) + "|" + str(
+                            number_to_binary(number=i, bits=qubits)) + ">"
+                    elif isclose(v.real,0, atol=1.e-5):
+                        result += '+({0.imag:.4f}i)'.format(v) + "|" + str(
+                            number_to_binary(number=i, bits=qubits)) + ">"
+                    else:
+                        result += '+({0.real:.4f} + {0.imag:.4f}i)'.format(v) + "|" + str(number_to_binary(number=i, bits=qubits)) + ">"
             return result
         elif self.density_matrix is not None:
             return str(self.density_matrix)
         else:
-            return str(self)
+            return "None"
 
 class Simulator(OpenVQEModule):
     """
     Base Class for OpenVQE interfaces to simulators
     """
 
-    def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=SimulatorReturnType,
+    def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=None,
                               initial_state: int = 0):
         """
         Simulates an abstract circuit with the backend specified by specializations of this class
@@ -53,17 +61,14 @@ class Simulator(OpenVQEModule):
         result = self.do_simulate_wavefunction(circuit=circuit, initial_state=initial_state)
         result.abstract_circuit=abstract_circuit
 
-        if callable(returntype):
-            return returntype(result=result, circuit=circuit, abstract_circuit=abstract_circuit)
-        else:
-            return result
+        return result
 
 
     def do_simulate_wavefunction(self, circuit, initial_state=0):
         raise OpenVQEException(
             "called from base class of simulator, or non-supported operation for this backend")
 
-    def simulate_density_matrix(self, abstract_circuit: QCircuit, returntype=SimulatorReturnType, initial_state=0):
+    def simulate_density_matrix(self, abstract_circuit: QCircuit, returntype=None, initial_state=0):
         """
         Translates the abstract circuit to the backend which is specified by specializations of this class
         :param abstract_circuit: the abstract circuit

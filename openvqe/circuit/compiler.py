@@ -8,7 +8,7 @@ import numpy
 from openfermion import QubitOperator
 
 
-def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, anti_hermitian=True):
+def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, anti_hermitian=True) -> QCircuit:
     circuit = QCircuit()
     factor = 1.0 / steps
     if anti_hermitian:
@@ -25,7 +25,7 @@ def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, a
     return circuit
 
 
-def exponential_pauli_gate(paulistring, angle):
+def exponential_pauli_gate(paulistring, angle) -> QCircuit:
     """
     Returns the circuit: exp(i*angle*paulistring)
     primitively compiled into X,Y Basis Changes and CNOTs and Z Rotations
@@ -81,3 +81,53 @@ def exponential_pauli_gate(paulistring, angle):
     circuit += change_basis_back
 
     return circuit
+
+
+def compile_controlled_rotation_gate(gate: QGate, verify=False):
+    """
+    Recompilation of a controlled-rotation gate
+    Basis change into Rz then recompilation of controled Rz, then change basis back
+    :param gate: The rotational gate
+    :param verify: throws error if this is not a controlled rotation, if False (default) just returns the unchanged gate
+    :return: set of gates wrapped in QCircuit class
+    """
+
+    if gate.control is None:
+        if verify:
+            raise Exception("recompilation error: Not a controlled gate")
+        else:
+            return gate
+
+    target = gate.target
+    control = gate.control[0]
+
+    result = QCircuit()
+
+    # change basis
+    if gate.name == "Rx":
+        result += QGate(name="H", target=target, frozen=True)
+    elif gate.name == "Ry":
+        result += QGate(name="Rx", target=target, angle=numpy.pi / 2, frozen=True)
+    elif gate.name == "Rz":
+        pass
+    else:
+        raise Exception(str(gate) + " is not a rotation")
+
+    # recompile Rz part
+    result += QGate(name="Rz", target=target, angle=-gate.angle / 2.0)
+    result += QGate(name="CNOT", target=target, control=control)
+    result += QGate(name="Rz", target=target, angle=gate.angle / 2.0)
+    result += QGate(name="CNOT", target=target, control=control)
+
+    # change basis back
+    if gate.name == "Rx":
+        result += QGate(name="H", target=target, frozen=True)
+    elif gate.name == "Ry":
+        result += QGate(name="Rx", target=target, angle=-numpy.pi / 2, frozen=True)
+    elif gate.name == "Rz":
+        pass
+    else:
+        raise Exception(str(gate) + " is not a rotation")
+
+    result.n_qubits = result.max_qubit()
+    return result

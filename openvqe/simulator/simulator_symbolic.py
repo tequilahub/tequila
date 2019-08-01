@@ -1,6 +1,6 @@
-from openvqe.circuit.simulator import Simulator
-from openvqe.circuit.circuit import QCircuit, QGate, H, CNOT, Ry, Rx, Rz, X
-from openvqe.tools.convenience import number_to_binary, binary_to_number
+from openvqe.simulator.simulator import Simulator
+from openvqe.circuit.circuit import QCircuit, QGate, Ry, X
+from openvqe.tools.convenience import number_to_binary
 import copy
 import numpy
 from numpy import isclose, sqrt
@@ -153,7 +153,7 @@ class SimulatorSymbolic(Simulator):
         assert (gate.max_qubit() <= state.n_qubits())
         result = QState()
         for s in state:
-            if gate.is_controled() and s.qubits[gate.control[0]] == 0:
+            if gate.is_controlled() and s.qubits[gate.control[0]] == 0:
                 result += s
             elif gate.name.upper() == "H":
                 if s.qubits[gate.target[0]] == 0:
