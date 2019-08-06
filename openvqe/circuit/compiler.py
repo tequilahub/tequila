@@ -92,6 +92,13 @@ def compile_controlled_rotation_gate(gate: QGate, verify=False):
     :return: set of gates wrapped in QCircuit class
     """
 
+    # for the case that gate is actually a whole circuit
+    if hasattr(gate, "gates"):
+        result = QCircuit()
+        for g in gate.gates:
+            result += compile_controlled_rotation_gate(gate=g, verify=verify)
+        return result
+
     if gate.control is None:
         if verify:
             raise Exception("recompilation error: Not a controlled gate")
@@ -130,4 +137,5 @@ def compile_controlled_rotation_gate(gate: QGate, verify=False):
         raise Exception(str(gate) + " is not a rotation")
 
     result.n_qubits = result.max_qubit()
+    print("supp, ", result)
     return result

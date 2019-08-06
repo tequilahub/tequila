@@ -1,4 +1,3 @@
-from openvqe.simulator.simulator import SimulatorReturnType
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.circuit.circuit import QCircuit, Ry, X
 from numpy import pi
@@ -7,26 +6,21 @@ from numpy import pi
 Play around with cirq simulator interface
 """
 
+def make_gradient(circuit: QCircuit):
+    grad_list = []
+    for gate in circuit.gates:
+        if gate.is_parametrized() and not gate.is_frozen():
+            if gate.is_controlled():
+                recompiled_gate = compile_controlled_rotation_gate(gate=gate)
+                grad_list += make_gradient(recompiled_gate)
+            else:
+                shifted_gate = gate
+                shifted_gate.angle=gate.angle/2
+                grad_list.append(shifted_gate)
+        else:
+            grad_list.append(gate)
 
-class CustomReturnType(SimulatorReturnType):
-    """
-    Example how to use custom return types
-    """
-
-    def __init__(self, result, circuit, abstract_circuit, *args, **kwargs):
-        self.state_array = result.final_simulator_state.state_vector
-        self.qubit_map = result.final_simulator_state.qubit_map
-        self.dirac_string = result.dirac_notation()
-        self.circuit = circuit
-        self.abstract_circuit = abstract_circuit
-
-    def __repr__(self):
-        result = "This is CustomReturnType with the following state\n"
-        result += self.dirac_string
-        result += "\nproducted by the circuit:\n"
-        result += str(self.circuit)
-        return result
-
+    return grad_list
 
 if __name__ == "__main__":
     ac = QCircuit()
@@ -48,6 +42,31 @@ if __name__ == "__main__":
 
     print("density_matrix_result:\n", density_matrix_result)
     print("density_matrix:\n", density_matrix_result.result.final_density_matrix)
+
+    print("\n\nRecompile controled-rotations")
+    from openvqe.circuit.compiler import compile_controlled_rotation_gate
+    ac = X(0) + Ry(target=1, control=0, angle=pi / 2)
+    # print(ac)
+    # rac=ac.recompile_gates(instruction=compile_controlled_rotation_gate)
+    # print("after recompilation:\n", rac)
+
+
+
+    # should also work
+    rac2 = compile_controlled_rotation_gate(gate=ac)
+    print("after recompilation2:\n", rac2)
+
+    angles = rac2.extract_angles()
+    print("angles=", angles)
+
+    print("Try to get gradient for:")
+    print(ac)
+    grad_list = make_gradient(circuit=ac)
+    print("grad_list=",grad_list)
+    exit()
+
+
+
 
     try:
         ac = QCircuit()

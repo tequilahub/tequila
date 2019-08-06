@@ -4,4 +4,5 @@ dataclasses_json
 setuptools 
 openfermion
 openfermionpsi4
-cirq
+cirq>=0.5.0 # not really a requirement
+pyquil # not really a requirement

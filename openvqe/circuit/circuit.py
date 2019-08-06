@@ -251,13 +251,13 @@ class QCircuit:
     def recompile_gates(self, instruction):
         """
         Recompiles gates based on the instruction function
-        inplace operation
         :param instruction: has to be callable
         :return: recompiled circuit
         """
+        recompiled_gates = []
         for g in self.gates:
-            g = instruction(g)
-        return self
+            recompiled_gates.append(instruction(g))
+        return QCircuit(gates=recompiled_gates)
 
 
 
