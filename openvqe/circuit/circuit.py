@@ -220,25 +220,39 @@ class QCircuit:
     def __repr__(self):
         return self.__str__()
 
-    def make_gradient(self, index):
+    def get_gradient(self, index):
         """
         :param index: the index should refer to a gate which is parametrized
-        :return: returns the gradient with respect to the gate at position self.gates[index]
+        :return: returns the tuple of circuitsgradient with respect to the gate at position self.gates[index]
         """
         if not self.gates[index].is_parametrized():
             raise Exception("You are trying to get the gradient w.r.t a gate which is not parametrized\ngate=" + str(
                 self.gates[index]))
+        elif self.gates[index].is_frozen():
+            raise Exception("You are trying to get the gradient w.r.t a gate which is frozen out\ngate=" +str(self.gates[index]))
 
-        if not self.gates[index].name in ["Rx", "Ry", "Rz"]:
-            raise Exception("You are trying to get the gradient w.r.t a gate which is not a rotation\ngate=" + str(
-                self.gates[index]))
+        list_of_tuple_of_lists=[]
+        gate_list = self.gates.copy()
 
-        gates = self.gates.copy()
-        # have to shift by 2 pi/4 because of the factor 2 convention
-        # i.e. angle=pi means the gate is exp(i*pi/2*Pauli)
-        gates[index].angle += 2 * numpy.pi/4
+        new_gates=[]
+        new_gates += gate_list[:index]
 
-        return QCircuit(gates=gates)
+
+        rebuilt = recompile_gate(gate_list[index])
+
+        for gate_tuple in rebuilt:
+            sub_list = new_gates.copy()
+            temp=[]
+            for gate_set in gate_tuple:
+                unit= sub_list+gate_set
+                unit+= gate_list[index+1:]
+                temp.append(unit)
+            list_of_tuple_of_lists.append(tuple(temp))
+
+
+        circuit_list=[(QCircuit(gates=entry) for entry in tuple_entry) for tuple_entry in list_of_tuple_lists]
+
+        return circuit_list
 
     @staticmethod
     def wrap_gate(gate: QGate):
@@ -248,18 +262,100 @@ class QCircuit:
         """
         return QCircuit(gates=[gate])
 
-    def recompile_gates(self, instruction):
+    def _recompile_core(self,angle,shifted,spot,target=target,control=control):
+        '''
+        helper function for recursion of recompile_gate.
+        '''
+        temp=[]
+        if spot == 0:
+            temp.append(QGate(name="Rz",target=target,angle=-shifted))
+            temp.append(QGate(name="CNOT",target=target,control=control))
+            temp.append(QGate(name="Rz",target=target,angle=angle))
+            temp.append(QGate(name="CNOT",target=target,control=control))
+        if spot == 1
+            temp.append(QGate(name="Rz",target=target,angle=-angle))
+            temp.append(QGate(name="CNOT",target=target,control=control))
+            temp.append(QGate(name="Rz",target=target,angle=shifted))
+            temp.append(QGate(name="CNOT",target=target,control=control))
+
+        return temp
+
+    def recompile_gate(self, gate):
         """
         Recompiles gates based on the instruction function
-        :param instruction: has to be callable
-        :return: recompiled circuit
+        :param gate: the QGate to recompile
+        :return: list of tuple of lists of qgates
         """
-        recompiled_gates = []
-        for g in self.gates:
-            recompiled_gates.append(instruction(g))
-        return QCircuit(gates=recompiled_gates)
+
+        outer_list=[]
+        target=gate.target
+        control=gate.control
+        angle=gate.angle
+        clone=copy.deepcopy(gate)
+        if len(target) >1:
+            raise Exception('multi-target gates do not have quadrature decompositions. I beg your forgiveness.')
+            ### They may have one if they can be decomposed into single target gates and control gates, which can
+            ### then be decomposed further, but we have to deal with this case by case.
+
+        if gate.is_controlled():
+            #### do the case by case for controlled gates
+            if gate.name in ['Rx','Ry','Rz']:
+                g_shift=0.5
+                s=np.pi/2
+                up_angle= (angle + s)*g_shift
+                down_angle= (angle - s)*g_shift
+                if gate.name is  'Rx':
+                    for spot in [0,1]:
+                        inner=[]
+                        for ang in [up_angle,down_angle]:
+                            temp=[]
+                            temp.append(QGate(name="H", target=target, control=None))
+                            temp += self._recompile_core(angle*g_shift,ang,spot)
+                            temp.append(QGate(name="H", target=target, control=None))
+                            inner.append(temp)
+
+                        outer_list.append(tuple(inner))
+
+                elif gate.name is 'Ry':
+                    for spot in [0,1]:
+                        inner=[]
+                        for ang in [up_angle,down_angle]:
+                            temp=[]
+                            temp.append(QGate(name="Rx", target=target,angle=np.pi/2 control=None))
+                            temp += self._recompile_core(angle*g_shift,ang,spot)
+                            temp.append(QGate(name="Rx", target=target,angle=-np.pi/2 control=None))
+                            inner.append(temp)
+
+                        outer_list.append(tuple(inner))
+
+                elif gate.name is 'Rz':
+                    for spot in [0,1]:
+                        inner=[]
+                        for ang in [up_angle,down_angle]:
+                            temp=[]
+                            temp += self._recompile_core(angle*g_shift,ang,spot)
+                            inner.append(temp)
+
+                        outer_list.append(tuple(inner))
+            else:
+                raise Exception('non-rotation  gates do not yet have a quadrature decompoition')
 
 
+        else:
+            if gate.name in ['Rx','Ry','Rz']:
+                g_shift=1
+                s=np.pi/2
+                up=copy.deepcopy(gate)
+                up.angle= (angle + s)*g_shift
+
+                down=copy.deepcopy(gate)
+                down.angle= (angle - s)*g_shift
+                outer_list.append(tuple([up,down]))
+            #if gate.name in ['X','Y','Z']:
+            else
+                raise Exception('non-rotation gates do not yet have a quadrature decompoition')
+
+        return outer_list
 
 
 # Convenience
