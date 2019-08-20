@@ -1,102 +1,17 @@
 import numpy
 import copy
 
+class WeightedCircuit:
+    '''
+    upon 
+    '''
+    def __init__(self,weight,circuit: QCircuit):
+        self.weight=weight
+        self.circuit=circuit
+        self.evaluation = None
 
-class QGate:
-
-    @staticmethod
-    def list_assignement(o):
-        """
-        Helper function to make initialization with lists and single elements possible
-        :param o: iterable object or single element
-        :return: Gives back a list if a single element was given
-        """
-        if o is None:
-            return None
-        elif hasattr(o, "__get_item__"):
-            return o
-        elif hasattr(o, "__iter__"):
-            return o
-        else:
-            return [o]
-
-    def __init__(self, name, target: list, control: list = None, angle=None, frozen=None):
-        self.name = name
-        self.target = self.list_assignement(target)
-        self.control = self.list_assignement(control)
-        self.angle = angle
-        if frozen is None:
-            self.frozen = False
-        else:
-            self.frozen = frozen
-
-    def is_frozen(self):
-        return self.frozen
-
-    def make_dagger(self):
-        """
-        :return: return the hermitian conjugate of the gate
-        """
-        if self.is_parametrized():
-            if self.name in ["Rx", "Ry", "Rz"]:
-                return QGate(name=copy.copy(self.name), target=copy.deepcopy(self.target),
-                             control=copy.deepcopy(self.control),
-                             angle=-1.0 * self.angle)
-            else:
-                raise Exception("dagger operation for parametrized gates currently only implemented for rotations")
-        else:
-            return QGate(name=copy.copy(self.name), target=copy.deepcopy(self.target),
-                         control=copy.deepcopy(self.control))
-
-    def is_controlled(self) -> bool:
-        """
-        :return: True if the gate is controlled
-        """
-        return self.control is not None
-
-    def is_parametrized(self) -> bool:
-        """
-        :return: True if the gate is parametrized
-        """
-        return not self.angle is None
-
-    def is_single_qubit_gate(self) -> bool:
-        """
-        Convenience and easier to interpret
-        :return: True if the Gate only acts on one qubit (not controlled)
-        """
-        return (self.control is None or len(self.control) == 0) and len(self.target) == 1
-
-    def verify(self):
-        if not self.is_controlled():
-            for c in target:
-                if c in self.control:
-                    raise Exception("control and target are the same qubit: " + self.__str__())
-
-    def __str__(self):
-        result = str(self.name) + "(target=" + str(self.target)
-        if not self.is_single_qubit_gate():
-            result += ", control=" + str(self.control)
-        if self.is_parametrized():
-            result += ", angle=" + str(self.angle)
-        result += ")"
-        return result
-
-    def __repr__(self):
-        """
-        Todo: Add Nice stringification
-        """
-        return self.__str__()
-
-    def max_qubit(self):
-        """
-        :return: Determine maximum qubit index needed
-        """
-        result = max(self.target)
-        if self.control is not None:
-            result = max(result, max(self.control))
-        return result + 1
-
+    def value(self):
+        return self.weight * self.evaluation
 
 class QCircuit:
 
@@ -356,7 +271,6 @@ class QCircuit:
                 raise Exception('non-rotation gates do not yet have a quadrature decompoition')
 
         return outer_list
-
 
 # Convenience
 def H(target: int, control: int = None):

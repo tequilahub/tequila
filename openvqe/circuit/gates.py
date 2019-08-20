@@ -5,6 +5,19 @@ from openvqe.circuit.compiler import compile_controlled_rotation_gate
 import numpy
 import copy
 
+class WeightedGates:
+	'''
+	temporary idea -- a small rapper to store gates which have weights that cannot be expressed as phase, because they are not on the unit circle.
+	This class exists to help with the gradients of PowerGates whose gradients aren't executable as gates due to their scaling.
+	Similarly, the decomposition of pauli rotations into I and Pauli  gates produces a linear combination of gates,
+	without any gaurantee that the coefficients multiplying said gates should be of modulus 1 (and hence expressable as phase).
+	This class may be interepreted further by a to-be-built WeightedCircuit class, or by the get_gradient_circuits method each circuit will have
+	'''
+	def __init__(self,weights,gates):
+		self.weights = weights
+		self.gate = gates
+
+
 class QGate:
 
     @staticmethod
@@ -227,6 +240,8 @@ class PowerGate(ParametrizedGate):
         result += ")"
         return result
 
+    def gradient(self):
+    	return None
 
 ######### INDIVIDUAL GATE CLASSES
 
@@ -320,17 +335,63 @@ class Rx(RotationGate):
     							quadratures.append(WeightedCircuit(coeff=0.5*parity),gates=new_gates)
 
 
+### this class is going to help make the Weighted Circuit class later on
+class WeightedGates:
+	def __init__(self,weight : float, gates: list):
+		self.weight = weight
+		self.gate = gates
+
+
 class H(PowerGate):
+	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
+		super().__init__('H',power,target,control,frozen,phase_exp)
+        self.parameter = self.power
+        if self.parameter is None:
+        	raise Exception('Parametrized gates require a parameter!')
+
+    def gradient(self):
+    	return WeightedGates(weights=power,gates=H(self.power-1.0,target=self.target,control=self.control,frozen=self.frozen,phase_exp=self.phase_exp))
+
 
 class X(PowerGate):
+	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
+		super().__init__('X',power,target,control,frozen,phase_exp)
+        self.parameter = self.power
+        if self.parameter is None:
+        	raise Exception('Parametrized gates require a parameter!')
+
+    def gradient(self):
+    	return WeightedGates(weights=power,gates=[X(self.power-1.0,target=self.target,control=self.control,frozen=self.frozen,phase_exp=self.phase_exp)])
 
 class Y(PowerGate):
+	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
+		super().__init__('Y',power,target,control,frozen,phase_exp)
+        self.parameter = self.power
+        if self.parameter is None:
+        		raise Exception('Parametrized gates require a parameter!')
+
+    def gradient(self):
+    	return WeightedGates(weights=power,gates=[Y(self.power-1.0,target=self.target,control=self.control,frozen=self.frozen,phase_exp=self.phase_exp)])
+
+
 
 class Z(PowerGate):
+	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
+		super().__init__('Z',power,target,control,frozen,phase_exp)
+        	self.parameter = self.power
+        	if self.parameter is None:
+        		raise Exception('Parametrized gates require a parameter!')
+
+    def gradient(self):
+    	return WeightedGates(weights=power,gates=[Z(self.power-1.0,target=self.target,control=self.control,frozen=self.frozen,phase_exp=self.phase_exp)])
+
+    def to_rotation():
 
 class CNOT(Qgate):
 	def __init__(self,target,control : list):
+		super().__init__('CNOT',target,control,phase_exp=0.0)
 
+	
 
 
 class SWAP(Qgate):
