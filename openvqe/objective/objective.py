@@ -36,6 +36,11 @@ class Objective(OpenVQEModule):
         The abstract function which defines the operation performed on the expectation values
         The default is summation
         Overwrite this function to get different functions
+
+        Potentially better Idea for the future: Maybe just use objectives as primitives, since they will have +,-,*,...,
+        So the functions can be created and differentiated from the outside
+        Then overwriting this functions is not necessary anymore
+
         :param values: Measurement results corresponding to <Psi_i|H|Psi_i> with |Psi_i> = U_i|Psi>
         :param weights: weights on the measurements
         :return:
