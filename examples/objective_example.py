@@ -138,6 +138,8 @@ if __name__ == "__main__":
     print("Expectation Value is = ", E, " it should be  1-1 = 0")
 
     # Now the gradient for the first example
+    # Here we have only one parameter so the gradient is a scalar
+    # but this is how the individual components of the gradient can be evaluated
     dU1 = Ry(target=0, angle=pi / 4 + pi)
     dU2 = Ry(target=0, angle=pi / 4 - pi)
     # DiffObjective is just a workaround in this example since the weights in the unitaries are not yet merged
