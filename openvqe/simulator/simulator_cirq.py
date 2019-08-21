@@ -1,8 +1,24 @@
 from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
+from openvqe import Objective
 import cirq
 
 
 class SimulatorCirq(Simulator):
+
+    def expectation_value(self, objective: Objective):
+        # this is not how it is supposed to be ... just hacked in order for this part to return something
+        from openvqe.tools import expectation_value_cirq
+        result = 0.0
+        exv = []
+        weights = []
+        for unitary in objective.unitaries:
+            wfn = self.simulate_wavefunction(abstract_circuit=unitary)
+            exv.append(
+                expectation_value_cirq(hamiltonian=objective.observable(), n_qubits=objective.observable.n_qubits(),
+                                       final_state=wfn.wavefunction))
+            #weights.append(unitary.weight) not there yet
+
+        return objective.objective_function(values=exv)
 
     def create_circuit(self, abstract_circuit: QCircuit, qubit_map=None,
                        recompile_controlled_rotations=False) -> cirq.Circuit:
@@ -54,12 +70,14 @@ class SimulatorCirq(Simulator):
 
     def do_simulate_wavefunction(self, circuit: cirq.Circuit, initial_state=0):
         simulator = cirq.Simulator()
-        result = SimulatorReturnType(result=simulator.simulate(program=circuit, initial_state=initial_state), circuit=circuit)
+        result = SimulatorReturnType(result=simulator.simulate(program=circuit, initial_state=initial_state),
+                                     circuit=circuit)
         result.wavefunction = result.result.final_state
         return result
 
     def do_simulate_density_matrix(self, circuit: cirq.Circuit, initial_state=0):
         simulator = cirq.DensityMatrixSimulator()
-        result = SimulatorReturnType(result=simulator.simulate(program=circuit, initial_state=initial_state), circuit=circuit)
+        result = SimulatorReturnType(result=simulator.simulate(program=circuit, initial_state=initial_state),
+                                     circuit=circuit)
         result.density_matrix = result.result.final_density_matrix
         return result
