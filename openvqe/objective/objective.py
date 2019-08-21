@@ -23,6 +23,14 @@ class Objective(OpenVQEModule):
 
         self.observable = observable
 
+    def __add__(self, other):
+        # todo comming soon
+        raise NotImplementedError("+ not implemented yet")
+
+    def __mul__(self, other):
+        # todo comming soon
+        raise NotImplementedError("* not implemented yet")
+
     def objective_function(self, values, weights=None):
         """
         The abstract function which defines the operation performed on the expectation values
