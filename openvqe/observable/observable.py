@@ -13,9 +13,11 @@ class Observable(OpenVQEModule):
     unitary: list = None # list of QCircuit objects defining the state preparation
     observable: list = None # will be list of pauli strings
 
+    
 
 def make_gradient(observable: Observable, mode: Bool = 0) -> list:
     """
+    TODO: remove after testig new gradient implementation
     Returns the Gradient of an observable as a list of (lists of tuples of) observables.
     :param observable: The original observable
     :return: The list of observables corresponding to the gradient of the unfrozen parameters

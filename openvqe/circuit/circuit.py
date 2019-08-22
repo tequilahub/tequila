@@ -1,25 +1,16 @@
 import numpy
 import copy
 
-class WeightedCircuit:
-    '''
-    upon 
-    '''
-    def __init__(self,weight,circuit: QCircuit):
-        self.weight=weight
-        self.circuit=circuit
-        self.evaluation = None
 
-    def value(self):
-        return self.weight * self.evaluation
 
 class QCircuit:
 
-    def __init__(self, gates=None):
+    def __init__(self, weight =1.0,gates=None):
         if gates is None:
             self.gates = []
         else:
             self.gates = gates
+        self.weight=weight
 
     def __getitem__(self, item):
         """
@@ -39,14 +30,44 @@ class QCircuit:
         self.gates[key] = value
         return self
 
-    def make_dagger(self):
+    def dagger(self):
         """
+        Sumner's Fork:
+        I have changed this so that the call to dagger is just dagger all the way down.
         :return: Circuit in reverse with signs of rotations switched
         """
         result = QCircuit()
         for g in reversed(self.gates):
-            result += g.make_dagger()
+            result += g.dagger()
         return result
+
+
+    def __true_weight__(self):
+        '''
+        returns the true weight of the circuit, taking in both the weight assigned by the user and and the weight of all the gates
+        '''
+        pass
+
+    def replace_gate(self,position : int, gates: list, inplace: bool=False):
+        '''
+        if inplace=False:
+        returns a transformed version of the circuit in which whatever gate was at 'position' is removed and replaced with,
+        in sequence, all the gates in in gates.
+        else, changes swaps out the gate at position for the gates in gates, but does not return a new object.
+        Particularly useful in the post-processing of gate gradients.
+
+        '''
+        prior=self.gates[:position]
+        new=gates
+        posterior=self.gates[position+1:]
+        #### note: this is gonna play badly with gates that would be applied simultaneously, I think.)
+        new_gates =prior+new+posterior
+        if inplace == False:
+            return QCircuit(weight=self.weight,gates=new_gates)
+        else:
+            self.gates=new_gates
+
+
 
     def insert_gate(self, position: int, gate: QGate):
         if position == "random":
@@ -71,8 +92,9 @@ class QCircuit:
         """
         angles = []
         for i, g in enumerate(self.gates):
-            if g.is_parametrized() and not g.is_frozen():
-                angles.append((i, g.angle))
+            if g.is_parametrized():
+                if not g.is_frozen():
+                    angles.append((i, g.angle))
 
         return angles
 
@@ -169,6 +191,29 @@ class QCircuit:
 
         return circuit_list
 
+
+    def gradient(self):
+        '''
+        this is a preliminary function for getting quantum circuit gradients based on the methods of the non-frozen gates within the circuit itself.
+        '''
+        angles=self.extract_angles
+        count=len(angles)
+        gradient=[]
+        gates=copy.deepcopy(self.gates)
+        for i in range(count):
+            sub_list=[]
+            target=gates[angles[i][0]]
+            g_w = target.gradient()
+            for weight_gate in g_w:
+                new_circuit=copy.deepcopy(self)
+                new_circuit.replace_gate(position=[angles[i][0]],gates=weight_gate['gates'],inplace=True)
+                new_circuit.weight*=weight_gate['weight']
+                sub_list.append(new_circuit)
+            gradient.append(sub_list)
+
+        return gradient
+
+
     @staticmethod
     def wrap_gate(gate: QGate):
         """
@@ -197,6 +242,8 @@ class QCircuit:
 
     def recompile_gate(self, gate):
         """
+        TODO:
+        remove
         Recompiles gates based on the instruction function
         :param gate: the QGate to recompile
         :return: list of tuple of lists of qgates
