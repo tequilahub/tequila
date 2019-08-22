@@ -1,5 +1,5 @@
-from openvqe import HamiltonianQC, ParametersQC
-from openvqe.ansatz.ansatz_ucc import AnsatzUCC
+from openvqe.hamiltonian import HamiltonianQC, ParametersQC
+from openvqe.ansatz import AnsatzUCC
 from openvqe.circuit.compiler import compile_trotter_evolution
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.simulator.simulator_pyquil import SimulatorPyquil

@@ -1,4 +1,5 @@
-from openvqe.circuit.circuit import QCircuit, Ry, X, Rx, Rz
+from openvqe.circuit import QCircuit
+from openvqe.circuit.gates import Ry, X, Rx, Rz
 from openvqe.observable import Observable, make_gradient
 from numpy import pi
 

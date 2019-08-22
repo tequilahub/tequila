@@ -1,5 +1,6 @@
 
-from openvqe import HamiltonianQC, ParametersQC, ParametersHamiltonian, OpenVQEException
+from openvqe.hamiltonian import HamiltonianQC, ParametersQC, ParametersHamiltonian
+from openvqe import OpenVQEException
 
 if __name__ == "__main__":
 
