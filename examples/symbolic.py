@@ -5,10 +5,16 @@ Two ways to get OpenVQE:
 
 Either:
 Add the path to the OpenVQE directory to your pythonpath
+in a terminal:
+export PYTHONPATH=${PYTHONPATH}:/path/to/wherever/you/saved/it/OpenVQE/
+in your script:
+import sys
+sys.path.append("/path/to/wherever/you/saved/it/OpenVQE/")
 
 Or:
 install OpenVQE with
 "pip install ." in the OpenVQE directory (the directory which has setup.py in it)
+this will install a minimal package without too many dependencies
 
 """
 
@@ -30,4 +36,4 @@ if __name__ == "__main__":
     result = simulator.simulate_wavefunction(abstract_circuit=circuit)
 
     print(result)
-    
+

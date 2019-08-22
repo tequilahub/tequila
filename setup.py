@@ -9,7 +9,7 @@ setup(
     name='OpenVQE',
     url='https://github.com/hsim13372/OpenVQE.git',
     author='Hannah Sim, Jakob S. Kottmann, ...',
-    packages=['openvqe'],
+    packages=['openvqe', 'openvqe.circuit', 'openvqe.simulator', 'openvqe.tools'],
     version='0.1',
     install_requires=requirements,
     description=''
