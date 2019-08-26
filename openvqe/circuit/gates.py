@@ -36,9 +36,9 @@ class QGate:
         else:
             return [o]
 
-    def __init__(self, name, target: list, control: list = None, phase_exp = 0.0):
+    def __init__(self, name, target: list, control: list = None, phase):
         self.name = name
-        self.phase= np.exp(np.j *phase_exp)
+        self.phase= phase
         self.target = self.list_assignement(target)
         self.control = self.list_assignement(control)
         self.verify()
@@ -52,7 +52,7 @@ class QGate:
         """
 
         return QGate(name=copy.copy(self.name), target=copy.deepcopy(self.target),
-                         control=copy.deepcopy(self.control),phase_exp=-self.phase_exp)
+                         control=copy.deepcopy(self.control),phase=np.conj(self.phase))
 
     def is_controlled(self) -> bool:
         """
@@ -88,7 +88,8 @@ class QGate:
             for c in target:
                 if c in self.control:
                     raise Exception("control and target are the same qubit: " + self.__str__())
-
+        if not np.isclose(np.abs(self.phase),1.0):
+            raise Exception('Phase must lie on the complex unit circle (I.E, have modulus of 1)')
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
         if not self.is_single_qubit_gate():
@@ -104,7 +105,7 @@ class QGate:
 
     def max_qubit(self):
         """
-        :return: Determine maximum qubit index needed
+        :return: highest number qubit in this gate
         """
         result = max(self.target)
         if self.control is not None:
@@ -112,7 +113,12 @@ class QGate:
         return result + 1
 
     def decomp(self):
-    	return self
+        '''
+        returns a restructured version of the gate, such that all supported backends have some implementation thereof.
+        This may decompose poly-controlled gates into a cascade of CNOT and basis shifters, or may convert swap to a chain of cnot.
+        All pre-defined gates overwrite this method to return something other than an error.
+        '''
+    	raise NotImplementedError()
 
     def gradient(self):
     	raise NotImplementedError()
@@ -124,9 +130,12 @@ class QGate:
     	return self.phase not in [1.0,1.0 + 0.j]
 
 class ParametrizedGate(QGate):
-
-	def __init__(self, name, parameter, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
-		super().__init__(name,target,control,phase_exp=phase_exp)
+    '''
+    the base class from which all parametrized gates inherit. User defined gates, when implemented, are liable to be members of this class directly.
+    Has su
+    '''
+	def __init__(self, name, parameter, target: list, control: list = None, frozen : bool = False,phase=1.0):
+		super().__init__(name,target,control,phase=phase)
         self.parameter =parameter
         if self.parameter is None:
         	raise Exception('Parametrized gates require a parameter!')
@@ -134,11 +143,14 @@ class ParametrizedGate(QGate):
 
 
     def is_frozen(self):
+        '''
+        :return: return wether this gate is frozen or not.
+        '''
         return self.frozen
 
     def dagger(self):
         """
-        :return: return the hermitian conjugate of the gate
+        :return: return the hermitian conjugate of the gate (without decomposing)
         """
         has_angle=False
         has_power=False
@@ -159,8 +171,7 @@ class ParametrizedGate(QGate):
         	new_gate.power =-1.0*self.parameter
 
         new_gate.parameter=-1.0*self.parameter
-        new_gate.phase_exp=-1.0*self.phase_exp
-        new_gate.phase=np.exp(np.j*new_gate.phase_exp)
+        new_gate.phase=np.conj(self.phase)
         return new_gate
 
 
@@ -172,6 +183,9 @@ class ParametrizedGate(QGate):
 
 
     def is_differentiable(self) -> bool:
+        """
+        :return: True if the gate is differentiable
+        """
     	return True
 
 
@@ -194,35 +208,15 @@ class ParametrizedGate(QGate):
             result = max(result, max(self.control))
         return result + 1
 
-    def decomp(self):
 
-    	###TODO: rewrite after actual gates are written
-    	if not self.is_controlled():
-    		return self
-    	else:
-    		raise NotImplementedError()
-
-    def gradient(self):
-    	print('gradients not implemented for generic parametrized gates')
-    	return None
 
 class RotationGate(ParametrizedGate):
 
-	def __init__(self, name, angle, target: list, control: list = None, frozen : bool = False,phase_exp =0.0):
-		super().__init__(name,angle,target,control,frozen,phase_exp)
-
+	def __init__(self, name, angle, target: list, control: list = None, frozen : bool = False,phase =1.0):
+		super().__init__(name,angle,target,control,frozen,phase)
         self.angle = angle
         if self.angle is None:
         	raise Exception('Parametrized gates require a parameter!')
-
-    def dagger(self):
-        """
-        :return: return the hermitian conjugate of the gate
-        """
-        return RotationGate(name=copy.copy(self.name), target=copy.deepcopy(self.target),
-                             control=copy.deepcopy(self.control),
-                             angle=-1.0 * self.angle,frozen=self.frozen,phase_exp=-self.phase_exp)
-
 
 
     def _rz_shorthand(self,new_angles=None):
@@ -238,7 +232,8 @@ class RotationGate(ParametrizedGate):
         temp.append(CNOT(target=target,control=self.control))
         temp.append(Rz(name="Rz",target=self.target,angle=new_angles[1]))
         temp.append(CNOT(target=self.target,control=self.control))
-
+        for gate in temp:
+                    gate.phase=self.phase
         return temp
 
 
@@ -252,20 +247,15 @@ class RotationGate(ParametrizedGate):
         result += ")"
         return result
 
+
 class PowerGate(ParametrizedGate):
 
-	def __init(self,name,power,target: list, control: list = None, frozen: bool = False,phase_exp = 0.0):
-		super().__init__(name,power,target,control,frozen,phase_exp)
+	def __init(self,name,power,target: list, control: list = None, frozen: bool = False,phase = 1.0):
+		super().__init__(name,power,target,control,frozen,phase)
         self.power = power
         self.parameter = self.power
         if self.power is None:
         	raise Exception('Power gates require a power!')
-
-    def dagger(self):
-    	return PowerGate(name=copy.copy(self.name),target=copy.deepcopy(self.target),
-    		control=copy.deepcopy(self.control),
-    		power= -1.0 *self.power,frozen=self.frozen,phase_exp=-self.phase_exp)
-
 
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
@@ -285,12 +275,8 @@ class PowerGate(ParametrizedGate):
 ######### INDIVIDUAL GATE CLASSES
 
 class Rz(RotationGate):
-	def __init__(self, angle, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
-		super().__init__('Rz',angle,target,control,frozen,phase_exp)
-        self.angle = angle
-        self.parameter = self.angle
-        if self.angle is None:
-        	raise Exception('Parametrized gates require a parameter!')
+	def __init__(self, angle, target: list, control: list = None, frozen : bool = False,phase=1.0):
+		super().__init__('Rz',angle,target,control,frozen,phase)
 
     def decomp(self):
     	if self.is_controlled() is False:
@@ -308,6 +294,8 @@ class Rz(RotationGate):
 				parity= 1.0 - 2.0*(i//2) 
     			new_gates=[]
     			new_gates.extend(self._rz_shorthand(new_angles=angle_set))
+                for gate in new_gates:
+                    gate.phase=self.phase
     			weighed_gates.append({'weight':0.5*parity,'gates':new_gates})
 
     	if self.is_controlled() is False:
@@ -321,18 +309,9 @@ class Rz(RotationGate):
     	return weighted_gates
 
 class Ry(RotationGate):
-	def __init__(self, angle, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
-		super().__init__('Ry',angle,target,control,frozen,phase_exp)
-        self.angle = angle
-        self.parameter = self.angle
-        if self.angle is None:
-        	raise Exception('Parametrized gates require a parameter!')
-        self.frozen = frozen
+	def __init__(self, angle, target: list, control: list = None, frozen : bool = False,phase=1.0):
+		super().__init__('Ry',angle,target,control,frozen,phase)
 
-    def dagger(self):
-        return Ry(target=copy.deepcopy(self.target),
-                             control=copy.deepcopy(self.control),
-                             angle=-1.0 * self.angle,frozen=self.frozen)
 
    	def decomp(self):
     	if self.is_controlled() is False:
@@ -342,6 +321,8 @@ class Ry(RotationGate):
     		new_gates.append(Rx(angle=np.pi/2,control=None,target=self.target,frozen=True))
     		new_gates.extend(self._rz_shorthand(new_angles=[-self.angle/2,self.angle/2]))
     		new_gates.append(Rx(angle=-np.pi/2,control=None,target=self.target,frozen=True))
+            for gate in new_gates:
+                    gate.phase=self.phase           
     		return new_gates
 
    def gradient(self):
@@ -356,6 +337,8 @@ class Ry(RotationGate):
     			new_gates.append(Rx(angle=np.pi/2,control=None,target=self.target,frozen=True))
     			new_gates.extend(self._rz_shorthand(new_angles=angle_set))
     			new_gates.append(Rx(angle=-np.pi/2,control=None,target=self.target,frozen=True))
+                for gate in new_gates:
+                    gate.phase=self.phase
     			weighed_gates.append({'weight':0.5*parity,'gates':new_gates})
 
     	if self.is_controlled() is False:
@@ -369,18 +352,12 @@ class Ry(RotationGate):
     	return weighted_gates
 
 class Rx(RotationGate):
-    def __init__(self, angle, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
-		super().__init__('Ry',angle,target,control,frozen,phase_exp)
+    def __init__(self, angle, target: list, control: list = None, frozen : bool = False,phase=1.0):
+		super().__init__('Ry',angle,target,control,frozen,phase)
         self.angle = angle
         self.parameter = self.angle
         if self.angle is None:
         	raise Exception('Rotation gates require an angle!')
-        self.frozen = frozen
-
-    def dagger(self):
-        return Rx(target=copy.deepcopy(self.target),
-                             control=copy.deepcopy(self.control),
-                             angle=-1.0 * self.angle,frozen=self.frozen)
 
    	def decomp(self,grad=False):
     	if self.is_controlled() is False:
@@ -390,6 +367,8 @@ class Rx(RotationGate):
     		new_gates.append(H(control=None,target=self.target))
     		new_gates.extend(self._rz_shorthand(new_angles=[-self.angle/2,self.angle/2]))
     		new_gates.append(H(control=None,target=self.target))
+            for gate in new_gates:
+                    gate.phase=self.phase
     		return new_gates
 
 
@@ -406,6 +385,8 @@ class Rx(RotationGate):
     			new_gates.append(H(control=None,target=self.target))
     			new_gates.extend(self._rz_shorthand(new_angles=angle_set))
     			new_gates.append(H(control=None,target=self.target))
+                for gate in new_gates:
+                    gate.phase=self.phase
     			weighed_gates.append({'weight':0.5*parity,'gates':new_gates})
 
     	if self.is_controlled() is False:
@@ -420,52 +401,48 @@ class Rx(RotationGate):
 
 
 class H(PowerGate):
-	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
-		super().__init__('H',power,target,control,frozen,phase_exp)
+	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = True,phase=1.0):
+		super().__init__('H',power,target,control,frozen,phase)
         self.parameter = self.power
         if self.parameter is None:
         	raise Exception('Parametrized gates require a parameter!')
 
-    '''
-    def gradient(self):
-    	#return WeightedGates(weights=power,gates=[H(self.power-1.0,target=self.target,control=self.control,frozen=self.frozen,phase_exp=self.phase_exp)])
-    	return [{'weight':self.power,'gates':[H(self.power-1.0,target=self.target,control=self.control,frozen=self.frozen,phase_exp=self.phase_exp)]}]
-
-	'''
+    def decomp(self):
+        return self
 
 class X(PowerGate):
-	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
-		super().__init__('X',power,target,control,frozen,phase_exp)
+	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = True,phase=1.0):
+		super().__init__('X',power,target,control,frozen,phase)
         self.parameter = self.power
         if self.parameter is None:
         	raise Exception('Parametrized gates require a parameter!')
 
+    def decomp(self):
+        return self
     
 
 class Y(PowerGate):
-	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
-		super().__init__('Y',power,target,control,frozen,phase_exp)
-        self.parameter = self.power
-        if self.parameter is None:
-        		raise Exception('Parametrized gates require a parameter!')
+	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = True,phase=1.0):
+		super().__init__('Y',power,target,control,frozen,phase)
 
 
+    def decomp(self):
+        return self
 class Z(PowerGate):
-	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = False,phase_exp=0.0):
-		super().__init__('Z',power,target,control,frozen,phase_exp)
-        	self.parameter = self.power
-        	if self.parameter is None:
-        		raise Exception('Parametrized gates require a parameter!')
+	def __init__(self, power = 1.0, target: list, control: list = None, frozen : bool = True,phase=1.0):
+		super().__init__('Z',power,target,control,frozen,phase)
 
- 
+
+     def decomp(self):
+        return self
 
 class CNOT(QGate):
-	def __init__(self,target,control : list,phase_exp=0.0):
+	def __init__(self,target,control : list,phase=1.0):
 		'''
 		currently we do not intend to let people use exponentiation of CNOT, hence it is not a power gate. if one seeks exponentiated cnot, 
 		one should use a controlled X gate.
 		'''
-		super().__init__('CNOT',target,control,phase_exp=phase_exp)
+		super().__init__('CNOT',target,control,phase=phase)
 
 		def dagger(self):
 			return self
@@ -474,11 +451,11 @@ class CNOT(QGate):
 
 class SWAP(QGate):
 	def __init__(self,target,control : list):
-		super().__init__('SWAP',target,control,phase_exp=0.0)
+		super().__init__('SWAP',target,control,phase=1.0)
 		if len(target) != 2:
 			raise Exception('SWAP works on exactly two gates.')
 		def dagger(self):
-			return SWAP(target=self.target,control=self.control,phase_exp=-self.phase_exp)
+			return SWAP(target=self.target,control=self.control,phase=np.conj(self.phase))
 
 		def decomp(self):
 			'''
@@ -491,18 +468,18 @@ class SWAP(QGate):
 			return new_gates
 
 class I(QGate):
-	def __init__(self,target:list,control: list=None,phase_exp=0.0):
-		super().__init__('I',target,control,phase_exp)
+	def __init__(self,target:list,control: list=None,phase=1.0):
+		super().__init__('I',target,control,phase)
 
 	def decomp(self):
 		'''
 		if I cannot be a controlled gate on the simulator, can we just delete the control entirely, or is that not permitted, due to phase?
 		'''
-		return I(target=self.target,control=None,phase_exp=self.phase_exp)
+		return I(target=self.target,control=None,phase=self.phase)
 
 class MS(RotationGate):
-	def __init__(self, angle, target: list, control: list = None, frozen : bool = False, phase_exp = 0.0):
-		super().__init__('MS',angle,target,control,frozen,phase_exp)
+	def __init__(self, angle, target: list, control: list = None, frozen : bool = False, phase = 1.0):
+		super().__init__('MS',angle,target,control,frozen,phase)
         assert len(self.target)//2 == 0 
     def decomp(self):
     	#todo: implement an MS decomp in terms of X or Rx gates and cnots)
