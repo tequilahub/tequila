@@ -1,9 +1,9 @@
 import numpy
 import copy
+from openvqe.circuit.gates import *
 
 
-
-class QCircuit:
+class QCircuit():
 
     def __init__(self, weight =1.0,gates=None):
         if gates is None:
@@ -223,7 +223,7 @@ class QCircuit:
         """
         return QCircuit(gates=[gate])
 
-    def _recompile_core(self,angle,shifted,spot,target=target,control=control):
+    def _recompile_core(self,angle,shifted,spot,target,control):
         '''
         helper function for recursion of recompile_gate.
         '''
@@ -233,7 +233,7 @@ class QCircuit:
             temp.append(QGate(name="CNOT",target=target,control=control))
             temp.append(QGate(name="Rz",target=target,angle=angle))
             temp.append(QGate(name="CNOT",target=target,control=control))
-        if spot == 1
+        if spot == 1:
             temp.append(QGate(name="Rz",target=target,angle=-angle))
             temp.append(QGate(name="CNOT",target=target,control=control))
             temp.append(QGate(name="Rz",target=target,angle=shifted))
@@ -272,9 +272,9 @@ class QCircuit:
                         inner=[]
                         for ang in [up_angle,down_angle]:
                             temp=[]
-                            temp.append(QGate(name="H", target=target, control=None))
+                            temp.append(QGate(name="H", target=gate.target, control=None))
                             temp += self._recompile_core(angle*g_shift,ang,spot)
-                            temp.append(QGate(name="H", target=target, control=None))
+                            temp.append(QGate(name="H", target=gate.target, control=None))
                             inner.append(temp)
 
                         outer_list.append(tuple(inner))
@@ -284,9 +284,9 @@ class QCircuit:
                         inner=[]
                         for ang in [up_angle,down_angle]:
                             temp=[]
-                            temp.append(QGate(name="Rx", target=target,angle=np.pi/2 control=None))
+                            temp.append(QGate(name="Rx", target=gate.target,angle=np.pi/2, control=None))
                             temp += self._recompile_core(angle*g_shift,ang,spot)
-                            temp.append(QGate(name="Rx", target=target,angle=-np.pi/2 control=None))
+                            temp.append(QGate(name="Rx", target=gate.target,angle=-np.pi/2, control=None))
                             inner.append(temp)
 
                         outer_list.append(tuple(inner))
@@ -315,7 +315,7 @@ class QCircuit:
                 down.angle= (angle - s)*g_shift
                 outer_list.append(tuple([up,down]))
             #if gate.name in ['X','Y','Z']:
-            else
+            else:
                 raise Exception('non-rotation gates do not yet have a quadrature decompoition')
 
         return outer_list

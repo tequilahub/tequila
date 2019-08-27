@@ -3,7 +3,7 @@ Primitive Compiler from Qubit-Operators to evolution operators
 Replace with fancier external packages at some point
 """
 
-from openvqe.circuit.circuit import QCircuit, QGate, H, CNOT, Rx, Ry, Rz
+from openvqe.circuit.circuit import *
 import numpy
 from openfermion import QubitOperator
 

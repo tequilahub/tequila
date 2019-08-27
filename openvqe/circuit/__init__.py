@@ -1,1 +1,2 @@
-from openvqe.circuit.circuit import QCircuit, H, X, Y, Z, Rx, Ry, Rz, CNOT, aCNOT, SWAP, TOFFOLI, S
+from openvqe.circuit.circuit import *
+from openvqe.circuit.gates import *

@@ -1,6 +1,6 @@
 from openvqe.circuit import *
 from openvqe.objective import Objective
-from openvqe.gates import *
+
 from numpy import pi
 
 if __name__ == "__main__":
