@@ -147,10 +147,24 @@ class QCircuit():
         return self
 
     def __str__(self):
-        result = "circuit:\n"
+        result = "circuit: "
+        if self.weight != 1.0:
+            result += " weight=" + "{:06.2f}".format(self.weight) + " \n"
+        else:
+            result += "\n"
         for g in self.gates:
             result += str(g) + "\n"
         return result
+
+    def __eq__(self, other):
+        if self.weight != other.weight:
+            return False
+        if len(self.gates) != len(other.gates):
+            return False
+        for i,g in enumerate(self.gates):
+            if g != other.gates[i]:
+                return False
+        return True
 
     def __repr__(self):
         return self.__str__()

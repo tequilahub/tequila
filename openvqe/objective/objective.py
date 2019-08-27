@@ -15,6 +15,18 @@ class Objective:
 
         self.observable = observable
 
+    def __eq__(self, other):
+
+        if len(self.unitaries) != len(other.unitaries):
+            return False
+
+        for i, U in enumerate(self.unitaries):
+            if U != other.unitaries[i]:
+                print("oha \n", U, "\n", other.unitaries[i])
+                return False
+
+        return True
+
     def __add__(self, other):
         # todo comming soon
         raise NotImplementedError("+ not implemented yet")
@@ -40,4 +52,3 @@ class Objective:
         values = asarray(values)
         assert (len(weights) == len(values))
         return weights.dot(values)
-

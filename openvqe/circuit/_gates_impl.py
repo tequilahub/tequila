@@ -100,19 +100,22 @@ class QGateImpl:
             result = max(result, max(self.control))
         return result + 1
 
-    def decomp(self):
-        '''
-        returns a restructured version of the gate, such that all supported backends have some implementation thereof.
-        This may decompose poly-controlled gates into a cascade of CNOT and basis shifters, or may convert swap to a chain of cnot.
-        All pre-defined gates overwrite this method to return something other than an error.
-        '''
-        raise NotImplementedError()
-
     def is_phased(self):
         '''
         TODO: make sure this is functional.
         '''
         return self.phase not in [1.0, 1.0 + 0.j]
+
+    def __eq__(self, other):
+        if self.name != other.name:
+            return False
+        if self.target != other.target:
+            return False
+        if self.control != other.control:
+            return False
+        if self.phase != other.phase:
+            return False
+        return True
 
 
 class ParametrizedGateImpl(QGateImpl, ABC):
@@ -163,6 +166,16 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         if self.control is not None:
             result = max(result, max(self.control))
         return result + 1
+
+    def __eq__(self, other):
+        if not isinstance(other, ParametrizedGateImpl):
+            return False
+        if not super().__eq__(other):
+            return False
+        if self.parameter != other.parameter:
+            return False
+        return True
+
 
 
 class RotationGateImpl(ParametrizedGateImpl):

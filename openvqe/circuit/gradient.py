@@ -1,18 +1,32 @@
 from openvqe.circuit import QCircuit
 from openvqe.circuit.compiler import compile_controlled_rotation_gate
-from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl
+from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, PowerGateImpl
 from openvqe.objective import Objective
 from openvqe import OpenVQEException
 import copy
 from numpy import pi
 
-def grad(unitary:QCircuit):
+def grad(obj):
+    if isinstance(obj, QCircuit):
+        return grad_unitary(unitary=obj)
+    elif isinstance(obj, Objective):
+        return grad_objective(objective=obj)
+    elif isinstance(obj, ParametrizedGateImpl):
+        return grad_unitary(QCircuit.wrap_gate(gate=obj))
+    else:
+        raise OpenVQEException("Gradient not implemented for other types than QCircuit or Objective")
+
+def grad_unitary(unitary:QCircuit):
     gradient=[]
     angles = unitary.extract_parameters()
     for i in range(len(angles)):
         index = angles[i][0]
         gradient.append(make_gradient_component(unitary=unitary, index=index))
     return gradient
+
+def grad_objective(objective: Objective):
+    assert(len(objective.unitaries==1))
+    return grad_unitary(unitary=objective.unitaries[0])
 
 
 def make_gradient_component(unitary: QCircuit, index:int):
