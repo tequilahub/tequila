@@ -161,7 +161,10 @@ class QCircuit():
         :param gate: Abstract Gate
         :return: wrap gate in QCircuit structure (enable arithmetic operators)
         """
-        return QCircuit(gates=[gate])
+        if isinstance(gate, QCircuit):
+            return gate
+        else:
+            return QCircuit(gates=[gate])
 
     def _recompile_core(self, angle, shifted, spot, target, control):
         '''

@@ -3,10 +3,10 @@ Primitive Compiler from Qubit-Operators to evolution operators
 Replace with fancier external packages at some point
 """
 
-from openvqe.circuit.circuit import *
+from openvqe.circuit.circuit import QCircuit
 import numpy
 from openfermion import QubitOperator
-from openvqe.circuit.gates import Rx, H, X
+from openvqe.circuit.gates import Rx, H
 from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl
 
 
@@ -132,10 +132,7 @@ def compile_controlled_rotation_gate(gate: RotationGateImpl, angles: list = None
         return result
 
     if gate.control is None:
-        if verify:
-            raise Exception("recompilation error: Not a controlled gate")
-        else:
-            return gate
+        return QCircuit.wrap_gate(gate)
 
     if angles is None:
         angles = [-gate.angle / 2.0, gate.angle / 2.0]
