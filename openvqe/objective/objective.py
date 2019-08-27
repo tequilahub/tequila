@@ -1,19 +1,11 @@
-from openvqe import OpenVQEModule, OpenVQEParameters
-from openvqe.openvqe_abc import parametrized
 from openvqe.circuit import QCircuit
 from openvqe.hamiltonian import HamiltonianBase
 from numpy import asarray
 
 
-class ObjectiveParameters(OpenVQEParameters):
-    # not sure if we will need parameters
-    pass
+class Objective:
 
-
-@parametrized(parameter_class=ObjectiveParameters)
-class Objective(OpenVQEModule):
-
-    def __post_init__(self, observable=None, unitaries=None):
+    def __init__(self, observable=None, unitaries=None):
         if unitaries is None:
             self.unitaries: list = []
         elif hasattr(unitaries, "__iter__") or hasattr(unitaries, "__get_item__"):
@@ -61,7 +53,7 @@ class Objective(OpenVQEModule):
             raise Exception('I categorically refuse to get gradients for multi-unitary observables. ')
 
         output=[]
-        for unitary in unitaries:
+        for unitary in self.unitaries:
             gradient=unitary.gradient()
             for i,partial in enumerate(gradient):
                 output[i]=Objective(self.observable,partial)

@@ -1,1 +1,1 @@
-from openvqe.objective.objective import Objective, ObjectiveParameters
+from openvqe.objective.objective import Objective

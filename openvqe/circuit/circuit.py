@@ -197,7 +197,7 @@ class QCircuit():
         this is a preliminary function for getting quantum circuit gradients based on the methods of the non-frozen gates within the circuit itself.
         returns: list of lists of circuits which, when evaluated, are the exact gradient of the circuit w.r.t it's non-frozen parameters.
         '''
-        angles=self.extract_angles
+        angles=self.extract_angles()
         count=len(angles)
         gradient=[]
         gates=copy.deepcopy(self.gates)

@@ -15,7 +15,7 @@ if __name__ == "__main__":
     ac += X(target=0,control=None)
     ac += Ry(target=1, control=None, angle=pi / 2)
 
-    obj= Objective(ac,observable=None)
+    obj= Objective(unitaries=ac,observable=None)
     gradient = obj.gradient()
 
     print("gradient of X, Ry at objective level", gradient)
@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
 
     print('gradient of Xpower, controlled Ry at circuit level:', ac.gradient())
-    obj= Objective(ac,observable=None)
+    obj= Objective(unitaries=ac,observable=None)
     gradient = obj.gradient()
 
     print("gradient of Xpower controlled Ry at objective level", gradient)
