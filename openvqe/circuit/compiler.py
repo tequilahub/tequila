@@ -6,6 +6,8 @@ Replace with fancier external packages at some point
 from openvqe.circuit.circuit import *
 import numpy
 from openfermion import QubitOperator
+from openvqe.circuit.gates import Rx, H, X
+from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl
 
 
 def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, anti_hermitian=True) -> QCircuit:
@@ -83,12 +85,42 @@ def exponential_pauli_gate(paulistring, angle) -> QCircuit:
     return circuit
 
 
-def compile_controlled_rotation_gate(gate: QGate, verify=False):
+def compile_multitarget(gate) -> QCircuit:
+    # for the case that gate is actually a whole circuit
+    if hasattr(gate, "gates"):
+        result = QCircuit()
+        for g in gate.gates:
+            result += compile_multitarget(gate=g)
+        return result
+
+    targets = g.target
+
+    result = QCircuit()
+    for t in targets:
+        gx = copy.deepcopy(gate)
+        gx.target = [t]
+        result += gx
+
+    return result
+
+
+def change_basis(target, axis, daggered=False):
+    if axis == 0:
+        return H(target=target)
+    elif axis == 1 and daggered:
+        return Rx(angle=-numpy.pi, target=target)
+    elif axis == 1:
+        return Rx(angle=numpy.pi, target=target)
+    else:
+        return QCircuit()
+
+
+def compile_controlled_rotation_gate(gate: RotationGateImpl, angles: list = None) -> QCircuit:
     """
     Recompilation of a controlled-rotation gate
     Basis change into Rz then recompilation of controled Rz, then change basis back
     :param gate: The rotational gate
-    :param verify: throws error if this is not a controlled rotation, if False (default) just returns the unchanged gate
+    :param angles: new angles to set, given as a list of two. If None the angle in the gate is used (default)
     :return: set of gates wrapped in QCircuit class
     """
 
@@ -96,7 +128,7 @@ def compile_controlled_rotation_gate(gate: QGate, verify=False):
     if hasattr(gate, "gates"):
         result = QCircuit()
         for g in gate.gates:
-            result += compile_controlled_rotation_gate(gate=g, verify=verify)
+            result += compile_controlled_rotation_gate(gate=g, angles=angles)
         return result
 
     if gate.control is None:
@@ -105,37 +137,25 @@ def compile_controlled_rotation_gate(gate: QGate, verify=False):
         else:
             return gate
 
+    if angles is None:
+        angles = [-gate.angle / 2.0, gate.angle / 2.0]
+
+    assert (len(angles) == 2)
+
+    if len(gate.target) > 1:
+        result = QCircuit()
+        return compile_controlled_rotation_gate(gate=compile_multitarget(gate=g), angles=angles)
+
     target = gate.target
-    control = gate.control[0]
+    control = gate.control
 
     result = QCircuit()
-
-    # change basis
-    if gate.name == "Rx":
-        result += QGate(name="H", target=target, frozen=True)
-    elif gate.name == "Ry":
-        result += QGate(name="Rx", target=target, angle=numpy.pi / 2, frozen=True)
-    elif gate.name == "Rz":
-        pass
-    else:
-        raise Exception(str(gate) + " is not a rotation")
-
-    # recompile Rz part
-    result += QGate(name="Rz", target=target, angle=-gate.angle / 2.0)
-    result += QGate(name="CNOT", target=target, control=control)
-    result += QGate(name="Rz", target=target, angle=gate.angle / 2.0)
-    result += QGate(name="CNOT", target=target, control=control)
-
-    # change basis back
-    if gate.name == "Rx":
-        result += QGate(name="H", target=target, frozen=True)
-    elif gate.name == "Ry":
-        result += QGate(name="Rx", target=target, angle=-numpy.pi / 2, frozen=True)
-    elif gate.name == "Rz":
-        pass
-    else:
-        raise Exception(str(gate) + " is not a rotation")
+    result += change_basis(target=target, axis=gate.axis)
+    result += RotationGateImpl(axis=0, target=target, angle=angles[0])
+    result += QGateImpl(name="X", target=target, control=control)
+    result += RotationGateImpl(axis=0, target=target, angle=angles[1])
+    result += QGateImpl(name="X", target=target, control=control)
+    result += change_basis(target=target, axis=gate.axis, daggered=True)
 
     result.n_qubits = result.max_qubit()
-    print("supp, ", result)
     return result

@@ -1,16 +1,17 @@
+from abc import ABC
+from openvqe.circuit._gates_impl import QGateImpl
 import numpy
 import copy
-from openvqe.circuit.gates import *
 
 
 class QCircuit():
 
-    def __init__(self, weight =1.0,gates=None):
+    def __init__(self, weight=1.0, gates=None):
         if gates is None:
             self.gates = []
         else:
             self.gates = gates
-        self.weight=weight
+        self.weight = weight
 
     def __getitem__(self, item):
         """
@@ -20,7 +21,7 @@ class QCircuit():
         """
         return self.gates[item]
 
-    def __setitem__(self, key: int, value: QGate):
+    def __setitem__(self, key: int, value: QGateImpl):
         """
         Insert a gate at a specific position
         :param key:
@@ -41,14 +42,13 @@ class QCircuit():
             result += g.dagger()
         return result
 
-
     def __true_weight__(self):
         '''
         returns the true weight of the circuit, taking in both the weight assigned by the user and and the weight of all the gates
         '''
         pass
 
-    def replace_gate(self,position, gates: list, inplace: bool=False):
+    def replace_gate(self, position, gates: list, inplace: bool = False):
         '''
         if inplace=False:
         returns a transformed version of the circuit in which whatever gate was at 'position' is removed and replaced with,
@@ -57,26 +57,24 @@ class QCircuit():
         Particularly useful in the post-processing of gate gradients.
 
         '''
-        prior=self.gates[:position]
-        new=gates
-        posterior=self.gates[position+1:]
+        prior = self.gates[:position]
+        new = gates
+        posterior = self.gates[position + 1:]
         #### note: this is gonna play badly with gates that would be applied simultaneously, I think.)
-        new_gates =prior+new+posterior
+        new_gates = prior + new + posterior
         if inplace == False:
-            return QCircuit(weight=self.weight,gates=new_gates)
+            return QCircuit(weight=self.weight, gates=new_gates)
         else:
-            self.gates=new_gates
+            self.gates = new_gates
 
-
-
-    def insert_gate(self, position: int, gate: QGate):
+    def insert_gate(self, position: int, gate: QGateImpl):
         if position == "random":
             self.insert_gate_at_random_position(gate=gate)
         else:
             self.gates.insert(position, gate)
         return self
 
-    def insert_gate_at_random_position(self, gate: QGate):
+    def insert_gate_at_random_position(self, gate: QGateImpl):
         position = numpy.random.choice(len(self.gates), 1)[0]
 
         if isinstance(gate, QCircuit):
@@ -85,18 +83,18 @@ class QCircuit():
         else:
             self.insert_gate(position=position, gate=gate)
 
-    def extract_angles(self) -> list:
+    def extract_parameters(self) -> list:
         """
         Extract the angles from the circuit
         :return: angles as list of tuples where each tuple contains the angle and the position of the gate in the circuit
         """
-        angles = []
+        parameters = []
         for i, g in enumerate(self.gates):
             if g.is_parametrized():
                 if not g.is_frozen():
-                    angles.append((i, g.angle))
+                    parameters.append((i, g.parameter))
 
-        return angles
+        return parameters
 
     def change_angles(self, angles: list):
         """
@@ -117,7 +115,7 @@ class QCircuit():
                     raise Exception("You are trying to change the angle of a frozen gate\ngate=" + str(
                         self.gates[position]) + "\nangles=(" + str(a) + ")")
                 else:
-                    self.gates[position].angle = angle
+                    self.gates[position].parameter = angle
         except IndexError as error:
             raise Exception(str(error) + "\nFailed to assign angles, you probably provided to much angles")
         except TypeError as error:
@@ -133,16 +131,16 @@ class QCircuit():
         return qmax
 
     def __add__(self, other):
-        if isinstance(other, QGate):
+        if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
         result = QCircuit()
         result.gates = (self.gates + other.gates).copy()
         return result
 
     def __iadd__(self, other):
-        if isinstance(other, QGate):
+        if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
-        if isinstance(other, QGate):
+        if isinstance(other, QGateImpl):
             self.gates.append(other)
         else:
             self.gates += other.gates
@@ -157,87 +155,29 @@ class QCircuit():
     def __repr__(self):
         return self.__str__()
 
-    def get_gradient(self, index):
-        """
-        :param index: the index should refer to a gate which is parametrized
-        :return: returns the tuple of circuit gradient with respect to the gate at position self.gates[index]
-        """
-        if not self.gates[index].is_parametrized():
-            raise Exception("You are trying to get the gradient w.r.t a gate which is not parametrized\ngate=" + str(
-                self.gates[index]))
-        elif self.gates[index].is_frozen():
-            raise Exception("You are trying to get the gradient w.r.t a gate which is frozen out\ngate=" +str(self.gates[index]))
-
-        list_of_tuple_of_lists=[]
-        gate_list = self.gates.copy()
-
-        new_gates=[]
-        new_gates += gate_list[:index]
-
-
-        rebuilt = recompile_gate(gate_list[index])
-
-        for gate_tuple in rebuilt:
-            sub_list = new_gates.copy()
-            temp=[]
-            for gate_set in gate_tuple:
-                unit= sub_list+gate_set
-                unit+= gate_list[index+1:]
-                temp.append(unit)
-            list_of_tuple_of_lists.append(tuple(temp))
-
-
-        circuit_list=[(QCircuit(gates=entry) for entry in tuple_entry) for tuple_entry in list_of_tuple_lists]
-
-        return circuit_list
-
-
-    def gradient(self):
-        '''
-        this is a preliminary function for getting quantum circuit gradients based on the methods of the non-frozen gates within the circuit itself.
-        returns: list of lists of circuits which, when evaluated, are the exact gradient of the circuit w.r.t it's non-frozen parameters.
-        '''
-        angles=self.extract_angles()
-        count=len(angles)
-        gradient=[]
-        gates=copy.deepcopy(self.gates)
-        for i in range(count):
-            sub_list=[]
-            target=gates[angles[i][0]]
-            g_w = target.gradient()
-            for weight_gate in g_w:
-                new_circuit=copy.deepcopy(self)
-                new_circuit.replace_gate(position=angles[i][0],gates=weight_gate['gates'],inplace=True)
-                new_circuit.weight*=weight_gate['weight']
-                sub_list.append(new_circuit)
-            gradient.append(sub_list)
-
-        return gradient
-
-
     @staticmethod
-    def wrap_gate(gate: QGate):
+    def wrap_gate(gate: QGateImpl):
         """
         :param gate: Abstract Gate
         :return: wrap gate in QCircuit structure (enable arithmetic operators)
         """
         return QCircuit(gates=[gate])
 
-    def _recompile_core(self,angle,shifted,spot,target,control):
+    def _recompile_core(self, angle, shifted, spot, target, control):
         '''
         helper function for recursion of recompile_gate.
         '''
-        temp=[]
+        temp = []
         if spot == 0:
-            temp.append(QGate(name="Rz",target=target,angle=-shifted))
-            temp.append(QGate(name="CNOT",target=target,control=control))
-            temp.append(QGate(name="Rz",target=target,angle=angle))
-            temp.append(QGate(name="CNOT",target=target,control=control))
+            temp.append(QGateImpl(name="Rz", target=target, angle=-shifted))
+            temp.append(QGateImpl(name="CNOT", target=target, control=control))
+            temp.append(QGateImpl(name="Rz", target=target, angle=angle))
+            temp.append(QGateImpl(name="CNOT", target=target, control=control))
         if spot == 1:
-            temp.append(QGate(name="Rz",target=target,angle=-angle))
-            temp.append(QGate(name="CNOT",target=target,control=control))
-            temp.append(QGate(name="Rz",target=target,angle=shifted))
-            temp.append(QGate(name="CNOT",target=target,control=control))
+            temp.append(QGateImpl(name="Rz", target=target, angle=-angle))
+            temp.append(QGateImpl(name="CNOT", target=target, control=control))
+            temp.append(QGateImpl(name="Rz", target=target, angle=shifted))
+            temp.append(QGateImpl(name="CNOT", target=target, control=control))
 
         return temp
 
@@ -250,53 +190,53 @@ class QCircuit():
         :return: list of tuple of lists of qgates
         """
 
-        outer_list=[]
-        target=gate.target
-        control=gate.control
-        angle=gate.angle
-        clone=copy.deepcopy(gate)
-        if len(target) >1:
+        outer_list = []
+        target = gate.target
+        control = gate.control
+        angle = gate.angle
+        clone = copy.deepcopy(gate)
+        if len(target) > 1:
             raise Exception('multi-target gates do not have quadrature decompositions. I beg your forgiveness.')
             ### They may have one if they can be decomposed into single target gates and control gates, which can
             ### then be decomposed further, but we have to deal with this case by case.
 
         if gate.is_controlled():
             #### do the case by case for controlled gates
-            if gate.name in ['Rx','Ry','Rz']:
-                g_shift=0.5
-                s=np.pi/2
-                up_angle= (angle + s)*g_shift
-                down_angle= (angle - s)*g_shift
-                if gate.name is  'Rx':
-                    for spot in [0,1]:
-                        inner=[]
-                        for ang in [up_angle,down_angle]:
-                            temp=[]
-                            temp.append(QGate(name="H", target=gate.target, control=None))
-                            temp += self._recompile_core(angle*g_shift,ang,spot)
-                            temp.append(QGate(name="H", target=gate.target, control=None))
+            if gate.name in ['Rx', 'Ry', 'Rz']:
+                g_shift = 0.5
+                s = numpy.pi / 2
+                up_angle = (angle + s) * g_shift
+                down_angle = (angle - s) * g_shift
+                if gate.name is 'Rx':
+                    for spot in [0, 1]:
+                        inner = []
+                        for ang in [up_angle, down_angle]:
+                            temp = []
+                            temp.append(QGateImpl(name="H", target=gate.target, control=None))
+                            temp += self._recompile_core(angle * g_shift, ang, spot)
+                            temp.append(QGateImpl(name="H", target=gate.target, control=None))
                             inner.append(temp)
 
                         outer_list.append(tuple(inner))
 
                 elif gate.name is 'Ry':
-                    for spot in [0,1]:
-                        inner=[]
-                        for ang in [up_angle,down_angle]:
-                            temp=[]
-                            temp.append(QGate(name="Rx", target=gate.target,angle=np.pi/2, control=None))
-                            temp += self._recompile_core(angle*g_shift,ang,spot)
-                            temp.append(QGate(name="Rx", target=gate.target,angle=-np.pi/2, control=None))
+                    for spot in [0, 1]:
+                        inner = []
+                        for ang in [up_angle, down_angle]:
+                            temp = []
+                            temp.append(QGateImpl(name="Rx", target=gate.target, angle=numpy.pi / 2, control=None))
+                            temp += self._recompile_core(angle * g_shift, ang, spot)
+                            temp.append(QGateImpl(name="Rx", target=gate.target, angle=-numpy.pi / 2, control=None))
                             inner.append(temp)
 
                         outer_list.append(tuple(inner))
 
                 elif gate.name is 'Rz':
-                    for spot in [0,1]:
-                        inner=[]
-                        for ang in [up_angle,down_angle]:
-                            temp=[]
-                            temp += self._recompile_core(angle*g_shift,ang,spot)
+                    for spot in [0, 1]:
+                        inner = []
+                        for ang in [up_angle, down_angle]:
+                            temp = []
+                            temp += self._recompile_core(angle * g_shift, ang, spot)
                             inner.append(temp)
 
                         outer_list.append(tuple(inner))
@@ -305,16 +245,16 @@ class QCircuit():
 
 
         else:
-            if gate.name in ['Rx','Ry','Rz']:
-                g_shift=1
-                s=np.pi/2
-                up=copy.deepcopy(gate)
-                up.angle= (angle + s)*g_shift
+            if gate.name in ['Rx', 'Ry', 'Rz']:
+                g_shift = 1
+                s = numpy.pi / 2
+                up = copy.deepcopy(gate)
+                up.angle = (angle + s) * g_shift
 
-                down=copy.deepcopy(gate)
-                down.angle= (angle - s)*g_shift
-                outer_list.append(tuple([up,down]))
-            #if gate.name in ['X','Y','Z']:
+                down = copy.deepcopy(gate)
+                down.angle = (angle - s) * g_shift
+                outer_list.append(tuple([up, down]))
+            # if gate.name in ['X','Y','Z']:
             else:
                 raise Exception('non-rotation gates do not yet have a quadrature decompoition')
 

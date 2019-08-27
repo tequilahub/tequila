@@ -25,7 +25,7 @@ def make_gradient(observable: Observable, mode: Bool = 0) -> list:
     circuit_grads=[]
     gradient=[]
     for circuit in observable.unitary:
-        variables=circuit.extract_angles()
+        variables=circuit.extract_parameters()
         indices=[v[0] for v in variables]
         grad_list=[circuit.get_gradient(i) for i in indices]
         circuit_grads.append[grad_list]

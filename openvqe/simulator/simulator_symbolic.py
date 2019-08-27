@@ -1,5 +1,5 @@
 from openvqe.simulator.simulator import Simulator
-from openvqe.circuit.circuit import QCircuit, QGate, Ry, X
+from openvqe.circuit.circuit import QCircuit, QGateImpl, Ry, X
 from openvqe.tools.convenience import number_to_binary
 import copy
 import numpy
@@ -149,7 +149,7 @@ class QState:
 class SimulatorSymbolic(Simulator):
 
     @staticmethod
-    def apply_gate(state: QState, gate: QGate):
+    def apply_gate(state: QState, gate: QGateImpl):
         assert (gate.max_qubit() <= state.n_qubits())
         result = QState()
         for s in state:

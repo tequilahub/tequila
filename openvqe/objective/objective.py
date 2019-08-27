@@ -41,21 +41,3 @@ class Objective:
         assert (len(weights) == len(values))
         return weights.dot(values)
 
-    def gradient(self):
-        '''
-        gets the gradient of the circuit with respect to every unfrozen variable as an array of Objectives.
-        TODO: this is totally fucking confusing if you get more than one unitary and so, I am going to entirely forbid it.
-        This will have to be changed RADICALLY after the implementation of the variable or parameter primitive, but hey,
-        y'all wanted a prototype.
-        return: list of objective, preserving the original observable but having a list of unitaries that calculate the partial derivative w.r.t 1 parameter.
-        '''
-        if len(self.unitaries) is not 1:
-            raise Exception('I categorically refuse to get gradients for multi-unitary observables. ')
-
-        output=[]
-        for unitary in self.unitaries:
-            gradient=unitary.gradient()
-            for i,partial in enumerate(gradient):
-                output.append(Objective(self.observable,partial))
-
-        return output

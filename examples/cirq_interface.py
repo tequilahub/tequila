@@ -56,7 +56,7 @@ if __name__ == "__main__":
     rac2 = compile_controlled_rotation_gate(gate=ac)
     print("after recompilation2:\n", rac2)
 
-    angles = rac2.extract_angles()
+    angles = rac2.extract_parameters()
     print("angles=", angles)
 
     print("Try to get gradient for:")
