@@ -1,8 +1,10 @@
+
 from openvqe.circuit import *
 from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
 from openvqe.circuit.gates import X, Ry, Rx, Rz
 from openvqe.circuit._gates_impl import RotationGateImpl
+
 
 from numpy import pi
 

@@ -1,5 +1,6 @@
 from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe.circuit.circuit import QCircuit, Ry, X
+from openvqe.circuit.circuit import QCircuit
+from openvqe.circuit.gates import Ry, X
 from numpy import pi
 
 """

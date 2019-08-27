@@ -1,5 +1,6 @@
 from openvqe.simulator.simulator_pyquil import SimulatorPyquil
-from openvqe.circuit.circuit import QCircuit, Ry, X
+from openvqe.circuit.circuit import QCircuit
+from openvqe.circuit.gates import  Ry, X
 from openvqe.simulator.simulator import SimulatorReturnType
 from numpy import pi
 

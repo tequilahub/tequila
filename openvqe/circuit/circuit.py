@@ -1,7 +1,5 @@
-from abc import ABC
 from openvqe.circuit._gates_impl import QGateImpl
 import numpy
-import copy
 
 
 class QCircuit():
@@ -180,24 +178,6 @@ class QCircuit():
         else:
             return QCircuit(gates=[gate])
 
-    def _recompile_core(self, angle, shifted, spot, target, control):
-        '''
-        helper function for recursion of recompile_gate.
-        '''
-        temp = []
-        if spot == 0:
-            temp.append(QGateImpl(name="Rz", target=target, angle=-shifted))
-            temp.append(QGateImpl(name="CNOT", target=target, control=control))
-            temp.append(QGateImpl(name="Rz", target=target, angle=angle))
-            temp.append(QGateImpl(name="CNOT", target=target, control=control))
-        if spot == 1:
-            temp.append(QGateImpl(name="Rz", target=target, angle=-angle))
-            temp.append(QGateImpl(name="CNOT", target=target, control=control))
-            temp.append(QGateImpl(name="Rz", target=target, angle=shifted))
-            temp.append(QGateImpl(name="CNOT", target=target, control=control))
-
-        return temp
-
     def recompile_gate(self, gate):
         """
         TODO:
@@ -206,73 +186,8 @@ class QCircuit():
         :param gate: the QGate to recompile
         :return: list of tuple of lists of qgates
         """
+        recompiled_gates = []
+        for g in self.gates:
+            recompiled_gates.append(instruction(g))
+        return QCircuit(gates=recompiled_gates)
 
-        outer_list = []
-        target = gate.target
-        control = gate.control
-        angle = gate.angle
-        clone = copy.deepcopy(gate)
-        if len(target) > 1:
-            raise Exception('multi-target gates do not have quadrature decompositions. I beg your forgiveness.')
-            ### They may have one if they can be decomposed into single target gates and control gates, which can
-            ### then be decomposed further, but we have to deal with this case by case.
-
-        if gate.is_controlled():
-            #### do the case by case for controlled gates
-            if gate.name in ['Rx', 'Ry', 'Rz']:
-                g_shift = 0.5
-                s = numpy.pi / 2
-                up_angle = (angle + s) * g_shift
-                down_angle = (angle - s) * g_shift
-                if gate.name is 'Rx':
-                    for spot in [0, 1]:
-                        inner = []
-                        for ang in [up_angle, down_angle]:
-                            temp = []
-                            temp.append(QGateImpl(name="H", target=gate.target, control=None))
-                            temp += self._recompile_core(angle * g_shift, ang, spot)
-                            temp.append(QGateImpl(name="H", target=gate.target, control=None))
-                            inner.append(temp)
-
-                        outer_list.append(tuple(inner))
-
-                elif gate.name is 'Ry':
-                    for spot in [0, 1]:
-                        inner = []
-                        for ang in [up_angle, down_angle]:
-                            temp = []
-                            temp.append(QGateImpl(name="Rx", target=gate.target, angle=numpy.pi / 2, control=None))
-                            temp += self._recompile_core(angle * g_shift, ang, spot)
-                            temp.append(QGateImpl(name="Rx", target=gate.target, angle=-numpy.pi / 2, control=None))
-                            inner.append(temp)
-
-                        outer_list.append(tuple(inner))
-
-                elif gate.name is 'Rz':
-                    for spot in [0, 1]:
-                        inner = []
-                        for ang in [up_angle, down_angle]:
-                            temp = []
-                            temp += self._recompile_core(angle * g_shift, ang, spot)
-                            inner.append(temp)
-
-                        outer_list.append(tuple(inner))
-            else:
-                raise Exception('non-rotation  gates do not yet have a quadrature decompoition')
-
-
-        else:
-            if gate.name in ['Rx', 'Ry', 'Rz']:
-                g_shift = 1
-                s = numpy.pi / 2
-                up = copy.deepcopy(gate)
-                up.angle = (angle + s) * g_shift
-
-                down = copy.deepcopy(gate)
-                down.angle = (angle - s) * g_shift
-                outer_list.append(tuple([up, down]))
-            # if gate.name in ['X','Y','Z']:
-            else:
-                raise Exception('non-rotation gates do not yet have a quadrature decompoition')
-
-        return outer_list
