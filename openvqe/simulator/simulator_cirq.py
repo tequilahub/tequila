@@ -1,5 +1,5 @@
 from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
-from openvqe import Objective
+from openvqe.objective import Objective
 import cirq
 
 
@@ -55,7 +55,7 @@ class SimulatorCirq(Simulator):
                     gate = (cirq.CNOT(target=qubit_map[g.target[0]], control=qubit_map[g.control[0]]))
                 else:
                     if g.is_parametrized():
-                        gate = getattr(cirq, g.name)(rads=g.angle)
+                        gate = getattr(cirq, g.name)(rads=g.parameter)
                     else:
                         gate = getattr(cirq, g.name)
 

@@ -1,12 +1,7 @@
 from openvqe.simulator.simulator import Simulator
-<<<<<<< HEAD
-from openvqe.circuit.circuit import QCircuit, QGateImpl, Ry, X
-from openvqe.tools.convenience import number_to_binary
-=======
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit.gates import QGate, Ry, X
 from openvqe.tools.convenience import number_to_binary, binary_to_number
->>>>>>> master
 import copy
 import sympy
 
@@ -99,10 +94,6 @@ class QState:
 class SimulatorSymbolic(Simulator):
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_gate(state: QState, gate: QGateImpl):
-        assert (gate.max_qubit() <= state.n_qubits())
-=======
     def apply_on_standard_basis(gate: QGate, qubits: int):
         if gate.is_controlled():
             do_apply = True
@@ -113,7 +104,6 @@ class SimulatorSymbolic(Simulator):
             if not do_apply:
                 return QState.initialize_from_integer(binary_to_number(qubits))
 
->>>>>>> master
         result = QState()
 
         # exceptions

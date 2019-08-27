@@ -1,8 +1,8 @@
-from openvqe import Objective, ObjectiveParameters
+from openvqe.objective import Objective
 from openvqe.openvqe_abc import parametrized
 from openvqe.hamiltonian import HamiltonianBase
 from openfermion import QubitOperator
-from openvqe.circuit import Ry, X, Y
+from openvqe.circuit.gates import Ry, X, Y
 from numpy import pi, sqrt, asarray, exp
 import numpy
 from openvqe.simulator.simulator_cirq import SimulatorCirq
@@ -65,15 +65,12 @@ class DiffObjective(Objective):
         return sqrt(values.dot(weights))
 
 
-class NumpyObjectiveParameters(ObjectiveParameters):
-    functionname: str = "exp"
-
-
-@parametrized()
 class NumpyObjective(Objective):
     """
     More advanced example on customly designed objective classes
     """
+
+    functionname: str
 
     def objective_function(self, values, weights=None):
         if weights is None:
@@ -82,7 +79,7 @@ class NumpyObjective(Objective):
         values = asarray(values)
         weights = asarray(weights)
 
-        f = getattr(numpy, self.parameters.functionname)
+        f = getattr(numpy, self.functionname)
         return f(values.dot(weights))
 
 
@@ -121,10 +118,10 @@ if __name__ == "__main__":
 
     # Same thing with The NumpyObjective function
     O = NumpyObjective(observable=hamiltonian, unitaries=U)
-    O.parameters.functionname = "sqrt"
+    O.functionname = "sqrt"
     E = simulator.expectation_value(objective=O)
     print("Expectation Value is = ", E, " it should be ", sqrt(1.0 / sqrt(2)))
-    O.parameters.functionname = "exp"
+    O.functionname = "exp"
     E = simulator.expectation_value(objective=O)
     print("Expectation Value is = ", E, " it should be ", exp(1.0 / sqrt(2)))
 
