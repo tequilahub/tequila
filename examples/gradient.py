@@ -37,7 +37,7 @@ if __name__ == "__main__":
     ac += Ry(target=1, control=0, angle=pi / 2)
     ac += Rz(target=1, control=[0,2], angle=pi / 2)
 
-    obj= Objective(ac,observable=None)
+    obj= Objective(unitaries=ac,observable=None)
     gradient = obj.gradient()
 
     print("gradient at objective level", gradient)

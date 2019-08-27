@@ -48,7 +48,7 @@ class QCircuit():
         '''
         pass
 
-    def replace_gate(self,position : int, gates: list, inplace: bool=False):
+    def replace_gate(self,position, gates: list, inplace: bool=False):
         '''
         if inplace=False:
         returns a transformed version of the circuit in which whatever gate was at 'position' is removed and replaced with,
@@ -207,7 +207,7 @@ class QCircuit():
             g_w = target.gradient()
             for weight_gate in g_w:
                 new_circuit=copy.deepcopy(self)
-                new_circuit.replace_gate(position=[angles[i][0]],gates=weight_gate['gates'],inplace=True)
+                new_circuit.replace_gate(position=angles[i][0],gates=weight_gate['gates'],inplace=True)
                 new_circuit.weight*=weight_gate['weight']
                 sub_list.append(new_circuit)
             gradient.append(sub_list)

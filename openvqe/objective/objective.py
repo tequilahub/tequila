@@ -56,6 +56,6 @@ class Objective:
         for unitary in self.unitaries:
             gradient=unitary.gradient()
             for i,partial in enumerate(gradient):
-                output[i]=Objective(self.observable,partial)
+                output.append(Objective(self.observable,partial))
 
         return output
