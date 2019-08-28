@@ -63,11 +63,11 @@ def make_gradient_component(unitary: QCircuit, index:int):
                 dg.append(U)
         else:
             neo_a = copy.deepcopy(g)
-            neo_a.angle = g.angle + pi / 2
+            neo_a.angle = g.angle + pi #todo changed this to pi instead of pi/2 --> check
             U1 = QCircuit.wrap_gate(neo_a)
             U1.weight = 0.5
             neo_b = copy.deepcopy(g)
-            neo_b.angle = g.angle - pi / 2
+            neo_b.angle = g.angle - pi #todo changed this to pi instead of pi/2 --> check
             U2 = QCircuit.wrap_gate(neo_b)
             U2.weight = -0.5
             dg = [U1, U2]
