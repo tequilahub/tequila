@@ -29,7 +29,7 @@ if __name__ == "__main__":
     Ry = gates.Ry(target=0, control=None, angle=sympy.Symbol("a"))
     cnot = gates.CNOT(control=0, target=1)
 
-    circuit = Ry + cnot
+    circuit = Ry * cnot
     # equivalent: cnot=gates.X(control=0, target=1)
 
     simulator = SimulatorSymbolic()

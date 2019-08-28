@@ -8,6 +8,7 @@ import numpy
 from openfermion import QubitOperator
 from openvqe.circuit.gates import Rx, H, CNOT, Rz
 from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl
+import copy
 
 
 def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, anti_hermitian=True) -> QCircuit:
@@ -23,7 +24,7 @@ def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, a
             elif not numpy.isclose(value, 0.0, rtol=1.e-8, atol=1.e-8):
                 # don;t make circuit for too small values
                 # @todo include ampltidude_neglect_threshold into parameters
-                circuit += exponential_pauli_gate(paulistring=key, angle=value * factor)
+                circuit *= exponential_pauli_gate(paulistring=key, angle=value * factor)
     return circuit
 
 
@@ -61,26 +62,26 @@ def exponential_pauli_gate(paulistring, angle) -> QCircuit:
 
         # see if we need to change the basis
         if pauli.upper() == "X":
-            change_basis += H(qubit)
-            change_basis_back += H(qubit)
+            change_basis *= H(qubit)
+            change_basis_back *= H(qubit)
         elif pauli.upper() == "Y":
-            change_basis += Rx(target=qubit, angle=numpy.pi / 2)
-            change_basis_back += Rx(target=qubit, angle=-numpy.pi / 2)
+            change_basis *= Rx(target=qubit, angle=numpy.pi / 2)
+            change_basis_back *= Rx(target=qubit, angle=-numpy.pi / 2)
 
         if previous_qubit is not None:
-            cnot_cascade += CNOT(target=qubit, control=previous_qubit)
+            cnot_cascade *= CNOT(target=qubit, control=previous_qubit)
         previous_qubit = qubit
         last_qubit = qubit
 
     reversed_cnot = cnot_cascade.dagger()
 
     # assemble the circuit
-    circuit += change_basis
-    circuit += cnot_cascade
+    circuit *= change_basis
+    circuit *= cnot_cascade
     # factor 2 is since gates are defined with angle/2
-    circuit += Rz(target=last_qubit, angle=2.0 * angle)
-    circuit += reversed_cnot
-    circuit += change_basis_back
+    circuit *= Rz(target=last_qubit, angle=2.0 * angle)
+    circuit *= reversed_cnot
+    circuit *= change_basis_back
 
     return circuit
 
@@ -90,7 +91,7 @@ def compile_multitarget(gate) -> QCircuit:
     if hasattr(gate, "gates"):
         result = QCircuit()
         for g in gate.gates:
-            result += compile_multitarget(gate=g)
+            result *= compile_multitarget(gate=g)
         return result
 
     targets = g.target
@@ -128,7 +129,7 @@ def compile_controlled_rotation_gate(gate: RotationGateImpl, angles: list = None
     if hasattr(gate, "gates"):
         result = QCircuit()
         for g in gate.gates:
-            result += compile_controlled_rotation_gate(gate=g, angles=angles)
+            result *= compile_controlled_rotation_gate(gate=g, angles=angles)
         return result
 
     if gate.control is None:
@@ -147,12 +148,12 @@ def compile_controlled_rotation_gate(gate: RotationGateImpl, angles: list = None
     control = gate.control
 
     result = QCircuit()
-    result += change_basis(target=target, axis=gate.axis)
-    result += RotationGateImpl(axis=0, target=target, angle=angles[0])
-    result += QGateImpl(name="X", target=target, control=control)
-    result += RotationGateImpl(axis=0, target=target, angle=angles[1])
-    result += QGateImpl(name="X", target=target, control=control)
-    result += change_basis(target=target, axis=gate.axis, daggered=True)
+    result *= change_basis(target=target, axis=gate.axis)
+    result *= RotationGateImpl(axis=0, target=target, angle=angles[0])
+    result *= QGateImpl(name="X", target=target, control=control)
+    result *= RotationGateImpl(axis=0, target=target, angle=angles[1])
+    result *= QGateImpl(name="X", target=target, control=control)
+    result *= change_basis(target=target, axis=gate.axis, daggered=True)
 
     result.n_qubits = result.max_qubit()
     return result

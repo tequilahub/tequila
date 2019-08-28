@@ -127,8 +127,6 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def __init__(self, name, parameter, target: list, control: list = None, frozen: bool = False, phase=1.0):
         super().__init__(name, target, control, phase=phase)
         self.parameter = parameter
-        if self.parameter is None:
-            raise Exception('Parametrized gates require a parameter!')
         self.frozen = frozen
 
     def is_frozen(self):
@@ -141,7 +139,10 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         """
         :return: True if the gate is parametrized
         """
-        return True
+        if self.parameter is None:
+            return False
+        else:
+            return True
 
     def is_differentiable(self) -> bool:
         """
@@ -196,7 +197,17 @@ class RotationGateImpl(ParametrizedGateImpl):
     def angle(self, angle):
         self.parameter = angle
 
+    def __ipow__(self, power, modulo=None):
+        self.angle *= power
+        return self
+
+    def __pow__(self, power, modulo=None):
+        result = copy.deepcopy(self)
+        result.angle *= power
+        return result
+
     def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = False, phase=1.0):
+        assert(angle is not None)
         super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control, frozen=frozen,
                          phase=phase)
         self.axis = axis
@@ -206,13 +217,27 @@ class PowerGateImpl(ParametrizedGateImpl):
 
     @property
     def power(self):
-        return self.parameter
+        if self.parameter is None:
+            return 1
+        else:
+            return self.parameter
 
     @power.setter
     def power(self, power):
         self.parameter = power
 
-    def __init__(self, name, target: list, power=1.0, control: list = None, frozen: bool = False, phase=1.0):
-        assert(power is not None)
+    def __ipow__(self, other):
+        if self.parameter is None:
+            self.power = other
+        else:
+            self.power = self.power*other
+        return self
+
+    def __pow__(self, power, modulo=None):
+        result = copy.deepcopy(self)
+        result.power *= power
+        return result
+
+    def __init__(self, name, target: list, power=None, control: list = None, frozen: bool = False, phase=1.0):
         super().__init__(name=name, parameter=power, target=target, control=control, frozen=frozen,
                          phase=phase)

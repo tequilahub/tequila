@@ -38,17 +38,17 @@ if __name__ == "__main__":
     print("Simulate with Cirq:")
     simulator = SimulatorCirq()
 
-
     print("run the circuit:")
-    result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, returntype=None, initial_state=ucc.initial_state(hqc))
+    result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, returntype=None,
+                                             initial_state=ucc.initial_state(hqc))
     print("resulting state is:")
     print("|psi>=", result)
     print("circuit\n", result.circuit)
     print("initial state was: ", ucc.initial_state(hamiltonian=hqc))
 
     energy = expectation_value_cirq(final_state=result.wavefunction,
-                                                   hamiltonian=hqc(),
-                                                   n_qubits=hqc.n_qubits())
+                                    hamiltonian=hqc(),
+                                    n_qubits=hqc.n_qubits())
 
     print("energy = ", energy)
 
@@ -60,13 +60,12 @@ if __name__ == "__main__":
 
     print("\n\nSymbolic computation, just for fun and to test flexibility")
 
-    abstract_circuit =  Ry(target=0, angle=0.0685 * numpy.pi) + CNOT(control=0, target=1) + CNOT(control=0,target=2) + CNOT(control=1, target=3) + X(0) + X(1)
+    abstract_circuit = Ry(target=0, angle=0.0685 * numpy.pi) \
+                       * CNOT(control=0, target=1) * CNOT(control=0,target=2) \
+                       * CNOT(control=1, target=3) * X(0) * X(1)
 
     from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
 
     simulator = SimulatorSymbolic()
     result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=0)
     print(result)
-
-
-

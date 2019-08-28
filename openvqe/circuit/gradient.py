@@ -40,9 +40,9 @@ def make_gradient_component(unitary: QCircuit, index:int):
     post = QCircuit()
     for i, g in enumerate(unitary.gates):
         if i < index:
-            pre += QCircuit.wrap_gate(g)
+            pre *= QCircuit.wrap_gate(g)
         elif i > index:
-            post += QCircuit.wrap_gate(g)
+            post *= QCircuit.wrap_gate(g)
 
     g = unitary.gates[index]
     dg = []
@@ -86,6 +86,6 @@ def make_gradient_component(unitary: QCircuit, index:int):
     # assemble
     unitaries = []
     for U in dg:
-        unitaries.append(pre + U + post)
+        unitaries.append(pre * U * post)
 
     return Objective(unitaries=unitaries)

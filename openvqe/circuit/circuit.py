@@ -1,15 +1,28 @@
 from openvqe.circuit._gates_impl import QGateImpl
+from openvqe import OpenVQEException
 import numpy
+import copy
 
 
 class QCircuit():
+
+    @property
+    def weight(self):
+        if self._weight is None:
+            return 1
+        else:
+            return self._weight
+
+    @weight.setter
+    def weight(self, value):
+        self._weight = value
 
     def __init__(self, weight=1.0, gates=None):
         if gates is None:
             self.gates = []
         else:
             self.gates = gates
-        self.weight = weight
+        self._weight = weight
 
     def __getitem__(self, item):
         """
@@ -37,7 +50,7 @@ class QCircuit():
         """
         result = QCircuit()
         for g in reversed(self.gates):
-            result += g.dagger()
+            result *= g.dagger()
         return result
 
     def __true_weight__(self):
@@ -128,20 +141,44 @@ class QCircuit():
             qmax = max(qmax, g.max_qubit())
         return qmax
 
-    def __add__(self, other):
+    def __mul__(self, other):
         if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
         result = QCircuit()
-        result.gates = (self.gates + other.gates).copy()
+        result.gates = copy.deepcopy(self.gates + other.gates)
+        result.weight = self.weight * other.weight
         return result
 
-    def __iadd__(self, other):
+    def __imul__(self, other):
         if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
-        if isinstance(other, QGateImpl):
-            self.gates.append(other)
+        elif isinstance(other, list) and isinstance(other[0], QGateImpl):
+            self.gates += other
         else:
             self.gates += other.gates
+            self.weight *= other.weight
+        return self
+
+    def __rmul__(self, other):
+        if isinstance(other, QCircuit):
+            return self.__mul__(other)
+        if isinstance(other, QGateImpl):
+            return self.__mul__(other)
+        else:
+            return QCircuit(gates=copy.deepcopy(self.gates), weight=self.weight * other)
+
+    def __pow__(self, power, modulo=None):
+        if modulo is not None:
+            raise OpenVQEException("Modulo powers for circuits/unitaries not supported")
+        pgates = []
+        for g in self.gates:
+            pgates.append(g ** power)
+        return QCircuit(gates=pgates, weight=self.weight ** power)
+
+    def __ipow__(self, power):
+        self.weight = self.weight ** power
+        for i, g in enumerate(self.gates):
+            self.gates[i] **= power
         return self
 
     def __str__(self):
@@ -159,7 +196,7 @@ class QCircuit():
             return False
         if len(self.gates) != len(other.gates):
             return False
-        for i,g in enumerate(self.gates):
+        for i, g in enumerate(self.gates):
             if g != other.gates[i]:
                 return False
         return True
@@ -190,4 +227,3 @@ class QCircuit():
         for g in self.gates:
             recompiled_gates.append(instruction(g))
         return QCircuit(gates=recompiled_gates)
-

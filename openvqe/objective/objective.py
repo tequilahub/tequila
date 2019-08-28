@@ -49,6 +49,8 @@ class Objective:
         """
         if weights is None:
             weights = asarray([1] * len(values))
+        else:
+            weights = asarray(weights)
         values = asarray(values)
         assert (len(weights) == len(values))
         return weights.dot(values)

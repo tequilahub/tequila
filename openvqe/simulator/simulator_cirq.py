@@ -22,9 +22,9 @@ class SimulatorCirq(Simulator):
             exv.append(
                 expectation_value_cirq(hamiltonian=objective.observable(), n_qubits=objective.observable.n_qubits(),
                                        final_state=wfn.wavefunction))
-            # weights.append(unitary.weight) not there yet
+            weights.append(unitary.weight)
 
-        return objective.objective_function(values=exv)
+        return objective.objective_function(values=exv, weights=weights)
 
     def create_circuit(self, abstract_circuit: QCircuit, qubit_map=None,
                        recompile_controlled_rotations=False) -> cirq.Circuit:

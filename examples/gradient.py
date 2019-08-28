@@ -22,8 +22,8 @@ if __name__ == "__main__":
     print("gradient at of Ry at gate level", gradientx, " test:", gradient[0] == gradientx[0])
 
     ac = QCircuit()
-    ac += X(target=0, control=None)
-    ac += Ry(target=1, control=None, angle=pi / 2)
+    ac *= X(target=0, control=None)
+    ac *= Ry(target=1, control=None, angle=pi / 2)
 
     obj = Objective(unitaries=ac, observable=None)
     gradient = grad(obj.unitaries[0])
@@ -31,8 +31,8 @@ if __name__ == "__main__":
     print("gradient of X, Ry at objective level", gradient)
 
     ac = QCircuit()
-    ac += X(target=0, power=2.3, phase=-1.0)
-    ac += Ry(target=1, control=0, angle=pi / 2)
+    ac *= X(target=0, power=2.3, phase=-1.0)
+    ac *= Ry(target=1, control=0, angle=pi / 2)
 
     print('gradient of Xpower, controlled Ry at circuit level:', grad(ac))
     obj = Objective(unitaries=ac, observable=None)
@@ -41,10 +41,10 @@ if __name__ == "__main__":
     print("gradient of Xpower controlled Ry at objective level", gradient)
 
     ac = QCircuit()
-    ac += X(0)
-    ac += Rx(target=2, angle=0.5, frozen=True)
-    ac += Ry(target=1, control=0, angle=pi / 2)
-    ac += Rz(target=1, control=[0, 2], angle=pi / 2)
+    ac *= X(0)
+    ac *= Rx(target=2, angle=0.5, frozen=True)
+    ac *= Ry(target=1, control=0, angle=pi / 2)
+    ac *= Rz(target=1, control=[0, 2], angle=pi / 2)
 
     obj = Objective(unitaries=ac, observable=None)
     gradient = grad(obj.unitaries[0])

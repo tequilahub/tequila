@@ -25,8 +25,8 @@ def make_gradient(circuit: QCircuit):
 
 if __name__ == "__main__":
     ac = QCircuit()
-    ac += X(0)
-    ac += Ry(target=1, control=0, angle=pi / 2)
+    ac *= X(0)
+    ac *= Ry(target=1, control=0, angle=pi / 2)
 
     simulator = SimulatorCirq()
 
@@ -37,8 +37,8 @@ if __name__ == "__main__":
     print("\nTranslated circuit:\n", custom_state.circuit)
 
     ac = QCircuit()
-    ac += X(0)
-    ac += X(1)
+    ac *= X(0)
+    ac *= X(1)
     density_matrix_result = simulator.simulate_density_matrix(abstract_circuit=ac)
 
     print("density_matrix_result:\n", density_matrix_result)
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     print("\n\nRecompile controled-rotations")
     from openvqe.circuit.compiler import compile_controlled_rotation_gate
-    ac = X(0) + Ry(target=1, control=0, angle=pi / 2)
+    ac = X(0) * Ry(target=1, control=0, angle=pi / 2)
     # print(ac)
     # rac=ac.recompile_gates(instruction=compile_controlled_rotation_gate)
     # print("after recompilation:\n", rac)
