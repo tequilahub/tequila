@@ -61,12 +61,13 @@ def exponential_pauli_gate(paulistring, angle) -> QCircuit:
         qubit = [pq[0]]  # wrap in list for targets= ...
 
         # see if we need to change the basis
-        if pauli.upper() == "X":
-            ubasis *= H(qubit)
-            ubasis_t *= H(qubit)
-        elif pauli.upper() == "Y":
-            ubasis *= Rx(target=qubit, angle=numpy.pi / 2)
-            ubasis_t *= Rx(target=qubit, angle=-numpy.pi / 2)
+        axis = 2
+        if pauli.upper()=="X":
+            axis =0
+        elif pauli.upper()=="Y":
+            axis=1
+        ubasis *= change_basis(target=qubit, axis=axis)
+        ubasis_t *= change_basis(target=qubit, axis=axis, daggered=True)
 
         if previous_qubit is not None:
             cnot_cascade *= CNOT(target=qubit, control=previous_qubit)
@@ -107,11 +108,11 @@ def compile_multitarget(gate) -> QCircuit:
 
 def change_basis(target, axis, daggered=False):
     if axis == 0:
-        return H(target=target)
+        return H(target=target, frozen=True)
     elif axis == 1 and daggered:
-        return Rx(angle=-numpy.pi, target=target)
+        return Rx(angle=-numpy.pi/2, target=target, frozen=True)
     elif axis == 1:
-        return Rx(angle=numpy.pi, target=target)
+        return Rx(angle=numpy.pi/2, target=target, frozen=True)
     else:
         return QCircuit()
 

@@ -3,13 +3,24 @@ from numpy import asarray
 
 class Objective:
 
-    def __init__(self, observable=None, unitaries=None):
-        if unitaries is None:
-            self.unitaries: list = []
-        elif hasattr(unitaries, "__iter__") or hasattr(unitaries, "__get_item__"):
-            self.unitaries = unitaries
+    @property
+    def unitaries(self):
+        if self._unitaries is None:
+            return []
         else:
-            self.unitaries = [unitaries]
+            return self._unitaries
+
+    @unitaries.setter
+    def unitaries(self, u):
+        if u is None:
+            self.unitaries = u
+        elif hasattr(u, "__iter__") or hasattr(u, "__get_item__"):
+            self._unitaries = u
+        else:
+            self._unitaries = [u]
+
+    def __init__(self, observable=None, unitaries=None):
+        self.unitaries = unitaries
 
         self.observable = observable
 
@@ -54,3 +65,30 @@ class Objective:
         values = asarray(values)
         assert (len(weights) == len(values))
         return weights.dot(values)
+
+    def __repr__(self):
+        nu = 0
+        if self.unitaries is not None:
+            nu = len(self.unitaries)
+        no = "no "
+        if self.observable is not None:
+            no = "with "
+        return "Objective("+str(nu)+" unitaries, " + str(no) + " observable"
+
+    def __str__(self):
+
+        nu = "no"
+        if self.unitaries is not None:
+            nu = str(len(self.unitaries))
+
+        result = "Objective " + nu + " Unitaries:\n"
+        for U in self.unitaries:
+            result += str(U) + "\n"
+
+        if self.observable is None:
+            result += "No Observable\n"
+        else:
+            result += "Observable:\n"
+            result += str(self.observable)
+
+        return result

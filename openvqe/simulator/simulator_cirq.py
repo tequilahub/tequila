@@ -11,14 +11,14 @@ class OpenVQECirqException(OpenVQEException):
 
 class SimulatorCirq(Simulator):
 
-    def expectation_value(self, objective: Objective):
+    def expectation_value(self, objective: Objective, initial_state: int=0):
         # this is not how it is supposed to be ... just hacked in order for this part to return something
         from openvqe.tools import expectation_value_cirq
         result = 0.0
         exv = []
         weights = []
         for unitary in objective.unitaries:
-            wfn = self.simulate_wavefunction(abstract_circuit=unitary)
+            wfn = self.simulate_wavefunction(abstract_circuit=unitary, initial_state=initial_state)
             exv.append(
                 expectation_value_cirq(hamiltonian=objective.observable(), n_qubits=objective.observable.n_qubits(),
                                        final_state=wfn.wavefunction))

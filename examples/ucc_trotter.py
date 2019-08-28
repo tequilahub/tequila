@@ -5,6 +5,8 @@ from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.simulator.simulator_pyquil import SimulatorPyquil
 from openvqe.tools.expectation_value_cirq import expectation_value_cirq
 from openvqe.circuit.gates import Ry, CNOT, X
+from openvqe.objective import Objective
+from openvqe.circuit.gradient import grad
 from openvqe.circuit import QCircuit
 import numpy
 
@@ -28,11 +30,14 @@ if __name__ == "__main__":
     print("n_orbitals=", hqc.n_orbitals())
 
     amplitudes = hqc.parse_ccsd_amplitudes()
+    print("# of amplitudes: ",len(amplitudes))
 
     print("Construct the AnsatzUCC class")
 
     ucc = AnsatzUCC()
     ucc_operator = ucc(angles=amplitudes)
+    print("# ucc terms: ", len(ucc_operator.terms))
+    print("# ucc terms:\n", ucc_operator.terms )
 
     abstract_circuit = compile_trotter_evolution(cluster_operator=ucc_operator, steps=1, anti_hermitian=True)
 
@@ -53,6 +58,19 @@ if __name__ == "__main__":
 
     print("energy = ", energy)
 
+    O = Objective(observable=hqc, unitaries=abstract_circuit)
+    energy = SimulatorCirq().expectation_value(objective=O, initial_state=ucc.initial_state(hqc))
+
+    print("energy = ", energy)
+
+    dO = grad(abstract_circuit)
+    # we only have one amplitude
+    gradient = 0.0
+    for dOi in dO:
+        dOi.observable = hqc
+        value = SimulatorCirq().expectation_value(objective=dOi, initial_state=ucc.initial_state(hqc))
+        gradient += value
+    print("gradient = ", gradient)
 
     exit()
     print("\n\nSame with Pyquil:")
