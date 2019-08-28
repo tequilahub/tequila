@@ -6,6 +6,7 @@ from openvqe import OpenVQEException
 import copy
 from numpy import pi
 
+
 def grad(obj):
     if isinstance(obj, QCircuit):
         return grad_unitary(unitary=obj)
@@ -16,20 +17,26 @@ def grad(obj):
     else:
         raise OpenVQEException("Gradient not implemented for other types than QCircuit or Objective")
 
-def grad_unitary(unitary:QCircuit):
-    gradient=[]
+
+def grad_unitary(unitary: QCircuit):
+    gradient = []
     angles = unitary.extract_parameters()
     for i in range(len(angles)):
         index = angles[i][0]
         gradient.append(make_gradient_component(unitary=unitary, index=index))
     return gradient
 
+
 def grad_objective(objective: Objective):
-    assert(len(objective.unitaries==1))
-    return grad_unitary(unitary=objective.unitaries[0])
+    if len(objective.unitaries) > 1:
+        raise OpenVQEException("Gradient of Objectives with more than one unitary not supported yet")
+    result = grad_unitary(unitary=objective.unitaries[0])
+    for i, r in enumerate(result):
+        result[i].observable = objective.observable
+    return result
 
 
-def make_gradient_component(unitary: QCircuit, index:int):
+def make_gradient_component(unitary: QCircuit, index: int):
     """
     :param unitary: the unitary
     :param index: position of gate in circuit (should be changed)
@@ -59,15 +66,15 @@ def make_gradient_component(unitary: QCircuit, index:int):
             for i, angle_set in enumerate(angles):
                 parity = 1.0 - 2.0 * (i // 2)
                 U = compile_controlled_rotation_gate(g, angles=angle_set)
-                U.weight = 0.5*parity
+                U.weight = 0.5 * parity
                 dg.append(U)
         else:
             neo_a = copy.deepcopy(g)
-            neo_a.angle = g.angle + pi #todo changed this to pi instead of pi/2 --> check
+            neo_a.angle = g.angle + pi  # todo changed this to pi instead of pi/2 --> check
             U1 = QCircuit.wrap_gate(neo_a)
             U1.weight = 0.5
             neo_b = copy.deepcopy(g)
-            neo_b.angle = g.angle - pi #todo changed this to pi instead of pi/2 --> check
+            neo_b.angle = g.angle - pi  # todo changed this to pi instead of pi/2 --> check
             U2 = QCircuit.wrap_gate(neo_b)
             U2.weight = -0.5
             dg = [U1, U2]

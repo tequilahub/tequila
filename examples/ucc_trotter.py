@@ -63,11 +63,10 @@ if __name__ == "__main__":
 
     print("energy = ", energy)
 
-    dO = grad(abstract_circuit)
+    dO = grad(O)
     # we only have one amplitude
     gradient = 0.0
     for dOi in dO:
-        dOi.observable = hqc
         value = SimulatorCirq().expectation_value(objective=dOi, initial_state=ucc.initial_state(hqc))
         gradient += value
     print("gradient = ", gradient)

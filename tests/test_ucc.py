@@ -46,10 +46,9 @@ class TestParameters(unittest.TestCase):
         energy2 = SimulatorCirq().expectation_value(objective=O, initial_state=ucc.initial_state(hqc))
         assert(isclose(energy, energy2))
 
-        dO = grad(abstract_circuit)
+        dO = grad(O)
         gradient = 0.0
         for dOi in dO:
-            dOi.observable = hqc
             value = SimulatorCirq().expectation_value(objective=dOi, initial_state=ucc.initial_state(hqc))
             gradient += value
         assert(isclose(gradient,0.0))
