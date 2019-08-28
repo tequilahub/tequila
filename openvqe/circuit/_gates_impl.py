@@ -206,6 +206,20 @@ class RotationGateImpl(ParametrizedGateImpl):
         result.angle *= power
         return result
 
+    def __mul__(self, other) -> list:
+        """
+        Helper function for QCircuit, should not be used on its own
+        As every class in _gates_impl.py
+        Tries to optimize if two rotation gates are combined
+        """
+        if hasattr(other, "angle") and other.axis==self.axis and other.target == self.target and other.control == self.control:
+            result = copy.deepcopy(self)
+            result.angle = self.angle+other.angle
+            result.frozen = self.frozen or other.frozen
+            return [result]
+        else:
+            return [self, other]
+
     def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = False, phase=1.0):
         assert(angle is not None)
         super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control, frozen=frozen,
@@ -237,6 +251,20 @@ class PowerGateImpl(ParametrizedGateImpl):
         result = copy.deepcopy(self)
         result.power *= power
         return result
+
+    def __mul__(self, other) -> list:
+        """
+        Helper function for QCircuit, should not be used on its own
+        As every class in _gates_impl.py
+        Tries to optimize if two rotation gates are combined
+        """
+        if hasattr(other, "power") and other.name==self.name and other.target == self.target and other.control == self.control:
+            result = copy.deepcopy(self)
+            result.power = self.power+other.power
+            result.frozen = self.frozen or other.frozen
+            return [result]
+        else:
+            return [self, other]
 
     def __init__(self, name, target: list, power=None, control: list = None, frozen: bool = False, phase=1.0):
         super().__init__(name=name, parameter=power, target=target, control=control, frozen=frozen,

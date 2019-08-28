@@ -145,7 +145,7 @@ class QCircuit():
         if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
         result = QCircuit()
-        result.gates = copy.deepcopy(self.gates + other.gates)
+        result.gates = copy.deepcopy(self.gates+other.gates)
         result.weight = self.weight * other.weight
         return result
 

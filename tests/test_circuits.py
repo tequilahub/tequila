@@ -68,6 +68,11 @@ def test_arithmetic():
         X1 = Rz(target=qubit, control=c, angle=1.0)
         assert (X2 == X1 ** power)
 
+        # not supported yet
+        # X1 = X(target=qubit, control=c, power=2.0)
+        # X2 = X(target=qubit, control=c, power=1.0)
+        # assert (X1 == X2*X2)
+
 
 if __name__ == "__main__":
     test_basic_gates()
