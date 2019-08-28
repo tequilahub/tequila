@@ -9,6 +9,7 @@ from numpy import isclose
 
 import unittest
 
+
 class TestParameters(unittest.TestCase):
 
     def test_h2_energy_cirq(self):
@@ -18,7 +19,6 @@ class TestParameters(unittest.TestCase):
         parameters_qc.psi4.run_ccsd = True
         parameters_qc.filename = "psi4"
         hqc = HamiltonianQC(parameters_qc)
-
 
         filename = parameters_qc.filename
 
@@ -34,21 +34,21 @@ class TestParameters(unittest.TestCase):
         result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, returntype=None,
                                                  initial_state=ucc.initial_state(hqc))
 
-        assert(ucc.initial_state(hqc)==12)
+        assert (ucc.initial_state(hqc) == 12)
 
         energy = expectation_value_cirq(final_state=result.wavefunction,
                                         hamiltonian=hqc(),
                                         n_qubits=hqc.n_qubits())
 
-        assert(isclose(energy, -1.1368354639104123))
+        assert (isclose(energy, -1.1368354639104123))
 
         O = Objective(observable=hqc, unitaries=abstract_circuit)
         energy2 = SimulatorCirq().expectation_value(objective=O, initial_state=ucc.initial_state(hqc))
-        assert(isclose(energy, energy2))
+        assert (isclose(energy, energy2))
 
         dO = grad(O)
         gradient = 0.0
         for dOi in dO:
             value = SimulatorCirq().expectation_value(objective=dOi, initial_state=ucc.initial_state(hqc))
             gradient += value
-        assert(isclose(gradient,0.0))
+        assert (isclose(gradient, 0.0))
