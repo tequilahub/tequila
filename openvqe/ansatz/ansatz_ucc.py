@@ -53,6 +53,7 @@ class AnsatzUCC(AnsatzBase):
         for i in range(hamiltonian.n_electrons()):
             l[i] = 1
 
+        l = [i for i in reversed(l)]
         return binary_to_number(l=l)
 
     def make_cluster_operator(self, angles: ManyBodyAmplitudes) -> openfermion.QubitOperator:

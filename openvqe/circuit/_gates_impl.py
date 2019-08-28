@@ -1,5 +1,5 @@
 from abc import ABC
-
+from openvqe import OpenVQEException
 import numpy
 import copy
 
@@ -124,6 +124,10 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     Has su
     '''
 
+    def dagger(self):
+        raise OpenVQEException("should not be called from ABC")
+        return self
+
     def __init__(self, name, parameter, target: list, control: list = None, frozen: bool = False, phase=1.0):
         super().__init__(name, target, control, phase=phase)
         self.parameter = parameter
@@ -226,6 +230,12 @@ class RotationGateImpl(ParametrizedGateImpl):
                          phase=phase)
         self.axis = axis
 
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result.angle = -self.angle
+        result.phase = self.phase.conjugate()
+        return result
+
 
 class PowerGateImpl(ParametrizedGateImpl):
 
@@ -269,3 +279,8 @@ class PowerGateImpl(ParametrizedGateImpl):
     def __init__(self, name, target: list, power=None, control: list = None, frozen: bool = False, phase=1.0):
         super().__init__(name=name, parameter=power, target=target, control=control, frozen=frozen,
                          phase=phase)
+
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result.phase = self.phase.conjugate()
+        return result

@@ -152,7 +152,8 @@ class QCircuit():
     def __imul__(self, other):
         if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
-        elif isinstance(other, list) and isinstance(other[0], QGateImpl):
+
+        if isinstance(other, list) and isinstance(other[0], QGateImpl):
             self.gates += other
         else:
             self.gates += other.gates
