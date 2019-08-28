@@ -193,8 +193,8 @@ class RotationGateImpl(ParametrizedGateImpl):
         return self.parameter
 
     @angle.setter
-    def angle(self, power):
-        self.parameter = power
+    def angle(self, angle):
+        self.parameter = angle
 
     def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = False, phase=1.0):
         super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control, frozen=frozen,

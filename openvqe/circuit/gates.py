@@ -49,7 +49,11 @@ def X(target, control=None, power=None, frozen=None, phase=1.0):
         return PowerGateImpl(name="X", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
-def CNOT(target, control):
+def CNOT(target, control=None):
+    if control is None:
+        assert (len(target) == 2)
+        control = target[1]
+        target = target[0]
     return X(target=target, control=control)
 
 

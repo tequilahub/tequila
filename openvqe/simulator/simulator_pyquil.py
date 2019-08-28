@@ -2,6 +2,10 @@ from openvqe.simulator.simulator import Simulator, QCircuit, OpenVQEException, S
 from openvqe.tools.convenience import number_to_binary
 import pyquil
 
+class OpenVQEPyquilException(OpenVQEException):
+    def __str__(self):
+        return "simulator_pyquil: "+self.message
+
 
 class WavefunctionPyquil(SimulatorReturnType):
 
@@ -31,6 +35,9 @@ class SimulatorPyquil(Simulator):
         result = pyquil.Program()
 
         for g in abstract_circuit.gates:
+
+            if len(g.target)>1:
+                raise OpenVQEPyquilException("Pyquil backend does not support multiple targets")
 
             if g.is_parametrized() and g.control is not None and recompile_controlled_rotations:
                 # here we need recompilation

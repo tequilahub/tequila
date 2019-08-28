@@ -8,8 +8,8 @@ class TestParameters(unittest.TestCase):
 
         geomstrings = [
             " H 0.0 0.0 1.0\n H 0.0 0.0 -1.0",
-            " he 0.0 0.0 0.0",
-            " Li 0.0 0.0 0.377\n h 0.0 0 -1.13"
+            " he 0.0 0.0 0.0"#,
+            #" Li 0.0 0.0 0.377\n h 0.0 0 -1.13"
         ]
 
         bases = [

@@ -19,6 +19,11 @@ class QState:
             self.state = state
         self.binary_printout = binary_printout
 
+    def __eq__(self, other):
+        if not hasattr(other, "state"):
+            return False
+        return self.state == other.state
+
     @staticmethod
     def initialize_from_integer(integer):
         state = {integer: sympy.Integer(1.0)}
@@ -135,6 +140,10 @@ class SimulatorSymbolic(Simulator):
                 fac2 = (sympy.sqrt(sympy.Rational(1 / 2)))
             elif gate.name.upper() == "CNOT" or gate.name.upper() == "X":
                 fac2 = sympy.Integer(1)
+            elif gate.name.upper() == "Y":
+                fac2 = sympy.I*sympy.Integer(-1)**(qv+1)
+            elif gate.name.upper() == "Z":
+                fac1 = sympy.Integer(-1)**(qv)
             elif gate.name.upper() == "RX":
                 angle = sympy.Rational(1 / 2) * gate.angle
                 fac1 = sympy.cos(angle)
@@ -145,10 +154,7 @@ class SimulatorSymbolic(Simulator):
                 fac2 = -sympy.sin(angle) * sympy.Integer(-1) ** qv
             elif gate.name.upper() == "RZ":
                 angle = sympy.Rational(1 / 2) * gate.angle
-                fac1 = sympy.exp(-angle * sympy.I * sympy.Integer(-1) ** qv)
-            elif gate.name.upper() == "RZ":
-                angle = sympy.Rational(1 / 2) * gate.angle
-                fac1 = sympy.exp(-angle * sympy.I * sympy.Integer(-1) ** qv)
+                fac1 = sympy.exp(-angle * sympy.I * sympy.Integer(-1) ** (qv))
             else:
                 raise Exception("Gate is not known to simulator, " + str(gate))
 
@@ -162,7 +168,7 @@ class SimulatorSymbolic(Simulator):
         return result
 
     @staticmethod
-    def apply_gate(state: QState, gate: QGate):
+    def apply_gate(state: QState, gate: QGate) -> QState:
         result = QState()
         maxq = max(state.n_qubits(), gate.max_qubit())
         for s, v in state.items():
