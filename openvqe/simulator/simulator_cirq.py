@@ -1,6 +1,12 @@
 from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
+from openvqe import OpenVQEException
 from openvqe.objective import Objective
 import cirq
+
+
+class OpenVQECirqException(OpenVQEException):
+    def __str__(self):
+        return "Error in cirq backend:" + self.message
 
 
 class SimulatorCirq(Simulator):
@@ -16,7 +22,7 @@ class SimulatorCirq(Simulator):
             exv.append(
                 expectation_value_cirq(hamiltonian=objective.observable(), n_qubits=objective.observable.n_qubits(),
                                        final_state=wfn.wavefunction))
-            #weights.append(unitary.weight) not there yet
+            # weights.append(unitary.weight) not there yet
 
         return objective.objective_function(values=exv)
 
@@ -55,7 +61,15 @@ class SimulatorCirq(Simulator):
                     gate = (cirq.CNOT(target=qubit_map[g.target[0]], control=qubit_map[g.control[0]]))
                 else:
                     if g.is_parametrized():
-                        gate = getattr(cirq, g.name)(rads=g.parameter)
+                        if hasattr(g, "power"):
+                            if g.power == 1.0:
+                                gate = getattr(cirq, g.name)
+                            else:
+                                gate = getattr(cirq, g.name+"PowGate")(exponent=g.power)
+                        elif hasattr(g, "angle"):
+                            gate = getattr(cirq, g.name)(rads=g.parameter)
+                        else:
+                            raise OpenVQECirqException("parametrized gate: only supporting power and rotation gates")
                     else:
                         gate = getattr(cirq, g.name)
 

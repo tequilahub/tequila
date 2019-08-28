@@ -177,7 +177,6 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         return True
 
 
-
 class RotationGateImpl(ParametrizedGateImpl):
 
     @staticmethod
@@ -214,5 +213,6 @@ class PowerGateImpl(ParametrizedGateImpl):
         self.parameter = power
 
     def __init__(self, name, target: list, power=1.0, control: list = None, frozen: bool = False, phase=1.0):
+        assert(power is not None)
         super().__init__(name=name, parameter=power, target=target, control=control, frozen=frozen,
                          phase=phase)

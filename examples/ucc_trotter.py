@@ -4,6 +4,8 @@ from openvqe.circuit.compiler import compile_trotter_evolution
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.simulator.simulator_pyquil import SimulatorPyquil
 from openvqe.tools.expectation_value_cirq import expectation_value_cirq
+from openvqe.circuit.gates import Ry, CNOT, X
+import numpy
 
 if __name__ == "__main__":
     print("Demo for closed-shell UCC with psi4-CCSD trial state and first order Trotter decomposition")
@@ -57,9 +59,6 @@ if __name__ == "__main__":
     print("|psi>=", result.result)
 
     print("\n\nSymbolic computation, just for fun and to test flexibility")
-    # replacing the the circuit with something shorter
-    from openvqe.circuit.circuit import CNOT, X, Ry
-    import numpy
 
     abstract_circuit =  Ry(target=0, angle=0.0685 * numpy.pi) + CNOT(control=0, target=1) + CNOT(control=0,target=2) + CNOT(control=1, target=3) + X(0) + X(1)
 

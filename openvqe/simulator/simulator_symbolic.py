@@ -172,7 +172,7 @@ class SimulatorSymbolic(Simulator):
     def simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: QState = None):
         n_qubits = abstract_circuit.max_qubit()
         if initial_state is None:
-            initial_state = QState(QBasisState(qubits=[0] * n_qubits))
+            initial_state = QState.initialize_from_integer(0)
         elif isinstance(initial_state, int):
             initial_state = QState.initialize_from_integer(initial_state)
 

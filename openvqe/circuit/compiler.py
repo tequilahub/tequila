@@ -6,8 +6,8 @@ Replace with fancier external packages at some point
 from openvqe.circuit.circuit import QCircuit
 import numpy
 from openfermion import QubitOperator
-from openvqe.circuit.gates import Rx, H
-from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl
+from openvqe.circuit.gates import Rx, H, CNOT, Rz
+from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl
 
 
 def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, anti_hermitian=True) -> QCircuit:
@@ -72,7 +72,7 @@ def exponential_pauli_gate(paulistring, angle) -> QCircuit:
         previous_qubit = qubit
         last_qubit = qubit
 
-    reversed_cnot = cnot_cascade.make_dagger()
+    reversed_cnot = cnot_cascade.dagger()
 
     # assemble the circuit
     circuit += change_basis

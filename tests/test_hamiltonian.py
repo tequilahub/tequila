@@ -1,6 +1,5 @@
 import unittest
-# from .context import openvqe
-from openvqe.hamiltonian.hamiltonian_qc import HamiltonianQC, ParametersQC
+from openvqe.hamiltonian import HamiltonianQC, ParametersQC
 import openfermion
 
 class TestParameters(unittest.TestCase):
@@ -14,8 +13,8 @@ class TestParameters(unittest.TestCase):
         ]
 
         bases = [
-            'sto-3g',
-            '6-31g'
+            'sto-3g'#,
+            #'6-31g'
         ]
 
         trafos = [

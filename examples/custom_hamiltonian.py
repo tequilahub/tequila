@@ -2,7 +2,7 @@
 Example File on how to define a customized Hamiltonian
 """
 
-from openvqe import ParametersHamiltonian, HamiltonianBase
+from openvqe.hamiltonian import ParametersHamiltonian, HamiltonianBase
 import openfermion
 import numpy as np
 

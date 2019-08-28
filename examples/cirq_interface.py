@@ -51,8 +51,6 @@ if __name__ == "__main__":
     # rac=ac.recompile_gates(instruction=compile_controlled_rotation_gate)
     # print("after recompilation:\n", rac)
 
-
-
     # should also work
     rac2 = compile_controlled_rotation_gate(gate=ac)
     print("after recompilation2:\n", rac2)
@@ -65,21 +63,3 @@ if __name__ == "__main__":
     grad_list = make_gradient(circuit=ac)
     print("grad_list=",grad_list)
     exit()
-
-
-
-
-    try:
-        ac = QCircuit()
-        ac += X(0)
-        #ac += CNOT(control=0, target=1) # with this: no error but wrong density matrix
-        ac += X(target=1, control=0)
-        density_matrix_result = simulator.simulate_density_matrix(abstract_circuit=ac)
-
-        print("density_matrix_result:\n", density_matrix_result)
-        print("density_matrix:\n", density_matrix_result.result.final_density_matrix)
-        print("circuit:\n", density_matrix_result.circuit)
-
-    except AttributeError as e:
-        print("cirq currently can not do controlled operations in density matrix simulations")
-        print("caught error:", e)
