@@ -51,4 +51,4 @@ class TestParameters(unittest.TestCase):
         for dOi in dO:
             value = SimulatorCirq().expectation_value(objective=dOi, initial_state=ucc.initial_state(hqc))
             gradient += value
-        assert (isclose(gradient, 0.0))
+        assert (isclose(gradient, 0.0, atol=1.e-4, rtol=1.e-4))

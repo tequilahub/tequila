@@ -119,15 +119,15 @@ def test_expectation_values():
     E = simulator.expectation_value(objective=O)
     assert (isclose(E, 0.0))
 
-    dU1 = Ry(target=0, angle=pi / 4 + pi)
+    dU1 = Ry(target=0, angle=pi / 2 + pi/2)
     dU1.weight = 0.5
-    dU2 = Ry(target=0, angle=pi / 4 - pi)
+    dU2 = Ry(target=0, angle=pi / 2 - pi/2)
     dU2.weight = -0.5
     O = Objective(observable=hamiltonian, unitaries=[dU1, dU2])
     dE = simulator.expectation_value(objective=O)
     assert (isclose(dE, 0.0))
 
-    U = Ry(target=0, angle=pi / 4)
+    U = Ry(target=0, angle=pi / 2)
     dU = grad(U)
     dU[0].observable = hamiltonian
     dEx = simulator.expectation_value(objective=dU[0])
