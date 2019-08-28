@@ -181,6 +181,10 @@ class QCircuit():
             self.gates[i] **= power
         return self
 
+    def simplify(self):
+        # not here yet
+        return self
+
     def __str__(self):
         result = "circuit: "
         if self.weight != 1.0:

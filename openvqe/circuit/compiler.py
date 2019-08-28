@@ -49,8 +49,8 @@ def exponential_pauli_gate(paulistring, angle) -> QCircuit:
     # Rz gate parametrized on the angle
     # series of CNOT (inverted direction compared to before)
     # series which changes the basis back
-    change_basis = QCircuit()
-    change_basis_back = QCircuit()
+    ubasis = QCircuit()
+    ubasis_t = QCircuit()
     cnot_cascade = QCircuit()
     reversed_cnot = QCircuit()
 
@@ -62,11 +62,11 @@ def exponential_pauli_gate(paulistring, angle) -> QCircuit:
 
         # see if we need to change the basis
         if pauli.upper() == "X":
-            change_basis *= H(qubit)
-            change_basis_back *= H(qubit)
+            ubasis *= H(qubit)
+            ubasis_t *= H(qubit)
         elif pauli.upper() == "Y":
-            change_basis *= Rx(target=qubit, angle=numpy.pi / 2)
-            change_basis_back *= Rx(target=qubit, angle=-numpy.pi / 2)
+            ubasis *= Rx(target=qubit, angle=numpy.pi / 2)
+            ubasis_t *= Rx(target=qubit, angle=-numpy.pi / 2)
 
         if previous_qubit is not None:
             cnot_cascade *= CNOT(target=qubit, control=previous_qubit)
@@ -76,12 +76,12 @@ def exponential_pauli_gate(paulistring, angle) -> QCircuit:
     reversed_cnot = cnot_cascade.dagger()
 
     # assemble the circuit
-    circuit *= change_basis
+    circuit *= ubasis
     circuit *= cnot_cascade
     # factor 2 is since gates are defined with angle/2
     circuit *= Rz(target=last_qubit, angle=2.0 * angle)
     circuit *= reversed_cnot
-    circuit *= change_basis_back
+    circuit *= ubasis_t
 
     return circuit
 

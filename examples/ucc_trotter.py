@@ -5,6 +5,7 @@ from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.simulator.simulator_pyquil import SimulatorPyquil
 from openvqe.tools.expectation_value_cirq import expectation_value_cirq
 from openvqe.circuit.gates import Ry, CNOT, X
+from openvqe.circuit import QCircuit
 import numpy
 
 if __name__ == "__main__":
@@ -52,6 +53,8 @@ if __name__ == "__main__":
 
     print("energy = ", energy)
 
+
+    exit()
     print("\n\nSame with Pyquil:")
     simulator = SimulatorPyquil()
     result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=ucc.initial_state(hqc))
