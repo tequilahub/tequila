@@ -43,10 +43,7 @@ def Rz(angle, target, control=None, frozen=None, phase=1.0):
 
 @wrap_gate
 def X(target, control=None, power=None, frozen=None, phase=1.0):
-    if power is None:
-        return QGate(name="X", target=target, control=control, phase=phase)
-    else:
-        return PowerGateImpl(name="X", power=power, target=target, control=control, frozen=frozen, phase=phase)
+    return PowerGateImpl(name="X", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
 def CNOT(target, control=None):
@@ -59,32 +56,20 @@ def CNOT(target, control=None):
 
 @wrap_gate
 def H(target, control=None, power=None, frozen=None, phase=1.0):
-    if power is None:
-        return QGate(name="H", target=target, control=control, phase=phase)
-    else:
-        return PowerGateImpl(name="H", power=power, target=target, control=control, frozen=frozen, phase=phase)
+    return PowerGateImpl(name="H", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
 def Y(target, control=None, power=None, frozen=None, phase=1.0):
-    if power is None:
-        return QGate(name="Y", target=target, control=control, phase=phase)
-    else:
-        return PowerGateImpl(name="Y", power=power, target=target, control=control, frozen=frozen, phase=phase)
+    return PowerGateImpl(name="Y", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
 def Z(target, control=None, power=None, frozen=None, phase=1.0):
-    if power is None:
-        return QGate(name="Z", target=target, control=control, phase=phase)
-    else:
-        return PowerGateImpl(name="Z", power=power, target=target, control=control, frozen=frozen, phase=phase)
+    return PowerGateImpl(name="Z", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
 def SWAP(target, control=None, power=None, frozen=None, phase=1.0):
     assert (len(target) >= 2)
-    if power is None:
-        return QGate(name="SWAP", target=target, control=control, phase=phase)
-    else:
-        return PowerGateImpl(name="SWAP", power=power, target=target, control=control, frozen=frozen, phase=phase)
+    return PowerGateImpl(name="SWAP", power=power, target=target, control=control, frozen=frozen, phase=phase)

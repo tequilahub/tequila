@@ -25,8 +25,8 @@ class CustomReturnType(SimulatorReturnType):
 
 if __name__ == "__main__":
     ac = QCircuit()
-    ac += X(0)
-    ac += Ry(target=1, control=0, angle=pi / 2)
+    ac *= X(0)
+    ac *= Ry(target=1, control=0, angle=pi / 2)
 
     simulator = SimulatorPyquil()
 
