@@ -17,7 +17,6 @@ install OpenVQE with
 this will install a minimal package without too many dependencies
 
 """
-
 from openvqe.simulator import SimulatorSymbolic
 from openvqe.circuit import QCircuit, gates
 import sympy

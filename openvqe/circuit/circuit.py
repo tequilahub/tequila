@@ -24,6 +24,13 @@ class QCircuit():
             self.gates = gates
         self._weight = weight
 
+    def is_primitive(self):
+        """
+        Check if this is a single gate wrapped in this structure
+        :return: True if the circuit is just a single gate
+        """
+        return len(self.gates)
+
     def __getitem__(self, item):
         """
         iteration over gates is possible
@@ -145,7 +152,7 @@ class QCircuit():
         if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
         result = QCircuit()
-        result.gates = copy.deepcopy(self.gates+other.gates)
+        result.gates = copy.deepcopy(self.gates + other.gates)
         result.weight = self.weight * other.weight
         return result
 
@@ -171,12 +178,20 @@ class QCircuit():
     def __pow__(self, power, modulo=None):
         if modulo is not None:
             raise OpenVQEException("Modulo powers for circuits/unitaries not supported")
+        if not self.is_primitive():
+            raise OpenVQEException("Powers are currently only supported for single gates")
+
         pgates = []
         for g in self.gates:
             pgates.append(g ** power)
         return QCircuit(gates=pgates, weight=self.weight ** power)
 
-    def __ipow__(self, power):
+    def __ipow__(self, power, modulo=None):
+        if modulo is not None:
+            raise OpenVQEException("Modulo powers for circuits/unitaries not supported")
+        if not self.is_primitive():
+            raise OpenVQEException("Powers are currently only supported for single gates")
+
         self.weight = self.weight ** power
         for i, g in enumerate(self.gates):
             self.gates[i] **= power
