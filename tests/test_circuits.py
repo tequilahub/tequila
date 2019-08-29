@@ -1,6 +1,26 @@
-from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, SWAP
+from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, SWAP, QCircuit, RotationGate
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic, QState, sympy
+from openvqe.circuit.gates import wrap_gate
+from openvqe.circuit._gates_impl import RotationGateImpl
 import numpy
+
+def test_conventions():
+
+    qubit = numpy.random.randint(0,3)
+    angle = "angle"
+
+    Rx1 = Rx(target=qubit, angle=angle)
+    Rx2 = QCircuit.wrap_gate(RotationGateImpl(axis="X", target=qubit, angle=angle))
+    Rx3 = QCircuit.wrap_gate(RotationGateImpl(axis="x", target=qubit, angle=angle))
+    Rx4 = RotationGate(axis=0, target=qubit, angle=angle)
+    Rx5 = RotationGate(axis="X", target=qubit, angle=angle)
+    Rx6 = RotationGate(axis="x", target=qubit, angle=angle)
+
+    ll = [Rx1, Rx2, Rx3, Rx4, Rx5, Rx6]
+    for l1 in ll:
+        for l2 in ll:
+            assert(l1==l2)
+
 
 
 def test_basic_gates():
