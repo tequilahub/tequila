@@ -57,8 +57,8 @@ class AnsatzUCC(AnsatzBase):
         """
         :return: Hatree-Fock Reference as binary-number
         """
-        l = [0]*hamiltonian.n_qubits()
-        for i in range(hamiltonian.n_electrons()):
+        l = [0]*hamiltonian.n_qubits
+        for i in range(hamiltonian.n_electrons):
             l[i] = 1
 
         l = [i for i in reversed(l)]

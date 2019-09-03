@@ -49,6 +49,7 @@ class QubitHamiltonian(HamiltonianBase):
     def normalize(self):
         self._hamiltonian.renormalize()
 
+    @property
     def n_qubits(self):
         n_qubits = 0
         for key, value in self.hamiltonian.terms.items():

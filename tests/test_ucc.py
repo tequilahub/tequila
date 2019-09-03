@@ -38,7 +38,7 @@ class TestParameters(unittest.TestCase):
 
         energy = expectation_value_cirq(final_state=result.wavefunction,
                                         hamiltonian=hqc(),
-                                        n_qubits=hqc.n_qubits())
+                                        n_qubits=hqc.n_qubits)
 
         assert (isclose(energy, -1.1368354639104123))
 

@@ -28,6 +28,7 @@ class HamiltonianBase(OpenVQEModule):
         self._hamiltonian = other
         return self
 
+    @property
     def n_qubits(self):
         """
         Needs to be overwritten by specialization

@@ -177,6 +177,7 @@ class HamiltonianQC(QubitHamiltonian):
         self._molecule = molecule
         self._hamiltonian = None
 
+    @property
     def n_electrons(self):
         """
         Convenience function
@@ -184,6 +185,7 @@ class HamiltonianQC(QubitHamiltonian):
         """
         return self.molecule.n_electrons
 
+    @property
     def n_orbitals(self):
         """
         Convenience function
@@ -191,12 +193,13 @@ class HamiltonianQC(QubitHamiltonian):
         """
         return self.molecule.n_orbitals
 
+    @property
     def n_qubits(self):
         """
         Convenience function
         :return: Number of qubits needed
         """
-        return 2 * self.n_orbitals()
+        return 2 * self.n_orbitals
 
     def get_fermionic_hamiltonian(self) -> FermionOperator:
         """
@@ -273,9 +276,9 @@ class HamiltonianQC(QubitHamiltonian):
         if ".out" not in filename:
             filename += ".out"
 
-        singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=self.n_orbitals() * 2,
-                                                      n_alpha_electrons=self.n_electrons() // 2,
-                                                      n_beta_electrons=self.n_electrons() // 2,
+        singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=self.n_orbitals * 2,
+                                                      n_alpha_electrons=self.n_electrons // 2,
+                                                      n_beta_electrons=self.n_electrons // 2,
                                                       psi_filename=filename)
 
         return ManyBodyAmplitudes(one_body=singles, two_body=doubles)
