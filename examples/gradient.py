@@ -4,26 +4,8 @@ from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
 from openvqe.circuit.gates import X, Ry, Rx, Rz
 from openvqe.circuit._gates_impl import RotationGateImpl
-from openvqe.hamiltonian import HamiltonianBase
-from openfermion import QubitOperator
+from openvqe.hamiltonian import PX
 from openvqe.simulator.simulator_cirq import SimulatorCirq
-
-class MyQubitHamiltonian(HamiltonianBase):
-
-    # Hamiltonian needs to be aware of this
-    def n_qubits(self):
-        return 1
-
-    def my_trafo(self, H):
-        """
-        Here we define the hamiltonian to be already in qubit form, so no transformation will be needed
-        """
-        return H
-
-    def get_fermionic_hamiltonian(self):
-        H = QubitOperator()
-        H.terms[((0, 'X'),)] = 1.0
-        return H
 
 from numpy import pi
 
@@ -79,8 +61,7 @@ if __name__ == "__main__":
     and testing gradients
     """
 
-    H = MyQubitHamiltonian()
-    H.parameters.transformation = "my_trafo"
+    H = PX(qubit=0)
 
 
     print("\n\nGradients of non-controlled gates work:\n")

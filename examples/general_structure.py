@@ -1,5 +1,5 @@
 
-from openvqe.hamiltonian import HamiltonianQC, ParametersQC, ParametersHamiltonian
+from openvqe.hamiltonian import HamiltonianQC, ParametersQC
 from openvqe import OpenVQEException
 
 if __name__ == "__main__":
@@ -46,22 +46,10 @@ if __name__ == "__main__":
     try:
         print("\nWill call a method which is not implemented")
         from openvqe.hamiltonian.hamiltonian_hubbard import HamiltonianHubbard
-        hqc = HamiltonianHubbard(ParametersHamiltonian())
+        hqc = HamiltonianHubbard()
         H = hqc.get_fermionic_hamiltonian()
     except NotImplementedError as e:
         print("Hubbard not yet implemented")
         print(e)
 
-    try:
-        print("\nWill overwrite parameters to wrong type after correct initialization")
-        parameters_qc = ParametersQC(geometry=" h 0.0 0.0 1.0\n h 0.0 0.0 -1.0", basis_set="sto-3g")
-        parameters_qc.transformation = "JW"
-        hqc = HamiltonianQC(parameters_qc)
-        # now overwrite parameters after successful initialization
-        parameters_h = ParametersHamiltonian()
-        hqc.parameters = parameters_h
-        H=hqc() # raises exceition because the self.verify function is called here)
-    except OpenVQEException as e:
-        print("catched OpenVQEException")
-        print(e)
 

@@ -31,6 +31,7 @@ if __name__ == "__main__":
 
     amplitudes = hqc.parse_ccsd_amplitudes()
     print("# of amplitudes: ",len(amplitudes))
+    print("amplitudes:\n", amplitudes)
 
     print("Construct the AnsatzUCC class")
 

@@ -32,8 +32,8 @@ class TestParameters(unittest.TestCase):
                     H=hqc()
                     if trafo=='JW':
                         self.assertTrue(parameters_qc.jordan_wigner())
-                        self.assertEqual(H, openfermion.jordan_wigner(openfermion.get_fermion_operator(Hmol)))
+                        self.assertEqual(H, openfermion.jordan_wigner(Hmol))
                     else:
                         self.assertTrue(trafo=="BK")
                         self.assertTrue(parameters_qc.bravyi_kitaev())
-                        self.assertEqual(H, openfermion.bravyi_kitaev(openfermion.get_fermion_operator(Hmol)))
+                        self.assertEqual(H, openfermion.bravyi_kitaev(Hmol))

@@ -80,27 +80,9 @@ def test_power_gates():
                                                        initial_state=init)
 
 
-class MyQubitHamiltonian(HamiltonianBase):
-
-    # Hamiltonian needs to be aware of this
-    def n_qubits(self):
-        return 1
-
-    def my_trafo(self, H):
-        """
-        Here we define the hamiltonian to be already in qubit form, so no transformation will be needed
-        """
-        return H
-
-    def get_fermionic_hamiltonian(self):
-        H = QubitOperator()
-        H.terms[((0, 'X'),)] = 1.0
-        return H
-
-
 def test_expectation_values():
-    hamiltonian = MyQubitHamiltonian()
-    hamiltonian.parameters.transformation = "my_trafo"
+    from openvqe.hamiltonian.hamiltonian_qubit import PX
+    hamiltonian = PX(qubit=0)
 
     U = Ry(target=0, angle=pi / 4)
 

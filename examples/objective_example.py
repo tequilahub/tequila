@@ -1,34 +1,9 @@
 from openvqe.objective import Objective
-from openvqe.openvqe_abc import parametrized
-from openvqe.hamiltonian import HamiltonianBase
-from openfermion import QubitOperator
+from openvqe.hamiltonian import PX
 from openvqe.circuit.gates import Ry, X, Y
 from numpy import pi, sqrt, asarray, exp
 import numpy
 from openvqe.simulator.simulator_cirq import SimulatorCirq
-
-
-# make an easy Hamiltonian without invoking to much stuff
-# it will just be H = sigma_x(0)
-# just ignore this whole class for this example and a bit of a Hack right now .... will make that easier in the future
-# The whole Hamiltonian structure is too much tailored towards fermionic Hamiltonians
-# Will change soon
-class MyQubitHamiltonian(HamiltonianBase):
-
-    # Hamiltonian needs to be aware of this
-    def n_qubits(self):
-        return 1
-
-    def my_trafo(self, H):
-        """
-        Here we define the hamiltonian to be already in qubit form, so no transformation will be needed
-        """
-        return H
-
-    def get_fermionic_hamiltonian(self):
-        H = QubitOperator()
-        H.terms[((0, 'X'),)] = 1.0
-        return H
 
 
 class SqrtObjective(Objective):
@@ -85,8 +60,7 @@ class NumpyObjective(Objective):
 
 if __name__ == "__main__":
     # first initialize a Hamiltonian
-    hamiltonian = MyQubitHamiltonian()
-    hamiltonian.parameters.transformation = "my_trafo"
+    hamiltonian = PX(qubit=0)
 
     print("This is the Hamiltonian")
     print(hamiltonian())

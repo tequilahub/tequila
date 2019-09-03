@@ -1,6 +1,5 @@
 from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, SWAP, QCircuit, RotationGate
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic, QState, sympy
-from openvqe.circuit.gates import wrap_gate
 from openvqe.circuit._gates_impl import RotationGateImpl
 import numpy
 
