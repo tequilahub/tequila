@@ -62,4 +62,17 @@ if __name__ == "__main__":
     print(ac)
     grad_list = make_gradient(circuit=ac)
     print("grad_list=",grad_list)
-    exit()
+
+
+    from openvqe.circuit.gates import H
+    from openvqe.hamiltonian.paulistring import PauliString
+    print("try measure stuff")
+    ps=[]
+    data = {0:'z', 1:'z', 2:'z', 3:'z'}
+    ps.append(PauliString(data=data, coeff=-1.2345))
+    simulator = SimulatorCirq()
+    ac = X(target=0)*H(target=1)*X(target=3)
+    result = simulator.measure_paulistrings(abstract_circuit=ac, paulistrings=ps, samples=10000)[0]
+    print("<E>=", result)
+
+

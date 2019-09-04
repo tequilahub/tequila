@@ -1,6 +1,8 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
+from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, MeasurementResultType
 from openvqe import OpenVQEException
 from openvqe.objective import Objective
+from openvqe.circuit.gates import MeasurementImpl
+from openvqe.tools.convenience import binary_to_number
 import cirq
 
 
@@ -11,7 +13,28 @@ class OpenVQECirqException(OpenVQEException):
 
 class SimulatorCirq(Simulator):
 
-    def expectation_value(self, objective: Objective, initial_state: int=0):
+    def convert_measurements(self, cirq_result: cirq.TrialResult):
+        result=MeasurementResultType()
+        for key, value in cirq_result.measurements.items():
+            counter = {}
+            for sample in value:
+                binary = binary_to_number(sample.astype(int), invert=False)
+                if binary in counter:
+                    counter[binary] += 1
+                else:
+                    counter[binary] = 1
+            result[key] = counter
+        return result
+
+    def do_run(self, circuit: cirq.Circuit, samples: int = 1):
+        result = SimulatorReturnType(circuit=circuit)
+        result.circuit = circuit
+        cirq_result = cirq.Simulator().run(program=circuit, repetitions=samples)
+        result.backend_result = cirq_result
+        result.measurements = self.convert_measurements(cirq_result)
+        return result
+
+    def expectation_value(self, objective: Objective, initial_state: int = 0):
         # this is not how it is supposed to be ... just hacked in order for this part to return something
         from openvqe.tools import expectation_value_cirq
         result = 0.0
@@ -48,8 +71,11 @@ class SimulatorCirq(Simulator):
 
         result = cirq.Circuit()
         for g in abstract_circuit.gates:
-
-            if g.is_parametrized() and g.control is not None and recompile_controlled_rotations:
+            if isinstance(g, MeasurementImpl):
+                qubits = [qubit_map[i] for i in g.target]
+                m = cirq.measure(*qubits, key=g.name)
+                result.append(m)
+            elif g.is_parametrized() and g.control is not None and recompile_controlled_rotations:
                 # here we need recompilation
                 rc = abstract_circuit.compile_controlled_rotation_gate(g)
                 result += self.create_circuit(abstract_circuit=rc, qubit_map=qubit_map)
@@ -65,7 +91,7 @@ class SimulatorCirq(Simulator):
                             if g.power == 1.0:
                                 gate = getattr(cirq, g.name)
                             else:
-                                gate = getattr(cirq, g.name+"PowGate")(exponent=g.power)
+                                gate = getattr(cirq, g.name + "PowGate")(exponent=g.power)
                         elif hasattr(g, "angle"):
                             gate = getattr(cirq, g.name)(rads=g.parameter)
                         else:

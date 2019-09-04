@@ -107,6 +107,9 @@ def compile_multitarget(gate) -> QCircuit:
 
 
 def change_basis(target, axis, daggered=False):
+    if isinstance(axis, str):
+        axis = RotationGateImpl.string_to_axis[axis.lower()]
+
     if axis == 0:
         return H(target=target, frozen=True)
     elif axis == 1 and daggered:

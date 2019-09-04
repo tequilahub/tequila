@@ -4,6 +4,7 @@ Uses OpenFermion Structure
 Has no special features
 """
 from openvqe.hamiltonian import HamiltonianBase
+from openvqe.hamiltonian.paulistring import PauliString
 from openfermion import QubitOperator
 
 
@@ -19,22 +20,32 @@ class QubitHamiltonian(HamiltonianBase):
 
     def __init__(self, hamiltonian: QubitOperator = None):
         if isinstance(hamiltonian, str):
-            self.init_from_string(string=hamiltonian)
+            self._hamiltonian = self.init_from_string(string=hamiltonian)._hamiltonian
         elif hamiltonian is None:
             self._hamiltonian = QubitOperator.identity()
         else:
             self._hamiltonian = hamiltonian
 
-    @staticmethod
-    def init_zero():
+        assert(isinstance(self._hamiltonian, QubitOperator))
+
+    def items(self):
+        return self._hamiltonian.terms.items()
+
+    @classmethod
+    def init_zero(cls):
         return QubitHamiltonian(hamiltonian=QubitOperator("", 0.0))
 
-    @staticmethod
-    def init_unit():
+    @classmethod
+    def init_unit(cls):
         return QubitHamiltonian(hamiltonian=QubitOperator.identity())
 
-    def init_from_string(self, string):
-        self._hamiltonian = QubitOperator(string.upper(), 1.0)
+    @classmethod
+    def init_from_string(cls, string):
+        return QubitHamiltonian(hamiltonian=QubitOperator(string.upper(), 1.0))
+
+    @classmethod
+    def init_from_paulistring(cls, ps: PauliString):
+        return QubitHamiltonian(hamiltonian = QubitOperator(term=ps.key_openfermion(), coefficient=ps.coeff))
 
     def __add__(self, other):
         return QubitHamiltonian(hamiltonian=self.hamiltonian + other.hamiltonian)
@@ -90,7 +101,6 @@ class QubitHamiltonian(HamiltonianBase):
 
         return QubitHamiltonian(hamiltonian=dag_hamiltonian)
 
-
     def normalize(self):
         self._hamiltonian.renormalize()
 
@@ -101,6 +111,27 @@ class QubitHamiltonian(HamiltonianBase):
             indices = [self.index(k) for k in key]
             n_qubits = max(n_qubits, max(indices))
         return n_qubits + 1
+
+    @property
+    def paulistrings(self):
+        """
+        :return: the Hamiltonian as list of PauliStrings
+        """
+        return [PauliString.init_from_openfermion(key=k, coeff=v) for k, v in self.items()]
+
+    @paulistrings.setter
+    def paulistrings(self, other):
+        """
+        Reassign with OpenVQE PauliString format
+        :param other: list of PauliStrings
+        :return: self for chaining
+        """
+        new_hamiltonian = QubitOperator.identity()
+        for ps in other:
+            tmp = QubitOperator(term=ps.key_openfermion(), value=ps.coeff)
+            new_hamiltonian += tmp
+        self._hamiltonian = new_hamiltonian
+        return self
 
 
 """

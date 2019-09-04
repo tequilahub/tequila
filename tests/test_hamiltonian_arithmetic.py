@@ -1,5 +1,32 @@
-from openvqe.hamiltonian import QubitHamiltonian, PX, PY, PZ
+from openvqe.hamiltonian import QubitHamiltonian, PX, PY, PZ, PauliString
 from numpy import random
+
+
+def test_paulistring_conversion():
+    X1 = QubitHamiltonian.init_from_string("x0")
+    X2 = PX(0)
+    print("X2=", X2)
+    keys = [i for i in X2.hamiltonian.terms.keys()]
+    pwx = PauliString.init_from_openfermion(key=keys[0], coeff=X2.hamiltonian.terms[keys[0]])
+    X3 = QubitHamiltonian.init_from_paulistring(pwx)
+    assert (X1 == X2)
+    assert (X2 == X3)
+
+    H = PX(0) * PY(1) * PZ(2) + PX(3) * PY(4) * PZ(5)
+    PS = []
+    for key, value in H.items():
+        PS.append(PauliString.init_from_openfermion(key, value))
+    PS2 = H.paulistrings
+    assert (PS == PS2)
+
+    H = make_random_pauliword(complex=True)
+    for i in range(5):
+        H += make_random_pauliword(complex=True)
+    PS = []
+    for key, value in H.items():
+        PS.append(PauliString.init_from_openfermion(key, value))
+    PS2 = H.paulistrings
+    assert (PS == PS2)
 
 
 def test_simple_arithmetic():
@@ -72,14 +99,11 @@ def test_transposition():
             string *= factor * P(qubit=q)
             tstring *= factor * sign * P(qubit=q)
 
-        print("string =", string)
-        print("stringt=", string.transpose())
-        print("tstring=", tstring)
         assert (string.transpose() == tstring)
 
 
 def make_random_pauliword(complex=True):
-    primitives=[PX, PY, PZ]
+    primitives = [PX, PY, PZ]
     result = QubitHamiltonian.init_unit()
     for q in random.choice(range(10), 5, replace=False):
         P = primitives[random.randint(0, 2)]
@@ -88,7 +112,7 @@ def make_random_pauliword(complex=True):
         if complex:
             imag = random.uniform(0, 1)
         factor = real + imag * 1j
-        result *= factor*P(q)
+        result *= factor * P(q)
     return result
 
 
@@ -99,6 +123,5 @@ def test_dagger():
 
     for repeat in range(10):
         string = make_random_pauliword(complex=False)
-        assert(string.dagger() == string)
-        assert ((1j*string).dagger() == -1j*string)
-
+        assert (string.dagger() == string)
+        assert ((1j * string).dagger() == -1j * string)

@@ -117,6 +117,13 @@ class QGateImpl:
             return False
         return True
 
+class MeasurementImpl(QGateImpl):
+
+    def __init__(self, name, target):
+        self.name = name
+        self.target = self.list_assignement(target)
+        self.control = None
+
 
 class ParametrizedGateImpl(QGateImpl, ABC):
     '''

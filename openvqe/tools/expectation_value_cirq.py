@@ -3,7 +3,7 @@ import numpy
 
 def expectation_value_cirq(final_state, hamiltonian, n_qubits):
     """
-    Function from Philip to compute expectation values with cirq
+    Function from Philip to compute expectation values with cirq using this currently for consistency tests
     :param final_state:
     :param hamiltonian:
     :param n_qubits:

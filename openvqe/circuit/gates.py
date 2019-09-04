@@ -1,5 +1,5 @@
 from openvqe.circuit.circuit import QCircuit
-from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl
+from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl
 import functools
 
 
@@ -73,3 +73,10 @@ def Z(target, control=None, power=None, frozen=None, phase=1.0):
 def SWAP(target, control=None, power=None, frozen=None, phase=1.0):
     assert (len(target) >= 2)
     return PowerGateImpl(name="SWAP", power=power, target=target, control=control, frozen=frozen, phase=phase)
+
+@wrap_gate
+def Measurement(target, name=None):
+    if name is None:
+        return MeasurementImpl(name="", target=target)
+    else:
+        return MeasurementImpl(name=name, target=target)

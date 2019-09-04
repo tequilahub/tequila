@@ -6,6 +6,7 @@ from openvqe.hamiltonian import HamiltonianBase
 from openfermion import QubitOperator
 from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
+from openvqe.hamiltonian import PauliString
 
 # Note
 # multi control works
@@ -15,6 +16,47 @@ supported_primitive_gates = [X, Y, Z, H]
 supported_two_qubit_gates = [SWAP]
 supported_rotations = [Rx, Ry, Rz]
 supported_powers = (X, Y, Z, H)
+
+def test_measurment():
+    ps=[]
+    data = {0:'x'}
+    ps.append(PauliString(data=data, coeff=-1.2345))
+    simulator = SimulatorCirq()
+    ac = H(target=0)
+    result = simulator.measure_paulistrings(abstract_circuit=ac, paulistrings=ps, samples=1)[0]
+    assert(isclose(result,-1.2345))
+
+    ps=[]
+    data = {0:'Z'}
+    ps.append(PauliString(data=data, coeff=-1.2345))
+    simulator = SimulatorCirq()
+    ac = QCircuit()
+    result = simulator.measure_paulistrings(abstract_circuit=ac, paulistrings=ps, samples=1)[0]
+    assert(isclose(result,-1.2345))
+
+    ps=[]
+    data = {0:'x', 1:'z', 2:'z'}
+    ps.append(PauliString(data=data, coeff=-1.2345))
+    simulator = SimulatorCirq()
+    ac = H(target=0)
+    result = simulator.measure_paulistrings(abstract_circuit=ac, paulistrings=ps, samples=2)[0]
+    assert(isclose(result,-1.2345))
+
+    ps=[]
+    data = {0:'x', 1:'z', 2:'x'}
+    ps.append(PauliString(data=data, coeff=-1.2345))
+    simulator = SimulatorCirq()
+    ac = H(target=0)*X(target=1)*X(target=1)*H(target=2)
+    result = simulator.measure_paulistrings(abstract_circuit=ac, paulistrings=ps, samples=5)[0]
+    assert(isclose(result,-1.2345))
+
+    ps=[]
+    data = {0:'z', 1:'z', 2:'z'}
+    ps.append(PauliString(data=data, coeff=-1.2345))
+    simulator = SimulatorCirq()
+    ac = X(target=0)*X(target=1)*X(target=2)
+    result = simulator.measure_paulistrings(abstract_circuit=ac, paulistrings=ps, samples=5)[0]
+    assert(isclose(result,1.2345))
 
 
 def test_simple_execution():
