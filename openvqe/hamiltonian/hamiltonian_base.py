@@ -43,3 +43,6 @@ class HamiltonianBase(OpenVQEModule):
         :return: true if sane, raises exception if not
         """
         return self._verify()
+
+    def __repr__(self):
+        return str(self.hamiltonian)
