@@ -22,7 +22,7 @@ class MyQubitHamiltonian(HamiltonianBase):
 
     def get_fermionic_hamiltonian(self):
         H = QubitOperator()
-        H.terms[((0, 'X'),)] = 1.0
+        H.terms[((0, 'Y'),)] = 1.0
         return H
 
 from numpy import pi
@@ -88,9 +88,9 @@ if __name__ == "__main__":
     energies = []
     gradients = []
     angles = []
-    for n in range(9):
+    for n in range(5):
         theta = n*pi/4
-        U = Ry(target=0, angle=theta)
+        U = Rx(target=0, angle=theta)
         print(U)
         result = SimulatorCirq().simulate_wavefunction(abstract_circuit=U)
         print(result)
@@ -115,26 +115,27 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-    print("\n\nDemonstrating faulty behaviour here:")
+    print("\n\nSomething bizarre is happening in simulation:")
     energies = []
     gradients = []
     angles = []
-    for n in range(9):
+    for n in range(5):
         theta = n*pi/4
         # multiplication syntax still follows circuits ... should probably change that at some point
-        U = X(target=1)*Ry(target=0, control=1, angle=theta)
+        U = X(target=1)*Rx(target=0, control=1, angle=theta)
         # if you wanna see the states
         wfn = SimulatorCirq().simulate_wavefunction(abstract_circuit=U)
         # leaving this here to demonstrate how to use cirqs ascii print since we don't have our own right now
-        print(SimulatorCirq().create_circuit(abstract_circuit=U))
+        #print(SimulatorCirq().create_circuit(abstract_circuit=U))
         O = Objective(observable=H, unitaries=U)
         E = SimulatorCirq().expectation_value(objective=O)
         energies.append(E)
         dE = SimulatorCirq().expectation_value(objective=grad(O)[0])
+        print("gradient:\n", grad(O)[0])
         gradients.append(dE)
         angles.append(theta)
 
-    print("Gradient fails!")
+    print("what the hell!")
     for i,a in enumerate(angles):
         print(angles[i], " ", energies[i], " ", gradients[i])
 
@@ -147,34 +148,52 @@ if __name__ == "__main__":
     plt.show()
 
 
-    print("\n\nDemonstrating faulty behaviour here:")
+    print("\n\nDemonstrating correct behaviour here:")
     from openvqe.circuit.compiler import compile_controlled_rotation_gate
-    energies = []
-    gradients = []
-    angles = []
-    for n in range(9):
+    man_energies = []
+    man_gradients = []
+    man_angles = []
+    for n in range(5):
         theta = n*pi/4
+        print(theta)
         # multiplication syntax still follows circuits ... should probably change that at some point
-        U = X(target=1)*Ry(target=0, control=1, angle=theta)
+        U = X(target=1)*Rx(target=0, control=1, angle=theta)
         U = compile_controlled_rotation_gate(gate=U) # that actually works
         # leaving this here to demonstrate how to use cirqs ascii print since we don't have our own right now
         print(SimulatorCirq().create_circuit(abstract_circuit=U))
         O = Objective(observable=H, unitaries=U)
         E = SimulatorCirq().expectation_value(objective=O)
-        energies.append(E)
+        man_energies.append(E)
+
         dE0 = SimulatorCirq().expectation_value(objective=grad(O)[0])
         dE1 = SimulatorCirq().expectation_value(objective=grad(O)[1])
-        gradients.append(0.5*(dE0-dE1)) # with this it works
-        angles.append(theta)
+        print("gradient part 0\n", grad(O)[0])
+        print("gradient part 1\n", grad(O)[1])
+        man_gradients.append(-0.5*(dE0-dE1)) # with this it works
+        man_angles.append(theta)
 
-    print("Gradient works again")
+    print("Manual gradient is behaving as expected")
     for i,a in enumerate(angles):
-        print(angles[i], " ", energies[i], " ", gradients[i])
+        print(angles[i], " ", man_energies[i], " ", man_gradients[i])
 
     from matplotlib import pyplot as plt
     plt.title("Gradient Test for controlled Rotation -- manually")
     plt.xlabel("t")
-    plt.plot(angles, energies, label="E")
-    plt.plot(angles, gradients, label="dE/dt")
+    plt.plot(angles, man_energies, label="E")
+    plt.plot(angles, man_gradients, label="dE/dt")
+    plt.legend()
+    plt.show()
+
+    plt.title('Automatic and Manual gradients on the same plot')
+    plt.xlabel("t")
+    plt.plot(angles, gradients, label="Automatic")
+    plt.plot(angles, man_gradients, label="Manual")
+    plt.legend()
+    plt.show()
+
+    plt.title('Automatic and Manual energies on the same plot')
+    plt.xlabel("t")
+    plt.plot(angles, energies, label="Automatic")
+    plt.plot(angles, man_energies, label="Manual")
     plt.legend()
     plt.show()

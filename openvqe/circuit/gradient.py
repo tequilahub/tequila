@@ -56,17 +56,17 @@ def make_gradient_component(unitary: QCircuit, index: int):
     if isinstance(g, RotationGateImpl):
         if g.is_controlled():
 
-            angles = [
-                [(-g.angle + pi / 2) / 2, g.angle / 2],
-                [(-g.angle - pi / 2) / 2, g.angle / 2],
-                [-g.angle / 2, (g.angle + pi / 2) / 2],
-                [-g.angle / 2, (g.angle - pi / 2) / 2]
+            angles_and_weights = [
+                ([(-g.angle) / 2 + pi / 2, g.angle / 2],-.50),
+                ([(-g.angle ) / 2 - pi / 2, g.angle / 2],.50),
+                ([-g.angle / 2, (g.angle) / 2  + pi / 2],.50),
+                ([-g.angle / 2, (g.angle ) / 2 - pi / 2],-.50)
             ]
 
-            for i, angle_set in enumerate(angles):
-                parity = 1.0 - 2.0 * (i // 2)
-                U = compile_controlled_rotation_gate(g, angles=angle_set)
-                U.weight = 0.5 * parity
+            for i, ang_set in enumerate(angles_and_weights):
+
+                U = compile_controlled_rotation_gate(g, angles=ang_set[0])
+                U.weight=0.5*ang_set[1]
                 dg.append(U)
         else:
             neo_a = copy.deepcopy(g)
@@ -82,11 +82,11 @@ def make_gradient_component(unitary: QCircuit, index: int):
         if g.is_controlled():
             raise NotImplementedError("Gradient for controlled PowerGate not here yet")
         else:
-            new_gate = copy.deepcopy(g)
-            new_gate.power = g.power - 1.0
-            U = QCircuit.wrap_gate(new_gate)
-            U.weight = g.power
-            dg = [U]
+            new=copy.deepcopy(g)
+            new.power-=1.0
+            U=QCircuit.wrap_gate(new)
+            U.weight=g.power
+            dg=[U]
     else:
         raise OpenVQEException("Automatic differentiation only for Rotational and PowerGates")
 
