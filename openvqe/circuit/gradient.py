@@ -57,10 +57,10 @@ def make_gradient_component(unitary: QCircuit, index: int):
         if g.is_controlled():
 
             angles_and_weights = [
-                ([(-g.angle) / 2 + pi / 2, g.angle / 2],-.50),
-                ([(-g.angle ) / 2 - pi / 2, g.angle / 2],.50),
-                ([-g.angle / 2, (g.angle) / 2  + pi / 2],.50),
-                ([-g.angle / 2, (g.angle ) / 2 - pi / 2],-.50)
+                ([(g.angle) / 2 + pi / 2, -g.angle / 2],-.50),
+                ([(g.angle ) / 2 - pi / 2, -g.angle / 2],.50),
+                ([g.angle / 2, (-g.angle) / 2  + pi / 2],.50),
+                ([g.angle / 2, (-g.angle ) / 2 - pi / 2],-.50)
             ]
 
             for i, ang_set in enumerate(angles_and_weights):

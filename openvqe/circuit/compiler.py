@@ -140,7 +140,7 @@ def compile_controlled_rotation_gate(gate: RotationGateImpl, angles: list = None
         return QCircuit.wrap_gate(gate)
 
     if angles is None:
-        angles = [-gate.angle / 2.0, gate.angle / 2.0]
+        angles = [gate.angle / 2.0, -gate.angle / 2.0]
 
     assert (len(angles) == 2)
 

@@ -4,7 +4,7 @@ from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
 from openvqe.circuit.gates import X, Ry, Rx, Rz
 from openvqe.circuit._gates_impl import RotationGateImpl
-from openvqe.hamiltonian import PX
+from openvqe.hamiltonian import PX, PY
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 
 from numpy import pi
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     and testing gradients
     """
 
-    H = PX(qubit=0)
+    H = PY(qubit=0)
 
 
     print("\n\nGradients of non-controlled gates work:\n")
