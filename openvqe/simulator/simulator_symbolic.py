@@ -22,6 +22,8 @@ class QState:
     def __eq__(self, other):
         if not hasattr(other, "state"):
             return False
+        self.simplify()
+        other.simplify()
         return self.state == other.state
 
     @staticmethod
@@ -95,6 +97,13 @@ class QState:
                 result += "+(" + str(v) + ")|" + str(s) + ">"
         return result
 
+    def inner(self, other):
+        result = 0.0
+        for s, v in self.state.items():
+            if s in other.state:
+                result += v*other.state[s]
+        return result
+
 
 class SimulatorSymbolic(Simulator):
 
@@ -127,6 +136,8 @@ class SimulatorSymbolic(Simulator):
             altered_state = QState.initialize_from_integer(binary_to_number(altered))
             return fac1 * current_state + fac2*altered_state
 
+        if len(gate.target) >1:
+            raise Exception("multi targets do not work yet for symbolicsymulator")
         for t in gate.target:
             qv = qubits[t]
             altered = copy.deepcopy(qubits)

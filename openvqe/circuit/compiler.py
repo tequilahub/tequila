@@ -95,13 +95,13 @@ def compile_multitarget(gate) -> QCircuit:
             result *= compile_multitarget(gate=g)
         return result
 
-    targets = g.target
+    targets = gate.target
 
     result = QCircuit()
     for t in targets:
         gx = copy.deepcopy(gate)
         gx.target = [t]
-        result += gx
+        result *= gx
 
     return result
 
