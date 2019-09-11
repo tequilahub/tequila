@@ -117,6 +117,13 @@ class QGateImpl:
             return False
         return True
 
+class MeasurementImpl(QGateImpl):
+
+    def __init__(self, name, target):
+        self.name = name
+        self.target = self.list_assignement(target)
+        self.control = None
+
 
 class ParametrizedGateImpl(QGateImpl, ABC):
     '''
@@ -183,15 +190,21 @@ class ParametrizedGateImpl(QGateImpl, ABC):
 
 
 class RotationGateImpl(ParametrizedGateImpl):
+    axis_to_string = {0: "x", 1: "y", 2: "z"}
+    string_to_axis = {"x": 0, "y": 1, "z": 2}
 
     @staticmethod
     def get_name(axis):
-        if axis == 0:
-            return "Rx"
-        elif axis == 1:
-            return "Ry"
-        elif axis == 2:
-            return "Rz"
+        axis = RotationGateImpl.assign_axis(axis)
+        return "R" + RotationGateImpl.axis_to_string[axis]
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @axis.setter
+    def axis(self, value):
+        self._axis = self.assign_axis(value)
 
     @property
     def angle(self):
@@ -216,19 +229,30 @@ class RotationGateImpl(ParametrizedGateImpl):
         As every class in _gates_impl.py
         Tries to optimize if two rotation gates are combined
         """
-        if hasattr(other, "angle") and other.axis==self.axis and other.target == self.target and other.control == self.control:
+        if hasattr(other,
+                   "angle") and other.axis == self._axis and other.target == self.target and other.control == self.control:
             result = copy.deepcopy(self)
-            result.angle = self.angle+other.angle
+            result.angle = self.angle + other.angle
             result.frozen = self.frozen or other.frozen
             return [result]
         else:
             return [self, other]
 
     def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = False, phase=1.0):
-        assert(angle is not None)
+        assert (angle is not None)
         super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control, frozen=frozen,
                          phase=phase)
-        self.axis = axis
+        self._axis = self.assign_axis(axis)
+
+    @staticmethod
+    def assign_axis(axis):
+        if axis in RotationGateImpl.string_to_axis:
+            return RotationGateImpl.string_to_axis[axis]
+        elif hasattr(axis, "lower") and axis.lower() in RotationGateImpl.string_to_axis:
+            return RotationGateImpl.string_to_axis[axis.lower()]
+        else:
+            assert (axis in [0, 1, 2])
+            return axis
 
     def dagger(self):
         result = copy.deepcopy(self)
@@ -254,7 +278,7 @@ class PowerGateImpl(ParametrizedGateImpl):
         if self.parameter is None:
             self.power = other
         else:
-            self.power = self.power*other
+            self.power = self.power * other
         return self
 
     def __pow__(self, power, modulo=None):
@@ -268,9 +292,10 @@ class PowerGateImpl(ParametrizedGateImpl):
         As every class in _gates_impl.py
         Tries to optimize if two rotation gates are combined
         """
-        if hasattr(other, "power") and other.name==self.name and other.target == self.target and other.control == self.control:
+        if hasattr(other,
+                   "power") and other.name == self.name and other.target == self.target and other.control == self.control:
             result = copy.deepcopy(self)
-            result.power = self.power+other.power
+            result.power = self.power + other.power
             result.frozen = self.frozen or other.frozen
             return [result]
         else:

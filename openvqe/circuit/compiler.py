@@ -107,6 +107,9 @@ def compile_multitarget(gate) -> QCircuit:
 
 
 def change_basis(target, axis, daggered=False):
+    if isinstance(axis, str):
+        axis = RotationGateImpl.string_to_axis[axis.lower()]
+
     if axis == 0:
         return H(target=target, frozen=True)
     elif axis == 1 and daggered:
@@ -149,12 +152,12 @@ def compile_controlled_rotation_gate(gate: RotationGateImpl, angles: list = None
     control = gate.control
 
     result = QCircuit()
-    result *= change_basis(target=target, axis=gate.axis)
-    result *= RotationGateImpl(axis=2, target=target, angle=angles[0])
+    result *= change_basis(target=target, axis=gate._axis)
+    result *= RotationGateImpl(axis="z", target=target, angle=angles[0])
     result *= QGateImpl(name="X", target=target, control=control)
-    result *= RotationGateImpl(axis=2, target=target, angle=angles[1])
+    result *= RotationGateImpl(axis="Z", target=target, angle=angles[1])
     result *= QGateImpl(name="X", target=target, control=control)
-    result *= change_basis(target=target, axis=gate.axis, daggered=True)
+    result *= change_basis(target=target, axis=gate._axis, daggered=True)
 
     result.n_qubits = result.max_qubit()
     return result

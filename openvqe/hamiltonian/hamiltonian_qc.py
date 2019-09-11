@@ -3,15 +3,17 @@ Interface to get
 Quantum Chemistry Hamiltonians for OpenVQE
 Derived class of HamiltonianBase: Overwrites the get_hamiltonian function
 """
-from openvqe import OutputLevel
+from openvqe import OutputLevel, OpenVQEException
 from openvqe.openvqe_abc import OpenVQEParameters, parametrized
 from openvqe.ansatz import ManyBodyAmplitudes
 from dataclasses import dataclass
-from openfermion import InteractionOperator, MolecularData
+from openfermion import MolecularData, FermionOperator
+from openfermion.transforms import jordan_wigner, bravyi_kitaev, get_fermion_operator
 from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
 from openfermionpsi4 import run_psi4
-from .hamiltonian_base import HamiltonianBase, ParametersHamiltonian
+from openvqe.hamiltonian import QubitHamiltonian
 from numpy import float64
+
 
 @dataclass
 class ParametersPsi4(OpenVQEParameters):
@@ -28,7 +30,7 @@ class ParametersPsi4(OpenVQEParameters):
 
 
 @dataclass
-class ParametersQC(ParametersHamiltonian):
+class ParametersQC(OpenVQEParameters):
     """
     Specialization of ParametersHamiltonian
     Parameters for the HamiltonianQC class
@@ -40,6 +42,24 @@ class ParametersQC(ParametersHamiltonian):
     description: str = ''
     multiplicity: int = 1
     charge: int = 0
+    transformation: str = "JW"
+
+    def jordan_wigner(self, key: str = None):
+        if key is None:
+            key = self.transformation
+        if key.upper() in ["JW", "J-W", "J_W", "JORDAN-WIGNER", "JORDAN_WIGNER", "JORDANWIGNER"]:
+            return True
+        else:
+            return False
+
+    def bravyi_kitaev(self, key: str = None):
+        if key is None:
+            key = self.transformation
+        if key.upper() in ["BK", "B-K", "B_K", "BRAVYI-KITAEV", "BRAVYI_KITAEV", "BRAVYIKITAEV"]:
+            return True
+        else:
+            return False
+
 
     @staticmethod
     def format_element_name(string):
@@ -112,15 +132,52 @@ class ParametersQC(ParametersHamiltonian):
 
 
 @parametrized(parameter_class=ParametersQC)
-class HamiltonianQC(HamiltonianBase):
+class HamiltonianQC(QubitHamiltonian):
+
+    @property
+    def hamiltonian(self):
+        """
+        If the Hamiltonian is not there yet it will be created
+        """
+        if not hasattr(self, "_hamiltonian") or self._hamiltonian is None:
+            self._hamiltonian = self.initialize_hamiltonian()
+
+        return self._hamiltonian
+
+    def initialize_hamiltonian(self):
+        fh = self.get_fermionic_hamiltonian()
+        if self.parameters.jordan_wigner():
+            return jordan_wigner(fh)
+        elif self.parameters.bravyi_kitaev():
+            return bravyi_kitaev(fh)
+        elif hasattr(self, self.parameters.transformation.upper()):
+            return getattr(self, self.parameters.transformation.upper())(fh)
+        elif hasattr(self, self.parameters.transformation.lower()):
+            return getattr(self, self.parameters.transformation.lower())(fh)
+        else:
+            raise OpenVQEException("Error in HamiltonianQC: Unknown Fermion to Qubit transformation >>"+ str(self.parameters.transformation) + "\noverwrite this class and define it")
+
+    @property
+    def molecule(self):
+        if not hasattr(self, "_molecule") or self._molecule is None:
+            self._molecule = self.make_molecule(self.parameters)
+
+        return self._molecule
+
+    @molecule.setter
+    def molecule(self, other):
+        self._molecule = other
+        return self
 
     def __post_init__(self, molecule=None):
         """
         Constructor will run psi4 and create the molecule which is stored as member variable
         :param parameters: instance of ParametersQC which holds all necessary parameters
         """
-        self.molecule = molecule
+        self._molecule = molecule
+        self._hamiltonian = None
 
+    @property
     def n_electrons(self):
         """
         Convenience function
@@ -128,6 +185,7 @@ class HamiltonianQC(HamiltonianBase):
         """
         return self.molecule.n_electrons
 
+    @property
     def n_orbitals(self):
         """
         Convenience function
@@ -135,22 +193,20 @@ class HamiltonianQC(HamiltonianBase):
         """
         return self.molecule.n_orbitals
 
+    @property
     def n_qubits(self):
         """
         Convenience function
         :return: Number of qubits needed
         """
-        return 2 * self.n_orbitals()
+        return 2 * self.n_orbitals
 
-    def get_fermionic_hamiltonian(self) -> InteractionOperator:
+    def get_fermionic_hamiltonian(self) -> FermionOperator:
         """
         Note that the Qubit Hamiltonian can be created over the call method which is already implemented in the baseclass
         :return: The fermionic Hamiltonian as InteractionOperator structure
         """
-        # fast return if possible
-        if self.molecule is None:
-            self.molecule = self.make_molecule(self.parameters)
-        return self.molecule.get_molecular_hamiltonian()
+        return get_fermion_operator(self.molecule.get_molecular_hamiltonian())
 
     @staticmethod
     def make_molecule(parameters: ParametersQC) -> MolecularData:
@@ -204,24 +260,25 @@ class HamiltonianQC(HamiltonianBase):
             filename = self.parameters.filename
 
         from os import path, access, R_OK
-        file_exists = path.isfile("./"+filename) and access("./"+filename, R_OK)
+        file_exists = path.isfile("./" + filename) and access("./" + filename, R_OK)
 
         # make sure the molecule is there, i.e. psi4 has been run
         # and that the output was kept, as well as CCSD was actually computed
-        if not file_exists or (self.molecule is None or self.parameters.psi4.run_ccsd == False or self.parameters.psi4.delete_output):
+        if not file_exists or (
+                self._molecule is None or self.parameters.psi4.run_ccsd == False or self.parameters.psi4.delete_output):
             self.print("Recomputing PSI4", level=OutputLevel.STANDARD)
             self.parameters.filename = filename.strip(".out")
             self.parameters.psi4.run_ccsd = True
             self.parameters.psi4.delete_output = False
-            self.molecule = self.make_molecule(self.parameters)
+            self._molecule = self.make_molecule(self.parameters)
 
         # adapting to the openfermion parser
         if ".out" not in filename:
             filename += ".out"
 
-        singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=self.n_orbitals() * 2,
-                                                      n_alpha_electrons=self.n_electrons() // 2,
-                                                      n_beta_electrons=self.n_electrons() // 2,
+        singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=self.n_orbitals * 2,
+                                                      n_alpha_electrons=self.n_electrons // 2,
+                                                      n_beta_electrons=self.n_electrons // 2,
                                                       psi_filename=filename)
 
         return ManyBodyAmplitudes(one_body=singles, two_body=doubles)

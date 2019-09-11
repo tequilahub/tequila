@@ -26,11 +26,12 @@ if __name__ == "__main__":
     # get initial amplitudes from psi4
     filename = parameters_qc.filename
     print("filename=", filename + ".out")
-    print("n_electrons=", hqc.n_electrons())
-    print("n_orbitals=", hqc.n_orbitals())
+    print("n_electrons=", hqc.n_electrons)
+    print("n_orbitals=", hqc.n_orbitals)
 
     amplitudes = hqc.parse_ccsd_amplitudes()
     print("# of amplitudes: ",len(amplitudes))
+    print("amplitudes:\n", amplitudes)
 
     print("Construct the AnsatzUCC class")
 
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     energy = expectation_value_cirq(final_state=result.wavefunction,
                                     hamiltonian=hqc(),
-                                    n_qubits=hqc.n_qubits())
+                                    n_qubits=hqc.n_qubits)
 
     print("energy = ", energy)
 

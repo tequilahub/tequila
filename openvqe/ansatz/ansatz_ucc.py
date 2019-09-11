@@ -20,9 +20,14 @@ class ManyBodyAmplitudes:
     Class which stores ManyBodyAmplitudes
     """
 
+    @staticmethod
+    def convert_array(asd):
+        # dummy for now
+        return asd
+
     def __init__(self, one_body: numpy.ndarray = None, two_body: numpy.ndarray = None):
-        self.one_body = one_body
-        self.two_body = two_body
+        self.one_body = self.convert_array(one_body)
+        self.two_body = self.convert_array(two_body)
 
     def __str__(self):
         rep = type(self).__name__
@@ -52,8 +57,8 @@ class AnsatzUCC(AnsatzBase):
         """
         :return: Hatree-Fock Reference as binary-number
         """
-        l = [0]*hamiltonian.n_qubits()
-        for i in range(hamiltonian.n_electrons()):
+        l = [0]*hamiltonian.n_qubits
+        for i in range(hamiltonian.n_electrons):
             l[i] = 1
 
         l = [i for i in reversed(l)]
