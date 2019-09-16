@@ -66,7 +66,7 @@ class SimulatorCirq(Simulator):
             return abstract_circuit
 
         if qubit_map is None:
-            n_qubits = abstract_circuit.max_qubit()
+            n_qubits = abstract_circuit.n_qubits
             qubit_map = [cirq.LineQubit(i) for i in range(n_qubits)]
 
         result = cirq.Circuit()

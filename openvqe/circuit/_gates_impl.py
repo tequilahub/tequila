@@ -93,12 +93,12 @@ class QGateImpl:
 
     def max_qubit(self):
         """
-        :return: highest number qubit in this gate
+        :return: highest qubit index used by this gate
         """
         result = max(self.target)
         if self.control is not None:
             result = max(result, max(self.control))
-        return result + 1
+        return result
 
     def is_phased(self):
         '''
@@ -169,15 +169,6 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         result += ", parameter=" + str(self.parameter)
         result += ")"
         return result
-
-    def max_qubit(self):
-        """
-        :return: Determine maximum qubit index needed
-        """
-        result = max(self.target)
-        if self.control is not None:
-            result = max(result, max(self.control))
-        return result + 1
 
     def __eq__(self, other):
         if not isinstance(other, ParametrizedGateImpl):

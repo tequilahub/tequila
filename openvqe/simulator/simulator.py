@@ -49,7 +49,7 @@ class SimulatorReturnType:
         qubits = 0
         result = ""
         if self.abstract_circuit is not None:
-            qubits = self.abstract_circuit.max_qubit()
+            qubits = self.abstract_circuit.n_qubits
 
         if self.wavefunction is not None:
             for i, v in enumerate(self.wavefunction):

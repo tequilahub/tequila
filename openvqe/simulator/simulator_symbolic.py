@@ -183,11 +183,11 @@ class SimulatorSymbolic(Simulator):
         result = QState()
         maxq = max(state.n_qubits(), gate.max_qubit())
         for s, v in state.items():
-            result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, qubits=number_to_binary(number=s, bits=maxq))
+            result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, qubits=number_to_binary(number=s, bits=maxq+1))
         return result
 
     def simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: QState = None):
-        n_qubits = abstract_circuit.max_qubit()
+        n_qubits = abstract_circuit.n_qubits
         if initial_state is None:
             initial_state = QState.initialize_from_integer(0)
         elif isinstance(initial_state, int):

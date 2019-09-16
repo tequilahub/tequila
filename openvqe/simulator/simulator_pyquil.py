@@ -27,9 +27,9 @@ class SimulatorPyquil(Simulator):
             return abstract_circuit
 
         if qubit_map is None:
-            n_qubits = abstract_circuit.max_qubit()
+            n_qubits = abstract_circuit.n_qubits
             qubit_map = [i for i in range(n_qubits)]
-        elif not abstract_circuit.max_qubit() < len(qubit_map):
+        elif not abstract_circuit.n_qubits < len(qubit_map):
             raise OpenVQEException("qubit map does not provide enough qubits")
 
         result = pyquil.Program()

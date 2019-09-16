@@ -159,5 +159,5 @@ def compile_controlled_rotation_gate(gate: RotationGateImpl, angles: list = None
     result *= QGateImpl(name="X", target=target, control=control)
     result *= change_basis(target=target, axis=gate._axis, daggered=True)
 
-    result.n_qubits = result.max_qubit()
+    result.n_qubits = result.max_qubit()+1
     return result

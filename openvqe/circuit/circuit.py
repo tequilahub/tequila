@@ -7,6 +7,21 @@ import copy
 class QCircuit():
 
     @property
+    def n_qubits(self):
+        if hasattr(self, "_n_qubits"):
+            assert(self.max_qubit()<self._n_qubits)
+            return self._n_qubits
+        else:
+            return self.max_qubit()+1
+
+    @n_qubits.setter
+    def n_qubits(self, other):
+        self._n_qubits = other
+        if other<self.max_qubit()+1:
+            raise OpenVQEException("You are trying to set n_qubits to " + str(other) + " but your circuit needs at least: "+ str(self.max_qubit()+1))
+        return self
+
+    @property
     def weight(self):
         if self._weight is None:
             return 1
@@ -143,6 +158,9 @@ class QCircuit():
         return self
 
     def max_qubit(self):
+        """
+        :return: Maximum index this circuit touches
+        """
         qmax = 0
         for g in self.gates:
             qmax = max(qmax, g.max_qubit())
