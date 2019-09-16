@@ -22,18 +22,7 @@ class SimulatorQiskit(Simulator):
         return result
 
     def do_simulate_wavefunction(self, circuit:qiskit.QuantumCircuit, initial_state=0)->SimulatorReturnType:
-
-        if initial_state != 0 and isinstance(initial_state, int):
-            # qiskit uses little endian
-            state = number_to_binary(number=initial_state, bits=circuit.n_qubits, invert=False)
-            circuit.initialize(state, circuit.qubits)
-
-        result = SimulatorReturnType(circuit=circuit)
-        simulator = qiskit.Aer.get_backend("statevector_simulator")
-        result_qiskit = qiskit.execute(experiments=circuit, backend=simulator).result()
-        result.backend_result = result_qiskit
-        result.wavefunction = result_qiskit.get_statevector(circuit)
-        return result
+        raise OpenVQEQiskitException("Qiskit can not simulate general wavefunctions ... proceed manually")
 
     def convert_measurements(self, qiskit_counts: dict):
         """

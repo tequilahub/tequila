@@ -25,9 +25,3 @@ if __name__ == "__main__":
     print("counts:\n", result.measurements)
     print("wfn:\n", wfn)
 
-    # notation example
-    print("\n\nNotation\n")
-    c = gates.X(target=0)
-    c.n_qubits = 2
-    wfn = simulator.simulate_wavefunction(abstract_circuit=c).wavefunction
-    print("wfn:\n", wfn)

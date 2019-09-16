@@ -23,8 +23,6 @@ def test_simple_execution():
     ac *= gates.Ry(target=1, control=0, angle=pi / 2)
 
     simulator = SimulatorQiskit()
-
-    simulator.simulate_wavefunction(abstract_circuit=ac, initial_state=0)
     simulator.run(abstract_circuit=ac, samples=2)
 
 
@@ -32,18 +30,14 @@ def test_primitive_gates():
     for g in supported_primitive_gates:
         qubit = random.randint(0, 10)
         incr = random.randint(1, 5)
-        init = random.randint(0, 1)
-        SimulatorQiskit().simulate_wavefunction(abstract_circuit=g(target=qubit), initial_state=init)
-        SimulatorQiskit().simulate_wavefunction(abstract_circuit=g(target=qubit, control=qubit + incr),
-                                                initial_state=init)
+        SimulatorQiskit().run(abstract_circuit=g(target=qubit))
+        SimulatorQiskit().run(abstract_circuit=g(target=qubit, control=qubit + incr))
         if g(0).gates[0].name in supported_controlled_gates:
             controls = [11]
-            SimulatorQiskit().simulate_wavefunction(abstract_circuit=g(target=qubit, control=controls),
-                                                    initial_state=init)
+            SimulatorQiskit().run(abstract_circuit=g(target=qubit, control=controls))
 
             controls = [11, 12]
-            SimulatorQiskit().simulate_wavefunction(abstract_circuit=g(target=qubit, control=controls),
-                                                    initial_state=init)
+            SimulatorQiskit().run(abstract_circuit=g(target=qubit, control=controls))
 
 
 def test_bell_state():
