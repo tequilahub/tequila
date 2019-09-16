@@ -2,6 +2,7 @@ from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
 from openvqe import OpenVQEException
 from openvqe.circuit.compiler import compile_multitarget, compile_controlled_rotation_gate
 from openvqe.circuit.gates import MeasurementImpl
+from openvqe.tools.convenience import binary_to_number, number_to_binary
 import qiskit
 
 
@@ -12,7 +13,47 @@ class OpenVQEQiskitException(OpenVQEException):
 
 class SimulatorQiskit(Simulator):
 
+    def do_run(self, circuit: qiskit.QuantumCircuit, samples):
+        result = SimulatorReturnType(circuit=circuit)
+        simulator = qiskit.Aer.get_backend("qasm_simulator")
+        result_qiskit = qiskit.execute(experiments=circuit, backend=simulator, shots=samples).result()
+        result.backend_result=result_qiskit
+        result.measurements = self.convert_measurements(result_qiskit.get_counts(circuit))
+        return result
+
+    def do_simulate_wavefunction(self, circuit:qiskit.QuantumCircuit, initial_state=0)->SimulatorReturnType:
+
+        if initial_state != 0 and isinstance(initial_state, int):
+            # qiskit uses little endian
+            state = number_to_binary(number=initial_state, bits=circuit.n_qubits, invert=False)
+            circuit.initialize(state, circuit.qubits)
+
+        result = SimulatorReturnType(circuit=circuit)
+        simulator = qiskit.Aer.get_backend("statevector_simulator")
+        result_qiskit = qiskit.execute(experiments=circuit, backend=simulator).result()
+        result.backend_result = result_qiskit
+        result.wavefunction = result_qiskit.get_statevector(circuit)
+        return result
+
+    def convert_measurements(self, qiskit_counts: dict):
+        """
+        :param qiskit_counts: qiskit counts as dictionary, states are binary in little endian
+        :return: Counts in OpenVQE format, states are big endian
+        """
+        result = MeasurementResultType()
+        #todo there are faster ways
+        for k, v in qiskit_counts.items():
+            kint = [int(i) for i in k]
+            converted_key = binary_to_number(kint, invert=False)
+            result[converted_key] = v
+        return result
+
+
     def create_circuit(self, abstract_circuit: QCircuit, name="q", cname="c") -> qiskit.QuantumCircuit:
+
+        # fast return
+        if isinstance(abstract_circuit, qiskit.QuantumCircuit):
+            return abstract_circuit
 
         n_qubits = abstract_circuit.n_qubits
         q = qiskit.QuantumRegister(n_qubits, name)
@@ -23,8 +64,9 @@ class SimulatorQiskit(Simulator):
         for g in abstract_circuit.gates:
 
             if isinstance(g, MeasurementImpl):
-                for t in g.target:
-                    result.measure(q[t], c[t])
+                tq = [q[t] for t in g.target]
+                tc = [c[t] for t in g.target]
+                result.measure(tq, tc)
                 continue
 
             if g.control is not None and len(g.control) > 2:
@@ -59,14 +101,16 @@ class SimulatorQiskit(Simulator):
                     gfunc(g.parameter, q[g.control[0]], q[g.target[0]])
                 else:
                     gfunc(q[g.control[0]], q[g.target[0]])
-            elif len(g.control) == 1:
+            elif len(g.control) == 2:
                 gfunc = getattr(result, "cc" + g.name.lower())
                 if g.is_parametrized():
                     gfunc(g.parameter, q[g.control[0]], q[g.control[1]], q[g.target[0]])
                 else:
                     gfunc(q[g.control[0]], q[g.control[1]], q[g.target[0]])
             else:
-                raise OpenVQEQiskitException("Not supported")
+                print(g.name, " not supported")
+                print(g)
+                raise OpenVQEQiskitException("Not supported\n"+str(g))
 
         return result
 
