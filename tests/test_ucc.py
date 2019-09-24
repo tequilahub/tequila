@@ -36,7 +36,7 @@ class TestParameters(unittest.TestCase):
 
         assert (ucc.initial_state(hqc) == 12)
 
-        energy = expectation_value_cirq(final_state=result.wavefunction,
+        energy = expectation_value_cirq(final_state=result.backend_result.final_state,
                                         hamiltonian=hqc(),
                                         n_qubits=hqc.n_qubits)
 

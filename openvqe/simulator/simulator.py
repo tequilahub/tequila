@@ -1,91 +1,232 @@
-from openvqe import OpenVQEModule, OpenVQEException
+from openvqe import OpenVQEModule, OpenVQEException, BitNumbering
 from openvqe.circuit.circuit import QCircuit
-from openvqe.tools.convenience import number_to_binary
+from openvqe.tools.convenience import number_to_string
 from openvqe.hamiltonian import PauliString
-from numpy import isclose
+from numpy import isclose, ndarray, abs, sign
 from openvqe.circuit.compiler import change_basis
 from openvqe.circuit.gates import Measurement
+from openvqe import BitString
 import copy
+from typing import Dict, List
+from dataclasses import dataclass
 
 
-class MeasurementResultType:
+class KeyMapQubitSubregister:
+
+    @property
+    def n_qubits(self):
+        return len(self.register)
+
+    @property
+    def register(self):
+        return self._register
+
+    @property
+    def subregister(self):
+        return self._subregister
+
+    @property
+    def complement(self):
+        return self.make_complement()
+
+    def __init__(self, subregister: List[int], register: List[int], endianness: BitNumbering = BitNumbering.LSB):
+        self._subregister = subregister
+        self._register = register
+        self.endianness = endianness
+
+    def make_complement(self):
+        return [i for i in self._register if i not in self._subregister]
+
+    def __call__(self, input_state: int, initial_state: int = 0):
+
+        input_state = BitString.from_int(integer=input_state)
+        initial_state = BitString.from_int(integer=initial_state)
+
+        output_state = BitString.from_int(integer=initial_state.integer, nbits=len(self._register))
+        for k, v in enumerate(self._subregister):
+            output_state[v] = input_state[k]
+
+        return output_state
+
+    def __repr__(self):
+        return "keymap:\n" + "register    = " + str(self.register) + "\n" + "subregister = " + str(self.subregister)
+
+
+class QubitWaveFunction:
     """
-    Measurement result container
-    Holds measurement as dictionary (name of measurement and corresponding results)
-    Results are stored as dictionary of computational basis states and their count as value
+    Store Wavefunction as dictionary of comp. basis state and complex numbers
+    Use the same structure for Measurments results with int instead of complex numbers (counts)
     """
+
+    def apply_keymap(self, keymap, initial_state: BitString):
+        self.n_qubits = keymap.n_qubits
+        mapped_state = dict()
+        for k, v in self.state.items():
+            mapped_state[keymap(input_state=k, initial_state=initial_state)] = v
+
+        self.state = mapped_state
+        return self
+
+    @property
+    def n_qubits(self) -> int:
+        if self._n_qubits is None:
+            return self.min_qubits()
+        else:
+            return max(self._n_qubits,self.min_qubits())
+
+    def min_qubits(self) -> int:
+        if len(self.state) > 0:
+            maxk = max(self.state.keys())
+            return maxk.nbits
+        else:
+            return 0
+
+    @n_qubits.setter
+    def n_qubits(self, n_qubits):
+        self._n_qubits = max(n_qubits, self.min_qubits())
+        return self
+
+    @property
+    def endianness(self):
+        return BitNumbering.MSB
+
+    @property
+    def state(self):
+        if self._state is None:
+            return dict()
+        else:
+            return self._state
+
+    @state.setter
+    def state(self, other: Dict[BitString, complex]):
+        assert (isinstance(other, dict))
+        self._state = other
+
+    def __init__(self, state: Dict[int, complex] = None):
+        if state is None:
+            self._state = dict()
+        else:
+            self._state = state
+        self._n_qubits = None
+
+    def items(self):
+        return self.state.items()
+
+    def keys(self):
+        return self.state.keys()
+
+    def values(self):
+        return self.state.values()
 
     def __getitem__(self, item):
-        return self._result[item]
-
-    def __init__(self):
-        self._result = {}
+        return self.state[item]
 
     def __setitem__(self, key, value):
-        self._result[key] = value
+        self._state[key]=value
+        return self
+
+    def __len__(self):
+        return len(self.state)
+
+    @classmethod
+    def initialize_from_array(cls, arr: ndarray, keymap=None, threshold: float = 1.e-6):
+        assert (len(arr.shape) == 1)
+        state = dict()
+        maxkey = len(arr)-1
+        maxbit = BitString.from_int(integer=maxkey).nbits
+        for ii, v in enumerate(arr):
+            i = BitString.from_int(integer=ii, nbits=maxbit)
+            if not isclose(abs(v), 0, atol=threshold):
+                key = i if keymap is None else keymap(i)
+                state[key] = v
+        return QubitWaveFunction(state)
+
+    @classmethod
+    def initialize_from_integer(cls, i: int, coeff=1):
+        if isinstance(i, BitString):
+            return QubitWaveFunction(state={i:coeff})
+        else:
+            return QubitWaveFunction(state={BitString.from_int(integer=i): coeff})
 
     def __repr__(self):
-        return str(self._result)
+        result = str()
+        for k, v in self.items():
+            result += number_to_string(number=v) + "|" + str(k.binary) + "> "
+        return result
 
+    def __eq__(self, other):
+        if len(self.state) != len(other.state):
+            return False
+        for k, v in self.state.items():
+            if k not in other.state:
+                return False
+            elif not isclose(v, other.state[k], atol=1.e-6):
+                print("c ", v, " ", other.state[k])
+                return False
 
+        return True
+
+    def __add__(self, other):
+        result = QubitWaveFunction(state=copy.deepcopy(self._state))
+        for k, v in other.items():
+            if k in result._state:
+                result._state[k] += v
+            else:
+                result._state[k] = v
+        return result
+
+    def __iadd__(self, other):
+        for k, v in other.items():
+            if k in self._state:
+                self._state[k] += v
+            else:
+                self._state[k] = v
+        return self
+
+    def __rmul__(self, other):
+        result = QubitWaveFunction(state=copy.deepcopy(self._state))
+        for k, v in result._state.items():
+            result._state[k] *= other
+        return result
+
+@dataclass
 class SimulatorReturnType:
 
-    def __init__(self, result=None, circuit=None, abstract_circuit: QCircuit = None, *args, **kwargs):
-        self.circuit = circuit
-        self.abstract_circuit = abstract_circuit
-        self.wavefunction = None
-        self.density_matrix = None
-        self.measurements = None
-        self.backend_result = None
-        self.__post_init__(result)
-
-    def __post_init__(self, result):
-        """
-        Overwrite this function in the specific backends to get wavefunctions, density matrices and whatever you want
-        """
-        self.result = result
-
-    def __repr__(self):
-        qubits = 0
-        result = ""
-        if self.abstract_circuit is not None:
-            qubits = self.abstract_circuit.n_qubits
-
-        if self.wavefunction is not None:
-            for i, v in enumerate(self.wavefunction):
-                if not isclose(abs(v), 0, atol=1.e-5):
-                    if isclose(v.imag, 0, atol=1.e-5):
-                        result += '+({0.real:.4f})'.format(v) + "|" + str(
-                            number_to_binary(number=i, bits=qubits)) + ">"
-                    elif isclose(v.real, 0, atol=1.e-5):
-                        result += '+({0.imag:.4f}i)'.format(v) + "|" + str(
-                            number_to_binary(number=i, bits=qubits)) + ">"
-                    else:
-                        result += '+({0.real:.4f} + {0.imag:.4f}i)'.format(v) + "|" + str(
-                            number_to_binary(number=i, bits=qubits)) + ">"
-            return result
-        elif self.density_matrix is not None:
-            return str(self.density_matrix)
-        else:
-            return "None"
+    abstract_circuit: QCircuit = None
+    circuit: int = None
+    wavefunction: QubitWaveFunction = None
+    measurements: Dict[str,QubitWaveFunction] = None
+    backend_result: int = None
 
 
 class Simulator(OpenVQEModule):
     """
-    Base Class for OpenVQE interfaces to simulators
+    Abstract Base Class for OpenVQE interfaces to simulators
     """
 
-    def run(self, abstract_circuit: QCircuit, samples: int = 1):
+    @property
+    def endianness(self):
+        """
+        Specifies if the operator backend interprets
+        bitstrings in Big or Little endian
+        !this should be overwritten by derived classes!
+        :return: Endianness enum specifying the type of endianness
+        """
+        return BitNumbering.LSB
+
+    def run(self, abstract_circuit: QCircuit, samples: int = 1) -> SimulatorReturnType:
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)
-        result = self.do_run(circuit=circuit, samples=samples)
-        result.abstract_circuit = abstract_circuit
-        return result
+        backend_result = self.do_run(circuit=circuit, samples=samples)
+        return SimulatorReturnType(circuit=circuit,
+                                   abstract_circuit=abstract_circuit,
+                                   backend_result=backend_result,
+                                   measurements=self.convert_measurements(backend_result))
 
     def do_run(self, circuit, samples: int = 1):
         raise OpenVQEException("run needs to be overwritten")
 
     def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=None,
-                              initial_state: int = 0):
+                              initial_state: int = 0) -> SimulatorReturnType:
         """
         Simulates an abstract circuit with the backend specified by specializations of this class
         :param abstract_circuit: The abstract circuit
@@ -94,38 +235,19 @@ class Simulator(OpenVQEModule):
         if given as an integer this is interpreted as the corresponding multi-qubit basis state
         :return: The resulting state
         """
+        active_qubits = abstract_circuit.qubits
+        all_qubits = [i for i in range(abstract_circuit.n_qubits)]
 
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
-        result = self.do_simulate_wavefunction(circuit=circuit, initial_state=initial_state)
-        result.abstract_circuit = abstract_circuit
+        keymap = KeyMapQubitSubregister(subregister=active_qubits, register=all_qubits)
 
+        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=initial_state)
+        result.wavefunction.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
-    def do_simulate_wavefunction(self, circuit, initial_state=0):
+    def do_simulate_wavefunction(self, circuit, initial_state=0) -> SimulatorReturnType:
         raise OpenVQEException(
             "called from base class of simulator, or non-supported operation for this backend")
 
-    def simulate_density_matrix(self, abstract_circuit: QCircuit, returntype=None, initial_state=0):
-        """
-        Translates the abstract circuit to the backend which is specified by specializations of this class
-        :param abstract_circuit: the abstract circuit
-        :param returntype: if callable a class which wraps the return values otherwise the plain result of the backend simulator is given back
-        see the SimulatorReturnType baseclass
-        :return: The density matrix of the simulation
-        """
-
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
-        result = self.do_simulate_density_matrix(circuit=circuit, initial_state=initial_state)
-        result.abstract_circuit = abstract_circuit
-
-        if callable(returntype):
-            return returntype(result=result, circuit=circuit, abstract_circuit=abstract_circuit)
-        else:
-            return result
-
-    def do_simulate_density_matrix(self, circuit, initial_state=0):
-        raise OpenVQEException(
-            "called from base class of simulator, or non-supported operation for this backend")
 
     def create_circuit(self, abstract_circuit: QCircuit):
         """
@@ -133,6 +255,10 @@ class Simulator(OpenVQEModule):
         :param abstract_circuit:
         :return: circuit object of the backend
         """
+        raise OpenVQEException(
+            "called from base class of simulator, or non-supported operation for this backend")
+
+    def convert_measurements(self, backend_result) -> Dict[str, QubitWaveFunction]:
         raise OpenVQEException(
             "called from base class of simulator, or non-supported operation for this backend")
 
@@ -160,7 +286,7 @@ class Simulator(OpenVQEModule):
 
             # make measurment instruction
             measure = QCircuit()
-            qubits=[idx[0] for idx in paulistring.items()]
+            qubits = [idx[0] for idx in paulistring.items()]
             measure *= Measurement(name=str(paulistring), target=qubits)
             assembled *= U_front * measure * U_back
 
@@ -168,22 +294,17 @@ class Simulator(OpenVQEModule):
 
         # post processing
         result = []
-        print("circuit=", sim_result.circuit)
         for paulistring in paulistrings:
-            measurements = sim_result.measurements[str(paulistring)]
+            measurements = sim_result.measurements[str(paulistring)] # TODO will work only for cirq -> Change
             E = 0.0
             n_samples = 0
             for key, count in measurements.items():
-                parity = number_to_binary(key).count(1)
-                sign = (-1)**parity
-                E += sign*count
+                parity = key.array.count(1)
+                sign = (-1) ** parity
+                E += sign * count
                 n_samples += count
-            assert(n_samples==samples)
-            E = E/samples*paulistring.coeff
+            assert (n_samples == samples)
+            E = E / samples * paulistring.coeff
             result.append(E)
 
         return result
-
-
-
-

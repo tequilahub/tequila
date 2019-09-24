@@ -39,10 +39,11 @@ if __name__ == "__main__":
     ac = QCircuit()
     ac *= X(0)
     ac *= X(1)
-    density_matrix_result = simulator.simulate_density_matrix(abstract_circuit=ac)
-
-    print("density_matrix_result:\n", density_matrix_result)
-    print("density_matrix:\n", density_matrix_result.result.final_density_matrix)
+    # deprecated, but do_simulate_density_matrix is still there
+    # density_matrix_result = simulator.simulate_density_matrix(abstract_circuit=ac)
+    #
+    # print("density_matrix_result:\n", density_matrix_result)
+    # print("density_matrix:\n", density_matrix_result.result.final_density_matrix)
 
     print("\n\nRecompile controled-rotations")
     from openvqe.circuit.compiler import compile_controlled_rotation_gate

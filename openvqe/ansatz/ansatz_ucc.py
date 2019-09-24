@@ -5,7 +5,7 @@ import numpy
 import openfermion
 from dataclasses import dataclass
 from openvqe.ansatz.ansatz_base import ParametersAnsatz
-from openvqe.tools.convenience import binary_to_number, number_to_binary
+from openvqe import BitString
 
 
 @dataclass
@@ -55,14 +55,13 @@ class AnsatzUCC(AnsatzBase):
 
     def initial_state(self, hamiltonian) -> int:
         """
-        :return: Hatree-Fock Reference as binary-number
+        :return: Hartree-Fock Reference as binary-number
         """
         l = [0]*hamiltonian.n_qubits
         for i in range(hamiltonian.n_electrons):
             l[i] = 1
 
-        l = [i for i in reversed(l)]
-        return binary_to_number(l=l)
+        return BitString.from_array(array=l, nbits=hamiltonian.n_qubits).integer
 
     def make_cluster_operator(self, angles: ManyBodyAmplitudes) -> openfermion.QubitOperator:
         """

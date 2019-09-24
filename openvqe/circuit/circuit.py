@@ -1,10 +1,25 @@
 from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
+from openvqe import BitNumbering
 import numpy
 import copy
 
 
 class QCircuit():
+
+    @property
+    def endianness(self) -> BitNumbering:
+        return BitNumbering.LSB
+
+    @property
+    def qubits(self):
+        accumulate = []
+        for g in self.gates:
+            if g.target is not None:
+                accumulate += g.target
+            if g.control is not None:
+                accumulate += g.control
+        return sorted(list(set(accumulate)))
 
     @property
     def n_qubits(self):

@@ -1,2 +1,2 @@
-from openvqe.tools.convenience import number_to_binary, binary_to_number
+from openvqe.tools.convenience import number_to_string
 from openvqe.tools.expectation_value_cirq import expectation_value_cirq

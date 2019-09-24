@@ -53,7 +53,7 @@ if __name__ == "__main__":
     print("circuit\n", result.circuit)
     print("initial state was: ", ucc.initial_state(hamiltonian=hqc))
 
-    energy = expectation_value_cirq(final_state=result.wavefunction,
+    energy = expectation_value_cirq(final_state=result.backend_result.final_state,
                                     hamiltonian=hqc(),
                                     n_qubits=hqc.n_qubits)
 

@@ -1,8 +1,8 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, MeasurementResultType
+from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe.circuit.compiler import compile_multitarget, compile_controlled_rotation_gate
 from openvqe.circuit.gates import MeasurementImpl
-from openvqe.tools.convenience import binary_to_number, number_to_binary
+from openvqe import BitString, BitNumbering, BitStringLSB
 import qiskit
 
 
@@ -13,30 +13,29 @@ class OpenVQEQiskitException(OpenVQEException):
 
 class SimulatorQiskit(Simulator):
 
-    def do_run(self, circuit: qiskit.QuantumCircuit, samples):
-        result = SimulatorReturnType(circuit=circuit)
-        simulator = qiskit.Aer.get_backend("qasm_simulator")
-        result_qiskit = qiskit.execute(experiments=circuit, backend=simulator, shots=samples).result()
-        result.backend_result=result_qiskit
-        result.measurements = self.convert_measurements(result_qiskit.get_counts(circuit))
-        return result
+    @property
+    def endianness(self):
+        return BitNumbering.LSB
 
-    def do_simulate_wavefunction(self, circuit:qiskit.QuantumCircuit, initial_state=0)->SimulatorReturnType:
+    def do_run(self, circuit: qiskit.QuantumCircuit, samples):
+        simulator = qiskit.Aer.get_backend("qasm_simulator")
+        return qiskit.execute(experiments=circuit, backend=simulator, shots=samples)
+
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0) -> SimulatorReturnType:
         raise OpenVQEQiskitException("Qiskit can not simulate general wavefunctions ... proceed manually")
 
-    def convert_measurements(self, qiskit_counts: dict):
+    def convert_measurements(self, backend_result) -> QubitWaveFunction:
         """
-        :param qiskit_counts: qiskit counts as dictionary, states are binary in little endian
-        :return: Counts in OpenVQE format, states are big endian
+        :param qiskit_counts: qiskit counts as dictionary, states are binary in little endian (LSB)
+        :return: Counts in OpenVQE format, states are big endian (MSB)
         """
-        result = MeasurementResultType()
-        #todo there are faster ways
+        qiskit_counts = backend_result.result().get_counts()
+        result = QubitWaveFunction()
+        # todo there are faster ways
         for k, v in qiskit_counts.items():
-            kint = [int(i) for i in k]
-            converted_key = binary_to_number(kint, invert=False)
-            result[converted_key] = v
-        return result
-
+            converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
+            result._state[converted_key] = v
+        return {"M": result}
 
     def create_circuit(self, abstract_circuit: QCircuit, name="q", cname="c") -> qiskit.QuantumCircuit:
 
@@ -99,7 +98,7 @@ class SimulatorQiskit(Simulator):
             else:
                 print(g.name, " not supported")
                 print(g)
-                raise OpenVQEQiskitException("Not supported\n"+str(g))
+                raise OpenVQEQiskitException("Not supported\n" + str(g))
 
         return result
 

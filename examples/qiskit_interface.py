@@ -21,7 +21,4 @@ if __name__ == "__main__":
     c = gates.H(target=0)*gates.CNOT(target=1, control=0)*gates.Measurement(target=[0,1])
     result = simulator.run(abstract_circuit=c, samples=1000)
 
-    wfn = simulator.simulate_wavefunction(abstract_circuit=c).wavefunction
-    print("counts:\n", result.measurements)
-    print("wfn:\n", wfn)
 

@@ -44,24 +44,24 @@ def test_bell_state():
     for i in range(10):
         c = gates.H(target=0) * gates.CNOT(target=1, control=0) * gates.Measurement(target=[0, 1])
         result = SimulatorQiskit().run(abstract_circuit=c, samples=1)
-        assert (len(result.measurements._result) ==1)
-        keys=[k for k in result.measurements._result.keys()]
+        assert (len(result.measurements['M']) ==1)
+        keys=[k for k in result.measurements['M'].keys()]
         assert (len(keys)==1)
-        assert (keys[0] in [0,3])
+        assert (keys[0].integer in [0,3])
 
 def test_notation():
-    c = gates.X(target=0)*gates.Measurement(target=0)
+    c = gates.X(target=0)*gates.Measurement(name="MXXX",target=0)
     result = SimulatorQiskit().run(abstract_circuit=c, samples=1)
 
-    assert (len(result.measurements._result) == 1)
-    keys = [k for k in result.measurements._result.keys()]
+    assert (len(result.measurements['M']) == 1)
+    keys = [k for k in result.measurements['M'].keys()]
     assert (len(keys) == 1)
-    assert (keys[0] == 1)
+    assert (keys[0].integer == 1)
 
     c = gates.X(target=0)*gates.Measurement(target=[0,1])
     result = SimulatorQiskit().run(abstract_circuit=c, samples=1)
 
-    assert (len(result.measurements._result) == 1)
-    keys = [k for k in result.measurements._result.keys()]
+    assert (len(result.measurements['M']) == 1)
+    keys = [k for k in result.measurements['M'].keys()]
     assert (len(keys) == 1)
-    assert (keys[0] == 1)
+    assert (keys[0].integer == 2)
