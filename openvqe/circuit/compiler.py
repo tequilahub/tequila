@@ -112,7 +112,7 @@ def change_basis(target, axis, daggered=False):
 
     if axis == 0:
         return H(target=target, frozen=True)
-    elif axis == 1 and daggered:
+    elif axis == 1 and daggered == True:
         return Rx(angle=-numpy.pi/2, target=target, frozen=True)
     elif axis == 1:
         return Rx(angle=numpy.pi/2, target=target, frozen=True)
@@ -140,7 +140,7 @@ def compile_controlled_rotation_gate(gate: RotationGateImpl, angles: list = None
         return QCircuit.wrap_gate(gate)
 
     if angles is None:
-        angles = [gate.angle / 2.0, -gate.angle / 2.0]
+        angles = [-gate.angle / 2.0, gate.angle / 2.0]
 
     assert (len(angles) == 2)
 

@@ -20,7 +20,7 @@ if __name__ == "__main__":
     #######
     gate = RotationGateImpl(axis=1, angle=pi / 3, target=1, control=3)
     gradientx = grad(gate)
-    print("gradient at of Ry at gate level", gradientx, " test:", gradient[0] == gradientx[0])
+    print("gradient at Ry at gate level", gradientx, " test:", gradient[0] == gradientx[0])
 
     ac = QCircuit()
     ac *= X(target=0, control=None)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     """
 
     #H = PY(qubit=0) # with this Hamiltonian the example works fine
-    H = 1j*PX(qubit=0)*PZ(qubit=0) # should give the same results
+    H = PX(qubit=0) # should give the same results
 
     print("The Hamiltonian is:\n")
     print(H)
@@ -72,9 +72,9 @@ if __name__ == "__main__":
     energies = []
     gradients = []
     angles = []
-    for n in range(5):
-        theta = n*pi/4
-        U = Rx(target=0, angle=theta)
+    for n in range(33):
+        theta = n*pi/8
+        U = Ry(target=0, angle=theta)
         print(U)
         result = SimulatorCirq().simulate_wavefunction(abstract_circuit=U)
         print(result)
@@ -103,10 +103,10 @@ if __name__ == "__main__":
     energies = []
     gradients = []
     angles = []
-    for n in range(5):
-        theta = n*pi/4
+    for n in range(33):
+        theta = n*pi/8
         # multiplication syntax still follows circuits ... should probably change that at some point
-        U = X(target=1)*Rx(target=0, control=1, angle=theta)
+        U = X(target=1)*Ry(target=0, control=1, angle=theta)
         # if you wanna see the states
         wfn = SimulatorCirq().simulate_wavefunction(abstract_circuit=U)
         # leaving this here to demonstrate how to use cirqs ascii print since we don't have our own right now
@@ -137,11 +137,11 @@ if __name__ == "__main__":
     man_energies = []
     man_gradients = []
     man_angles = []
-    for n in range(5):
-        theta = n*pi/4
+    for n in range(33):
+        theta = n*pi/8
         print(theta)
         # multiplication syntax still follows circuits ... should probably change that at some point
-        U = X(target=1)*Rx(target=0, control=1, angle=theta)
+        U = X(target=1)*Ry(target=0, control=1, angle=theta)
         U = compile_controlled_rotation_gate(gate=U) # that actually works
         # leaving this here to demonstrate how to use cirqs ascii print since we don't have our own right now
         print(SimulatorCirq().create_circuit(abstract_circuit=U))
@@ -181,3 +181,4 @@ if __name__ == "__main__":
     plt.plot(angles, man_energies, label="Manual")
     plt.legend()
     plt.show()
+
