@@ -113,9 +113,9 @@ def change_basis(target, axis, daggered=False):
     if axis == 0:
         return H(target=target, frozen=True)
     elif axis == 1 and daggered == True:
-        return Rx(angle=-numpy.pi/2, target=target, frozen=True)
-    elif axis == 1:
         return Rx(angle=numpy.pi/2, target=target, frozen=True)
+    elif axis == 1:
+        return Rx(angle=-numpy.pi/2, target=target, frozen=True)
     else:
         return QCircuit()
 
