@@ -208,6 +208,13 @@ class QCircuit():
         else:
             return QCircuit(gates=copy.deepcopy(self.gates), weight=self.weight * other)
 
+    def __add__(self, other):
+        return self.__mul__(other=other)
+
+    def __iadd__(self, other):
+        return self.__imul__(other=other)
+
+
     def __pow__(self, power, modulo=None):
         if modulo is not None:
             raise OpenVQEException("Modulo powers for circuits/unitaries not supported")
