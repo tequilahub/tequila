@@ -1,5 +1,5 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, OpenVQEException, SimulatorReturnType
-from openvqe.tools.convenience import number_to_binary
+from openvqe.simulator.simulator import QubitWaveFunction, Simulator, QCircuit, OpenVQEException, SimulatorReturnType
+from openvqe import BitStringLSB, BitString
 import pyquil
 
 class OpenVQEPyquilException(OpenVQEException):
@@ -27,9 +27,9 @@ class SimulatorPyquil(Simulator):
             return abstract_circuit
 
         if qubit_map is None:
-            n_qubits = abstract_circuit.max_qubit()
+            n_qubits = abstract_circuit.n_qubits
             qubit_map = [i for i in range(n_qubits)]
-        elif not abstract_circuit.max_qubit() < len(qubit_map):
+        elif not abstract_circuit.n_qubits < len(qubit_map):
             raise OpenVQEException("qubit map does not provide enough qubits")
 
         result = pyquil.Program()
@@ -61,21 +61,21 @@ class SimulatorPyquil(Simulator):
                 result += gate
         return result
 
-    def do_simulate_wavefunction(self, circuit, initial_state=0):
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0):
         try:
             simulator = pyquil.api.WavefunctionSimulator()
-
-            # need to initialize the initial_state with a circuit
-            binary = number_to_binary(initial_state)
+            circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+            initial_state = BitString.from_int(integer=initial_state)
             iprep = pyquil.Program()
-            for i, val in enumerate(reversed(binary)):
+            for i, val in enumerate(initial_state):
                 if val>0:
                     iprep += pyquil.gates.X(i)
 
-            result=SimulatorReturnType(result=simulator.wavefunction(iprep+circuit))
-            result.wavefunction = result.result.amplitudes
-            return result
+            backend_result=simulator.wavefunction(iprep+circuit)
+            return SimulatorReturnType(abstract_circuit=abstract_circuit,
+                                       circuit=circuit,
+                                       backend_result=backend_result,
+                                       wavefunction=QubitWaveFunction.initialize_from_array(arr=backend_result.amplitudes))
         except Exception as e:
-            #print(e)
             print("\n\n\n!!!!Make sure Rigettis Quantum-Virtual-Machine is running somewhere in the back!!!!\n\n\n")
             raise e

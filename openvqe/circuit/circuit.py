@@ -1,10 +1,40 @@
 from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
+from openvqe import BitNumbering
 import numpy
 import copy
 
 
 class QCircuit():
+
+    @property
+    def endianness(self) -> BitNumbering:
+        return BitNumbering.LSB
+
+    @property
+    def qubits(self):
+        accumulate = []
+        for g in self.gates:
+            if g.target is not None:
+                accumulate += g.target
+            if g.control is not None:
+                accumulate += g.control
+        return sorted(list(set(accumulate)))
+
+    @property
+    def n_qubits(self):
+        if hasattr(self, "_n_qubits"):
+            assert(self.max_qubit()<self._n_qubits)
+            return self._n_qubits
+        else:
+            return self.max_qubit()+1
+
+    @n_qubits.setter
+    def n_qubits(self, other):
+        self._n_qubits = other
+        if other<self.max_qubit()+1:
+            raise OpenVQEException("You are trying to set n_qubits to " + str(other) + " but your circuit needs at least: "+ str(self.max_qubit()+1))
+        return self
 
     @property
     def weight(self):
@@ -143,6 +173,9 @@ class QCircuit():
         return self
 
     def max_qubit(self):
+        """
+        :return: Maximum index this circuit touches
+        """
         qmax = 0
         for g in self.gates:
             qmax = max(qmax, g.max_qubit())
@@ -174,6 +207,13 @@ class QCircuit():
             return self.__mul__(other)
         else:
             return QCircuit(gates=copy.deepcopy(self.gates), weight=self.weight * other)
+
+    def __add__(self, other):
+        return self.__mul__(other=other)
+
+    def __iadd__(self, other):
+        return self.__imul__(other=other)
+
 
     def __pow__(self, power, modulo=None):
         if modulo is not None:

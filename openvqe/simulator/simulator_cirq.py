@@ -1,9 +1,10 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, MeasurementResultType
+from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe.objective import Objective
 from openvqe.circuit.gates import MeasurementImpl
-from openvqe.tools.convenience import binary_to_number
+from openvqe import BitString
 import cirq
+from typing import Dict
 
 
 class OpenVQECirqException(OpenVQEException):
@@ -13,26 +14,22 @@ class OpenVQECirqException(OpenVQEException):
 
 class SimulatorCirq(Simulator):
 
-    def convert_measurements(self, cirq_result: cirq.TrialResult):
-        result=MeasurementResultType()
-        for key, value in cirq_result.measurements.items():
-            counter = {}
+    def convert_measurements(self, backend_result: cirq.TrialResult) -> Dict[str, QubitWaveFunction]:
+        result = dict()
+        for key, value in backend_result.measurements.items():
+            counter = QubitWaveFunction()
             for sample in value:
-                binary = binary_to_number(sample.astype(int), invert=False)
-                if binary in counter:
-                    counter[binary] += 1
+                binary = BitString.from_array(array=sample.astype(int))
+                if binary in counter._state:
+                    counter._state[binary] += 1
                 else:
-                    counter[binary] = 1
+                    counter._state[binary] = 1
             result[key] = counter
         return result
 
-    def do_run(self, circuit: cirq.Circuit, samples: int = 1):
-        result = SimulatorReturnType(circuit=circuit)
-        result.circuit = circuit
-        cirq_result = cirq.Simulator().run(program=circuit, repetitions=samples)
-        result.backend_result = cirq_result
-        result.measurements = self.convert_measurements(cirq_result)
-        return result
+    def do_run(self, circuit: cirq.Circuit, samples: int = 1) -> cirq.TrialResult:
+        return cirq.Simulator().run(program=circuit, repetitions=samples)
+
 
     def expectation_value(self, objective: Objective, initial_state: int = 0):
         # this is not how it is supposed to be ... just hacked in order for this part to return something
@@ -41,10 +38,10 @@ class SimulatorCirq(Simulator):
         exv = []
         weights = []
         for unitary in objective.unitaries:
-            wfn = self.simulate_wavefunction(abstract_circuit=unitary, initial_state=initial_state)
+            simresult = self.simulate_wavefunction(abstract_circuit=unitary, initial_state=initial_state)
             exv.append(
                 expectation_value_cirq(hamiltonian=objective.observable(), n_qubits=objective.observable.n_qubits,
-                                       final_state=wfn.wavefunction))
+                                       final_state=simresult.backend_result.final_state))
             weights.append(unitary.weight)
 
         return objective.objective_function(values=exv, weights=weights)
@@ -66,7 +63,7 @@ class SimulatorCirq(Simulator):
             return abstract_circuit
 
         if qubit_map is None:
-            n_qubits = abstract_circuit.max_qubit()
+            n_qubits = abstract_circuit.n_qubits
             qubit_map = [cirq.LineQubit(i) for i in range(n_qubits)]
 
         result = cirq.Circuit()
@@ -108,16 +105,17 @@ class SimulatorCirq(Simulator):
                 result += tmp
         return result
 
-    def do_simulate_wavefunction(self, circuit: cirq.Circuit, initial_state=0):
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0) -> SimulatorReturnType:
         simulator = cirq.Simulator()
-        result = SimulatorReturnType(result=simulator.simulate(program=circuit, initial_state=initial_state),
-                                     circuit=circuit)
-        result.wavefunction = result.result.final_state
-        return result
+        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+        backend_result = simulator.simulate(program=circuit, initial_state=initial_state)
+        return SimulatorReturnType(abstract_circuit=abstract_circuit, circuit=circuit,
+                                   wavefunction=QubitWaveFunction.initialize_from_array(arr=backend_result.final_state),
+                                   backend_result=backend_result)
 
     def do_simulate_density_matrix(self, circuit: cirq.Circuit, initial_state=0):
         simulator = cirq.DensityMatrixSimulator()
         result = SimulatorReturnType(result=simulator.simulate(program=circuit, initial_state=initial_state),
                                      circuit=circuit)
-        result.density_matrix = result.result.final_density_matrix
+        result.density_matrix = result.backend_result.final_density_matrix
         return result

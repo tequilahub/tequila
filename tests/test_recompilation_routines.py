@@ -1,10 +1,8 @@
-from openvqe.circuit import QCircuit, gates
-from openvqe.circuit.compiler import compile_controlled_rotation_gate, compile_multitarget
-from numpy.random import uniform, randint, choice
-from numpy import pi, isclose
-from sympy import Float, Abs
-from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
-
+from openvqe.circuit import gates
+from openvqe.circuit.compiler import compile_controlled_rotation_gate
+from numpy.random import uniform, randint
+from numpy import pi
+from openvqe.simulator.simulator_cirq import SimulatorCirq
 
 def test_controlled_rotations():
     angles = uniform(0, 2 * pi, 5)
@@ -13,10 +11,10 @@ def test_controlled_rotations():
         for gate in gs:
             qubit = randint(0, 1)
             control = randint(2, 3)
-            U = gate(target=qubit, control=control, angle=angle)
+            U = gates.X(target=control)*gate(target=qubit, control=control, angle=angle)
             RCU = compile_controlled_rotation_gate(gate=U)
-            wfn1 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=U, initial_state=0)
-            wfn2 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=RCU, initial_state=0)
-            assert (Abs(wfn1.inner(wfn2).evalf() - 1.0) < Float(1.e-5))
+            wfn1 = SimulatorCirq().simulate_wavefunction(abstract_circuit=U, initial_state=0).wavefunction
+            wfn2 = SimulatorCirq().simulate_wavefunction(abstract_circuit=RCU, initial_state=0).wavefunction
+            assert (wfn1 == wfn2)
 
 

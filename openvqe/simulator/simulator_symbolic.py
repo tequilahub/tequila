@@ -1,14 +1,9 @@
 from openvqe.simulator.simulator import Simulator
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit.gates import QGate, Ry, X
-from openvqe.tools.convenience import number_to_binary, binary_to_number
+from openvqe import BitString
 import copy
 import sympy
-
-
-def apply_function(function, number):
-    return function(number)
-
 
 class QState:
 
@@ -28,7 +23,7 @@ class QState:
 
     @staticmethod
     def initialize_from_integer(integer):
-        state = {integer: sympy.Integer(1.0)}
+        state = {BitString.from_int(integer=integer): sympy.Integer(1.0)}
         result = QState(state=state)
         return result
 
@@ -52,7 +47,7 @@ class QState:
         return len(self.state)
 
     def n_qubits(self):
-        return len(number_to_binary(number=max(self.state.keys())))
+        return max(self.state.keys()).nbits
 
     def __rmul__(self, other):
         for k in self.state.keys():
@@ -92,9 +87,10 @@ class QState:
         maxq = self.n_qubits()
         for s, v in self.state.items():
             if self.binary_printout:
-                result += "+(" + str(v) + ")|" + str(number_to_binary(number=s, bits=maxq)) + ">"
+                s.nbits=maxq
+                result += "+(" + str(v) + ")|" + str(s.binary) + ">"
             else:
-                result += "+(" + str(v) + ")|" + str(s) + ">"
+                result += "+(" + str(v) + ")|" + str(s.integer) + ">"
         return result
 
     def inner(self, other):
@@ -108,15 +104,16 @@ class QState:
 class SimulatorSymbolic(Simulator):
 
     @staticmethod
-    def apply_on_standard_basis(gate: QGate, qubits: int):
+    def apply_on_standard_basis(gate: QGate, qubits: BitString):
+        qubits.nbits = gate.max_qubit()+1
         if gate.is_controlled():
             do_apply = True
-            check = [qubits[c] == 1 for c in gate.control]
+            check = [qubits.array[c] == 1 for c in gate.control]
             for c in check:
-                if c == False:
+                if not c:
                     do_apply = False
             if not do_apply:
-                return QState.initialize_from_integer(binary_to_number(qubits))
+                return QState.initialize_from_integer(qubits.integer)
 
         result = QState()
 
@@ -127,23 +124,23 @@ class SimulatorSymbolic(Simulator):
             assert(len(gate.target)==2)
             t0 = gate.target[0]
             t1 = gate.target[1]
-            current_state = QState.initialize_from_integer(binary_to_number(qubits))
+            current_state = QState.initialize_from_integer(qubits.integer)
             if qubits[t0] == qubits[t1]:
                 return current_state
             altered = copy.deepcopy(qubits)
             altered[t0] = qubits[t1]
             altered[t1] = qubits[t0]
-            altered_state = QState.initialize_from_integer(binary_to_number(altered))
+            altered_state = QState.initialize_from_integer(altered.integer)
             return fac1 * current_state + fac2*altered_state
 
         if len(gate.target) >1:
             raise Exception("multi targets do not work yet for symbolicsymulator")
         for t in gate.target:
-            qv = qubits[t]
+            qv = qubits.array[t]
             altered = copy.deepcopy(qubits)
             altered[t] = (altered[t] + 1) % 2
-            current_state = QState.initialize_from_integer(binary_to_number(qubits))
-            altered_state = QState.initialize_from_integer(binary_to_number(altered))
+            current_state = QState.initialize_from_integer(qubits.integer)
+            altered_state = QState.initialize_from_integer(altered.integer)
             fac1 = None
             fac2 = None
             if gate.name.upper() == "H":
@@ -183,11 +180,12 @@ class SimulatorSymbolic(Simulator):
         result = QState()
         maxq = max(state.n_qubits(), gate.max_qubit())
         for s, v in state.items():
-            result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, qubits=number_to_binary(number=s, bits=maxq))
+            s.nbits=maxq
+            result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, qubits=s)
         return result
 
     def simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: QState = None):
-        n_qubits = abstract_circuit.max_qubit()
+        n_qubits = abstract_circuit.n_qubits
         if initial_state is None:
             initial_state = QState.initialize_from_integer(0)
         elif isinstance(initial_state, int):
