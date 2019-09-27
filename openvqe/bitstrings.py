@@ -84,7 +84,7 @@ class BitString:
     def from_array(cls, array: list, nbits: int = 0):
         if isinstance(array, cls):
             return cls.from_bitstring(other=array)
-        result = cls(nbits=nbits)
+        result = result = cls(nbits=max(nbits,len(array)))
         result.array = array
         return result
 
@@ -100,7 +100,7 @@ class BitString:
     def from_binary(cls, binary: str, nbits: int = 0):
         if isinstance(binary, cls):
             return cls.from_bitstring(other=binary)
-        result = cls(nbits=nbits)
+        result = result = cls(nbits=max(nbits,len(binary)))
         result.binary = binary
         return result
 

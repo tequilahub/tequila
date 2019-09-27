@@ -48,6 +48,19 @@ class KeyMapQubitSubregister:
 
         return output_state
 
+    def inverted(self, input_state: int):
+        """
+        Map from register to subregister
+        :param input_state:
+        :return: input_state only on subregister
+        """
+        input_state = BitString.from_int(integer=input_state, nbits=len(self._register))
+        output_state = BitString.from_int(integer=0, nbits=len(self._subregister))
+        for k, v in enumerate(self._subregister):
+            output_state[k] = input_state[v]
+        return output_state
+
+
     def __repr__(self):
         return "keymap:\n" + "register    = " + str(self.register) + "\n" + "subregister = " + str(self.subregister)
 
@@ -161,7 +174,6 @@ class QubitWaveFunction:
             if k not in other.state:
                 return False
             elif not isclose(v, other.state[k], atol=1.e-6):
-                print("c ", v, " ", other.state[k])
                 return False
 
         return True
@@ -235,12 +247,21 @@ class Simulator(OpenVQEModule):
         if given as an integer this is interpreted as the corresponding multi-qubit basis state
         :return: The resulting state
         """
+
+        if isinstance(initial_state, BitString):
+            initial_state = initial_state.integer
+        if isinstance(initial_state, QubitWaveFunction):
+            if len(initial_state.keys())!=1:
+                raise OpenVQEException("only product states as initial states accepted")
+            initial_state = list(initial_state.keys())[0].integer
+
         active_qubits = abstract_circuit.qubits
         all_qubits = [i for i in range(abstract_circuit.n_qubits)]
 
+        # maps from reduced register to full register
         keymap = KeyMapQubitSubregister(subregister=active_qubits, register=all_qubits)
 
-        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=initial_state)
+        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit,initial_state=keymap.inverted(initial_state).integer)
         result.wavefunction.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
