@@ -21,7 +21,10 @@ class BitString:
 
     @property
     def nbits(self):
-        return self._nbits
+        if self._nbits is None:
+            return 0
+        else:
+            return self._nbits
 
     @nbits.setter
     def nbits(self, value):
@@ -29,7 +32,7 @@ class BitString:
         self.update_nbits()
 
     def update_nbits(self):
-        current = self._nbits
+        current = self.nbits
         min_needed = len(format(self._value, 'b'))
         self._nbits = max(current, min_needed)
         return self

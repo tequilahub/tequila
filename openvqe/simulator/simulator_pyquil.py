@@ -75,7 +75,7 @@ class SimulatorPyquil(Simulator):
             return SimulatorReturnType(abstract_circuit=abstract_circuit,
                                        circuit=circuit,
                                        backend_result=backend_result,
-                                       wavefunction=QubitWaveFunction.initialize_from_array(arr=backend_result.amplitudes))
+                                       wavefunction=QubitWaveFunction.from_array(arr=backend_result.amplitudes))
         except Exception as e:
             print("\n\n\n!!!!Make sure Rigettis Quantum-Virtual-Machine is running somewhere in the back!!!!\n\n\n")
             raise e

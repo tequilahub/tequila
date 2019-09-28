@@ -6,6 +6,7 @@ additional a coefficient can be stored
 iteration is then over the dimension
 """
 
+from openvqe.tools.convenience import number_to_string
 
 class PauliString:
 
@@ -21,9 +22,9 @@ class PauliString:
         return tuple(key)
 
     def __repr__(self):
-        result = ""
+        result = number_to_string(self.coeff)
         for k,v in self._data.items():
-            result += str(v)+str(k)+" "
+            result += str(v)+"("+str(k)+")"
         return  result
 
     def __init__(self, data=None, coeff=None):

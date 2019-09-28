@@ -1,5 +1,7 @@
-from openvqe.hamiltonian import QubitHamiltonian, PX, PY, PZ, PauliString
+from openvqe.hamiltonian import QubitHamiltonian, PX, PY, PZ, PauliString, Qp, Qm, Sp, Sm, PI, \
+    decompose_transfer_operator
 from numpy import random
+from openvqe import BitString
 
 
 def test_paulistring_conversion():
@@ -57,6 +59,44 @@ def test_simple_arithmetic():
             P = primitives[random.randint(0, 2)]
             assert (Pi(qubit) * primitives[i1](qubit) * P(qubit2) == 1j * primitives[i2](qubit) * P(qubit2))
             assert (P(qubit2) * primitives[i1](qubit) * Pi(qubit) == -1j * P(qubit2) * primitives[i2](qubit))
+
+
+def test_special_operators():
+    # sigma+ sigma- as well as Q+ and Q-
+    assert (Sp(0) * Sp(0) == QubitHamiltonian.init_zero())
+    assert (Sm(0) * Sm(0) == QubitHamiltonian.init_zero())
+
+    assert (Qp(0) * Qp(0) == Qp(0))
+    assert (Qm(0) * Qm(0) == Qm(0))
+    assert (Qp(0) * Qm(0) == QubitHamiltonian.init_zero())
+    assert (Qm(0) * Qp(0) == QubitHamiltonian.init_zero())
+
+    assert (Sp(0) * Sm(0) == Qp(0))
+    assert (Sm(0) * Sp(0) == Qm(0))
+
+    assert (Sp(0) + Sm(0) == PX(0))
+    assert (Qp(0) + Qm(0) == PI(0))
+
+
+def test_transfer_operators():
+    assert (decompose_transfer_operator(ket=0, bra=0) == Qp(0))
+    assert (decompose_transfer_operator(ket=0, bra=1) == Sp(0))
+    assert (decompose_transfer_operator(ket=1, bra=0) == Sm(0))
+    assert (decompose_transfer_operator(ket=1, bra=1) == Qm(0))
+
+    assert (decompose_transfer_operator(ket=BitString.from_binary(binary="00"), bra=BitString.from_binary("00")) == Qp(
+        0) * Qp(1))
+    assert (decompose_transfer_operator(ket=BitString.from_binary(binary="01"), bra=BitString.from_binary("01")) == Qp(
+        0) * Qm(1))
+    assert (decompose_transfer_operator(ket=BitString.from_binary(binary="01"), bra=BitString.from_binary("10")) == Sp(
+        0) * Sm(1))
+    assert (decompose_transfer_operator(ket=BitString.from_binary(binary="00"), bra=BitString.from_binary("11")) == Sp(
+        0) * Sp(1))
+
+    assert (decompose_transfer_operator(ket=0, bra=0, qubits=[1]) == Qp(1))
+    assert (decompose_transfer_operator(ket=0, bra=1, qubits=[1, 2, 3]) == Sp(1))
+    assert (decompose_transfer_operator(ket=1, bra=0, qubits=[1]) == Sm(1))
+    assert (decompose_transfer_operator(ket=1, bra=1, qubits=[1]) == Qm(1))
 
 
 def test_conjugation():

@@ -110,7 +110,7 @@ class SimulatorCirq(Simulator):
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)
         backend_result = simulator.simulate(program=circuit, initial_state=initial_state)
         return SimulatorReturnType(abstract_circuit=abstract_circuit, circuit=circuit,
-                                   wavefunction=QubitWaveFunction.initialize_from_array(arr=backend_result.final_state),
+                                   wavefunction=QubitWaveFunction.from_array(arr=backend_result.final_state),
                                    backend_result=backend_result)
 
     def do_simulate_density_matrix(self, circuit: cirq.Circuit, initial_state=0):

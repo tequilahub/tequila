@@ -5,7 +5,10 @@ Has no special features
 """
 from openvqe.hamiltonian import HamiltonianBase
 from openvqe.hamiltonian.paulistring import PauliString
+from openvqe.tools.convenience import number_to_string
 from openfermion import QubitOperator
+from openvqe import BitString
+from typing import List
 
 
 class QubitHamiltonian(HamiltonianBase):
@@ -26,10 +29,22 @@ class QubitHamiltonian(HamiltonianBase):
         else:
             self._hamiltonian = hamiltonian
 
-        assert(isinstance(self._hamiltonian, QubitOperator))
+        assert (isinstance(self._hamiltonian, QubitOperator))
+
+    def __repr__(self):
+        result = ""
+        for ps in self.paulistrings:
+            result += str(ps)
+        return result
 
     def items(self):
         return self._hamiltonian.terms.items()
+
+    def keys(self):
+        return self._hamiltonian.terms.keys()
+
+    def values(self):
+        return self._hamiltonian.terms.values()
 
     @classmethod
     def init_zero(cls):
@@ -45,13 +60,20 @@ class QubitHamiltonian(HamiltonianBase):
 
     @classmethod
     def init_from_paulistring(cls, ps: PauliString):
-        return QubitHamiltonian(hamiltonian = QubitOperator(term=ps.key_openfermion(), coefficient=ps.coeff))
+        return QubitHamiltonian(hamiltonian=QubitOperator(term=ps.key_openfermion(), coefficient=ps.coeff))
 
     def __add__(self, other):
         return QubitHamiltonian(hamiltonian=self.hamiltonian + other.hamiltonian)
 
+    def __sub__(self, other):
+        return QubitHamiltonian(hamiltonian=self.hamiltonian - other.hamiltonian)
+
     def __iadd__(self, other):
         self.hamiltonian += other.hamiltonian
+        return self
+
+    def __isub__(self, other):
+        self.hamiltonian -= other.hamiltonian
         return self
 
     def __mul__(self, other):
@@ -69,6 +91,18 @@ class QubitHamiltonian(HamiltonianBase):
 
     def __eq__(self, other):
         return self.hamiltonian == other.hamiltonian
+
+    def is_hermitian(self):
+        for v in self.values():
+            if v.imag != 0.0:
+                return False
+        return True
+
+    def is_antihermitian(self):
+        for v in self.values():
+            if v.real != 0.0:
+                return False
+        return True
 
     def conjugate(self):
         conj_hamiltonian = QubitOperator("", 0)
@@ -158,3 +192,61 @@ def PY(qubit):
 
 def PZ(qubit):
     return QubitHamiltonian("Z" + str(qubit))
+
+
+def PI(qubit):
+    return QubitHamiltonian.init_unit()
+
+
+def Qp(qubit):
+    return 0.5 * (PI(qubit=qubit) + PZ(qubit=qubit))
+
+
+def Qm(qubit):
+    return 0.5 * (PI(qubit=qubit) - PZ(qubit=qubit))
+
+
+def Sp(qubit):
+    return 0.5 * (PX(qubit=qubit) + 1.j * PY(qubit=qubit))
+
+
+def Sm(qubit):
+    return 0.5 * (PX(qubit=qubit) - 1.j * PY(qubit=qubit))
+
+
+def decompose_transfer_operator(ket: BitString, bra: BitString, qubits: List[int] = None) -> QubitHamiltonian:
+    """
+    Decompose |ket><bra| into paulistrings
+    """
+
+    opmap = {
+        (0, 0): Qp,
+        (0, 1): Sp,
+        (1, 0): Sm,
+        (1, 1): Qm
+    }
+
+    if isinstance(bra, int):
+        bra = BitString.from_int(integer=bra, nbits=len(qubits))
+    if isinstance(ket, int):
+        ket = BitString.from_int(integer=ket, nbits=len(qubits))
+
+    b_arr = bra.array
+    k_arr = ket.array
+    assert (len(b_arr) == len(k_arr))
+    n_qubits = len(k_arr)
+
+    if qubits is None:
+        qubits = range(n_qubits)
+
+    assert (n_qubits <= len(qubits))
+
+    result = QubitHamiltonian.init_unit()
+    for q, b in enumerate(b_arr):
+        k = k_arr[q]
+        result *= opmap[(k, b)](qubit=qubits[q])
+
+    return result
+
+
+

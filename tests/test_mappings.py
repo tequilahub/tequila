@@ -5,8 +5,8 @@ from openvqe import BitString, BitNumbering, BitStringLSB
 def test_keymaps():
     initial_state = 0
 
-    small = QubitWaveFunction.initialize_from_integer(i=int("0b1111", 2))
-    large = QubitWaveFunction.initialize_from_integer(i=int("0b01010101", 2))
+    small = QubitWaveFunction.from_int(i=int("0b1111", 2))
+    large = QubitWaveFunction.from_int(i=int("0b01010101", 2))
     large.n_qubits = 8
 
     keymap = KeyMapQubitSubregister(register=[0, 1, 2, 3, 4, 5, 6, 7], subregister=[1, 3, 5, 7])

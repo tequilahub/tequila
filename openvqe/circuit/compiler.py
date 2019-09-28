@@ -2,30 +2,53 @@
 Primitive Compiler from Qubit-Operators to evolution operators
 Replace with fancier external packages at some point
 """
-
+from openvqe import OpenVQEException
 from openvqe.circuit.circuit import QCircuit
 import numpy
 from openfermion import QubitOperator
+from openvqe.hamiltonian import QubitHamiltonian
 from openvqe.circuit.gates import Rx, H, CNOT, Rz
 from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl
 import copy
 
+def compile_trotter_evolution(hamiltonian: QubitHamiltonian, t:float=1.0, steps=1, threshold: float=1.e-6) -> QCircuit:
+    # consistency check
+    if hamiltonian.is_antihermitian():
+        if t.real != 0.0:
+            t = 1.j*t
+        assert(t.real==0.0 and t.imag != 0.0)
+    elif hamiltonian.is_hermitian():
+        assert(t.imag == 0.0)
+    else:
+        raise OpenVQEException("hamiltonian needs to be hermitian or anti-hermitian")
 
-def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, anti_hermitian=True) -> QCircuit:
     circuit = QCircuit()
-    factor = 1.0 / steps
-    if anti_hermitian:
-        factor = 1.0j / steps
+    factor = t / steps
     for index in range(steps):
-        for key, value in cluster_operator.terms.items():
-            if key == ():
-                # dont implement the constant part
-                continue
-            elif not numpy.isclose(value, 0.0, rtol=1.e-8, atol=1.e-8):
-                # don;t make circuit for too small values
-                # @todo include ampltidude_neglect_threshold into parameters
-                circuit *= exponential_pauli_gate(paulistring=key, angle=value * factor)
+        for key, value in hamiltonian.items():
+            if key != () and not numpy.isclose(value, 0.0, atol=threshold):
+                # don't make circuit for too small values
+                circuit += exponential_pauli_gate(paulistring=key, angle=value * factor)
     return circuit
+
+
+
+
+# def compile_trotter_evolution(cluster_operator: QubitOperator, steps: int = 1, anti_hermitian=True) -> QCircuit:
+#     circuit = QCircuit()
+#     factor = 1.0 / steps
+#     if anti_hermitian:
+#         factor = 1.0j / steps
+#     for index in range(steps):
+#         for key, value in cluster_operator.terms.items():
+#             if key == ():
+#                 # dont implement the constant part
+#                 continue
+#             elif not numpy.isclose(value, 0.0, rtol=1.e-8, atol=1.e-8):
+#                 # don;t make circuit for too small values
+#                 # @todo include ampltidude_neglect_threshold into parameters
+#                 circuit *= exponential_pauli_gate(paulistring=key, angle=value * factor)
+#     return circuit
 
 
 def exponential_pauli_gate(paulistring, angle) -> QCircuit:

@@ -142,7 +142,7 @@ class QubitWaveFunction:
         return len(self.state)
 
     @classmethod
-    def initialize_from_array(cls, arr: ndarray, keymap=None, threshold: float = 1.e-6):
+    def from_array(cls, arr: ndarray, keymap=None, threshold: float = 1.e-6):
         assert (len(arr.shape) == 1)
         state = dict()
         maxkey = len(arr)-1
@@ -155,7 +155,7 @@ class QubitWaveFunction:
         return QubitWaveFunction(state)
 
     @classmethod
-    def initialize_from_integer(cls, i: int, coeff=1):
+    def from_int(cls, i: int, coeff=1):
         if isinstance(i, BitString):
             return QubitWaveFunction(state={i:coeff})
         else:

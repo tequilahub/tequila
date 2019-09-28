@@ -8,13 +8,13 @@ def number_to_string(number: complex, precision: int=4, threshold: float = 1.e-6
     prec = '{:.'+str(precision)+'f}'
 
     if isclose(real, 0, atol=threshold):
-        return (prec+'i').format(imag) if imag < 0 else ('+'+prec+'i').format(imag)
+        return prec.format(imag)+"i" if imag < 0 else ('+'+prec).format(imag)+"i"
     elif isclose(imag, 0, atol=threshold):
         return prec.format(real) if real < 0 else ('+'+prec).format(real)
     else:
         r = hypot(real, imag)
         theta = atan2(real, imag)
-        return prec.format(r) + ('e^(i'+prec).format(theta/pi) + 'π)'
+        return prec.format(r) + ('+e^(i'+prec).format(theta/pi) + 'π)'
 
 
 if __name__ == "__main__":
