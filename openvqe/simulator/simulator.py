@@ -201,6 +201,15 @@ class QubitWaveFunction:
             result._state[k] *= other
         return result
 
+    def inner(self, other):
+        # currently very slow and not optimized in any way
+        result = 0.0
+        for k, v in self.items():
+            if k in other._state:
+                result += v.conjugate()*other._state[k]
+        return result
+
+
 @dataclass
 class SimulatorReturnType:
 

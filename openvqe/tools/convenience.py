@@ -14,7 +14,16 @@ def number_to_string(number: complex, precision: int=4, threshold: float = 1.e-6
     else:
         r = hypot(real, imag)
         theta = atan2(real, imag)
-        return prec.format(r) + ('+e^(i'+prec).format(theta/pi) + 'π)'
+        if isclose(theta, 0.5, atol=threshold):
+            return "+" + prec.format(r) + "i"
+        elif isclose(theta, -0.5, atol=threshold):
+            return "-" + prec.format(r) + "i"
+        elif isclose(theta, 1.0, atol=threshold):
+            return "-" + prec.format(r) + "i"
+        elif isclose(theta, -1.0, atol=threshold):
+            return "-" + prec.format(r) + "i"
+        else:
+            return "+"+prec.format(r) + ('e^('+prec).format(theta/pi) + 'πi)'
 
 
 if __name__ == "__main__":

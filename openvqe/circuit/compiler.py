@@ -14,8 +14,6 @@ import copy
 def compile_trotter_evolution(hamiltonian: QubitHamiltonian, t:float=1.0, steps=1, threshold: float=1.e-6) -> QCircuit:
     # consistency check
     if hamiltonian.is_antihermitian():
-        if t.real != 0.0:
-            t = 1.j*t
         assert(t.real==0.0 and t.imag != 0.0)
     elif hamiltonian.is_hermitian():
         assert(t.imag == 0.0)
