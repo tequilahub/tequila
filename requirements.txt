@@ -1,8 +1,9 @@
 numpy>=1.11.0
 scipy==1.1.0
-dataclasses_json
+dataclasses
 setuptools 
 openfermion
 openfermionpsi4
 cirq>=0.5.0 # not really a requirement
 pyquil # not really a requirement
+qiskit # not really a requirement
