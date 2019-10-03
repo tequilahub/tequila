@@ -27,7 +27,7 @@ class TestParameters(unittest.TestCase):
         ucc = AnsatzUCC()
         ucc_operator = ucc(angles=amplitudes)
 
-        abstract_circuit = compile_trotter_evolution(cluster_operator=ucc_operator, steps=1, anti_hermitian=True)
+        abstract_circuit = compile_trotter_evolution(hamiltonian=ucc_operator, steps=1, t=1.0j)
 
         simulator = SimulatorCirq()
 

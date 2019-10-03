@@ -68,8 +68,8 @@ def test_consistency():
     ]
 
     for c in cpairs:
-        wfn1 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[0], initial_state=0)
-        wfn2 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[1], initial_state=0)
+        wfn1 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[0], initial_state=0).wavefunction
+        wfn2 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[1], initial_state=0).wavefunction
         assert (wfn1 == wfn2)
 
 

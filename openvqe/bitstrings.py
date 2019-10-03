@@ -2,10 +2,12 @@ from enum import Enum
 from typing import List
 from functools import total_ordering
 
+
 class BitNumbering(Enum):
     LSB = 0  # least signigicant bit ordering:  1 -> 0b01 -> [1,0] i.e bit0 is the least significant
     MSB = 1  # Most  significant bit ordering:  1 -> 0b01 -> [0,1] i.e bit0 is the most significant
     # MSB is the default
+
 
 @total_ordering
 class BitString:
@@ -79,7 +81,7 @@ class BitString:
         self.update_nbits()
         return self
 
-    def __init__(self, nbits: int = 0):
+    def __init__(self, nbits: int = None):
         self._value = None
         self._nbits = nbits
 
@@ -87,12 +89,12 @@ class BitString:
     def from_array(cls, array: list, nbits: int = 0):
         if isinstance(array, cls):
             return cls.from_bitstring(other=array)
-        result = result = cls(nbits=max(nbits,len(array)))
+        result = result = cls(nbits=max(nbits, len(array)))
         result.array = array
         return result
 
     @classmethod
-    def from_int(cls, integer: int, nbits: int = 0):
+    def from_int(cls, integer: int, nbits: int = None):
         if isinstance(integer, cls):
             return cls.from_bitstring(other=integer, nbits=nbits)
         result = cls(nbits=nbits)
@@ -100,16 +102,25 @@ class BitString:
         return result
 
     @classmethod
-    def from_binary(cls, binary: str, nbits: int = 0):
+    def from_binary(cls, binary: str, nbits: int = None):
         if isinstance(binary, cls):
             return cls.from_bitstring(other=binary)
-        result = result = cls(nbits=max(nbits,len(binary)))
+        if nbits is None:
+            nbits = len(binary)
+        else:
+            nbits = max(nbits, len(binary))
+
+        result = result = cls(nbits=nbits)
         result.binary = binary
         return result
 
     @classmethod
-    def from_bitstring(cls, other, nbits:int=0):
-        result = cls(nbits=max(other.nbits, nbits))
+    def from_bitstring(cls, other, nbits: int = None):
+        if nbits is None:
+            nbits = other.nbits
+        else:
+            nbits = max(nbits, other.nbits)
+        result = cls(nbits=nbits)
         result.integer = other.integer
         return result
 

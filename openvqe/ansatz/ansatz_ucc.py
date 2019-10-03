@@ -6,6 +6,7 @@ import openfermion
 from dataclasses import dataclass
 from openvqe.ansatz.ansatz_base import ParametersAnsatz
 from openvqe import BitString
+from openvqe.hamiltonian import QubitHamiltonian
 
 
 @dataclass
@@ -51,7 +52,7 @@ class AnsatzUCC(AnsatzBase):
     """
 
     def __call__(self, angles):
-        return self.make_cluster_operator(angles=angles)
+        return QubitHamiltonian(hamiltonian=self.make_cluster_operator(angles=angles))
 
     def initial_state(self, hamiltonian) -> int:
         """

@@ -60,7 +60,7 @@ def test_endianness_simulators():
             if v == 1:
                 c *= gates.X(target=i)
 
-        c *= gates.Measurement(name="M", target=[x for x in range(len(string))])
+        c *= gates.Measurement(name="", target=[x for x in range(len(string))])
 
         wfn_cirq = SimulatorCirq().simulate_wavefunction(abstract_circuit=c, initial_state=0).wavefunction
         counts_cirq = SimulatorCirq().run(abstract_circuit=c, samples=1).measurements
@@ -70,5 +70,5 @@ def test_endianness_simulators():
         print("counts_cirq  =", counts_cirq)
         print("counts_qiskit=", counts_qiskit)
         assert (counts_cirq == counts_qiskit)
-        assert (wfn_cirq.state == counts_cirq['M'].state)
+        assert (wfn_cirq.state == counts_cirq[''].state)
 

@@ -38,9 +38,8 @@ class KeyMapQubitSubregister:
         return [i for i in self._register if i not in self._subregister]
 
     def __call__(self, input_state: int, initial_state: int = 0):
-
-        input_state = BitString.from_int(integer=input_state, nbits=len(self._register))
-        initial_state = BitString.from_int(integer=initial_state, nbits=len(self._register))
+        input_state = BitString.from_int(integer=input_state, nbits=len(self._subregister))
+        initial_state = BitString.from_int(integer=initial_state, nbits=len(self._subregister))
 
         output_state = BitString.from_int(integer=initial_state.integer, nbits=len(self._register))
         for k, v in enumerate(self._subregister):
@@ -173,7 +172,7 @@ class QubitWaveFunction:
         for k, v in self.state.items():
             if k not in other.state:
                 return False
-            elif not isclose(v, other.state[k], atol=1.e-6):
+            elif not isclose(complex(v), complex(other.state[k]), atol=1.e-6):
                 return False
 
         return True

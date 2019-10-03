@@ -94,7 +94,6 @@ def test_transfer_operators():
         0) * Sp(1))
 
     assert (decompose_transfer_operator(ket=0, bra=0, qubits=[1]) == Qp(1))
-    assert (decompose_transfer_operator(ket=0, bra=1, qubits=[1, 2, 3]) == Sp(1))
     assert (decompose_transfer_operator(ket=1, bra=0, qubits=[1]) == Sm(1))
     assert (decompose_transfer_operator(ket=1, bra=1, qubits=[1]) == Qm(1))
 

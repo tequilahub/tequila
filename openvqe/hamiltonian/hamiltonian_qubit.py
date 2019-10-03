@@ -226,10 +226,14 @@ def decompose_transfer_operator(ket: BitString, bra: BitString, qubits: List[int
         (1, 1): Qm
     }
 
+    nbits = None
+    if qubits is not None:
+        nbits = len(qubits)
+
     if isinstance(bra, int):
-        bra = BitString.from_int(integer=bra, nbits=len(qubits))
+        bra = BitString.from_int(integer=bra, nbits=nbits)
     if isinstance(ket, int):
-        ket = BitString.from_int(integer=ket, nbits=len(qubits))
+        ket = BitString.from_int(integer=ket, nbits=nbits)
 
     b_arr = bra.array
     k_arr = ket.array
