@@ -23,7 +23,7 @@ class QCircuit():
 
     @property
     def n_qubits(self):
-        if hasattr(self, "_n_qubits"):
+        if self._n_qubits is not None:
             return max(self.max_qubit()+1,self._n_qubits)
         else:
             return self.max_qubit()+1
@@ -47,6 +47,7 @@ class QCircuit():
         self._weight = value
 
     def __init__(self, weight=1.0, gates=None):
+        self._n_qubits = None
         if gates is None:
             self.gates = []
         else:
@@ -186,7 +187,7 @@ class QCircuit():
         result = QCircuit()
         result.gates = copy.deepcopy(self.gates + other.gates)
         result.weight = self.weight * other.weight
-        result._n_qubits = max(max(self.max_qubit()+1,self._n_qubits), max(other.max_qubit()+1,other.n_qubits))
+        result._n_qubits = max(max(self.max_qubit()+1,self.n_qubits), max(other.max_qubit()+1,other.n_qubits))
         return result
 
     def __imul__(self, other):

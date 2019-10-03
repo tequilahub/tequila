@@ -1,4 +1,4 @@
-from openvqe.simulator.simulator import Simulator
+from openvqe.simulator.simulator import Simulator, SimulatorReturnType, QubitWaveFunction
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit.gates import QGate, Ry, X
 from openvqe import BitString
@@ -184,7 +184,7 @@ class SimulatorSymbolic(Simulator):
             result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, qubits=s)
         return result
 
-    def simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: QState = None):
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: QState = None) -> SimulatorReturnType:
         n_qubits = abstract_circuit.n_qubits
         if initial_state is None:
             initial_state = QState.initialize_from_integer(0)
@@ -194,7 +194,12 @@ class SimulatorSymbolic(Simulator):
         result = initial_state
         for g in abstract_circuit.gates:
             result = self.apply_gate(state=result, gate=g)
-        return result
+
+        wfn = QubitWaveFunction()
+        for k, v in result.items():
+            wfn[k] = v
+
+        return SimulatorReturnType(backend_result=result, wavefunction=wfn)
 
 
 if __name__ == "__main__":

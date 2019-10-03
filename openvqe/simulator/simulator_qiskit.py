@@ -1,7 +1,7 @@
 from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe.circuit.compiler import compile_multitarget, compile_controlled_rotation_gate
-from openvqe.circuit.gates import MeasurementImpl
+from openvqe.circuit.gates import MeasurementImpl, PowerGateImpl
 from openvqe import BitString, BitNumbering, BitStringLSB
 import qiskit
 
@@ -35,7 +35,7 @@ class SimulatorQiskit(Simulator):
         for k, v in qiskit_counts.items():
             converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
             result._state[converted_key] = v
-        return {"M": result}
+        return {"": result}
 
     def create_circuit(self, abstract_circuit: QCircuit, name="q", cname="c") -> qiskit.QuantumCircuit:
 
@@ -80,7 +80,11 @@ class SimulatorQiskit(Simulator):
             if g.control is None or len(g.control) == 0:
                 gfunc = getattr(result, g.name.lower())
                 if g.is_parametrized():
-                    gfunc(g.parameter, q[g.target[0]])
+                    if isinstance(g, PowerGateImpl) and g.name.lower()=="z":
+                        gfunc = getattr(result, "u1")
+                        gfunc(g.parameter, q[g.target[0]])
+                    else:
+                        gfunc(g.parameter, q[g.target[0]])
                 else:
                     gfunc(q[g.target[0]])
             elif len(g.control) == 1:

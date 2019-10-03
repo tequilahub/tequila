@@ -39,8 +39,8 @@ class KeyMapQubitSubregister:
 
     def __call__(self, input_state: int, initial_state: int = 0):
 
-        input_state = BitString.from_int(integer=input_state)
-        initial_state = BitString.from_int(integer=initial_state)
+        input_state = BitString.from_int(integer=input_state, nbits=len(self._register))
+        initial_state = BitString.from_int(integer=initial_state, nbits=len(self._register))
 
         output_state = BitString.from_int(integer=initial_state.integer, nbits=len(self._register))
         for k, v in enumerate(self._subregister):

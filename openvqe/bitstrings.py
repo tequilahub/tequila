@@ -94,7 +94,7 @@ class BitString:
     @classmethod
     def from_int(cls, integer: int, nbits: int = 0):
         if isinstance(integer, cls):
-            return cls.from_bitstring(other=integer)
+            return cls.from_bitstring(other=integer, nbits=nbits)
         result = cls(nbits=nbits)
         result.integer = integer
         return result
@@ -108,8 +108,8 @@ class BitString:
         return result
 
     @classmethod
-    def from_bitstring(cls, other):
-        result = cls(nbits=other.nbits)
+    def from_bitstring(cls, other, nbits:int=0):
+        result = cls(nbits=max(other.nbits, nbits))
         result.integer = other.integer
         return result
 

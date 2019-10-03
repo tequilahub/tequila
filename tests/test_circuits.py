@@ -52,7 +52,7 @@ def test_basic_gates():
         1 / sympy.sqrt(2) * (BS(0) + BS(1))
     ]
     for i, g in enumerate(gates):
-        wfn = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=g, initial_state=0)
+        wfn = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=g, initial_state=0).backend_result
         assert (wfn == results[i])
 
 
