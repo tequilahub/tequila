@@ -10,8 +10,9 @@ from openvqe.hamiltonian import QubitHamiltonian
 from openvqe.circuit.gates import Rx, H, CNOT, Rz
 from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl
 import copy
+from random import shuffle
 
-def compile_trotter_evolution(hamiltonian: QubitHamiltonian, t:float=1.0, steps=1, threshold: float=1.e-6) -> QCircuit:
+def compile_trotter_evolution(hamiltonian: QubitHamiltonian, t:float=1.0, steps=1, threshold: float=1.e-6, randomize: bool=False) -> QCircuit:
     # consistency check
     if hamiltonian.is_antihermitian():
         assert(t.real==0.0 and t.imag != 0.0)
@@ -23,7 +24,11 @@ def compile_trotter_evolution(hamiltonian: QubitHamiltonian, t:float=1.0, steps=
     circuit = QCircuit()
     factor = t / steps
     for index in range(steps):
-        for key, value in hamiltonian.items():
+        items = hamiltonian.items()
+        if randomize:
+            items = [(k,v) for k,v in hamiltonian.items()]
+            shuffle(items)
+        for key, value in items:
             if key != () and not numpy.isclose(value, 0.0, atol=threshold):
                 # don't make circuit for too small values
                 circuit += exponential_pauli_gate(paulistring=key, angle=value * factor)
