@@ -172,3 +172,17 @@ class BitStringLSB(BitString):
     @property
     def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
+
+
+def initialize_bitstring(integer: int, nbits: int = None, numbering_in: BitNumbering = BitNumbering.MSB,
+                         numbering_out: BitNumbering = BitNumbering.MSB):
+    if numbering_in == BitNumbering.MSB:
+        if numbering_out == BitNumbering.MSB:
+            return BitString.from_int(integer=integer, nbits=nbits)
+        else:
+            return BitString.from_binary(binary=BitStringLSB.from_int(integer=integer, nbits=nbits).binary, nbits=nbits)
+    else:
+        if numbering_out == BitNumbering.LSB:
+            return BitStringLSB.from_int(integer=integer, nbits=nbits)
+        else:
+            return BitStringLSB.from_binary(binary=BitString.from_int(integer=integer, nbits=nbits).binary, nbits=nbits)

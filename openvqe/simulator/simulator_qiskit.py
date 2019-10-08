@@ -14,7 +14,7 @@ class OpenVQEQiskitException(OpenVQEException):
 class SimulatorQiskit(Simulator):
 
     @property
-    def endianness(self):
+    def numbering(self):
         return BitNumbering.LSB
 
     def do_run(self, circuit: qiskit.QuantumCircuit, samples):
@@ -22,7 +22,7 @@ class SimulatorQiskit(Simulator):
         return qiskit.execute(experiments=circuit, backend=simulator, shots=samples)
 
     def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0) -> SimulatorReturnType:
-        raise OpenVQEQiskitException("Qiskit can not simulate general wavefunctions ... proceed manually")
+        raise OpenVQEQiskitException("Qiskit can (currently) not simulate general wavefunctions")
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
         """

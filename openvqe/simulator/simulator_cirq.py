@@ -2,7 +2,7 @@ from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
 from openvqe import OpenVQEException
 from openvqe.objective import Objective
 from openvqe.circuit.gates import MeasurementImpl
-from openvqe import BitString
+from openvqe import BitString, BitNumbering
 import cirq
 from typing import Dict
 
@@ -13,6 +13,8 @@ class OpenVQECirqException(OpenVQEException):
 
 
 class SimulatorCirq(Simulator):
+
+    numbering: BitNumbering = BitNumbering.MSB
 
     def convert_measurements(self, backend_result: cirq.TrialResult) -> Dict[str, QubitWaveFunction]:
         result = dict()
@@ -29,7 +31,6 @@ class SimulatorCirq(Simulator):
 
     def do_run(self, circuit: cirq.Circuit, samples: int = 1) -> cirq.TrialResult:
         return cirq.Simulator().run(program=circuit, repetitions=samples)
-
 
     def expectation_value(self, objective: Objective, initial_state: int = 0):
         # this is not how it is supposed to be ... just hacked in order for this part to return something
@@ -110,7 +111,8 @@ class SimulatorCirq(Simulator):
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)
         backend_result = simulator.simulate(program=circuit, initial_state=initial_state)
         return SimulatorReturnType(abstract_circuit=abstract_circuit, circuit=circuit,
-                                   wavefunction=QubitWaveFunction.from_array(arr=backend_result.final_state),
+                                   wavefunction=QubitWaveFunction.from_array(arr=backend_result.final_state,
+                                   numbering=self.numbering),
                                    backend_result=backend_result)
 
     def do_simulate_density_matrix(self, circuit: cirq.Circuit, initial_state=0):

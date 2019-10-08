@@ -1,5 +1,10 @@
 from numpy import asarray
 
+"""
+Preliminary structure to carry information over to backends
+Needs to be restructured and clarified but currently does the job
+"""
+#todo A lot!
 
 class Objective:
 

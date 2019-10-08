@@ -5,13 +5,41 @@ from openvqe.hamiltonian import PauliString
 from numpy import isclose, ndarray, abs, sign
 from openvqe.circuit.compiler import change_basis
 from openvqe.circuit.gates import Measurement
-from openvqe import BitString
+from openvqe import BitString, BitStringLSB, initialize_bitstring
 import copy
 from typing import Dict, List
 from dataclasses import dataclass
 
+class KeyMapABC:
 
-class KeyMapQubitSubregister:
+    @property
+    def n_qubits(self):
+        return None
+
+    @property
+    def numbering(self):
+        return BitNumbering.MSB
+
+    def __call__(self, input_state: BitString, initial_state: BitString = 0):
+        return input_state
+
+
+class KeyMapLSB2MSB(KeyMapABC):
+
+    def __call__(self, input_state:BitStringLSB, initial_state: int=None ) -> BitString:
+        return BitString.from_int(integer=input_state)
+
+class KeyMapMSB2LSB(KeyMapABC):
+
+    @property
+    def numbering(self) -> BitNumbering:
+        return BitNumbering.LSB
+
+    def __call__(self, input_state: BitString, initial_state: int=None ) -> BitStringLSB:
+        return BitStringLSB.from_int(integer=input_state)
+
+
+class KeyMapQubitSubregister(KeyMapABC):
 
     @property
     def n_qubits(self):
@@ -29,20 +57,20 @@ class KeyMapQubitSubregister:
     def complement(self):
         return self.make_complement()
 
-    def __init__(self, subregister: List[int], register: List[int], endianness: BitNumbering = BitNumbering.LSB):
+    def __init__(self, subregister: List[int], register: List[int]):
         self._subregister = subregister
         self._register = register
-        self.endianness = endianness
 
     def make_complement(self):
         return [i for i in self._register if i not in self._subregister]
 
-    def __call__(self, input_state: int, initial_state: int = 0):
+    def __call__(self, input_state: BitString, initial_state: BitString = 0):
+
         input_state = BitString.from_int(integer=input_state, nbits=len(self._subregister))
         initial_state = BitString.from_int(integer=initial_state, nbits=len(self._subregister))
 
         output_state = BitString.from_int(integer=initial_state.integer, nbits=len(self._register))
-        for k, v in enumerate(self._subregister):
+        for k, v in enumerate((self._subregister)):
             output_state[v] = input_state[k]
 
         return output_state
@@ -70,7 +98,9 @@ class QubitWaveFunction:
     Use the same structure for Measurments results with int instead of complex numbers (counts)
     """
 
-    def apply_keymap(self, keymap, initial_state: BitString):
+    numbering = BitNumbering.MSB
+
+    def apply_keymap(self, keymap, initial_state: BitString=None):
         self.n_qubits = keymap.n_qubits
         mapped_state = dict()
         for k, v in self.state.items():
@@ -95,12 +125,9 @@ class QubitWaveFunction:
 
     @n_qubits.setter
     def n_qubits(self, n_qubits):
-        self._n_qubits = max(n_qubits, self.min_qubits())
+        if n_qubits is not None:
+            self._n_qubits = max(n_qubits, self.min_qubits())
         return self
-
-    @property
-    def endianness(self):
-        return BitNumbering.MSB
 
     @property
     def state(self):
@@ -141,17 +168,25 @@ class QubitWaveFunction:
         return len(self.state)
 
     @classmethod
-    def from_array(cls, arr: ndarray, keymap=None, threshold: float = 1.e-6):
+    def from_array(cls, arr: ndarray, keymap=None, threshold: float = 1.e-6, numbering: BitNumbering = BitNumbering.MSB):
         assert (len(arr.shape) == 1)
         state = dict()
         maxkey = len(arr)-1
-        maxbit = BitString.from_int(integer=maxkey).nbits
+        maxbit = initialize_bitstring(integer=maxkey, numbering_in=numbering, numbering_out=cls.numbering).nbits
         for ii, v in enumerate(arr):
-            i = BitString.from_int(integer=ii, nbits=maxbit)
+            i = initialize_bitstring(integer=ii, nbits=maxbit, numbering_in=numbering, numbering_out=cls.numbering)
             if not isclose(abs(v), 0, atol=threshold):
                 key = i if keymap is None else keymap(i)
                 state[key] = v
-        return QubitWaveFunction(state)
+        result =QubitWaveFunction(state)
+
+        if cls.numbering != numbering:
+            if cls.numbering == BitNumbering.MSB:
+                result.apply_keymap(keymap=KeyMapLSB2MSB())
+            else:
+                result.apply_keymap(keymap=KeyMapMSB2LSB())
+
+        return result
 
     @classmethod
     def from_int(cls, i: int, coeff=1):
@@ -218,21 +253,20 @@ class SimulatorReturnType:
     measurements: Dict[str,QubitWaveFunction] = None
     backend_result: int = None
 
+    @property
+    def counts(self, key:str=None):
+        if key is None:
+            keys = [k for k in self.measurements.keys()]
+            return self.measurements[keys[0]]
+        else:
+            return self.measurements[key]
 
 class Simulator(OpenVQEModule):
     """
     Abstract Base Class for OpenVQE interfaces to simulators
     """
 
-    @property
-    def endianness(self):
-        """
-        Specifies if the operator backend interprets
-        bitstrings in Big or Little endian
-        !this should be overwritten by derived classes!
-        :return: Endianness enum specifying the type of endianness
-        """
-        return BitNumbering.LSB
+    numbering: BitNumbering = BitNumbering.MSB
 
     def run(self, abstract_circuit: QCircuit, samples: int = 1) -> SimulatorReturnType:
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)

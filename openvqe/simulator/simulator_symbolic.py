@@ -1,9 +1,16 @@
 from openvqe.simulator.simulator import Simulator, SimulatorReturnType, QubitWaveFunction
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit.gates import QGate, Ry, X
-from openvqe import BitString
+from openvqe import BitStringLSB, BitString
 import copy
 import sympy
+
+"""
+Simple Symbolic Simulator for debugging purposes
+Works in LSB notation
+"""
+#todo get rid of QState and replace with QubitWavefunction for consistency, wait for Mahas code
+
 
 class QState:
 
@@ -23,7 +30,7 @@ class QState:
 
     @staticmethod
     def initialize_from_integer(integer):
-        state = {BitString.from_int(integer=integer): sympy.Integer(1.0)}
+        state = {BitStringLSB.from_int(integer=integer): sympy.Integer(1.0)}
         result = QState(state=state)
         return result
 
@@ -103,8 +110,11 @@ class QState:
 
 class SimulatorSymbolic(Simulator):
 
+    def create_circuit(self, abstract_circuit: QCircuit) -> QCircuit:
+        return abstract_circuit
+
     @staticmethod
-    def apply_on_standard_basis(gate: QGate, qubits: BitString):
+    def apply_on_standard_basis(gate: QGate, qubits: BitStringLSB):
         qubits.nbits = gate.max_qubit()+1
         if gate.is_controlled():
             do_apply = True
@@ -116,22 +126,6 @@ class SimulatorSymbolic(Simulator):
                 return QState.initialize_from_integer(qubits.integer)
 
         result = QState()
-
-        # exceptions
-        if gate.name.upper() == "POWSWAP":
-            fac1 = sympy.Rational(1 / 2) * (sympy.Integer(1) + sympy.exp(sympy.I * sympy.pi * gate.angle))
-            fac2 = sympy.Rational(1 / 2) * (sympy.Integer(1) - sympy.exp(sympy.I * sympy.pi * gate.angle))
-            assert(len(gate.target)==2)
-            t0 = gate.target[0]
-            t1 = gate.target[1]
-            current_state = QState.initialize_from_integer(qubits.integer)
-            if qubits[t0] == qubits[t1]:
-                return current_state
-            altered = copy.deepcopy(qubits)
-            altered[t0] = qubits[t1]
-            altered[t1] = qubits[t0]
-            altered_state = QState.initialize_from_integer(altered.integer)
-            return fac1 * current_state + fac2*altered_state
 
         if len(gate.target) >1:
             raise Exception("multi targets do not work yet for symbolicsymulator")
@@ -157,9 +151,9 @@ class SimulatorSymbolic(Simulator):
                 fac1 = sympy.cos(angle)
                 fac2 = -sympy.sin(angle) * sympy.I
             elif gate.name.upper() == "RY":
-                angle = sympy.Rational(1 / 2) * gate.angle
+                angle = -sympy.Rational(1 / 2) * gate.angle
                 fac1 = sympy.cos(angle)
-                fac2 = -sympy.sin(angle) * sympy.Integer(-1) ** qv
+                fac2 = +sympy.sin(angle) * sympy.Integer(-1) ** (qv+1)
             elif gate.name.upper() == "RZ":
                 angle = sympy.Rational(1 / 2) * gate.angle
                 fac1 = sympy.exp(-angle * sympy.I * sympy.Integer(-1) ** (qv))
@@ -184,8 +178,7 @@ class SimulatorSymbolic(Simulator):
             result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, qubits=s)
         return result
 
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: QState = None) -> SimulatorReturnType:
-        n_qubits = abstract_circuit.n_qubits
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: int = None) -> SimulatorReturnType:
         if initial_state is None:
             initial_state = QState.initialize_from_integer(0)
         elif isinstance(initial_state, int):
@@ -194,12 +187,12 @@ class SimulatorSymbolic(Simulator):
         result = initial_state
         for g in abstract_circuit.gates:
             result = self.apply_gate(state=result, gate=g)
-
         wfn = QubitWaveFunction()
         for k, v in result.items():
-            wfn[k] = v
+            key = BitString.from_binary(binary=k.binary)
+            wfn[key] = v
 
-        return SimulatorReturnType(backend_result=result, wavefunction=wfn)
+        return SimulatorReturnType(backend_result=result, wavefunction=wfn, circuit=abstract_circuit)
 
 
 if __name__ == "__main__":

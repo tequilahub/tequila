@@ -30,7 +30,7 @@ def test_conventions():
                 for l1 in ll:
                     for l2 in ll:
                         assert (l1 == l2)
-                        l1.axis=axes[numpy.random.randint(0, 2)]
+                        l1.axis = axes[numpy.random.randint(0, 2)]
                         assert (l1 == l2)
 
 
@@ -46,8 +46,8 @@ def test_basic_gates():
         BS(1),
         -I * BS(1),
         BS(0),
-        cos(angle / 2) * BS(0) + -I * sin(angle / 2) * BS(1),
-        cos(angle / 2) * BS(0) + - sin(angle / 2) * BS(1),
+        cos(-angle / 2) * BS(0) + I * sin(-angle / 2) * BS(1),
+        cos(-angle / 2) * BS(0) + I * sin(-angle / 2) * I * BS(1),
         exp(-I * angle / 2) * BS(0),
         1 / sympy.sqrt(2) * (BS(0) + BS(1))
     ]
@@ -60,14 +60,15 @@ def test_consistency():
     angle = sympy.pi / 2
     cpairs = [
         (CNOT(target=0, control=1), X(target=0, control=1)),
-        (Ry(target=0, angle=sympy.pi), Rz(target=0, angle=-2 * sympy.pi) * X(target=0)),
-        (Rz(target=0, angle=sympy.pi), Rz(target=0, angle=sympy.pi) * Z(target=0)),
-        (Rz(target=0, angle=angle), Rz(target=0, angle=angle / 2) * Rz(target=0, angle=angle / 2)),
-        (Rx(target=0, angle=angle), Rx(target=0, angle=angle / 2) * Rx(target=0, angle=angle / 2)),
-        (Ry(target=0, angle=angle), Ry(target=0, angle=angle / 2) * Ry(target=0, angle=angle / 2))
+        (Ry(target=0, angle=sympy.pi), Rz(target=0, angle=4 * sympy.pi) + X(target=0)),
+        (Rz(target=0, angle=sympy.pi), Rz(target=0, angle=sympy.pi) + Z(target=0)),
+        (Rz(target=0, angle=angle), Rz(target=0, angle=angle / 2) + Rz(target=0, angle=angle / 2)),
+        (Rx(target=0, angle=angle), Rx(target=0, angle=angle / 2) + Rx(target=0, angle=angle / 2)),
+        (Ry(target=0, angle=angle), Ry(target=0, angle=angle / 2) + Ry(target=0, angle=angle / 2))
     ]
 
     for c in cpairs:
+        print("circuit=", c[0], "\n", c[1])
         wfn1 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[0], initial_state=0).wavefunction
         wfn2 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[1], initial_state=0).wavefunction
         assert (wfn1 == wfn2)

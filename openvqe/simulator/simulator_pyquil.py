@@ -1,10 +1,12 @@
-from openvqe.simulator.simulator import QubitWaveFunction, Simulator, QCircuit, OpenVQEException, SimulatorReturnType
-from openvqe import BitStringLSB, BitString
+from openvqe.simulator.simulator import KeyMapLSB2MSB, KeyMapMSB2LSB, QubitWaveFunction, Simulator, QCircuit, OpenVQEException, \
+    SimulatorReturnType
+from openvqe import BitString, BitNumbering
 import pyquil
+
 
 class OpenVQEPyquilException(OpenVQEException):
     def __str__(self):
-        return "simulator_pyquil: "+self.message
+        return "simulator_pyquil: " + self.message
 
 
 class WavefunctionPyquil(SimulatorReturnType):
@@ -12,9 +14,15 @@ class WavefunctionPyquil(SimulatorReturnType):
     def __post_init__(self, result):
         self.wavefunction = result.amplitudes
 
+
 class SimulatorPyquil(Simulator):
 
-    def create_circuit(self, abstract_circuit: QCircuit, qubit_map=None, recompile_controlled_rotations=False) -> pyquil.Program:
+    @property
+    def numbering(self):
+        return BitNumbering.LSB
+
+    def create_circuit(self, abstract_circuit: QCircuit, qubit_map=None,
+                       recompile_controlled_rotations=False) -> pyquil.Program:
         """
         If the backend has its own abstract_circuit objects this can be created here
         :param abstract_circuit: The abstract circuit
@@ -36,7 +44,7 @@ class SimulatorPyquil(Simulator):
 
         for g in abstract_circuit.gates:
 
-            if len(g.target)>1:
+            if len(g.target) > 1:
                 raise OpenVQEPyquilException("Pyquil backend does not support multiple targets")
 
             if g.is_parametrized() and g.control is not None and recompile_controlled_rotations:
@@ -68,14 +76,16 @@ class SimulatorPyquil(Simulator):
             initial_state = BitString.from_int(integer=initial_state)
             iprep = pyquil.Program()
             for i, val in enumerate(initial_state):
-                if val>0:
+                if val > 0:
                     iprep += pyquil.gates.X(i)
 
-            backend_result=simulator.wavefunction(iprep+circuit)
+            backend_result = simulator.wavefunction(iprep + circuit)
             return SimulatorReturnType(abstract_circuit=abstract_circuit,
                                        circuit=circuit,
                                        backend_result=backend_result,
-                                       wavefunction=QubitWaveFunction.from_array(arr=backend_result.amplitudes))
+                                       wavefunction=QubitWaveFunction.from_array(arr=backend_result.amplitudes,
+                                                                                 numbering=self.numbering))
+
         except Exception as e:
             print("\n\n\n!!!!Make sure Rigettis Quantum-Virtual-Machine is running somewhere in the back!!!!\n\n\n")
             raise e
