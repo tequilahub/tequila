@@ -34,6 +34,9 @@ class SimulatorPyquil(Simulator):
         if isinstance(abstract_circuit, pyquil.Program):
             return abstract_circuit
 
+        # unroll
+        abstract_circuit = abstract_circuit.decompose()
+
         if qubit_map is None:
             n_qubits = abstract_circuit.n_qubits
             qubit_map = [i for i in range(n_qubits)]

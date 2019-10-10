@@ -43,6 +43,9 @@ class SimulatorQiskit(Simulator):
         if isinstance(abstract_circuit, qiskit.QuantumCircuit):
             return abstract_circuit
 
+        # unroll
+        abstract_circuit = abstract_circuit.decompose()
+
         n_qubits = abstract_circuit.n_qubits
         q = qiskit.QuantumRegister(n_qubits, name)
         c = qiskit.ClassicalRegister(n_qubits, cname)

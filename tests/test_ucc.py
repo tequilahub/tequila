@@ -1,4 +1,4 @@
-from openvqe.hamiltonian import HamiltonianQC, ParametersQC
+from openvqe.hamiltonian import HamiltonianPsi4, ParametersQC
 from openvqe.ansatz import AnsatzUCC
 from openvqe.circuit.compiler import compile_trotter_evolution
 from openvqe.simulator.simulator_cirq import SimulatorCirq
@@ -18,7 +18,7 @@ class TestParameters(unittest.TestCase):
         parameters_qc.transformation = "JW"
         parameters_qc.psi4.run_ccsd = True
         parameters_qc.filename = "psi4"
-        hqc = HamiltonianQC(parameters_qc)
+        hqc = HamiltonianPsi4(parameters_qc)
 
         filename = parameters_qc.filename
 

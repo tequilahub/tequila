@@ -1,5 +1,5 @@
 import unittest
-from openvqe.hamiltonian import HamiltonianQC, ParametersQC
+from openvqe.hamiltonian import HamiltonianPsi4, ParametersQC
 import openfermion
 
 class TestParameters(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestParameters(unittest.TestCase):
                 for trafo in trafos:
                     if basis!='sto-3g' and 'Li' in geom: continue
                     parameters_qc = ParametersQC(geometry=geom, basis_set=basis, transformation=trafo)
-                    hqc = HamiltonianQC(parameters_qc)
+                    hqc = HamiltonianPsi4(parameters_qc)
                     Hmol=hqc.get_fermionic_hamiltonian()
                     H=hqc()
                     if trafo=='JW':

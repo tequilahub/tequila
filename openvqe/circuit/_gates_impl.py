@@ -1,5 +1,6 @@
 from abc import ABC
 from openvqe import OpenVQEException
+from openvqe import typing
 import numpy
 import copy
 
@@ -9,6 +10,7 @@ class QGateImpl:
     @staticmethod
     def list_assignement(o):
         """
+        --> moved to tools
         Helper function to make initialization with lists and single elements possible
         :param o: iterable object or single element
         :return: Gives back a list if a single element was given
@@ -90,6 +92,14 @@ class QGateImpl:
         Todo: Add Nice stringification
         """
         return self.__str__()
+
+    @property
+    def qubits(self) -> typing.List[int]:
+        if self.control is not None:
+            return self.target + self.control
+        else:
+            return self.target
+
 
     def max_qubit(self):
         """

@@ -2,11 +2,11 @@
 Example File on how to define a customized Hamiltonian
 """
 
-from openvqe.hamiltonian import HamiltonianBase, QubitHamiltonian, PZ, ParametersQC, HamiltonianQC
+from openvqe.hamiltonian import HamiltonianBase, QubitHamiltonian, PZ, ParametersQC, HamiltonianPsi4
 import openfermion
 import numpy as np
 
-class MyFermionicHamiltonian(HamiltonianQC):
+class MyFermionicHamiltonian(HamiltonianPsi4):
 
     def get_fermionic_hamiltonian(self):
         """

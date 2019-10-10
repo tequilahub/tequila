@@ -13,6 +13,7 @@ from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitude
 from openfermionpsi4 import run_psi4
 from openvqe.hamiltonian import QubitHamiltonian
 from numpy import float64
+from openvqe import BitString
 
 
 @dataclass
@@ -131,8 +132,21 @@ class ParametersQC(OpenVQEParameters):
             return coord, comment
 
 
-@parametrized(parameter_class=ParametersQC)
-class HamiltonianQC(QubitHamiltonian):
+class HamiltonianPsi4(QubitHamiltonian):
+
+    def __init__(self, parameters=ParametersQC):
+        self.parameters = parameters
+        super().__init__(hamiltonian=self.initialize_hamiltonian())
+
+    def reference_state(self) -> BitString:
+        """
+        :return: Hartree-Fock Reference as binary-number
+        """
+        l = [0]*self.n_qubits
+        for i in range(self.n_electrons):
+            l[i] = 1
+
+        return BitString.from_array(array=l, nbits=self.n_qubits)
 
     @property
     def hamiltonian(self):
@@ -255,7 +269,7 @@ class HamiltonianQC(QubitHamiltonian):
         print("file was ", molecule.filename)
         return molecule
 
-    def parse_ccsd_amplitudes(self, filename=None):
+    def parse_ccsd_amplitudes(self, filename=None) -> ManyBodyAmplitudes:
         if filename is None:
             filename = self.parameters.filename
 

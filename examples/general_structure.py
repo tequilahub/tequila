@@ -1,5 +1,5 @@
 
-from openvqe.hamiltonian import HamiltonianQC, ParametersQC
+from openvqe.hamiltonian import HamiltonianPsi4, ParametersQC
 from openvqe import OpenVQEException
 
 if __name__ == "__main__":
@@ -8,7 +8,7 @@ if __name__ == "__main__":
 
     parameters_qc = ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     parameters_qc.transformation="JW"
-    hqc = HamiltonianQC(parameters_qc)
+    hqc = HamiltonianPsi4(parameters_qc)
     hqc.greet()
     print("\n\nJordan-Wigner, parameters are:\n", parameters_qc, "\n\n")
     print("HMOL:\n", hqc.get_fermionic_hamiltonian())
@@ -16,12 +16,12 @@ if __name__ == "__main__":
 
     parameters_qc.transformation="BK"
     print("\n\nBravyi-Kitaev, parameters are:\n", parameters_qc, "\n\n")
-    hqc = HamiltonianQC(parameters_qc)
+    hqc = HamiltonianPsi4(parameters_qc)
     hqc.greet()
     print("HQUBIT:\n",hqc())
 
     print("Same Thing but different initialization style: Agnostic of parameter-type\n")
-    hqc = HamiltonianQC()
+    hqc = HamiltonianPsi4()
     hqc.parameters.geometry = "data/h2.xyz"
     hqc.parameters.basis_set = "sto-3g"
     hqc.parameters.transformation = "JW"
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         print("Will initialize a parameter to an unknown command")
         parameters_qc = ParametersQC(geometry=" h 0.0 0.0 1.0\n h 0.0 0.0 -1.0", basis_set="sto-3g")
         parameters_qc.transformation = "lalala"
-        hqc = HamiltonianQC(parameters_qc)
+        hqc = HamiltonianPsi4(parameters_qc)
         H=hqc()
     except OpenVQEException as e:
         print("You chose a weird parameter")

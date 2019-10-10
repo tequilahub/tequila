@@ -7,6 +7,15 @@ import copy
 
 class QCircuit():
 
+    def decompose(self):
+        primitives = []
+        for g in self.gates:
+            if hasattr(g, "decompose"):
+                primitives += g.decompose()
+            else:
+                primitives.append(g)
+        return QCircuit(gates=primitives)
+
     @property
     def endianness(self) -> BitNumbering:
         return BitNumbering.LSB
@@ -15,10 +24,11 @@ class QCircuit():
     def qubits(self):
         accumulate = []
         for g in self.gates:
-            if g.target is not None:
-                accumulate += g.target
-            if g.control is not None:
-                accumulate += g.control
+            accumulate += g.qubits
+            # if g.target is not None:
+            #     accumulate += g.target
+            # if g.control is not None:
+            #     accumulate += g.control
         return sorted(list(set(accumulate)))
 
     @property
@@ -289,3 +299,5 @@ class QCircuit():
         for g in self.gates:
             recompiled_gates.append(instruction(g))
         return QCircuit(gates=recompiled_gates)
+
+
