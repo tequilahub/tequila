@@ -31,6 +31,9 @@ class PauliString:
         if data is None:
             self._data = {}
         else:
+            # stores the paulistring as dictionary
+            # keys are the dimensions
+            # values are x,y,z
             self._data = data
         self._coeff = coeff
 

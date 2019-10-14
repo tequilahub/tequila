@@ -1,15 +1,14 @@
 from openvqe import OpenVQEModule, OpenVQEException, BitNumbering
 from openvqe.circuit.circuit import QCircuit
 from openvqe.tools.convenience import number_to_string
-from openvqe.hamiltonian import PauliString
-from numpy import isclose, ndarray, abs, sign
+from openvqe.hamiltonian import PauliString, QubitHamiltonian
+from numpy import isclose, ndarray, abs
 from openvqe.circuit.compiler import change_basis
 from openvqe.circuit.gates import Measurement
 from openvqe import BitString, BitStringLSB, initialize_bitstring
-import copy
-from dataclasses import dataclass
+from openvqe import copy, dataclass, typing
 from openvqe.objective import Objective
-from openvqe import typing
+
 
 class KeyMapABC:
 
@@ -27,8 +26,9 @@ class KeyMapABC:
 
 class KeyMapLSB2MSB(KeyMapABC):
 
-    def __call__(self, input_state:BitStringLSB, initial_state: int=None ) -> BitString:
+    def __call__(self, input_state: BitStringLSB, initial_state: int = None) -> BitString:
         return BitString.from_int(integer=input_state)
+
 
 class KeyMapMSB2LSB(KeyMapABC):
 
@@ -36,7 +36,7 @@ class KeyMapMSB2LSB(KeyMapABC):
     def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
 
-    def __call__(self, input_state: BitString, initial_state: int=None ) -> BitStringLSB:
+    def __call__(self, input_state: BitString, initial_state: int = None) -> BitStringLSB:
         return BitStringLSB.from_int(integer=input_state)
 
 
@@ -88,7 +88,6 @@ class KeyMapQubitSubregister(KeyMapABC):
             output_state[k] = input_state[v]
         return output_state
 
-
     def __repr__(self):
         return "keymap:\n" + "register    = " + str(self.register) + "\n" + "subregister = " + str(self.subregister)
 
@@ -101,7 +100,7 @@ class QubitWaveFunction:
 
     numbering = BitNumbering.MSB
 
-    def apply_keymap(self, keymap, initial_state: BitString=None):
+    def apply_keymap(self, keymap, initial_state: BitString = None):
         self.n_qubits = keymap.n_qubits
         mapped_state = dict()
         for k, v in self.state.items():
@@ -115,7 +114,7 @@ class QubitWaveFunction:
         if self._n_qubits is None:
             return self.min_qubits()
         else:
-            return max(self._n_qubits,self.min_qubits())
+            return max(self._n_qubits, self.min_qubits())
 
     def min_qubits(self) -> int:
         if len(self.state) > 0:
@@ -142,7 +141,7 @@ class QubitWaveFunction:
         assert (isinstance(other, dict))
         self._state = other
 
-    def __init__(self, state: typing.Dict[int, complex] = None):
+    def __init__(self, state: typing.Dict[BitString, complex] = None):
         if state is None:
             self._state = dict()
         else:
@@ -162,24 +161,25 @@ class QubitWaveFunction:
         return self.state[item]
 
     def __setitem__(self, key, value):
-        self._state[key]=value
+        self._state[key] = value
         return self
 
     def __len__(self):
         return len(self.state)
 
     @classmethod
-    def from_array(cls, arr: ndarray, keymap=None, threshold: float = 1.e-6, numbering: BitNumbering = BitNumbering.MSB):
+    def from_array(cls, arr: ndarray, keymap=None, threshold: float = 1.e-6,
+                   numbering: BitNumbering = BitNumbering.MSB):
         assert (len(arr.shape) == 1)
         state = dict()
-        maxkey = len(arr)-1
+        maxkey = len(arr) - 1
         maxbit = initialize_bitstring(integer=maxkey, numbering_in=numbering, numbering_out=cls.numbering).nbits
         for ii, v in enumerate(arr):
             i = initialize_bitstring(integer=ii, nbits=maxbit, numbering_in=numbering, numbering_out=cls.numbering)
             if not isclose(abs(v), 0, atol=threshold):
                 key = i if keymap is None else keymap(i)
                 state[key] = v
-        result =QubitWaveFunction(state)
+        result = QubitWaveFunction(state)
 
         if cls.numbering != numbering:
             if cls.numbering == BitNumbering.MSB:
@@ -192,7 +192,7 @@ class QubitWaveFunction:
     @classmethod
     def from_int(cls, i: int, coeff=1):
         if isinstance(i, BitString):
-            return QubitWaveFunction(state={i:coeff})
+            return QubitWaveFunction(state={i: coeff})
         else:
             return QubitWaveFunction(state={BitString.from_int(integer=i): coeff})
 
@@ -241,26 +241,63 @@ class QubitWaveFunction:
         result = 0.0
         for k, v in self.items():
             if k in other._state:
-                result += v.conjugate()*other._state[k]
+                result += v.conjugate() * other._state[k]
         return result
 
+    def compute_expectationvalue(self, operator:QubitHamiltonian) -> float:
+        tmp = self.apply_qubitoperator(operator=operator)
+        return self.inner(other=tmp)
+
+    def apply_qubitoperator(self, operator: QubitHamiltonian):
+        """
+        Inefficient function which computes the action of a QubitHamiltonian on this wfn
+        :param operator: QubitOperator
+        :return: resulting Qubitwavefunction
+        """
+        result = QubitWaveFunction()
+        for ps in operator.paulistrings:
+            result += self.apply_paulistring(paulistring=ps)
+        return result
+
+    def apply_paulistring(self, paulistring: PauliString):
+        """
+        Inefficient function which computes action of a single paulistring
+        :param paulistring: PauliString
+        :return: Expectation Value
+        """
+        result = QubitWaveFunction()
+        for k, v in self.items():
+            arr = k.array
+            c = v
+            for idx, p in paulistring.items():
+                if p.lower() == "x":
+                    arr[idx] = (arr[idx] + 1) % 2
+                elif p.lower() == "y":
+                    c *= 1.0j*(-1)**(arr[idx])
+                    arr[idx] = (arr[idx] + 1) % 2
+                elif p.lower() == "z":
+                    c *= (-1)**(arr[idx])
+                else:
+                    raise OpenVQEException("unknown pauli: " + str(p))
+            result[BitString.from_array(array=arr)] = c
+        return paulistring.coeff*result
 
 @dataclass
 class SimulatorReturnType:
-
     abstract_circuit: QCircuit = None
     circuit: int = None
     wavefunction: QubitWaveFunction = None
-    measurements: typing.Dict[str,QubitWaveFunction] = None
+    measurements: typing.Dict[str, QubitWaveFunction] = None
     backend_result: int = None
 
     @property
-    def counts(self, key:str=None):
+    def counts(self, key: str = None):
         if key is None:
             keys = [k for k in self.measurements.keys()]
             return self.measurements[keys[0]]
         else:
             return self.measurements[key]
+
 
 class Simulator(OpenVQEModule):
     """
@@ -294,7 +331,7 @@ class Simulator(OpenVQEModule):
         if isinstance(initial_state, BitString):
             initial_state = initial_state.integer
         if isinstance(initial_state, QubitWaveFunction):
-            if len(initial_state.keys())!=1:
+            if len(initial_state.keys()) != 1:
                 raise OpenVQEException("only product states as initial states accepted")
             initial_state = list(initial_state.keys())[0].integer
 
@@ -304,14 +341,14 @@ class Simulator(OpenVQEModule):
         # maps from reduced register to full register
         keymap = KeyMapQubitSubregister(subregister=active_qubits, register=all_qubits)
 
-        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit,initial_state=keymap.inverted(initial_state).integer)
+        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit,
+                                               initial_state=keymap.inverted(initial_state).integer)
         result.wavefunction.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
     def do_simulate_wavefunction(self, circuit, initial_state=0) -> SimulatorReturnType:
         raise OpenVQEException(
             "called from base class of simulator, or non-supported operation for this backend")
-
 
     def create_circuit(self, abstract_circuit: QCircuit):
         """
@@ -326,7 +363,7 @@ class Simulator(OpenVQEModule):
         raise OpenVQEException(
             "called from base class of simulator, or non-supported operation for this backend")
 
-    def measure_objective(self, objective: Objective, samples:int = 1, return_simulation_data: bool=False) -> float:
+    def measure_objective(self, objective: Objective, samples: int = 1, return_simulation_data: bool = False) -> float:
         final_E = 0.0
         data = []
         for U in objective.unitaries:
@@ -337,7 +374,7 @@ class Simulator(OpenVQEModule):
                 Etmp, tmp = self.measure_paulistring(abstract_circuit=U, paulistring=ps, samples=samples)
                 E += Etmp
                 result_data[str(ps)] = tmp
-            final_E += weight*E
+            final_E += weight * E
             if return_simulation_data:
                 data.append(tmp)
         if return_simulation_data:
@@ -345,7 +382,22 @@ class Simulator(OpenVQEModule):
         else:
             return final_E
 
-    def measure_paulistring(self, abstract_circuit: QCircuit, paulistring, samples: int=1):
+    def simulate_objective(self, objective: Objective, return_simulation_data: bool = False) -> float:
+        final_E = 0.0
+        data = []
+        H = objective.observable
+        for U in objective.unitaries:
+            simresult = self.simulate_wavefunction(abstract_circuit=U)
+            wfn = simresult.wavefunction
+            final_E += U.weight*wfn.compute_expectationvalue(operator=H)
+            if return_simulation_data:
+                data.append(simresult)
+        if return_simulation_data:
+            return final_E, data
+        else:
+            return final_E
+
+    def measure_paulistring(self, abstract_circuit: QCircuit, paulistring, samples: int = 1):
         # make basis change
         basis_change = QCircuit()
         for idx, p in paulistring.items():
@@ -368,7 +420,7 @@ class Simulator(OpenVQEModule):
             sign = (-1) ** parity
             E += sign * count
             n_samples += count
-        assert (n_samples == samples) # failsafe
+        assert (n_samples == samples)  # failsafe
         E = E / samples * paulistring.coeff
         return (E, sim_result)
 
@@ -405,7 +457,7 @@ class Simulator(OpenVQEModule):
         # post processing
         result = []
         for paulistring in paulistrings:
-            measurements = sim_result.measurements[str(paulistring)] # TODO will work only for cirq -> Change
+            measurements = sim_result.measurements[str(paulistring)]  # TODO will work only for cirq -> Change
             E = 0.0
             n_samples = 0
             for key, count in measurements.items():
