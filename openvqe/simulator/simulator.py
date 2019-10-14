@@ -7,8 +7,9 @@ from openvqe.circuit.compiler import change_basis
 from openvqe.circuit.gates import Measurement
 from openvqe import BitString, BitStringLSB, initialize_bitstring
 import copy
-from typing import Dict, List
 from dataclasses import dataclass
+from openvqe.objective import Objective
+from openvqe import typing
 
 class KeyMapABC:
 
@@ -57,7 +58,7 @@ class KeyMapQubitSubregister(KeyMapABC):
     def complement(self):
         return self.make_complement()
 
-    def __init__(self, subregister: List[int], register: List[int]):
+    def __init__(self, subregister: typing.List[int], register: typing.List[int]):
         self._subregister = subregister
         self._register = register
 
@@ -137,11 +138,11 @@ class QubitWaveFunction:
             return self._state
 
     @state.setter
-    def state(self, other: Dict[BitString, complex]):
+    def state(self, other: typing.Dict[BitString, complex]):
         assert (isinstance(other, dict))
         self._state = other
 
-    def __init__(self, state: Dict[int, complex] = None):
+    def __init__(self, state: typing.Dict[int, complex] = None):
         if state is None:
             self._state = dict()
         else:
@@ -250,7 +251,7 @@ class SimulatorReturnType:
     abstract_circuit: QCircuit = None
     circuit: int = None
     wavefunction: QubitWaveFunction = None
-    measurements: Dict[str,QubitWaveFunction] = None
+    measurements: typing.Dict[str,QubitWaveFunction] = None
     backend_result: int = None
 
     @property
@@ -321,9 +322,55 @@ class Simulator(OpenVQEModule):
         raise OpenVQEException(
             "called from base class of simulator, or non-supported operation for this backend")
 
-    def convert_measurements(self, backend_result) -> Dict[str, QubitWaveFunction]:
+    def convert_measurements(self, backend_result) -> typing.Dict[str, QubitWaveFunction]:
         raise OpenVQEException(
             "called from base class of simulator, or non-supported operation for this backend")
+
+    def measure_objective(self, objective: Objective, samples:int = 1, return_simulation_data: bool=False) -> float:
+        final_E = 0.0
+        data = []
+        for U in objective.unitaries:
+            weight = U.weight
+            E = 0.0
+            result_data = {}
+            for ps in objective.observable.paulistrings:
+                Etmp, tmp = self.measure_paulistring(abstract_circuit=U, paulistring=ps, samples=samples)
+                E += Etmp
+                result_data[str(ps)] = tmp
+            final_E += weight*E
+            if return_simulation_data:
+                data.append(tmp)
+        if return_simulation_data:
+            return final_E, data
+        else:
+            return final_E
+
+    def measure_paulistring(self, abstract_circuit: QCircuit, paulistring, samples: int=1):
+        # make basis change
+        basis_change = QCircuit()
+        for idx, p in paulistring.items():
+            basis_change += change_basis(target=idx, axis=p)
+        # make measurment instruction
+        measure = QCircuit()
+        qubits = [idx[0] for idx in paulistring.items()]
+        measure *= Measurement(name=str(paulistring), target=qubits)
+        circuit = abstract_circuit + basis_change + measure
+
+        # run simulator
+        sim_result = self.run(abstract_circuit=circuit, samples=samples)
+
+        # compute energy
+        counts = sim_result.counts
+        E = 0.0
+        n_samples = 0
+        for key, count in counts.items():
+            parity = key.array.count(1)
+            sign = (-1) ** parity
+            E += sign * count
+            n_samples += count
+        assert (n_samples == samples) # failsafe
+        E = E / samples * paulistring.coeff
+        return (E, sim_result)
 
     def measure_paulistrings(self, abstract_circuit: QCircuit, paulistrings: list, samples: int = 1):
         """

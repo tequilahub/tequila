@@ -1,6 +1,7 @@
 from openvqe.simulator.simulator import KeyMapLSB2MSB, KeyMapMSB2LSB, QubitWaveFunction, Simulator, QCircuit, OpenVQEException, \
     SimulatorReturnType
 from openvqe import BitString, BitNumbering
+from openvqe.circuit._gates_impl import MeasurementImpl
 import pyquil
 
 
@@ -46,6 +47,10 @@ class SimulatorPyquil(Simulator):
         result = pyquil.Program()
 
         for g in abstract_circuit.gates:
+
+            if isinstance(g, MeasurementImpl):
+                raise OpenVQEException("Pyquil currently only works for WavefunctionSimulation -> No Measurements")
+                continue
 
             if len(g.target) > 1:
                 raise OpenVQEPyquilException("Pyquil backend does not support multiple targets")

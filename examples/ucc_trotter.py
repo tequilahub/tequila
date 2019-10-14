@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     energies = []
     gradients = []
-    for factor in [0.2,0.4,0.6,0.8,1.0]:
+    for factor in [1.0]:
         # get initial amplitudes from psi4
         amplitudes = H.parse_ccsd_amplitudes()
         amplitudes = factor*amplitudes
@@ -56,6 +56,7 @@ if __name__ == "__main__":
 
         print("abstract_circuit\n", abstract_circuit)
         result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit)
+        print("abstract_circuit\n", result.circuit)
         print("resulting state is:")
         print("|psi>=", result.wavefunction)
         print("initial state was: ", ucc.initial_state(hamiltonian=H))

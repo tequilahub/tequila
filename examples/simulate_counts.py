@@ -1,5 +1,6 @@
 from openvqe.circuit import gates
 from numpy import pi
+from openvqe.simulator.backends import initialize_simulator
 
 """
 Same example as 'simulate_wavefunctions' but here we simulate counts
@@ -8,29 +9,6 @@ If you use Pyquil, make sure the QVM runs in the background
  -> open terminal, type 'qvm -S'
 And make sure the rigetti qvm is actually installed 
 """
-
-def initialize_simulator(simulator_type:str):
-    """
-    Convenience for this example
-    This function is only here so that the example runs even when not all backends are installed
-    And it will allow for eay switching of backens to play around
-    :param simulator_type: 'cirq', 'pyquil', 'symbolic' (default), 'qiskit'
-    :return: the initialized simulator backend
-    """
-    # moving import statements to here, so the example also runs when not all are installed
-    from openvqe.simulator.simulator_cirq import SimulatorCirq
-    from openvqe.simulator.simulator_pyquil import SimulatorPyquil
-    from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
-    from openvqe.simulator.simulator_qiskit import SimulatorQiskit
-
-    if simulator_type.lower() == "cirq":
-        return SimulatorCirq()
-    elif simulator_type.lower() == 'pyquil':
-        return SimulatorPyquil()
-    elif simulator_type.lower() == 'qiskit':
-        return SimulatorQiskit()
-    else:
-        return SimulatorSymbolic()
 
 if __name__ == "__main__":
 
@@ -46,7 +24,7 @@ if __name__ == "__main__":
 
     # choose a backend
     # 'symbolic' can only simulate wavefunctions, counts are not supported here. Could be implemented quickly
-    # 'pyquil' has currently no support ... on the list
+    # 'pyquil' has currently no support for individual measurements ... on the todo list
     simulator = initialize_simulator(simulator_type='qiskit') # choose between 'cirq', 'pyquil', 'qiskit'
 
     simulator_results = simulator.run(abstract_circuit=ac, samples=100)
