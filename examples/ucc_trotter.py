@@ -59,7 +59,7 @@ if __name__ == "__main__":
         print("abstract_circuit\n", result.circuit)
         print("resulting state is:")
         print("|psi>=", result.wavefunction)
-        print("initial state was: ", ucc.initial_state(hamiltonian=H))
+        print("initial state was: ", H.reference_state(), " = |", H.reference_state().binary, ">")
 
         O = Objective(observable=H, unitaries=abstract_circuit)
         energy = SimulatorCirq().expectation_value(objective=O)

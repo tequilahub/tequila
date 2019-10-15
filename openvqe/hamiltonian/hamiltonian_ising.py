@@ -1,10 +1,13 @@
 """
 (Quantum) Ising Hamiltonian (with) without transversal Field
 """
-from openvqe import OpenVQEException
-from openvqe.hamiltonian import QubitHamiltonian, PZ, PX
+from openvqe.hamiltonian import QubitHamiltonian, paulis
 import networkx as nx
 import matplotlib.pyplot as plt
+
+PX = paulis.X
+PY = paulis.Y
+PZ = paulis.Z
 
 
 class IsingHamiltonian(QubitHamiltonian):

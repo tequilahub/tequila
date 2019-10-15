@@ -1,6 +1,6 @@
 from openvqe.circuit import gates
 from numpy import pi
-from openvqe.simulator.backends import initialize_simulator
+from openvqe.tools.backends import initialize_simulator
 
 """
 Same example as 'simulate_wavefunctions' but here we simulate counts

@@ -1,22 +1,9 @@
-from openvqe.openvqe_abc import parametrized
-from .ansatz_base import AnsatzBase
-from openvqe.openvqe_exceptions import OpenVQEParameterError
 import numpy
 import openfermion
-from dataclasses import dataclass
-from openvqe.ansatz.ansatz_base import ParametersAnsatz
 from openvqe import BitString
 from openvqe.hamiltonian import QubitHamiltonian
 from openvqe.circuit.exponential_gate import QCircuit
-from typing import Callable
-from copy import deepcopy
-
-
-@dataclass
-class ParametersUCC(ParametersAnsatz):
-    # UCC specific parameters
-    # have to be assigned
-    transformation = "JW"
+from openvqe import typing
 
 
 class ManyBodyAmplitudes:
@@ -42,7 +29,7 @@ class ManyBodyAmplitudes:
         return rep
 
     def __rmul__(self, other):
-        return ManyBodyAmplitudes(one_body=other*self.one_body, two_body=other*self.two_body)
+        return ManyBodyAmplitudes(one_body=other * self.one_body, two_body=other * self.two_body)
 
     def __repr__(self):
         return self.__str__()
@@ -56,27 +43,16 @@ class AnsatzUCC:
     Class for UCC ansatz
     """
 
-    def __init__(self, decomposition: Callable=None, transformation: Callable=None):
+    def __init__(self, decomposition: typing.Callable = None, transformation: typing.Callable = None):
         self._decomposition = decomposition
-        if transformation is None or transformation in  ["JW", "Jordan-Wigner", "jordan-wigner", "jw"]:
+        if transformation is None or transformation in ["JW", "Jordan-Wigner", "jordan-wigner", "jw"]:
             self._transformation = openfermion.jordan_wigner
         else:
             self._transformation = transformation
 
     def __call__(self, angles) -> QCircuit:
-        generator = 1.0j*QubitHamiltonian(hamiltonian=self.make_cluster_operator(angles=angles))
+        generator = 1.0j * QubitHamiltonian(hamiltonian=self.make_cluster_operator(angles=angles))
         return self._decomposition(generators=[generator])
-
-
-    def initial_state(self, hamiltonian) -> int:
-        """
-        :return: Hartree-Fock Reference as binary-number
-        """
-        l = [0]*hamiltonian.n_qubits
-        for i in range(hamiltonian.n_electrons):
-            l[i] = 1
-
-        return BitString.from_array(array=l, nbits=hamiltonian.n_qubits).integer
 
     def make_cluster_operator(self, angles: ManyBodyAmplitudes) -> openfermion.QubitOperator:
         """

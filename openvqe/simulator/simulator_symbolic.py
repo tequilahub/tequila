@@ -1,4 +1,5 @@
-from openvqe.simulator.simulator import Simulator, SimulatorReturnType, QubitWaveFunction
+from openvqe.simulator.simulator import Simulator, SimulatorReturnType
+from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit.gates import QGate, Ry, X
 from openvqe import BitStringLSB, BitString

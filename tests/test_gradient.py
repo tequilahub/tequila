@@ -21,7 +21,7 @@ def test_gradient_UY_HX(angle, controlled, silent=True):
     # = sin(angle)
 
     qubit = 0
-    H = paulis.PX(qubit=qubit)
+    H = paulis.X(qubit=qubit)
     if controlled:
         control = 1
         U = gates.X(target=control)+gates.Ry(target=qubit, control=control, angle=angle)
@@ -49,7 +49,7 @@ def test_gradient_UX_HY(angle, controlled, silent=True):
     #   = -sin(angle)
 
     qubit = 0
-    H = paulis.PY(qubit=qubit)
+    H = paulis.Y(qubit=qubit)
     if controlled:
         control = 1
         U = gates.X(target=control)+gates.Rx(target=qubit, control=control, angle=angle)
@@ -83,7 +83,7 @@ def test_gradient_UY_HY_wfnsim(angle, controlled, silent=True):
     # = sin(angle)
 
     qubit = 0
-    H = paulis.PX(qubit=qubit)
+    H = paulis.X(qubit=qubit)
     if controlled:
         control = 1
         U = gates.X(target=control)+gates.Ry(target=qubit, control=control, angle=angle)
@@ -115,7 +115,7 @@ def test_gradient_UY_HY_wfnsim(angle, controlled, silent=True):
     #   = -sin(angle)
 
     qubit = 0
-    H = paulis.PY(qubit=qubit)
+    H = paulis.Y(qubit=qubit)
     if controlled:
         control = 1
         U = gates.X(target=control)+gates.Rx(target=qubit, control=control, angle=angle)

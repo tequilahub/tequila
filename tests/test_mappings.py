@@ -1,4 +1,6 @@
-from openvqe.simulator import QubitWaveFunction, Simulator, KeyMapQubitSubregister
+from openvqe.simulator import Simulator
+from openvqe.qubit_wavefunction import QubitWaveFunction
+from openvqe.keymap import KeyMapQubitSubregister
 from openvqe import BitString, BitNumbering, BitStringLSB
 
 

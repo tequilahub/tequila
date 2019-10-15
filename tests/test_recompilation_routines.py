@@ -3,8 +3,12 @@ from openvqe.circuit.compiler import compile_controlled_rotation_gate, change_ba
 from numpy.random import uniform, randint
 from numpy import pi, isclose
 from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe.hamiltonian import PX, PY, PZ
+from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
+
+PX = paulis.X
+PY = paulis.Y
+PZ = paulis.Z
 
 
 def test_controlled_rotations():
@@ -40,9 +44,9 @@ def test_basis_change():
             objective=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=2)],
                                 observable=PZ(0)))
 
-        assert (isclose(EX, EXX))
-        assert (isclose(EY, EYY))
-        assert (isclose(EZ, EZZ))
+        assert (isclose(EX, EXX, atol=1.e-4))
+        assert (isclose(EY, EYY, atol=1.e-4))
+        assert (isclose(EZ, EZZ, atol=1.e-4))
 
     for i,gate in enumerate([gates.Rx, gates.Ry, gates.Rz]):
         angle = uniform(0, 2*pi)

@@ -15,7 +15,7 @@ def expectation_value_cirq(final_state, hamiltonian, n_qubits):
 
     coeffs = []
     list_of_h_terms = []
-    for qubit_terms, coefficient in hamiltonian.terms.items():
+    for qubit_terms, coefficient in hamiltonian.items():
         h_terms = []
 
         for i in range(n_qubits):

@@ -3,16 +3,15 @@ Interface to get
 Quantum Chemistry Hamiltonians for OpenVQE
 Derived class of HamiltonianBase: Overwrites the get_hamiltonian function
 """
-from openvqe import OutputLevel, OpenVQEException
-from openvqe.openvqe_abc import OpenVQEParameters, parametrized
+from openvqe import OpenVQEException
+from openvqe.openvqe_abc import OpenVQEParameters
 from openvqe.ansatz import ManyBodyAmplitudes
-from dataclasses import dataclass
+from openvqe import dataclass
 from openfermion import MolecularData, FermionOperator
 from openfermion.transforms import jordan_wigner, bravyi_kitaev, get_fermion_operator
 from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
 from openfermionpsi4 import run_psi4
 from openvqe.hamiltonian import QubitHamiltonian
-from numpy import float64
 from openvqe import BitString
 
 
@@ -88,7 +87,7 @@ class ParametersQC(OpenVQEParameters):
             if len(words) != 4:  break
             try:
                 tmp = (ParametersQC.format_element_name(words[0]),
-                       (float64(words[1]), float64(words[2]), float64(words[3])))
+                       (float(words[1]), float(words[2]), float(words[3])))
                 result.append(tmp)
             except ValueError:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
@@ -280,7 +279,6 @@ class HamiltonianPsi4(QubitHamiltonian):
         # and that the output was kept, as well as CCSD was actually computed
         if not file_exists or (
                 self._molecule is None or self.parameters.psi4.run_ccsd == False or self.parameters.psi4.delete_output):
-            self.print("Recomputing PSI4", level=OutputLevel.STANDARD)
             self.parameters.filename = filename.strip(".out")
             self.parameters.psi4.run_ccsd = True
             self.parameters.psi4.delete_output = False

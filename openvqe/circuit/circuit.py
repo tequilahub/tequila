@@ -1,8 +1,8 @@
 from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
 from openvqe import BitNumbering
-import numpy
-import copy
+from openvqe import numpy
+from openvqe import copy
 
 
 class QCircuit():

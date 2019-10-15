@@ -1,20 +1,18 @@
-from openvqe.hamiltonian import QubitHamiltonian, PX, PY, PZ, PauliString, Qp, Qm, Sp, Sm, PI, \
-    decompose_transfer_operator
+from openvqe.hamiltonian import QubitHamiltonian, PauliString, paulis
 from numpy import random
 from openvqe import BitString
 
 
 def test_paulistring_conversion():
     X1 = QubitHamiltonian.init_from_string("x0")
-    X2 = PX(0)
-    print("X2=", X2)
-    keys = [i for i in X2.hamiltonian.terms.keys()]
-    pwx = PauliString.init_from_openfermion(key=keys[0], coeff=X2.hamiltonian.terms[keys[0]])
+    X2 = paulis.X(0)
+    keys = [i for i in X2.keys()]
+    pwx = PauliString.init_from_openfermion(key=keys[0], coeff=X2[keys[0]])
     X3 = QubitHamiltonian.init_from_paulistring(pwx)
     assert (X1 == X2)
     assert (X2 == X3)
 
-    H = PX(0) * PY(1) * PZ(2) + PX(3) * PY(4) * PZ(5)
+    H = paulis.X(0) * paulis.Y(1) * paulis.Z(2) + paulis.X(3) * paulis.Y(4) * paulis.Z(5)
     PS = []
     for key, value in H.items():
         PS.append(PauliString.init_from_openfermion(key, value))
@@ -33,13 +31,13 @@ def test_paulistring_conversion():
 
 def test_simple_arithmetic():
     qubit = random.randint(0, 5)
-    primitives = [PX, PY, PZ]
-    assert (PX(qubit).conjugate() == PX(qubit))
-    assert (PY(qubit).conjugate() == -1 * PY(qubit))
-    assert (PZ(qubit).conjugate() == PZ(qubit))
-    assert (PX(qubit).transpose() == PX(qubit))
-    assert (PY(qubit).transpose() == -1 * PY(qubit))
-    assert (PZ(qubit).transpose() == PZ(qubit))
+    primitives = [paulis.X, paulis.Y, paulis.Z]
+    assert (paulis.X(qubit).conjugate() == paulis.X(qubit))
+    assert (paulis.Y(qubit).conjugate() == -1 * paulis.Y(qubit))
+    assert (paulis.Z(qubit).conjugate() == paulis.Z(qubit))
+    assert (paulis.X(qubit).transpose() == paulis.X(qubit))
+    assert (paulis.Y(qubit).transpose() == -1 * paulis.Y(qubit))
+    assert (paulis.Z(qubit).transpose() == paulis.Z(qubit))
     for P in primitives:
         assert (P(qubit) * P(qubit) == QubitHamiltonian())
         n = random.randint(0, 10)
@@ -63,43 +61,47 @@ def test_simple_arithmetic():
 
 def test_special_operators():
     # sigma+ sigma- as well as Q+ and Q-
-    assert (Sp(0) * Sp(0) == QubitHamiltonian.init_zero())
-    assert (Sm(0) * Sm(0) == QubitHamiltonian.init_zero())
+    assert (paulis.Sp(0) * paulis.Sp(0) == QubitHamiltonian.init_zero())
+    assert (paulis.Sm(0) * paulis.Sm(0) == QubitHamiltonian.init_zero())
 
-    assert (Qp(0) * Qp(0) == Qp(0))
-    assert (Qm(0) * Qm(0) == Qm(0))
-    assert (Qp(0) * Qm(0) == QubitHamiltonian.init_zero())
-    assert (Qm(0) * Qp(0) == QubitHamiltonian.init_zero())
+    assert (paulis.Qp(0) * paulis.Qp(0) == paulis.Qp(0))
+    assert (paulis.Qm(0) * paulis.Qm(0) == paulis.Qm(0))
+    assert (paulis.Qp(0) * paulis.Qm(0) == QubitHamiltonian.init_zero())
+    assert (paulis.Qm(0) * paulis.Qp(0) == QubitHamiltonian.init_zero())
 
-    assert (Sp(0) * Sm(0) == Qp(0))
-    assert (Sm(0) * Sp(0) == Qm(0))
+    assert (paulis.Sp(0) * paulis.Sm(0) == paulis.Qp(0))
+    assert (paulis.Sm(0) * paulis.Sp(0) == paulis.Qm(0))
 
-    assert (Sp(0) + Sm(0) == PX(0))
-    assert (Qp(0) + Qm(0) == PI(0))
+    assert (paulis.Sp(0) + paulis.Sm(0) == paulis.X(0))
+    assert (paulis.Qp(0) + paulis.Qm(0) == paulis.I(0))
 
 
 def test_transfer_operators():
-    assert (decompose_transfer_operator(ket=0, bra=0) == Qp(0))
-    assert (decompose_transfer_operator(ket=0, bra=1) == Sp(0))
-    assert (decompose_transfer_operator(ket=1, bra=0) == Sm(0))
-    assert (decompose_transfer_operator(ket=1, bra=1) == Qm(0))
+    assert (paulis.decompose_transfer_operator(ket=0, bra=0) == paulis.Qp(0))
+    assert (paulis.decompose_transfer_operator(ket=0, bra=1) == paulis.Sp(0))
+    assert (paulis.decompose_transfer_operator(ket=1, bra=0) == paulis.Sm(0))
+    assert (paulis.decompose_transfer_operator(ket=1, bra=1) == paulis.Qm(0))
 
-    assert (decompose_transfer_operator(ket=BitString.from_binary(binary="00"), bra=BitString.from_binary("00")) == Qp(
-        0) * Qp(1))
-    assert (decompose_transfer_operator(ket=BitString.from_binary(binary="01"), bra=BitString.from_binary("01")) == Qp(
-        0) * Qm(1))
-    assert (decompose_transfer_operator(ket=BitString.from_binary(binary="01"), bra=BitString.from_binary("10")) == Sp(
-        0) * Sm(1))
-    assert (decompose_transfer_operator(ket=BitString.from_binary(binary="00"), bra=BitString.from_binary("11")) == Sp(
-        0) * Sp(1))
+    assert (paulis.decompose_transfer_operator(ket=BitString.from_binary(binary="00"),
+                                               bra=BitString.from_binary("00")) == paulis.Qp(
+        0) * paulis.Qp(1))
+    assert (paulis.decompose_transfer_operator(ket=BitString.from_binary(binary="01"),
+                                               bra=BitString.from_binary("01")) == paulis.Qp(
+        0) * paulis.Qm(1))
+    assert (paulis.decompose_transfer_operator(ket=BitString.from_binary(binary="01"),
+                                               bra=BitString.from_binary("10")) == paulis.Sp(
+        0) * paulis.Sm(1))
+    assert (paulis.decompose_transfer_operator(ket=BitString.from_binary(binary="00"),
+                                               bra=BitString.from_binary("11")) == paulis.Sp(
+        0) * paulis.Sp(1))
 
-    assert (decompose_transfer_operator(ket=0, bra=0, qubits=[1]) == Qp(1))
-    assert (decompose_transfer_operator(ket=1, bra=0, qubits=[1]) == Sm(1))
-    assert (decompose_transfer_operator(ket=1, bra=1, qubits=[1]) == Qm(1))
+    assert (paulis.decompose_transfer_operator(ket=0, bra=0, qubits=[1]) == paulis.Qp(1))
+    assert (paulis.decompose_transfer_operator(ket=1, bra=0, qubits=[1]) == paulis.Sm(1))
+    assert (paulis.decompose_transfer_operator(ket=1, bra=1, qubits=[1]) == paulis.Qm(1))
 
 
 def test_conjugation():
-    primitives = [PX, PY, PZ]
+    primitives = [paulis.X, paulis.Y, paulis.Z]
     factors = [1, -1, 1j, -1j, 0.5 + 1j]
     string = QubitHamiltonian.init_unit()
     cstring = QubitHamiltonian.init_unit()
@@ -119,11 +121,11 @@ def test_conjugation():
 
 
 def test_transposition():
-    primitives = [PX, PY, PZ]
+    primitives = [paulis.X, paulis.Y, paulis.Z]
     factors = [1, -1, 1j, -1j, 0.5 + 1j]
 
-    assert ((PX(0) * PX(1) * PY(2)).transpose() == -1 * PX(0) * PX(1) * PY(2))
-    assert ((PX(0) * PX(1) * PZ(2)).transpose() == PX(0) * PX(1) * PZ(2))
+    assert ((paulis.X(0) * paulis.X(1) * paulis.Y(2)).transpose() == -1 * paulis.X(0) * paulis.X(1) * paulis.Y(2))
+    assert ((paulis.X(0) * paulis.X(1) * paulis.Z(2)).transpose() == paulis.X(0) * paulis.X(1) * paulis.Z(2))
 
     for repeat in range(10):
         string = QubitHamiltonian.init_unit()
@@ -142,7 +144,7 @@ def test_transposition():
 
 
 def make_random_pauliword(complex=True):
-    primitives = [PX, PY, PZ]
+    primitives = [paulis.X, paulis.Y, paulis.Z]
     result = QubitHamiltonian.init_unit()
     for q in random.choice(range(10), 5, replace=False):
         P = primitives[random.randint(0, 2)]
@@ -156,9 +158,9 @@ def make_random_pauliword(complex=True):
 
 
 def test_dagger():
-    assert (PX(0).dagger() == PX(0))
-    assert (PY(0).dagger() == PY(0))
-    assert (PZ(0).dagger() == PZ(0))
+    assert (paulis.X(0).dagger() == paulis.X(0))
+    assert (paulis.Y(0).dagger() == paulis.Y(0))
+    assert (paulis.Z(0).dagger() == paulis.Z(0))
 
     for repeat in range(10):
         string = make_random_pauliword(complex=False)

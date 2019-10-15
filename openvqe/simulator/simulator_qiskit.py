@@ -1,4 +1,5 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, QubitWaveFunction
+from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
+from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe.circuit.compiler import compile_multitarget, compile_controlled_rotation_gate
 from openvqe.circuit.gates import MeasurementImpl, PowerGateImpl

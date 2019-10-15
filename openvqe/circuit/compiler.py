@@ -2,12 +2,11 @@
 Primitive Compiler from Qubit-Operators to evolution operators
 Replace with fancier external packages at some point
 """
-from openvqe import OpenVQEException
 from openvqe.circuit.circuit import QCircuit
 from openvqe import numpy
 from openvqe.circuit.gates import Rx, H
 from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl
-import copy
+from openvqe import copy
 
 def compile_multitarget(gate) -> QCircuit:
     # for the case that gate is actually a whole circuit

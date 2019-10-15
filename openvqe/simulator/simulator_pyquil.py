@@ -1,8 +1,10 @@
-from openvqe.simulator.simulator import KeyMapLSB2MSB, KeyMapMSB2LSB, QubitWaveFunction, Simulator, QCircuit, OpenVQEException, \
+from openvqe.simulator.simulator import Simulator, QCircuit, OpenVQEException, \
     SimulatorReturnType
+from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import BitString, BitNumbering
 from openvqe.circuit._gates_impl import MeasurementImpl
 import pyquil
+import subprocess
 
 
 class OpenVQEPyquilException(OpenVQEException):
@@ -21,6 +23,10 @@ class SimulatorPyquil(Simulator):
     @property
     def numbering(self):
         return BitNumbering.LSB
+
+    def __init__(self, initialize_qvm:bool=True):
+        if initialize_qvm:
+            subprocess.Popen(["qvm", "-S"])
 
     def create_circuit(self, abstract_circuit: QCircuit, qubit_map=None,
                        recompile_controlled_rotations=False) -> pyquil.Program:

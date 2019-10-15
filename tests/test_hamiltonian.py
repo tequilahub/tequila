@@ -29,7 +29,7 @@ class TestParameters(unittest.TestCase):
                     parameters_qc = ParametersQC(geometry=geom, basis_set=basis, transformation=trafo)
                     hqc = HamiltonianPsi4(parameters_qc)
                     Hmol=hqc.get_fermionic_hamiltonian()
-                    H=hqc()
+                    H=hqc.hamiltonian
                     if trafo=='JW':
                         self.assertTrue(parameters_qc.jordan_wigner())
                         self.assertEqual(H, openfermion.jordan_wigner(Hmol))

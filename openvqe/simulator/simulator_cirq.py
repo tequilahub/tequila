@@ -1,4 +1,5 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, QubitWaveFunction
+from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
+from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe.objective import Objective
 from openvqe.circuit.gates import MeasurementImpl
@@ -41,7 +42,7 @@ class SimulatorCirq(Simulator):
         for unitary in objective.unitaries:
             simresult = self.simulate_wavefunction(abstract_circuit=unitary, initial_state=initial_state)
             exv.append(
-                expectation_value_cirq(hamiltonian=objective.observable(), n_qubits=objective.observable.n_qubits,
+                expectation_value_cirq(hamiltonian=objective.observable, n_qubits=objective.observable.n_qubits,
                                        final_state=simresult.backend_result.final_state))
             weights.append(unitary.weight)
 

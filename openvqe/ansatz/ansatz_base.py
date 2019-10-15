@@ -1,32 +1,13 @@
-from openvqe.openvqe_abc import OpenVQEModule, OpenVQEParameters, parametrized
 from openvqe.openvqe_exceptions import OpenVQEException
-from openvqe.hamiltonian.hamiltonian_base import HamiltonianBase
-from dataclasses import dataclass
 
-
-@dataclass
-class ParametersAnsatz(OpenVQEParameters):
-    """
-    Enter general parameters which hold for all types of VQE ansaetze
-    """
-
-    # have to be assigned
-    backend: str = "cirq"
-
-
-@parametrized(ParametersAnsatz)
-class AnsatzBase(OpenVQEModule):
+class AnsatzBase:
     """
     Base Class for the VQE Ansatz
     Derive all specializations from this Base Class
     """
 
-    def __post_init__(self, hamiltonian: HamiltonianBase = None, qubits=None):
-        self.hamiltonian = hamiltonian
-        # self.backend_handler = get_backend_hander(backend=self.parameters.backend, n_qubits=hamiltonian.n_qubits(),
-        #                                           qubits=qubits)
-        #self.parameters.n_qubits = hamiltonian.n_qubits()
-        self.verify()
+    def __init__(self):
+        pass
 
     def __call__(self, angles):
         """

@@ -1,8 +1,8 @@
 from abc import ABC
 from openvqe import OpenVQEException
 from openvqe import typing
-import numpy
-import copy
+from openvqe import numpy
+from openvqe import copy
 
 
 class QGateImpl:

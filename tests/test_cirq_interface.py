@@ -1,12 +1,10 @@
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.circuit.circuit import QCircuit
-from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, CNOT, SWAP, H
+from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H
 from numpy import pi, random, isclose, sqrt
-from openvqe.hamiltonian import HamiltonianBase
-from openfermion import QubitOperator
+from openvqe.hamiltonian import PauliString
 from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
-from openvqe.hamiltonian import PauliString
 
 # Note
 # multi control works
@@ -123,7 +121,7 @@ def test_power_gates():
 
 
 def test_expectation_values():
-    from openvqe.hamiltonian.hamiltonian_qubit import PX
+    from openvqe.hamiltonian.paulis import X as PX
     hamiltonian = PX(qubit=0)
 
     U = Ry(target=0, angle=pi / 4)

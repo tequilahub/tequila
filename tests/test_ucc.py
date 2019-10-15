@@ -1,11 +1,11 @@
 from openvqe.hamiltonian import HamiltonianPsi4, ParametersQC
 from openvqe.ansatz import AnsatzUCC
-from openvqe.circuit.compiler import compile_trotter_evolution
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.tools.expectation_value_cirq import expectation_value_cirq
 from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
 from numpy import isclose
+from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
 
 import unittest
 
@@ -24,15 +24,13 @@ class TestParameters(unittest.TestCase):
 
         amplitudes = hqc.parse_ccsd_amplitudes()
 
-        ucc = AnsatzUCC()
-        ucc_operator = ucc(angles=amplitudes)
-
-        abstract_circuit = compile_trotter_evolution(hamiltonian=ucc_operator, steps=1, t=1.0j)
+        ucc = AnsatzUCC(decomposition=DecompositionFirstOrderTrotter(steps=1, threshold=0.0))
+        abstract_circuit = ucc(angles=amplitudes)
 
         simulator = SimulatorCirq()
 
         result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, returntype=None,
-                                                 initial_state=ucc.initial_state(hqc))
+                                                 initial_state=hqc.reference_state())
 
         assert (ucc.initial_state(hqc) == 12)
 
