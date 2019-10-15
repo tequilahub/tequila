@@ -133,24 +133,27 @@ class Simulator(OpenVQEModule):
         # make measurment instruction
         measure = QCircuit()
         qubits = [idx[0] for idx in paulistring.items()]
-        measure *= Measurement(name=str(paulistring), target=qubits)
-        circuit = abstract_circuit + basis_change + measure
+        if len(qubits) == 0:
+            # no measurement instructions for a constant term as paulistring
+            return (paulistring.coeff, SimulatorReturnType())
+        else:
+            measure += Measurement(name=str(paulistring), target=qubits)
+            circuit = abstract_circuit + basis_change + measure
+            # run simulator
+            sim_result = self.run(abstract_circuit=circuit, samples=samples)
 
-        # run simulator
-        sim_result = self.run(abstract_circuit=circuit, samples=samples)
-
-        # compute energy
-        counts = sim_result.counts
-        E = 0.0
-        n_samples = 0
-        for key, count in counts.items():
-            parity = key.array.count(1)
-            sign = (-1) ** parity
-            E += sign * count
-            n_samples += count
-        assert (n_samples == samples)  # failsafe
-        E = E / samples * paulistring.coeff
-        return (E, sim_result)
+            # compute energy
+            counts = sim_result.counts
+            E = 0.0
+            n_samples = 0
+            for key, count in counts.items():
+                parity = key.array.count(1)
+                sign = (-1) ** parity
+                E += sign * count
+                n_samples += count
+            assert (n_samples == samples)  # failsafe
+            E = E / samples * paulistring.coeff
+            return (E, sim_result)
 
     def measure_paulistrings(self, abstract_circuit: QCircuit, paulistrings: list, samples: int = 1):
         """

@@ -1,6 +1,5 @@
 import numpy
 import openfermion
-from openvqe import BitString
 from openvqe.hamiltonian import QubitHamiltonian
 from openvqe.circuit.exponential_gate import QCircuit
 from openvqe import typing
@@ -51,7 +50,7 @@ class AnsatzUCC:
             self._transformation = transformation
 
     def __call__(self, angles) -> QCircuit:
-        generator = 1.0j * QubitHamiltonian(hamiltonian=self.make_cluster_operator(angles=angles))
+        generator = 1.0j * QubitHamiltonian(hamiltonian=self.make_cluster_operator(angles=2.0*angles))
         return self._decomposition(generators=[generator])
 
     def make_cluster_operator(self, angles: ManyBodyAmplitudes) -> openfermion.QubitOperator:

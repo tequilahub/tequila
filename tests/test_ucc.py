@@ -6,6 +6,7 @@ from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
 from numpy import isclose
 from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
+from openvqe.ansatz import prepare_product_state
 
 import unittest
 
@@ -32,21 +33,17 @@ class TestParameters(unittest.TestCase):
         result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, returntype=None,
                                                  initial_state=hqc.reference_state())
 
-        assert (ucc.initial_state(hqc) == 12)
-
-        energy = expectation_value_cirq(final_state=result.backend_result.final_state,
-                                        hamiltonian=hqc(),
-                                        n_qubits=hqc.n_qubits)
-
-        assert (isclose(energy, -1.1368354639104123))
+        assert (hqc.reference_state() == 12)
+        prep_ref = prepare_product_state(state=hqc.reference_state())
+        abstract_circuit = prep_ref + abstract_circuit
 
         O = Objective(observable=hqc, unitaries=abstract_circuit)
-        energy2 = SimulatorCirq().expectation_value(objective=O, initial_state=ucc.initial_state(hqc))
-        assert (isclose(energy, energy2))
+        energy = SimulatorCirq().simulate_objective(objective=O)
+        assert (isclose(energy, -1.1368354639104123))
 
         dO = grad(O)
         gradient = 0.0
         for dOi in dO:
-            value = SimulatorCirq().expectation_value(objective=dOi, initial_state=ucc.initial_state(hqc))
+            value = SimulatorCirq().simulate_objective(objective=dOi)
             gradient += value
         assert (isclose(gradient, 0.0, atol=1.e-4, rtol=1.e-4))

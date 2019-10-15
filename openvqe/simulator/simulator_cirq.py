@@ -1,11 +1,11 @@
 from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
-from openvqe.objective import Objective
 from openvqe.circuit.gates import MeasurementImpl
 from openvqe import BitString, BitNumbering
+from openvqe import typing
 import cirq
-from typing import Dict
+
 
 
 class OpenVQECirqException(OpenVQEException):
@@ -17,7 +17,7 @@ class SimulatorCirq(Simulator):
 
     numbering: BitNumbering = BitNumbering.MSB
 
-    def convert_measurements(self, backend_result: cirq.TrialResult) -> Dict[str, QubitWaveFunction]:
+    def convert_measurements(self, backend_result: cirq.TrialResult) -> typing.Dict[str, QubitWaveFunction]:
         result = dict()
         for key, value in backend_result.measurements.items():
             counter = QubitWaveFunction()
@@ -32,21 +32,6 @@ class SimulatorCirq(Simulator):
 
     def do_run(self, circuit: cirq.Circuit, samples: int = 1) -> cirq.TrialResult:
         return cirq.Simulator().run(program=circuit, repetitions=samples)
-
-    def expectation_value(self, objective: Objective, initial_state: int = 0):
-        # this is not how it is supposed to be ... just hacked in order for this part to return something
-        from openvqe.tools import expectation_value_cirq
-        result = 0.0
-        exv = []
-        weights = []
-        for unitary in objective.unitaries:
-            simresult = self.simulate_wavefunction(abstract_circuit=unitary, initial_state=initial_state)
-            exv.append(
-                expectation_value_cirq(hamiltonian=objective.observable, n_qubits=objective.observable.n_qubits,
-                                       final_state=simresult.backend_result.final_state))
-            weights.append(unitary.weight)
-
-        return objective.objective_function(values=exv, weights=weights)
 
     def create_circuit(self, abstract_circuit: QCircuit, qubit_map=None,
                        recompile_controlled_rotations=False) -> cirq.Circuit:

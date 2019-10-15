@@ -35,7 +35,7 @@ class ExponentialPauliGate(RotationGateImpl):
         self.frozen = frozen
 
     def __str__(self):
-        return "Exp(" + number_to_string(-self.parameter * 1.0j) + "/2" + str(self.paulistring) + ")"
+        return "Exp(" + number_to_string(-self.parameter * 1.0j) + "/2" + str(self.paulistring) + ")" + str(self.target)
 
     def decompose(self):
         return self.compile_exponential_pauli_gate(paulistring=self.paulistring, angle=self.parameter)
@@ -52,7 +52,7 @@ class ExponentialPauliGate(RotationGateImpl):
         """
 
         if not numpy.isclose(numpy.imag(angle), 0.0):
-            raise Warning("angle is not real, angle=" + str(angle))
+            raise OpenVQEException("angle is not real, angle=" + str(angle))
 
         circuit = QCircuit()
 

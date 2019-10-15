@@ -62,48 +62,19 @@ if __name__ == "__main__":
         print("initial state was: ", H.reference_state(), " = |", H.reference_state().binary, ">")
 
         O = Objective(observable=H, unitaries=abstract_circuit)
-        energy = SimulatorCirq().expectation_value(objective=O)
+        energy = SimulatorCirq().simulate_objective(objective=O)
         energies.append(energy)
         print("energy = ", energy)
 
 
-
+        # Gradients for UCC clearly need improvements (i.e. parameter tracking)
         dO = grad(O)
         # we only have one amplitude
         gradient = 0.0
         for dOi in dO:
-            value = SimulatorCirq().expectation_value(objective=dOi)
+            value = SimulatorCirq().simulate_objective(objective=dOi)
             print("component: ", value)
             gradient += value
         print("gradient = ", gradient)
         gradients.append(gradient)
 
-
-    print(energies)
-    print(gradients)
-
-    exit()
-
-    print("\n\nSame with Pyquil:")
-    simulator = SimulatorPyquil()
-    result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=ucc.initial_state(H))
-    print("resulting state is:")
-    print("|psi>=", result.result)
-
-    print("\n\nSymbolic computation, just for fun and to test flexibility")
-
-    abstract_circuit = Ry(target=0, angle=0.0685 * numpy.pi) \
-                       * CNOT(control=0, target=1) * CNOT(control=0,target=2) \
-                       * CNOT(control=1, target=3) * X(0) * X(1)
-
-    from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
-
-    simulator = SimulatorSymbolic()
-    result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=0)
-    print(result)
-
-
-    simulator = SimulatorCirq()
-    asd = gates.X(0)+gates.X(1)+abstract_circuit + gates.Measurement(target=[0,1,2,3])
-    test = simulator.run(abstract_circuit=asd, samples=100)
-    print("counts=", test.counts)
