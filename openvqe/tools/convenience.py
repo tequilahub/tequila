@@ -1,6 +1,22 @@
 from numpy import isclose, pi
 from math import hypot, atan2
 
+def list_assignement(o):
+    """
+    --> moved to tools
+    Helper function to make initialization with lists and single elements possible
+    :param o: iterable object or single element
+    :return: Gives back a list if a single element was given
+    """
+    if o is None:
+        return None
+    elif hasattr(o, "__get_item__"):
+        return o
+    elif hasattr(o, "__iter__"):
+        return o
+    else:
+        return [o]
+
 def number_to_string(number: complex, precision: int=4, threshold: float = 1.e-6) -> str:
     number = complex(number)
     real = number.real

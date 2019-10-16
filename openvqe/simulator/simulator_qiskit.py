@@ -38,7 +38,7 @@ class SimulatorQiskit(Simulator):
             result._state[converted_key] = v
         return {"": result}
 
-    def create_circuit(self, abstract_circuit: QCircuit, name="q", cname="c") -> qiskit.QuantumCircuit:
+    def create_circuit(self, abstract_circuit: QCircuit, name="q", cname="c", q: qiskit.QuantumRegister=None, c: qiskit.ClassicalRegister=None) -> qiskit.QuantumCircuit:
 
         # fast return
         if isinstance(abstract_circuit, qiskit.QuantumCircuit):
@@ -48,8 +48,10 @@ class SimulatorQiskit(Simulator):
         abstract_circuit = abstract_circuit.decompose()
 
         n_qubits = abstract_circuit.n_qubits
-        q = qiskit.QuantumRegister(n_qubits, name)
-        c = qiskit.ClassicalRegister(n_qubits, cname)
+        if q is None:
+            q = qiskit.QuantumRegister(n_qubits, name)
+        if c is None:
+            c = qiskit.ClassicalRegister(n_qubits, cname)
         result = qiskit.QuantumCircuit(q, c)
         result.rx
 
@@ -69,14 +71,14 @@ class SimulatorQiskit(Simulator):
             if g.control is not None and g.name.lower() in ["rx", "ry"]:
                 # recompile controled rotations, this is what qiskit does anyway, but it somehow has no Rx
                 result.barrier(q)  # better visibility for recompilation
-                result += self.create_circuit(abstract_circuit=compile_controlled_rotation_gate(gate=g))
+                result += self.create_circuit(abstract_circuit=compile_controlled_rotation_gate(gate=g), q=q, c=c)
                 result.barrier(q)  # better visibility for recompilation
                 continue
 
             if len(g.target) > 1:
                 # multi targets need to be explicitly recompiled for Qiskit
                 result.barrier(q)  # better visibility for recompilation
-                result += self.create_circuit(abstract_circuit=compile_multitarget(gate=g))
+                result += self.create_circuit(abstract_circuit=compile_multitarget(gate=g), q=q, c=c)
                 result.barrier(q)  # better visibility for recompilation
                 continue
 

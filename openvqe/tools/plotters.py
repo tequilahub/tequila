@@ -7,7 +7,7 @@ from openvqe import typing
 
 
 def plot_counts(counts: typing.Union[dict, QubitWaveFunction, SimulatorReturnType], filename: str = None,
-                title: str = None, label_with_integers=True):
+                title: str = None, label_with_integers=False):
     from matplotlib import pyplot as plt
 
     data = counts

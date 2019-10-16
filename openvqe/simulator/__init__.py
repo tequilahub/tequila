@@ -1,4 +1,4 @@
 from openvqe.simulator.simulator import Simulator, SimulatorReturnType
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
 from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.keymap import KeyMapQubitSubregister
+from openvqe.keymap import KeyMapSubregisterToRegister

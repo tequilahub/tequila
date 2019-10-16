@@ -1,6 +1,6 @@
 from openvqe.simulator import Simulator
 from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.keymap import KeyMapQubitSubregister
+from openvqe.keymap import KeyMapSubregisterToRegister
 from openvqe import BitString, BitNumbering, BitStringLSB
 
 
@@ -11,7 +11,7 @@ def test_keymaps():
     large = QubitWaveFunction.from_int(i=int("0b01010101", 2))
     large.n_qubits = 8
 
-    keymap = KeyMapQubitSubregister(register=[0, 1, 2, 3, 4, 5, 6, 7], subregister=[1, 3, 5, 7])
+    keymap = KeyMapSubregisterToRegister(register=[0, 1, 2, 3, 4, 5, 6, 7], subregister=[1, 3, 5, 7])
 
     assert (small.apply_keymap(keymap=keymap, initial_state=initial_state) == large)
 

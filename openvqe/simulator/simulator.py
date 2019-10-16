@@ -1,6 +1,6 @@
 from openvqe import OpenVQEModule, OpenVQEException, BitNumbering
 from openvqe.circuit.circuit import QCircuit
-from openvqe.keymap import KeyMapQubitSubregister
+from openvqe.keymap import KeyMapSubregisterToRegister
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.hamiltonian import PauliString
 from openvqe.circuit.compiler import change_basis
@@ -8,6 +8,7 @@ from openvqe.circuit.gates import Measurement
 from openvqe import BitString
 from openvqe import copy, dataclass, typing
 from openvqe.objective import Objective
+from openvqe.simulator.heralding import HeraldingABC
 
 
 @dataclass
@@ -34,16 +35,19 @@ class Simulator(OpenVQEModule):
 
     numbering: BitNumbering = BitNumbering.MSB
 
+    def __init__(self, heralding: HeraldingABC = None):
+        self._heralding = heralding
+
     def run(self, abstract_circuit: QCircuit, samples: int = 1) -> SimulatorReturnType:
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)
         backend_result = self.do_run(circuit=circuit, samples=samples)
         return SimulatorReturnType(circuit=circuit,
                                    abstract_circuit=abstract_circuit,
                                    backend_result=backend_result,
-                                   measurements=self.convert_measurements(backend_result))
+                                   measurements=self.postprocessing(self.convert_measurements(backend_result)))
 
     def do_run(self, circuit, samples: int = 1):
-        raise OpenVQEException("run needs to be overwritten")
+        raise OpenVQEException("do_run needs to be overwritten by corresponding backend")
 
     def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=None,
                               initial_state: int = 0) -> SimulatorReturnType:
@@ -67,7 +71,7 @@ class Simulator(OpenVQEModule):
         all_qubits = [i for i in range(abstract_circuit.n_qubits)]
 
         # maps from reduced register to full register
-        keymap = KeyMapQubitSubregister(subregister=active_qubits, register=all_qubits)
+        keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
 
         result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit,
                                                initial_state=keymap.inverted(initial_state).integer)
@@ -117,7 +121,7 @@ class Simulator(OpenVQEModule):
         for U in objective.unitaries:
             simresult = self.simulate_wavefunction(abstract_circuit=U)
             wfn = simresult.wavefunction
-            final_E += U.weight*wfn.compute_expectationvalue(operator=H)
+            final_E += U.weight * wfn.compute_expectationvalue(operator=H)
             if return_simulation_data:
                 data.append(simresult)
         if return_simulation_data:
@@ -155,49 +159,12 @@ class Simulator(OpenVQEModule):
             E = E / samples * paulistring.coeff
             return (E, sim_result)
 
-    def measure_paulistrings(self, abstract_circuit: QCircuit, paulistrings: list, samples: int = 1):
-        """
-        Simulate Circuit and measure PauliString
-        All measurments performed in Z basis
-        Basis changes are applied automatically
-        :param abstract_circuit: The circuit
-        :param paulistring: The PauliString in OVQE dataformat
-        :return: Measurment
-        """
+    def postprocessing(self, measurements: typing.Dict[str, QubitWaveFunction]) -> typing.Dict[str, QubitWaveFunction]:
+        # fast return
+        if self._heralding is None:
+            return measurements
 
-        if isinstance(paulistrings, PauliString):
-            paulistrings = [paulistrings]
-
-        assembled = copy.deepcopy(abstract_circuit)
-        for paulistring in paulistrings:
-            # make basis change
-            U_front = QCircuit()
-            U_back = QCircuit()
-            for idx, p in paulistring.items():
-                U_front *= change_basis(target=idx, axis=p)
-                U_back *= change_basis(target=idx, axis=p, daggered=True)
-
-            # make measurment instruction
-            measure = QCircuit()
-            qubits = [idx[0] for idx in paulistring.items()]
-            measure *= Measurement(name=str(paulistring), target=qubits)
-            assembled *= U_front * measure * U_back
-
-        sim_result = self.run(abstract_circuit=assembled, samples=samples)
-
-        # post processing
-        result = []
-        for paulistring in paulistrings:
-            measurements = sim_result.measurements[str(paulistring)]  # TODO will work only for cirq -> Change
-            E = 0.0
-            n_samples = 0
-            for key, count in measurements.items():
-                parity = key.array.count(1)
-                sign = (-1) ** parity
-                E += sign * count
-                n_samples += count
-            assert (n_samples == samples)
-            E = E / samples * paulistring.coeff
-            result.append(E)
-
+        result = dict()
+        for k, v in measurements.items():
+            result[k] = self._heralding(input=v)
         return result

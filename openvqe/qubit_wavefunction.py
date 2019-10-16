@@ -1,8 +1,7 @@
 import copy
 import typing
 
-from numpy import isclose
-from numpy import ndarray
+from openvqe import numpy
 from openvqe import BitNumbering, BitString, initialize_bitstring, OpenVQEException
 from openvqe.hamiltonian import QubitHamiltonian, PauliString
 from openvqe.keymap import KeyMapLSB2MSB, KeyMapMSB2LSB
@@ -85,7 +84,7 @@ class QubitWaveFunction:
         return len(self.state)
 
     @classmethod
-    def from_array(cls, arr: ndarray, keymap=None, threshold: float = 1.e-6,
+    def from_array(cls, arr: numpy.ndarray, keymap=None, threshold: float = 1.e-6,
                    numbering: BitNumbering = BitNumbering.MSB):
         assert (len(arr.shape) == 1)
         state = dict()
@@ -93,7 +92,7 @@ class QubitWaveFunction:
         maxbit = initialize_bitstring(integer=maxkey, numbering_in=numbering, numbering_out=cls.numbering).nbits
         for ii, v in enumerate(arr):
             i = initialize_bitstring(integer=ii, nbits=maxbit, numbering_in=numbering, numbering_out=cls.numbering)
-            if not isclose(abs(v), 0, atol=threshold):
+            if not numpy.isclose(abs(v), 0, atol=threshold):
                 key = i if keymap is None else keymap(i)
                 state[key] = v
         result = QubitWaveFunction(state)
@@ -125,7 +124,7 @@ class QubitWaveFunction:
         for k, v in self.state.items():
             if k not in other.state:
                 return False
-            elif not isclose(complex(v), complex(other.state[k]), atol=1.e-6):
+            elif not numpy.isclose(complex(v), complex(other.state[k]), atol=1.e-6):
                 return False
 
         return True
@@ -138,6 +137,9 @@ class QubitWaveFunction:
             else:
                 result._state[k] = v
         return result
+
+    def __sub__(self, other):
+        return self + -1.0*other
 
     def __iadd__(self, other):
         for k, v in other.items():
@@ -160,6 +162,15 @@ class QubitWaveFunction:
             if k in other._state:
                 result += v.conjugate() * other._state[k]
         return result
+
+    def normalize(self):
+        """
+        Inplace operation
+        :return: Normalizes the wavefunction/countrate
+        """
+        norm2 = self.inner(other=self)
+        self = 1.0/numpy.sqrt(norm2)*self
+        return self
 
     def compute_expectationvalue(self, operator:QubitHamiltonian) -> float:
         tmp = self.apply_qubitoperator(operator=operator)

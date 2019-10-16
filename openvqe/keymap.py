@@ -32,7 +32,7 @@ class KeyMapMSB2LSB(KeyMapABC):
         return BitStringLSB.from_int(integer=input_state)
 
 
-class KeyMapQubitSubregister(KeyMapABC):
+class KeyMapSubregisterToRegister(KeyMapABC):
 
     @property
     def n_qubits(self):
@@ -57,8 +57,7 @@ class KeyMapQubitSubregister(KeyMapABC):
     def make_complement(self):
         return [i for i in self._register if i not in self._subregister]
 
-    def __call__(self, input_state: BitString, initial_state: BitString = 0):
-
+    def __call__(self, input_state: BitString, initial_state: BitString = 0) -> BitString:
         input_state = BitString.from_int(integer=input_state, nbits=len(self._subregister))
         initial_state = BitString.from_int(integer=initial_state, nbits=len(self._subregister))
 
@@ -68,13 +67,31 @@ class KeyMapQubitSubregister(KeyMapABC):
 
         return output_state
 
-    def inverted(self, input_state: int):
+    def inverted(self, input_state: int) -> BitString:
         """
         Map from register to subregister
         :param input_state:
         :return: input_state only on subregister
         """
         input_state = BitString.from_int(integer=input_state, nbits=len(self._register))
+        output_state = BitString.from_int(integer=0, nbits=len(self._subregister))
+        for k, v in enumerate(self._subregister):
+            output_state[k] = input_state[v]
+        return output_state
+
+    def __repr__(self):
+        return "keymap:\n" + "register    = " + str(self.register) + "\n" + "subregister = " + str(self.subregister)
+
+
+class KeyMapRegisterToSubregister(KeyMapSubregisterToRegister):
+
+    def __call__(self, input_state: BitString, initial_state: BitString = None) -> BitString:
+        """
+        Map from register to subregister
+        :param input_state:
+        :return: input_state only on subregister
+        """
+        input_state = BitString.from_int(integer=input_state.integer, nbits=len(self._register))
         output_state = BitString.from_int(integer=0, nbits=len(self._subregister))
         for k, v in enumerate(self._subregister):
             output_state[k] = input_state[v]
