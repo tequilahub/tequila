@@ -33,4 +33,8 @@ def plot_counts(counts: typing.Union[dict, QubitWaveFunction, SimulatorReturnTyp
     if filename is None:
         plt.show()
     else:
+        with open(filename+"_data", 'a+') as file:
+            file.write("names\tvalues\n")
+            for i, v in enumerate(values):
+                file.write(str(names[i])+"\t"+str(values[i])+"\n")
         plt.savefig(filename)

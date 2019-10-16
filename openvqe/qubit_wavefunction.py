@@ -2,7 +2,7 @@ import copy
 import typing
 
 from numpy import isclose
-from numpy.core._multiarray_umath import ndarray, absolute
+from numpy import ndarray
 from openvqe import BitNumbering, BitString, initialize_bitstring, OpenVQEException
 from openvqe.hamiltonian import QubitHamiltonian, PauliString
 from openvqe.keymap import KeyMapLSB2MSB, KeyMapMSB2LSB

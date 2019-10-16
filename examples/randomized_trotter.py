@@ -91,7 +91,7 @@ if __name__ == "__main__":
     #generators = [H_0]  # strong bias on 0010
     #generators = [H_1]  # strong bias on 1000
     generators = [0.5 * H_0, 0.5 * H_1]  # bias on 1000
-    #generators = [0.5 * H_0, 0.5 * H_1]  # bias on 0010
+    #generators = [0.5 * H_1, 0.5 * H_0]  # bias on 0010
 
     # Parameters
     parameters = {
