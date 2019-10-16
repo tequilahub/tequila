@@ -27,20 +27,20 @@ def test_controlled_rotations():
 
 def test_basis_change():
     for angle in list(uniform(0, 2 * pi, 5)):
-        EX = SimulatorCirq().expectation_value(
+        EX = SimulatorCirq().simulate_objective(
             objective=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PX(0)))
-        EY = SimulatorCirq().expectation_value(
+        EY = SimulatorCirq().simulate_objective(
             objective=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PY(0)))
-        EZ = SimulatorCirq().expectation_value(
+        EZ = SimulatorCirq().simulate_objective(
             objective=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PZ(0)))
 
-        EXX = SimulatorCirq().expectation_value(
+        EXX = SimulatorCirq().simulate_objective(
             objective=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=0)],
                                 observable=PZ(0)))
-        EYY = SimulatorCirq().expectation_value(
+        EYY = SimulatorCirq().simulate_objective(
             objective=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=1)],
                                 observable=PZ(0)))
-        EZZ = SimulatorCirq().expectation_value(
+        EZZ = SimulatorCirq().simulate_objective(
             objective=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=2)],
                                 observable=PZ(0)))
 

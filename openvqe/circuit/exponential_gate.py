@@ -9,6 +9,7 @@ from openvqe.circuit._gates_impl import RotationGateImpl
 from openvqe.tools.convenience import number_to_string
 from openvqe import numpy
 from openvqe.circuit.compiler import change_basis
+from random import shuffle
 
 
 class DecompositionABC:
@@ -101,27 +102,64 @@ class ExponentialPauliGate(RotationGateImpl):
 
 class DecompositionFirstOrderTrotter:
 
-    def __init__(self, steps: int, threshold: float = 0.0, randomize: bool = False):
+    def __init__(self, steps: int, threshold: float = 0.0, join_components: bool = False,
+                 randomize_component_order: bool = False, randomize: bool = False, t: float = 1.0):
+        """
+        The Decomposition module implements a call operator which decomposes a set of QubitHamiltonians
+         into ExponentialPauligates
+        See the __call__ implementation for more
+        :param steps: Trotter Steps
+        :param threshold: neglect terms in the given Hamiltonians if their coefficients are below this threshold
+        :param join_components: The QubitHamiltonians in the list given to __call__ are jointly trotterized
+        :param randomize_component_order: randomize the component order before trotterizing
+        :param randomize: randomize the trotter decomposition of each component
+        this means the trotterization will be:
+        Trotter([H_0, H_1]) = Trotter(exp(i(H_0+H_1)t)
+        otherwise it will be
+        Trotter([H_0, H_1]) = Trotter(exp(i(H_0))Trotter(epx(iH_1t))
+        """
         self.steps = steps
         self.threshold = threshold
+        self.join_components = join_components
+        self.randomize_component_order = randomize_component_order
         self.randomize = randomize
+        self.t = t
 
     def __call__(self, generators: typing.List[QubitHamiltonian], *args, **kwargs) -> QCircuit:
+        """
+        See __init___ for effect of several parameters
+        :param generators: Generators given as a list of QubitHamiltonians [H_0, H_1, ...]
+        :return: Trotter(exp(iH_0t))*Trotter(exp(iH_1t))*... or Trotter(exp(i(H_0+H_1+...)t) depeding on self.join_components
+        """
         result = QCircuit()
-        for g in generators:
-            result += self.compile(generator=g)
-        return result
+        if self.join_components:
+            for step in range(self.steps):
+                if self.randomize_component_order:
+                    shuffle(generators)
+                    for g in generators:
+                        result += self.compile(generator=g, steps=1, factor=1.0 / self.steps, randomize=self.randomize)
+        else:
+            if self.randomize_component_order:
+                shuffle(generators)
+            for g in generators:
+                result += self.compile(generator=g, randomize=self.randomize)
+            return result
 
-    def compile(self, generator: QubitHamiltonian):
+    def compile(self, generator: QubitHamiltonian, steps: int = None, factor: float = 1.0, randomize: bool = False):
+        if steps is None:
+            steps = self.steps
         assert (generator.is_hermitian())
-        t = 1.0
         circuit = QCircuit()
-        factor = t / self.steps
-        for index in range(self.steps):
-            items = generator.items()
-            for key, value in items:
+        factor = factor / steps
+        for index in range(steps):
+            keys = generator.keys()
+            if randomize:
+                keys = [k for k in keys]
+                shuffle(keys)
+            for key in keys:
+                value = generator[key]
+                # don't make circuit for too small values
                 if key != () and not numpy.isclose(value, 0.0, atol=self.threshold):
-                    # don't make circuit for too small values
                     circuit += ExponentialPauliGate(paulistring=key, angle=value * factor)
 
         return circuit

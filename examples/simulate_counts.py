@@ -1,6 +1,7 @@
 from openvqe.circuit import gates
 from numpy import pi
 from openvqe.tools.backends import initialize_simulator
+from openvqe.tools import plotters
 
 """
 Same example as 'simulate_wavefunctions' but here we simulate counts
@@ -32,3 +33,7 @@ if __name__ == "__main__":
 
     print("circuit:\n", simulator_results.circuit, "\n")
     print("counts:\n", counts)
+
+    plotters.plot_counts(counts, filename=None, label_with_integers=False)
+
+

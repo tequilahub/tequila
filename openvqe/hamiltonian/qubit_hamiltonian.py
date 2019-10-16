@@ -100,6 +100,9 @@ class QubitHamiltonian:
 
         assert (isinstance(self._hamiltonian, QubitOperator))
 
+    def __len__(self):
+        return len(self._hamiltonian.terms)
+
     def __repr__(self):
         result = ""
         for ps in self.paulistrings:
@@ -108,6 +111,10 @@ class QubitHamiltonian:
 
     def __getitem__(self, item):
         return self._hamiltonian.terms[item]
+
+    def __setitem__(self, key, value):
+        self._hamiltonian.terms[key] = value
+        return self
 
     def items(self):
         return self._hamiltonian.terms.items()
