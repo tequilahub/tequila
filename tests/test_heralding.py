@@ -26,5 +26,5 @@ def test_projector(angle, backend: typing.Union[SimulatorCirq, SimulatorQiskit])
     counts1 = backend(heralding=heralding).run(abstract_circuit=Uh, samples=4*samples).counts
     for k ,v in counts1.items():
         assert(k in counts0.keys())
-        # tolerance here is more a heuristic thing, but untill now it did not fail
+        # tolerance here is more a heuristic thing, might fail for some instances
         assert(numpy.isclose(v, counts0[k], atol=50))

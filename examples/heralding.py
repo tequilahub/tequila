@@ -1,5 +1,22 @@
 """
 Simple example how to use Heralding
+
+First we prepare the state
+
+Ry(angle)|0> = exp(-i*angle/2)|0>
+
+and display the distribution it gives after several measurements
+
+Then we prepare the state
+
+CCRy(angle)_2 |++0> where CCRy is controlled by qubit 0 and qubit 1 which are in the |+> states
+
+This gives of course a different distribution
+
+At third we prepare the same state again but use 'heralding' to count only measurements where
+qubit 0 and qubit 1 are in state |1>
+This will then give the same distribution as in the first state
+
 """
 
 from openvqe.simulator.heralding import HeraldingProjector

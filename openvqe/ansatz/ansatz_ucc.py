@@ -10,14 +10,9 @@ class ManyBodyAmplitudes:
     Class which stores ManyBodyAmplitudes
     """
 
-    @staticmethod
-    def convert_array(asd):
-        # dummy for now
-        return asd
-
     def __init__(self, one_body: numpy.ndarray = None, two_body: numpy.ndarray = None):
-        self.one_body = self.convert_array(one_body)
-        self.two_body = self.convert_array(two_body)
+        self.one_body = one_body
+        self.two_body = two_body
 
     def __str__(self):
         rep = type(self).__name__
@@ -26,6 +21,30 @@ class ManyBodyAmplitudes:
         rep += "\n Two-Body-Terms:\n"
         rep += str(self.two_body)
         return rep
+
+    def __call__(self, i, a, j=None, b=None, *args, **kwargs):
+        """
+        :param i: in absolute numbers (as spin-orbital index)
+        :param a: in absolute numbers (as spin-orbital index)
+        :param j: in absolute numbers (as spin-orbital index)
+        :param b: in absolute numbers (as spin-orbital index)
+        :return: amplitude t_aijb
+        """
+        if j is None:
+            assert (b is None)
+            return self.one_body[a, i]
+        else:
+            return self.two_body[a, i, b, j]
+
+    def __getitem__(self, item: tuple):
+        return self.__call__(*item)
+
+    def __setitem__(self, key: tuple, value):
+        if len(key) == 2:
+            self.one_body[key[0], key[1]] = value
+        else:
+            self.two_body[key[0], key[1], key[2], key[3]] = value
+        return self
 
     def __rmul__(self, other):
         return ManyBodyAmplitudes(one_body=other * self.one_body, two_body=other * self.two_body)
@@ -50,7 +69,7 @@ class AnsatzUCC:
             self._transformation = transformation
 
     def __call__(self, angles) -> QCircuit:
-        generator = 1.0j * QubitHamiltonian(hamiltonian=self.make_cluster_operator(angles=2.0*angles))
+        generator = 1.0j * QubitHamiltonian(hamiltonian=self.make_cluster_operator(angles=2.0 * angles))
         return self._decomposition(generators=[generator])
 
     def make_cluster_operator(self, angles: ManyBodyAmplitudes) -> openfermion.QubitOperator:

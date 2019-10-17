@@ -1,6 +1,7 @@
 """
-Example of a simple one Qubit VQE
+Example of a simple one Qubit VQE optimized with simple GradientDescent
 """
+
 from openvqe.simulator.simulator_qiskit import SimulatorQiskit
 from openvqe.circuit import gates
 from openvqe.hamiltonian import paulis

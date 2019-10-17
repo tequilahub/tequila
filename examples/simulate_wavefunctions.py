@@ -1,3 +1,7 @@
+"""
+Simple example of how to construct a small circuit and simulate the full wavefunction it creates
+"""
+
 from openvqe.circuit import gates
 from numpy import pi
 from openvqe.tools.backends import initialize_simulator

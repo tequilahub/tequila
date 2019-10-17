@@ -35,7 +35,7 @@ from openvqe import dataclass
 
 import multiprocessing as mp
 
-
+# need this definition for this example
 def anihilation(qubits: typing.List[int]) -> QubitHamiltonian:
     max_occ = 2 ** len(qubits) - 1
     result = QubitHamiltonian.init_zero()
@@ -44,7 +44,7 @@ def anihilation(qubits: typing.List[int]) -> QubitHamiltonian:
         result += c * paulis.decompose_transfer_operator(ket=occ + 1, bra=occ, qubits=qubits)
     return result
 
-
+# need this definition for this example
 def creation(qubits: typing.List[int]) -> QubitHamiltonian:
     max_occ = 2 ** len(qubits) - 1
     result = QubitHamiltonian.init_zero()
@@ -56,6 +56,11 @@ def creation(qubits: typing.List[int]) -> QubitHamiltonian:
 
 @dataclass
 class DoIt:
+
+    """
+    This does the actual computation, it's wrapped into this DoIt class
+    To simplify parallelization
+    """
 
     steps:int
     randomize:bool
@@ -74,6 +79,8 @@ class DoIt:
 
 
 if __name__ == "__main__":
+
+    #basc definitions
     qubits_a = [0, 1]
     qubits_b = [2, 3]
     H_0 = 1.0j * numpy.pi / 2 * (
@@ -88,9 +95,9 @@ if __name__ == "__main__":
 
     # different ways to initialize which generate formally the same operator
     # pick one by commenting out the rest
-    #generators = [H_0]  # strong bias on 0010
+    generators = [H_0]  # strong bias on 0010
     #generators = [H_1]  # strong bias on 1000
-    generators = [0.5 * H_0, 0.5 * H_1]  # bias on 1000
+    #generators = [0.5 * H_0, 0.5 * H_1]  # bias on 1000
     #generators = [0.5 * H_1, 0.5 * H_0]  # bias on 0010
 
     # Parameters
@@ -107,6 +114,7 @@ if __name__ == "__main__":
     # set up parallel environment
     samples = 100
     nproc = 4  # set this to None to use all available processes (better not do it on a laptop)
+    result_file = None # if none is given the results are displayed directly, on a cluster: give a filename!
 
     print("CPU Count is: ", mp.cpu_count())
     if nproc is None:
@@ -123,4 +131,7 @@ if __name__ == "__main__":
     for c in all_counts:
         counts += c
 
-    plotters.plot_counts(counts=counts, label_with_integers=False)
+    # plot results
+    # if no filename is given the results are displayed
+    # on a cluster: give a filename!
+    plotters.plot_counts(counts=counts, label_with_integers=False, filename=result_file)

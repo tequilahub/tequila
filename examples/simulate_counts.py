@@ -1,3 +1,7 @@
+"""
+Small example on how to construct a circuit and simulate its measurements in the computational standardbasis (counts)
+"""
+
 from openvqe.circuit import gates
 from numpy import pi
 from openvqe.tools.backends import initialize_simulator
