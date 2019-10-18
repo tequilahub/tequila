@@ -17,7 +17,7 @@ class QCircuit():
         return QCircuit(gates=primitives)
 
     @property
-    def endianness(self) -> BitNumbering:
+    def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
 
     @property

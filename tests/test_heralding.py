@@ -27,4 +27,4 @@ def test_projector(angle, backend: typing.Union[SimulatorCirq, SimulatorQiskit])
     for k ,v in counts1.items():
         assert(k in counts0.keys())
         # tolerance here is more a heuristic thing, might fail for some instances
-        assert(numpy.isclose(v, counts0[k], atol=50))
+        assert(numpy.isclose(v, counts0[k], atol=100))
