@@ -155,7 +155,8 @@ class Simulator(OpenVQEModule):
                 sign = (-1) ** parity
                 E += sign * count
                 n_samples += count
-            assert (n_samples == samples)  # failsafe
+            if self._heralding is None:
+                assert (n_samples == samples)  # failsafe
             E = E / samples * paulistring.coeff
             return (E, sim_result)
 
