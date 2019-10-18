@@ -174,7 +174,7 @@ class QubitWaveFunction:
 
     def compute_expectationvalue(self, operator:QubitHamiltonian) -> float:
         tmp = self.apply_qubitoperator(operator=operator)
-        return self.inner(other=tmp)
+        return float(self.inner(other=tmp))
 
     def apply_qubitoperator(self, operator: QubitHamiltonian):
         """

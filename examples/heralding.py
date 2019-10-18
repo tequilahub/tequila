@@ -17,6 +17,7 @@ At third we prepare the same state again but use 'heralding' to count only measu
 qubit 0 and qubit 1 are in state |1>
 This will then give the same distribution as in the first state
 
+Note that the Heralding objects can not yet be used in combination with Objectives
 """
 
 from openvqe.simulator.heralding import HeraldingProjector
