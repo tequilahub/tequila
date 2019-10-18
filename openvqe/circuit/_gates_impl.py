@@ -131,7 +131,7 @@ class MeasurementImpl(QGateImpl):
 
     def __init__(self, name, target):
         self.name = name
-        self.target = self.list_assignement(target)
+        self.target = sorted(self.list_assignement(target))
         self.control = None
 
 
