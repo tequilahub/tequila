@@ -3,7 +3,6 @@ from openvqe.simulator.simulator import Simulator, QCircuit, OpenVQEException, \
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import BitString, BitNumbering
 from openvqe.circuit._gates_impl import MeasurementImpl
-import pyquil
 import subprocess
 
 
@@ -11,18 +10,25 @@ class OpenVQEPyquilException(OpenVQEException):
     def __str__(self):
         return "simulator_pyquil: " + self.message
 
+
+try:
+    import pyquil
+except ImportError:
+    raise OpenVQEPyquilException("failed to import pyquil")
+
+
 class SimulatorPyquil(Simulator):
 
     @property
     def numbering(self):
         return BitNumbering.LSB
 
-    def __init__(self, initialize_qvm:bool=True):
+    def __init__(self, initialize_qvm: bool = True):
         if initialize_qvm:
-            self.qvm=subprocess.Popen(["qvm", "-S"])
+            self.qvm = subprocess.Popen(["qvm", "-S"])
         else:
-            self.qvm=None
-    
+            self.qvm = None
+
     def __del__(self):
         if self.qvm is not None:
             self.qvm.terminate()

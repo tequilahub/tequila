@@ -21,8 +21,8 @@ if __name__ == "__main__":
     simulator = SimulatorCirq()
     result = simulator.simulate_wavefunction(abstract_circuit=U)
 
-    # the simulator gives back a lot of informaion, we only need the computed wavefunction
-    wfn = simulator.wavefunction
+    # the simulator gives back a lot of information, we only need the computed wavefunction
+    wfn = result.wavefunction
     print("|GHZ>=", wfn)
 
     # the result stores for example the circuit object created by the backend
