@@ -11,13 +11,6 @@ class OpenVQEPyquilException(OpenVQEException):
     def __str__(self):
         return "simulator_pyquil: " + self.message
 
-
-class WavefunctionPyquil(SimulatorReturnType):
-
-    def __post_init__(self, result):
-        self.wavefunction = result.amplitudes
-
-
 class SimulatorPyquil(Simulator):
 
     @property
@@ -26,7 +19,13 @@ class SimulatorPyquil(Simulator):
 
     def __init__(self, initialize_qvm:bool=True):
         if initialize_qvm:
-            subprocess.Popen(["qvm", "-S"])
+            self.qvm=subprocess.Popen(["qvm", "-S"])
+        else:
+            self.qvm=None
+    
+    def __del__(self):
+        if self.qvm is not None:
+            self.qvm.terminate()
 
     def create_circuit(self, abstract_circuit: QCircuit, qubit_map=None,
                        recompile_controlled_rotations=False) -> pyquil.Program:

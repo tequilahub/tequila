@@ -2,6 +2,7 @@ numpy>=1.11.0
 scipy==1.1.0
 dataclasses
 setuptools 
+pytest
 openfermion
 openfermionpsi4
 cirq>=0.5.0 # not really a requirement
