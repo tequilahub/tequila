@@ -135,6 +135,7 @@ class HamiltonianPsi4(QubitHamiltonian):
 
     def __init__(self, parameters=ParametersQC):
         self.parameters = parameters
+        self.molecule = self.make_molecule(parameters=parameters)
         super().__init__(hamiltonian=self.initialize_hamiltonian())
 
     def reference_state(self) -> BitString:
@@ -181,14 +182,6 @@ class HamiltonianPsi4(QubitHamiltonian):
     def molecule(self, other):
         self._molecule = other
         return self
-
-    def __post_init__(self, molecule=None):
-        """
-        Constructor will run psi4 and create the molecule which is stored as member variable
-        :param parameters: instance of ParametersQC which holds all necessary parameters
-        """
-        self._molecule = molecule
-        self._hamiltonian = None
 
     @property
     def n_electrons(self):

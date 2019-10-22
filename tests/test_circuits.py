@@ -1,5 +1,6 @@
 from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, SWAP, QCircuit, RotationGate
-from openvqe.simulator.simulator_symbolic import SimulatorSymbolic, QState, sympy
+from openvqe.simulator.simulator_symbolic import SimulatorSymbolic, sympy
+from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit._gates_impl import RotationGateImpl
 import numpy
 
@@ -33,18 +34,25 @@ def test_conventions():
                         l1.axis = axes[numpy.random.randint(0, 2)]
                         assert (l1 == l2)
 
+def strip_sympy_zeros(wfn:QubitWaveFunction):
+    result = QubitWaveFunction()
+    for k,v in wfn.items():
+        if v !=0:
+            result[k]=v
+    return  result
+
 
 def test_basic_gates():
     I = sympy.I
     cos = sympy.cos
     sin = sympy.sin
     exp = sympy.exp
-    BS = QState.initialize_from_integer
+    BS = QubitWaveFunction.from_int
     angle = sympy.pi
     gates = [X(0), Y(0), Z(0), Rx(target=0, angle=angle), Ry(target=0, angle=angle), Rz(target=0, angle=angle), H(0)]
     results = [
         BS(1),
-        -I * BS(1),
+        I * BS(1),
         BS(0),
         cos(-angle / 2) * BS(0) + I * sin(-angle / 2) * BS(1),
         cos(-angle / 2) * BS(0) + I * sin(-angle / 2) * I * BS(1),
@@ -53,7 +61,7 @@ def test_basic_gates():
     ]
     for i, g in enumerate(gates):
         wfn = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=g, initial_state=0).backend_result
-        assert (wfn == results[i])
+        assert (wfn == strip_sympy_zeros(results[i]))
 
 
 def test_consistency():

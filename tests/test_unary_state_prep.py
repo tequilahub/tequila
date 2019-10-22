@@ -1,0 +1,63 @@
+from openvqe.apps import UnaryStatePrep
+from openvqe import numpy, BitString
+from openvqe.simulator import SimulatorSymbolic
+import pytest
+
+
+@pytest.mark.parametrize("target_space", [ ['00', '11'], ['01', '11'], ['001', '010', '100'], ['0011', '1010']])
+def test_construction(target_space: list):
+    print("ts=", target_space)
+    UPS = UnaryStatePrep(target_space=target_space)
+
+
+@pytest.mark.parametrize("target_space", [['01', '10'], ['001', '010', '100'], ['0011', '0110', '1100', '1001']])
+def test_unary_states(target_space: list):
+    UPS = UnaryStatePrep(target_space=target_space)
+    qubits = len(target_space)
+    coeff = 1.0 / numpy.sqrt(qubits) # fails for the 3-Qubit Case because the wrong sign is picked in the solution
+    coeffs = [coeff for i in range(qubits)]
+
+    U = UPS(coeffs=coeffs)
+    wfn = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=U).wavefunction
+
+    checksum = 0.0
+    for k, v in wfn.items():
+        vv = numpy.complex(v.evalf())
+        assert(vv.imag == 0.0)
+        cc = numpy.complex(coeff)
+        assert (numpy.isclose(vv, cc, atol=1.e-4))
+        checksum += vv
+
+    assert(numpy.isclose(checksum, qubits*coeff, atol=1.e-4))
+
+def get_random_target_space(n_qubits):
+
+    result = []
+    while(len(result)<n_qubits):
+        i = numpy.random.randint(0, 2**n_qubits)
+        if i not in result:
+            result.append(i)
+
+    return [BitString.from_int(i,nbits=n_qubits).binary for i in result]
+
+@pytest.mark.parametrize("target_space", [get_random_target_space(n_qubits=qubits) for qubits in range(2,5)])
+def test_random_instances(target_space):
+    # can happen that a tests fails, just start again ... if all tests fail: start to worry
+    qubits = len(target_space)
+    UPS = UnaryStatePrep(target_space=target_space)
+    coeffs = numpy.random.uniform(0,1,qubits)
+
+    U = UPS(coeffs=coeffs)
+    # now the coeffs are normalized
+    bf2c = dict()
+    for i,c in enumerate(coeffs):
+        bf2c[target_space[i]] = coeffs[i]
+
+
+    wfn = SimulatorSymbolic().convert_to_numpy(True).simulate_wavefunction(abstract_circuit=U, initial_state=0).wavefunction
+
+    for k,v in wfn.items():
+        assert(numpy.isclose(bf2c[k.binary],v))
+
+
+

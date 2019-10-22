@@ -57,12 +57,12 @@ class QubitWaveFunction:
         assert (isinstance(other, dict))
         self._state = other
 
-    def __init__(self, state: typing.Dict[BitString, complex] = None):
+    def __init__(self, state: typing.Dict[BitString, complex] = None, n_qubits=None):
         if state is None:
             self._state = dict()
         else:
             self._state = state
-        self._n_qubits = None
+        self._n_qubits = n_qubits
 
     def items(self):
         return self.state.items()
@@ -106,11 +106,11 @@ class QubitWaveFunction:
         return result
 
     @classmethod
-    def from_int(cls, i: int, coeff=1):
+    def from_int(cls, i: int, coeff=1, n_qubits=None):
         if isinstance(i, BitString):
-            return QubitWaveFunction(state={i: coeff})
+            return QubitWaveFunction(state={i: coeff}, n_qubits=n_qubits)
         else:
-            return QubitWaveFunction(state={BitString.from_int(integer=i): coeff})
+            return QubitWaveFunction(state={BitString.from_int(integer=i, nbits=n_qubits): coeff}, n_qubits=n_qubits)
 
     def __repr__(self):
         result = str()

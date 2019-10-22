@@ -1,6 +1,6 @@
 import typing
 from openvqe import BitNumbering, BitString, BitStringLSB
-
+from openvqe import numbers
 
 class KeyMapABC:
 
@@ -19,7 +19,10 @@ class KeyMapABC:
 class KeyMapLSB2MSB(KeyMapABC):
 
     def __call__(self, input_state: BitStringLSB, initial_state: int = None) -> BitString:
-        return BitString.from_int(integer=input_state)
+        if isinstance(input_state, numbers.Integral):
+            return BitString.from_int(integer=input_state)
+        else:
+            return BitString.from_int(integer=input_state.integer, nbits=input_state.nbits)
 
 
 class KeyMapMSB2LSB(KeyMapABC):
@@ -29,7 +32,10 @@ class KeyMapMSB2LSB(KeyMapABC):
         return BitNumbering.LSB
 
     def __call__(self, input_state: BitString, initial_state: int = None) -> BitStringLSB:
-        return BitStringLSB.from_int(integer=input_state)
+        if isinstance(input_state, numbers.Integral):
+            return BitStringLSB.from_int(integer=input_state)
+        else:
+            return BitStringLSB.from_int(integer=input_state.integer, nbits=input_state.nbits)
 
 
 class KeyMapSubregisterToRegister(KeyMapABC):

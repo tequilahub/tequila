@@ -1,5 +1,6 @@
 from numpy import isclose, pi
 from math import hypot, atan2
+import numbers
 
 def list_assignement(o):
     """
@@ -18,6 +19,9 @@ def list_assignement(o):
         return [o]
 
 def number_to_string(number: complex, precision: int=4, threshold: float = 1.e-6) -> str:
+    if not isinstance(number, numbers.Number):
+        return str(number)
+
     number = complex(number)
     real = number.real
     imag = number.imag

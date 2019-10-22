@@ -9,14 +9,14 @@ class AnsatzBase:
     def __init__(self):
         pass
 
-    def __call__(self, angles):
+    def __call__(self, angles: list):
         """
         :param angles: The angles which parametrize the circuit
         :return: the circuit in the correct format for the simulator backend secified by self.parameters.backend
         """
         return self.construct_circuit(angles=angles)
 
-    def construct_circuit(self, angles):
+    def construct_circuit(self, angles: list):
         """
         Construct the circuit specifified by the given ansatz
         this function should be overwritten by specializations of this baseclass
