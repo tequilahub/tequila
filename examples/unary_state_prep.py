@@ -3,9 +3,9 @@ Example file on how to get simple circuits to construct
 States which are similar to unary states or CIS states
 i.e. number_of_qubits == number_of_contributing_basis_states
 
-In this example we are constructing unary states
+In this example we are constructing CIS excitation states for the H2 molecule
 
-Note: The Code is currently instable and needs improvement
+Note: The Code is currently unstable and needs improvement
 """
 
 from openvqe.apps import UnaryStatePrep
@@ -16,15 +16,14 @@ if __name__ == "__main__":
     # initialize the simulator (can currently be pyquil, cirq or symbolic)
     simulator = SimulatorCirq()
 
-    # all possible singles configurations
     singles_space =[
-    '1000000',
-    '0100000',
-    '0010000',
-    '0001000',
-    '0000100',
-    '0000010',
-    '0000001'
+    '01100000',
+    '01001000',
+    '01000010',
+    '10010000',
+    '10000100',
+    '10000001',
+    '11000000'
     ]
 
     # the value makes no sense
@@ -33,10 +32,10 @@ if __name__ == "__main__":
         1.0,
         2.0,
         4.0,
+        1.0,
+        2.0,
+        4.0,
         8.0,
-        16.0,
-        32.0,
-        64.0
     ]
 
     USP = UnaryStatePrep(target_space=singles_space)
@@ -46,7 +45,7 @@ if __name__ == "__main__":
     result = simulator.simulate_wavefunction(abstract_circuit=circuit)
 
     wfn = result.wavefunction
-    print("crated circuit:", result.circuit)
+    print("crated circuit:\n", result.circuit)
     print("prepared wavefunction: ", wfn)
 
 

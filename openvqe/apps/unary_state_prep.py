@@ -28,7 +28,7 @@ class UnaryStatePrep(AnsatzBase):
     def circuit(self) -> QCircuit:
         return self._abstract_circuit
 
-    def __init__(self, target_space: typing.List[BitString], max_repeat:int=20, use_symbolic_solution:bool=False):
+    def __init__(self, target_space: typing.List[BitString], max_repeat: int = 20, use_symbolic_solution: bool = False):
         """
         :param target_space: Give the target space by its basis functions
         e.g. target_space = ['00', '11']
@@ -47,20 +47,37 @@ class UnaryStatePrep(AnsatzBase):
         IMPL = UnaryStatePrepImpl()
 
         self._n_qubits = target_space[0].nbits
-        self._target_space = target_space
 
-        self._abstract_circuit = IMPL.get_circuit(s=[i.binary for i in self._target_space])
+        abstract_coefficients = [sympy.var("c" + str(i)) for i in range(len(target_space))]
+        abstract_angles = [sympy.var(IMPL.alphabets[i]) for i in range(len(target_space) - 1)]
+
+        # code is currenty unstable but can still succeed if input is shuffled
+        # todo: that should not happen, but untill it is fixed I will increase success probability
+        count = 0
+        success = False
+        # todo need to change input format that reshuffling does not destroy it
+        # setting count to 1 to avoid it
+        while(not success and count <1):
+            try:
+                count += 1
+                self._abstract_circuit = IMPL.get_circuit(s=[i.binary for i in target_space])
+                success = True
+            except:
+                packed = list(zip(target_space, abstract_angles, abstract_coefficients))
+                numpy.random.shuffle(packed)
+                target_space, abstract_angles, abstract_coefficients = zip(*packed)
+
+        if not success: raise OpenVQEException("Could not disentangle the given state after " + str(count) + " restarts")
 
         # get the equations to determine the angles
         simulator = SimulatorSymbolic()
         wfn = simulator.simulate_wavefunction(abstract_circuit=self._abstract_circuit,
                                               initial_state=BitString.from_int(0, nbits=self.n_qubits)).wavefunction
 
-        abstract_coefficients = [sympy.var("c" + str(i)) for i in range(len(self._target_space))]
-        abstract_angles = [sympy.var(IMPL.alphabets[i]) for i in range(len(self._target_space) - 1)]
-
+        print("wfn=", wfn)
+        print(self._abstract_circuit)
         equations = []
-        for i, k in enumerate(self._target_space):
+        for i, k in enumerate(target_space):
             equations.append(wfn[k] - abstract_coefficients[i])
 
         normeq = -sympy.Integer(1)
@@ -75,7 +92,7 @@ class UnaryStatePrep(AnsatzBase):
                 raise OpenVQEException("Could definetely not solve for the angles in UnaryStatePrep!")
             self._angle_solutions = solutions
 
-
+        self._target_space = target_space
         self._abstract_angles = abstract_angles
         self._equations = equations
         self._abstract_coeffs = abstract_coefficients
@@ -125,7 +142,7 @@ class UnaryStatePrep(AnsatzBase):
                     solutions = sympy.nsolve(equations, self._abstract_angles, guess)
                     count += 1
                 except:
-                    count +=1
+                    count += 1
             if (len(solutions) == 0):
                 raise Exception("Failed to numerically solve for angles")
 
@@ -134,7 +151,12 @@ class UnaryStatePrep(AnsatzBase):
 
         return result
 
-    def __call__(self, coeffs: list, guess: list = None) -> QCircuit:
+    def __call__(self, coeffs: list, guess:  list = None) -> QCircuit:
+        """
+        :param coeffs: give a dictionary of the coeffs where the key is the corresponding basis state in target_space
+        :param guess: list of guess values for the angles, if not given a random guess is initialized
+        :return:
+        """
         assert (len(coeffs) == len(self._target_space))
         angles = self.evaluate_angles(coeffs=coeffs)
 
