@@ -112,6 +112,44 @@ class QubitWaveFunction:
         else:
             return QubitWaveFunction(state={BitString.from_int(integer=i, nbits=n_qubits): coeff}, n_qubits=n_qubits)
 
+    @classmethod
+    def from_string(cls, string: str):
+        """
+        Complex values like (x+iy)|...> will currently not work, you need to type Real and imaginary separately
+        Or improve this constructor :-)
+        e.g instead of (0.5+1.0j)|0101> do 0.5|0101> + 1.0j|0101>
+        :param paths:
+        :param string:
+        :return:
+        """
+        try:
+            state = dict()
+            string = string.replace(" ", "")
+            string = string.replace("*", "")
+            string = string.replace("+-", "-")
+            string = string.replace("-+", "-")
+            terms = (string + "terminate").split('>')
+            for term in terms:
+                if term == 'terminate':
+                    break
+                tmp = term.split("|")
+                coeff = tmp[0]
+                if coeff == '':
+                    coeff = 1.0
+                else:
+                    coeff = complex(coeff)
+                basis_state = BitString.from_binary(binary=tmp[1])
+
+                state[basis_state] = coeff
+        except ValueError:
+            raise OpenVQEException("Failed to initialize QubitWaveFunction from string:" + string + "\n"
+                                                                                                    "did you try complex values?\n"
+                                                                                                    "currently you need to type real and imaginary parts separately\n"
+                                                                                                    "e.g. instead of (0.5+1.0j)|0101> do 0.5|0101> + 1.0j|0101>")
+        except:
+            raise OpenVQEException("Failed to initialize QubitWaveFunction from string:" + string)
+        return QubitWaveFunction(state=state)
+
     def __repr__(self):
         result = str()
         for k, v in self.items():
@@ -139,7 +177,7 @@ class QubitWaveFunction:
         return result
 
     def __sub__(self, other):
-        return self + -1.0*other
+        return self + -1.0 * other
 
     def __iadd__(self, other):
         for k, v in other.items():
@@ -165,14 +203,14 @@ class QubitWaveFunction:
 
     def normalize(self):
         """
-        Inplace operation
+        NOT AN Inplace operation
         :return: Normalizes the wavefunction/countrate
         """
         norm2 = self.inner(other=self)
-        self = 1.0/numpy.sqrt(norm2)*self
+        self = 1.0 / numpy.sqrt(norm2) * self
         return self
 
-    def compute_expectationvalue(self, operator:QubitHamiltonian) -> float:
+    def compute_expectationvalue(self, operator: QubitHamiltonian) -> float:
         tmp = self.apply_qubitoperator(operator=operator)
         return float(self.inner(other=tmp))
 
@@ -201,11 +239,11 @@ class QubitWaveFunction:
                 if p.lower() == "x":
                     arr[idx] = (arr[idx] + 1) % 2
                 elif p.lower() == "y":
-                    c *= 1.0j*(-1)**(arr[idx])
+                    c *= 1.0j * (-1) ** (arr[idx])
                     arr[idx] = (arr[idx] + 1) % 2
                 elif p.lower() == "z":
-                    c *= (-1)**(arr[idx])
+                    c *= (-1) ** (arr[idx])
                 else:
                     raise OpenVQEException("unknown pauli: " + str(p))
             result[BitString.from_array(array=arr)] = c
-        return paulistring.coeff*result
+        return paulistring.coeff * result

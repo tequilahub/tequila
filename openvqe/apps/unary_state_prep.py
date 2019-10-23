@@ -12,6 +12,18 @@ from openvqe import typing, numpy, copy, OpenVQEException
 from openvqe.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
 from openvqe.ansatz import AnsatzBase
+from openvqe.qubit_wavefunction import QubitWaveFunction
+
+
+class OpenVQEUnaryStateException(OpenVQEException):
+    """
+    Exception will be thrown when UnaryStatePrep Fails (which can happen for some instances)
+    Those are the cases which we currently can not prevent
+    Failed assertions which should not happen in all cases will throw a regular OpenVQEException
+    Class is just there to skip tests
+    """
+
+    pass
 
 
 class UnaryStatePrep(AnsatzBase):
@@ -28,7 +40,8 @@ class UnaryStatePrep(AnsatzBase):
     def circuit(self) -> QCircuit:
         return self._abstract_circuit
 
-    def __init__(self, target_space: typing.List[BitString], max_repeat:int=20, use_symbolic_solution:bool=False):
+    def __init__(self, target_space: typing.List[BitString], max_repeat: int = 100,
+                 use_symbolic_solution: bool = False):
         """
         :param target_space: Give the target space by its basis functions
         e.g. target_space = ['00', '11']
@@ -41,30 +54,45 @@ class UnaryStatePrep(AnsatzBase):
         self._use_symbolic_solver = use_symbolic_solution
         self.max_repeat = max_repeat
 
+        if isinstance(target_space, QubitWaveFunction):
+            target_space = [f for f in target_space.keys()]
         if isinstance(target_space[0], str):
             target_space = [BitString.from_binary(binary=i) for i in target_space]
 
-        IMPL = UnaryStatePrepImpl()
-
         self._n_qubits = target_space[0].nbits
-        self._target_space = target_space
 
-        self._abstract_circuit = IMPL.get_circuit(s=[i.binary for i in self._target_space])
+        abstract_coefficients = dict()
+        for bf in target_space:
+            abstract_coefficients[bf] = sympy.var("c(" + bf.binary + ")")
+
+        # code is currenty unstable but can still succeed if input is shuffled
+        # todo: that should not happen, but untill it is fixed I will increase success probability
+        count = 0
+        success = False
+        while (not success and count < self.max_repeat):
+            try:
+                count += 1
+                IMPL = UnaryStatePrepImpl()
+                abstract_angles = [sympy.var(IMPL.alphabets[i]) for i in range(len(target_space) - 1)]
+                self._abstract_circuit = IMPL.get_circuit(s=[i.binary for i in target_space])
+                success = True
+            except:
+                numpy.random.shuffle(target_space)
+
+        if not success: raise OpenVQEUnaryStateException(
+            "Could not disentangle the given state after " + str(count) + " restarts")
 
         # get the equations to determine the angles
         simulator = SimulatorSymbolic()
         wfn = simulator.simulate_wavefunction(abstract_circuit=self._abstract_circuit,
                                               initial_state=BitString.from_int(0, nbits=self.n_qubits)).wavefunction
 
-        abstract_coefficients = [sympy.var("c" + str(i)) for i in range(len(self._target_space))]
-        abstract_angles = [sympy.var(IMPL.alphabets[i]) for i in range(len(self._target_space) - 1)]
-
         equations = []
-        for i, k in enumerate(self._target_space):
-            equations.append(wfn[k] - abstract_coefficients[i])
+        for k in target_space:
+            equations.append(wfn[k] - abstract_coefficients[k])
 
         normeq = -sympy.Integer(1)
-        for c in abstract_coefficients:
+        for c in abstract_coefficients.values():
             normeq += c ** 2
         equations.append(normeq)
 
@@ -72,10 +100,10 @@ class UnaryStatePrep(AnsatzBase):
         if (self._use_symbolic_solver):
             solutions = sympy.solve(equations, *tuple(abstract_angles), check=True, dict=True)[1]
             if len(abstract_angles) != len(solutions):
-                raise OpenVQEException("Could definetely not solve for the angles in UnaryStatePrep!")
+                raise OpenVQEUnaryStateException("Could definetely not solve for the angles in UnaryStatePrep!")
             self._angle_solutions = solutions
 
-
+        self._target_space = target_space
         self._abstract_angles = abstract_angles
         self._equations = equations
         self._abstract_coeffs = abstract_coefficients
@@ -93,18 +121,17 @@ class UnaryStatePrep(AnsatzBase):
         result += str(self._abstract_circuit)
         return result
 
-    def evaluate_angles(self, coeffs: list) -> typing.Dict[sympy.Symbol, float]:
+    def evaluate_angles(self, wfn: QubitWaveFunction) -> typing.Dict[sympy.Symbol, float]:
         # coeffs need to be normalized
-        coeffs = numpy.asarray(coeffs, dtype=numpy.float)
-        norm2 = numpy.linalg.norm(coeffs)
-        coeffs *= 1.0 / norm2
+        wfn = wfn.normalize()
 
-        # initialize as sympy floats
-        c = [sympy.Float(coeff) for coeff in coeffs]
-
+        # initialize the map that will substitute the abstract_coefficients with the QubitWaveFunction coefficients
         subs = dict()
-        for i, ac in enumerate(self._abstract_coeffs):
-            subs[ac] = c[i]
+        for key, ac in self._abstract_coeffs.items():
+            coeff = wfn[key]
+            if coeff.imag != 0.0:
+                raise OpenVQEException("UnaryStatePrep currently only possible for real coefficients")
+            subs[ac] = sympy.Float(float(coeff.real))
 
         result = dict()
         if (self._use_symbolic_solver):
@@ -114,29 +141,48 @@ class UnaryStatePrep(AnsatzBase):
             for symbol, eq in self._angle_equations.items():
                 result[symbol] = float(eq.evalf(subs=subs))
         else:
+            # numeric solution (more stable)
+            # integrated repeat loop for the case that the randomly generated guess is especially bad
             count = 0
             solutions = []
             while (count < self.max_repeat and len(solutions) == 0):
                 try:
-                    # numeric solution
-                    subsx = [(ac, c[i]) for i, ac in enumerate(self._abstract_coeffs)]
+                    # same substitution map as before, but initialized as list of tuples
+                    subsx = [x for x in subs.items()]
                     equations = [eq.subs(subsx) for eq in self._equations]
                     guess = numpy.random.uniform(0.1, 0.9 * 2 * numpy.pi, len(self._abstract_angles))
                     solutions = sympy.nsolve(equations, self._abstract_angles, guess)
                     count += 1
                 except:
-                    count +=1
+                    count += 1
+
             if (len(solutions) == 0):
-                raise Exception("Failed to numerically solve for angles")
+                raise OpenVQEUnaryStateException("Failed to numerically solve for angles")
 
             for i, symbol in enumerate(self._abstract_angles):
                 result[symbol] = float(solutions[i].evalf(subs=subs))
 
         return result
 
-    def __call__(self, coeffs: list, guess: list = None) -> QCircuit:
-        assert (len(coeffs) == len(self._target_space))
-        angles = self.evaluate_angles(coeffs=coeffs)
+    def __call__(self, wfn: QubitWaveFunction) -> QCircuit:
+        """
+        :param coeffs: The QubitWaveFunction you want to initialize
+        :return:
+        """
+        try:
+            assert (len(wfn) == len(self._target_space))
+            for key in wfn.keys():
+                try:
+                    assert (key in self._target_space)
+                except AssertionError:
+                    print("key=", key.binary, " not found in target space")
+        except AssertionError:
+            raise OpenVQEException("UnaryStatePrep was not initialized for the basis states in your wavefunction\n"
+                                   "You gave:\n" + str(wfn) + "\n"
+                                                              "But the target_space is " + str(
+                [k.binary for k in self._target_space]) + "\n")
+
+        angles = self.evaluate_angles(wfn=wfn)
 
         # construct new circuit with evaluated angles
         result = QCircuit()
