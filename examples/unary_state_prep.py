@@ -3,9 +3,9 @@ Example file on how to get simple circuits to construct
 States which are similar to unary states or CIS states
 i.e. number_of_qubits == number_of_contributing_basis_states
 
-In this example we are constructing CIS excitation states for the H2 molecule
+In this example we are constructing CIS excitation states for a 2-electron system in an 8 Qubit basis in Jordan-Wigner representation
 
-Note: The Code is currently unstable and needs improvement
+Note: The UnaryStatePrep code is currently unstable and needs improvement
 """
 
 from openvqe.apps import UnaryStatePrep
