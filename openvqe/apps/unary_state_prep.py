@@ -69,6 +69,7 @@ class UnaryStatePrep(AnsatzBase):
         # todo: that should not happen, but untill it is fixed I will increase success probability
         count = 0
         success = False
+
         while (not success and count < self.max_repeat):
             try:
                 count += 1
