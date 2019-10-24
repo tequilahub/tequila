@@ -136,14 +136,15 @@ class DecompositionFirstOrderTrotter:
             for step in range(self.steps):
                 if self.randomize_component_order:
                     shuffle(generators)
-                    for g in generators:
-                        result += self.compile(generator=g, steps=1, factor=1.0 / self.steps, randomize=self.randomize)
+                for g in generators:
+                    result += self.compile(generator=g, steps=1, factor=1.0 / self.steps, randomize=self.randomize)
         else:
             if self.randomize_component_order:
                 shuffle(generators)
             for g in generators:
                 result += self.compile(generator=g, randomize=self.randomize)
-            return result
+
+        return result
 
     def compile(self, generator: QubitHamiltonian, steps: int = None, factor: float = 1.0, randomize: bool = False):
         if steps is None:
