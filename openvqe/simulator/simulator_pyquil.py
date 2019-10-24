@@ -77,7 +77,16 @@ class SimulatorPyquil(Simulator):
                     gate = (pyquil.gates.CNOT(target=qubit_map[g.target[0]], control=qubit_map[g.control[0]]))
                 else:
                     if g.is_parametrized():
-                        gate = getattr(pyquil.gates, g.name.upper())(g.angle, qubit_map[g.target[0]])
+                        if hasattr(g, "power"):
+                            if g.power == 1.0:
+                                gate = getattr(pyquil.gates, g.name.upper())(qubit_map[g.target[0]])
+                            else:
+                                OpenVQEPyquilException("parametrized gate: No power-gates supported in Pyquil")
+                        elif hasattr(g, "angle"):
+                            gate = getattr(pyquil.gates, g.name.upper())(g.angle, qubit_map[g.target[0]])
+                        else:
+                            raise OpenVQEPyquilException(
+                                "parametrized gate could neither be identified as power nor rotation gates")
                     else:
                         gate = getattr(pyquil.gates, g.name.upper())(qubit_map[g.target[0]])
 
