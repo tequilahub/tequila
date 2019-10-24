@@ -61,14 +61,10 @@ if __name__ == "__main__":
 
     # this is the wavefunction we want to initialize with UnaryStatePrep:
     target_wfn = QubitWaveFunction.from_string(
-        "0.3|01100000> -0.3|10010000>+0.2|01001000> -0.2|10000100> + 0.1|01000010> -0.1|10000001> + 1.0|11000000>")
-
-    target_wfn = target_wfn.normalize()
-    print("target wavefunction: ", target_wfn)
+        "0.3|01100000> -0.3|10010000>+0.2|01001000> -0.2|10000100> + 0.1|01000010> -0.1|10000001> + 1.0|11000000>").normalize()
 
     # CIS prep circuit:
     USP = UnaryStatePrep(target_space=target_wfn)
-    print(USP._abstract_circuit)
     circuit = USP(wfn=target_wfn)
 
     # add the encoder
@@ -77,5 +73,5 @@ if __name__ == "__main__":
     wfn = simulator.simulate_wavefunction(abstract_circuit=circuit).wavefunction
 
     # this should be the compressed CIS wavefunction where the last 4 Qubits are all 0 and can be re-used for other tasks
-    print("wfn    :", wfn)
+    print("compressed wavefunction:", wfn)
 
