@@ -63,10 +63,12 @@ class KeyMapSubregisterToRegister(KeyMapABC):
     def make_complement(self):
         return [i for i in self._register if i not in self._subregister]
 
-    def __call__(self, input_state: BitString, initial_state: BitString = 0) -> BitString:
+    def __call__(self, input_state: BitString, initial_state: BitString = None) -> BitString:
+        if initial_state is None:
+            initial_state = BitString.from_int(integer=0)
+
         input_state = BitString.from_int(integer=input_state, nbits=len(self._subregister))
         initial_state = BitString.from_int(integer=initial_state, nbits=len(self._subregister))
-
         output_state = BitString.from_int(integer=initial_state.integer, nbits=len(self._register))
         for k, v in enumerate((self._subregister)):
             output_state[v] = input_state[k]

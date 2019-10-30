@@ -2,11 +2,10 @@ from openvqe import OpenVQEModule, OpenVQEException, BitNumbering
 from openvqe.circuit.circuit import QCircuit
 from openvqe.keymap import KeyMapSubregisterToRegister
 from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.hamiltonian import PauliString
 from openvqe.circuit.compiler import change_basis
 from openvqe.circuit.gates import Measurement
 from openvqe import BitString
-from openvqe import copy, dataclass, typing
+from openvqe import dataclass, typing
 from openvqe.objective import Objective
 from openvqe.simulator.heralding import HeraldingABC
 
@@ -119,8 +118,14 @@ class Simulator(OpenVQEModule):
         data = []
         H = objective.observable
         for U in objective.unitaries:
+            # The hamiltonian can be defined on more qubits as the unitaries
+            qubits_h = objective.observable.qubits
+            qubits_u = U.qubits
+            all_qubits = list(set(qubits_h) | set(qubits_u))
+            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
             simresult = self.simulate_wavefunction(abstract_circuit=U)
-            wfn = simresult.wavefunction
+            wfn = simresult.wavefunction.apply_keymap(keymap=keymap)
+
             final_E += U.weight * wfn.compute_expectationvalue(operator=H)
             if return_simulation_data:
                 data.append(simresult)

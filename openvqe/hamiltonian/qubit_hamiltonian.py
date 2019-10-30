@@ -11,6 +11,11 @@ class PauliString:
     iteration is then over the dimension
     """
 
+    @property
+    def qubits(self):
+        accumulate = [k for k in self.keys()]
+        return sorted(list(set(accumulate)))
+
     def key_openfermion(self):
         """
         Convert into key to store in Hamiltonian
@@ -40,6 +45,12 @@ class PauliString:
 
     def items(self):
         return self._data.items()
+
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
 
     @classmethod
     def init_from_openfermion(cls, key, coeff=None):
@@ -79,6 +90,13 @@ class QubitHamiltonian:
     @property
     def hamiltonian(self) -> QubitOperator:
         return self._hamiltonian
+
+    @property
+    def qubits(self):
+        accumulate = []
+        for ps in self.paulistrings:
+            accumulate += ps.qubits
+        return sorted(list(set(accumulate)))
 
     @hamiltonian.setter
     def hamiltonian(self, other: QubitOperator) -> QubitOperator:

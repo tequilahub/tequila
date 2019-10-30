@@ -25,10 +25,6 @@ class QCircuit():
         accumulate = []
         for g in self.gates:
             accumulate += g.qubits
-            # if g.target is not None:
-            #     accumulate += g.target
-            # if g.control is not None:
-            #     accumulate += g.control
         return sorted(list(set(accumulate)))
 
     @property
