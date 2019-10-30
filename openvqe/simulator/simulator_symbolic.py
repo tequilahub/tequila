@@ -18,9 +18,6 @@ class SimulatorSymbolic(Simulator):
         self._convert_to_numpy = value
         return self
 
-    def create_circuit(self, abstract_circuit: QCircuit) -> QCircuit:
-        return abstract_circuit
-
     @staticmethod
     def apply_gate(state: QubitWaveFunction, gate: QGate, qubits: dict) -> QubitWaveFunction:
         result = QubitWaveFunction()
@@ -92,6 +89,7 @@ class SimulatorSymbolic(Simulator):
         return result
 
     def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: int = None) -> SimulatorReturnType:
+        abstract_circuit = self.create_circuit(abstract_circuit=abstract_circuit)
         qubits = dict()
         count = 0
         for q in abstract_circuit.qubits:

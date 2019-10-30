@@ -1,8 +1,8 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
+from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, BackendHandler
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
-from openvqe.circuit.compiler import compile_multitarget, compile_controlled_rotation_gate
-from openvqe.circuit.gates import MeasurementImpl, PowerGateImpl
+from openvqe.circuit.compiler import compile_multitarget, compile_controlled_rotation
+from openvqe.circuit._gates_impl import MeasurementImpl
 from openvqe import BitString, BitNumbering, BitStringLSB
 import qiskit
 
@@ -12,7 +12,78 @@ class OpenVQEQiskitException(OpenVQEException):
         return "Error in qiskit backend:" + self.message
 
 
+class BackenHandlerQiskit(BackendHandler):
+
+    recompile_swap = True
+    recompile_multitarget = True
+    recompile_controlled_rotation = True
+
+    def fast_return(self, abstract_circuit):
+        return isinstance(abstract_circuit, qiskit.QuantumCircuit)
+
+    def initialize_circuit(self, qubit_map, *args, **kwargs):
+        return qiskit.QuantumCircuit(qubit_map['q'], qubit_map['c'])
+
+    def add_gate(self, gate, circuit, qubit_map, *args, **kwargs):
+        if len(gate.target) > 1:
+            raise OpenVQEQiskitException("multi targets need to be explicitly recompiled for Qiskit")
+        gfunc = getattr(circuit, gate.name.lower())
+        gfunc(qubit_map['q'][gate.target[0]])
+
+    def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        if len(gate.target) > 1:
+            raise OpenVQEQiskitException("multi targets need to be explicitly recompiled for Qiskit")
+        if len(gate.control) == 1:
+            gfunc = getattr(circuit, "c" + gate.name.lower())
+            gfunc(qubit_map['q'][gate.control[0]], qubit_map['q'][gate.target[0]])
+        elif len(gate.control) == 2:
+            try:
+                gfunc = getattr(circuit, "cc" + gate.name.lower())
+            except AttributeError:
+                raise OpenVQEQiskitException("Double controls are currenty only supported for CCX in quiskit")
+            gfunc(qubit_map['q'][gate.control[0]], qubit_map['q'][gate.control[1]], qubit_map['q'][gate.target[0]])
+        else:
+            raise OpenVQEQiskitException("More than two control gates currently not supported")
+
+    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        if len(gate.target) > 1:
+            raise OpenVQEQiskitException("multi targets need to be explicitly recompiled for Qiskit")
+        gfunc = getattr(circuit, gate.name.lower())
+        gfunc(gate.angle, qubit_map['q'][gate.target[0]])
+
+    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        if len(gate.target) > 1:
+            raise OpenVQEQiskitException("multi targets need to be explicitly recompiled for Qiskit")
+        if len(gate.control) == 1:
+            gfunc = getattr(circuit, "c" + gate.name.lower())
+            gfunc(gate.angle, qubit_map['q'][gate.control[0]], qubit_map['q'][gate.target[0]])
+        elif len(gate.control) == 2:
+            gfunc = getattr(circuit, "cc" + gate.name.lower())
+            gfunc(gate.angle, qubit_map['q'][gate.control[0]], qubit_map['q'][gate.control[1]],
+                  qubit_map['q'][gate.target[0]])
+        else:
+            raise OpenVQEQiskitException("More than two control gates currently not supported")
+
+    def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        raise OpenVQEQiskitException("PowerGates are not supported")
+
+    def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        raise OpenVQEQiskitException("controlled PowerGates are not supported")
+
+    def add_measurement(self, gate, qubit_map, circuit, *args, **kwargs):
+        tq = [qubit_map['q'][t] for t in gate.target]
+        tc = [qubit_map['c'][t] for t in gate.target]
+        circuit.measure(tq, tc)
+
+    def make_qubit_map(self, abstract_circuit: QCircuit):
+        n_qubits = abstract_circuit.n_qubits
+        q = qiskit.QuantumRegister(n_qubits, "q")
+        c = qiskit.ClassicalRegister(n_qubits, "c")
+        return {'q': q, 'c': c}
+
+
 class SimulatorQiskit(Simulator):
+    backend_handler = BackenHandlerQiskit()
 
     @property
     def numbering(self):
@@ -37,80 +108,6 @@ class SimulatorQiskit(Simulator):
             converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
             result._state[converted_key] = v
         return {"": result}
-
-    def create_circuit(self, abstract_circuit: QCircuit, name="q", cname="c", q: qiskit.QuantumRegister=None, c: qiskit.ClassicalRegister=None) -> qiskit.QuantumCircuit:
-
-        # fast return
-        if isinstance(abstract_circuit, qiskit.QuantumCircuit):
-            return abstract_circuit
-
-        # unroll
-        abstract_circuit = abstract_circuit.decompose()
-
-        n_qubits = abstract_circuit.n_qubits
-        if q is None:
-            q = qiskit.QuantumRegister(n_qubits, name)
-        if c is None:
-            c = qiskit.ClassicalRegister(n_qubits, cname)
-        result = qiskit.QuantumCircuit(q, c)
-        result.rx
-
-        for g in abstract_circuit.gates:
-
-            if isinstance(g, MeasurementImpl):
-                tq = [q[t] for t in g.target]
-                tc = [c[t] for t in g.target]
-                result.measure(tq, tc)
-                continue
-
-            if g.control is not None and len(g.control) > 2:
-                # do that automatically at some point
-                # same as below with multitarget
-                raise OpenVQEQiskitException("More than two controls not supported by Qiskit -> Recompile")
-
-            if g.control is not None and g.name.lower() in ["rx", "ry"]:
-                # recompile controled rotations, this is what qiskit does anyway, but it somehow has no Rx
-                result.barrier(q)  # better visibility for recompilation
-                result += self.create_circuit(abstract_circuit=compile_controlled_rotation_gate(gate=g), q=q, c=c)
-                result.barrier(q)  # better visibility for recompilation
-                continue
-
-            if len(g.target) > 1:
-                # multi targets need to be explicitly recompiled for Qiskit
-                result.barrier(q)  # better visibility for recompilation
-                result += self.create_circuit(abstract_circuit=compile_multitarget(gate=g), q=q, c=c)
-                result.barrier(q)  # better visibility for recompilation
-                continue
-
-            assert (len(g.target) == 1)
-            if g.control is None or len(g.control) == 0:
-                gfunc = getattr(result, g.name.lower())
-                if g.is_parametrized():
-                    if isinstance(g, PowerGateImpl) and g.name.lower()=="z":
-                        gfunc = getattr(result, "u1")
-                        gfunc(g.parameter, q[g.target[0]])
-                    else:
-                        gfunc(g.parameter, q[g.target[0]])
-                else:
-                    gfunc(q[g.target[0]])
-            elif len(g.control) == 1:
-                gfunc = getattr(result, "c" + g.name.lower())
-                if g.is_parametrized():
-                    gfunc(g.parameter, q[g.control[0]], q[g.target[0]])
-                else:
-                    gfunc(q[g.control[0]], q[g.target[0]])
-            elif len(g.control) == 2:
-                gfunc = getattr(result, "cc" + g.name.lower())
-                if g.is_parametrized():
-                    gfunc(g.parameter, q[g.control[0]], q[g.control[1]], q[g.target[0]])
-                else:
-                    gfunc(q[g.control[0]], q[g.control[1]], q[g.target[0]])
-            else:
-                print(g.name, " not supported")
-                print(g)
-                raise OpenVQEQiskitException("Not supported\n" + str(g))
-
-        return result
 
 
 if __name__ == "__main__":

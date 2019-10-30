@@ -8,6 +8,8 @@ from openvqe import BitString
 from openvqe import dataclass, typing
 from openvqe.objective import Objective
 from openvqe.simulator.heralding import HeraldingABC
+from openvqe.circuit import compiler
+from openvqe.circuit._gates_impl import MeasurementImpl
 
 
 @dataclass
@@ -26,13 +28,65 @@ class SimulatorReturnType:
         else:
             return self.measurements[key]
 
+class BackendHandler:
+
+    """
+    This needs to be overwritten by all supported Backends
+    """
+
+    recompile_swap = False
+    recompile_multitarget = True
+    recompile_controlled_rotation = False
+
+    def recompile(self, abstract_circuit: QCircuit) -> QCircuit:
+
+        recompiled = abstract_circuit
+
+        if self.recompile_multitarget:
+            recompiled = compiler.compile_multitarget(recompiled)
+        if self.recompile_controlled_rotation:
+            recompiled = compiler.compile_controlled_rotation(recompiled)
+        if self.recompile_swap:
+            recompiled = compiler.compile_swap(recompiled)
+
+        return recompiled
+
+    def fast_return(self, abstract_circuit):
+        return True
+
+    def initialize_circuit(self, qubit_map,  *args, **kwargs):
+        OpenVQEException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_gate(self, gate, circuit, qubit_map, *args, **kwargs):
+        OpenVQEException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_measurement(self, gate, qubit_map, circuit, *args, **kwargs):
+        OpenVQEException("Backend Handler needs to be overwritten for supported simulators")
+
+    def make_qubit_map(self, abstract_circuit: QCircuit):
+        return abstract_circuit.qubits
 
 class Simulator(OpenVQEModule):
     """
     Abstract Base Class for OpenVQE interfaces to simulators
     """
-
     numbering: BitNumbering = BitNumbering.MSB
+    backend_handler = BackendHandler()
 
     def __init__(self, heralding: HeraldingABC = None):
         self._heralding = heralding
@@ -83,12 +137,41 @@ class Simulator(OpenVQEModule):
 
     def create_circuit(self, abstract_circuit: QCircuit):
         """
-        If the backend has its own circuit objects this can be created here
-        :param abstract_circuit:
-        :return: circuit object of the backend
+        Translates abstract circuits into the specific backend type
+        Overwrite the BackendHandler Class to implement new backends
+        :param abstract_circuit: Abstract circuit to be translated
+        :return: translated circuit
         """
-        raise OpenVQEException(
-            "called from base class of simulator, or non-supported operation for this backend")
+
+        decomposed_ac = abstract_circuit.decompose()
+        decomposed_ac = self.backend_handler.recompile(abstract_circuit=decomposed_ac)
+
+        if self.backend_handler.fast_return(decomposed_ac):
+            return decomposed_ac
+
+        qubit_map = self.backend_handler.make_qubit_map(abstract_circuit=decomposed_ac)
+
+        result = self.backend_handler.initialize_circuit(qubit_map=qubit_map)
+
+        for g in decomposed_ac.gates:
+            if isinstance(g, MeasurementImpl):
+                self.backend_handler.add_measurement(gate=g, qubit_map=qubit_map, circuit=result)
+            elif g.is_controlled():
+                if hasattr(g, "angle"):
+                    self.backend_handler.add_controlled_rotation_gate(gate=g, qubit_map=qubit_map, circuit=result)
+                elif hasattr(g, "power") and g.power != 1:
+                    self.backend_handler.add_controlled_power_gate(gate=g, qubit_map=qubit_map, circuit=result)
+                else:
+                    self.backend_handler.add_controlled_gate(gate=g, qubit_map=qubit_map, circuit=result)
+            else:
+                if hasattr(g, "angle"):
+                    self.backend_handler.add_rotation_gate(gate=g, qubit_map=qubit_map, circuit=result)
+                elif hasattr(g, "power") and g.power != 1:
+                    self.backend_handler.add_power_gate(gate=g, qubit_map=qubit_map, circuit=result)
+                else:
+                    self.backend_handler.add_gate(gate=g, qubit_map=qubit_map, circuit=result)
+
+        return result
 
     def convert_measurements(self, backend_result) -> typing.Dict[str, QubitWaveFunction]:
         raise OpenVQEException(

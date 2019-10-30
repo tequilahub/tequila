@@ -1,11 +1,67 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
+from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, BackendHandler
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
-from openvqe.circuit.gates import MeasurementImpl
 from openvqe import BitString, BitNumbering
+from openvqe.circuit.compiler import compile_multitarget
+from openvqe.circuit.gates import MeasurementImpl
 from openvqe import typing
 import cirq
 
+
+class BackenHandlerCirq(BackendHandler):
+
+    recompile_swap = False
+    recompile_multitarget = True
+    recompile_controlled_rotation = False
+
+    def fast_return(self, abstract_circuit):
+        return isinstance(abstract_circuit, cirq.Circuit)
+
+    def initialize_circuit(self, *args, **kwargs):
+        return cirq.Circuit()
+
+    def add_gate(self, gate, circuit, qubit_map, *args, **kwargs):
+        cirq_gate = getattr(cirq, gate.name)
+        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        circuit.append(cirq_gate)
+
+    def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        cirq_gate = getattr(cirq, gate.name)
+        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
+        circuit.append(cirq_gate)
+
+    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        cirq_gate = getattr(cirq, gate.name)(rads=gate.angle)
+        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        circuit.append(cirq_gate)
+
+    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        cirq_gate = getattr(cirq, gate.name)(rads=gate.angle)
+        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
+        circuit.append(cirq_gate)
+
+    def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=gate.power)
+        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        circuit.append(cirq_gate)
+
+    def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=gate.power)
+        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
+        circuit.append(cirq_gate)
+
+    def add_measurement(self, gate, qubit_map, circuit, *args, **kwargs):
+        qubits = [qubit_map[i] for i in gate.target]
+        m = cirq.measure(*qubits, key=gate.name)
+        circuit.append(m)
+
+    def make_qubit_map(self, abstract_circuit: QCircuit):
+        n_qubits = abstract_circuit.n_qubits
+        qubit_map = [cirq.LineQubit(i) for i in range(n_qubits)]
+        return qubit_map
 
 
 class OpenVQECirqException(OpenVQEException):
@@ -16,6 +72,8 @@ class OpenVQECirqException(OpenVQEException):
 class SimulatorCirq(Simulator):
 
     numbering: BitNumbering = BitNumbering.MSB
+
+    backend_handler = BackenHandlerCirq()
 
     def convert_measurements(self, backend_result: cirq.TrialResult) -> typing.Dict[str, QubitWaveFunction]:
         result = dict()
@@ -32,68 +90,6 @@ class SimulatorCirq(Simulator):
 
     def do_run(self, circuit: cirq.Circuit, samples: int = 1) -> cirq.TrialResult:
         return cirq.Simulator().run(program=circuit, repetitions=samples)
-
-    def create_circuit(self, abstract_circuit: QCircuit, qubit_map=None,
-                       recompile_controlled_rotations=False) -> cirq.Circuit:
-        """
-        If the backend has its own abstract_circuit objects this can be created here
-        :param abstract_circuit: The abstract circuit
-        :param qubit_map: Maps qubit_map which are integers in the abstract circuit to cirq qubit objects
-        :param recompile_controlled_rotations: recompiles controlled rotations (i.e. controled parametrized single qubit gates)
-        in order to be able to compute gradients
-        if not specified LineQubits will created automatically
-        :return: cirq.Cirquit object corresponding to the abstract_circuit
-        """
-
-        # fast return
-        if isinstance(abstract_circuit, cirq.Circuit):
-            return abstract_circuit
-
-        # unroll
-        abstract_circuit = abstract_circuit.decompose()
-
-        if qubit_map is None:
-            n_qubits = abstract_circuit.n_qubits
-            qubit_map = [cirq.LineQubit(i) for i in range(n_qubits)]
-
-        result = cirq.Circuit()
-        for g in abstract_circuit.gates:
-            if isinstance(g, MeasurementImpl):
-                qubits = [qubit_map[i] for i in g.target]
-                m = cirq.measure(*qubits, key=g.name)
-                result.append(m)
-            elif g.is_parametrized() and g.control is not None and recompile_controlled_rotations:
-                # here we need recompilation
-                rc = abstract_circuit.compile_controlled_rotation_gate(g)
-                result += self.create_circuit(abstract_circuit=rc, qubit_map=qubit_map)
-            else:
-                tmp = cirq.Circuit()
-                gate = None
-
-                if g.name.upper() == "CNOT":
-                    gate = (cirq.CNOT(target=qubit_map[g.target[0]], control=qubit_map[g.control[0]]))
-                else:
-                    if g.is_parametrized():
-                        if hasattr(g, "power"):
-                            if g.power == 1.0:
-                                gate = getattr(cirq, g.name)
-                            else:
-                                gate = getattr(cirq, g.name + "PowGate")(exponent=g.power)
-                        elif hasattr(g, "angle"):
-                            gate = getattr(cirq, g.name)(rads=g.parameter)
-                        else:
-                            raise OpenVQECirqException("parametrized gate: only supporting power and rotation gates")
-                    else:
-                        gate = getattr(cirq, g.name)
-
-                    gate = gate.on(*[qubit_map[t] for t in g.target])
-
-                    if g.control is not None:
-                        gate = gate.controlled_by(*[qubit_map[t] for t in g.control])
-
-                tmp.append(gate)
-                result += tmp
-        return result
 
     def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0) -> SimulatorReturnType:
         simulator = cirq.Simulator()

@@ -1,5 +1,5 @@
 from openvqe.circuit import QCircuit
-from openvqe.circuit.compiler import compile_controlled_rotation_gate
+from openvqe.circuit.compiler import compile_controlled_rotation
 from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, PowerGateImpl
 from openvqe.objective import Objective
 from openvqe import OpenVQEException
@@ -63,7 +63,7 @@ def make_gradient_component(unitary: QCircuit, index: int):
 
             for i, ang_set in enumerate(angles_and_weights):
 
-                U = compile_controlled_rotation_gate(g, angles=ang_set[0])
+                U = compile_controlled_rotation(g, angles=ang_set[0])
                 U.weight=0.5*ang_set[1]
                 dg.append(U)
         else:
