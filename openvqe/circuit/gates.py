@@ -1,5 +1,7 @@
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl
+from openvqe import OpenVQEException
+from openvqe import typing
 import functools
 
 
@@ -12,67 +14,56 @@ def wrap_gate(func):
 
 
 @wrap_gate
-def RotationGate(axis, angle, target: list, control: list = None, frozen: bool = False, phase=1.0):
+def RotationGate(axis, angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None, phase=1.0):
     return RotationGateImpl(axis=axis, angle=angle, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
-def PowerGate(name, target: list, power=1.0, control: list = None, frozen: bool = False, phase=1.0):
+def PowerGate(name, target: typing.Union[list, int], power=1.0, control: typing.Union[list, int] = None, frozen: bool = None, phase=1.0):
     return PowerGateImpl(name=name, power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
-def QGate(name, target: list, control: list = None, phase=1.0):
+def QGate(name, target: typing.Union[list, int], control: typing.Union[list, int] = None, phase=1.0):
     return QGateImpl(name=name, target=target, control=control, phase=phase)
 
 
 @wrap_gate
-def Rx(angle, target, control=None, frozen=None, phase=1.0):
+def Rx(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None, phase=1.0):
     return RotationGateImpl(axis=0, angle=angle, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
-def Ry(angle, target, control=None, frozen=None, phase=1.0):
+def Ry(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None, phase=1.0):
     return RotationGateImpl(axis=1, angle=angle, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
-def Rz(angle, target, control=None, frozen=None, phase=1.0):
+def Rz(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None, phase=1.0):
     return RotationGateImpl(axis=2, angle=angle, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
-def X(target, control=None, power=None, frozen=None, phase=1.0):
+def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None, phase=1.0):
     return PowerGateImpl(name="X", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
-def CNOT(target, control=None):
-    if control is None:
-        assert (len(target) == 2)
-        control = target[1]
-        target = target[0]
-    return X(target=target, control=control)
-
-
 @wrap_gate
-def H(target, control=None, power=None, frozen=None, phase=1.0):
+def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None, phase=1.0):
     return PowerGateImpl(name="H", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
-def Y(target, control=None, power=None, frozen=None, phase=1.0):
+def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None, phase=1.0):
     return PowerGateImpl(name="Y", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
 @wrap_gate
-def Z(target, control=None, power=None, frozen=None, phase=1.0):
+def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None, phase=1.0):
     return PowerGateImpl(name="Z", power=power, target=target, control=control, frozen=frozen, phase=phase)
 
 
-@wrap_gate
-def SWAP(target, control=None, power=None, frozen=None, phase=1.0):
-    assert (len(target) >= 2)
-    return PowerGateImpl(name="SWAP", power=power, target=target, control=control, frozen=frozen, phase=phase)
+
 
 
 @wrap_gate
@@ -81,3 +72,74 @@ def Measurement(target, name=None):
         return MeasurementImpl(name="", target=target)
     else:
         return MeasurementImpl(name=name, target=target)
+
+"""
+Convenience for Two Qubit Gates (not very advanced)
+"""
+@wrap_gate
+def SWAP(target: typing.Union[int, list], control: typing.Union[int, list] = None):
+    return PowerGateImpl(name="SWAP", target=target, control=control)
+
+"""
+Convenience Initialization Routines for controlled gates
+All following the patern: Gate(control_qubit, target_qubit, possible_parameter)
+"""
+
+def enforce_integer(function) -> int:
+    """
+    Replace if we have a qubit class at some point
+    :param obj:
+    :return: int(obj)
+    """
+    def wrapper(control, target, *args):
+        try:
+            control = int(control)
+        except ValueError as e:
+            raise OpenVQEException("Could not initialize gate: Conversion of input type for control-qubit failed\n" + str(e))
+        try:
+            target = int(target)
+        except ValueError as e:
+            raise OpenVQEException("Could not initialize gate: Conversion of input type for target-qubit failed\n" + str(e))
+        return function(control, target , *args)
+
+    return wrapper
+
+@enforce_integer
+def CNOT(control: int, target: int, frozen: bool = None) -> QCircuit:
+    return X(target=target, control=control, frozen=frozen)
+
+@enforce_integer
+def CX(control: int, target: int, frozen: bool = None) -> QCircuit:
+    return X(target=target, control=control, frozen=frozen)
+
+@enforce_integer
+def CY(control: int, target: int, frozen: bool = None) -> QCircuit:
+    return Y(target=target, control=control, frozen=frozen)
+
+@enforce_integer
+def CZ(control: int, target: int, frozen: bool = None) -> QCircuit:
+    return Z(target=target, control=control, frozen=frozen)
+
+@enforce_integer
+def CRx(control: int, target:int, angle: float, frozen: bool = None) -> QCircuit:
+    return Rx(target=target, control=control, angle=angle, frozen=frozen)
+
+@enforce_integer
+def CRy(control: int, target:int, angle: float, frozen: bool = None) -> QCircuit:
+    return Ry(target=target, control=control, angle=angle, frozen=frozen)
+
+@enforce_integer
+def CRz(control: int, target:int, angle: float, frozen: bool = None) -> QCircuit:
+    return Rz(target=target, control=control, angle=angle, frozen=frozen)
+
+
+if __name__ == "__main__":
+
+    G = CRx(1,0, 2.0)
+
+    print(G)
+
+
+
+
+
