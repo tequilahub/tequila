@@ -79,7 +79,7 @@ class BackendHandler:
         OpenVQEException("Backend Handler needs to be overwritten for supported simulators")
 
     def make_qubit_map(self, abstract_circuit: QCircuit):
-        return abstract_circuit.qubits
+        return [i for i in range(len(abstract_circuit.qubits))]
 
 class Simulator(OpenVQEModule):
     """

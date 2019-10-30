@@ -7,7 +7,7 @@ except ImportError:
     system_has_cirq = False
 
 from openvqe.circuit.circuit import QCircuit
-from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H
+from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H, iSWAP
 from numpy import pi, random, isclose, sqrt
 from openvqe.hamiltonian import PauliString
 from openvqe.objective import Objective
@@ -15,7 +15,7 @@ from openvqe.circuit.gradient import grad
 import pytest
 
 supported_primitive_gates = [X, Y, Z, H]
-supported_two_qubit_gates = [SWAP]
+supported_two_qubit_gates = [SWAP, iSWAP]
 supported_rotations = [Rx, Ry, Rz]
 supported_powers = (X, Y, Z, H)
 
@@ -48,11 +48,9 @@ def test_primitive_gates(g):
 @pytest.mark.skipif(condition=not system_has_cirq, reason="cirq not found")
 @pytest.mark.parametrize("g", supported_two_qubit_gates)
 def test_two_qubit_gates(g):
-    qubit = random.randint(0, 10)
-    qubits = [qubit, qubit + 3]
     init = random.randint(0, 1)
-    result = SimulatorCirq().simulate_wavefunction(abstract_circuit=g(target=qubits), initial_state=init)
-    result = SimulatorCirq().simulate_wavefunction(abstract_circuit=g(target=qubits, control=qubit + 2),
+    result = SimulatorCirq().simulate_wavefunction(abstract_circuit=g(2,1), initial_state=init)
+    result = SimulatorCirq().simulate_wavefunction(abstract_circuit=g(1,2, control=3),
                                                    initial_state=init)
 
 

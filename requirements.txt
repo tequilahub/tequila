@@ -8,3 +8,4 @@ openfermionpsi4 # trying to get rid of this
 cirq>=0.5.0 # not really a requirement
 pyquil # not really a requirement
 qiskit # not really a requirement
+qulacs # not really a requirement

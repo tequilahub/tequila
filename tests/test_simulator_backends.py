@@ -34,15 +34,25 @@ try:
 except ImportError:
     system_has_cirq = False
 
+system_has_qulacs = True
+try:
+    from openvqe.simulator.simulator_qulacs import SimulatorQulacs
+
+    system_has_qulacs = True
+except ImportError:
+    system_has_qulacs = False
+
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
 
 do_pyquil = system_has_qvm and system_has_pyquil
 do_qiskit = system_has_qiskit
 do_cirq = system_has_cirq
+do_qulacs = system_has_qulacs
 
 wfn_backends = [SimulatorSymbolic]
 if do_cirq: wfn_backends.append(SimulatorCirq)
 if do_pyquil: wfn_backends.append(SimulatorPyquil)
+if do_qulacs: wfn_backends.append(SimulatorQulacs)
 
 shot_backends = []
 if do_cirq: shot_backends.append(SimulatorCirq)
@@ -54,11 +64,11 @@ def create_random_circuit():
     rot_gates_gates = [gates.Rx, gates.Ry, gates.Rz]
     circuit = gates.QCircuit()
     for x in range(4):
-        target = random.randint(0, 2)
-        control = random.randint(3, 5)
+        target = random.randint(1, 2)
+        control = random.randint(3, 4)
         circuit += random.choice(primitive_gates)(target=target, control=control)
-        target = random.randint(0, 2)
-        control = random.randint(3, 5)
+        target = random.randint(1, 2)
+        control = random.randint(3, 4)
         angle = random.uniform(0.0, 4.0)
         circuit += random.choice(rot_gates_gates)(target=target, control=control, angle=angle)
     return circuit
@@ -82,6 +92,9 @@ def test_wfn_multitarget(simulator):
 
 @pytest.mark.parametrize("simulator", wfn_backends)
 def test_wfn_multi_control(simulator):
+    if isinstance(simulator(), SimulatorQulacs):
+        # does not support multi-control
+        return
     ac = gates.X([0, 1, 2])
     ac += gates.Ry(target=[0], control=[1, 2], angle=2.3 / 2)
     ac += gates.H(target=[0], control=[1, 2])
