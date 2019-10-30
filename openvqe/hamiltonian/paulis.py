@@ -1,6 +1,6 @@
 """
 Convenience initialization
-Using PX, PY, PZ notation to not confuse with circuits
+Of Pauli Operators
 """
 from openvqe import typing
 from openvqe.hamiltonian import QubitHamiltonian
