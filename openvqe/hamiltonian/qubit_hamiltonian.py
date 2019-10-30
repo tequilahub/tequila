@@ -1,8 +1,8 @@
 from openfermion import QubitOperator
 from openvqe.tools import number_to_string
+from openvqe import numbers, typing
 
 class PauliString:
-
     """
     Convenient DataClass for single PauliStrings
     Internal Storage is a dictionary where keys are particle-numbers and values the primitive paulis
@@ -34,6 +34,12 @@ class PauliString:
         return result
 
     def __init__(self, data=None, coeff=None):
+        """
+        Initialize the class
+        :param data: Dictionary which holds the paulistring with dimensions as keys
+        i.e. X(0)Y(1)Z(3)X(20) is { 0:'x', 1:'y', 3:'z', 20:'x' }
+        :param coeff:
+        """
         if data is None:
             self._data = {}
         else:
@@ -54,6 +60,13 @@ class PauliString:
 
     @classmethod
     def init_from_openfermion(cls, key, coeff=None):
+        """
+        Initialize a PauliString from OpenFermion data
+        :param key: The pauli-string in OpenFermion format i.e. a list of tuples
+        [(0,X),(1,X),(2,Z)] -> X(0)X(1)X(Z)
+        :param coeff: The coefficient for this paulistring
+        :return:
+        """
         data = {}
         for term in key:
             index = term[0]
@@ -79,20 +92,26 @@ class PauliString:
 
 class QubitHamiltonian:
     """
-    Default Hamiltonian to play around with
-    Uses OpenFermion Structure
-    Has no special features
+    Default QubitHamiltonian
+    Uses OpenFermion Structures for arithmetics
     """
 
+    #convenience
     axis_to_string = {0: "x", 1: "y", 2: "z"}
     string_to_axis = {"x": 0, "y": 1, "z": 2}
 
     @property
     def hamiltonian(self) -> QubitOperator:
+        """
+        :return: The underlying OpenFermion QubitOperator
+        """
         return self._hamiltonian
 
     @property
     def qubits(self):
+        """
+        :return: All Qubits the Hamiltonian acts on
+        """
         accumulate = []
         for ps in self.paulistrings:
             accumulate += ps.qubits
@@ -108,11 +127,20 @@ class QubitHamiltonian:
     def pauli(selfs, ituple):
         return ituple[1]
 
-    def __init__(self, hamiltonian: QubitOperator = None):
+    def __init__(self, hamiltonian: typing.Union[QubitOperator,str, numbers.Number] = None):
+        """
+        Initialize from string or from a preexisting OpenFermion QubitOperator instance
+        :param hamiltonian: string or openfermion.QubitOperator
+        if string: Same conventions as openfermion
+        if None: The Hamiltonian is initialized as identity operator
+        if Number: initialized as scaled unit operator
+        """
         if isinstance(hamiltonian, str):
             self._hamiltonian = self.init_from_string(string=hamiltonian)._hamiltonian
         elif hamiltonian is None:
             self._hamiltonian = QubitOperator.identity()
+        elif isinstance(hamiltonian, numbers.Number):
+            self._hamiltonian = hamiltonian*QubitOperator.identity()
         else:
             self._hamiltonian = hamiltonian
 
