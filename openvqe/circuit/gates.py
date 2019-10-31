@@ -15,58 +15,54 @@ def wrap_gate(func):
 
 @wrap_gate
 def RotationGate(axis, angle, target: typing.Union[list, int], control: typing.Union[list, int] = None,
-                 frozen: bool = None, phase=1.0):
-    return RotationGateImpl(axis=axis, angle=angle, target=target, control=control, frozen=frozen, phase=phase)
+                 frozen: bool = None):
+    return RotationGateImpl(axis=axis, angle=angle, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
-def PowerGate(name, target: typing.Union[list, int], power: bool =None, control: typing.Union[list, int] = None,
-              frozen: bool = None, phase=1.0):
-    return PowerGateImpl(name=name, power=power, target=target, control=control, frozen=frozen, phase=phase)
+def PowerGate(name, target: typing.Union[list, int], power: bool = None, control: typing.Union[list, int] = None,
+              frozen: bool = None):
+    return PowerGateImpl(name=name, power=power, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
-def QGate(name, target: typing.Union[list, int], control: typing.Union[list, int] = None, phase=1.0):
-    return QGateImpl(name=name, target=target, control=control, phase=phase)
+def QGate(name, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    return QGateImpl(name=name, target=target, control=control)
 
 
 @wrap_gate
-def Rx(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None, phase=1.0):
-    return RotationGateImpl(axis=0, angle=angle, target=target, control=control, frozen=frozen, phase=phase)
+def Rx(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None):
+    return RotationGateImpl(axis=0, angle=angle, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
-def Ry(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None, phase=1.0):
-    return RotationGateImpl(axis=1, angle=angle, target=target, control=control, frozen=frozen, phase=phase)
+def Ry(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None):
+    return RotationGateImpl(axis=1, angle=angle, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
-def Rz(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None, phase=1.0):
-    return RotationGateImpl(axis=2, angle=angle, target=target, control=control, frozen=frozen, phase=phase)
+def Rz(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None):
+    return RotationGateImpl(axis=2, angle=angle, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
-def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None,
-      phase=1.0):
-    return PowerGateImpl(name="X", power=power, target=target, control=control, frozen=frozen, phase=phase)
+def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None):
+    return PowerGateImpl(name="X", power=power, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
-def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None,
-      phase=1.0):
-    return PowerGateImpl(name="H", power=power, target=target, control=control, frozen=frozen, phase=phase)
+def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None):
+    return PowerGateImpl(name="H", power=power, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
-def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None,
-      phase=1.0):
-    return PowerGateImpl(name="Y", power=power, target=target, control=control, frozen=frozen, phase=phase)
+def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None):
+    return PowerGateImpl(name="Y", power=power, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
-def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None,
-      phase=1.0):
-    return PowerGateImpl(name="Z", power=power, target=target, control=control, frozen=frozen, phase=phase)
+def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None):
+    return PowerGateImpl(name="Z", power=power, target=target, control=control, frozen=frozen)
 
 
 @wrap_gate
@@ -84,13 +80,14 @@ iSWAP will only work with cirq, the others will be recompiled
 
 
 @wrap_gate
-def SWAP(q0:int, q1:int, control: typing.Union[int, list] = None, power: float = None,
+def SWAP(q0: int, q1: int, control: typing.Union[int, list] = None, power: float = None,
          frozen: bool = None):
-    return PowerGateImpl(name="SWAP", target=[q0,q1], control=control, power=power, frozen=frozen)
+    return PowerGateImpl(name="SWAP", target=[q0, q1], control=control, power=power, frozen=frozen)
+
 
 @wrap_gate
-def iSWAP(q0:int, q1:int, control: typing.Union[int, list] = None):
-    return PowerGateImpl(name="ISWAP", target=[q0,q1], control=control)
+def iSWAP(q0: int, q1: int, control: typing.Union[int, list] = None):
+    return PowerGateImpl(name="ISWAP", target=[q0, q1], control=control)
 
 
 """

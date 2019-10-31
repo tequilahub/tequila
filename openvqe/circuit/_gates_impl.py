@@ -24,9 +24,8 @@ class QGateImpl:
         else:
             return [o]
 
-    def __init__(self, name, target: list, control: list = None, phase=1.0):
+    def __init__(self, name, target: list, control: list = None):
         self.name = name
-        self.phase = phase
         self.target = self.list_assignement(target)
         self.control = self.list_assignement(control)
         self.verify()
@@ -41,7 +40,7 @@ class QGateImpl:
         """
 
         return QGateImpl(name=copy.copy(self.name), target=copy.deepcopy(self.target),
-                         control=copy.deepcopy(self.control), phase=numpy.conj(self.phase))
+                         control=copy.deepcopy(self.control))
 
     def is_controlled(self) -> bool:
         """
@@ -70,15 +69,13 @@ class QGateImpl:
 
     def verify(self):
         if self.target is None:
-            raise Exception('Recieved no targets upon initialization')
+            raise Exception('Received no targets upon initialization')
         if len(self.list_assignement(self.target)) < 1:
-            raise Exception('Recieved no targets upon initialization')
+            raise Exception('Received no targets upon initialization')
         if self.is_controlled():
             for c in self.target:
                 if c in self.control:
                     raise Exception("control and target are the same qubit: " + self.__str__())
-        if not numpy.isclose(numpy.abs(self.phase), 1.0):
-            raise Exception('Phase must lie on the complex unit circle (I.E, have modulus of 1)')
 
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
@@ -110,20 +107,12 @@ class QGateImpl:
             result = max(result, max(self.control))
         return result
 
-    def is_phased(self):
-        '''
-        TODO: make sure this is functional.
-        '''
-        return self.phase not in [1.0, 1.0 + 0.j]
-
     def __eq__(self, other):
         if self.name != other.name:
             return False
         if self.target != other.target:
             return False
         if self.control != other.control:
-            return False
-        if self.phase != other.phase:
             return False
         return True
 
@@ -145,8 +134,8 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         raise OpenVQEException("should not be called from ABC")
         return self
 
-    def __init__(self, name, parameter, target: list, control: list = None, frozen: bool = False, phase=1.0):
-        super().__init__(name, target, control, phase=phase)
+    def __init__(self, name, parameter, target: list, control: list = None, frozen: bool = False):
+        super().__init__(name, target, control)
         self.parameter = parameter
         self.frozen = frozen
 
@@ -239,10 +228,9 @@ class RotationGateImpl(ParametrizedGateImpl):
         else:
             return [self, other]
 
-    def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = False, phase=1.0):
+    def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = False):
         assert (angle is not None)
-        super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control, frozen=frozen,
-                         phase=phase)
+        super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control, frozen=frozen)
         self._axis = self.assign_axis(axis)
 
     @staticmethod
@@ -258,7 +246,6 @@ class RotationGateImpl(ParametrizedGateImpl):
     def dagger(self):
         result = copy.deepcopy(self)
         result.angle = -self.angle
-        result.phase = self.phase.conjugate()
         return result
 
 
@@ -302,11 +289,9 @@ class PowerGateImpl(ParametrizedGateImpl):
         else:
             return [self, other]
 
-    def __init__(self, name, target: list, power=None, control: list = None, frozen: bool = False, phase=1.0):
-        super().__init__(name=name, parameter=power, target=target, control=control, frozen=frozen,
-                         phase=phase)
+    def __init__(self, name, target: list, power=None, control: list = None, frozen: bool = False):
+        super().__init__(name=name, parameter=power, target=target, control=control, frozen=frozen)
 
     def dagger(self):
         result = copy.deepcopy(self)
-        result.phase = self.phase.conjugate()
         return result
