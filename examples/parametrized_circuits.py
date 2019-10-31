@@ -3,6 +3,7 @@ from openvqe.circuit import Variable
 from openvqe.hamiltonian import paulis
 from openvqe.simulator.simulator_qiskit import SimulatorQiskit
 from openvqe.simulator.simulator_qulacs import SimulatorQulacs
+from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
 from openvqe.optimizers import GradientDescent
@@ -10,15 +11,14 @@ from openvqe.optimizers import GradientDescent
 if __name__ == "__main__":
 
     optimizer = GradientDescent()
-    a = Variable(name="a", value=1.0)
+    a = Variable(name="a", value=3.0)
     b = Variable(name="b", value=2.0)
 
     H = paulis.X(1)
     U = gates.Ry(target=0, angle=a)
-    U += gates.Ry(target=1, angle=b)
-    U += gates.X(target=1, control=0)
+    U += gates.Ry(target=1, control=0, angle=b)
 
-    simulator = SimulatorQulacs()
+    simulator = SimulatorCirq()
 
     angles = U.extract_parameters()
 

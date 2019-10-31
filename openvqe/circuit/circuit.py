@@ -1,7 +1,6 @@
 from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
 from openvqe import BitNumbering
-from openvqe import numpy
 from openvqe import copy
 
 
@@ -95,47 +94,6 @@ class QCircuit():
         for g in reversed(self.gates):
             result *= g.dagger()
         return result
-
-    def __true_weight__(self):
-        '''
-        returns the true weight of the circuit, taking in both the weight assigned by the user and and the weight of all the gates
-        '''
-        pass
-
-    def replace_gate(self, position, gates: list, inplace: bool = False):
-        '''
-        if inplace=False:
-        returns a transformed version of the circuit in which whatever gate was at 'position' is removed and replaced with,
-        in sequence, all the gates in in gates.
-        else, changes swaps out the gate at position for the gates in gates, but does not return a new object.
-        Particularly useful in the post-processing of gate gradients.
-
-        '''
-        prior = self.gates[:position]
-        new = gates
-        posterior = self.gates[position + 1:]
-        #### note: this is gonna play badly with gates that would be applied simultaneously, I think.)
-        new_gates = prior + new + posterior
-        if inplace == False:
-            return QCircuit(weight=self.weight, gates=new_gates)
-        else:
-            self.gates = new_gates
-
-    def insert_gate(self, position: int, gate: QGateImpl):
-        if position == "random":
-            self.insert_gate_at_random_position(gate=gate)
-        else:
-            self.gates.insert(position, gate)
-        return self
-
-    def insert_gate_at_random_position(self, gate: QGateImpl):
-        position = numpy.random.choice(len(self.gates), 1)[0]
-
-        if isinstance(gate, QCircuit):
-            for g in gate.gates:
-                self.insert_gate(position=position, gate=g)
-        else:
-            self.insert_gate(position=position, gate=gate)
 
     def extract_parameters(self) -> dict:
         """
@@ -246,10 +204,6 @@ class QCircuit():
             self.gates[i] **= power
         return self
 
-    def simplify(self):
-        # not here yet
-        return self
-
     def __str__(self):
         result = "circuit: "
         if self.weight != 1.0:
@@ -283,18 +237,5 @@ class QCircuit():
             return gate
         else:
             return QCircuit(gates=[gate])
-
-    def recompile_gate(self, gate):
-        """
-        TODO:
-        remove
-        Recompiles gates based on the instruction function
-        :param gate: the QGate to recompile
-        :return: list of tuple of lists of qgates
-        """
-        recompiled_gates = []
-        for g in self.gates:
-            recompiled_gates.append(instruction(g))
-        return QCircuit(gates=recompiled_gates)
 
 
