@@ -1,9 +1,30 @@
 from openvqe import OpenVQEException
 from openvqe.circuit import transform
-from openvqe import numpy as np
+from functools import total_ordering
 from openvqe import copy
 from openvqe import numbers
 
+
+class SympyVariable:
+
+    def __init__(self, name=None, value=None):
+        self._name = name
+        self._value = value
+
+    def __call__(self, *args, **kwargs):
+        return self._value
+
+    def __sub__(self, other):
+        return SympyVariable(name=self._name, value=self._value - other)
+
+    def __add__(self, other):
+        return SympyVariable(name=self._name, value=self._value + other)
+
+    def __mul__(self, other):
+        return SympyVariable(name=self._name, value=self._value * other)
+
+    def __neg__(self):
+        return SympyVariable(name=self._name, value=-self._value)
 
 def enforce_number(number, numeric_type=complex) -> complex:
     """
@@ -38,7 +59,7 @@ def enforce_number_decorator(*numeric_types):
 
     return decorator
 
-
+@total_ordering
 class Variable():
     _instances = []
 
@@ -70,9 +91,12 @@ class Variable():
         else:
             return self._name
 
-    def __init__(self, value=None, name: str = None, transform=None, protect=False):
-
-        self._value = value
+    def __init__(self, value=None, name: str = None, transform=None):
+        if isinstance(value, numbers.Number):
+            self._value = value
+        else:
+            print("VALUE IS ", type(value))
+            raise Exception("value needs to be a number")
         self._name = name
 
         if hasattr(transform, '__iter__'):
@@ -106,16 +130,6 @@ class Variable():
         # return self._return*other
         return self.with_transform(transform.Multiply(other))
 
-    def __eq__(self, other):
-        if isinstance(other, numbers.Number):
-            return self.value == other
-        if self.name != other.name:
-            return False
-        if self.value != other.value:
-            return False
-        return True
-
-
     @enforce_number_decorator(complex)
     def __pow__(self, other):
         return self.with_transform(transform.Power(other))
@@ -139,22 +153,21 @@ class Variable():
         return self
 
     def __lt__(self, other):
-        return self.eval < other
-
-    def __gt__(self, other):
-        return self.eval > other
-
-    def __ge__(self, other):
-        return self.eval >= other
-
-    def __le__(self, other):
-        return self.eval <= other
-
-    def __ne__(self, other):
-        if self.__eq__(other):
+        if isinstance(other, numbers.Number):
+            return self.eval() < other
+        if self.eval < other.eval:
             return False
-        else:
-            return True
+        return True
+
+    def __eq__(self, other):
+        if isinstance(other, numbers.Number):
+            return self.value == other
+        if self.name != other.name:
+            return False
+        if self.eval != other.eval:
+            print("eval differs")
+            return False
+        return True
 
     def __copy__(self):
         cls = self.__class__
@@ -205,5 +218,5 @@ class Variable():
     def __str__(self):
         return 'Variable ' + self.name + ': Value = ' + str(self._value) + ': Eval = ' + str(self.eval)
 
-# TO DO: define a compound variable class so that Rx(angle=Var(x)+Var(y)) or the like is functional.
-# class CompoundVariable()
+
+

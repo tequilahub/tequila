@@ -49,17 +49,17 @@ class BackenHandlerQiskit(BackendHandler):
         if len(gate.target) > 1:
             raise OpenVQEQiskitException("multi targets need to be explicitly recompiled for Qiskit")
         gfunc = getattr(circuit, gate.name.lower())
-        gfunc(gate.angle, qubit_map['q'][gate.target[0]])
+        gfunc(gate.angle(), qubit_map['q'][gate.target[0]])
 
     def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         if len(gate.target) > 1:
             raise OpenVQEQiskitException("multi targets need to be explicitly recompiled for Qiskit")
         if len(gate.control) == 1:
             gfunc = getattr(circuit, "c" + gate.name.lower())
-            gfunc(gate.angle, qubit_map['q'][gate.control[0]], qubit_map['q'][gate.target[0]])
+            gfunc(gate.angle(), qubit_map['q'][gate.control[0]], qubit_map['q'][gate.target[0]])
         elif len(gate.control) == 2:
             gfunc = getattr(circuit, "cc" + gate.name.lower())
-            gfunc(gate.angle, qubit_map['q'][gate.control[0]], qubit_map['q'][gate.control[1]],
+            gfunc(gate.angle(), qubit_map['q'][gate.control[0]], qubit_map['q'][gate.control[1]],
                   qubit_map['q'][gate.target[0]])
         else:
             raise OpenVQEQiskitException("More than two control gates currently not supported")

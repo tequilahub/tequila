@@ -1,8 +1,8 @@
 from abc import ABC
 from openvqe import OpenVQEException
 from openvqe import typing
-from openvqe import numpy
-from openvqe import copy
+from openvqe.circuit.variable import Variable, SympyVariable
+from openvqe import numbers, copy
 
 
 class QGateImpl:
@@ -132,9 +132,23 @@ class ParametrizedGateImpl(QGateImpl, ABC):
 
     def dagger(self):
         raise OpenVQEException("should not be called from ABC")
-        return self
 
-    def __init__(self, name, parameter, target: list, control: list = None, frozen: bool = False):
+    @property
+    def parameter(self):
+        return self._parameter
+
+    @parameter.setter
+    def parameter(self, other):
+        if isinstance(other, numbers.Number):
+            self._parameter = Variable(value=other)
+        elif isinstance(other, str):
+            self._parameter = Variable(name=other, value=0.0)
+        elif hasattr(other, "evalf"):
+            self._parameter = SympyVariable(value=other)
+        else:
+            self._parameter = other
+
+    def __init__(self, name, parameter: Variable, target: list, control: list = None, frozen: bool = False):
         super().__init__(name, target, control)
         self.parameter = parameter
         self.frozen = frozen
@@ -149,7 +163,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         """
         :return: True if the gate is parametrized
         """
-        if self.parameter is None:
+        if self._parameter is None:
             return False
         else:
             return True
@@ -165,7 +179,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", parameter=" + str(self.parameter)
+        result += ", parameter=" + str(self._parameter)
         result += ")"
         return result
 
@@ -174,7 +188,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
             return False
         if not super().__eq__(other):
             return False
-        if self.parameter != other.parameter:
+        if self._parameter != other._parameter:
             return False
         return True
 

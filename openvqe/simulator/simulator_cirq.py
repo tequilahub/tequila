@@ -2,8 +2,6 @@ from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe import BitString, BitNumbering
-from openvqe.circuit.compiler import compile_multitarget
-from openvqe.circuit.gates import MeasurementImpl
 from openvqe import typing
 import cirq
 
@@ -32,23 +30,23 @@ class BackenHandlerCirq(BackendHandler):
         circuit.append(cirq_gate)
 
     def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name)(rads=gate.angle)
+        cirq_gate = getattr(cirq, gate.name)(rads=gate.angle())
         cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
     def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name)(rads=gate.angle)
+        cirq_gate = getattr(cirq, gate.name)(rads=gate.angle())
         cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
         cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
 
     def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=gate.power)
+        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=gate.power())
         cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
     def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=gate.power)
+        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=gate.power())
         cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
         cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)

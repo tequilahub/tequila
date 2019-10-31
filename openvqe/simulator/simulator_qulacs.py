@@ -37,15 +37,15 @@ class BackenHandlerQulacs(BackendHandler):
             getattr(circuit, "add_CZ_gate")(qubit_map[gate.target[0]], qubit_map[gate.control[0]])
 
     def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], gate.angle)
+        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], gate.angle())
 
     def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         raise OpenVQEQulacsException("No controlled rotation supported")
 
     def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        if gate.power == 1:
+        if gate.power() == 1:
             return self.add_gate(gate=gate, qubit_map=qubit_map, circuit=circuit)
-        elif gate.power == 0.5:
+        elif gate.power() == 0.5:
             getattr(circuit, "add_sqrt" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]])
         else:
             raise OpenVQEQulacsException("Only sqrt gates supported as power gates")

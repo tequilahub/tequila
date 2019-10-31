@@ -191,8 +191,7 @@ class UnaryStatePrep(AnsatzBase):
             g2 = copy.deepcopy(g)
             if hasattr(g, "angle"):
                 symbol = g.angle
-                g2.angle = -angles[
-                    -symbol]  # the minus follows mahas convention since the circuits are daggered in the end
+                g2.angle = -angles[-symbol()]  # the minus follows mahas convention since the circuits are daggered in the end
             result += g2
 
         return result
