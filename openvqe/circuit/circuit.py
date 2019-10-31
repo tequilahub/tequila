@@ -156,8 +156,27 @@ class QCircuit():
         """
         for g in self.gates:
             if g.is_parametrized() and not g.is_frozen() and g.parameter.name in parameters:
-                g.parameter.value = parameters[g.parameter.name]
+                if hasattr(parameters[g.parameter.name], "value"):
+                    g.parameter.value = parameters[g.parameter.name].value
+                else:
+                    g.parameter.value = parameters[g.parameter.name]
         return self
+
+    def get_indices_for_parameter(self, name: str):
+        """
+        Lookup all the indices of gates parameterized by a paramter with this name
+        :param name: the name of the parameter
+        :return: all indices as list
+        """
+        namex=name
+        if hasattr(name, "name"):
+            namex=name
+
+        result = []
+        for i,g in enumerate(self.gates):
+            if g.is_parametrized() and not g.is_frozen() and g.parameter.name == namex:
+                result.append(i)
+        return result
 
 
     def max_qubit(self):

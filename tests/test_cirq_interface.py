@@ -118,6 +118,7 @@ def test_expectation_values():
 
     U = Ry(target=0, angle=pi / 2)
     dU = grad(U)
-    dU[0].observable = hamiltonian
-    dEx = simulator.simulate_objective(objective=dU[0])
+    for k, v in dU.items():
+        dU[k].observable = hamiltonian
+        dEx = simulator.simulate_objective(objective=dU[k])
     assert (isclose(dEx, dE))

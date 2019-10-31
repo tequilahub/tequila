@@ -1,46 +1,45 @@
 from openvqe.circuit import gates
 from openvqe.circuit import Variable
-import sympy
+from openvqe.hamiltonian import paulis
+from openvqe.simulator.simulator_qiskit import SimulatorQiskit
+from openvqe.simulator.simulator_qulacs import SimulatorQulacs
+from openvqe.objective import Objective
+from openvqe.circuit.gradient import grad
+from openvqe.optimizers import GradientDescent
 
 if __name__ == "__main__":
-    """
-    Simple String Based initialization
-    """
-    U = gates.Rx(target=0, angle="param0") + gates.Ry(target=1, control=0, angle="param1") + gates.Rz(target=0, angle="param0")
 
-    print(U)
+    optimizer = GradientDescent()
+    a = Variable(name="a", value=1.0)
+    b = Variable(name="b", value=2.0)
 
-    parameters = U.extract_parameters()
+    H = paulis.X(1)
+    U = gates.Ry(target=0, angle=a)
+    U += gates.Ry(target=1, angle=b)
+    U += gates.X(target=1, control=0)
 
-    print(parameters)
+    simulator = SimulatorQulacs()
 
-    parameters["param0"] = 2.0
-    parameters["param1"] = 4.0
+    angles = U.extract_parameters()
 
-    U.update_parameters(parameters=parameters)
+    for iter in range(100):
 
-    print(U)
+        O = Objective(unitaries=U, observable=H)
+        E = simulator.simulate_objective(objective=O)
 
-    """
-    Initialization with Variables
-    """
+        dO = grad(O)
 
-    param0 = Variable(name="param0", value=1.0)
-    param1 = Variable(name="param1", value=2.0)
+        dE = dict()
+        for k, dOi in dO.items():
+            dE[k] = simulator.simulate_objective(objective=dOi)
 
-    U = gates.Rx(target=0, angle=param0) + gates.Ry(target=1, control=0, angle=param1) + gates.Rz(target=0, angle=-param0/2)
+        print("E     =",E)
+        print("dE    =",dE)
+        print("angles=", angles)
+        angles = optimizer(angles=angles, energy=E, gradient=dE)
+        U.update_parameters(parameters=angles)
 
-    print(U)
+    optimizer.plot(plot_energies=True, plot_gradients=["a", "b"])
 
-    parameters = U.extract_parameters()
-
-    print(parameters)
-
-    parameters["param0"] = 2.0
-    parameters["param1"] = 4.0
-
-    U.update_parameters(parameters=parameters)
-
-    print(U)
 
 

@@ -42,8 +42,8 @@ class Objective:
         return True
 
     def __add__(self, other):
-        # todo comming soon
-        raise NotImplementedError("+ not implemented yet")
+        assert(self.observable == other.observable)
+        return Objective(unitaries=self.unitaries+other.unitaries, observable=self.observable)
 
     def __mul__(self, other):
         # todo comming soon

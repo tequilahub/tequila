@@ -127,7 +127,6 @@ class Variable():
 
     @enforce_number_decorator(complex)
     def __mul__(self, other):
-        # return self._return*other
         return self.with_transform(transform.Multiply(other))
 
     @enforce_number_decorator(complex)
@@ -215,7 +214,7 @@ class Variable():
     def __call__(self):
         return self.eval
 
-    def __str__(self):
+    def __repr__(self):
         return 'Variable ' + self.name + ': Value = ' + str(self._value) + ': Eval = ' + str(self.eval)
 
 

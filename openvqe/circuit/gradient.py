@@ -18,11 +18,13 @@ def grad(obj):
 
 
 def grad_unitary(unitary: QCircuit):
-    gradient = []
+    gradient = dict()
     angles = unitary.extract_parameters()
-    for i in range(len(angles)):
-        index = angles[i][0]
-        gradient.append(make_gradient_component(unitary=unitary, index=index))
+    for k,v in angles.items():
+        indices = unitary.get_indices_for_parameter(name=k)
+        gradient[k] = Objective(unitaries=[])
+        for index in indices:
+            gradient[k] += make_gradient_component(unitary=unitary, index=index)
     return gradient
 
 
@@ -30,8 +32,8 @@ def grad_objective(objective: Objective):
     if len(objective.unitaries) > 1:
         raise OpenVQEException("Gradient of Objectives with more than one unitary not supported yet")
     result = grad_unitary(unitary=objective.unitaries[0])
-    for i, r in enumerate(result):
-        result[i].observable = objective.observable
+    for k, v in result.items():
+        result[k].observable = objective.observable
     return result
 
 

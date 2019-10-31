@@ -214,7 +214,7 @@ class QubitWaveFunction:
     def compute_expectationvalue(self, operator: QubitHamiltonian) -> float:
         tmp = self.apply_qubitoperator(operator=operator)
         E = self.inner(other=tmp)
-        if numpy.isclose(E.imag, 0.0):
+        if isinstance(E, complex) and numpy.isclose(E.imag, 0.0):
             return float(E.real)
         else:
             return E
