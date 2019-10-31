@@ -86,13 +86,14 @@ class QubitWaveFunction:
     @classmethod
     def from_array(cls, arr: numpy.ndarray, keymap=None, threshold: float = 1.e-6,
                    numbering: BitNumbering = BitNumbering.MSB):
+        arr = numpy.asarray(arr)
         assert (len(arr.shape) == 1)
         state = dict()
         maxkey = len(arr) - 1
         maxbit = initialize_bitstring(integer=maxkey, numbering_in=numbering, numbering_out=cls.numbering).nbits
         for ii, v in enumerate(arr):
             i = initialize_bitstring(integer=ii, nbits=maxbit, numbering_in=numbering, numbering_out=cls.numbering)
-            if not numpy.isclose(abs(v), 0, atol=threshold):
+            if not numpy.isclose(abs(v), 0.0, atol=threshold):
                 key = i if keymap is None else keymap(i)
                 state[key] = v
         result = QubitWaveFunction(state)

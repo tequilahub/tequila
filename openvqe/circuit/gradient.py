@@ -76,43 +76,8 @@ def make_gradient_component(unitary: QCircuit, index: int):
             U2 = QCircuit.wrap_gate(neo_b)
             U2.weight = -0.5
             dg = [U1, U2]
-    elif isinstance(g, PowerGateImpl):
-        if g.is_controlled():
-            raise NotImplementedError("Gradient for controlled PowerGate not here yet")
-        else:
-            new=copy.deepcopy(g)
-            new.power-=1.0
-            U=QCircuit.wrap_gate(new)
-            U.weight=g.power
-            dg=[U]
-
-            n_pow = pi*(g.power%2)
-            target=g.target
-            phase=g.phase
-            ### does that need to be divided by two?
-            ### trying to convert gates to rotations for quadrature
-            if g.name in ['H','Hadamard']:
-                raise NotImplementedError('Hi, sorry, I do not know how to do Hadamard gradients yet.')
-                '''
-                (Ry(pi)Rz(pi)Ry(pi))^t is the decomp. not sure where to go from here
-                '''
-            else:
-                if g.name in ['X','x']:
-                    axis=0
-                elif g.name in ['Y','y']:
-                    axis=1
-                elif g.name in ['Z','z']:
-                    axis=2
-                else:
-                    raise NotImplementedError('sorry, I have no idea what this gate is and cannot build the gradient.')
-                U1 = QCircuit.wrap_gate(RotationGateImpl(axis=axis,target=target,angle=(n_pow+pi/2),phase=phase*np.exp(1j*n_pow/2)))
-                U2 = QCircuit.wrap_gate(RotationGateImpl(axis=axis,target=target,angle=(n_pow-pi/2),phase=phase*np.exp(1j*n_pow/2)))
-                U1.weight=0.5
-                U2.weight=-0.5
-                dg=[U1,U2]
-                
     else:
-        raise OpenVQEException("Automatic differentiation is implemented only for Rotational and Power Gates")
+        raise OpenVQEException("Differentiation is implemented only for Rotational Gates")
 
     # assemble
     unitaries = []
