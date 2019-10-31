@@ -6,6 +6,7 @@ from openvqe import OpenVQEException
 from openvqe import copy
 from openvqe import numpy
 
+
 def grad(obj):
     if isinstance(obj, QCircuit):
         return grad_unitary(unitary=obj)
@@ -20,7 +21,7 @@ def grad(obj):
 def grad_unitary(unitary: QCircuit):
     gradient = dict()
     angles = unitary.extract_parameters()
-    for k,v in angles.items():
+    for k, v in angles.items():
         indices = unitary.get_indices_for_parameter(name=k)
         gradient[k] = Objective(unitaries=[])
         for index in indices:
@@ -57,24 +58,23 @@ def make_gradient_component(unitary: QCircuit, index: int):
     if isinstance(g, RotationGateImpl):
         if g.is_controlled():
             angles_and_weights = [
-                ([-(g.angle) / 2 + numpy.pi / 2, g.angle / 2],.50),
-                ([-(g.angle ) / 2 - numpy.pi / 2, g.angle / 2],-.50),
-                ([-g.angle / 2, (g.angle) / 2  + numpy.pi / 2],-.50),
-                ([-g.angle / 2, (g.angle ) / 2 - numpy.pi / 2],.50)
+                ([-(g.angle) / 2 + numpy.pi / 2, g.angle / 2], .50),
+                ([-(g.angle) / 2 - numpy.pi / 2, g.angle / 2], -.50),
+                ([-g.angle / 2, (g.angle) / 2 + numpy.pi / 2], -.50),
+                ([-g.angle / 2, (g.angle) / 2 - numpy.pi / 2], .50)
             ]
 
             for i, ang_set in enumerate(angles_and_weights):
-
                 U = compile_controlled_rotation(g, angles=ang_set[0])
-                U.weight=0.5*ang_set[1]
+                U.weight = 0.5 * ang_set[1]
                 dg.append(U)
         else:
             neo_a = copy.deepcopy(g)
-            neo_a.angle = g.angle + numpy.pi/2
+            neo_a.angle = g.angle + numpy.pi / 2
             U1 = QCircuit.wrap_gate(neo_a)
             U1.weight = 0.5
             neo_b = copy.deepcopy(g)
-            neo_b.angle = g.angle - numpy.pi/2
+            neo_b.angle = g.angle - numpy.pi / 2
             U2 = QCircuit.wrap_gate(neo_b)
             U2.weight = -0.5
             dg = [U1, U2]

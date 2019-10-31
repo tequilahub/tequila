@@ -29,7 +29,7 @@ class GradientDescent:
 
         updated = dict()
         for k, v in angles.items():
-            updated[k] = v - self.stepsize * gradient[k]
+            updated[k] = v + self.stepsize * gradient[k]
 
         return updated
 

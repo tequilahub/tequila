@@ -42,7 +42,7 @@ if __name__ == "__main__":
     angles = U.extract_parameters()
     E = 100.0
     for iter in range(max_iter):
-
+        print(angles)
         # initialize an objective and compute Energy and gradient
         O = Objective(unitaries=U, observable=H)
 

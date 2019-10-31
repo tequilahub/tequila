@@ -6,6 +6,8 @@ from openvqe.circuit import QCircuit
 
 """
 todo: overwrite simulate_objective for this simulator, might be faster
+
+Qulacs uses different Rotational Gate conventions: Rx(angle) = exp(i angle/2 X) instead of exp(-i angle/2 X)
 """
 
 class OpenVQEQulacsException(OpenVQEException):
@@ -32,12 +34,12 @@ class BackenHandlerQulacs(BackendHandler):
     def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         assert (len(gate.control) == 1)
         if gate.name.upper() == "X":
-            getattr(circuit, "add_CNOT_gate")(qubit_map[gate.target[0]], qubit_map[gate.control[0]])
+            getattr(circuit, "add_CNOT_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
         if gate.name.upper() == "Z":
-            getattr(circuit, "add_CZ_gate")(qubit_map[gate.target[0]], qubit_map[gate.control[0]])
+            getattr(circuit, "add_CZ_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
 
     def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], gate.angle())
+        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], -gate.angle())
 
     def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         raise OpenVQEQulacsException("No controlled rotation supported")
