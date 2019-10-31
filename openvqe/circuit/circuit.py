@@ -137,46 +137,28 @@ class QCircuit():
         else:
             self.insert_gate(position=position, gate=gate)
 
-    def extract_parameters(self) -> list:
+    def extract_parameters(self) -> dict:
         """
-        Extract the angles from the circuit
-        :return: angles as list of tuples where each tuple contains the angle and the position of the gate in the circuit
+        Extract all parameters from the circuit
+        :return: List of all unique parameters with names as keys
         """
-        parameters = []
+        parameters = dict()
         for i, g in enumerate(self.gates):
-            if g.is_parametrized():
-                if not g.is_frozen():
-                    parameters.append((i, g.parameter))
-
+            if g.is_parametrized() and not g.is_frozen() and g.parameter.name not in parameters:
+                parameters[g.parameter.name] = g.parameter.value
         return parameters
 
-    def change_angles(self, angles: list):
+    def update_parameters(self, parameters: dict):
         """
-        Change angles in of all parametrized gates in circuit
         inplace operation
-        :param angles: list of tuples where the first entry is the position of the angle in the circuit and the second the angle itself
-        :return: circuit itself for chaining
+        :param parameters: a dict of all parameters that shall be updated (order does not matter)
+        :return: self for chaining
         """
-
-        try:
-            for a in angles:
-                position = a[0]
-                angle = a[1]
-                if not self.gates[position].is_parametrized():
-                    raise Exception("You are trying to change the angle of an unparametrized gate\ngate=" + str(
-                        self.gates[position]) + "\nangles=(" + str(a) + ")")
-                elif self.gates[position].is_frozen():
-                    raise Exception("You are trying to change the angle of a frozen gate\ngate=" + str(
-                        self.gates[position]) + "\nangles=(" + str(a) + ")")
-                else:
-                    self.gates[position].parameter = angle
-        except IndexError as error:
-            raise Exception(str(error) + "\nFailed to assign angles, you probably provided to much angles")
-        except TypeError as error:
-            raise Exception(str(
-                error) + "\nFailed to assign angles, you have to give a list of tuples holding position in circuit and angle value")
-
+        for g in self.gates:
+            if g.is_parametrized() and not g.is_frozen() and g.parameter.name in parameters:
+                g.parameter.value = parameters[g.parameter.name]
         return self
+
 
     def max_qubit(self):
         """
