@@ -1,11 +1,12 @@
 from openvqe.circuit import gates
-from openvqe.circuit import Variable
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
 from openvqe.optimizers import GradientDescent
 
 """
 A very simple example for a two qubit gradient descent optimization
+This is the string based initialization which might be more convenient but initialization with Variables
+Is way more flexible (see the original vqe_two_qubit.py)
 
 Keynotes:
 - Initialization of variables
@@ -17,6 +18,7 @@ Play around with stepsize, iterations and initial values
 - there is a stationary point at a=0 and b=0 and others
 
 See vqe_two_qubit.py for initialization using the Variable class
+which is recommended because it has more expressibility than the string based initialization here
 
 """
 
@@ -49,7 +51,7 @@ if __name__ == "__main__":
 
     # call the optimizer
     # string based initialization of parameters initalizes them to 0 (this is a stationary point in this example, so we better start from different values)
-    angles = optimizer(objective=O, initial_values={"paul": 2.0, "peter": 2.0})
+    angles = optimizer(objective=O, initial_values={"paul": 2.0, "peter": -2.0})
 
     print("final angles are:\n", angles)
 
