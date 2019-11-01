@@ -103,7 +103,7 @@ def enforce_integer(function) -> int:
     :return: int(obj)
     """
 
-    def wrapper(control, target, *args):
+    def wrapper(control, target, *args,  **kwargs):
         try:
             control = int(control)
         except ValueError as e:
@@ -114,7 +114,7 @@ def enforce_integer(function) -> int:
         except ValueError as e:
             raise OpenVQEException(
                 "Could not initialize gate: Conversion of input type for target-qubit failed\n" + str(e))
-        return function(control, target, *args)
+        return function(control, target, *args, **kwargs)
 
     return wrapper
 
@@ -155,6 +155,6 @@ def CRz(control: int, target: int, angle: float, frozen: bool = None) -> QCircui
 
 
 if __name__ == "__main__":
-    G = CRx(1, 0, 2.0)
+    G = CRx(1,0,2.0)
 
     print(G)

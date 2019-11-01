@@ -1,10 +1,12 @@
-from numpy import asarray
+from openvqe import numpy, typing
 
 """
 Preliminary structure to carry information over to backends
 Needs to be restructured and clarified but currently does the job
 """
-#todo A lot!
+
+
+# todo A lot!
 
 class Objective:
 
@@ -24,6 +26,25 @@ class Objective:
         else:
             self._unitaries = [u]
 
+    def extract_parameters(self) -> typing.Dict[str, float]:
+        """
+        :return: All parameters of the objective
+        """
+        parameters = dict()
+        for U in self.unitaries:
+            parameters = {**parameters, **U.extract_parameters()}
+        return parameters
+
+    def update_parameters(self, parameters: typing.Dict[str, float]):
+        """
+        Update parameters of all unitaries
+        :param parameters: parameters to update
+        :return: self for chaining
+        """
+        for U in self.unitaries:
+            U.update_parameters(parameters=parameters)
+        return self
+
     def __init__(self, observable=None, unitaries=None):
         self.unitaries = unitaries
 
@@ -42,8 +63,8 @@ class Objective:
         return True
 
     def __add__(self, other):
-        assert(self.observable == other.observable)
-        return Objective(unitaries=self.unitaries+other.unitaries, observable=self.observable)
+        assert (self.observable == other.observable)
+        return Objective(unitaries=self.unitaries + other.unitaries, observable=self.observable)
 
     def __mul__(self, other):
         # todo comming soon
@@ -64,10 +85,10 @@ class Objective:
         :return:
         """
         if weights is None:
-            weights = asarray([1] * len(values))
+            weights = numpy.asarray([1] * len(values))
         else:
-            weights = asarray(weights)
-        values = asarray(values)
+            weights = numpy.asarray(weights)
+        values = numpy.asarray(values)
         assert (len(weights) == len(values))
         return weights.dot(values)
 
@@ -78,7 +99,7 @@ class Objective:
         no = "no "
         if self.observable is not None:
             no = "with "
-        return "Objective("+str(nu)+" unitaries, " + str(no) + " observable"
+        return "Objective(" + str(nu) + " unitaries, " + str(no) + " observable"
 
     def __str__(self):
 

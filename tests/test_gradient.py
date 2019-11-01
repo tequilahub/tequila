@@ -1,4 +1,4 @@
-from openvqe.circuit import gates
+from openvqe.circuit import gates, Variable
 from openvqe.circuit.gradient import grad
 from openvqe.objective import Objective
 from openvqe.hamiltonian import paulis
@@ -8,8 +8,10 @@ from openvqe.simulator.simulator_qulacs import SimulatorQulacs
 from openvqe import numpy
 import pytest
 
+
 @pytest.mark.parametrize("controlled", [False, True])
-@pytest.mark.parametrize("angle", [i/1000.0*numpy.pi/2.0 for i in numpy.random.randint(0,1000,3)])
+@pytest.mark.parametrize("angle", [Variable(name="angle", value=i / 1000.0 * numpy.pi / 2.0) for i in
+                                   numpy.random.randint(0, 1000, 3)])
 def test_gradient_UY_HX(angle, controlled, silent=True):
     # case X Y
     # U = cos(angle/2) + sin(-angle/2)*i*Y
@@ -25,25 +27,27 @@ def test_gradient_UY_HX(angle, controlled, silent=True):
     H = paulis.X(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control)+gates.Ry(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, angle=angle)
     else:
         U = gates.Ry(target=qubit, angle=angle)
     O = Objective(unitaries=U, observable=H)
     E = SimulatorQiskit().measure_objective(objective=O, samples=100000)
     dO = grad(obj=O)
-    assert(len(dO)==1)
+    assert (len(dO) == 1)
     for k, v in dO.items():
         dE = SimulatorQiskit().measure_objective(objective=dO[k], samples=100000)
-    assert(numpy.isclose(E, numpy.sin(angle), atol=0.01))
-    assert (numpy.isclose(dE, numpy.cos(angle), atol=0.01))
+    assert (numpy.isclose(E, numpy.sin(angle()), atol=0.01))
+    assert (numpy.isclose(dE, numpy.cos(angle()), atol=0.01))
     if not silent:
         print("E         =", E)
-        print("sin(angle)=", numpy.sin(angle))
+        print("sin(angle)=", numpy.sin(angle()))
         print("dE        =", dE)
-        print("cos(angle)=", numpy.cos(angle))
+        print("cos(angle)=", numpy.cos(angle()))
+
 
 @pytest.mark.parametrize("controlled", [False, True])
-@pytest.mark.parametrize("angle", [i/1000.0*numpy.pi/2.0 for i in numpy.random.randint(0,1000,3)])
+@pytest.mark.parametrize("angle", [Variable(name="angle", value=i / 1000.0 * numpy.pi / 2.0) for i in
+                                   numpy.random.randint(0, 1000, 3)])
 def test_gradient_UX_HY(angle, controlled, silent=True):
     # case YX
     # U = cos(angle/2) + sin(-angle/2)*i*X
@@ -55,26 +59,28 @@ def test_gradient_UX_HY(angle, controlled, silent=True):
     H = paulis.Y(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control)+gates.Rx(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle)
     else:
         U = gates.Rx(target=qubit, angle=angle)
     O = Objective(unitaries=U, observable=H)
     E = SimulatorQiskit().measure_objective(objective=O, samples=100000)
     dO = grad(obj=O)
-    assert(len(dO)==1)
+    assert (len(dO) == 1)
     for k, v in dO.items():
         dE = SimulatorQiskit().measure_objective(objective=dO[k], samples=100000)
-    assert(numpy.isclose(E, -numpy.sin(angle), atol=0.01))
-    assert (numpy.isclose(dE, -numpy.cos(angle), atol=0.01))
+    assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.01))
+    assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.01))
     if not silent:
         print("E         =", E)
-        print("-sin(angle)=", -numpy.sin(angle))
+        print("-sin(angle)=", -numpy.sin(angle()))
         print("dE        =", dE)
-        print("-cos(angle)=", -numpy.cos(angle))
+        print("-cos(angle)=", -numpy.cos(angle()))
+
 
 @pytest.mark.parametrize("simulator", [SimulatorCirq])
 @pytest.mark.parametrize("controlled", [False, True])
-@pytest.mark.parametrize("angle", [i/1000.0*numpy.pi/2.0 for i in numpy.random.randint(0,1000,3)])
+@pytest.mark.parametrize("angle", [Variable(name="angle", value=i / 1000.0 * numpy.pi / 2.0) for i in
+                                   numpy.random.randint(0, 1000, 3)])
 def test_gradient_UY_HX_wfnsim(simulator, angle, controlled, silent=True):
     # same as before just with wavefunction simulation
 
@@ -92,28 +98,30 @@ def test_gradient_UY_HX_wfnsim(simulator, angle, controlled, silent=True):
     H = paulis.X(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control)+gates.Ry(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, angle=angle)
     else:
         U = gates.Ry(target=qubit, angle=angle)
     O = Objective(unitaries=U, observable=H)
     E = simulator().simulate_objective(objective=O)
     dO = grad(obj=O)
-    assert(len(dO)==1)
+    assert (len(dO) == 1)
     for k, v in dO.items():
         dE = simulator().simulate_objective(objective=dO[k])
-    E = numpy.float(E) # for isclose
-    dE = numpy.float(dE) # for isclose
-    assert(numpy.isclose(E, numpy.sin(angle), atol=0.0001))
-    assert (numpy.isclose(dE, numpy.cos(angle), atol=0.0001))
+    E = numpy.float(E)  # for isclose
+    dE = numpy.float(dE)  # for isclose
+    assert (numpy.isclose(E, numpy.sin(angle()), atol=0.0001))
+    assert (numpy.isclose(dE, numpy.cos(angle()), atol=0.0001))
     if not silent:
         print("E         =", E)
-        print("sin(angle)=", numpy.sin(angle))
+        print("sin(angle)=", numpy.sin(angle()))
         print("dE        =", dE)
-        print("cos(angle)=", numpy.cos(angle))
+        print("cos(angle)=", numpy.cos(angle()))
+
 
 @pytest.mark.parametrize("simulator", [SimulatorCirq, SimulatorQulacs])
 @pytest.mark.parametrize("controlled", [False, True])
-@pytest.mark.parametrize("angle", [i/1000.0*numpy.pi/2.0 for i in numpy.random.randint(0,1000,3)])
+@pytest.mark.parametrize("angle", [Variable(name="angle", value=i / 1000.0 * numpy.pi / 2.0) for i in
+                                   numpy.random.randint(0, 1000, 3)])
 def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
     # same as before just with wavefunction simulation
 
@@ -127,19 +135,19 @@ def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
     H = paulis.Y(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control)+gates.Rx(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle)
     else:
         U = gates.Rx(target=qubit, angle=angle)
     O = Objective(unitaries=U, observable=H)
     E = simulator().simulate_objective(objective=O)
     dO = grad(obj=O)
-    assert(len(dO)==1)
+    assert (len(dO) == 1)
     for k, v in dO.items():
         dE = simulator().simulate_objective(objective=dO[k])
-    assert(numpy.isclose(E, -numpy.sin(angle), atol=0.0001))
-    assert (numpy.isclose(dE, -numpy.cos(angle), atol=0.0001))
+    assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.0001))
+    assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.0001))
     if not silent:
         print("E         =", E)
-        print("-sin(angle)=", -numpy.sin(angle))
+        print("-sin(angle)=", -numpy.sin(angle()))
         print("dE        =", dE)
-        print("-cos(angle)=", -numpy.cos(angle))
+        print("-cos(angle)=", -numpy.cos(angle()))

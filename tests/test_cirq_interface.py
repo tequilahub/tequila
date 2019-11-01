@@ -12,6 +12,7 @@ from numpy import pi, random, isclose, sqrt
 from openvqe.hamiltonian import PauliString
 from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
+from openvqe.circuit import Variable
 import pytest
 
 supported_primitive_gates = [X, Y, Z, H]
@@ -116,7 +117,7 @@ def test_expectation_values():
     dE = simulator.simulate_objective(objective=O)
     assert (isclose(dE, 0.0))
 
-    U = Ry(target=0, angle=pi / 2)
+    U = Ry(target=0, angle=Variable(name="angle",value=pi / 2))
     dU = grad(U)
     for k, v in dU.items():
         dU[k].observable = hamiltonian

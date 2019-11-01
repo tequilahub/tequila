@@ -97,7 +97,6 @@ class QGateImpl:
         else:
             return self.target
 
-
     def max_qubit(self):
         """
         :return: highest qubit index used by this gate
@@ -115,6 +114,7 @@ class QGateImpl:
         if self.control != other.control:
             return False
         return True
+
 
 class MeasurementImpl(QGateImpl):
 
@@ -148,10 +148,21 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         else:
             self._parameter = other
 
-    def __init__(self, name, parameter: Variable, target: list, control: list = None, frozen: bool = False):
+    def __init__(self, name, parameter: Variable, target: list, control: list = None, frozen: bool = None):
         super().__init__(name, target, control)
+
+        # failsafe:
+        if frozen is not None and not frozen and isinstance(parameter, numbers.Number):
+            raise OpenVQEException(
+                "\nYou explicitly demanded a parametrized gate with frozen=False\n"
+                "but have not passed down a Variable object but a simple number.\n"
+                "initialize the gate with a Variable object like Variable(name=\'pick_a_name\', value=number)")
+        elif frozen is None and isinstance(parameter, numbers.Number):
+            self.frozen = True
+        else:
+            self.frozen = frozen
+
         self.parameter = parameter
-        self.frozen = frozen
 
     def is_frozen(self):
         '''
@@ -242,7 +253,7 @@ class RotationGateImpl(ParametrizedGateImpl):
         else:
             return [self, other]
 
-    def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = False):
+    def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = None):
         assert (angle is not None)
         super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control, frozen=frozen)
         self._axis = self.assign_axis(axis)
@@ -303,7 +314,7 @@ class PowerGateImpl(ParametrizedGateImpl):
         else:
             return [self, other]
 
-    def __init__(self, name, target: list, power=None, control: list = None, frozen: bool = False):
+    def __init__(self, name, target: list, power=None, control: list = None, frozen: bool = None):
         super().__init__(name=name, parameter=power, target=target, control=control, frozen=frozen)
 
     def dagger(self):

@@ -1,10 +1,10 @@
 """
 Example of a simple one Qubit VQE optimized with simple GradientDescent
+
+This does the same as vqe_one_qubit.py just performs the steps manual
+
 """
 
-from openvqe.simulator.simulator_qiskit import SimulatorQiskit
-from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe.simulator.simulator_qulacs import SimulatorQulacs
 from openvqe.circuit import gates
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
@@ -13,13 +13,19 @@ from openvqe import numpy
 from openvqe.circuit import Variable
 from openvqe.optimizers import GradientDescent #Doesn't do much, but is convenient for the plots in this example
 
+# uncomment if you want to try a different simulator (not all combinations of samples and simulators are possible)
+from openvqe.simulator.simulator_cirq import SimulatorCirq
+# from openvqe.simulator.simulator_qiskit import SimulatorQiskit
+# from openvqe.simulator.simulator_qulacs import SimulatorQulacs
+# from openvqe.simulator.simulator_pyquil import SimulatorPyquil
+
 # some variables to play around with for this example
 stepsize = 0.1
 initial_angle = 0.0
 max_iter = 100
 optimal_angle = numpy.pi / 2
 samples = 1000  # number of samples/measurements for the simulator, will have no effect if full wavefunction simulation is used
-use_full_wavefunction_simulation = True
+use_full_wavefunction_simulation = True # if true: you can use cirq, pyquil and qulacs. If false you can use qiskit and cirq
 
 if __name__ == "__main__":
 
@@ -27,8 +33,8 @@ if __name__ == "__main__":
     H = paulis.X(qubit=0)
     # initialize the initial angles
     angle = Variable(name="angle", value=initial_angle)
-    # initialize the simulator, for full wavefunction simulation use cirq or pyquil
-    simulator = SimulatorQiskit()
+
+    simulator = SimulatorCirq()
     if use_full_wavefunction_simulation:
         simulator = SimulatorCirq()
 
@@ -70,13 +76,11 @@ if __name__ == "__main__":
 
 
         # update the angle
-        angles = optimizer(angles=angles, energy=E, gradient=dE)
+        angles['angle'] = angles['angle'] - stepsize*dE['angle']
         U.update_parameters(angles)
 
     print("angle after ", max_iter, "iterations : ", angles)
     print("optimal angle : ", optimal_angle)
 
-    # plot progress
-    optimizer.plot(plot_energies=True, plot_gradients=True, filename=None)
 
 

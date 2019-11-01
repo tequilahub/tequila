@@ -76,16 +76,17 @@ if __name__ == "__main__":
         energies.append(energy)
         print("energy = ", energy)
 
-        # Gradients for UCC clearly need improvements (i.e. parameter tracking)
-        dO = grad(O)
-        # we only have one amplitude
-        gradient = 0.0
-        gradients = []
-        for dOi in dO:
-            value = SimulatorCirq().simulate_objective(objective=dOi)
-            print("component: ", value)
-            gradient += value
-            gradients.append(value)
-
-        print("gradient = ", gradient)
-        gradients.append(gradient)
+        # Variable initialization does not work yet in the Psi4 interface
+        # # Gradients for UCC clearly need improvements (i.e. parameter tracking)
+        # dO = grad(O)
+        # # we only have one amplitude
+        # gradient = 0.0
+        # gradients = []
+        # for dOi in dO:
+        #     value = SimulatorCirq().simulate_objective(objective=dOi)
+        #     print("component: ", value)
+        #     gradient += value
+        #     gradients.append(value)
+        #
+        # print("gradient = ", gradient)
+        # gradients.append(gradient)
