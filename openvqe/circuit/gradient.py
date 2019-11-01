@@ -6,6 +6,17 @@ from openvqe import OpenVQEException
 from openvqe import copy
 from openvqe import numpy
 
+def weight_chain(gate):
+    '''
+    This is actually a forward mode derivative, since we have a linear graph!
+    '''
+    value=gate.parameter._value
+    t_weight=1.0
+    for t in gate.parameter.transform:
+        t_weight*=t.grad(value)
+        value=t(value)
+
+    return t_weight
 
 def grad(obj):
     if isinstance(obj, QCircuit):
@@ -72,11 +83,11 @@ def make_gradient_component(unitary: QCircuit, index: int):
             neo_a = copy.deepcopy(g)
             neo_a.angle = g.angle + numpy.pi / 2
             U1 = QCircuit.wrap_gate(neo_a)
-            U1.weight = 0.5
+            U1.weight = 0.5*weight_chain(g)
             neo_b = copy.deepcopy(g)
             neo_b.angle = g.angle - numpy.pi / 2
             U2 = QCircuit.wrap_gate(neo_b)
-            U2.weight = -0.5
+            U2.weight = -0.5*weight_chain(g)
             dg = [U1, U2]
     else:
         raise OpenVQEException("Differentiation is implemented only for Rotational Gates")
