@@ -1,5 +1,5 @@
 from openvqe.hamiltonian import QubitHamiltonian, PauliString, paulis
-from numpy import random
+from numpy import random, kron, eye, allclose
 from openvqe import BitString
 
 
@@ -166,3 +166,19 @@ def test_dagger():
         string = make_random_pauliword(complex=False)
         assert (string.dagger() == string)
         assert ((1j * string).dagger() == -1j * string)
+
+def test_matrix_form():
+    H = -1.0 * paulis.Z(0) -1.0 * paulis.Z(1) + 0.1 * paulis.X(0)*paulis.X(1) 
+    Hm= H.tomatrix()
+    assert (Hm[0,0] == -2.0)
+    assert (Hm[0,3] == 0.10)
+    assert (Hm[1,2] == 0.10)
+
+    Hm2 = (H + paulis.Z(2)).tomatrix()
+    Hm2p = kron(Hm, eye(2, dtype=Hm2.dtype)) + kron(eye(len(Hm), dtype=Hm2.dtype), paulis.Z(0).tomatrix())
+    assert allclose(Hm2 , Hm2p)
+
+    Hm3 = (H * paulis.Z(2)).tomatrix()
+    Hm3p = kron(Hm, paulis.Z(0).tomatrix())
+    assert allclose(Hm3 , Hm3p)
+
