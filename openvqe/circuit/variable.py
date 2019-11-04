@@ -59,114 +59,114 @@ def enforce_number_decorator(*numeric_types):
 
     return decorator
 
-@total_ordering
 class Variable():
-    _instances = []
-
-    @property
-    def eval(self):
-        if hasattr(self, 'value'):
-            if hasattr(self, 'transform') and self.transform is not None:
-                val = self.value
-                for t in self.transform:
-                    val = t(val)
-                return val
-            else:
-                return self.value
-        else:
-            return None
-
     @property
     def value(self):
         return self._value
 
     @value.setter
     def value(self, value):
-        self._value = value
+        self._value=value
 
     @property
     def name(self):
-        if self._name is None:
-            return "none"
-        else:
-            return self._name
-
-    def __init__(self, value=None, name: str = None, transform=None):
-        if isinstance(value, numbers.Number):
-            self._value = value
-        else:
-            print("VALUE IS ", type(value))
-            raise Exception("value needs to be a number")
+        return self._name
+    
+    def __init__(self, value=None, name: str = ''):
+        self._value = value
         self._name = name
 
-        if hasattr(transform, '__iter__'):
-            assert all([callable(f) for f in transform])
-            self.transform = transform
-        elif transform is None:
-            self.transform = []
-        elif callable(transform):
-            self.transform = [transform]
+    def __eq__(self,other):
+        if id(self) != id(other):
+            return False
+        return True
 
-    def __neg__(self):
-        return self.with_transform(transform.Multiply(-1))
-
-    @enforce_number_decorator(complex)
-    def __sub__(self, other):
-        return self.with_transform(transform.Add(other * -1))
-
-    @enforce_number_decorator(complex)
     def __add__(self, other: float):
-        return self.with_transform(transform.Add(other))
+        return Transform(self,Add,other)
 
-    @enforce_number_decorator(complex)
     def __radd__(self, other: float):
         if other == 0:
             return self
         else:
-            return self.with_transform(transform.Add(other))
+            return Transform(self,Add,other)
 
-    @enforce_number_decorator(complex)
-    def __mul__(self, other):
-        return self.with_transform(transform.Multiply(other))
+    def __iadd__(self,other):
+        self._value+=other
+        return self
 
-    @enforce_number_decorator(complex)
-    def __pow__(self, other):
-        return self.with_transform(transform.Power(other))
+    def __sub__(self, other):
+        return Transform(self,Sub,other)
 
-    @enforce_number_decorator(complex)
-    def __div__(self, other):
-        return self.with_transform(transform.Divide(other))
-
-    @enforce_number_decorator(complex)
-    def __rdiv__(self, other):
+    def __rsub__(self,other):
         if other == 0:
-            return 0
+            return -self
         else:
-            return self.with_transform(transform.Multiply(other)).with_transform(self.Divide(self())).with_transform(
-                self.Divide(self()))
+            first=-self
+            return Transform(first,Add,other)
+
+    def __isub__(self,other):
+        self._value -= other
+        return self
+
+    def __mul__(self, other):
+         return Transform(self,Mul,other)
+
+    def __rmul__(self,other):
+        return Transform(self,Mul,other)
+
+    def __imul__(self,other):
+        self._value *= other
+        return self
+
+
+    def __neg__(self):
+        return Transform(self,Mul,-1)
+
+
+    def __div__(self, other):
+        return Transform(self,Div,other)
+
+    def __rdiv__(self, other):
+        first=Transform(self,Inverse,None)
+        return Transform(first,Mul,other)
 
     def __truediv__(self, other):
-        return self.with_transform(transform.Divide(other))
+        return Transform(self,Div,other)
+
+    def __idiv__(self,other):
+        self._value /= other
+        return self
+
+    def __pow__(self, other):
+        return Transform(self,Pow,other)
+
+    def __rpow__(self,other):
+        return Transform(other,Pow,self)
+
+    def __ipow__(self,other):
+        self._value **= other
+        return self
 
     def __getstate__(self):
         return self
 
     def __lt__(self, other):
-        if isinstance(other, numbers.Number):
-            return self.eval() < other
-        if self.eval < other.eval:
-            return False
-        return True
+        return self.value < other
 
-    def __eq__(self, other):
-        if isinstance(other, numbers.Number):
-            return self.value == other
-        if self.name != other.name:
+    def __gt__(self, other):
+        return self.value > other
+
+    def __ge__(self, other):
+        return self.value >= other
+
+    def __le__(self, other):
+        return self.value <= other
+
+    def __ne__(self, other):
+        if self.__eq__(self, other):
             return False
-        if self.eval != other.eval:
-            print("eval differs")
-            return False
-        return True
+        else:
+            return True
 
     def __copy__(self):
         cls = self.__class__
@@ -182,40 +182,219 @@ class Variable():
             setattr(result, k, copy.deepcopy(v, memo))
         return result
 
-    def with_transform(self, transform, replace=False):
+    def __call__(self):
+        return self.value
 
-        clone = Variable(name=self.name, value=self._value, transform=copy.deepcopy(self.transform))
-        if replace == True:
-            if hasattr(transform, '__iter__'):
-                assert all([callable(f) for f in transform])
-                clone.transform = transform
-            elif callable(transform):
-                clone.transform = [transform]
-            elif transform is None:
-                pass
+    def __repr__(self):
+        return self.name + ', ' + str(self._value) 
+
+class Transform():
+
+    @property
+    def variables(self):
+        vl=[]
+        if hasattr(self,'l'):
+            if type(self.l) is Variable:
+                vl.append(self.l)
+            elif type(self.l) is Transform:
+                vl.extend(self.l.variables)
             else:
-                raise OpenVQEException(
-                    'invalid object passed to transform; must be a (sequence of) callable function(s)')
+                pass
+        if hasattr(self,'r'):
+            if type(self.r) is Variable:
+                vl.append(self.r)
+            elif type(self.r) is Transform:
+                vl.extend(self.r.variables)
+            else:
+                pass
+        if len(vl) == 0:
+            print('warning: found no variables in this Transform')
+        return vl
 
+    @property
+    def eval(self):
+        if self.l is not None:
+            try:
+                lv=self.l()
+            except:
+                lv=self.l
+        if self.r is not None:
+            try:
+                rv=self.r()
+            except:
+                rv=self.r
+
+            return self.f(lv,rv)
         else:
-            if hasattr(transform, '__iter__'):
-                assert all([callable(f) for f in transform])
-                clone.transform.extend(transform)
-            elif callable(transform):
-                clone.transform.append(transform)
-            elif transform is None:
-                pass
-            else:
-                raise OpenVQEException(
-                    'invalid object passed to transform; must be a (sequence of) callable function(s)')
+            return self.f(lv)
+    
+    
 
-        return clone
+    def __init__(self,left,func,right=None):
+        self.l=left
+        self.f=func
+        self.r=right
 
     def __call__(self):
         return self.eval
 
-    def __repr__(self):
-        return 'Variable ' + self.name + ': Value = ' + str(self._value) + ': Eval = ' + str(self.eval)
+     def __eq__(self, other):
+
+        if id(self) != id(other):
+            return False
+
+        return True
 
 
+    def __add__(self, other: float):
+        return Transform(self,Add,other)
 
+    def __radd__(self, other: float):
+        if other == 0:
+            return self
+        else:
+            return Transform(self,Add,other)
+
+    def __sub__(self, other):
+        return Transform(self,Sub,other)
+
+    def __rsub__(self,other):
+        if other == 0:
+            return -self
+        else:
+            first=-self
+            return Transform(first,Add,other)
+
+    def __mul__(self, other):
+        # return self._return*other
+         return Transform(self,Mul,other)
+
+    def __rmul__(self,other):
+        if other == 0:
+            return 0
+        else:
+            return Transform(self,Mul,other)
+
+    def __neg__(self):
+        return Transform(self,Mul,-1)
+
+
+    def __div__(self, other):
+        return Transform(self,Div,other)
+
+    def __rdiv__(self, other):
+        if other == 0:
+            return 0
+        else:
+            first=Transform(self,Inverse,None)
+            return Transform(first,Mul,other)
+
+    def __truediv__(self, other):
+        return Transform(self,Div,other)
+
+
+    def __pow__(self, other):
+        return Transform(self,Pow,other)
+
+    def __rpow__(self,other):
+        return Transform(other,Pow,self)
+
+    def __getstate__(self):
+        return self
+
+    def __lt__(self, other):
+        return self.eval < other
+
+    def __gt__(self, other):
+        return self.eval > other
+
+    def __ge__(self, other):
+        return self.eval >= other
+
+    def __le__(self, other):
+        return self.eval <= other
+
+    def __ne__(self, other):
+        if self.__eq__(self, other):
+            return False
+        else:
+            return True
+
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, copy.deepcopy(v, memo))
+        return result
+
+    def __repr__
+
+def Add(l,r):
+    if type(l) in [Variable, Transform]:
+        lv=l()
+    else:
+        lv=l
+    if type(r) in [Variable, Transform]:
+        rv=r()
+    else:
+        rv=r
+    return lv+rv
+
+def Sub(l,r):
+    if type(l) in [Variable, Transform]:
+        lv=l()
+    else:
+        lv=l
+    if type(r) in [Variable, Transform]:
+        rv=r()
+    else:
+        rv=r
+    return lv -rv
+
+def Mul(l,r):
+    if type(l) in [Variable, Transform]:
+        lv=l()
+    else:
+        lv=l
+    if type(r) in [Variable, Transform]:
+        rv=r()
+    else:
+        rv=r
+    return lv*rv
+
+def Div(l,r):
+    if type(l) in [Variable, Transform]:
+        lv=l()
+    else:
+        lv=l
+    if type(r) in [Variable, Transform]:
+        rv=r()
+    else:
+        rv=r
+    return lv-rv
+
+def Inverse(l):
+    if type(l) in [Variable, Transform]:
+        lv=l()
+    else:
+        lv=l
+
+    return 1.0/l
+
+def Pow(l,r):
+    if type(l) in [Variable, Transform]:
+        lv=l()
+    else:
+        lv=l
+    if type(r) in [Variable, Transform]:
+        rv=r()
+    else:
+        rv=r
+    return l**r

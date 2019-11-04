@@ -2,7 +2,7 @@ from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
 from openvqe import BitNumbering
 from openvqe import copy
-
+from opnvqe.circuit.variable import Variable,Transform as Variable,Transform
 
 class QCircuit():
 
@@ -15,6 +15,22 @@ class QCircuit():
                 primitives.append(g)
         return QCircuit(gates=primitives)
 
+
+    @property
+    def parameters(self):
+        parameters=[]
+        for g in self.gates:
+            if g.is_parametrized() and not g.is_frozen():
+                if type(g.parameter) is Transform:
+                    gpars=g.parameter.variables
+                    for p in gpars:
+                        if p not in parameters:
+                            parameters.append(p)
+                elif type(g.parameter) is Variable:
+                    parameters.append(g.parameter)
+
+        return parameters
+    
     @property
     def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
@@ -99,11 +115,17 @@ class QCircuit():
         """
         Extract all parameters from the circuit
         :return: List of all unique parameters with names as keys
+        TO DO: move away from the dictionary paradigm to the vector paradigm.
         """
         parameters = dict()
         for i, g in enumerate(self.gates):
-            if g.is_parametrized() and not g.is_frozen() and g.parameter.name not in parameters:
-                parameters[g.parameter.name] = g.parameter.value
+            if g.is_parametrized() and not g.is_frozen():
+                if type(g.parameter) is Transform:
+                    pars=g.parameter.variables
+                    for par in pars:
+                        parameters[par.name] = par.value
+                elif type(g.parameter )is Variable:
+                    parameters[g.parameter.name] = g.parameter.value
         return parameters
 
     def update_parameters(self, parameters: dict):
@@ -111,13 +133,11 @@ class QCircuit():
         inplace operation
         :param parameters: a dict of all parameters that shall be updated (order does not matter)
         :return: self for chaining
+        TODO: get rid of this
         """
-        for g in self.gates:
-            if g.is_parametrized() and not g.is_frozen() and g.parameter.name in parameters:
-                if hasattr(parameters[g.parameter.name], "value"):
-                    g.parameter.value = parameters[g.parameter.name].value
-                else:
-                    g.parameter.value = parameters[g.parameter.name]
+        for p in self.parameters:
+            if p.name in parameters:
+                p.value=parameters[p.name]
         return self
 
     def get_indices_for_parameter(self, name: str):

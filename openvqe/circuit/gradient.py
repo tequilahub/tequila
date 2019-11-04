@@ -32,11 +32,11 @@ def grad(obj):
 def grad_unitary(unitary: QCircuit):
     gradient = dict()
     angles = unitary.extract_parameters()
-    for k, v in angles.items():
+    for k, v in angles.items()
         indices = unitary.get_indices_for_parameter(name=k)
         gradient[k] = Objective(unitaries=[])
-        for index in indices:
-            gradient[k] += make_gradient_component(unitary=unitary, index=index)
+        for index in indices: 
+           gradient[k] += make_gradient_component(unitary=unitary, index=index)
     return gradient
 
 
@@ -49,13 +49,13 @@ def grad_objective(objective: Objective):
     return result
 
 
-def make_gradient_component(unitary: QCircuit, index: int):
+def make_gradient_component(unitary: QCircuit, var):
     """
     :param unitary: the unitary
     :param index: position of gate in circuit (should be changed)
     :return: dU/dpi
     """
-
+    
     pre = QCircuit()
     post = QCircuit()
     for i, g in enumerate(unitary.gates):
@@ -97,4 +97,4 @@ def make_gradient_component(unitary: QCircuit, index: int):
     for U in dg:
         unitaries.append(pre * U * post)
 
-    return Objective(unitaries=unitaries)
+    return Objective(unitaries=unitaries,observable=unitary.observable)
