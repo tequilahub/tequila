@@ -1,7 +1,6 @@
 from openfermion import QubitOperator
 from openvqe.tools import number_to_string
 from openvqe import numbers, typing
-from openvqe.hamiltonian.__paulis_data import pauli_matrices
 from functools import reduce
 from openvqe import numpy
 
@@ -92,6 +91,17 @@ class PauliString:
     def __eq__(self, other):
         return self._data == other._data
 
+"""
+Explicit matrix forms for the Pauli operators for the tomatrix method
+"""
+import numpy as np
+
+pauli_matrices = {
+    'I': numpy.array([[1, 0], [0, 1]], dtype=numpy.complex),
+    'Z': numpy.array([[1, 0], [0, -1]], dtype=numpy.complex),
+    'X': numpy.array([[0, 1], [1, 0]], dtype=numpy.complex),
+    'Y': numpy.array([[0, -1j], [1j, 0]], dtype=numpy.complex)
+}
 
 class QubitHamiltonian:
     """
