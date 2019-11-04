@@ -1,4 +1,5 @@
-from openvqe.hamiltonian import HamiltonianPsi4, ParametersQC
+from openvqe.hamiltonian import HamiltonianQC
+from openvqe.quantumchemistry.qc_base import ParametersQC
 from openvqe.ansatz import AnsatzUCC
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.objective import Objective
@@ -19,8 +20,8 @@ system_has_psi4 = which("psi4") is not None
 @pytest.mark.parametrize("trafo", ["JW", "BK"])
 def test_hamiltonian(geom: str, basis: str, trafo: str):
     parameters_qc = ParametersQC(geometry=geom, basis_set=basis, transformation=trafo, outfile="asd")
-    hqc = HamiltonianPsi4(parameters_qc)
-    Hmol = hqc.get_fermionic_hamiltonian()
+    hqc = HamiltonianQC(parameters_qc)
+    Hmol = hqc.make_fermionic_hamiltonian()
     H = hqc.hamiltonian
     if trafo == 'JW':
         assert(parameters_qc.jordan_wigner())
@@ -37,7 +38,7 @@ def test_ucc():
         parameters_qc.transformation = "JW"
         parameters_qc.psi4.run_ccsd = True
         parameters_qc.filename = "psi4"
-        hqc = HamiltonianPsi4(parameters_qc)
+        hqc = HamiltonianQC(parameters_qc)
 
         filename = parameters_qc.filename
 

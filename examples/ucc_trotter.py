@@ -3,7 +3,8 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from openvqe.hamiltonian import HamiltonianPsi4, ParametersQC
+from openvqe.hamiltonian import HamiltonianQC
+from openvqe.quantumchemistry.qc_base import ParametersQC
 from openvqe.ansatz import AnsatzUCC
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.objective import Objective
@@ -25,8 +26,8 @@ if __name__ == "__main__":
 
     # Initialize the Hamiltonian
     # This will call OpenFermion as well as Psi4
-    H = HamiltonianPsi4(parameters_qc)
-    H.initialize_hamiltonian()
+    H = HamiltonianQC(parameters_qc)
+    H.make_hamiltonian()
 
     # print out the Hamiltonian
     print("The Hamiltonian is:\n", H)
