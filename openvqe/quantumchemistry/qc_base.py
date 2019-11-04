@@ -2,19 +2,31 @@ from dataclasses import dataclass
 from openvqe import OpenVQEParameters, typing
 from openvqe.hamiltonian import HamiltonianQC
 
+from openfermion import MolecularData
+
+
 @dataclass
 class ParametersQC(OpenVQEParameters):
     """
     Specialization of ParametersHamiltonian
     Parameters for the HamiltonianQC class
     """
-    basis_set: str = ''     # Quantum chemistry basis set
-    geometry: str = ''      # geometry of the underlying molecule (units: Angstrom!), this can be a filename leading to an .xyz file or the geometry given as a string
+    basis_set: str = ''  # Quantum chemistry basis set
+    geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!), this can be a filename leading to an .xyz file or the geometry given as a string
     description: str = ''
     multiplicity: int = 1
     charge: int = 0
     closed_shell: bool = True
     filename: str = "molecule"
+
+    @property
+    def molecular_data_param(self) -> dict:
+        """
+        :return: Give back all parameters for the MolecularData format from openfermion as dictionary
+        """
+        return {'basis': self.basis_set, 'geometry': self.get_geometry(), 'description': self.description,
+                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.filename
+                }
 
     @staticmethod
     def format_element_name(string):
@@ -79,7 +91,7 @@ class ParametersQC(OpenVQEParameters):
         with open(filename, 'r') as file:
             content = file.readlines()
             natoms = int(content[0])
-            comment = str(content[1])
+            comment = str(content[1]).strip('\n')
             coord = ''
             for i in range(natoms):
                 coord += content[2 + i]
@@ -90,9 +102,26 @@ class QuantumChemistryBase:
 
     def __init__(self, parameters: ParametersQC):
         self.parameters = parameters
+        self.molecule = self.make_molecule()
+
+    @property
+    def n_orbitals(self) -> int:
+        return self.molecule.n_orbitals
+
+    @property
+    def n_electrons(self) -> int:
+        return self.molecule.n_electrons
+
+    @property
+    def n_alpha_electrons(self) -> int:
+        return self.molecule.get_n_alpha_electrons()
+
+    @property
+    def n_beta_electrons(self) -> int:
+        return self.molecule.get_n_beta_electrons()
 
     def get_hamiltonian(self, transformation: typing.Union[str, typing.Callable] = None) -> HamiltonianQC:
-        return HamiltonianQC(molecule=self.make_molecule(), transformation=transformation)
+        return HamiltonianQC(molecule=self.molecule, transformation=transformation)
 
     def make_molecule(self):
         raise Exception("BaseClass Method")
@@ -102,4 +131,3 @@ class QuantumChemistryBase:
 
     def compute_ccsd_amplitudes(self):
         raise Exception("BaseClass Method")
-

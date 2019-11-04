@@ -4,17 +4,22 @@ Quantum Chemistry Hamiltonians for OpenVQE
 Derived class of HamiltonianBase: Overwrites the get_hamiltonian function
 """
 from openfermion import MolecularData, FermionOperator
-from openfermion.transforms import jordan_wigner, get_fermion_operator
+from openfermion.transforms import jordan_wigner, get_fermion_operator, bravyi_kitaev
 from openvqe.hamiltonian import QubitHamiltonian
-from openvqe import BitString
+from openvqe import BitString, typing
 
 
 class HamiltonianQC(QubitHamiltonian):
 
-    def __init__(self, molecule: MolecularData, transformation = None):
+    def __init__(self, molecule: MolecularData, transformation: typing.Union[str, typing.Callable] = None):
         self.molecule = molecule
         if transformation is None:
+            # default
             self.transformation = jordan_wigner
+        elif hasattr(transformation, "lower") and transformation.lower() in ["jordan-wigner", "jw", "j-w", "jordanwigner"]:
+            self.transformation = jordan_wigner
+        elif hasattr(transformation, "lower") and transformation.lower() in ["bravyi-kitaev", "bk", "b-k", "bravyikitaev"]:
+            self.transformation = bravyi_kitaev
         else:
             assert(callable(transformation))
             self.transformation = transformation
