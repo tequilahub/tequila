@@ -1,8 +1,11 @@
 from dataclasses import dataclass
-from openvqe import OpenVQEParameters, typing
-from openvqe.hamiltonian import HamiltonianQC
+from openvqe import OpenVQEParameters, typing, numpy, OpenVQEException, BitString
+from openvqe.hamiltonian import HamiltonianQC, QubitHamiltonian
+from openvqe.circuit import QCircuit
+from openvqe.ansatz import prepare_product_state
+from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
 
-from openfermion import MolecularData
+import openfermion
 
 
 @dataclass
@@ -98,11 +101,134 @@ class ParametersQC(OpenVQEParameters):
             return coord, comment
 
 
+class ManyBodyAmplitudes:
+    """
+    Class which stores ManyBodyAmplitudes
+    """
+
+    def __init__(self, one_body: numpy.ndarray = None, two_body: numpy.ndarray = None):
+        self.one_body = one_body
+        self.two_body = two_body
+
+    @classmethod
+    def init_from_closed_shell(cls, one_body: numpy.ndarray = None, two_body: numpy.ndarray = None):
+        """
+        TODO make efficient
+        virt and occ are the spatial orbitals
+        :param one_body: ndarray with dimensions virt, occ
+        :param two_body: ndarray with dimensions virt, occ, virt, occ
+        :return: correctly initialized ManyBodyAmplitudes
+        """
+
+        def alpha(ii: int) -> int:
+            return 2 * ii
+
+        def beta(ii: int) -> int:
+            return 2 * ii + 1
+
+        full_one_body = None
+        if one_body is not None:
+            assert (len(one_body.shape) == 2)
+            nocc = one_body.shape[1]
+            nvirt = one_body.shape[0]
+            norb = nocc + nvirt
+            full_one_body = 0.0 * numpy.ndarray(shape=[norb * 2, norb * 2])
+            for i in range(nocc):
+                for a in range(nvirt):
+                    full_one_body[2 * a, 2 * i] = one_body[a, i]
+                    full_one_body[2 * a + 1, 2 * i + 1] = one_body[a, i]
+
+        full_two_body = None
+        if two_body is not None:
+            assert (len(two_body.shape) == 4)
+            nocc = two_body.shape[1]
+            nvirt = two_body.shape[0]
+            norb = nocc + nvirt
+            full_two_body = 0.0 * numpy.ndarray(shape=[norb * 2, norb * 2, norb * 2, norb * 2])
+            for i in range(nocc):
+                for a in range(nvirt):
+                    for j in range(nocc):
+                        for b in range(nvirt):
+                            full_two_body[alpha(a + nocc), alpha(i), beta(b + nocc), beta(j)] = two_body[a, i, b, j]
+                            full_two_body[beta(a + nocc), beta(i), alpha(b + nocc), alpha(j)] = two_body[a, i, b, j]
+
+        return ManyBodyAmplitudes(one_body=full_one_body, two_body=full_two_body)
+
+    def __str__(self):
+        rep = type(self).__name__
+        rep += "\n One-Body-Terms:\n"
+        rep += str(self.one_body)
+        rep += "\n Two-Body-Terms:\n"
+        rep += str(self.two_body)
+        return rep
+
+    def __call__(self, i, a, j=None, b=None, *args, **kwargs):
+        """
+        :param i: in absolute numbers (as spin-orbital index)
+        :param a: in absolute numbers (as spin-orbital index)
+        :param j: in absolute numbers (as spin-orbital index)
+        :param b: in absolute numbers (as spin-orbital index)
+        :return: amplitude t_aijb
+        """
+        if j is None:
+            assert (b is None)
+            return self.one_body[a, i]
+        else:
+            return self.two_body[a, i, b, j]
+
+    def __getitem__(self, item: tuple):
+        return self.__call__(*item)
+
+    def __setitem__(self, key: tuple, value):
+        if len(key) == 2:
+            self.one_body[key[0], key[1]] = value
+        else:
+            self.two_body[key[0], key[1], key[2], key[3]] = value
+        return self
+
+    def __rmul__(self, other):
+        if self.one_body is None:
+            if self.two_body is None:
+                return ManyBodyAmplitudes(one_body=None, two_body=None)
+            else:
+                return ManyBodyAmplitudes(one_body=None, two_body=other * self.two_body)
+        elif self.two_body is None:
+            return ManyBodyAmplitudes(one_body=other * self.one_body, two_body=None)
+        else:
+            return ManyBodyAmplitudes(one_body=other * self.one_body, two_body=other * self.two_body)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __len__(self):
+        return len(self.one_body) + len(self.two_body)
+
+
 class QuantumChemistryBase:
 
-    def __init__(self, parameters: ParametersQC):
+    def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None):
         self.parameters = parameters
+        if transformation is None:
+            self.transformation = openfermion.jordan_wigner
+        elif hasattr(transformation, "lower") and transformation.lower() in ["jordan-wigner", "jw", "j-w", "jordanwigner"]:
+            self.transformation = openfermion.jordan_wigner
+        elif hasattr(transformation, "lower") and transformation.lower() in ["bravyi-kitaev", "bk", "b-k", "bravyikitaev"]:
+            self.transformation = openfermion.bravyi_kitaev
+        else:
+            assert(callable(transformation))
+            self.transformation = transformation
         self.molecule = self.make_molecule()
+
+    def reference_state(self) -> BitString:
+        """
+        :return: Hartree-Fock Reference as binary-number
+        """
+        n_qubits = 2 * self.n_orbitals
+        l = [0]*n_qubits
+        for i in range(self.n_electrons):
+            l[i] = 1
+
+        return BitString.from_array(array=l, nbits=n_qubits)
 
     @property
     def n_orbitals(self) -> int:
@@ -120,14 +246,98 @@ class QuantumChemistryBase:
     def n_beta_electrons(self) -> int:
         return self.molecule.get_n_beta_electrons()
 
-    def get_hamiltonian(self, transformation: typing.Union[str, typing.Callable] = None) -> HamiltonianQC:
-        return HamiltonianQC(molecule=self.molecule, transformation=transformation)
+    def make_hamiltonian(self) -> HamiltonianQC:
+        return HamiltonianQC(molecule=self.molecule, transformation=self.transformation)
 
-    def make_molecule(self):
+    def make_molecule(self) -> openfermion.MolecularData:
         raise Exception("BaseClass Method")
 
-    def compute_mp2_amplitudes(self):
+    def compute_ccsd_amplitudes(self) -> ManyBodyAmplitudes:
         raise Exception("BaseClass Method")
 
-    def compute_ccsd_amplitudes(self):
-        raise Exception("BaseClass Method")
+    def make_uccsd_ansatz(self, decomposition: typing.Union[DecompositionFirstOrderTrotter, typing.Callable],
+                          initial_amplitudes: typing.Union[str, ManyBodyAmplitudes] = "mp2",
+                          include_reference_ansatz = True) -> QCircuit:
+
+        """
+        :param decomposition: A function which is able to decompose an unitary generated by a hermitian operator
+        over exp(-i t/2 H)
+        :param initial_amplitudes: initial amplitudes given as ManyBodyAmplitudes structure or as string
+        where 'mp2' 'ccsd' or 'zero' are possible initializations
+        :param include_reference_ansatz: Also do the reference ansatz (prepare closed-shell Hartree-Fock)
+        :return: Parametrized QCircuit
+        """
+
+        Uref = QCircuit()
+        if include_reference_ansatz:
+            Uref = prepare_product_state(self.reference_state())
+
+        amplitudes = initial_amplitudes
+        if hasattr(initial_amplitudes, "lower"):
+            if initial_amplitudes.lower() == "mp2":
+                amplitudes = self.compute_mp2_amplitudes()
+            elif initial_amplitudes.lower() == "ccsd":
+                amplitudes = self.compute_ccsd_amplitudes()
+            elif initial_amplitudes.lower() == "zero":
+                amplitudes = self.initialize_zero_amplitudes()
+            else:
+                raise OpenVQEException("Don't know how to initialize \'{}\' amplitudes".format(initial_amplitudes))
+
+        # factor 2 counters the -1/2 convention in rotational gates
+        # 1.0j makes the anti-hermitian cluster operator hermitian
+        # another factor 1.0j will be added which counters the minus sign in the -1/2 convention
+        generator = 1.0j * QubitHamiltonian(hamiltonian=self.__make_cluster_operator(amplitudes=2.0 * amplitudes))
+        return Uref + decomposition(generators=[generator])
+
+    def __make_cluster_operator(self, amplitudes: ManyBodyAmplitudes) -> openfermion.QubitOperator:
+        """
+        Creates the clusteroperator
+        :param amplitudes: CCSD amplitudes
+        :return: UCCSD Cluster Operator as openfermion.QubitOperator
+        """
+
+        singles = amplitudes.one_body
+        if singles is None:
+            singles = numpy.ndarray([self.n_orbitals*2]*2)
+
+        op = openfermion.utils.uccsd_generator(
+            single_amplitudes=singles,
+            double_amplitudes=amplitudes.two_body
+        )
+
+        # @todo opernfermion has some problems with bravyi_kitaev and interactionoperators
+        return self.transformation(op)
+
+    def initialize_zero_amplitudes(self, one_body=True, two_body=True) -> ManyBodyAmplitudes:
+        singles = None
+        if one_body:
+            singles = numpy.ndarray([self.n_orbitals*2]*2)
+        doubles = None
+        if two_body:
+            doubles = numpy.ndarray([self.n_orbitals*2]*4)
+
+        return ManyBodyAmplitudes(one_body=singles, two_body=doubles)
+
+    def compute_mp2_amplitudes(self) -> ManyBodyAmplitudes:
+        """
+        Compute closed-shell mp2 amplitudes (open-shell comming at some point)
+
+        t(a,i,b,j) = 0.25 * g(a,i,b,j)/(e(i) + e(j) -a(i) - b(j) )
+
+        :return:
+        """
+        assert self.parameters.closed_shell
+        g = self.molecule.two_body_integrals
+        fij = self.molecule.orbital_energies
+        nocc = self.n_alpha_electrons
+        ei = fij[:nocc]
+        ai = fij[nocc:]
+        abgij = g[nocc:, nocc:, :nocc, :nocc]
+        amplitudes = abgij * 1.0 / (
+                ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1,
+                                                                                                         1))
+        E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
+                                                                                optimize='optimize')
+        self.molecule.mp2_energy = E + self.molecule.hf_energy
+        return ManyBodyAmplitudes.init_from_closed_shell(
+            two_body=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'))

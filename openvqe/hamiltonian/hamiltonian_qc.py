@@ -14,7 +14,6 @@ class HamiltonianQC(QubitHamiltonian):
     def __init__(self, molecule: MolecularData, transformation: typing.Union[str, typing.Callable] = None):
         self.molecule = molecule
         if transformation is None:
-            # default
             self.transformation = jordan_wigner
         elif hasattr(transformation, "lower") and transformation.lower() in ["jordan-wigner", "jw", "j-w", "jordanwigner"]:
             self.transformation = jordan_wigner

@@ -20,7 +20,7 @@ import openfermion
 @pytest.mark.parametrize("trafo", ["JW", "BK"])
 def test_hamiltonian(geom: str, basis: str, trafo: str):
     parameters_qc = ParametersQC(geometry=geom, basis_set=basis, outfile="asd")
-    hqc = qc.QuantumChemistryPsi4(parameters=parameters_qc).get_hamiltonian(transformation=trafo)
+    hqc = qc.QuantumChemistryPsi4(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
     Hmol = hqc.make_fermionic_hamiltonian()
     if trafo == 'JW':
         assert(hqc.transformation == openfermion.jordan_wigner)
@@ -35,7 +35,7 @@ def test_ucc():
         # check examples for comments
         parameters_qc = ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
         psi4_interface = qc.QuantumChemistryPsi4(parameters=parameters_qc)
-        hqc= psi4_interface.get_hamiltonian()
+        hqc= psi4_interface.make_hamiltonian()
 
         # called twice on purpose (see if reloading works)
         amplitudes = psi4_interface.compute_ccsd_amplitudes()
