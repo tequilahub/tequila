@@ -14,6 +14,51 @@ class ManyBodyAmplitudes:
         self.one_body = one_body
         self.two_body = two_body
 
+    @classmethod
+    def init_from_closed_shell(cls, one_body: numpy.ndarray = None, two_body: numpy.ndarray = None):
+        """
+        TODO make efficient
+        virt and occ are the spatial orbitals
+        :param one_body: ndarray with dimensions virt, occ
+        :param two_body: ndarray with dimensions virt, occ, virt, occ
+        :return: correctly initialized ManyBodyAmplitudes
+        """
+        full_one_body = None
+        if one_body is not None:
+            assert (len(one_body.shape) == 2)
+            nocc = one_body.shape[1]
+            nvirt = one_body.shape[0]
+            norb = nocc + nvirt
+            full_one_body = 0.0 * numpy.ndarray(shape=[norb * 2, norb * 2])
+            for i in range(nocc):
+                for a in range(nvirt):
+                    full_one_body[2 * a, 2 * i] = one_body[a, i]
+                    full_one_body[2 * a + 1, 2 * i + 1] = one_body[a, i]
+
+        full_two_body = None
+        if two_body is not None:
+            assert (len(two_body.shape) == 4)
+            nocc = two_body.shape[1]
+            nvirt = two_body.shape[0]
+            norb = nocc + nvirt
+            full_two_body = 0.0 * numpy.ndarray(shape=[norb * 2, norb * 2, norb * 2, norb * 2])
+            for i in range(nocc):
+                for a in range(nvirt):
+                    for j in range(nocc):
+                        for b in range(nvirt):
+                            ia = 2 * i
+                            ib = 2 * i + 1
+                            ja = 2 * j
+                            jb = 2 * j + 1
+                            aa = 2 * (a + nocc)
+                            ab = 2 * (a + nocc) + 1
+                            ba = 2 * (b + nocc)
+                            bb = 2 * (b + nocc) + 1
+                            full_two_body[aa, ia, bb, jb] = two_body[a, i, b, j]
+                            full_two_body[ab, ib, ba, ja] = two_body[a, i, b, j]
+
+        return ManyBodyAmplitudes(one_body=full_one_body, two_body=full_two_body)
+
     def __str__(self):
         rep = type(self).__name__
         rep += "\n One-Body-Terms:\n"
