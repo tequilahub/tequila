@@ -24,16 +24,6 @@ class HamiltonianQC(QubitHamiltonian):
             self.transformation = transformation
         super().__init__(hamiltonian=self.make_hamiltonian())
 
-    def reference_state(self) -> BitString:
-        """
-        :return: Hartree-Fock Reference as binary-number
-        """
-        l = [0]*self.n_qubits
-        for i in range(self.n_electrons):
-            l[i] = 1
-
-        return BitString.from_array(array=l, nbits=self.n_qubits)
-
     @property
     def hamiltonian(self):
         """
