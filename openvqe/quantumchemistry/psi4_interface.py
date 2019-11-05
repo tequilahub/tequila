@@ -27,14 +27,13 @@ class ParametersPsi4:
 
 
 class QuantumChemistryPsi4(QuantumChemistryBase):
-
-    def __init__(self, parameters: ParametersQC, parameters_psi4: ParametersPsi4 = None):
+    def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None, parameters_psi4: ParametersPsi4 = None):
         if parameters_psi4 is None:
             self.parameters_psi4 = ParametersPsi4()
         else:
             self.parameters_psi4 = parameters_psi4
 
-        super().__init__(parameters=parameters)
+        super().__init__(parameters=parameters, transformation=transformation)
 
     def make_molecule(self) -> MolecularData:
         """

@@ -45,20 +45,22 @@ def do_test_h2_hamiltonian(qc_interface):
 
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
-def test_ucc_psi4():
+@pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])
+def test_ucc_psi4(trafo):
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123)
+    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo)
 
 
 @pytest.mark.skipif(condition=not qc.has_pyscf, reason="you don't have pyscf")
-def test_ucc_pyscf():
+@pytest.mark.parametrize("trafo", ["JW", "BK"])
+def test_ucc_pyscf(trafo):
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_ucc(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1368354639104123)
+    do_test_ucc(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo)
 
 
-def do_test_ucc(qc_interface, parameters, result):
+def do_test_ucc(qc_interface, parameters, result, trafo):
     # check examples for comments
-    psi4_interface = qc_interface(parameters=parameters)
+    psi4_interface = qc_interface(parameters=parameters, transformation=trafo)
 
     hqc = psi4_interface.make_hamiltonian()
 
