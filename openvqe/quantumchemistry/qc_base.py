@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from openvqe import OpenVQEParameters, typing, numpy, OpenVQEException, BitString
+from openvqe import OpenVQEParameters, typing, numpy, OpenVQEException, BitString, numbers
 from openvqe.hamiltonian import HamiltonianQC, QubitHamiltonian
 from openvqe.circuit import QCircuit
 from openvqe.ansatz import prepare_product_state
@@ -99,6 +99,77 @@ class ParametersQC(OpenVQEParameters):
             for i in range(natoms):
                 coord += content[2 + i]
             return coord, comment
+
+
+class Amplitudes:
+    """
+    Many Body amplitudes
+    stored as dictionaries with keys corresponding to indices of the operators
+    key = (i,a,j,b) --> a^\dagger_a a^\dagger_b a_j a_i - h.c.
+    """
+
+    def __init__(self, closed_shell: bool = None, data: typing.Dict[typing.Tuple, numbers.Number] = None):
+        self.data = dict()
+        if data is not None:
+            if closed_shell:
+                self.data = self.transform_closed_shell_indices(data)
+            else:
+                self.data = data
+
+    def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[typing.Tuple, numbers.Number]:
+        transformed = dict()
+        for key, value in data.items():
+            if len(key) == 2:
+                transformed[(2 * key[0], 2 * key[1])] = value
+                transformed[(2 * key[0] + 1, 2 * key[1] + 1)] = value
+            if len(key) == 4:
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value
+                transformed[(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])] = value
+            else:
+                raise Exception("???")
+            return transformed
+
+    @classmethod
+    def from_ndarray(cls, array: numpy.ndarray, closed_shell=None, index_offset: typing.Tuple[int, int, int, int] = None):
+        """
+        :param array: The array to convert
+        :param closed_shell: amplitudes are given as closed-shell array (i.e alpha-alpha, beta-beta)
+        :param index_offsets: indices will start from 0 but are supposed to start from index_offset
+        :return:
+        """
+        assert all([x == array.shape[0] for x in array.shape])  # all indices should run over ALL orbitals
+        data = dict(numpy.ndenumerate(array))
+        if index_offset is not None:
+            offset_data = dict()
+            for key, value in data.items():
+                keyx = tuple(a + b for a, b in zip(key, index_offset))
+                offset_data[keyx] = value
+            data = offset_data
+        return cls(data=data, closed_shell=closed_shell)
+
+    def __rmul__(self, other):
+        data = dict()
+        for k, v in self.data.items():
+            data[k] = v * other
+        return Amplitudes(data=data)
+
+    def __neg__(self):
+        data = dict()
+        for k, v in self.data.items():
+            data[k] = -v
+        return Amplitudes(data=data)
+
+    def items(self):
+        return self.data.items()
+
+    def keys(self):
+        return self.data.keys()
+
+    def values(self):
+        return self.data.values()
+
+    def __len__(self):
+        return self.data.__len__()
 
 
 class ManyBodyAmplitudes:
@@ -302,11 +373,30 @@ class QuantumChemistryBase:
             else:
                 raise OpenVQEException("Don't know how to initialize \'{}\' amplitudes".format(initial_amplitudes))
 
+        generators = []
+        for key, t in amplitudes.items():
+            print("key=", key, " t=", t)
+            if len(key) == 2:
+                pass
+            elif len(key) == 4:
+                i = key[0]
+                j = key[1]
+                k = key[2]
+                l = key[3]
+                op = openfermion.FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), 1.0j*t)
+                op += openfermion.FermionOperator(((l, 1), (k, 0), (j, 1), (i, 0)), -1.0j*t)
+                generators.append(QubitHamiltonian(hamiltonian=self.transformation(op)))
+
+            else:
+                raise Exception("Expected index for one or two body term. Got {} instead".format(k))
+
+        print("generators=\n", generators)
+
         # factor 2 counters the -1/2 convention in rotational gates
         # 1.0j makes the anti-hermitian cluster operator hermitian
         # another factor 1.0j will be added which counters the minus sign in the -1/2 convention
-        generator = 1.0j * QubitHamiltonian(hamiltonian=self.__make_cluster_operator(amplitudes=2.0 * amplitudes))
-        return Uref + decomposition(generators=[generator])
+        # generator = 1.0j * QubitHamiltonian(hamiltonian=self.__make_cluster_operator(amplitudes=2.0 * amplitudes))
+        return Uref + decomposition(generators=generators)
 
     def __make_cluster_operator(self, amplitudes: ManyBodyAmplitudes) -> openfermion.QubitOperator:
         """
@@ -339,7 +429,7 @@ class QuantumChemistryBase:
 
         return ManyBodyAmplitudes(one_body=singles, two_body=doubles)
 
-    def compute_mp2_amplitudes(self) -> ManyBodyAmplitudes:
+    def compute_mp2_amplitudes(self) -> Amplitudes:
         """
         Compute closed-shell mp2 amplitudes (open-shell comming at some point)
 
@@ -360,5 +450,4 @@ class QuantumChemistryBase:
         E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
                                                                                 optimize='optimize')
         self.molecule.mp2_energy = E + self.molecule.hf_energy
-        return ManyBodyAmplitudes.init_from_closed_shell(
-            two_body=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'))
+        return Amplitudes.from_ndarray(array=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'), closed_shell=True, index_offset=(nocc,0,nocc,0))

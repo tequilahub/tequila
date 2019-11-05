@@ -25,14 +25,14 @@ if __name__ == "__main__":
     ac = gates.X(0)+gates.Ry(target=1, control=0, angle=pi / 2)
 
     # we need to add the measurements, here we measure both qubits
-    ac += gates.Measurement(target=[0,1], name="a") #naming is possible but is not supported by every backend
+    ac += gates.Measurement(target=[0,1,2,3], name="a") #naming is possible but is not supported by every backend
 
     # choose a backend
     # 'symbolic' can only simulate wavefunctions, counts are not supported here. Could be implemented quickly
     # 'pyquil' has currently no support for individual measurements ... on the todo list
     simulator = initialize_simulator(simulator_type='qiskit') # choose between 'cirq', 'pyquil', 'qiskit'
 
-    simulator_results = simulator.run(abstract_circuit=ac, samples=100)
+    simulator_results = simulator.run(abstract_circuit=ac, samples=10000)
     counts = simulator_results.counts
 
     print("circuit:\n", simulator_results.circuit, "\n")

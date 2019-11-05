@@ -78,10 +78,15 @@ def do_test_ucc(qc_interface, parameters, result, trafo):
     assert (numpy.isclose(energy, result))
 
 
+@pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
+def test_mp2_psi4():
+    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
+    do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.130004497596370)
+
 @pytest.mark.skipif(condition=not qc.has_pyscf, reason="you don't have pyscf")
 def test_mp2_pyscf():
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.130004497596370)
+    do_test_mp2(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.130004497596370)
 
 
 def do_test_mp2(qc_interface, parameters, result):
@@ -94,10 +99,11 @@ def do_test_mp2(qc_interface, parameters, result):
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
 
     trotter = DecompositionFirstOrderTrotter(steps=1, threshold=0.0)
-    U = psi4_interface.make_uccsd_ansatz(decomposition=trotter, initial_amplitudes="ccsd",
+    U = psi4_interface.make_uccsd_ansatz(decomposition=trotter, initial_amplitudes="mp2",
                                          include_reference_ansatz=True)
     H = psi4_interface.make_hamiltonian()
     O = Objective(observable=H, unitaries=U)
     Simulator = pick_simulator(samples=None)
+
     energy = Simulator().simulate_objective(objective=O)
     assert (numpy.isclose(energy, result))
