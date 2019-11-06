@@ -29,7 +29,6 @@ def minimize(objective: Objective,
     :param method_bounds: See scipy documentation for the method you picked
     :param method_constraints: See scipy documentation for the method you picked
     :param return_all: return the whole scipy OptimizeResult object
-    :param minimize: minimize if True, else maximize
     :return: tuple(final value of the Objective, optimized parameters, scipy OptimizeResult object or None)
     """
 
@@ -71,14 +70,6 @@ def minimize(objective: Objective,
                                       bounds=method_bounds,
                                       constraints=method_constraints,
                                       options=method_options)
-    else:
-        res = scipy.optimize.maximize(E, x0, jac=dE,
-                                      args=(Es,),
-                                      method=method, tol=tol,
-                                      bounds=method_bounds,
-                                      constraints=method_constraints,
-                                      options=method_options,
-                                      sign=-1)
 
     # Format output
     res.parameters = params[:]  # add the ordered parameter list to res
