@@ -20,6 +20,11 @@ Thanks Cyrille
 samples = None      # number of samples for each run, None means full wavefunction simulation
 simulator = None    # pick the simulator, None means it is automatically picked. Does not need to be initialized
 
+# Sympy specific variables which you can set in 'minimize'
+method = 'BFGS'
+tol = 1.e-3
+# see the minimize function signature for more
+
 if __name__ == "__main__":
     # initialize Variables with initial values
     a = Variable(name="a", value=4.0)
@@ -38,7 +43,7 @@ if __name__ == "__main__":
     O = Objective(unitaries=U, observable=H)
 
     # Optimize
-    E, angles, res = minimize(O, return_all=True, simulator=simulator, samples=samples)
+    E, angles, res = minimize(O, return_all=True, simulator=simulator, samples=samples, method=method)
 
     print("final angles are:\n", angles)
     print("final energy is:\n", E)
