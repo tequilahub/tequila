@@ -6,6 +6,7 @@ from openvqe.optimizers import minimize
 
 """
 A simple example for a two qubit optimization using scipy.optimize
+Thanks Cyrille
 """
 
 # uncomment if you want to use a specific simulator
