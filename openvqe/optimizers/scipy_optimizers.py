@@ -72,7 +72,7 @@ def minimize(objective: Objective,
                                       constraints=method_constraints,
                                       options=method_options)
     else:
-        res = scipy.optimize.minimize(E, x0, jac=dE,
+        res = scipy.optimize.maximize(E, x0, jac=dE,
                                       args=(Es,),
                                       method=method, tol=tol,
                                       bounds=method_bounds,
@@ -82,13 +82,13 @@ def minimize(objective: Objective,
 
     # Format output
     res.parameters = params[:]  # add the ordered parameter list to res
-    res.Ovals = Es[:]  # Add values of O
+    res.evals = Es[:]  # function evaluations
     angles_final = dict((params[i], res.x[i]) for i in range(len(params)))
 
     if return_all:
         return res.fun, angles_final, res
     else:
-        return res.fun, angles_final, None
+        return res.fun, angles_final
 
 
 def wrap_energy_function(objective: Objective, simulator_eval, params) -> typing.Callable:
@@ -98,14 +98,14 @@ def wrap_energy_function(objective: Objective, simulator_eval, params) -> typing
     """
     N = len(params)
 
-    def E(p, cache):
+    def E_function(p, cache=None):
         objective.update_parameters(dict((params[i], p[i])
                                          for i in range(N)))
         E = simulator_eval(objective)
         cache += [E]
         return E
 
-    return E
+    return E_function
 
 
 def wrap_energy_gradient_function(objective: Objective, simulator_eval, params) -> typing.Callable:
@@ -116,7 +116,7 @@ def wrap_energy_gradient_function(objective: Objective, simulator_eval, params) 
     N = len(params)
     dO = grad(objective, params)
 
-    def dE(p, cache=None):
+    def dE_function(p, cache=None):
         dE_vec = np.zeros(N)
         for i in range(N):
             dO[params[i]].update_parameters(dict((params[i], p[i])
@@ -124,4 +124,4 @@ def wrap_energy_gradient_function(objective: Objective, simulator_eval, params) 
             dE_vec[i] = simulator_eval(dO[params[i]])
         return dE_vec
 
-    return dE
+    return dE_function

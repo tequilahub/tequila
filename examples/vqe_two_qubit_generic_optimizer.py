@@ -49,8 +49,8 @@ if __name__ == "__main__":
     print("final energy is:\n", E)
     print("total number of evaluations of O:\n", res.nfev)
 
-    # plot (can't plot gradients since it's not that straight forward in sympy)
-    plt.plot(res.Ovals, label="E", color='b', marker='o', linestyle='--')
+    # plot (can't plot gradients since it's not that straight forward in scipy)
+    plt.plot(res.evals, label="E", color='b', marker='o', linestyle='--')
     plt.show()
 
 
