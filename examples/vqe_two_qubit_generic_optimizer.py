@@ -2,7 +2,8 @@ from openvqe.circuit import gates
 from openvqe.circuit import Variable
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
-from openvqe.optimizers import minimize
+from openvqe.optimizers.scipy_optimizers import minimize
+from matplotlib import pyplot as plt
 
 """
 A simple example for a two qubit optimization using scipy.optimize
@@ -37,11 +38,15 @@ if __name__ == "__main__":
     O = Objective(unitaries=U, observable=H)
 
     # Optimize
-    E, angles, res = minimize(O, return_all=True)
+    E, angles, res = minimize(O, return_all=True, simulator=simulator, samples=samples)
 
     print("final angles are:\n", angles)
     print("final energy is:\n", E)
     print("total number of evaluations of O:\n", res.nfev)
+
+    # plot (can't plot gradients since it's not that straight forward in sympy)
+    plt.plot(res.Ovals, label="E", color='b', marker='o', linestyle='--')
+    plt.show()
 
 
 
