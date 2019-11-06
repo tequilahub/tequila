@@ -18,32 +18,33 @@ def weight_chain(gate):
 
     return t_weight
 
-def grad(obj):
+def grad(obj, variables=None):
     if isinstance(obj, QCircuit):
-        return grad_unitary(unitary=obj)
+        return grad_unitary(unitary=obj, variables=variables)
     elif isinstance(obj, Objective):
-        return grad_objective(objective=obj)
+        return grad_objective(objective=obj, variables=variables)
     elif isinstance(obj, ParametrizedGateImpl):
-        return grad_unitary(QCircuit.wrap_gate(gate=obj))
+        return grad_unitary(QCircuit.wrap_gate(gate=obj), variables=variables)
     else:
         raise OpenVQEException("Gradient not implemented for other types than QCircuit or Objective")
 
-
-def grad_unitary(unitary: QCircuit):
+def grad_unitary(unitary: QCircuit, variables=None):
     gradient = dict()
     angles = unitary.extract_parameters()
     for k, v in angles.items():
-        indices = unitary.get_indices_for_parameter(name=k)
-        gradient[k] = Objective(unitaries=[])
-        for index in indices:
-            gradient[k] += make_gradient_component(unitary=unitary, index=index)
+        if (variables is None) or (k in variables):
+            indices = unitary.get_indices_for_parameter(name=k)
+            gradient[k] = Objective(unitaries=[])
+            for index in indices:
+                gradient[k] += make_gradient_component(unitary=unitary, index=index)
+
     return gradient
 
 
-def grad_objective(objective: Objective):
+def grad_objective(objective: Objective, variables=None):
     if len(objective.unitaries) > 1:
         raise OpenVQEException("Gradient of Objectives with more than one unitary not supported yet")
-    result = grad_unitary(unitary=objective.unitaries[0])
+    result = grad_unitary(unitary=objective.unitaries[0], variables=variables)
     for k, v in result.items():
         result[k].observable = objective.observable
     return result
