@@ -3,14 +3,12 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from openvqe.hamiltonian import HamiltonianQC
-from openvqe.quantumchemistry.qc_base import ParametersQC
 from openvqe.simulator import pick_simulator
 from openvqe.objective import Objective
-from openvqe.circuit.gradient import grad
 from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
-from openvqe.ansatz import prepare_product_state
 from openvqe.optimizers import scipy_optimizers, GradientDescent
+
+from matplotlib import pyplot as plt
 
 # you need psi4 to be installed for this example
 import openvqe.quantumchemistry as qc
@@ -49,8 +47,7 @@ if __name__ == "__main__":
     print("Energy = ", E)
 
     # optimize with the scipy interface
-    #E, angles, res = scipy_optimizers.minimize(O, return_all=True, simulator=simulator, samples=samples)
-    optimizer = GradientDescent(samples=samples, simulator=simulator, stepsize=0.1, maxiter=10, minimize=True)
+
 
     # overwrite the initial amplitudes to be zero
     initial_amplitudes = qc.Amplitudes(data={(2, 0, 3, 1): 0.0, (3, 1, 2, 0): 0.0 })
@@ -58,13 +55,17 @@ if __name__ == "__main__":
     for k, v in initial_amplitudes.items():
         # this sucks and should be more convenient
         init[str(k)] = v
+    #E, angles, res = scipy_optimizers.minimize(O, return_all=True, simulator=simulator, samples=samples, initial_values=init)
+    optimizer = GradientDescent(samples=samples, simulator=simulator, stepsize=0.1, maxiter=10, minimize=True)
     angles = optimizer(objective=O, initial_values=init)  # take the current values of the circuit as the initial ones, alternativ use initial_values={"a": 2.0, "b": 2.0}
+    E = optimizer.energies[-1]
 
     print("final angles are:\n", angles)
-    print("final energy = ", optimizer.energies[-1])
+    print("final energy = ", E)
 
     # plot results
-    optimizer.plot(plot_energies=True, plot_gradients=None)  # plot only a specific gradient with plot_gradients=["a"]
-    # plot results
-    optimizer.plot(plot_energies=False, plot_gradients=True)  # plot only a specific gradient with plot_gradients=["a"]
+    optimizer.plot(plot_energies=True, plot_gradients=None)
+    optimizer.plot(plot_energies=False, plot_gradients=True)  # plot only a specific gradient with plot_gradients=["key"]
 
+    #plt.plot(res.evals)
+    #plt.show()

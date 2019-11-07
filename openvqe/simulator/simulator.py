@@ -1,4 +1,4 @@
-from openvqe import OpenVQEModule, OpenVQEException, BitNumbering
+from openvqe import OpenVQEModule, OpenVQEException, BitNumbering, numpy, numbers
 from openvqe.circuit.circuit import QCircuit
 from openvqe.keymap import KeyMapSubregisterToRegister
 from openvqe.qubit_wavefunction import QubitWaveFunction
@@ -191,12 +191,18 @@ class Simulator(OpenVQEModule):
             final_E += weight * E
             if return_simulation_data:
                 data.append(tmp)
+
+        # in principle complex weights are allowed, but it probably will never occur
+        # however, for now here is the type conversion to not confuse optimizers
+        if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
+            final_E = float(final_E.real)
+
         if return_simulation_data:
             return final_E, data
         else:
             return final_E
 
-    def simulate_objective(self, objective: Objective, return_simulation_data: bool = False) -> float:
+    def simulate_objective(self, objective: Objective, return_simulation_data: bool = False) -> numbers.Real:
         final_E = 0.0
         data = []
         H = objective.observable
@@ -208,10 +214,15 @@ class Simulator(OpenVQEModule):
             keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
             simresult = self.simulate_wavefunction(abstract_circuit=U)
             wfn = simresult.wavefunction.apply_keymap(keymap=keymap)
-
             final_E += U.weight * wfn.compute_expectationvalue(operator=H)
             if return_simulation_data:
                 data.append(simresult)
+
+        # in principle complex weights are allowed, but it probably will never occur
+        # however, for now here is the type conversion to not confuse optimizers
+        if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
+            final_E = float(final_E.real)
+
         if return_simulation_data:
             return final_E, data
         else:

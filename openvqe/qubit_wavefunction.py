@@ -1,7 +1,7 @@
 import copy
 import typing
 
-from openvqe import numpy
+from openvqe import numpy, numbers
 from openvqe import BitNumbering, BitString, initialize_bitstring, OpenVQEException
 from openvqe.hamiltonian import QubitHamiltonian, PauliString
 from openvqe.keymap import KeyMapLSB2MSB, KeyMapMSB2LSB
@@ -211,10 +211,10 @@ class QubitWaveFunction:
         self = 1.0 / numpy.sqrt(norm2) * self
         return self
 
-    def compute_expectationvalue(self, operator: QubitHamiltonian) -> float:
+    def compute_expectationvalue(self, operator: QubitHamiltonian) -> numbers.Real:
         tmp = self.apply_qubitoperator(operator=operator)
         E = self.inner(other=tmp)
-        if isinstance(E, complex) and numpy.isclose(E.imag, 0.0):
+        if hasattr(E, "imag") and numpy.isclose(E.imag, 0.0, atol=1.e-6):
             return float(E.real)
         else:
             return E

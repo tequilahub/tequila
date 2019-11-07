@@ -12,6 +12,10 @@ class GradientDescent(Optimizer):
     def energies(self):
         return self._energies
 
+    @property
+    def gradients(self):
+        return self._gradients
+
     def __init__(self, stepsize=0.1, maxiter=100, samples=None, simulator=None, save_energies=True,
                  save_gradients=True, minimize=True):
         self.stepsize = stepsize
@@ -73,6 +77,7 @@ class GradientDescent(Optimizer):
 
         for iter in range(self.maxiter):
 
+            print("Energy")
             if self.samples is None:
                 E = simulator.simulate_objective(objective=objective)
             else:
@@ -86,8 +91,8 @@ class GradientDescent(Optimizer):
                     dE[k] = simulator.simulate_objective(objective=dOi)
                 else:
                     dE[k] = simulator.measure_objective(objective=dOi, samples=self.samples)
-
             angles = self.update_parameters(parameters=angles, energy=E, gradient=dE)
+
             objective.update_parameters(parameters=angles)
 
         return angles

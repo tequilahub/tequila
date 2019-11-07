@@ -104,6 +104,7 @@ def wrap_energy_gradient_function(objective: Objective, simulator_eval, params) 
     Helper Function for minimize/maximize
     Generates the vector function \nabla E(theta_1, theta_2 ...).
     """
+
     N = len(params)
     dO = grad(objective, params)
 
