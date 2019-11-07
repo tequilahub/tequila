@@ -2,7 +2,7 @@ from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
 from openvqe import BitNumbering
 from openvqe import copy
-from opnvqe.circuit.variable import Variable,Transform as Variable,Transform
+from openvqe.circuit.variable import Variable,Transform as Variable,Transform
 
 class QCircuit():
 
@@ -21,14 +21,13 @@ class QCircuit():
         parameters=[]
         for g in self.gates:
             if g.is_parametrized() and not g.is_frozen():
-                if type(g.parameter) is Transform:
+                if hasattr(g.parameter,'f'):
                     gpars=g.parameter.variables
                     for p in gpars:
                         if p not in parameters:
                             parameters.append(p)
-                elif type(g.parameter) is Variable:
+                elif hasattr(g.parameter,'_name') and hasattr(g.parameter,'_value'):
                     parameters.append(g.parameter)
-
         return parameters
     
     @property
@@ -67,7 +66,8 @@ class QCircuit():
     def weight(self, value):
         self._weight = value
 
-    def __init__(self, weight=1.0, gates=None):
+
+    def __init__(self, gates=None,weight=1.0):
         self._n_qubits = None
         if gates is None:
             self.gates = []
@@ -81,6 +81,20 @@ class QCircuit():
         :return: True if the circuit is just a single gate
         """
         return len(self.gates)
+
+    def replace_gate(self,position,gates,inplace=False):
+        if hasattr(gates,'__iter__'):
+            gs=gates
+        else:
+            gs=[gates]
+
+        new=self.gates[:position]
+        new.extend(gs)
+        new.extend(self.gates[(position+1):])
+        if inplace is False:
+            return QCircuit(gates=new,weight=self.weight)
+        elif inplace is True:
+            self.gates=new
 
     def __getitem__(self, item):
         """
@@ -136,7 +150,7 @@ class QCircuit():
         TODO: get rid of this
         """
         for p in self.parameters:
-            if p.name in parameters:
+            if p.name in parameters.keys():
                 p.value=parameters[p.name]
         return self
 

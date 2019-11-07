@@ -20,7 +20,7 @@ class Objective:
     @unitaries.setter
     def unitaries(self, u):
         if u is None:
-            self.unitaries = u
+            self._unitaries = u
         elif hasattr(u, "__iter__") or hasattr(u, "__get_item__"):
             self._unitaries = u
         else:

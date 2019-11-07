@@ -1,9 +1,9 @@
 from openvqe import OpenVQEException
-from openvqe.circuit import transform
 from functools import total_ordering
 from openvqe import copy
 from openvqe import numbers
-
+from inspect import signature
+from openvqe import numpy as np
 
 class SympyVariable:
 
@@ -72,76 +72,85 @@ class Variable():
     def name(self):
         return self._name
     
+
+
     def __init__(self, value=None, name: str = ''):
         self._value = value
         self._name = name
 
+    def has_var(self,x):
+        if type(x) is Variable:
+            return self == x
+        elif type(x) is str:
+            return self._name == x
+        else:
+            raise TypeError('Unsupported type')
+
     def __eq__(self,other):
-        if id(self) != id(other):
-            return False
-        return True
+        if type(self)==type(other):
+            self.name ==other.name and self.value==other.value
+            return True
+        return False
 
     def __add__(self, other: float):
-        return Transform(self,Add,other)
+        return Transform(Add,[self,other])
 
     def __radd__(self, other: float):
         if other == 0:
             return self
         else:
-            return Transform(self,Add,other)
+            return Transform(Add,[other,self])
+
+    def __sub__(self, other):
+        return Transform(Sub,[self,other])
+
+    def __rsub__(self,other):
+            return Transform(Sub,[other,self])
+
+    def __mul__(self, other):
+        # return self._return*other
+         return Transform(Mul,[self,other])
+
+    def __rmul__(self,other):
+
+        return Transform(Sub,[other,self])
+
+    def __neg__(self):
+        return Transform(Mul,[self,-1])
+
+
+    def __div__(self, other):
+        return Transform(Div,[self,other])
+
+    def __rdiv__(self, other):
+        return Transform(Div,[other,self])
+
+    def __truediv__(self, other):
+        return Transform(Div,[self,other])
+
+
+    def __pow__(self, other):
+        return Transform(Pow,[self,other])
+
+    def __rpow__(self,other):
+        return Transform(Pow,[other,self])
 
     def __iadd__(self,other):
         self._value+=other
         return self
 
-    def __sub__(self, other):
-        return Transform(self,Sub,other)
-
-    def __rsub__(self,other):
-        if other == 0:
-            return -self
-        else:
-            first=-self
-            return Transform(first,Add,other)
-
     def __isub__(self,other):
         self._value -= other
         return self
-
-    def __mul__(self, other):
-         return Transform(self,Mul,other)
-
-    def __rmul__(self,other):
-        return Transform(self,Mul,other)
 
     def __imul__(self,other):
         self._value *= other
         return self
 
 
-    def __neg__(self):
-        return Transform(self,Mul,-1)
-
-
-    def __div__(self, other):
-        return Transform(self,Div,other)
-
-    def __rdiv__(self, other):
-        first=Transform(self,Inverse,None)
-        return Transform(first,Mul,other)
-
-    def __truediv__(self, other):
-        return Transform(self,Div,other)
-
     def __idiv__(self,other):
         self._value /= other
         return self
-
-    def __pow__(self, other):
-        return Transform(self,Pow,other)
-
-    def __rpow__(self,other):
-        return Transform(other,Pow,self)
 
     def __ipow__(self,other):
         self._value **= other
@@ -163,7 +172,7 @@ class Variable():
         return self.value <= other
 
     def __ne__(self, other):
-        if self.__eq__(self, other):
+        if self.__eq__(other):
             return False
         else:
             return True
@@ -193,111 +202,101 @@ class Transform():
     @property
     def variables(self):
         vl=[]
-        if hasattr(self,'l'):
-            if type(self.l) is Variable:
-                vl.append(self.l)
-            elif type(self.l) is Transform:
-                vl.extend(self.l.variables)
+        for obj in self.args:
+            if type(obj) is Variable:
+                if obj not in vl:
+                    vl.append(obj)
+            elif type(obj) is Transform:
+                for v in obj.variables:
+                    if v not in vl:
+                        vl.append(v)
             else:
                 pass
-        if hasattr(self,'r'):
-            if type(self.r) is Variable:
-                vl.append(self.r)
-            elif type(self.r) is Transform:
-                vl.extend(self.r.variables)
-            else:
-                pass
-        if len(vl) == 0:
-            print('warning: found no variables in this Transform')
         return vl
 
     @property
     def eval(self):
-        if self.l is not None:
-            try:
-                lv=self.l()
-            except:
-                lv=self.l
-        if self.r is not None:
-            try:
-                rv=self.r()
-            except:
-                rv=self.r
+        new_a=[]
+        for arg in self.args:
+            if hasattr(arg,'__call__'):
+                new_a.append(arg())
+            else:
+                new_a.append(arg)
 
-            return self.f(lv,rv)
-        else:
-            return self.f(lv)
+        return self.f(*new_a)
+
+
     
     
 
-    def __init__(self,left,func,right=None):
-        self.l=left
+    def __init__(self,func,args):
+        assert callable(func)
+        assert len(args) == len(signature(func).parameters)
+        self.args=args
         self.f=func
-        self.r=right
+
+
+
+
+    def has_var(self,x):
+        if x in self.variables:
+            return True
+        else:
+            return False
 
     def __call__(self):
         return self.eval
 
-     def __eq__(self, other):
+    def __eq__(self, other):
+        if type(self) == type(other):
+            if self.eval==other.eval:
+                return True
 
-        if id(self) != id(other):
-            return False
-
-        return True
+        return False
 
 
     def __add__(self, other: float):
-        return Transform(self,Add,other)
+        return Transform(Add,[self,other])
 
     def __radd__(self, other: float):
         if other == 0:
             return self
         else:
-            return Transform(self,Add,other)
+            return Transform(Add,[other,self])
 
     def __sub__(self, other):
-        return Transform(self,Sub,other)
+        return Transform(Sub,[self,other])
 
     def __rsub__(self,other):
-        if other == 0:
-            return -self
-        else:
-            first=-self
-            return Transform(first,Add,other)
+            return Transform(Sub,[other,self])
 
     def __mul__(self, other):
         # return self._return*other
-         return Transform(self,Mul,other)
+         return Transform(Mul,[self,other])
 
     def __rmul__(self,other):
-        if other == 0:
-            return 0
-        else:
-            return Transform(self,Mul,other)
+
+        return Transform(Sub,[other,self])
 
     def __neg__(self):
-        return Transform(self,Mul,-1)
+        return Transform(Mul,[self,-1])
 
 
     def __div__(self, other):
-        return Transform(self,Div,other)
+        return Transform(Div,[self,other])
 
     def __rdiv__(self, other):
-        if other == 0:
-            return 0
-        else:
-            first=Transform(self,Inverse,None)
-            return Transform(first,Mul,other)
+        return Transform(Div,[other,self])
 
     def __truediv__(self, other):
-        return Transform(self,Div,other)
+        return Transform(Div,[self,other])
 
 
     def __pow__(self, other):
-        return Transform(self,Pow,other)
+        return Transform(Pow,[self,other])
 
     def __rpow__(self,other):
-        return Transform(other,Pow,self)
+        return Transform(Pow,[other,self])
 
     def __getstate__(self):
         return self
@@ -315,7 +314,7 @@ class Transform():
         return self.eval <= other
 
     def __ne__(self, other):
-        if self.__eq__(self, other):
+        if self.__eq__(other):
             return False
         else:
             return True
@@ -334,7 +333,14 @@ class Transform():
             setattr(result, k, copy.deepcopy(v, memo))
         return result
 
-    def __repr__
+
+
+def has_variable(obj,var):
+    assert type(var) is Variable
+    if hasattr(obj,'has_var'):
+        return obj.has_var(var)
+    else:
+        return False
 
 def Add(l,r):
     if type(l) in [Variable, Transform]:
@@ -378,7 +384,7 @@ def Div(l,r):
         rv=r()
     else:
         rv=r
-    return lv-rv
+    return lv/rv
 
 def Inverse(l):
     if type(l) in [Variable, Transform]:
