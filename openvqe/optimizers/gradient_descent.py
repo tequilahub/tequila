@@ -8,6 +8,10 @@ from openvqe import typing
 # A very simple handwritten GradientDescent optimizer for demonstration purposes
 class GradientDescent(Optimizer):
 
+    @property
+    def energies(self):
+        return self._energies
+
     def __init__(self, stepsize=0.1, maxiter=100, samples=None, simulator=None, save_energies=True,
                  save_gradients=True, minimize=True):
         self.stepsize = stepsize
@@ -49,7 +53,7 @@ class GradientDescent(Optimizer):
                 plot_gradients = [plot_gradients]
             for name in plot_gradients:
                 grad = [i[name] for i in self._gradients]
-                plt.plot(grad, label="dE_" + name, marker='o', linestyle='--')
+                plt.plot(grad, label="dE_" + str(name), marker='o', linestyle='--')
         plt.legend()
         if filename is None:
             plt.show()
