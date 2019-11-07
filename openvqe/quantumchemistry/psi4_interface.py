@@ -3,7 +3,7 @@ from openvqe import dataclass
 from openfermion import MolecularData
 from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
 from openfermionpsi4 import run_psi4
-from openvqe.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, ManyBodyAmplitudes, DecompositionFirstOrderTrotter
+from openvqe.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, Amplitudes
 
 import psi4
 
@@ -27,7 +27,8 @@ class ParametersPsi4:
 
 
 class QuantumChemistryPsi4(QuantumChemistryBase):
-    def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None, parameters_psi4: ParametersPsi4 = None):
+    def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None,
+                 parameters_psi4: ParametersPsi4 = None):
         if parameters_psi4 is None:
             self.parameters_psi4 = ParametersPsi4()
         else:
@@ -76,11 +77,13 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         return self.parse_ccsd_amplitudes(filename)
 
-    def parse_ccsd_amplitudes(self, filename: str) -> ManyBodyAmplitudes:
+    def parse_ccsd_amplitudes(self, filename: str) -> Amplitudes:
 
         singles, doubles = parse_psi4_ccsd_amplitudes(number_orbitals=self.n_orbitals * 2,
                                                       n_alpha_electrons=self.n_electrons // 2,
                                                       n_beta_electrons=self.n_electrons // 2,
                                                       psi_filename=filename)
 
-        return ManyBodyAmplitudes(one_body=singles, two_body=doubles)
+        tmp1 = Amplitudes.from_ndarray(array=singles, closed_shell=False)
+        tmp2 = Amplitudes.from_ndarray(array=doubles, closed_shell=False)
+        return Amplitudes(data={**tmp1.data, **tmp2.data}, closed_shell=False)

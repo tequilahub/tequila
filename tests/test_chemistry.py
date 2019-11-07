@@ -80,13 +80,17 @@ def do_test_ucc(qc_interface, parameters, result, trafo):
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 def test_mp2_psi4():
+    # the number might be wrong ... its definetely not what psi4 produces
+    # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.130004497596370)
+    do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1279946983462537)
 
 @pytest.mark.skipif(condition=not qc.has_pyscf, reason="you don't have pyscf")
 def test_mp2_pyscf():
+    # the number might be wrong ... its definetely not what psi4 produces
+    # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_mp2(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.130004497596370)
+    do_test_mp2(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1279946983462537)
 
 
 def do_test_mp2(qc_interface, parameters, result):

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from openvqe import OpenVQEParameters, typing, numpy, OpenVQEException, BitString, numbers
 from openvqe.hamiltonian import HamiltonianQC, QubitHamiltonian
-from openvqe.circuit import QCircuit
+from openvqe.circuit import QCircuit, Variable
 from openvqe.ansatz import prepare_product_state
 from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
 
@@ -105,7 +105,9 @@ class Amplitudes:
     """
     Many Body amplitudes
     stored as dictionaries with keys corresponding to indices of the operators
-    key = (i,a,j,b) --> a^\dagger_a a^\dagger_b a_j a_i - h.c.
+    key = (i,a,j,b) --> a^\dagger_a a_i a^\dagger_b a_j - h.c.
+    accordingly
+    key = (i,a) --> a^\dagger_a a_i
     """
 
     def __init__(self, closed_shell: bool = None, data: typing.Dict[typing.Tuple, numbers.Number] = None):
@@ -115,6 +117,12 @@ class Amplitudes:
                 self.data = self.transform_closed_shell_indices(data)
             else:
                 self.data = data
+
+    def __repr__(self):
+        return self.data.__repr__()
+
+    def __str__(self):
+        return self.data.__str__()
 
     def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[typing.Tuple, numbers.Number]:
         transformed = dict()
@@ -171,108 +179,6 @@ class Amplitudes:
     def __len__(self):
         return self.data.__len__()
 
-
-class ManyBodyAmplitudes:
-    """
-    Class which stores ManyBodyAmplitudes
-    """
-
-    def __init__(self, one_body: numpy.ndarray = None, two_body: numpy.ndarray = None):
-        self.one_body = one_body
-        self.two_body = two_body
-
-    @classmethod
-    def init_from_closed_shell(cls, one_body: numpy.ndarray = None, two_body: numpy.ndarray = None):
-        """
-        TODO make efficient
-        virt and occ are the spatial orbitals
-        :param one_body: ndarray with dimensions virt, occ
-        :param two_body: ndarray with dimensions virt, occ, virt, occ
-        :return: correctly initialized ManyBodyAmplitudes
-        """
-
-        def alpha(ii: int) -> int:
-            return 2 * ii
-
-        def beta(ii: int) -> int:
-            return 2 * ii + 1
-
-        full_one_body = None
-        if one_body is not None:
-            assert (len(one_body.shape) == 2)
-            nocc = one_body.shape[1]
-            nvirt = one_body.shape[0]
-            norb = nocc + nvirt
-            full_one_body = 0.0 * numpy.ndarray(shape=[norb * 2, norb * 2])
-            for i in range(nocc):
-                for a in range(nvirt):
-                    full_one_body[2 * a, 2 * i] = one_body[a, i]
-                    full_one_body[2 * a + 1, 2 * i + 1] = one_body[a, i]
-
-        full_two_body = None
-        if two_body is not None:
-            assert (len(two_body.shape) == 4)
-            nocc = two_body.shape[1]
-            nvirt = two_body.shape[0]
-            norb = nocc + nvirt
-            full_two_body = 0.0 * numpy.ndarray(shape=[norb * 2, norb * 2, norb * 2, norb * 2])
-            for i in range(nocc):
-                for a in range(nvirt):
-                    for j in range(nocc):
-                        for b in range(nvirt):
-                            full_two_body[alpha(a + nocc), alpha(i), beta(b + nocc), beta(j)] = two_body[a, i, b, j]
-                            full_two_body[beta(a + nocc), beta(i), alpha(b + nocc), alpha(j)] = two_body[a, i, b, j]
-
-        return ManyBodyAmplitudes(one_body=full_one_body, two_body=full_two_body)
-
-    def __str__(self):
-        rep = type(self).__name__
-        rep += "\n One-Body-Terms:\n"
-        rep += str(self.one_body)
-        rep += "\n Two-Body-Terms:\n"
-        rep += str(self.two_body)
-        return rep
-
-    def __call__(self, i, a, j=None, b=None, *args, **kwargs):
-        """
-        :param i: in absolute numbers (as spin-orbital index)
-        :param a: in absolute numbers (as spin-orbital index)
-        :param j: in absolute numbers (as spin-orbital index)
-        :param b: in absolute numbers (as spin-orbital index)
-        :return: amplitude t_aijb
-        """
-        if j is None:
-            assert (b is None)
-            return self.one_body[a, i]
-        else:
-            return self.two_body[a, i, b, j]
-
-    def __getitem__(self, item: tuple):
-        return self.__call__(*item)
-
-    def __setitem__(self, key: tuple, value):
-        if len(key) == 2:
-            self.one_body[key[0], key[1]] = value
-        else:
-            self.two_body[key[0], key[1], key[2], key[3]] = value
-        return self
-
-    def __rmul__(self, other):
-        if self.one_body is None:
-            if self.two_body is None:
-                return ManyBodyAmplitudes(one_body=None, two_body=None)
-            else:
-                return ManyBodyAmplitudes(one_body=None, two_body=other * self.two_body)
-        elif self.two_body is None:
-            return ManyBodyAmplitudes(one_body=other * self.one_body, two_body=None)
-        else:
-            return ManyBodyAmplitudes(one_body=other * self.one_body, two_body=other * self.two_body)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __len__(self):
-        return len(self.one_body) + len(self.two_body)
 
 
 class QuantumChemistryBase:
@@ -342,11 +248,11 @@ class QuantumChemistryBase:
     def make_molecule(self) -> openfermion.MolecularData:
         raise Exception("BaseClass Method")
 
-    def compute_ccsd_amplitudes(self) -> ManyBodyAmplitudes:
+    def compute_ccsd_amplitudes(self) -> Amplitudes:
         raise Exception("BaseClass Method")
 
     def make_uccsd_ansatz(self, decomposition: typing.Union[DecompositionFirstOrderTrotter, typing.Callable],
-                          initial_amplitudes: typing.Union[str, ManyBodyAmplitudes] = "mp2",
+                          initial_amplitudes: typing.Union[str, Amplitudes] = "mp2",
                           include_reference_ansatz=True) -> QCircuit:
 
         """
@@ -375,22 +281,21 @@ class QuantumChemistryBase:
 
         generators = []
         for key, t in amplitudes.items():
-            print("key=", key, " t=", t)
-            if len(key) == 2:
-                pass
-            elif len(key) == 4:
-                i = key[0]
-                j = key[1]
-                k = key[2]
-                l = key[3]
-                op = openfermion.FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), 1.0j*t)
-                op += openfermion.FermionOperator(((l, 1), (k, 0), (j, 1), (i, 0)), -1.0j*t)
-                generators.append(QubitHamiltonian(hamiltonian=self.transformation(op)))
+            if not numpy.isclose(t, 0.0):
+                amplitude = Variable(name=str(key), value=t)
+                if len(key) == 2:
+                    pass
+                elif len(key) == 4:
+                    i = key[0]
+                    j = key[1]
+                    k = key[2]
+                    l = key[3]
+                    op = openfermion.FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), 2.0j*t)
+                    op += openfermion.FermionOperator(((l, 1), (k, 0), (j, 1), (i, 0)), -2.0j*t)
+                    generators.append(QubitHamiltonian(hamiltonian=self.transformation(op)))
 
-            else:
-                raise Exception("Expected index for one or two body term. Got {} instead".format(k))
-
-        print("generators=\n", generators)
+                else:
+                    raise Exception("Expected index for one or two body term. Got {} instead".format(k))
 
         # factor 2 counters the -1/2 convention in rotational gates
         # 1.0j makes the anti-hermitian cluster operator hermitian
@@ -398,36 +303,9 @@ class QuantumChemistryBase:
         # generator = 1.0j * QubitHamiltonian(hamiltonian=self.__make_cluster_operator(amplitudes=2.0 * amplitudes))
         return Uref + decomposition(generators=generators)
 
-    def __make_cluster_operator(self, amplitudes: ManyBodyAmplitudes) -> openfermion.QubitOperator:
-        """
-        Creates the clusteroperator
-        :param amplitudes: CCSD amplitudes
-        :return: UCCSD Cluster Operator as openfermion.QubitOperator
-        """
-
-        singles = amplitudes.one_body
-        if singles is None:
-            singles = numpy.ndarray([self.n_orbitals * 2] * 2)
-
-        op = openfermion.utils.uccsd_generator(
-            single_amplitudes=singles,
-            double_amplitudes=amplitudes.two_body
-        )
-
-        if not isinstance(op, openfermion.FermionOperator):
-            op = openfermion.get_fermion_operator(op)
-
-        return self.transformation(op)
-
-    def initialize_zero_amplitudes(self, one_body=True, two_body=True) -> ManyBodyAmplitudes:
-        singles = None
-        if one_body:
-            singles = numpy.ndarray([self.n_orbitals * 2] * 2)
-        doubles = None
-        if two_body:
-            doubles = numpy.ndarray([self.n_orbitals * 2] * 4)
-
-        return ManyBodyAmplitudes(one_body=singles, two_body=doubles)
+    def initialize_zero_amplitudes(self) -> Amplitudes:
+        # function not needed anymore
+        return Amplitudes()
 
     def compute_mp2_amplitudes(self) -> Amplitudes:
         """
