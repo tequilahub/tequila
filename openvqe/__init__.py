@@ -1,4 +1,5 @@
 import numpy
+import scipy
 import typing
 from dataclasses import dataclass
 import copy

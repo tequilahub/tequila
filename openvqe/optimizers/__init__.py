@@ -1,1 +1,2 @@
 from openvqe.optimizers.gradient_descent import GradientDescent
+import openvqe.optimizers.scipy_optimizers
