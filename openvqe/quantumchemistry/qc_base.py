@@ -280,6 +280,7 @@ class QuantumChemistryBase:
                 raise OpenVQEException("Don't know how to initialize \'{}\' amplitudes".format(initial_amplitudes))
 
         generators = []
+        variables = []
         for key, t in amplitudes.items():
             if not numpy.isclose(t, 0.0):
                 amplitude = Variable(name=str(key), value=t)
@@ -290,9 +291,10 @@ class QuantumChemistryBase:
                     j = key[1]
                     k = key[2]
                     l = key[3]
-                    op = openfermion.FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), 2.0j*t)
-                    op += openfermion.FermionOperator(((l, 1), (k, 0), (j, 1), (i, 0)), -2.0j*t)
+                    op = openfermion.FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), 2.0j)
+                    op += openfermion.FermionOperator(((l, 1), (k, 0), (j, 1), (i, 0)), -2.0j)
                     generators.append(QubitHamiltonian(hamiltonian=self.transformation(op)))
+                    variables.append(amplitude)
 
                 else:
                     raise Exception("Expected index for one or two body term. Got {} instead".format(k))
@@ -301,7 +303,7 @@ class QuantumChemistryBase:
         # 1.0j makes the anti-hermitian cluster operator hermitian
         # another factor 1.0j will be added which counters the minus sign in the -1/2 convention
         # generator = 1.0j * QubitHamiltonian(hamiltonian=self.__make_cluster_operator(amplitudes=2.0 * amplitudes))
-        return Uref + decomposition(generators=generators)
+        return Uref + decomposition(generators=generators, coeffs=variables)
 
     def initialize_zero_amplitudes(self) -> Amplitudes:
         # function not needed anymore
