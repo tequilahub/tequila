@@ -6,6 +6,7 @@ from openvqe.ansatz import prepare_product_state
 from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
 
 import openfermion
+from openfermion.hamiltonians import MolecularData
 
 
 @dataclass
@@ -159,7 +160,7 @@ class Amplitudes:
         data = dict()
         for k, v in self.data.items():
             data[k] = v * other
-        return Amplitudes(data=data)
+        return  Amplitudes(data=data)
 
     def __neg__(self):
         data = dict()
@@ -226,6 +227,8 @@ class QuantumChemistryBase:
         keys = [k for k in wfn.keys()]
         return keys[-1]
 
+
+
     @property
     def n_orbitals(self) -> int:
         return self.molecule.n_orbitals
@@ -242,8 +245,8 @@ class QuantumChemistryBase:
     def n_beta_electrons(self) -> int:
         return self.molecule.get_n_beta_electrons()
 
-    def make_hamiltonian(self) -> HamiltonianQC:
-        return HamiltonianQC(molecule=self.molecule, transformation=self.transformation)
+    def make_hamiltonian(self,transformation: transformation) -> HamiltonianQC:
+        return HamiltonianQC(molecule=self.molecule, transformation=transformation)
 
     def make_molecule(self) -> openfermion.MolecularData:
         raise Exception("BaseClass Method")

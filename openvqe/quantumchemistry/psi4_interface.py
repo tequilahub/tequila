@@ -1,14 +1,15 @@
 from openvqe import OpenVQEException, numpy, typing
 from openvqe import dataclass
 from openfermion import MolecularData
-from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
+
 from openfermionpsi4 import run_psi4
 from openvqe.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, Amplitudes
+from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
 
-import psi4
+import pyscf
 
 
-class OpenVQEEPsi4Exception(OpenVQEException):
+class OpenVQEEPySCFException(OpenVQEException):
     pass
 
 
@@ -32,9 +33,10 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if parameters_psi4 is None:
             self.parameters_psi4 = ParametersPsi4()
         else:
-            self.parameters_psi4 = parameters_psi4
+            self.parameters_psi4 = parameters_QC
 
         super().__init__(parameters=parameters, transformation=transformation)
+
 
     def make_molecule(self) -> MolecularData:
         """
