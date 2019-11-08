@@ -227,7 +227,35 @@ class QuantumChemistryBase:
         keys = [k for k in wfn.keys()]
         return keys[-1]
 
+    def make_molecule(self) -> MolecularData:
+        """
+        Creates a molecule in openfermion format by running psi4 and extracting the data
+        Will check for previous outputfiles before running
+        :param parameters: An instance of ParametersQC, which also holds an instance of ParametersPsi4 via parameters.psi4
+        The molecule will be saved in parameters.filename, if this file exists before the call the molecule will be imported from the file
+        :return: the molecule in openfermion.MolecularData format
+        """
+        molecule = MolecularData(**self.parameters.molecular_data_param)
+        # try to load
 
+        do_compute = True
+        if self.parameters.filename:
+            try:
+                import os
+                if os.path.exists(self.parameters.filename):
+                    molecule.load()
+                    do_compute = False
+            except OSError:
+                do_compute = True
+
+        if do_compute:
+            molecule = self.do_make_molecule(molecule)
+
+        molecule.save()
+        return molecule
+
+    def do_make_molecule(self):
+        raise OpenVQEException("Needs to be overwritten by inherited backend class")
 
     @property
     def n_orbitals(self) -> int:
