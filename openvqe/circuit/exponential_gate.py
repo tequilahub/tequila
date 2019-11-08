@@ -5,7 +5,7 @@ from openvqe import typing, numbers
 from openvqe import OpenVQEException
 from openvqe.hamiltonian import QubitHamiltonian
 from openvqe.circuit import QCircuit, gates, Variable
-from openvqe.circuit._gates_impl import RotationGateImpl
+from openvqe.circuit._gates_impl import RotationGateImpl, ParametrizedGateImpl
 from openvqe.tools.convenience import number_to_string
 from openvqe import numpy
 from openvqe.circuit.compiler import change_basis
@@ -22,7 +22,7 @@ class DecompositionABC:
         raise OpenVQEException("Overwrite this")
 
 
-class ExponentialPauliGate(RotationGateImpl):
+class ExponentialPauliGate(ParametrizedGateImpl):
     """
     Same convention as for rotation gates:
     Exp(-i angle/2 * paulistring)
@@ -34,6 +34,7 @@ class ExponentialPauliGate(RotationGateImpl):
         self.target = [t[0] for t in paulistring]
         self.control = control
         self.frozen = frozen
+        self.name = "U"
 
     def __str__(self):
         return "Exp(" + number_to_string(-self.parameter * 1.0j) + "/2" + str(self.paulistring) + ")" + str(self.target)

@@ -21,7 +21,7 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
     for q in circuit.qubits:
         name = "a" + str(q)
         names[q] = name
-        result += name + " W " + name + "\n"
+        result += name + " W " + str(q) + "\n"
 
     for g in circuit.gates:
         name = g.name
@@ -32,6 +32,9 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
             if hasattr(g, "angle"):
                 result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + g.angle.name + ")$ width=" + str(
                     25 + len(g.angle.name)) + " "
+            elif hasattr(g, "parameter") and g.parameter is not None:
+                result += " G $"+ g.name+"(" + g.parameter.name + ")$ width=" + str(
+                    25 + len(g.parameter.name)) + " "
             elif g.name.lower() == "x":
                 result += "+"
             else:
@@ -45,6 +48,9 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
             if hasattr(g, "angle"):
                 result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + g.angle.name + ")$ width=" + str(
                     25 + len(g.angle.name)) + " "
+            elif hasattr(g, "parameter") and g.parameter is not None:
+                result += " G $"+ g.name+"(" + g.parameter.name + ")$ width=" + str(
+                    25 + len(g.parameter.name)) + " "
             else:
                 result += g.name + " "
 
@@ -66,9 +72,17 @@ def export_to_pdf(circuit: QCircuit, filename, keep_tex=True, keep_qpic=True):
     if not system_has_pdflatex:
         raise Exception("You need pdflatex in order to export circuits to pdfs")
 
-    export_to_qpic(circuit, filename=filename)
+    filename_qpic = None
+    if isinstance(circuit, str):
+        filename_qpic = circuit
+
+    if filename_qpic is None:
+        export_to_qpic(circuit, filename=filename)
+        filename_qpic = filename+".qpic"
+
     with open(filename + ".tex", "w") as file:
-        subprocess.call(["qpic", str(filename) + ".qpic"], stdout=file)
+        subprocess.call(["qpic", str(filename_qpic)], stdout=file)
+
 
     latex_header = """
 \\documentclass[]{standalone}
