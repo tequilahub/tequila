@@ -7,12 +7,12 @@ def pick_simulator(samples=None):
 
     if samples is None:
         try:
-            from openvqe.simulator.simulator_cirq import SimulatorCirq
-            return SimulatorCirq
+            from openvqe.simulator.simulator_qulacs import SimulatorQulacs
+            return SimulatorQulacs
         except:
             try:
-                from openvqe.simulator.simulator_qulacs import SimulatorQulacs
-                return SimulatorQulacs
+                from openvqe.simulator.simulator_cirq import SimulatorCirq
+                return SimulatorCirq
             except:
                 try:
                     from openvqe.simulator.simulator_pyquil import SimulatorPyquil

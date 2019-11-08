@@ -22,11 +22,18 @@ class SimulatorReturnType:
 
     @property
     def counts(self, key: str = None):
-        if key is None:
-            keys = [k for k in self.measurements.keys()]
-            return self.measurements[keys[0]]
-        else:
-            return self.measurements[key]
+        if self.measurements is not None:
+            if key is None:
+                keys = [k for k in self.measurements.keys()]
+                return self.measurements[keys[0]]
+            else:
+                return self.measurements[key]
+        elif self.wavefunction is not None:
+            measurement = copy.deepcopy(self.wavefunction)
+            for k,v in measurement.items():
+                measurement[k] = numpy.fabs(v)**2
+            return measurements
+
 
 class BackendHandler:
 
