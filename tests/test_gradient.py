@@ -4,7 +4,7 @@ from openvqe.objective import Objective
 from openvqe.hamiltonian import paulis
 from openvqe.simulator.simulator_qiskit import SimulatorQiskit
 from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe.simulator.simulator_qulacs import SimulatorQulacs
+#from openvqe.simulator.simulator_qulacs import SimulatorQulacs
 from openvqe import numpy
 import pytest
 
@@ -118,7 +118,7 @@ def test_gradient_UY_HX_wfnsim(simulator, angle, controlled, silent=True):
         print("cos(angle)=", numpy.cos(angle()))
 
 
-@pytest.mark.parametrize("simulator", [SimulatorCirq, SimulatorQulacs])
+@pytest.mark.parametrize("simulator", [SimulatorCirq])
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("angle", [Variable(name="angle", value=i / 1000.0 * numpy.pi / 2.0) for i in
                                    numpy.random.randint(0, 1000, 3)])
