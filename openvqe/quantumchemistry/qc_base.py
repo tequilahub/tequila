@@ -273,8 +273,8 @@ class QuantumChemistryBase:
     def n_beta_electrons(self) -> int:
         return self.molecule.get_n_beta_electrons()
 
-    def make_hamiltonian(self,transformation: typing.Union[str, typing.Callable] = None) -> HamiltonianQC:
-        return HamiltonianQC(molecule=self.molecule, transformation=transformation)
+    def make_hamiltonian(self) -> HamiltonianQC:
+        return HamiltonianQC(molecule=self.molecule, transformation=self.transformation)
 
     def compute_ccsd_amplitudes(self) -> Amplitudes:
         raise Exception("BaseClass Method")
