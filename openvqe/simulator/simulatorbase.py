@@ -88,7 +88,7 @@ class BackendHandler:
     def make_qubit_map(self, abstract_circuit: QCircuit):
         return [i for i in range(len(abstract_circuit.qubits))]
 
-class Simulator(OpenVQEModule):
+class SimulatorBase(OpenVQEModule):
     """
     Abstract Base Class for OpenVQE interfaces to simulators
     """

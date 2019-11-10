@@ -1,4 +1,4 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, OpenVQEException, \
+from openvqe.simulator.simulatorbase import SimulatorBase, QCircuit, OpenVQEException, \
     SimulatorReturnType, BackendHandler
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import BitString, BitNumbering
@@ -68,7 +68,7 @@ class BackenHandlerPyquil(BackendHandler):
 
 
 
-class SimulatorPyquil(Simulator):
+class SimulatorPyquil(SimulatorBase):
 
     @property
     def numbering(self):

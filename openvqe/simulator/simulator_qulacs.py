@@ -1,7 +1,7 @@
 import qulacs
 from openvqe import OpenVQEException, BitString, QubitWaveFunction, BitNumbering
-from openvqe.simulator import Simulator, SimulatorReturnType
-from openvqe.simulator.simulator import BackendHandler
+from openvqe.simulator import SimulatorBase, SimulatorReturnType
+from openvqe.simulator.simulatorbase import BackendHandler
 from openvqe.circuit import QCircuit
 
 """
@@ -66,7 +66,7 @@ class BackenHandlerQulacs(BackendHandler):
 
 
 
-class SimulatorQulacs(Simulator):
+class SimulatorQulacs(SimulatorBase):
 
     numbering: BitNumbering = BitNumbering.LSB
 
