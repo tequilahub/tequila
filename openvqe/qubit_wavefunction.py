@@ -5,9 +5,14 @@ import numbers
 
 from openvqe.bitstrings import BitNumbering, BitString, initialize_bitstring
 from openvqe.openvqe_exceptions import OpenVQEException
-from openvqe.hamiltonian.qubit_hamiltonian import QubitHamiltonian, PauliString
 from openvqe.keymap import KeyMapLSB2MSB, KeyMapMSB2LSB
 from openvqe.tools import number_to_string
+
+# from __future__ import annotations # can use that in python 3.7+ to get rid of string type hints
+
+if typing.TYPE_CHECKING:
+    # don't need those structures, just for convenient type hinting
+    from openvqe.hamiltonian.qubit_hamiltonian import QubitHamiltonian, PauliString
 
 
 class QubitWaveFunction:
@@ -213,7 +218,7 @@ class QubitWaveFunction:
         self = 1.0 / numpy.sqrt(norm2) * self
         return self
 
-    def compute_expectationvalue(self, operator: QubitHamiltonian) -> numbers.Real:
+    def compute_expectationvalue(self, operator: 'QubitHamiltonian') -> numbers.Real:
         tmp = self.apply_qubitoperator(operator=operator)
         E = self.inner(other=tmp)
         if hasattr(E, "imag") and numpy.isclose(E.imag, 0.0, atol=1.e-6):
@@ -221,7 +226,7 @@ class QubitWaveFunction:
         else:
             return E
 
-    def apply_qubitoperator(self, operator: QubitHamiltonian):
+    def apply_qubitoperator(self, operator: 'QubitHamiltonian'):
         """
         Inefficient function which computes the action of a QubitHamiltonian on this wfn
         :param operator: QubitOperator
@@ -232,7 +237,7 @@ class QubitWaveFunction:
             result += self.apply_paulistring(paulistring=ps)
         return result
 
-    def apply_paulistring(self, paulistring: PauliString):
+    def apply_paulistring(self, paulistring: 'PauliString'):
         """
         Inefficient function which computes action of a single paulistring
         :param paulistring: PauliString

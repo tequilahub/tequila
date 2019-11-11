@@ -1,5 +1,6 @@
 
 import qulacs
+import numpy
 from openvqe.openvqe_exceptions import OpenVQEException
 from openvqe.bitstrings import  BitString, BitNumbering
 from openvqe.qubit_wavefunction import QubitWaveFunction
@@ -43,7 +44,10 @@ class BackenHandlerQulacs(BackendHandler):
             getattr(circuit, "add_CZ_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
 
     def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], -gate.angle())
+        angle = -gate.angle()
+        if hasattr(angle, "imag") and angle.imag == 0.0:
+            angle = float(angle.real)
+        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], angle)
 
     def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         raise OpenVQEQulacsException("No controlled rotation supported")
@@ -93,4 +97,5 @@ class SimulatorQulacs(SimulatorBase):
 
         wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
         return SimulatorReturnType(backend_result=state, wavefunction=wfn, circuit=circuit, abstract_circuit=abstract_circuit)
+
 

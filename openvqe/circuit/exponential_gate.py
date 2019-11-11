@@ -28,6 +28,14 @@ class ExponentialPauliGate(ParametrizedGateImpl):
     Exp(-i angle/2 * paulistring)
     """
 
+    @property
+    def angle(self):
+        return self.parameter
+
+    @angle.setter
+    def angle(self, angle):
+        self.parameter = angle
+
     def __init__(self, paulistring, angle: float, control: typing.List[int] = None, frozen: bool = False):
         self.paulistring = paulistring
         self.parameter = angle

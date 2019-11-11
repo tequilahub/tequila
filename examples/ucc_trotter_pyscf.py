@@ -22,6 +22,7 @@ simulator = pick_simulator(samples=samples)
 
 if __name__ == "__main__":
 
+    raise Exception("Under Development")
     # initialize the QuantumChemistry Module
     qc_param = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     pyscf_interface = qc.QuantumChemistryPySCF(parameters=qc_param, transformation="jordan-wigner")
@@ -34,7 +35,7 @@ if __name__ == "__main__":
 
     # get the UCC circuit
     U = pyscf_interface.make_uccsd_ansatz(decomposition=trotter, initial_amplitudes="ccsd", include_reference_ansatz=True)
-
+    print("CCSD Parameters:\n", U.extract_parameters())
     # make an objective
     O = Objective(observable=H, unitaries=U)
 
@@ -44,6 +45,7 @@ if __name__ == "__main__":
     E = simulator().simulate_objective(objective=O)
 
     print("Energy = ", E)
+
 
     # optimize with the scipy interface
 

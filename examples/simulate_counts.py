@@ -4,9 +4,8 @@ Small example on how to construct a circuit and simulate its measurements in the
 
 from openvqe.circuit import gates
 from numpy import pi
-from openvqe.tools.backends import initialize_simulator
+from openvqe.simulator import pick_simulator
 from openvqe.tools import plotters
-
 """
 Same example as 'simulate_wavefunctions' but here we simulate counts
 
@@ -30,8 +29,8 @@ if __name__ == "__main__":
     # choose a backend
     # 'symbolic' can only simulate wavefunctions, counts are not supported here. Could be implemented quickly
     # 'pyquil' has currently no support for individual measurements ... on the todo list
-    simulator = initialize_simulator(simulator_type='qiskit') # choose between 'cirq', 'pyquil', 'qiskit'
-
+    Simulator = pick_simulator(samples=10000, demand_full_wfn=False)
+    simulator = Simulator()
     simulator_results = simulator.run(abstract_circuit=ac, samples=10000)
     counts = simulator_results.counts
 

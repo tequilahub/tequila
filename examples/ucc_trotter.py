@@ -45,19 +45,18 @@ if __name__ == "__main__":
     E = simulator().simulate_objective(objective=O)
 
     print("Energy = ", E)
-
-    # optimize with the scipy interface
-
+    print("CCSD Parameters:\n", U.extract_parameters())
 
     # overwrite the initial amplitudes to be zero
     initial_amplitudes = qc.Amplitudes(data={(2, 0, 3, 1): 0.0, (3, 1, 2, 0): 0.0 })
-    init = dict()
-    for k, v in initial_amplitudes.items():
-        # this sucks and should be more convenient
-        init[str(k)] = v
-    #E, angles, res = scipy_optimizers.minimize(O, return_all=True, simulator=simulator, samples=samples, initial_values=init)
+    # overwrite the initial amplitudes to be MP2
+    #initial_amplitudes = psi4_interface.compute_mp2_amplitudes()
+
+    print("initial amplitudes:\n", initial_amplitudes)
+
     optimizer = GradientDescent(samples=samples, simulator=simulator, stepsize=0.1, maxiter=10, minimize=True)
-    angles = optimizer(objective=O, initial_values=init)  # take the current values of the circuit as the initial ones, alternativ use initial_values={"a": 2.0, "b": 2.0}
+    angles = optimizer(objective=O, initial_values=initial_amplitudes.export_parameter_dictionary())
+
     E = optimizer.energies[-1]
 
     print("final angles are:\n", angles)
@@ -67,5 +66,3 @@ if __name__ == "__main__":
     optimizer.plot(plot_energies=True, plot_gradients=None)
     optimizer.plot(plot_energies=False, plot_gradients=True)  # plot only a specific gradient with plot_gradients=["key"]
 
-    #plt.plot(res.evals)
-    #plt.show()

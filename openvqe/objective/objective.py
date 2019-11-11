@@ -1,4 +1,4 @@
-from openvqe import numpy, typing
+from openvqe import numpy, typing, copy
 
 """
 Preliminary structure to carry information over to backends
@@ -46,9 +46,9 @@ class Objective:
         return self
 
     def __init__(self, observable=None, unitaries=None):
-        self.unitaries = unitaries
+        self.unitaries = copy.deepcopy(unitaries)
 
-        self.observable = observable
+        self.observable = copy.deepcopy(observable)
 
     def __eq__(self, other):
 

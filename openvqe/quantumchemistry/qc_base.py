@@ -125,6 +125,12 @@ class Amplitudes:
     def __str__(self):
         return self.data.__str__()
 
+    def export_parameter_dictionary(self):
+        result = dict()
+        for k, v in self.items():
+            result[str(k)] = v
+        return result
+
     def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[typing.Tuple, numbers.Number]:
         transformed = dict()
         for key, value in data.items():

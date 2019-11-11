@@ -77,7 +77,6 @@ class GradientDescent(Optimizer):
 
         for iter in range(self.maxiter):
 
-            print("Energy")
             if self.samples is None:
                 E = simulator.simulate_objective(objective=objective)
             else:
