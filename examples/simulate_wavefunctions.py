@@ -16,7 +16,6 @@ If you use Pyquil, make sure you have installed the QVM
  -> open terminal, type 'qvm -S'
 """
 
-
 if __name__ == "__main__":
 
     """

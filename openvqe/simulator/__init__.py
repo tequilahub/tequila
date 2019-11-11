@@ -45,6 +45,13 @@ except ImportError:
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
 
 
+def show_available_simulators() -> str:
+    return "Avaliable Simulators:\n"\
+           + "qiskit = " + str(has_qiskit) + "\n" \
+           + "cirq   = " + str(has_cirq) + "\n" \
+           + "qulacs = " + str(has_qulacs) + "\n" \
+           + "pyquil = " + str(has_pyquil) + "\n"
+
 
 def pick_simulator(samples=None):
 
