@@ -6,9 +6,6 @@ from openfermionpsi4 import run_psi4
 from openvqe.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, Amplitudes
 from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
 
-import pyscf
-
-
 class OpenVQEEPySCFException(OpenVQEException):
     pass
 

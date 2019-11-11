@@ -13,6 +13,11 @@ from os import remove
 system_has_qpic = which("qpic") is not None
 system_has_pdflatex = which("pdflatex") is not None
 
+def assign_name(parameter):
+    if parameter.name == "none":
+        return str(parameter())
+    else:
+        return parameter.name
 
 def export_to_qpic(circuit: QCircuit, filename=None) -> str:
     result = ""
@@ -31,10 +36,10 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
 
             if hasattr(g, "angle"):
                 result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + g.angle.name + ")$ width=" + str(
-                    25 + len(g.angle.name)) + " "
+                    30 + len(assign_name(g.angle))) + " "
             elif hasattr(g, "parameter") and g.parameter is not None:
                 result += " G $"+ g.name+"(" + g.parameter.name + ")$ width=" + str(
-                    25 + len(g.parameter.name)) + " "
+                    30 + len(assign_name(g.parameter))) + " "
             elif g.name.lower() == "x":
                 result += "+"
             else:
@@ -46,11 +51,11 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
             for t in g.target:
                 result += names[t] + " "
             if hasattr(g, "angle"):
-                result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + g.angle.name + ")$ width=" + str(
-                    25 + len(g.angle.name)) + " "
+                result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.angle) + ")$ width=" + str(
+                    30 + len(assign_name(g.angle))) + " "
             elif hasattr(g, "parameter") and g.parameter is not None:
-                result += " G $"+ g.name+"(" + g.parameter.name + ")$ width=" + str(
-                    25 + len(g.parameter.name)) + " "
+                result += " G $"+ g.name+"(" + assign_name(g.parameter) + ")$ width=" + str(
+                    30 + len(assign_name(g.parameter))) + " "
             else:
                 result += g.name + " "
 
