@@ -9,7 +9,7 @@ if has_psi4:
     from .psi4_interface import QuantumChemistryPsi4
 
 # import importlib
-# has_pyscf = False
+has_pyscf = False
 # try:
 #     importlib.util.find_spec('pyscf')
 #     has_pyscf = True
