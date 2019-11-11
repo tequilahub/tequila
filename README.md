@@ -3,9 +3,17 @@ Code for OpenVQE: a Python framework for variational quantum eigensolvers
 
 # Simulators
 Currently supported
+- Qulacs
 - Qiskit
 - Cirq
 - Pyquil
+
+# QuantumChemistry:
+If you are intenting to use psi4:
+psi4 has no default pip installer, so it is not part of requirements.txt
+if you are using conda you can install it with
+conda install psi4 -c psi4
+PSI4 WILL NOT RUN WITH PYTHON 3.7x
 
 # Installation
 Just run 'pip install . ' in the OpenVQE directory (thats the directory where setup.py is)
@@ -15,8 +23,8 @@ If you plan to develop the code we recommend to not install it anyway (see below
 # Usage without installation
 1. go into the OpenVQE main directory (where setup.py and requirements.txt are)
 2. type 'pip install -r requirements.txt' to install all necessary packages
-3. if you don't want to install all simulators, feel free to comment them out in requirements.txt
-4. Add the OpenVQE main directory to your PYTHONPATH so that your python can find it (for linux and max see below)
+3. if you don't want to install all simulators, feel free to comment them out in requirements.txt (install at least cirq)
+4. Add the OpenVQE main directory to your PYTHONPATH so that your python can find it (for linux and mac see below)
 
 # Add OpenVQE to your PYTHONPATH (Linux and Mac)
 This is only necessary if you have NOT installed OpenVQE
@@ -31,8 +39,7 @@ I have no Idea. Alba, Chengran and Mario managed to achieve it, so they might be
 # Test if everything works
 go to OpenVQE/tests
 type 'pytest'
-pyquil tests might fail if you don't have rigettis QVM installed (that is fine)
-if you commented out simulators in the installation process above, then those tests will of course also fail
+the UnaryStatePrep test might fail. If so start it new untill it finishes
 
 # Troubleshooting
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need
