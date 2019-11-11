@@ -1,5 +1,6 @@
 import qulacs
-from openvqe import OpenVQEException, BitString, QubitWaveFunction, BitNumbering
+from openvqe import OpenVQEException, BitString, BitNumbering
+from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.simulator import SimulatorBase, SimulatorReturnType
 from openvqe.simulator.simulatorbase import BackendHandler
 from openvqe.circuit import QCircuit

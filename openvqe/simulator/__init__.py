@@ -7,9 +7,9 @@ Check which simulators are installed
 has_pyquil = True
 from shutil import which
 has_qvm = which("qvm") is not None
+
 try:
     from openvqe.simulator.simulator_pyquil import SimulatorPyquil
-
     has_pyquil = True
 except ImportError:
     has_pyquil = False

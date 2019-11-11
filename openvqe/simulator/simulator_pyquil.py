@@ -2,9 +2,9 @@ from openvqe.simulator.simulatorbase import SimulatorBase, QCircuit, OpenVQEExce
     SimulatorReturnType, BackendHandler
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import BitString, BitNumbering
-from openvqe.circuit.compiler import compile_multitarget
-from openvqe.circuit._gates_impl import MeasurementImpl
 import subprocess
+
+import pyquil
 
 
 class OpenVQEPyquilException(OpenVQEException):
@@ -12,14 +12,7 @@ class OpenVQEPyquilException(OpenVQEException):
         return "simulator_pyquil: " + self.message
 
 
-try:
-    import pyquil
-except ImportError:
-    raise OpenVQEPyquilException("failed to import pyquil")
-
-
 class BackenHandlerPyquil(BackendHandler):
-
     recompile_swap = True
     recompile_multitarget = True
     recompile_controlled_rotation = False
@@ -60,12 +53,10 @@ class BackenHandlerPyquil(BackendHandler):
         for i, t in enumerate(gate.target):
             circuit += pyquil.gates.MEASURE(qubit_map[t], ro[i])
 
-
     def make_qubit_map(self, abstract_circuit: QCircuit):
         n_qubits = abstract_circuit.n_qubits
         qubit_map = [i for i in range(n_qubits)]
         return qubit_map
-
 
 
 class SimulatorPyquil(SimulatorBase):

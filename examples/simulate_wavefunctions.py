@@ -16,6 +16,9 @@ If you use Pyquil, make sure you have installed the QVM
  -> open terminal, type 'qvm -S'
 """
 
+from openvqe.simulator import show_available_simulators
+print(show_available_simulators())
+
 if __name__ == "__main__":
 
     """
