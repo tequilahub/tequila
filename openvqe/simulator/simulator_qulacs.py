@@ -1,9 +1,12 @@
+
 import qulacs
-from openvqe import OpenVQEException, BitString, BitNumbering
+from openvqe.openvqe_exceptions import OpenVQEException
+from openvqe.bitstrings import  BitString, BitNumbering
 from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.simulator import SimulatorBase, SimulatorReturnType
+from openvqe.simulator.simulatorbase import SimulatorBase, SimulatorReturnType
 from openvqe.simulator.simulatorbase import BackendHandler
 from openvqe.circuit import QCircuit
+
 
 """
 todo: overwrite simulate_objective for this simulator, might be faster

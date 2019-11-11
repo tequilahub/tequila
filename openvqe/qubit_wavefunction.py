@@ -1,9 +1,11 @@
 import copy
 import typing
+import numpy
+import numbers
 
-from openvqe import numpy, numbers
-from openvqe import BitNumbering, BitString, initialize_bitstring, OpenVQEException
-from openvqe.hamiltonian import QubitHamiltonian, PauliString
+from openvqe.bitstrings import BitNumbering, BitString, initialize_bitstring
+from openvqe.openvqe_exceptions import OpenVQEException
+from openvqe.hamiltonian.qubit_hamiltonian import QubitHamiltonian, PauliString
 from openvqe.keymap import KeyMapLSB2MSB, KeyMapMSB2LSB
 from openvqe.tools import number_to_string
 

@@ -1,13 +1,19 @@
-from openvqe.simulator.simulatorbase import SimulatorBase, SimulatorReturnType
-from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
-
 """
 Check which simulators are installed
 """
+
+has_qulacs = True
+try:
+    import qulacs
+    from openvqe.simulator.simulator_qulacs import SimulatorQulacs
+    has_qulacs = True
+except ImportError:
+    has_qulacs = False
+
+
 has_pyquil = True
 from shutil import which
 has_qvm = which("qvm") is not None
-
 try:
     from openvqe.simulator.simulator_pyquil import SimulatorPyquil
     has_pyquil = True
@@ -34,13 +40,6 @@ try:
 except ImportError:
     has_cirq = False
 
-has_qulacs = True
-try:
-    from openvqe.simulator.simulator_qulacs import SimulatorQulacs
-
-    has_qulacs = True
-except ImportError:
-    has_qulacs = False
 
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
 
@@ -74,3 +73,6 @@ def pick_simulator(samples=None):
             return SimulatorCirq
         else:
             raise Exception("You have no simulator installed which can simulate finite measurements")
+
+from openvqe.simulator.simulatorbase import SimulatorBase, SimulatorReturnType
+from openvqe.simulator.simulator_symbolic import SimulatorSymbolic

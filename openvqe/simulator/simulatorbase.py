@@ -11,7 +11,6 @@ from openvqe.simulator.heralding import HeraldingABC
 from openvqe.circuit import compiler
 from openvqe.circuit._gates_impl import MeasurementImpl
 
-
 @dataclass
 class SimulatorReturnType:
     abstract_circuit: QCircuit = None

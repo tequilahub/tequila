@@ -5,7 +5,7 @@ from openvqe import typing, numbers
 from openvqe import OpenVQEException
 from openvqe.hamiltonian import QubitHamiltonian
 from openvqe.circuit import QCircuit, gates, Variable
-from openvqe.circuit._gates_impl import RotationGateImpl, ParametrizedGateImpl
+from openvqe.circuit._gates_impl import ParametrizedGateImpl
 from openvqe.tools.convenience import number_to_string
 from openvqe import numpy
 from openvqe.circuit.compiler import change_basis

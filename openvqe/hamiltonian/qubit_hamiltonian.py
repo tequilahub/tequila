@@ -1,8 +1,10 @@
+import numbers
+import typing
+import numpy
+
 from openfermion import QubitOperator
 from openvqe.tools import number_to_string
-from openvqe import numbers, typing
 from functools import reduce
-from openvqe import numpy
 
 class PauliString:
     """
