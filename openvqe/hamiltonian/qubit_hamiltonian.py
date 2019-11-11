@@ -93,6 +93,13 @@ class PauliString:
     def __eq__(self, other):
         return self._data == other._data
 
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, item):
+        return self._data[item]
+
+
 """
 Explicit matrix forms for the Pauli operators for the tomatrix method
 """
