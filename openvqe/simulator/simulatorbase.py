@@ -40,21 +40,25 @@ class BackendHandler:
     This needs to be overwritten by all supported Backends
     """
 
+    recompile_trotter = True
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = False
     recompile_exponential_pauli = True
 
     def recompile(self, abstract_circuit: QCircuit) -> QCircuit:
+        #order matters!
         recompiled = abstract_circuit
+        if self.recompile_trotter:
+            recompiled = compiler.compile_trotterized_gate(gate=recompiled, compile_exponential_pauli=self.recompile_exponential_pauli)
         if self.recompile_exponential_pauli:
-            recompiled = compiler.compile_exponential_pauli_gate(recompiled)
+            recompiled = compiler.compile_exponential_pauli_gate(gate=recompiled)
         if self.recompile_multitarget:
-            recompiled = compiler.compile_multitarget(recompiled)
+            recompiled = compiler.compile_multitarget(gate=recompiled)
         if self.recompile_controlled_rotation:
-            recompiled = compiler.compile_controlled_rotation(recompiled)
+            recompiled = compiler.compile_controlled_rotation(gate=recompiled)
         if self.recompile_swap:
-            recompiled = compiler.compile_swap(recompiled)
+            recompiled = compiler.compile_swap(gate=recompiled)
 
         return recompiled
 
