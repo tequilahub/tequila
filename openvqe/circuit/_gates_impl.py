@@ -1,8 +1,11 @@
+import typing
 from abc import ABC
 from openvqe import OpenVQEException
 from openvqe import typing
 from openvqe.circuit.variable import Variable, SympyVariable
 from openvqe import numbers, copy
+from openvqe.hamiltonian import PauliString
+from openvqe.tools import number_to_string
 
 
 class QGateImpl:
@@ -320,3 +323,29 @@ class PowerGateImpl(ParametrizedGateImpl):
     def dagger(self):
         result = copy.deepcopy(self)
         return result
+
+
+class ExponentialPauliGateImpl(ParametrizedGateImpl):
+    """
+    Same convention as for rotation gates:
+    Exp(-i angle/2 * paulistring)
+    """
+
+    @property
+    def angle(self):
+        return self.parameter
+
+    @angle.setter
+    def angle(self, angle):
+        self.parameter = angle
+
+    def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None, frozen: bool = False):
+        self.paulistring = paulistring
+        self.parameter = angle
+        self.target = [t for t in paulistring.keys()]
+        self.control = control
+        self.frozen = frozen
+        self.name = "Exp"
+
+    def __str__(self):
+        return "Exp(" + number_to_string(-self.parameter * 1.0j) + "/2" + str(self.paulistring) + ")" + str(self.target)

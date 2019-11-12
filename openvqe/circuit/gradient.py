@@ -1,7 +1,6 @@
 from openvqe.circuit import QCircuit
 from openvqe.circuit.compiler import compile_controlled_rotation
-from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, PowerGateImpl
-from openvqe.circuit.exponential_gate import ExponentialPauliGate
+from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl
 from openvqe.objective import Objective
 from openvqe import OpenVQEException
 from openvqe import copy
@@ -68,7 +67,7 @@ def make_gradient_component(unitary: QCircuit, index: int):
 
     g = unitary.gates[index]
     dg = []
-    if isinstance(g, RotationGateImpl) or isinstance(g, ExponentialPauliGate):
+    if isinstance(g, RotationGateImpl) or isinstance(g, ExponentialPauliGateImpl):
         if g.is_controlled():
             angles_and_weights = [
                 ([-(g.angle) / 2 + numpy.pi / 2, g.angle / 2], .50),
