@@ -4,7 +4,7 @@ from openvqe import OpenVQEException
 from openvqe import typing
 from openvqe.circuit.variable import Variable, SympyVariable
 from openvqe import numbers, copy
-from openvqe.hamiltonian import PauliString
+from openvqe.hamiltonian import PauliString, QubitHamiltonian
 from openvqe.tools import number_to_string
 
 
@@ -341,7 +341,7 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
 
     @property
     def name(self):
-        return "Exp(" + number_to_string(self.angle()*1j) + "/2 PS)"
+        return "Exp(" + number_to_string(self.angle() * 1j) + "/2 PS)"
 
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None, frozen: bool = False):
         self.paulistring = paulistring.naked()
@@ -359,3 +359,72 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         result += ", paulistring=" + str(self.paulistring)
         result += ")"
         return result
+
+
+class TrotterizedGateImpl(ParametrizedGateImpl):
+
+    @property
+    def parameter(self):
+        return self._parameter
+
+    @parameter.setter
+    def parameter(self, other):
+        self._parameter = other
+
+    @property
+    def angles(self):
+        return self._parameter
+
+    @angles.setter
+    def angles(self, other):
+        self._parameter = self.list_assignement(other)
+
+    def __init__(self, generators: typing.Union[QubitHamiltonian, typing.List[QubitHamiltonian]],
+                 steps: int = 1,
+                 angles: typing.Union[list, numbers.Real, Variable] = None,
+                 control: typing.Union[list, int] = None,
+                 frozen: bool = None,
+                 threshold: numbers.Real = 0.0,
+                 join_components: bool = True,
+                 randomize_component_order: bool = True,
+                 randomize: bool = True):
+        """
+        :param generators: list of generators
+        :param angles: coefficients for each generator
+        :param steps: Trotter Steps
+        :param control: control qubits
+        :param frozen: freeze the gate (optimizers ingnore it)
+        :param threshold: neglect terms in the given Hamiltonians if their coefficients are below this threshold
+        :param join_components: The generators are trotterized together. If False the first generator is trotterized, then the second etc
+        Note that for steps==1 as well as len(generators)==1 this has no effect
+        :param randomize_component_order: randomize the order in the generators order before trotterizing
+        :param randomize: randomize the trotter decomposition of each generator
+        """
+        self.generators = self.list_assignement(generators)
+        self.target = self.extract_targets()
+        self._parameter = self.list_assignement(angles)
+        self.control = self.list_assignement(control)
+        self.frozen = frozen
+        self.steps = steps
+        self.threshold = threshold
+        self.join_components = join_components
+        self.randomize_component_order = randomize_component_order
+        self.randomize = randomize
+        self.name = "Trotterized"
+
+    def __str__(self):
+        result = str(self.name) + "(target=" + str(self.target)
+        if not self.is_single_qubit_gate():
+            result += ", control=" + str(self.control)
+
+        result += ", angles=" + str(self._parameter)
+        result += ", generators=" + str(self.generators)
+        result += ")"
+        return result
+
+    def extract_targets(self):
+        targets = []
+        for g in self.generators:
+            for ps in g.paulistrings:
+                targets += [k for k in ps.keys()]
+        return list(set(targets))

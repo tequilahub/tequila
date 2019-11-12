@@ -102,8 +102,14 @@ class QCircuit():
         """
         parameters = dict()
         for i, g in enumerate(self.gates):
-            if g.is_parametrized() and not g.is_frozen() and g.parameter.name not in parameters:
-                parameters[g.parameter.name] = g.parameter.value
+            if g.is_parametrized() and not g.is_frozen():
+                if hasattr(g.parameter, "__iter__") or hasattr(g.parameter, "__get_item__"):
+                    for parameter in g.parameter:
+                        if parameter.name not in parameters:
+                            parameters[parameter.name] = parameter.value
+                elif g.parameter.name not in parameters:
+                    parameters[g.parameter.name] = g.parameter.value
+
         return parameters
 
     def update_parameters(self, parameters: dict):
@@ -113,11 +119,22 @@ class QCircuit():
         :return: self for chaining
         """
         for g in self.gates:
-            if g.is_parametrized() and not g.is_frozen() and g.parameter.name in parameters:
-                if hasattr(parameters[g.parameter.name], "value"):
-                    g.parameter.value = parameters[g.parameter.name].value
-                else:
-                    g.parameter.value = parameters[g.parameter.name]
+            if g.is_parametrized() and not g.is_frozen():
+                if hasattr(g.parameter, "__iter__") or hasattr(g.parameter, "__get_item__"):
+                    for i,parameter in enumerate(g.parameter):
+                        if parameter.name in parameters:
+                            if hasattr(parameters[parameter.name], "value"):
+                                g.parameter[i].value = parameters[parameter.name].value
+                            else:
+                                g.parameter[i].value = parameters[parameter.name]
+                elif g.parameter.name in parameters:
+                    if hasattr(parameters[g.parameter.name], "value"):
+                        g.parameter.value = parameters[g.parameter.name].value
+                    else:
+                        g.parameter.value = parameters[g.parameter.name]
+
+
+
         return self
 
     def get_indices_for_parameter(self, name: str):

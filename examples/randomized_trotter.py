@@ -1,7 +1,6 @@
 from openvqe.simulator.simulator_qiskit import SimulatorQiskit
 from openvqe.circuit import gates
 from openvqe.hamiltonian import paulis
-from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
 from openvqe.tools import plotters
 from openvqe import numpy
 from openvqe import BitString
@@ -32,8 +31,8 @@ See randomized_trotter_parallelized for a similar example which uses multiproces
 if __name__ == "__main__":
 
         steps=5
-        randomize=True
         samples=100000
+        trotter_parameters = gates.TrotterParameters(randomize=True)
 
         a = BitString.from_binary(binary="01") # you can also just type a = 1
         b = BitString.from_binary(binary="10") # you can also just type b = 2
@@ -47,9 +46,8 @@ if __name__ == "__main__":
         # this is the Hamiltonian we created here
         #+1.1107X(1)+1.1107Z(0)X(1)+1.1107X(0)+1.1107X(0)Z(1)
 
-        trotter = DecompositionFirstOrderTrotter(steps=steps, randomize=randomize)
-        U = trotter(generators=[H])
+        U = gates.Trotterized(generators=[H], steps=steps, parameters=trotter_parameters)
         U += gates.Measurement(target=[0,1])
         result = SimulatorQiskit().run(abstract_circuit=U, samples=samples)
 
-        plotters.plot_counts(counts=result.counts, title="random="+str(randomize)+", steps="+str(steps)+", samples="+str(samples))
+        plotters.plot_counts(counts=result.counts, title="random="+str(trotter_parameters.randomize)+", steps="+str(steps)+", samples="+str(samples))

@@ -9,6 +9,7 @@ from openvqe.circuit.gates import Rx, H, X, Rz, ExpPauli
 from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
 from openvqe import copy
 from numpy.random import shuffle
+from openvqe.objective import Objective
 
 
 class OpenVQECompilerException(OpenVQEException):
@@ -28,6 +29,14 @@ def compiler(f):
             for g in gate.gates:
                 result += f(gate=g, **kwargs)
             return result
+        elif hasattr(gate, "unitaries") and hasattr(gate, "observable"):
+            compiled = []
+            for U in gate.unitaries:
+                cU = QCircuit()
+                for g in U.gates:
+                    cU += f(gate=g, **kwargs)
+                compiled.append(cU)
+            return Objective(observable=gate.observable, unitaries=compiled)
         else:
             return f(gate=gate, **kwargs)
 
@@ -184,7 +193,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
         # assemble the circuit
         circuit *= ubasis
         circuit *= cnot_cascade
-        circuit *= Rz(target=last_qubit, angle=angle, control=gate.control)
+        circuit *= Rz(target=last_qubit, angle=angle, control=gate.control, frozen=gate.frozen)
         circuit *= reversed_cnot
         circuit *= ubasis_t
 
@@ -194,26 +203,50 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
         return QCircuit.wrap_gate(gate)
 
 
-@compiler
-def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
+def do_compile_trotterized_gate(generator, steps, factor, randomize, control, threshold, frozen):
 
-    if not hasattr(gate, "generator") or not hasattr(gate, "steps"):
-        return QCircuit.wrap_gate(gate)
-
-    assert (gate.generator.is_hermitian())
+    assert (generator.is_hermitian())
     circuit = QCircuit()
-    factor = gate.angle / gate.steps
-    for index in range(gate.steps):
-        paulistrings = gate.generator.paulistrings
-        if gate.randomize:
+    factor = factor / steps
+    for index in range(steps):
+        paulistrings = generator.paulistrings
+        if randomize:
             shuffle(paulistrings)
         for ps in paulistrings:
             value = ps.coeff
             # don't make circuit for too small values
-            if len(ps) != 0 and not numpy.isclose(value, 0.0, atol=gate.threshold):
-                circuit += ExpPauli(paulistring=ps.naked(), angle=factor * value, control=gate.control)
+            if len(ps) != 0 and not numpy.isclose(value, 0.0, atol=threshold):
+                circuit += ExpPauli(paulistring=ps, angle=factor * value, control=control, frozen=frozen)
+
+    return circuit
+
+
+@compiler
+def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
+
+    if not hasattr(gate, "generators") or not hasattr(gate, "steps"):
+        return QCircuit.wrap_gate(gate)
+
+    c = 1.0
+    result = QCircuit()
+    if gate.join_components:
+        for step in range(gate.steps):
+            if gate.randomize_component_order:
+                shuffle(gate.generators)
+            for i, g in enumerate(gate.generators):
+                if gate.angles is not None:
+                    c = gate.angles[i]
+                result += do_compile_trotterized_gate(generator=g, steps=1, factor=c / gate.steps, randomize=gate.randomize, control=gate.control, frozen=gate.frozen, threshold=gate.threshold)
+    else:
+        if gate.randomize_component_order:
+            shuffle(gate.generators)
+        for i, g in enumerate(gate.generators):
+            if gate.angles is not None:
+                c = gate.angles[i]
+            result += do_compile_trotterized_gate(generator=g, factor=c, randomize=gate.randomize, control=gate.control, frozen=gate.frozen, threshold=gate.threshold)
 
     if compile_exponential_pauli:
-        return compile_exponential_pauli(circuit)
+        return compile_exponential_pauli_gate(result)
     else:
-        return circuit
+        return result
+

@@ -5,7 +5,6 @@ This is far from optimal and needs major improvements
 
 from openvqe.simulator import pick_simulator
 from openvqe.objective import Objective
-from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
 from openvqe.optimizers import scipy_optimizers, GradientDescent
 
 from matplotlib import pyplot as plt
@@ -30,10 +29,12 @@ if __name__ == "__main__":
     H = psi4_interface.make_hamiltonian()
 
     # configure the trotterization
-    trotter = DecompositionFirstOrderTrotter(steps=1)
+    #trotter = DecompositionFirstOrderTrotter(steps=1)
 
     # get the UCC circuit
-    U = psi4_interface.make_uccsd_ansatz(decomposition=trotter, initial_amplitudes="ccsd", include_reference_ansatz=True)
+    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="mp2", include_reference_ansatz=True)
+
+    print(U)
 
     # make an objective
     O = Objective(observable=H, unitaries=U)

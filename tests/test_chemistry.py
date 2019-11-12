@@ -9,7 +9,6 @@ import openvqe.quantumchemistry as qc
 from openvqe import numpy
 from openvqe.simulator import pick_simulator
 from openvqe.objective import Objective
-from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
 
 
 @pytest.mark.skipif(condition=not (qc.has_pyscf and qc.has_psi4),
@@ -68,8 +67,7 @@ def do_test_ucc(qc_interface, parameters, result, trafo):
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
 
-    trotter = DecompositionFirstOrderTrotter(steps=1, threshold=0.0)
-    U = psi4_interface.make_uccsd_ansatz(decomposition=trotter, initial_amplitudes="ccsd",
+    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="ccsd",
                                          include_reference_ansatz=True)
     H = psi4_interface.make_hamiltonian()
     O = Objective(observable=H, unitaries=U)
@@ -102,8 +100,7 @@ def do_test_mp2(qc_interface, parameters, result):
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
 
-    trotter = DecompositionFirstOrderTrotter(steps=1, threshold=0.0)
-    U = psi4_interface.make_uccsd_ansatz(decomposition=trotter, initial_amplitudes="mp2",
+    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="mp2",
                                          include_reference_ansatz=True)
     H = psi4_interface.make_hamiltonian()
     O = Objective(observable=H, unitaries=U)
