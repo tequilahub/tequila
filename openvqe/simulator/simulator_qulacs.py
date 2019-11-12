@@ -25,6 +25,7 @@ class BackenHandlerQulacs(BackendHandler):
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = True
+    recompile_exponential_pauli = True
 
     def fast_return(self, abstract_circuit):
         False

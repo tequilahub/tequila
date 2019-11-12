@@ -5,9 +5,10 @@ Replace with fancier external packages at some point
 from openvqe import OpenVQEException
 from openvqe.circuit.circuit import QCircuit
 from openvqe import numpy
-from openvqe.circuit.gates import Rx, H, X
+from openvqe.circuit.gates import Rx, H, X, Rz
 from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl, PowerGateImpl, MeasurementImpl
 from openvqe import copy
+
 
 class OpenVQECompilerException(OpenVQEException):
     pass
@@ -23,7 +24,7 @@ def compile_multitarget(gate) -> QCircuit:
 
     targets = gate.target
 
-    if len(targets)==1:
+    if len(targets) == 1:
         return QCircuit.wrap_gate(gate)
 
     if isinstance(gate, MeasurementImpl):
@@ -118,9 +119,79 @@ def compile_swap(gate) -> QCircuit:
         c = []
         if gate.control is not None:
             c = gate.control
-        return   X(target=gate.target[0], control=gate.target[1] + c) \
+        return X(target=gate.target[0], control=gate.target[1] + c) \
                + X(target=gate.target[1], control=gate.target[0] + c) \
                + X(target=gate.target[0], control=gate.target[1] + c)
+
+    else:
+        return QCircuit.wrap_gate(gate)
+
+
+def compile_exponential_pauli_gate(gate) -> QCircuit:
+    """
+    Returns the circuit: exp(i*angle*paulistring)
+    primitively compiled into X,Y Basis Changes and CNOTs and Z Rotations
+    :param paulistring: The paulistring in given as tuple of tuples (openfermion format)
+    like e.g  ( (0, 'Y'), (1, 'X'), (5, 'Z') )
+    :param angle: The angle which parametrizes the gate -> should be real
+    :returns: the above mentioned circuit as abstract structure
+    """
+
+    if hasattr(gate, "gates"):
+        result = QCircuit()
+        for g in gate.gates:
+            result *= compile_exponential_pauli_gate(gate=g)
+        return result
+
+    if hasattr(gate, "angle") and hasattr(gate, "paulistring"):
+        angle = gate.angle
+
+        if not numpy.isclose(numpy.imag(angle()), 0.0):
+            raise OpenVQEException("angle is not real, angle=" + str(angle))
+
+        circuit = QCircuit()
+
+        # the general circuit will look like:
+        # series which changes the basis if necessary
+        # series of CNOTS associated with basis changes
+        # Rz gate parametrized on the angle
+        # series of CNOT (inverted direction compared to before)
+        # series which changes the basis back
+        ubasis = QCircuit()
+        ubasis_t = QCircuit()
+        cnot_cascade = QCircuit()
+        reversed_cnot = QCircuit()
+
+        last_qubit = None
+        previous_qubit = None
+        for k, v in gate.paulistring.items():
+            pauli = v
+            qubit = [k]  # wrap in list for targets= ...
+
+            # see if we need to change the basis
+            axis = 2
+            if pauli.upper() == "X":
+                axis = 0
+            elif pauli.upper() == "Y":
+                axis = 1
+            ubasis *= change_basis(target=qubit, axis=axis)
+            ubasis_t *= change_basis(target=qubit, axis=axis, daggered=True)
+
+            if previous_qubit is not None:
+                cnot_cascade += X(target=qubit, control=previous_qubit)
+            previous_qubit = qubit
+            last_qubit = qubit
+
+        reversed_cnot = cnot_cascade.dagger()
+
+        # assemble the circuit
+        circuit *= ubasis
+        circuit *= cnot_cascade
+        circuit *= Rz(target=last_qubit, angle=angle)
+        circuit *= reversed_cnot
+        circuit *= ubasis_t
+
+        return circuit
 
     else:
         return QCircuit.wrap_gate(gate)

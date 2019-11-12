@@ -43,11 +43,12 @@ class BackendHandler:
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = False
+    recompile_exponential_pauli = True
 
     def recompile(self, abstract_circuit: QCircuit) -> QCircuit:
-
         recompiled = abstract_circuit
-
+        if self.recompile_exponential_pauli:
+            recompiled = compiler.compile_exponential_pauli_gate(recompiled)
         if self.recompile_multitarget:
             recompiled = compiler.compile_multitarget(recompiled)
         if self.recompile_controlled_rotation:

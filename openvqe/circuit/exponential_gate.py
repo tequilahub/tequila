@@ -42,72 +42,10 @@ class ExponentialPauliGate(ParametrizedGateImpl):
         self.target = [t for t in paulistring.keys()]
         self.control = control
         self.frozen = frozen
-        self.name = "U"
+        self.name = "Exp"
 
     def __str__(self):
         return "Exp(" + number_to_string(-self.parameter * 1.0j) + "/2" + str(self.paulistring) + ")" + str(self.target)
-
-    def decompose(self):
-        return self.compile_exponential_pauli_gate(paulistring=self.paulistring, angle=self.parameter)
-
-    @staticmethod
-    def compile_exponential_pauli_gate(paulistring, angle: Variable) -> QCircuit:
-        """
-        Returns the circuit: exp(i*angle*paulistring)
-        primitively compiled into X,Y Basis Changes and CNOTs and Z Rotations
-        :param paulistring: The paulistring in given as tuple of tuples (openfermion format)
-        like e.g  ( (0, 'Y'), (1, 'X'), (5, 'Z') )
-        :param angle: The angle which parametrizes the gate -> should be real
-        :returns: the above mentioned circuit as abstract structure
-        """
-
-        if not numpy.isclose(numpy.imag(angle()), 0.0):
-            raise OpenVQEException("angle is not real, angle=" + str(angle))
-
-        circuit = QCircuit()
-
-        # the general circuit will look like:
-        # series which changes the basis if necessary
-        # series of CNOTS associated with basis changes
-        # Rz gate parametrized on the angle
-        # series of CNOT (inverted direction compared to before)
-        # series which changes the basis back
-        ubasis = QCircuit()
-        ubasis_t = QCircuit()
-        cnot_cascade = QCircuit()
-        reversed_cnot = QCircuit()
-
-        last_qubit = None
-        previous_qubit = None
-        for k,v in paulistring.items():
-            pauli = v
-            qubit = [k]  # wrap in list for targets= ...
-
-            # see if we need to change the basis
-            axis = 2
-            if pauli.upper() == "X":
-                axis = 0
-            elif pauli.upper() == "Y":
-                axis = 1
-            ubasis *= change_basis(target=qubit, axis=axis)
-            ubasis_t *= change_basis(target=qubit, axis=axis, daggered=True)
-
-            if previous_qubit is not None:
-                cnot_cascade += gates.X(target=qubit, control=previous_qubit)
-            previous_qubit = qubit
-            last_qubit = qubit
-
-        reversed_cnot = cnot_cascade.dagger()
-
-        # assemble the circuit
-        circuit *= ubasis
-        circuit *= cnot_cascade
-        circuit *= gates.Rz(target=last_qubit, angle=angle)
-        circuit *= reversed_cnot
-        circuit *= ubasis_t
-
-        return circuit
-
 
 class DecompositionFirstOrderTrotter:
 
