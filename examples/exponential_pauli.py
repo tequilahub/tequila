@@ -17,6 +17,7 @@ from openvqe.circuit import gates
 from openvqe.hamiltonian import PauliString
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 
+
 # default initialization
 ps = PauliString(data={0:"x", 1:"y", 2:"z"}, coeff=2.0)
 U = gates.ExpPauli(paulistring=ps, angle=2.0)
@@ -32,7 +33,7 @@ ps = PauliString.from_string("X(0)Y(1)Z(2)")
 U = gates.ExpPauli(paulistring=ps, angle=2.0)
 print(U)
 
-# most convenient initialization
+# Direct initialization (should also work with the other two variants)
 U = gates.ExpPauli(paulistring="X(0)Y(1)Z(2)", angle=2.0)
 print(U)
 
