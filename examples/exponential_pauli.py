@@ -17,7 +17,7 @@ from openvqe.circuit import gates
 from openvqe.hamiltonian import PauliString
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 
-# default inconvenient initialization
+# default initialization
 ps = PauliString(data={0:"x", 1:"y", 2:"z"}, coeff=2.0)
 U = gates.ExpPauli(paulistring=ps, angle=2.0)
 print(U)
@@ -40,12 +40,11 @@ result = SimulatorCirq().simulate_wavefunction(U)
 
 print("This is the old abstract data object")
 print(result.abstract_circuit)
-print("This is how the circuit looks in the backend")
+print("This is how the circuit looks in the cirq backend")
 print(result.circuit)
 
 
 print("\nSee the conventions: The next two circuits should be the same")
-# most convenient initialization
 U = gates.ExpPauli(paulistring="Z(0)", angle=2.0)
 result = SimulatorCirq().simulate_wavefunction(U)
 print(result.circuit)

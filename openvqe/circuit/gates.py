@@ -76,10 +76,23 @@ def Measurement(target, name=None):
 
 @wrap_gate
 def ExpPauli(paulistring: typing.Union[PauliString,str], angle, control: typing.Union[list, int] = None, frozen: bool = None):
+    """
+    :param paulistring: given as PauliString structure or as string or dict or list
+    if given as string: Format should be like X(0)Y(3)Z(2)
+    if given as list: Format should be like [(0,'X'),(3,'Y'),(2,'Z')]
+    if given as dict: Format should be like { 0:'X', 3:'Y', 2:'Z' }
+    :param angle: the angle (note that PauliString.coeff is ignored)
+    :param control: control qubits
+    :param frozen: is the gate frozen? (will be ignored by optimizers)
+    :return: Gate wrapped in circuit
+    """
+
     if isinstance(paulistring, str):
         ps = PauliString.from_string(string=paulistring)
     elif isinstance(paulistring, list):
         ps = PauliString.from_openfermion(key=list)
+    elif isinstance(paulistring, dict):
+        ps = PauliString(data=paulistring)
     else:
         ps = paulistring
 
