@@ -187,7 +187,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
         # assemble the circuit
         circuit *= ubasis
         circuit *= cnot_cascade
-        circuit *= Rz(target=last_qubit, angle=angle)
+        circuit *= Rz(target=last_qubit, angle=angle, control=gate.control)
         circuit *= reversed_cnot
         circuit *= ubasis_t
 

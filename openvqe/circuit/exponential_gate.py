@@ -45,7 +45,8 @@ class DecompositionFirstOrderTrotter:
         self.randomize = randomize
 
     def __call__(self, generators: typing.List[QubitHamiltonian],
-                 coeffs: typing.List[typing.Union[numbers.Number, Variable]] = None, *args, **kwargs) -> QCircuit:
+                 coeffs: typing.List[typing.Union[numbers.Number, Variable]] = None,
+                 control:typing.Union[str, list]=None, *args, **kwargs) -> QCircuit:
         """
         See __init___ for effect of several parameters
         :param generators: Generators given as a list of QubitHamiltonians [H_0, H_1, ...]
@@ -60,17 +61,17 @@ class DecompositionFirstOrderTrotter:
                     shuffle(generators)
                 for i, g in enumerate(generators):
                     if coeffs is not None: c = coeffs[i]
-                    result += self.compile(generator=g, steps=1, factor=c / self.steps, randomize=self.randomize)
+                    result += self.compile(generator=g, steps=1, factor=c / self.steps, randomize=self.randomize, control=control)
         else:
             if self.randomize_component_order:
                 shuffle(generators)
             for i, g in enumerate(generators):
                 if coeffs is not None: c = coeffs[i]
-                result += self.compile(generator=g, factor=c, randomize=self.randomize)
+                result += self.compile(generator=g, factor=c, randomize=self.randomize, control=control)
 
         return result
 
-    def compile(self, generator: QubitHamiltonian, steps: int = None, factor: float = 1.0, randomize: bool = False):
+    def compile(self, generator: QubitHamiltonian, steps: int = None, factor: float = 1.0, randomize: bool = False, control=None):
         if steps is None:
             steps = self.steps
         assert (generator.is_hermitian())
@@ -84,6 +85,6 @@ class DecompositionFirstOrderTrotter:
                 value = ps.coeff
                 # don't make circuit for too small values
                 if len(ps) != 0 and not numpy.isclose(value, 0.0, atol=self.threshold):
-                    circuit += ExponentialPauliGateImpl(paulistring=ps, angle=factor * value)
+                    circuit += ExponentialPauliGateImpl(paulistring=ps, angle=factor * value, control=control)
 
         return circuit

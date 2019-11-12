@@ -96,7 +96,7 @@ def ExpPauli(paulistring: typing.Union[PauliString,str], angle, control: typing.
     else:
         ps = paulistring
 
-    return ExponentialPauliGateImpl(paulistring=ps, angle=angle, frozen=frozen)
+    return ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control, frozen=frozen)
 
 """
 Convenience for Two Qubit Gates

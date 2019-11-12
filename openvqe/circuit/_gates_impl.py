@@ -347,7 +347,7 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         self.paulistring = paulistring.naked()
         self.parameter = angle
         self.target = [t for t in paulistring.keys()]
-        self.control = control
+        self.control = self.list_assignement(control)
         self.frozen = frozen
 
     def __str__(self):

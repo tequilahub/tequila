@@ -26,15 +26,18 @@ def get_all_wfn_simulators():
 @pytest.mark.parametrize('simulator', get_all_wfn_simulators())
 @pytest.mark.parametrize('angle', numpy.random.uniform(0,2*numpy.pi,3))
 @pytest.mark.parametrize('axis', ['X', 'Y', 'Z'])
-def test_exponential_pauli_wfn(simulator, angle, axis):
+@pytest.mark.parametrize('control', [None, 1])
+def test_exponential_pauli_wfn(simulator, angle, axis, control):
 
-    U1 = gates.RotationGate(axis=axis, angle=angle, target=0)
-    U2 = gates.ExpPauli(paulistring=axis+"(0)", angle=angle)
+    U1 = gates.RotationGate(axis=axis, angle=angle, target=0, control=control)
+    U2 = gates.ExpPauli(paulistring=axis+"(0)", angle=angle, control=control)
 
     wfn1 = simulator().simulate_wavefunction(U1).wavefunction
     wfn2 = simulator().simulate_wavefunction(U2).wavefunction
 
     assert(wfn1==wfn2)
+
+
 
 
 
