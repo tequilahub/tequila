@@ -1,8 +1,10 @@
 from openvqe.circuit.circuit import QCircuit
-from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl
+from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, ExponentialPauliGateImpl
 from openvqe import OpenVQEException
 from openvqe import typing
+from openvqe.hamiltonian.qubit_hamiltonian import PauliString
 import functools
+
 
 
 def wrap_gate(func):
@@ -72,6 +74,16 @@ def Measurement(target, name=None):
     else:
         return MeasurementImpl(name=name, target=target)
 
+@wrap_gate
+def ExpPauli(paulistring: typing.Union[PauliString,str], angle, control: typing.Union[list, int] = None, frozen: bool = None):
+    if isinstance(paulistring, str):
+        ps = PauliString.from_string(string=paulistring)
+    elif isinstance(paulistring, list):
+        ps = PauliString.from_openfermion(key=list)
+    else:
+        ps = paulistring
+
+    return ExponentialPauliGateImpl(paulistring=ps, angle=angle, frozen=frozen)
 
 """
 Convenience for Two Qubit Gates

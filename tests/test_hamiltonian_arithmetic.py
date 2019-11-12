@@ -7,7 +7,7 @@ def test_paulistring_conversion():
     X1 = QubitHamiltonian.init_from_string("x0")
     X2 = paulis.X(0)
     keys = [i for i in X2.keys()]
-    pwx = PauliString.init_from_openfermion(key=keys[0], coeff=X2[keys[0]])
+    pwx = PauliString.from_openfermion(key=keys[0], coeff=X2[keys[0]])
     X3 = QubitHamiltonian.init_from_paulistring(pwx)
     assert (X1 == X2)
     assert (X2 == X3)
@@ -15,7 +15,7 @@ def test_paulistring_conversion():
     H = paulis.X(0) * paulis.Y(1) * paulis.Z(2) + paulis.X(3) * paulis.Y(4) * paulis.Z(5)
     PS = []
     for key, value in H.items():
-        PS.append(PauliString.init_from_openfermion(key, value))
+        PS.append(PauliString.from_openfermion(key, value))
     PS2 = H.paulistrings
     assert (PS == PS2)
 
@@ -24,7 +24,7 @@ def test_paulistring_conversion():
         H += make_random_pauliword(complex=True)
     PS = []
     for key, value in H.items():
-        PS.append(PauliString.init_from_openfermion(key, value))
+        PS.append(PauliString.from_openfermion(key, value))
     PS2 = H.paulistrings
     assert (PS == PS2)
 

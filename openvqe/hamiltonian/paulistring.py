@@ -5,5 +5,5 @@ if __name__ == "__main__":
     test = PauliString(data=testdata, coeff=2)
     print("test=", test)
     print("test: openfermion_key = ", test.key_openfermion())
-    print("reinitialized: ", PauliString.init_from_openfermion(key=test.key_openfermion(), coeff=test.coeff))
+    print("reinitialized: ", PauliString.from_openfermion(key=test.key_openfermion(), coeff=test.coeff))
 

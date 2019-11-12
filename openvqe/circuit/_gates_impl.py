@@ -339,13 +339,23 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
     def angle(self, angle):
         self.parameter = angle
 
+    @property
+    def name(self):
+        return "Exp(" + number_to_string(self.angle()*1j) + "/2 PS)"
+
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None, frozen: bool = False):
-        self.paulistring = paulistring
+        self.paulistring = paulistring.naked()
         self.parameter = angle
         self.target = [t for t in paulistring.keys()]
         self.control = control
         self.frozen = frozen
-        self.name = "Exp"
 
     def __str__(self):
-        return "Exp(" + number_to_string(-self.parameter * 1.0j) + "/2" + str(self.paulistring) + ")" + str(self.target)
+        result = str(self.name) + "(target=" + str(self.target)
+        if not self.is_single_qubit_gate():
+            result += ", control=" + str(self.control)
+
+        result += ", parameter=" + str(self._parameter)
+        result += ", paulistring=" + str(self.paulistring)
+        result += ")"
+        return result

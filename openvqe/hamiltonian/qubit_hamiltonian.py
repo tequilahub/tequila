@@ -32,7 +32,9 @@ class PauliString:
         return tuple(key)
 
     def __repr__(self):
-        result = number_to_string(self.coeff)
+        result = ""
+        if self._coeff is not None:
+            result = number_to_string(self.coeff)
         for k, v in self._data.items():
             result += str(v) + "(" + str(k) + ")"
         return result
@@ -63,7 +65,25 @@ class PauliString:
         return self._data.values()
 
     @classmethod
-    def init_from_openfermion(cls, key, coeff=None):
+    def from_string(cls, string:str, coeff=None):
+        """
+        :param string: Format is for example: X(0)Y(100)Z(2)
+        :param coeff: coefficient
+        :return: new instance with the data given by the string
+        """
+        data = dict()
+        string = string.strip()
+        for part in string.split(')'):
+            part = part.strip()
+            if part == "":
+                break
+            pauli_dim = part.split('(')
+            data[int(pauli_dim[1])] = pauli_dim[0].upper()
+        return PauliString(data=data, coeff=coeff)
+
+
+    @classmethod
+    def from_openfermion(cls, key, coeff=None):
         """
         Initialize a PauliString from OpenFermion data
         :param key: The pauli-string in OpenFermion format i.e. a list of tuples
@@ -74,7 +94,7 @@ class PauliString:
         data = {}
         for term in key:
             index = term[0]
-            pauli = term[1]
+            pauli = term[1].upper()
             data[index] = pauli
         return PauliString(data=data, coeff=coeff)
 
@@ -98,6 +118,12 @@ class PauliString:
 
     def __getitem__(self, item):
         return self._data[item]
+
+    def naked(self):
+        """
+        :return: naked paulistring without coefficient
+        """
+        return PauliString(data=self._data, coeff=None)
 
 
 """
@@ -320,7 +346,7 @@ class QubitHamiltonian:
         """
         :return: the Hamiltonian as list of PauliStrings
         """
-        return [PauliString.init_from_openfermion(key=k, coeff=v) for k, v in self.items()]
+        return [PauliString.from_openfermion(key=k, coeff=v) for k, v in self.items()]
 
     @paulistrings.setter
     def paulistrings(self, other):

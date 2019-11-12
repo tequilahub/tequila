@@ -6,7 +6,7 @@ from openvqe import OpenVQEException
 from openvqe.circuit.circuit import QCircuit
 from openvqe import numpy
 from openvqe.circuit.gates import Rx, H, X, Rz
-from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl, PowerGateImpl, MeasurementImpl
+from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
 from openvqe import copy
 
 
