@@ -6,6 +6,7 @@ from openvqe.circuit.variable import Variable,Transform as Variable,Transform
 
 class QCircuit():
 
+    
     def decompose(self):
         primitives = []
         for g in self.gates:
@@ -17,7 +18,7 @@ class QCircuit():
 
 
     @property
-    def parameters(self):
+    def parameter_list(self):
         parameters=[]
         for g in self.gates:
             if g.is_parametrized() and not g.is_frozen():
@@ -30,6 +31,20 @@ class QCircuit():
                     parameters.append(g.parameter)
         return parameters
     
+    @property
+    def parameters(self):
+        parameters = dict()
+        for i, g in enumerate(self.gates):
+            if g.is_parametrized() and not g.is_frozen():
+                if type(g.parameter) is Transform:
+                    pars=g.parameter.variables
+                    for par in pars:
+                        parameters[par.name] = par.value
+                elif type(g.parameter )is Variable:
+                    parameters[g.parameter.name] = g.parameter.value
+        return parameters
+    
+
     @property
     def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
@@ -74,6 +89,16 @@ class QCircuit():
         else:
             self.gates = gates
         self._weight = weight
+        self.individuate_parameters()
+
+    def individuate_parameters(self):
+        count=0
+        for parameter in self.parameters:
+            if hasattr(parameter,'is_default'):
+                if parameter.is_default:
+                    parameter.name= 'v.{}'.format(str(count))
+                    count+=1
+
 
     def is_primitive(self):
         """
@@ -125,31 +150,13 @@ class QCircuit():
             result *= g.dagger()
         return result
 
-    def extract_parameters(self) -> dict:
-        """
-        Extract all parameters from the circuit
-        :return: List of all unique parameters with names as keys
-        TO DO: move away from the dictionary paradigm to the vector paradigm.
-        """
-        parameters = dict()
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized() and not g.is_frozen():
-                if type(g.parameter) is Transform:
-                    pars=g.parameter.variables
-                    for par in pars:
-                        parameters[par.name] = par.value
-                elif type(g.parameter )is Variable:
-                    parameters[g.parameter.name] = g.parameter.value
-        return parameters
-
     def update_parameters(self, parameters: dict):
         """
         inplace operation
         :param parameters: a dict of all parameters that shall be updated (order does not matter)
         :return: self for chaining
-        TODO: get rid of this
         """
-        for p in self.parameters:
+        for p in self.parameter_list:
             if p.name in parameters.keys():
                 p.value=parameters[p.name]
         return self

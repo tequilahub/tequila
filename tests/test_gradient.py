@@ -34,8 +34,8 @@ def test_gradient_UY_HX(angle, controlled, silent=True):
     E = SimulatorQiskit().measure_objective(objective=O, samples=100000)
     dO = grad(obj=O)
     assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = SimulatorQiskit().measure_objective(objective=dO[k], samples=100000)
+    for v in dO:
+        dE = SimulatorQiskit().measure_objective(objective=v, samples=100000)
     assert (numpy.isclose(E, numpy.sin(angle()), atol=0.01))
     assert (numpy.isclose(dE, numpy.cos(angle()), atol=0.01))
     if not silent:
@@ -66,8 +66,8 @@ def test_gradient_UX_HY(angle, controlled, silent=True):
     E = SimulatorQiskit().measure_objective(objective=O, samples=100000)
     dO = grad(obj=O)
     assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = SimulatorQiskit().measure_objective(objective=dO[k], samples=100000)
+    for v in dO:
+        dE = SimulatorQiskit().measure_objective(objective=v, samples=100000)
     assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.01))
     assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.01))
     if not silent:
@@ -105,8 +105,8 @@ def test_gradient_UY_HX_wfnsim(simulator, angle, controlled, silent=True):
     E = simulator().simulate_objective(objective=O)
     dO = grad(obj=O)
     assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = simulator().simulate_objective(objective=dO[k])
+    for v in dO:
+        dE = simulator().simulate_objective(objective=v)
     E = numpy.float(E)  # for isclose
     dE = numpy.float(dE)  # for isclose
     assert (numpy.isclose(E, numpy.sin(angle()), atol=0.0001))
@@ -142,8 +142,8 @@ def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
     E = simulator().simulate_objective(objective=O)
     dO = grad(obj=O)
     assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = simulator().simulate_objective(objective=dO[k])
+    for v in dO:
+        dE = simulator().simulate_objective(objective=v)
     assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.0001))
     assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.0001))
     if not silent:

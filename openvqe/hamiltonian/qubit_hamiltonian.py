@@ -1,6 +1,8 @@
 from openfermion import QubitOperator
 from openvqe.tools import number_to_string
 from openvqe import numbers, typing
+from functools import reduce
+from openvqe import numpy
 
 class PauliString:
     """
@@ -89,6 +91,17 @@ class PauliString:
     def __eq__(self, other):
         return self._data == other._data
 
+"""
+Explicit matrix forms for the Pauli operators for the tomatrix method
+"""
+import numpy as np
+
+pauli_matrices = {
+    'I': numpy.array([[1, 0], [0, 1]], dtype=numpy.complex),
+    'Z': numpy.array([[1, 0], [0, -1]], dtype=numpy.complex),
+    'X': numpy.array([[0, 1], [1, 0]], dtype=numpy.complex),
+    'Y': numpy.array([[0, -1j], [1j, 0]], dtype=numpy.complex)
+}
 
 class QubitHamiltonian:
     """
@@ -262,6 +275,28 @@ class QubitHamiltonian:
 
     def normalize(self):
         self._hamiltonian.renormalize()
+
+    def tomatrix(self):
+        """
+        Returns the Hamiltonian as a dense matrix.
+
+        Returns a dense 2**N x 2**N matrix representation of this
+        QubitHamiltonian. Watch for memory usage when N is >12!
+        
+        :return: numpy.ndarray(2**N, 2**N) with type numpy.complex
+        """
+        nq = self.n_qubits
+        I = numpy.eye(2,dtype=numpy.complex)
+        Hm = numpy.zeros((2**nq, 2**nq), dtype=numpy.complex)
+
+        for key,val in self.items():
+            term = [I] * nq
+
+            for ind, op in key:
+                term[ind] = pauli_matrices[op]
+
+            Hm += val * reduce(numpy.kron, term)
+        return Hm
 
     @property
     def n_qubits(self):

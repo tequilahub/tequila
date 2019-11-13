@@ -66,15 +66,25 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
 
     # for the case that gate is actually a whole circuit
 
-    if angles is None:
-        angles = [gate.angle / 2.0, -gate.angle / 2.0]
-
-    assert (len(angles) == 2)
+    
+    if angles is not None:
+        assert (len(angles) == 2)
     
     if hasattr(gate, "gates"):
         result = QCircuit()
         for g in gate.gates:
-            result += compile_controlled_rotation(gate=g, angles=angles)
+            if angles is None:
+                if hasattr(g,'angle'):
+                    angles = [g.angle / 2.0, -g.angle / 2.0]
+                    result += compile_controlled_rotation(gate=g, angles=angles)
+                else:
+                    result += compile_controlled_rotation(gate=g,angles=None)
+            else:
+                if hasattr(g,'angle'):
+                    result += compile_controlled_rotation(gate=g, angles=angles)
+                else:
+                    result += compile_controlled_rotation(gate=g,angles=None)
+
         return result
 
     if gate.control is None:
@@ -85,7 +95,6 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
 
 
     if len(gate.target) > 1:
-        result = QCircuit()
         return compile_controlled_rotation(gate=compile_multitarget(gate=gate), angles=angles)
 
     target = gate.target

@@ -142,7 +142,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         if isinstance(other, numbers.Number):
             self._parameter = Variable(value=other)
         elif isinstance(other, str):
-            self._parameter = Variable(name=other, value=0.0)
+            self._parameter = Variable(name=other, value=None)
         elif hasattr(other, "evalf"):
             self._parameter = SympyVariable(value=other)
         else:

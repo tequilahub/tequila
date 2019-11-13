@@ -8,8 +8,8 @@ from openvqe import numpy as np
 class SympyVariable:
 
     def __init__(self, name=None, value=None):
-        self._name = name
-        self._value = value
+        self._value=value
+        self._name=name
 
     def __call__(self, *args, **kwargs):
         return self._value
@@ -74,9 +74,29 @@ class Variable():
     
 
 
-    def __init__(self, value=None, name: str = ''):
-        self._value = value
-        self._name = name
+    def __init__(self, value=None,name=None):
+        if value is not None:
+            self._value = float(value)
+        else:
+            self._value = None
+
+        if type(name) is str or name ==None:
+            self._name = name
+
+        else:
+            if type(name) is not None:
+                self._name= str(name)
+            else:
+                self._name = name
+
+        if self._name is None:
+            self.is_default=True
+        else:
+            self.is_default=False
+        if self._value is None:
+            self.needs_init=True
+        else:
+            self.needs_init=False
 
     def has_var(self,x):
         if type(x) is Variable:
@@ -88,8 +108,9 @@ class Variable():
 
     def __eq__(self,other):
         if type(self)==type(other):
-            self.name ==other.name and self.value==other.value
-            return True
+            if self.name is '':
+                if self.name ==other.name and self.value==other.value:
+                    return True
         return False
 
     def __add__(self, other: float):
@@ -108,7 +129,6 @@ class Variable():
             return Transform(Sub,[other,self])
 
     def __mul__(self, other):
-        # return self._return*other
          return Transform(Mul,[self,other])
 
     def __rmul__(self,other):
@@ -236,8 +256,6 @@ class Transform():
         self.f=func
 
 
-
-
     def has_var(self,x):
         if x in self.variables:
             return True
@@ -248,10 +266,14 @@ class Transform():
         return self.eval
 
     def __eq__(self, other):
-        if type(self) == type(other):
-            if self.eval==other.eval:
-                return True
-
+        if hasattr(other,'eval'):
+            if hasattr(other,'variables'):
+                if self.eval==other.eval and self.variables==other.variables:
+                    return True
+            else:
+                return self.eval==other.eval and other in self.variables
+        elif self.eval == other:
+            return True
         return False
 
 
@@ -290,6 +312,10 @@ class Transform():
 
     def __truediv__(self, other):
         return Transform(Div,[self,other])
+
+    def __rtruediv__(self,other):
+        return Transform(Div,[other,self])
+
 
 
     def __pow__(self, other):
@@ -404,3 +430,9 @@ def Pow(l,r):
     else:
         rv=r
     return l**r
+
+def Sqr(arg):
+    if type(arg) in [Variable,Transform]:
+        return np.sqrt(arg())
+    else:
+        return np.sqrt(arg)

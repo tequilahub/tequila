@@ -61,7 +61,7 @@ def test_ucc():
 
         dO = grad(O)
         gradient = 0.0
-        for dOi in dO.values():
+        for dOi in dO:
             value = SimulatorCirq().simulate_objective(objective=dOi)
             gradient += value
         assert (isclose(gradient, 0.0, atol=1.e-4, rtol=1.e-4))
