@@ -74,15 +74,13 @@ class GradientDescent(Optimizer):
         if angles is None:
             angles = objective.extract_parameters()
         objective.update_parameters(parameters=angles)
+        dO = grad(objective)
 
         for iter in range(self.maxiter):
-
             if self.samples is None:
                 E = simulator.simulate_objective(objective=objective)
             else:
                 E = simulator.measure_objective(objective=objective, samples=self.samples)
-
-            dO = grad(objective)
 
             dE = dict()
             for k, dOi in dO.items():
@@ -93,5 +91,7 @@ class GradientDescent(Optimizer):
             angles = self.update_parameters(parameters=angles, energy=E, gradient=dE)
 
             objective.update_parameters(parameters=angles)
+            for dOi in dO.values():
+                dOi.update_parameters(parameters=angles)
 
         return angles
