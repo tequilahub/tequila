@@ -2,7 +2,7 @@ from openvqe.circuit import gates
 from openvqe.circuit import Variable
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
-from openvqe.optimizers.scipy_optimizers import minimize
+from openvqe.optimizers.scipy_optimizers import minimize, OptimizerSciPy
 from matplotlib import pyplot as plt
 
 """
@@ -43,7 +43,14 @@ if __name__ == "__main__":
     O = Objective(unitaries=U, observable=H)
 
     # Optimize
-    E, angles, res = minimize(O, return_all=True, simulator=simulator, samples=samples, method=method)
+    #E, angles, res = minimize(O, return_all=True, simulator=simulator, samples=samples, method=method)
+    optimizer = OptimizerSciPy(simulator=simulator, samples=samples, method=method)
+    angles = optimizer(objective=O)
+    optimizer.plot()
+    optimizer.plot(property='gradients a')
+    optimizer.plot(property='gradients b')
+    optimizer.plot(property='angles a')
+    optimizer.plot(property='angles b')
 
     print("final angles are:\n", angles)
     print("final energy is:\n", E)
