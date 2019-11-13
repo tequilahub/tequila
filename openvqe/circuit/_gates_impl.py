@@ -15,6 +15,9 @@ class QGateImpl:
         self.control = tuple(list_assignement(control))
         self.finalize()
 
+    def copy(self):
+        return copy.deepcopy(self)
+
     def is_frozen(self):
         raise Exception(
             'unparametrized gates cannot be frozen because there is nothing to freeze. \n If you want to iterate over all your gates, use is_differentiable as a criterion before or in addition to is_frozen')

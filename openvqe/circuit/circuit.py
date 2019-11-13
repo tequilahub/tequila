@@ -162,7 +162,7 @@ class QCircuit():
 
     def __mul__(self, other):
         result = QCircuit()
-        result.gates = copy.deepcopy(self.gates + other.gates)
+        result.gates = [g.copy() for g in self.gates + other.gates]
         result.weight = self.weight * other.weight
         result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return result
@@ -185,7 +185,7 @@ class QCircuit():
         if isinstance(other, QGateImpl):
             return self.__mul__(other)
         else:
-            return QCircuit(gates=copy.deepcopy(self.gates), weight=self.weight * other)
+            return QCircuit(gates=[g.copy() for g in self.gates], weight=self.weight * other)
 
     def __add__(self, other):
         return self.__mul__(other=other)
