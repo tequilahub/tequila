@@ -73,7 +73,7 @@ def compile_multitarget(gate) -> QCircuit:
     result = QCircuit()
     for t in targets:
         gx = copy.deepcopy(gate)
-        gx.target = [t]
+        gx.target = (t,)
         result += gx
 
     return result

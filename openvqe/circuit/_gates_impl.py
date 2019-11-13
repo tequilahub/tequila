@@ -5,32 +5,14 @@ from openvqe import typing
 from openvqe.circuit.variable import Variable, SympyVariable
 from openvqe import numbers, copy
 from openvqe.hamiltonian import PauliString, QubitHamiltonian
-from openvqe.tools import number_to_string
+from openvqe.tools import number_to_string, list_assignement
 
 
 class QGateImpl:
-
-    @staticmethod
-    def list_assignement(o):
-        """
-        --> moved to tools
-        Helper function to make initialization with lists and single elements possible
-        :param o: iterable object or single element
-        :return: Gives back a list if a single element was given
-        """
-        if o is None:
-            return None
-        elif hasattr(o, "__get_item__"):
-            return o
-        elif hasattr(o, "__iter__"):
-            return o
-        else:
-            return [o]
-
     def __init__(self, name, target: list, control: list = None):
         self.name = name
-        self.target = self.list_assignement(target)
-        self.control = self.list_assignement(control)
+        self.target = tuple(list_assignement(target))
+        self.control = tuple(list_assignement(control))
         self.verify()
 
     def is_frozen(self):
@@ -42,14 +24,17 @@ class QGateImpl:
         :return: return the hermitian conjugate of the gate.
         """
 
-        return QGateImpl(name=copy.copy(self.name), target=copy.deepcopy(self.target),
-                         control=copy.deepcopy(self.control))
+        return QGateImpl(name=copy.copy(self.name), target=self.target,
+                         control=self.control)
 
     def is_controlled(self) -> bool:
         """
         :return: True if the gate is controlled
         """
-        return self.control is not None
+        if self.control:
+            return True
+        else:
+            return False
 
     def is_parametrized(self) -> bool:
         """
@@ -62,7 +47,7 @@ class QGateImpl:
         Convenience and easier to interpret
         :return: True if the Gate only acts on one qubit (not controlled)
         """
-        return (self.control is None or len(self.control) == 0) and len(self.target) == 1
+        return ((not self.control) and (len(self.target) == 1))
 
     def is_differentiable(self) -> bool:
         '''
@@ -71,9 +56,7 @@ class QGateImpl:
         return False
 
     def verify(self):
-        if self.target is None:
-            raise Exception('Received no targets upon initialization')
-        if len(self.list_assignement(self.target)) < 1:
+        if not self.target:
             raise Exception('Received no targets upon initialization')
         if self.is_controlled():
             for c in self.target:
@@ -94,8 +77,8 @@ class QGateImpl:
         return self.__str__()
 
     @property
-    def qubits(self) -> typing.List[int]:
-        if self.control is not None:
+    def qubits(self) -> typing.Tuple[int]:
+        if self.control:
             return self.target + self.control
         else:
             return self.target
@@ -104,8 +87,12 @@ class QGateImpl:
         """
         :return: highest qubit index used by this gate
         """
+        # if self.control is None:
+        #     return max(self.target)
+        # else:
+        #     return max(self.target + self.control)
         result = max(self.target)
-        if self.control is not None:
+        if self.control:
             result = max(result, max(self.control))
         return result
 
@@ -123,8 +110,8 @@ class MeasurementImpl(QGateImpl):
 
     def __init__(self, name, target):
         self.name = name
-        self.target = sorted(self.list_assignement(target))
-        self.control = None
+        self.target = tuple(sorted(list_assignement(target)))
+        self.control = tuple()
 
 
 class ParametrizedGateImpl(QGateImpl, ABC):
@@ -346,8 +333,8 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None, frozen: bool = False):
         self.paulistring = paulistring.naked()
         self.parameter = angle
-        self.target = [t for t in paulistring.keys()]
-        self.control = self.list_assignement(control)
+        self.target = tuple(t for t in paulistring.keys())
+        self.control = tuple(list_assignement(control))
         self.frozen = frozen
 
     def __str__(self):
@@ -377,7 +364,7 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
 
     @angles.setter
     def angles(self, other):
-        self._parameter = self.list_assignement(other)
+        self._parameter = list_assignement(other)
 
     def __init__(self, generators: typing.Union[QubitHamiltonian, typing.List[QubitHamiltonian]],
                  steps: int = 1,
@@ -400,10 +387,10 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         :param randomize_component_order: randomize the order in the generators order before trotterizing
         :param randomize: randomize the trotter decomposition of each generator
         """
-        self.generators = self.list_assignement(generators)
+        self.generators = list_assignement(generators)
         self.target = self.extract_targets()
-        self._parameter = self.list_assignement(angles)
-        self.control = self.list_assignement(control)
+        self._parameter = list_assignement(angles)
+        self.control = tuple(list_assignement(control))
         self.frozen = frozen
         self.steps = steps
         self.threshold = threshold
@@ -427,4 +414,4 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         for g in self.generators:
             for ps in g.paulistrings:
                 targets += [k for k in ps.keys()]
-        return list(set(targets))
+        return tuple(set(targets))

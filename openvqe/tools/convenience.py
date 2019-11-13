@@ -10,11 +10,11 @@ def list_assignement(o):
     :return: Gives back a list if a single element was given
     """
     if o is None:
-        return None
+        return []
     elif hasattr(o, "__get_item__"):
-        return o
+        return list(o)
     elif hasattr(o, "__iter__"):
-        return o
+        return list(o)
     else:
         return [o]
 

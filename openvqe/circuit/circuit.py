@@ -23,7 +23,7 @@ class QCircuit():
     def qubits(self):
         accumulate = []
         for g in self.gates:
-            accumulate += g.qubits
+            accumulate += list(g.qubits)
         return sorted(list(set(accumulate)))
 
     @property
@@ -158,6 +158,7 @@ class QCircuit():
         """
         :return: Maximum index this circuit touches
         """
+        # return max([g.max_qubit for g in self.gates])
         qmax = 0
         for g in self.gates:
             qmax = max(qmax, g.max_qubit())
