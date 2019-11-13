@@ -13,7 +13,7 @@ class QGateImpl:
         self.name = name
         self.target = tuple(list_assignement(target))
         self.control = tuple(list_assignement(control))
-        self.verify()
+        self.finalize()
 
     def is_frozen(self):
         raise Exception(
@@ -55,13 +55,21 @@ class QGateImpl:
         '''
         return False
 
-    def verify(self):
+    def finalize(self):
         if not self.target:
             raise Exception('Received no targets upon initialization')
         if self.is_controlled():
             for c in self.target:
                 if c in self.control:
                     raise Exception("control and target are the same qubit: " + self.__str__())
+
+        # Set the active qubits
+        if self.control:
+            self.qubits = self.target + self.control
+        else:
+            self.qubits = self.target
+
+        self.max_qubit = self.compute_max_qubit()
 
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
@@ -76,25 +84,14 @@ class QGateImpl:
         """
         return self.__str__()
 
-    @property
-    def qubits(self) -> typing.Tuple[int]:
-        if self.control:
-            return self.target + self.control
-        else:
-            return self.target
-
-    def max_qubit(self):
+    def compute_max_qubit(self):
         """
         :return: highest qubit index used by this gate
         """
-        # if self.control is None:
-        #     return max(self.target)
-        # else:
-        #     return max(self.target + self.control)
-        result = max(self.target)
-        if self.control:
-            result = max(result, max(self.control))
-        return result
+        if self.control is None:
+            return max(self.target)
+        else:
+            return max(self.target + self.control)
 
     def __eq__(self, other):
         if self.name != other.name:
@@ -112,6 +109,7 @@ class MeasurementImpl(QGateImpl):
         self.name = name
         self.target = tuple(sorted(list_assignement(target)))
         self.control = tuple()
+        self.finalize()
 
 
 class ParametrizedGateImpl(QGateImpl, ABC):
@@ -336,6 +334,7 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         self.target = tuple(t for t in paulistring.keys())
         self.control = tuple(list_assignement(control))
         self.frozen = frozen
+        self.finalize()
 
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
@@ -398,6 +397,7 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         self.randomize_component_order = randomize_component_order
         self.randomize = randomize
         self.name = "Trotterized"
+        self.finalize()
 
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)

@@ -161,7 +161,7 @@ class QCircuit():
         # return max([g.max_qubit for g in self.gates])
         qmax = 0
         for g in self.gates:
-            qmax = max(qmax, g.max_qubit())
+            qmax = max(qmax, g.max_qubit)
         return qmax
 
     def __mul__(self, other):
