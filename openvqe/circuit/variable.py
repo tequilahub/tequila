@@ -61,12 +61,20 @@ def enforce_number_decorator(*numeric_types):
 
 class Variable():
     @property
+    def variables(self):
+        return {self.name:self.value}
+    
+    @property
+    def parameter_list(self):
+        return [self]
+    
+    @property
     def value(self):
         return self._value
 
     @value.setter
     def value(self, value):
-        self._value=value
+        self._value=float(value)
 
     @property
     def name(self):
@@ -74,22 +82,22 @@ class Variable():
     
 
 
-    def __init__(self, value=None,name=None):
+    def __init__(self,name=None,value=None):
         if value is not None:
             self._value = float(value)
         else:
             self._value = None
 
-        if type(name) is str or name ==None:
+        if type(name) is str:
             self._name = name
 
         else:
             if type(name) is not None:
                 self._name= str(name)
             else:
-                self._name = name
+                self.name='None'
 
-        if self._name is None:
+        if self._name is 'None':
             self.is_default=True
         else:
             self.is_default=False
@@ -103,13 +111,25 @@ class Variable():
             return self == x
         elif type(x) is str:
             return self._name == x
+        elif type(x) is dict:
+            return self._name in x.keys()
         else:
             raise TypeError('Unsupported type')
 
+    def update(self,x):
+        if type(x) is dict:
+            for k in x.keys():
+                if self.name ==k:
+                    self._value=x[k]
+        elif type(x) is Variable:
+            if x.name == self.name:
+                self._value=x.value
+        else:
+            self._value=float(x)
+
     def __eq__(self,other):
         if type(self)==type(other):
-            if self.name is '':
-                if self.name ==other.name and self.value==other.value:
+            if self.name ==other.name and self.value==other.value:
                     return True
         return False
 
@@ -217,10 +237,13 @@ class Variable():
     def __repr__(self):
         return self.name + ', ' + str(self._value) 
 
+    def __float__(self):
+        return float(self.value)
+
 class Transform():
 
     @property
-    def variables(self):
+    def parameter_list(self):
         vl=[]
         for obj in self.args:
             if type(obj) is Variable:
@@ -234,6 +257,28 @@ class Transform():
                 pass
         return vl
 
+
+    @property
+    def variables(self):
+        vl={}
+        for obj in self.args:
+            if type(obj) is Variable:
+                if obj.name not in vl.keys():
+                    vl[obj.name]=obj.value
+                else:
+                    if not np.isclose(vl[obj.name],obj.value):
+                        raise OpenVQEException('found two variables with the same name and different values, this is unacceptable')
+            elif type(obj) is Transform:
+                for k,v in obj.variables.items():
+                    if k not in vl.keys():
+                        vl[k]=v
+                    else:
+                        if not np.isclose(vl[k],v):
+                            raise OpenVQEException('found two variables with the same name and different values, this is unacceptable')
+            else:
+                pass
+        return vl
+    
     @property
     def eval(self):
         new_a=[]
@@ -248,7 +293,6 @@ class Transform():
 
     
     
-
     def __init__(self,func,args):
         assert callable(func)
         assert len(args) == len(signature(func).parameters)
@@ -256,11 +300,27 @@ class Transform():
         self.f=func
 
 
+
+
+    def update(self,pars):
+        for arg in self.args:
+            if type(pars) is dict:
+                for k,v in pars.items():
+                    if hasattr(arg,'update'):
+                        if k in arg.variables.keys():
+                            arg.update({k:v})
+            elif type(pars) is list:
+                if hasattr(arg,'has_var'):
+                    for par in pars:
+                        if arg.has_var(par):
+                            arg.update(par)
+
+
     def has_var(self,x):
-        if x in self.variables:
-            return True
-        else:
-            return False
+        for k,v in self.variables.items():
+            if k==x or k==x.name:
+                return True
+        return False
 
     def __call__(self):
         return self.eval
@@ -269,11 +329,8 @@ class Transform():
         if hasattr(other,'eval'):
             if hasattr(other,'variables'):
                 if self.eval==other.eval and self.variables==other.variables:
+                    ### is this safe?
                     return True
-            else:
-                return self.eval==other.eval and other in self.variables
-        elif self.eval == other:
-            return True
         return False
 
 
@@ -359,10 +416,12 @@ class Transform():
             setattr(result, k, copy.deepcopy(v, memo))
         return result
 
+    def __float__(self):
+        return float(self.eval)
 
 
 def has_variable(obj,var):
-    assert type(var) is Variable
+    assert type(var) in [Variable,str,dict]
     if hasattr(obj,'has_var'):
         return obj.has_var(var)
     else:

@@ -7,12 +7,17 @@ from openvqe import copy
 from openvqe import numpy as np
 from openvqe.circuit.variable import Variable,Transform,has_variable,Add,Sub,Inverse,Pow,Mul,Div,Sqr
 
-def weight_chain(par,var):
+def weight_chain(par,variable):
     '''
     Because Transform objects are at most
     '''
+    if type(variable) is Variable:
+        var=variable.name
+    if type(variable) is str:
+        var=variable
+
     if type(par) is Variable:
-        if par == var:
+        if par.name == var:
             return 1.0
         else:
             return 0.0
@@ -33,7 +38,7 @@ def weight_chain(par,var):
         return np.sum(expan)
         
     else:
-        s='Object of type {} passed to weight_chain; only Variables and Transforms are allowed.'.format(str(type(par)))
+        s='Object of type {} passed to weight_chain; only strings, Variables and Transforms are allowed.'.format(str(type(par)))
         raise OpenVQEException(s)
                 
 def tgrad(f,argnum):
@@ -140,15 +145,10 @@ def make_gradient_component(unitary: QCircuit, var):
     for i,g in enumerate(unitary.gates):
         found=False
         if g.is_parametrized() and not g.is_frozen():
-            if type(g.parameter) is Variable:
-                if g.parameter==var:
-                    found=True
-            elif type(g.parameter) is Transform:
-                for p in g.parameter.variables:
-                    if p.name == var.name and p._value ==var._value:
-                        found=True
+            if has_variable(g.parameter,var):
+                found=True
 
-        if found==True:
+            if found==True:
                 found = False     
                 if isinstance(g, RotationGateImpl):
                     if g.is_controlled():

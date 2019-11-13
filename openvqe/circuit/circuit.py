@@ -2,7 +2,7 @@ from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
 from openvqe import BitNumbering
 from openvqe import copy
-from openvqe.circuit.variable import Variable,Transform as Variable,Transform
+from openvqe.circuit.variable import Variable,Transform
 
 class QCircuit():
 
@@ -23,7 +23,7 @@ class QCircuit():
         for g in self.gates:
             if g.is_parametrized() and not g.is_frozen():
                 if hasattr(g.parameter,'f'):
-                    gpars=g.parameter.variables
+                    gpars=g.parameter.var_list
                     for p in gpars:
                         if p not in parameters:
                             parameters.append(p)
@@ -38,8 +38,8 @@ class QCircuit():
             if g.is_parametrized() and not g.is_frozen():
                 if type(g.parameter) is Transform:
                     pars=g.parameter.variables
-                    for par in pars:
-                        parameters[par.name] = par.value
+                    for name,val in pars.items():
+                        parameters[name] = val
                 elif type(g.parameter )is Variable:
                     parameters[g.parameter.name] = g.parameter.value
         return parameters
@@ -156,9 +156,18 @@ class QCircuit():
         :param parameters: a dict of all parameters that shall be updated (order does not matter)
         :return: self for chaining
         """
-        for p in self.parameter_list:
-            if p.name in parameters.keys():
-                p.value=parameters[p.name]
+        for g in self.gates:
+            if g.is_parametrized():
+                for k,v in parameters.items():
+                    if has_variable(g.parameter,k):
+                        if type(g.parameter) is Variable:
+                            g.parameter.value=v
+                        elif type(g.parameter) is Transform:
+                            for arg in g.parameter.args:
+                                if has_variable(arg,k):
+                                    arg.update({k,v})
+                                else:
+                                    pass
         return self
 
     def get_indices_for_parameter(self, name: str):
