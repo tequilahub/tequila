@@ -28,14 +28,11 @@ class QCircuit():
 
     @property
     def n_qubits(self):
-        if self._n_qubits is not None:
-            return max(self.max_qubit()+1,self._n_qubits)
-        else:
-            return self.max_qubit()+1
+        return max(self.max_qubit()+1,self._min_n_qubits)
 
     @n_qubits.setter
     def n_qubits(self, other):
-        self._n_qubits = other
+        self._min_n_qubits = other
         if other<self.max_qubit()+1:
             raise OpenVQEException("You are trying to set n_qubits to " + str(other) + " but your circuit needs at least: "+ str(self.max_qubit()+1))
         return self
@@ -52,7 +49,7 @@ class QCircuit():
         self._weight = value
 
     def __init__(self, weight=1.0, gates=None):
-        self._n_qubits = None
+        self._min_n_qubits = 0
         if gates is None:
             self.gates = []
         else:
@@ -158,19 +155,16 @@ class QCircuit():
         """
         :return: Maximum index this circuit touches
         """
-        # return max([g.max_qubit for g in self.gates])
         qmax = 0
         for g in self.gates:
             qmax = max(qmax, g.max_qubit)
         return qmax
 
     def __mul__(self, other):
-        if isinstance(other, QGateImpl):
-            other = self.wrap_gate(other)
         result = QCircuit()
         result.gates = copy.deepcopy(self.gates + other.gates)
         result.weight = self.weight * other.weight
-        result._n_qubits = max(max(self.max_qubit()+1,self.n_qubits), max(other.max_qubit()+1,other.n_qubits))
+        result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return result
 
     def __imul__(self, other):
@@ -182,7 +176,7 @@ class QCircuit():
         else:
             self.gates += other.gates
             self.weight *= other.weight
-        self._n_qubits = max(max(self.max_qubit()+1,self.n_qubits), max(other.max_qubit()+1,other.n_qubits))
+        self._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return self
 
     def __rmul__(self, other):
