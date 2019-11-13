@@ -99,8 +99,9 @@ class SimulatorBase(OpenVQEModule):
     numbering: BitNumbering = BitNumbering.MSB
     backend_handler = BackendHandler()
 
-    def __init__(self, heralding: HeraldingABC = None):
+    def __init__(self, heralding: HeraldingABC = None, ):
         self._heralding = heralding
+        self.__decompose_and_compile = True
 
     def run(self, abstract_circuit: QCircuit, samples: int = 1) -> SimulatorReturnType:
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)
@@ -112,6 +113,9 @@ class SimulatorBase(OpenVQEModule):
 
     def do_run(self, circuit, samples: int = 1):
         raise OpenVQEException("do_run needs to be overwritten by corresponding backend")
+
+    def set_compile_flag(self, b):
+        self.__decompose_and_compile = b
 
     def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=None,
                               initial_state: int = 0) -> SimulatorReturnType:
@@ -154,8 +158,11 @@ class SimulatorBase(OpenVQEModule):
         :return: translated circuit
         """
 
-        decomposed_ac = abstract_circuit.decompose()
-        decomposed_ac = self.backend_handler.recompile(abstract_circuit=decomposed_ac)
+        if self.__decompose_and_compile:
+            decomposed_ac = abstract_circuit.decompose()
+            decomposed_ac = self.backend_handler.recompile(abstract_circuit=decomposed_ac)
+        else:
+            decomposed_ac = abstract_circuit
 
         if self.backend_handler.fast_return(decomposed_ac):
             return decomposed_ac
