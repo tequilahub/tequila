@@ -2,7 +2,7 @@ from openvqe.circuit import gates
 from openvqe.circuit import Variable
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
-from openvqe.optimizers.scipy_optimizers import OptimizerSciPy
+from openvqe.optimizers.scipy_optimizers import minimize
 import numpy
 
 """
@@ -60,15 +60,13 @@ if __name__ == "__main__":
     b = Variable(name="b", value=2.0)
 
     # initialize the Hamiltonian
-    H = paulis.X(1)
+    H = paulis.X(1) + 0.001*paulis.Z(1)
 
     # initialize the parametrized Circuit
     U = gates.Ry(target=0, angle=-a / 2, frozen=False)  # frozen=true: this variable will not be optimized
-    U += gates.Ry(target=0,
-                  angle=-a / 2)  # will behave the same as only one time Ry with angle=-a, this is just to demonstrate that it works. This is not possible in the string based initialization
+    U += gates.Ry(target=0, angle=-a / 2)  # will behave the same as only one time Ry with angle=-a, this is just to demonstrate that it works. This is not possible in the string based initialization
     U += gates.Ry(target=1, control=0, angle=b, frozen=False)  # frozen=true: this variable will not be optimized
-    U += gates.Rx(target=0,
-                  angle=1.234)  # this gate will not be recognized as parametrized (it also has no effect on the energy in this example)
+    U += gates.Rx(target=0,angle=1.234)  # this gate will not be recognized as parametrized (it also has no effect on the energy in this example)
 
     # initialize the objective
     O = Objective(unitaries=U, observable=H)
@@ -85,27 +83,25 @@ if __name__ == "__main__":
     bounds = {'a': (0.1, 1.9 * numpy.pi), 'b': (0.1, 1.9 * numpy.pi)}
 
     # Optimize
-    optimizer = OptimizerSciPy(simulator=simulator, samples=samples, method=method, method_bounds=bounds)
-    E, angles = optimizer(objective=O)
+    result = minimize(objective=O, simulator=simulator, samples=samples, method=method, method_bounds=bounds)
 
-    # plot the history
-    optimizer.history.plot()
-    optimizer.history.plot(property='gradients', key='a')  # if no key is given it will plot all of them
-    optimizer.history.plot(property='gradients', key='b')
-    optimizer.history.plot(property='angles', key='a')
-    optimizer.history.plot(property='angles', key='b')
+    # plot the history, default are energies
+    result.history.plot()
+    result.history.plot(property='gradients', key='a')  # if no key is given it will plot all of them
+    result.history.plot(property='gradients', key='b')
+    result.history.plot(property='angles', key='a')
+    result.history.plot(property='angles', key='b')
     # combine plots
-    optimizer.history.plot(property='angles', key=['a', 'b'])
-    optimizer.history.plot(property=['angles', 'energies'], key=['a', 'b'])
+    result.history.plot(property='angles', key=['a', 'b'])
+    result.history.plot(property=['angles', 'energies'], key=['a', 'b'])
 
     # plot other results
-    print("final angles are:\n", angles)
-    print("final energy is :\n", E)
-    print("iterations      :", optimizer.history.iterations)
+    print("final angles are:\n", result.angles)
+    print("final energy is :\n", result.energy)
+    print("iterations      :", result.history.iterations)
 
     # some inntuitive ways to deal with the history
-    history = optimizer.history
-    all_energies = history.energies
-    all_angles = history.angles
+    all_energies = result.history.energies
+    all_angles = result.history.angles
     # evolution of angle 'a'
-    all_angles_a = history.extract_angles(key='a')
+    all_angles_a = result.history.extract_angles(key='a')

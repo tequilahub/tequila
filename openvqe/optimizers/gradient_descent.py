@@ -4,6 +4,9 @@ from openvqe.circuit.gradient import grad
 from openvqe.optimizers.optimizer_base import Optimizer
 from openvqe import typing
 
+from collections import namedtuple
+
+OptimizerReturnType = namedtuple('OptimizerReturnType', 'energy angles history')
 
 # A very simple handwritten GradientDescent optimizer for demonstration purposes
 class GradientDescent(Optimizer):
@@ -67,5 +70,4 @@ class GradientDescent(Optimizer):
                 self.history.angles.append(angles)
             objective.update_parameters(parameters=angles)
 
-
-        return E, angles
+        return OptimizerReturnType(energy=E, angles=angles, history=self.history)
