@@ -67,7 +67,8 @@ class SimulatorPyquil(SimulatorBase):
 
     backend_handler = BackenHandlerPyquil()
 
-    def __init__(self, initialize_qvm: bool = True):
+    def __init__(self, initialize_qvm: bool = True,*args, **kwargs):
+        super().__init__(*args, **kwargs)
         if initialize_qvm:
             self.qvm = subprocess.Popen(["qvm", "-S"])
         else:
