@@ -17,8 +17,10 @@ if not qc.has_psi4:
 # pyscf is coming soon
 
 # initialize your favorite Simulator
-samples = None # none means full wavefunction simulation
+samples = None# none means full wavefunction simulation
 simulator = pick_simulator(samples=samples)
+from openvqe.simulator.simulator_cirq import SimulatorCirq
+simulator = SimulatorCirq
 
 if __name__ == "__main__":
 
@@ -33,7 +35,7 @@ if __name__ == "__main__":
     #trotter = DecompositionFirstOrderTrotter(steps=1)
 
     # get the UCC circuit
-    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="mp2", include_reference_ansatz=True)
+    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="ccsd", include_reference_ansatz=True)
 
     print(U)
 
@@ -43,8 +45,8 @@ if __name__ == "__main__":
     angles = O.extract_parameters()
     print(angles)
 
-    # compute energy
-    E = simulator().simulate_objective(objective=O)
+    # compute full energy
+    E = pick_simulator(demand_full_wfn=True)().simulate_objective(objective=O)
 
     print("Energy = ", E)
     print("CCSD Parameters:\n", U.extract_parameters())

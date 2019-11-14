@@ -108,12 +108,12 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
     control = gate.control
 
     result = QCircuit()
-    result *= change_basis(target=target, axis=gate._axis)
-    result *= RotationGateImpl(axis="z", target=target, angle=angles[0])
-    result *= QGateImpl(name="X", target=target, control=control)
-    result *= RotationGateImpl(axis="Z", target=target, angle=angles[1])
-    result *= QGateImpl(name="X", target=target, control=control)
-    result *= change_basis(target=target, axis=gate._axis, daggered=True)
+    result += change_basis(target=target, axis=gate._axis)
+    result += RotationGateImpl(axis="z", target=target, angle=angles[0], frozen=gate.frozen)
+    result += QGateImpl(name="X", target=target, control=control)
+    result += RotationGateImpl(axis="Z", target=target, angle=angles[1], frozen=gate.frozen)
+    result += QGateImpl(name="X", target=target, control=control)
+    result += change_basis(target=target, axis=gate._axis, daggered=True)
 
     result.n_qubits = result.max_qubit() + 1
     return result
@@ -180,8 +180,8 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
                 axis = 0
             elif pauli.upper() == "Y":
                 axis = 1
-            ubasis *= change_basis(target=qubit, axis=axis)
-            ubasis_t *= change_basis(target=qubit, axis=axis, daggered=True)
+            ubasis += change_basis(target=qubit, axis=axis)
+            ubasis_t += change_basis(target=qubit, axis=axis, daggered=True)
 
             if previous_qubit is not None:
                 cnot_cascade += X(target=qubit, control=previous_qubit)
@@ -191,11 +191,11 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
         reversed_cnot = cnot_cascade.dagger()
 
         # assemble the circuit
-        circuit *= ubasis
-        circuit *= cnot_cascade
-        circuit *= Rz(target=last_qubit, angle=angle, control=gate.control, frozen=gate.frozen)
-        circuit *= reversed_cnot
-        circuit *= ubasis_t
+        circuit += ubasis
+        circuit += cnot_cascade
+        circuit += Rz(target=last_qubit, angle=angle, control=gate.control, frozen=gate.frozen)
+        circuit += reversed_cnot
+        circuit += ubasis_t
 
         return circuit
 

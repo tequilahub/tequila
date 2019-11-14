@@ -3,6 +3,7 @@ from openvqe.objective import Objective
 from openvqe import scipy
 from openvqe import numpy as np
 from .optimizer_base import Optimizer
+from openvqe.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
 
 
@@ -79,6 +80,11 @@ class OptimizerSciPy(Optimizer):
             self.reset_history()
 
         simulator = self.initialize_simulator(self.samples)
+        recompiled = []
+        for u in objective.unitaries:
+            recompiled.append(simulator.backend_handler.recompile(u))
+        objective.unitaries = recompiled
+        simulator.set_compile_flag(False)
 
         # Generate the function that evaluates <O>
         sim_eval = self.__get_eval_function(simulator=simulator)
@@ -97,12 +103,15 @@ class OptimizerSciPy(Optimizer):
         Es = []
         E = _EvalContainer(objective=objective, param_keys=param_keys, eval=sim_eval, save_history=self.save_history)
         if self.use_gradient:
-            dE = _GradContainer(objective=objective, param_keys=param_keys, eval=sim_eval,
+            dO = grad(objective)
+            dE = _GradContainer(objective=dO, param_keys=param_keys, eval=sim_eval,
                                 save_history=self.save_history)
 
         bounds = None
         if self.method_bounds is not None:
             names, bounds = zip(*self.method_bounds.items())
+            print("names=", names)
+            print("keys =", param_keys)
             assert (names == param_keys)
 
         res = scipy.optimize.minimize(E, param_values, jac=dE,

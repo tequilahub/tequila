@@ -53,7 +53,7 @@ def show_available_simulators() -> str:
 
 
 def pick_simulator(samples=None, demand_full_wfn=None):
-    if samples is None or demand_full_wfn is None or demand_full_wfn is True:
+    if samples is None:
         # need full wavefunction simulator
         if has_qulacs:
             return SimulatorQulacs

@@ -1,9 +1,9 @@
-from openvqe.circuit.gradient import grad
 from openvqe import numpy as np
 
 """
 Define Containers for SciPy usage
 """
+
 
 class _EvalContainer:
     """
@@ -38,7 +38,7 @@ class _GradContainer(_EvalContainer):
     """
 
     def __call__(self, p, *args, **kwargs):
-        dO = grad(self.objective, self.param_keys)
+        dO = self.objective
         dE_vec = np.zeros(self.N)
         memory = dict()
         for i in range(self.N):
@@ -48,3 +48,13 @@ class _GradContainer(_EvalContainer):
             memory[self.param_keys[i]] = dE_vec[i]
         self.history.append(memory)
         return dE_vec
+        # dO = grad(self.objective, self.param_keys)
+        # dE_vec = np.zeros(self.N)
+        # memory = dict()
+        # for i in range(self.N):
+        #     dO[self.param_keys[i]].update_parameters(
+        #         dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys))))
+        #     dE_vec[i] = self.eval(dO[self.param_keys[i]])
+        #     memory[self.param_keys[i]] = dE_vec[i]
+        # self.history.append(memory)
+        # return dE_vec

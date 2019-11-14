@@ -27,6 +27,10 @@ class GradientDescent(Optimizer):
     def __call__(self, objective: Objective, initial_values=None):
 
         simulator = self.initialize_simulator(samples=self.samples)
+        recompiled = []
+        for u in objective.unitaries:
+            recompiled.append(simulator.backend_handler.recompile(u))
+        objective.unitaries =recompiled
         simulator.set_compile_flag(False)
 
         angles = initial_values
