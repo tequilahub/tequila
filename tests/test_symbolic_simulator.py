@@ -2,7 +2,8 @@ from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
 from openvqe.circuit import gates
 from openvqe.hamiltonian import paulis
-from openvqe import numpy
+
+import numpy
 import pytest
 
 @pytest.mark.parametrize("paulis", [(gates.X,paulis.X), (gates.Y, paulis.Y), (gates.Z,paulis.Z)])

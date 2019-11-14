@@ -1,11 +1,11 @@
 from openvqe.circuit import QCircuit
 from openvqe.circuit.compiler import compile_controlled_rotation
-from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl
+from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, ExponentialPauliGateImpl
 from openvqe.circuit.compiler import compile_trotterized_gate
 from openvqe.objective import Objective
 from openvqe import OpenVQEException
-from openvqe import copy
-from openvqe import numpy
+import copy
+import numpy
 
 
 def grad(obj, variables=None):

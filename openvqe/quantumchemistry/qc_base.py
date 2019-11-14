@@ -1,8 +1,10 @@
 from dataclasses import dataclass
-from openvqe import OpenVQEParameters, typing, numpy, OpenVQEException, BitString, numbers
+from openvqe import OpenVQEParameters, OpenVQEException, BitString
 from openvqe.hamiltonian import HamiltonianQC, QubitHamiltonian
 from openvqe.circuit import QCircuit, Variable, gates
 from openvqe.ansatz import prepare_product_state
+
+import typing, numpy, numbers
 
 import openfermion
 from openfermion.hamiltonians import MolecularData

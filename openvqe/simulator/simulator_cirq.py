@@ -2,7 +2,7 @@ from openvqe.simulator.simulatorbase import SimulatorBase, QCircuit, SimulatorRe
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe import BitString, BitNumbering
-from openvqe import typing
+import typing
 import cirq
 
 

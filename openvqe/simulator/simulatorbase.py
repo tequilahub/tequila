@@ -1,15 +1,17 @@
-from openvqe import OpenVQEModule, OpenVQEException, BitNumbering, numpy, numbers
+from openvqe import OpenVQEModule, OpenVQEException, BitNumbering
 from openvqe.circuit.circuit import QCircuit
 from openvqe.keymap import KeyMapSubregisterToRegister
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit.compiler import change_basis
 from openvqe.circuit.gates import Measurement
 from openvqe import BitString
-from openvqe import dataclass, typing
 from openvqe.objective import Objective
 from openvqe.simulator.heralding import HeraldingABC
 from openvqe.circuit import compiler
 from openvqe.circuit._gates_impl import MeasurementImpl
+
+import  numpy, numbers, typing
+from dataclasses import dataclass
 
 @dataclass
 class SimulatorReturnType:

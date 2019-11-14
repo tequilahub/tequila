@@ -1,10 +1,13 @@
-from openvqe import OpenVQEException, numpy, typing
-from openvqe import dataclass
+from openvqe import OpenVQEException
 from openfermion import MolecularData
 
 from openfermionpsi4 import run_psi4
 from openvqe.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, Amplitudes
 from openfermionpsi4._psi4_conversion_functions import parse_psi4_ccsd_amplitudes
+
+import numpy
+import typing
+from dataclasses import dataclass
 
 class OpenVQEEPySCFException(OpenVQEException):
     pass

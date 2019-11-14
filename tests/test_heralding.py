@@ -2,15 +2,12 @@ from openvqe.simulator.heralding import HeraldingProjector
 from openvqe.circuit import gates
 from openvqe.simulator.simulator_qiskit import SimulatorQiskit
 from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe import numpy
-from openvqe.tools import plotters
-from openvqe import BitString
-from openvqe import typing
-from random import uniform
-from openvqe import numpy
+
+import typing
+import numpy
 import pytest
 
-@pytest.mark.parametrize("angle", [uniform(0, 2 * numpy.pi) for i in range(4)])
+@pytest.mark.parametrize("angle", [numpy.random.uniform(0, 2 * numpy.pi) for i in range(4)])
 @pytest.mark.parametrize("backend", [SimulatorQiskit, SimulatorCirq])
 def test_projector(angle, backend: typing.Union[SimulatorCirq, SimulatorQiskit]):
     targets = [1]

@@ -1,8 +1,10 @@
+import copy
+import numbers
+
 from openvqe import OpenVQEException
 from openvqe.circuit import transform
 from functools import total_ordering
-from openvqe import copy
-from openvqe import numbers
+
 
 
 class SympyVariable:

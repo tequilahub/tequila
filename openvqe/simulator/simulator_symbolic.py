@@ -2,7 +2,8 @@ from openvqe.simulator.simulatorbase import SimulatorBase, SimulatorReturnType
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit.gates import QGate, Ry, X
-from openvqe import BitString, numpy
+from openvqe import BitString
+import numpy
 import copy
 import sympy
 

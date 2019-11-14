@@ -3,7 +3,8 @@ from openvqe.circuit.variable import Variable
 from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl
 from openvqe import OpenVQEException
-from openvqe import typing, numbers, dataclass
+import typing, numbers
+from dataclasses import dataclass
 from openvqe.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
 import functools
 
