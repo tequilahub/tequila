@@ -5,7 +5,8 @@ This is far from optimal and needs major improvements
 
 from openvqe.simulator import pick_simulator
 from openvqe.objective import Objective
-from openvqe.optimizers import scipy_optimizers, GradientDescent
+from openvqe.optimizers import GradientDescent
+from openvqe.optimizers.scipy_optimizers import OptimizerSciPy
 
 from matplotlib import pyplot as plt
 
@@ -55,15 +56,13 @@ if __name__ == "__main__":
 
     print("initial amplitudes:\n", initial_amplitudes)
 
-    optimizer = GradientDescent(samples=samples, simulator=simulator, stepsize=0.1, maxiter=10, minimize=True)
-    angles = optimizer(objective=O, initial_values=initial_amplitudes.export_parameter_dictionary())
-
-    E = optimizer.energies[-1]
+    optimizer = OptimizerSciPy(samples=samples, simulator=simulator, maxiter=10)
+    E, angles = optimizer(objective=O, initial_values=initial_amplitudes.export_parameter_dictionary())
 
     print("final angles are:\n", angles)
     print("final energy = ", E)
 
     # plot results
-    optimizer.plot(plot_energies=True, plot_gradients=None)
-    optimizer.plot(plot_energies=False, plot_gradients=True)  # plot only a specific gradient with plot_gradients=["key"]
-
+    optimizer.history.plot(property='energies')
+    optimizer.history.plot(property='gradients')
+    optimizer.history.plot(property='angles')
