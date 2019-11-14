@@ -1,5 +1,8 @@
 """
 Example of a simple one Qubit VQE optimized with simple GradientDescent
+
+Try to use the OptimizerSciPy instead as an exercise (see vqe_two_qubit.py example)
+
 """
 
 from openvqe.circuit import gates
@@ -41,7 +44,14 @@ if __name__ == "__main__":
 
     # do the optimization
     optimizer = GradientDescent(stepsize=stepsize, maxiter=maxiter, samples=samples, simulator=simulator)
-    optimizer(objective=O, initial_values={"angle": initial_angle}) # don't need to set initial_values
-    optimizer.plot(plot_energies=True, plot_gradients=True, filename=None)
+    E, angles = optimizer(objective=O, initial_values={"angle": initial_angle}) # don't need to set initial_values
+
+    print("optimal energy = ", -1.0)
+    print("optimal angle  = ", optimal_angle)
+    print("found energy   = ", E)
+    print("found angle    = ", angles)
+
+    optimizer.history.plot('energies')
+    optimizer.history.plot('gradients')
 
 

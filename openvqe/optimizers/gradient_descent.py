@@ -8,14 +8,6 @@ from openvqe import typing
 # A very simple handwritten GradientDescent optimizer for demonstration purposes
 class GradientDescent(Optimizer):
 
-    @property
-    def energies(self):
-        return self._energies
-
-    @property
-    def gradients(self):
-        return self._gradients
-
     def __init__(self, stepsize=0.1, maxiter=100, samples=None, simulator=None, save_history=True, minimize=True):
         self.stepsize = stepsize
         self.minimize = minimize
@@ -32,29 +24,9 @@ class GradientDescent(Optimizer):
                 updated[k] = v + self.stepsize * gradient[k]
         return updated
 
-    def plot(self, plot_energies=True, plot_gradients: list = None, filename: str = None):
-        from matplotlib import pyplot as plt
-        if plot_energies:
-            plt.plot(self.history['energies'], label="E", color='b', marker='o', linestyle='--')
-        if plot_gradients is not None:
-            if plot_gradients is True:
-                plot_gradients = [k for k in self.history['gradients'][-1].keys()]
-            if not hasattr(plot_gradients, "__len__"):
-                plot_gradients = [plot_gradients]
-            for name in plot_gradients:
-                grad = [i[name] for i in self.history['gradients']]
-                plt.plot(grad, label="dE_" + str(name), marker='o', linestyle='--')
-        plt.legend()
-        if filename is None:
-            plt.show()
-        else:
-            plt.savefig("filename")
-
     def __call__(self, objective: Objective, initial_values=None):
 
         simulator = self.initialize_simulator(samples=self.samples)
-        if isinstance(simulator, type):
-            simulator = simulator()
 
         angles = initial_values
         if angles is None:
@@ -79,9 +51,9 @@ class GradientDescent(Optimizer):
             angles = self.update_parameters(parameters=angles, energy=E, gradient=dE)
 
             if self.save_history:
-                self.history['energies']  = self.history['energies'] + [E]
-                self.history['gradients'] = self.history['gradients'] + [dE]
-                self.history['angles']    = self.history['angles'] + [angles]
+                self.history.energies.append(E)
+                self.history.gradients.append(dE)
+                self.history.angles.append(angles)
             objective.update_parameters(parameters=angles)
 
-        return angles
+        return E, angles
