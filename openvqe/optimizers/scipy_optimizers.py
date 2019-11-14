@@ -5,7 +5,9 @@ from openvqe import numpy as np
 from .optimizer_base import Optimizer
 from openvqe.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
+from collections import namedtuple
 
+SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
 
 class OptimizerSciPy(Optimizer):
     gradient_free_methods = ['Nelder-Mead', 'COBYLA', 'Powell']
@@ -64,8 +66,7 @@ class OptimizerSciPy(Optimizer):
 
     def __call__(self, objective: Objective,
                  initial_values: typing.Dict[str, numbers.Number] = None,
-                 return_scipy_output: bool = False,
-                 reset_history: bool = True) -> typing.Tuple[numbers.Number, typing.Dict[str, numbers.Number]]:
+                 reset_history: bool = True) -> SciPyReturnType:
         """
         Optimizes with scipi and gives back the optimized angles
         Get the optimized energies over the history
@@ -129,7 +130,48 @@ class OptimizerSciPy(Optimizer):
 
         E_final = res.fun
         angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
-        if return_scipy_output:
-            return E_final, angles_final, res
-        else:
-            return E_final, angles_final
+
+        return SciPyReturnType(energy=E_final, angles=angles_final, history=self.history, scipy_output=res)
+
+
+def minimize(objective: Objective,
+             initial_values: typing.Dict[str, numbers.Real] = None,
+             samples: int = None,
+             maxiter: int = 100,
+             simulator: type = None,
+             method: str = "BGFS",
+             tol: float = 1.e-3,
+             method_options: dict = None,
+             method_bounds: typing.Dict[str, numbers.Real] = None,
+             method_constraints=None,
+             save_history: bool = True) -> SciPyReturnType:
+    """
+    Call this if you don't like objects
+    :param objective: The openvqe Objective to minimize
+    :param initial_values: initial values for the objective
+    :param samples: Number of samples to measure in each simulator run (None means full wavefunction simulation)
+    :param maxiter: maximum number of iterations (can also be set over method_options)
+    :param simulator: The simulator you want to use (None -> automatically assigned)
+    :param method: The scipy method passed as string
+    :param tol: See scipy documentation for the method you picked
+    :param method_options: See scipy documentation for the method you picked
+    :param method_bounds: See scipy documentation for the method you picked
+    Give in the same format as parameters/initial_values: Dict[str, float]
+    :param return_dictionary: return results as dictionary instead of tuples
+    :param method_constraints: See scipy documentation for the method you picked
+    :return: Named Tuple with: Optimized Energy, optimized angles, history (if return_history is True, scipy_output (if return_scipy_output is True)
+    """
+    optimizer = OptimizerSciPy(save_history=save_history,
+                               samples=samples,
+                               maxiter=maxiter,
+                               method=method,
+                               method_options=method_options,
+                               method_bounds=method_bounds,
+                               method_constraints=method_constraints,
+                               simulator=simulator,
+                               tol=tol)
+
+    return optimizer(objective=objective, initial_values=initial_values)
+
+
+
