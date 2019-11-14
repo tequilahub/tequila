@@ -37,9 +37,11 @@ class OptimizerHistory:
     def extract_angles(self, key: str):
         return [d[key] for d in self.angles]
 
-    def plot(self, filename=None,
+    def plot(self,
              property: typing.Union[str, typing.List[str]] = 'energies',
-             key: str = None, *args, **kwargs):
+             key: str = None,
+             filename=None,
+             *args, **kwargs):
         """
         Convenience function to plot the progress of the optimizer
         :param filename: if given plot to file, otherwise plot to terminal

@@ -19,7 +19,7 @@ class OptimizerSciPy(Optimizer):
         """
         return self.gradient_free_methods + self.gradient_based_methods
 
-    def __init__(self, method: str = "BFGS", tol: numbers.Real = 1.e-3, method_options=None, method_bounds=None,
+    def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = 1.e-3, method_options=None, method_bounds=None,
                  method_constraints=None, use_gradient: bool = None, **kwargs):
         """
         Optimize a circuit to minimize a given objective using scipy
@@ -139,7 +139,7 @@ def minimize(objective: Objective,
              samples: int = None,
              maxiter: int = 100,
              simulator: type = None,
-             method: str = "BGFS",
+             method: str = "L-BFGS-B",
              tol: float = 1.e-3,
              method_options: dict = None,
              method_bounds: typing.Dict[str, numbers.Real] = None,
