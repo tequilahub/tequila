@@ -41,8 +41,9 @@ simulator = None  # pick the simulator, None means it is automatically picked. D
 # You should get a meaningful scipy error if you chose them
 
 # Gradient based methods
-method = 'BFGS'
-# method = 'L-BFGS-B'
+
+method = 'L-BFGS-B'
+#method = 'BFGS'
 # method = 'CG'
 # method = 'TNC'
 
