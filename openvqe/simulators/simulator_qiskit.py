@@ -1,4 +1,4 @@
-from openvqe.simulator.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendHandler
+from openvqe.simulators.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendHandler
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe.circuit.compiler import compile_multitarget, compile_controlled_rotation

@@ -4,7 +4,7 @@ Small example on how to construct a circuit and simulate its measurements in the
 
 from openvqe.circuit import gates
 from numpy import pi
-from openvqe.simulator import pick_simulator
+from openvqe.simulators import pick_simulator
 from openvqe.tools import plotters
 """
 Same example as 'simulate_wavefunctions' but here we simulate counts

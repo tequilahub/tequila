@@ -4,4 +4,8 @@ from .bitstrings import BitString, BitNumbering, BitStringLSB, initialize_bitstr
 from .qubit_wavefunction import QubitWaveFunction
 from .circuit import gates
 from .circuit import Variable
+from .hamiltonian import paulis
+from .objective import Objective
+from .optimizers import scipy_optimizers
+from .simulators import pick_simulator
 

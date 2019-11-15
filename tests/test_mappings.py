@@ -1,4 +1,4 @@
-from openvqe.simulator import SimulatorBase
+from openvqe.simulators import SimulatorBase
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.keymap import KeyMapSubregisterToRegister
 from openvqe import BitString, BitNumbering, BitStringLSB
@@ -42,8 +42,8 @@ def test_endianness():
 
 
 from openvqe.circuit import QCircuit, gates
-from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe.simulator.simulator_qiskit import SimulatorQiskit
+from openvqe.simulators.simulator_cirq import SimulatorCirq
+from openvqe.simulators.simulator_qiskit import SimulatorQiskit
 
 
 def test_endianness_simulators():

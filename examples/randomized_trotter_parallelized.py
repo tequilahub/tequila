@@ -30,7 +30,7 @@ this example is especially slow. For that reason the evaluation of the circuits 
 
 """
 
-from openvqe.simulator.simulator_qiskit import SimulatorQiskit, QubitWaveFunction
+from openvqe.simulators.simulator_qiskit import SimulatorQiskit, QubitWaveFunction
 from openvqe.circuit import gates
 from openvqe.hamiltonian import QubitHamiltonian, paulis
 from openvqe.tools import plotters

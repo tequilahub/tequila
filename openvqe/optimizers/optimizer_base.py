@@ -4,9 +4,9 @@ Suggestion, feel free to propose new things/changes
 """
 
 from openvqe import OpenVQEException
-from openvqe import typing, numbers
 from openvqe.objective import Objective
-from openvqe.simulator import pick_simulator
+from openvqe.simulators import pick_simulator
+import typing, numbers
 from dataclasses import dataclass, field
 
 
@@ -86,7 +86,7 @@ class Optimizer:
     def __init__(self, simulator: typing.Type = None, maxiter: int = None, samples: int = None,
                  save_history: bool = True):
         """
-        :param simulator: The simulator to use (initialized or uninitialized)
+        :param simulator: The simulators to use (initialized or uninitialized)
         :param maxiter: Maximum number of iterations
         :param samples: Number of Samples for the Quantum Backend takes (None means full wavefunction simulation)
         :param save_history: Save the optimization history in self.history

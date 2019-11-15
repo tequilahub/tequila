@@ -1,7 +1,5 @@
-from openvqe import typing, numbers
+import scipy, numpy, typing, numbers
 from openvqe.objective import Objective
-from openvqe import scipy
-from openvqe import numpy as np
 from .optimizer_base import Optimizer
 from openvqe.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
@@ -10,16 +8,17 @@ from collections import namedtuple
 SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
 
 class OptimizerSciPy(Optimizer):
-    gradient_free_methods = ['Nelder-Mead', 'COBYLA', 'Powell']
-    gradient_based_methods = ['BFGS', 'CG', 'dogleg']
+    gradient_free_methods = ['Nelder-Mead', 'COBYLA', 'Powell', 'SLSQP']
+    gradient_based_methods = ['L-BFGS-B', 'BFGS', 'CG', 'dogleg', 'TNC']
 
-    def available_methods(self):
+    @classmethod
+    def available_methods(cls):
         """
         :return: All tested available methods
         """
-        return self.gradient_free_methods + self.gradient_based_methods
+        return cls.gradient_free_methods + cls.gradient_based_methods
 
-    def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = 1.e-3, method_options=None, method_bounds=None,
+    def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = None, method_options=None, method_bounds=None,
                  method_constraints=None, use_gradient: bool = None, **kwargs):
         """
         Optimize a circuit to minimize a given objective using scipy
@@ -97,7 +96,7 @@ class OptimizerSciPy(Optimizer):
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*angles.items())
-        param_values = np.array(param_values)
+        param_values = numpy.array(param_values)
 
         # Make E, grad E
         dE = None
@@ -133,6 +132,12 @@ class OptimizerSciPy(Optimizer):
 
         return SciPyReturnType(energy=E_final, angles=angles_final, history=self.history, scipy_output=res)
 
+def available_methods():
+    """
+    Convenience
+    :return: Available methods of the scipy optimizer (lists all gradient free and gradient based methods)
+    """
+    return OptimizerSciPy.available_methods()
 
 def minimize(objective: Objective,
              initial_values: typing.Dict[str, numbers.Real] = None,
@@ -140,7 +145,7 @@ def minimize(objective: Objective,
              maxiter: int = 100,
              simulator: type = None,
              method: str = "L-BFGS-B",
-             tol: float = 1.e-3,
+             tol: float = None,
              method_options: dict = None,
              method_bounds: typing.Dict[str, numbers.Real] = None,
              method_constraints=None,
@@ -149,9 +154,9 @@ def minimize(objective: Objective,
     Call this if you don't like objects
     :param objective: The openvqe Objective to minimize
     :param initial_values: initial values for the objective
-    :param samples: Number of samples to measure in each simulator run (None means full wavefunction simulation)
+    :param samples: Number of samples to measure in each simulators run (None means full wavefunction simulation)
     :param maxiter: maximum number of iterations (can also be set over method_options)
-    :param simulator: The simulator you want to use (None -> automatically assigned)
+    :param simulator: The simulators you want to use (None -> automatically assigned)
     :param method: The scipy method passed as string
     :param tol: See scipy documentation for the method you picked
     :param method_options: See scipy documentation for the method you picked

@@ -11,7 +11,7 @@ Implemented with OpenVQE structures
 
 from openvqe.circuit import QCircuit
 from openvqe.circuit.gates import H, CNOT, Ry, Ry, X
-from openvqe.simulator import SimulatorSymbolic
+from openvqe.simulators import SimulatorSymbolic
 import sympy
 
 class UnaryStatePrepImpl:

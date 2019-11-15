@@ -1,8 +1,8 @@
-from openvqe.simulator import pick_simulator
+from openvqe.simulators import pick_simulator
 from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
 from openvqe.optimizers.optimizer_base import Optimizer
-from openvqe import typing
+import typing
 
 from collections import namedtuple
 

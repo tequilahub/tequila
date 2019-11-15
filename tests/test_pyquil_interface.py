@@ -1,6 +1,6 @@
 system_has_pyquil = True
 try:
-    from openvqe.simulator.simulator_pyquil import SimulatorPyquil
+    from openvqe.simulators.simulator_pyquil import SimulatorPyquil
     system_has_pyquil = True
 except ImportError:
     system_has_pyquil = False

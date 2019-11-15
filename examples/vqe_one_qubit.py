@@ -12,11 +12,11 @@ from openvqe import numpy
 from openvqe.circuit import Variable
 from openvqe.optimizers import GradientDescent
 
-# uncomment if you want to use a specific simulator
-# from openvqe.simulator.simulator_cirq import SimulatorCirq
-# from openvqe.simulator.simulator_qiskit import SimulatorQiskit
-# from openvqe.simulator.simulator_qulacs import SimulatorQulacs
-# from openvqe.simulator.simulator_pyquil import SimulatorPyquil
+# uncomment if you want to use a specific simulators
+# from openvqe.simulators.simulator_cirq import SimulatorCirq
+# from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+# from openvqe.simulators.simulator_qulacs import SimulatorQulacs
+# from openvqe.simulators.simulator_pyquil import SimulatorPyquil
 
 # some variables to play around with for this example
 stepsize = 0.1

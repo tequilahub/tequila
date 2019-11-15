@@ -2,9 +2,9 @@ from openvqe.circuit import gates, Variable
 from openvqe.circuit.gradient import grad
 from openvqe.objective import Objective
 from openvqe.hamiltonian import paulis
-from openvqe.simulator.simulator_qiskit import SimulatorQiskit
-from openvqe.simulator.simulator_cirq import SimulatorCirq
-#from openvqe.simulator.simulator_qulacs import SimulatorQulacs
+from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+from openvqe.simulators.simulator_cirq import SimulatorCirq
+#from openvqe.simulators.simulator_qulacs import SimulatorQulacs
 import numpy
 import pytest
 

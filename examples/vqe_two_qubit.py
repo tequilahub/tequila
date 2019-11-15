@@ -24,15 +24,15 @@ Play around with stepsize, iterations and initial values
 
 """
 
-# uncomment if you want to use a specific simulator
-# from openvqe.simulator.simulator_cirq import SimulatorCirq
-# from openvqe.simulator.simulator_qiskit import SimulatorQiskit
-# from openvqe.simulator.simulator_qulacs import SimulatorQulacs
-# from openvqe.simulator.simulator_pyquil import SimulatorPyquil
+# uncomment if you want to use a specific simulators
+# from openvqe.simulators.simulator_cirq import SimulatorCirq
+# from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+# from openvqe.simulators.simulator_qulacs import SimulatorQulacs
+# from openvqe.simulators.simulator_pyquil import SimulatorPyquil
 
 # parameters with explanation:
 samples = None  # number of samples for each run, None means full wavefunction simulation
-simulator = None  # pick the simulator, None means it is automatically picked. Does not need to be initialized
+simulator = None  # pick the simulators, None means it is automatically picked. Does not need to be initialized
 
 # Sympy specific variables which you can set in 'minimize'
 # check other optimizations at

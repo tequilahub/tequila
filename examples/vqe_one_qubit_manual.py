@@ -13,18 +13,18 @@ from openvqe import numpy
 from openvqe.circuit import Variable
 from openvqe.optimizers import GradientDescent #Doesn't do much, but is convenient for the plots in this example
 
-# uncomment if you want to try a different simulator (not all combinations of samples and simulators are possible)
-from openvqe.simulator.simulator_cirq import SimulatorCirq
-# from openvqe.simulator.simulator_qiskit import SimulatorQiskit
-# from openvqe.simulator.simulator_qulacs import SimulatorQulacs
-# from openvqe.simulator.simulator_pyquil import SimulatorPyquil
+# uncomment if you want to try a different simulators (not all combinations of samples and simulators are possible)
+from openvqe.simulators.simulator_cirq import SimulatorCirq
+# from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+# from openvqe.simulators.simulator_qulacs import SimulatorQulacs
+# from openvqe.simulators.simulator_pyquil import SimulatorPyquil
 
 # some variables to play around with for this example
 stepsize = 0.1
 initial_angle = 0.0
 max_iter = 100
 optimal_angle = numpy.pi / 2
-samples = 1000  # number of samples/measurements for the simulator, will have no effect if full wavefunction simulation is used
+samples = 1000  # number of samples/measurements for the simulators, will have no effect if full wavefunction simulation is used
 use_full_wavefunction_simulation = True # if true: you can use cirq, pyquil and qulacs. If false you can use qiskit and cirq
 
 if __name__ == "__main__":

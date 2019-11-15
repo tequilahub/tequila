@@ -3,7 +3,7 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from openvqe.simulator import pick_simulator
+from openvqe.simulators import pick_simulator
 from openvqe.objective import Objective
 from openvqe.optimizers import GradientDescent
 from openvqe.optimizers.scipy_optimizers import OptimizerSciPy
@@ -19,7 +19,7 @@ if not qc.has_psi4:
 # initialize your favorite Simulator
 samples = None# none means full wavefunction simulation
 simulator = pick_simulator(samples=samples)
-from openvqe.simulator.simulator_cirq import SimulatorCirq
+from openvqe.simulators.simulator_cirq import SimulatorCirq
 simulator = SimulatorCirq
 
 if __name__ == "__main__":

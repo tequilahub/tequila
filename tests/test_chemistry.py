@@ -7,7 +7,7 @@ Todo: write real test class with tear_down procedure to get rid of psi4 output f
 import pytest
 import openvqe.quantumchemistry as qc
 import numpy
-from openvqe.simulator import pick_simulator
+from openvqe.simulators import pick_simulator
 from openvqe.objective import Objective
 
 

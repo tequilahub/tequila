@@ -13,8 +13,8 @@ If you want pretty printout: Use Qiskit for printing out the circuit
 """
 
 from openvqe.apps import UnaryStatePrep
-from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
+from openvqe.simulators.simulator_cirq import SimulatorCirq
+from openvqe.simulators.simulator_symbolic import SimulatorSymbolic
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit import gates
 
@@ -54,10 +54,10 @@ def make_encoder(spin_sorted: bool = False):
 
 
 if __name__ == "__main__":
-    # initialize the simulator (can currently be pyquil, cirq or symbolic)
+    # initialize the simulators (can currently be pyquil, cirq or symbolic)
     # the example uses full wavefunction simulation, so Quiskit won't work
     simulator = SimulatorCirq()
-    #simulator = SimulatorSymbolic()
+    #simulators = SimulatorSymbolic()
 
     # this is the wavefunction we want to initialize with UnaryStatePrep:
     target_wfn = QubitWaveFunction.from_string(

@@ -11,7 +11,7 @@ from openvqe import BitString
 import typing, numpy, copy
 from openvqe import OpenVQEException
 from openvqe.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
-from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
+from openvqe.simulators.simulator_symbolic import SimulatorSymbolic
 from openvqe.ansatz import AnsatzBase
 from openvqe.qubit_wavefunction import QubitWaveFunction
 

@@ -1,4 +1,4 @@
-from openvqe import numpy as np
+import numpy
 
 """
 Define Containers for SciPy usage
@@ -39,7 +39,7 @@ class _GradContainer(_EvalContainer):
 
     def __call__(self, p, *args, **kwargs):
         dO = self.objective
-        dE_vec = np.zeros(self.N)
+        dE_vec = numpy.zeros(self.N)
         memory = dict()
         for i in range(self.N):
             dO[self.param_keys[i]].update_parameters(

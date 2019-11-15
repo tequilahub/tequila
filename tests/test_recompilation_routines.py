@@ -2,10 +2,10 @@ from openvqe.circuit import gates
 from openvqe.circuit.compiler import compile_controlled_rotation, change_basis
 from numpy.random import uniform, randint
 from numpy import pi, isclose
-from openvqe.simulator.simulator_cirq import SimulatorCirq
+from openvqe.simulators.simulator_cirq import SimulatorCirq
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
-import openvqe.simulator as simulator
+from openvqe import simulators
 import pytest
 import numpy
 
@@ -13,17 +13,7 @@ PX = paulis.X
 PY = paulis.Y
 PZ = paulis.Z
 
-def get_all_wfn_simulators():
-    simulators = []
-    if simulator.has_cirq:
-        simulators.append(simulator.SimulatorCirq)
-    if simulator.has_pyquil:
-        simulators.append(simulator.SimulatorPyquil)
-    if simulator.has_qulacs:
-        simulators.append(simulator.SimulatorQulacs)
-    return simulators
-
-@pytest.mark.parametrize('simulator', get_all_wfn_simulators())
+@pytest.mark.parametrize('simulator', simulators.get_all_wfn_simulators())
 @pytest.mark.parametrize('angle', numpy.random.uniform(0,2*numpy.pi,3))
 @pytest.mark.parametrize('axis', ['X', 'Y', 'Z'])
 @pytest.mark.parametrize('control', [None, 1])

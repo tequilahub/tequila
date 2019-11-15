@@ -1,5 +1,5 @@
 from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
+from openvqe.simulators.simulator_symbolic import SimulatorSymbolic
 from openvqe.circuit import gates
 from openvqe.hamiltonian import paulis
 

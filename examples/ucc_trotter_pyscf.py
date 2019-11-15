@@ -3,7 +3,7 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from openvqe.simulator import pick_simulator
+from openvqe.simulators import pick_simulator
 from openvqe.objective import Objective
 from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
 from openvqe.optimizers import  GradientDescent
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     for k, v in initial_amplitudes.items():
         # this sucks and should be more convenient
         init[str(k)] = v
-    #E, angles, res = scipy_optimizers.minimize(O, return_all=True, simulator=simulator, samples=samples, initial_values=init)
+    #E, angles, res = scipy_optimizers.minimize(O, return_all=True, simulators=simulators, samples=samples, initial_values=init)
     optimizer = GradientDescent(samples=samples, simulator=simulator, stepsize=0.1, maxiter=10, minimize=True)
     angles = optimizer(objective=O, initial_values=init)  # take the current values of the circuit as the initial ones, alternativ use initial_values={"a": 2.0, "b": 2.0}
     E = optimizer.energies[-1]
