@@ -28,9 +28,6 @@ def test_exponential_pauli_wfn(simulator, angle, axis, control):
     assert(wfn1==wfn2)
 
 
-
-
-
 def test_controlled_rotations():
     angles = uniform(0, 2 * pi, 5)
     gs = [gates.Rx, gates.Ry, gates.Rz]
