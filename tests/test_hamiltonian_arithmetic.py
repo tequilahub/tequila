@@ -175,10 +175,10 @@ def test_matrix_form():
     assert (Hm[1,2] == 0.10)
 
     Hm2 = (H + paulis.Z(2)).tomatrix()
-    Hm2p = kron(Hm, eye(2, dtype=Hm2.dtype)) + kron(eye(len(Hm), dtype=Hm2.dtype), paulis.Z(0).tomatrix())
+    Hm2p = kron(Hm, eye(2, dtype=Hm2.dtype)) + kron(eye(len(Hm), dtype=Hm2.dtype), paulis.Z(0).to_matrix())
     assert allclose(Hm2 , Hm2p)
 
     Hm3 = (H * paulis.Z(2)).tomatrix()
-    Hm3p = kron(Hm, paulis.Z(0).tomatrix())
+    Hm3p = kron(Hm, paulis.Z(0).to_matrix())
     assert allclose(Hm3 , Hm3p)
 

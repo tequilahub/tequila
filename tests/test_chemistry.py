@@ -35,7 +35,7 @@ def test_h2_hamiltonian_pysf():
 
 def do_test_h2_hamiltonian(qc_interface):
     parameters = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    H = qc_interface(parameters=parameters).make_hamiltonian().tomatrix()
+    H = qc_interface(parameters=parameters).make_hamiltonian().to_matrix()
     vals = numpy.linalg.eigvalsh(H)
     assert (numpy.isclose(vals[0], -1.1368354639104123, atol=1.e-4))
     assert (numpy.isclose(vals[1], -0.52718972, atol=1.e-4))

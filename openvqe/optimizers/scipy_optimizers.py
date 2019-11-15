@@ -154,6 +154,8 @@ def minimize(objective: Objective,
     :param initial_values: initial values for the objective
     :param samples: Number of samples to measure in each simulators run (None means full wavefunction simulation)
     :param maxiter: maximum number of iterations (can also be set over method_options)
+    Note that some SciPy optimizers also accept 'maxfun' which is the maximum number of function evaluation
+    You might consider massing down that keyword in the method_options dictionary
     :param simulator: The simulators you want to use (None -> automatically assigned)
     :param method: The scipy method passed as string
     :param tol: See scipy documentation for the method you picked
