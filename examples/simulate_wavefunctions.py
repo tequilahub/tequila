@@ -4,7 +4,7 @@ Simple example of how to construct a small circuit and simulate the full wavefun
 
 from openvqe.circuit import gates
 from numpy import pi
-from openvqe.tools.backends import initialize_simulator
+from openvqe.simulator import pick_simulator
 
 """
 From the current backends only Pyquil and Cirq support full wavefunction
@@ -16,6 +16,8 @@ If you use Pyquil, make sure you have installed the QVM
  -> open terminal, type 'qvm -S'
 """
 
+from openvqe.simulator import show_available_simulators
+print(show_available_simulators())
 
 if __name__ == "__main__":
 
@@ -28,8 +30,8 @@ if __name__ == "__main__":
 
     # choose a backend which supports full wavefunction simulation
     # Qiskit can not do it for example --> error will be thrown when you try it later
-    simulator = initialize_simulator(simulator_type='symbolic') # choose between 'cirq', 'pyquil', 'symbolic'
-
+    Simulator = pick_simulator(demand_full_wfn=True)
+    simulator = Simulator()
     simulator_results = simulator.simulate_wavefunction(abstract_circuit=ac, initial_state=0)
     wfn = simulator_results.wavefunction
 

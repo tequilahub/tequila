@@ -8,27 +8,13 @@ from openvqe import typing
 # A very simple handwritten GradientDescent optimizer for demonstration purposes
 class GradientDescent(Optimizer):
 
-    def __init__(self, stepsize=0.1, maxiter=100, samples=None, simulator=None, save_energies=True,
-                 save_gradients=True, minimize=True):
+    def __init__(self, stepsize=0.1, maxiter=100, samples=None, simulator=None, save_history=True, minimize=True):
         self.stepsize = stepsize
-        self._energies = []
-        self._gradients = []
-        self.save_energies = save_energies
-        self.save_gradients = save_gradients
-        self.maxiter = maxiter
-        self.samples = samples
         self.minimize = minimize
-        if simulator is None:
-            self.simulator = pick_simulator(samples=samples)
-        else:
-            self.simulator = simulator
+        super().__init__(simulator=simulator, maxiter=maxiter, samples=samples, save_history=save_history)
 
     def update_parameters(self, parameters: typing.Dict[str, float], energy: float, gradient:
-        typing.Dict[str, float], *args, **kwargs) -> typing.Dict[str, float]:
-        if self.save_energies:
-            self._energies.append(energy)
-        if self.save_gradients:
-            self._gradients.append(gradient)
+    typing.Dict[str, float], *args, **kwargs) -> typing.Dict[str, float]:
 
         updated = dict()
         for k, v in parameters.items():
@@ -38,52 +24,48 @@ class GradientDescent(Optimizer):
                 updated[k] = v + self.stepsize * gradient[k]
         return updated
 
-    def plot(self, plot_energies=True, plot_gradients: list = None, filename: str = None):
-        from matplotlib import pyplot as plt
-        if plot_energies:
-            plt.plot(self._energies, label="E", color='b', marker='o', linestyle='--')
-        if plot_gradients is not None:
-            if plot_gradients is True:
-                plot_gradients = [k for k in self._gradients[-1].keys()]
-            if not hasattr(plot_gradients, "__len__"):
-                plot_gradients = [plot_gradients]
-            for name in plot_gradients:
-                grad = [i[name] for i in self._gradients]
-                plt.plot(grad, label="dE_" + name, marker='o', linestyle='--')
-        plt.legend()
-        if filename is None:
-            plt.show()
-        else:
-            plt.savefig("filename")
-
     def __call__(self, objective: Objective, initial_values=None):
 
-        simulator = self.simulator
-        if isinstance(simulator, type):
-            simulator = simulator()
+        simulator = self.initialize_simulator(samples=self.samples)
+        recompiled = []
+        for u in objective.unitaries:
+            recompiled.append(simulator.backend_handler.recompile(u))
+        objective.unitaries =recompiled
+        simulator.set_compile_flag(False)
 
         angles = initial_values
         if angles is None:
             angles = objective.extract_parameters()
         objective.update_parameters(parameters=angles)
 
+        dO = grad(objective)
+        O = objective.to_backend(simulator)
+        for key in dO.keys():
+            dO[key] = dO[key].to_backend(simulator)
+
         for iter in range(self.maxiter):
-
             if self.samples is None:
-                E = simulator.simulate_objective(objective=objective)
+                E = simulator.simulate_objective(objective=O)
             else:
-                E = simulator.measure_objective(objective=objective, samples=self.samples)
-
-            dO = grad(objective)
+                E = simulator.measure_objective(objective=O, samples=self.samples)
 
             dE = dict()
-            for k in dO:
+            for k,v in dO.items():
                 if self.samples is None:
-                    dE[str(k)] = simulator.simulate_objective(objective=k)
+                    dE[k] = simulator.simulate_objective(objective=v)
                 else:
-                    dE[str(k)] = simulator.measure_objective(objective=k, samples=self.samples)
-
+                    dE[k] = simulator.measure_objective(objective=v, samples=self.samples)
             angles = self.update_parameters(parameters=angles, energy=E, gradient=dE)
+
+            O.update_parameters(parameters=angles)
+            for dOi in dO.values():
+                dOi.update_parameters(parameters=angles)
+
+            if self.save_history:
+                self.history.energies.append(E)
+                self.history.gradients.append(dE)
+                self.history.angles.append(angles)
             objective.update_parameters(parameters=angles)
 
-        return angles
+
+        return E, angles

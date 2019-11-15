@@ -1,7 +1,7 @@
 """
 Convenience plot functions
 """
-from openvqe.simulator import QubitWaveFunction
+from openvqe import QubitWaveFunction
 from openvqe.simulator import SimulatorReturnType
 from openvqe import typing
 

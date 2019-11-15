@@ -1,4 +1,4 @@
-from openvqe import OpenVQEModule, OpenVQEException, BitNumbering
+from openvqe import OpenVQEModule, OpenVQEException, BitNumbering, numpy, numbers
 from openvqe.circuit.circuit import QCircuit
 from openvqe.keymap import KeyMapSubregisterToRegister
 from openvqe.qubit_wavefunction import QubitWaveFunction
@@ -11,7 +11,6 @@ from openvqe.simulator.heralding import HeraldingABC
 from openvqe.circuit import compiler
 from openvqe.circuit._gates_impl import MeasurementImpl
 
-
 @dataclass
 class SimulatorReturnType:
     abstract_circuit: QCircuit = None
@@ -22,11 +21,18 @@ class SimulatorReturnType:
 
     @property
     def counts(self, key: str = None):
-        if key is None:
-            keys = [k for k in self.measurements.keys()]
-            return self.measurements[keys[0]]
-        else:
-            return self.measurements[key]
+        if self.measurements is not None:
+            if key is None:
+                keys = [k for k in self.measurements.keys()]
+                return self.measurements[keys[0]]
+            else:
+                return self.measurements[key]
+        elif self.wavefunction is not None:
+            measurement = copy.deepcopy(self.wavefunction)
+            for k,v in measurement.items():
+                measurement[k] = numpy.fabs(v)**2
+            return measurements
+
 
 class BackendHandler:
 
@@ -34,20 +40,25 @@ class BackendHandler:
     This needs to be overwritten by all supported Backends
     """
 
+    recompile_trotter = True
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = False
+    recompile_exponential_pauli = True
 
     def recompile(self, abstract_circuit: QCircuit) -> QCircuit:
-
+        #order matters!
         recompiled = abstract_circuit
-
+        if self.recompile_trotter:
+            recompiled = compiler.compile_trotterized_gate(gate=recompiled, compile_exponential_pauli=self.recompile_exponential_pauli)
+        if self.recompile_exponential_pauli:
+            recompiled = compiler.compile_exponential_pauli_gate(gate=recompiled)
         if self.recompile_multitarget:
-            recompiled = compiler.compile_multitarget(recompiled)
+            recompiled = compiler.compile_multitarget(gate=recompiled)
         if self.recompile_controlled_rotation:
-            recompiled = compiler.compile_controlled_rotation(recompiled)
+            recompiled = compiler.compile_controlled_rotation(gate=recompiled)
         if self.recompile_swap:
-            recompiled = compiler.compile_swap(recompiled)
+            recompiled = compiler.compile_swap(gate=recompiled)
 
         return recompiled
 
@@ -81,15 +92,16 @@ class BackendHandler:
     def make_qubit_map(self, abstract_circuit: QCircuit):
         return [i for i in range(len(abstract_circuit.qubits))]
 
-class Simulator(OpenVQEModule):
+class SimulatorBase(OpenVQEModule):
     """
     Abstract Base Class for OpenVQE interfaces to simulators
     """
     numbering: BitNumbering = BitNumbering.MSB
     backend_handler = BackendHandler()
 
-    def __init__(self, heralding: HeraldingABC = None):
+    def __init__(self, heralding: HeraldingABC = None, ):
         self._heralding = heralding
+        self.__decompose_and_compile = True
 
     def run(self, abstract_circuit: QCircuit, samples: int = 1) -> SimulatorReturnType:
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)
@@ -101,6 +113,9 @@ class Simulator(OpenVQEModule):
 
     def do_run(self, circuit, samples: int = 1):
         raise OpenVQEException("do_run needs to be overwritten by corresponding backend")
+
+    def set_compile_flag(self, b):
+        self.__decompose_and_compile = b
 
     def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=None,
                               initial_state: int = 0) -> SimulatorReturnType:
@@ -143,8 +158,11 @@ class Simulator(OpenVQEModule):
         :return: translated circuit
         """
 
-        decomposed_ac = abstract_circuit.decompose()
-        decomposed_ac = self.backend_handler.recompile(abstract_circuit=decomposed_ac)
+        if self.__decompose_and_compile:
+            decomposed_ac = abstract_circuit.decompose()
+            decomposed_ac = self.backend_handler.recompile(abstract_circuit=decomposed_ac)
+        else:
+            decomposed_ac = abstract_circuit
 
         if self.backend_handler.fast_return(decomposed_ac):
             return decomposed_ac
@@ -191,12 +209,18 @@ class Simulator(OpenVQEModule):
             final_E += weight * E
             if return_simulation_data:
                 data.append(tmp)
+
+        # in principle complex weights are allowed, but it probably will never occur
+        # however, for now here is the type conversion to not confuse optimizers
+        if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
+            final_E = float(final_E.real)
+
         if return_simulation_data:
             return final_E, data
         else:
             return final_E
 
-    def simulate_objective(self, objective: Objective, return_simulation_data: bool = False) -> float:
+    def simulate_objective(self, objective: Objective, return_simulation_data: bool = False) -> numbers.Real:
         final_E = 0.0
         data = []
         H = objective.observable
@@ -208,10 +232,15 @@ class Simulator(OpenVQEModule):
             keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
             simresult = self.simulate_wavefunction(abstract_circuit=U)
             wfn = simresult.wavefunction.apply_keymap(keymap=keymap)
-
             final_E += U.weight * wfn.compute_expectationvalue(operator=H)
             if return_simulation_data:
                 data.append(simresult)
+
+        # in principle complex weights are allowed, but it probably will never occur
+        # however, for now here is the type conversion to not confuse optimizers
+        if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
+            final_E = float(final_E.real)
+
         if return_simulation_data:
             return final_E, data
         else:

@@ -1,4 +1,4 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, BackendHandler
+from openvqe.simulator.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendHandler
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe import BitString, BitNumbering
@@ -67,7 +67,7 @@ class OpenVQECirqException(OpenVQEException):
         return "Error in cirq backend:" + self.message
 
 
-class SimulatorCirq(Simulator):
+class SimulatorCirq(SimulatorBase):
 
     numbering: BitNumbering = BitNumbering.MSB
 

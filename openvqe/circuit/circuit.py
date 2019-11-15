@@ -2,7 +2,7 @@ from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
 from openvqe import BitNumbering
 from openvqe import copy
-from openvqe.circuit.variable import Variable,Transform
+from openvqe.circuit.variable import Variable,Transform,has_variable
 
 class QCircuit():
 
@@ -53,19 +53,16 @@ class QCircuit():
     def qubits(self):
         accumulate = []
         for g in self.gates:
-            accumulate += g.qubits
+            accumulate += list(g.qubits)
         return sorted(list(set(accumulate)))
 
     @property
     def n_qubits(self):
-        if self._n_qubits is not None:
-            return max(self.max_qubit()+1,self._n_qubits)
-        else:
-            return self.max_qubit()+1
+        return max(self.max_qubit()+1,self._min_n_qubits)
 
     @n_qubits.setter
     def n_qubits(self, other):
-        self._n_qubits = other
+        self._min_n_qubits = other
         if other<self.max_qubit()+1:
             raise OpenVQEException("You are trying to set n_qubits to " + str(other) + " but your circuit needs at least: "+ str(self.max_qubit()+1))
         return self
@@ -84,12 +81,14 @@ class QCircuit():
 
     def __init__(self, gates=None,weight=1.0):
         self._n_qubits = None
+        self._min_n_qubits = 0
         if gates is None:
             self.gates = []
         else:
-            self.gates = gates
+            self.gates = list(gates)
         self._weight = weight
-        self.individuate_parameters()
+        #self.individuate_parameters()
+        self.validate()
 
     def individuate_parameters(self):
         count=0
@@ -99,13 +98,28 @@ class QCircuit():
                     parameter.name= 'v.{}'.format(str(count))
                     count+=1
 
+    def validate(self):
+        for k,v in self.parameters.items():
+            found_frozen=False
+            found_live=False
+            for g in self.gates:
+                if g.is_parametrized():
+                    if has_variable(g.parameter,{k:v}):
+                        if g.is_frozen():
+                            found_frozen=True
+                        else:
+                            found_live=True
+                if found_frozen and found_live:
+                    error_string='This circuit contains gates depending on parameter named {} which are frozen and unfrozen simultaneously. This breaks the gradient! please rebuild your circuit without doing so.'.format(k)
+                    raise OpenVQEException(error_string)
+
 
     def is_primitive(self):
         """
         Check if this is a single gate wrapped in this structure
         :return: True if the circuit is just a single gate
         """
-        return len(self.gates)
+        return len(self.gates)==1
 
     def replace_gate(self,position,gates,inplace=False):
         if hasattr(gates,'__iter__'):
@@ -150,6 +164,24 @@ class QCircuit():
             result *= g.dagger()
         return result
 
+    def extract_parameters(self) -> dict:
+        """
+        Extract all parameters from the circuit
+        :return: List of all unique parameters with names as keys
+        TODO: deprecate, now identical to the parameters property
+        """
+        parameters = dict()
+        for i, g in enumerate(self.gates):
+            if g.is_parametrized() and not g.is_frozen():
+                if hasattr(g.parameter, "__iter__") or hasattr(g.parameter, "__get_item__"):
+                    for parameter in g.parameter:
+                        if parameter.name not in parameters:
+                            parameters[parameter.name] = parameter.value
+                elif g.parameter.name not in parameters:
+                    parameters[g.parameter.name] = g.parameter.value
+
+        return parameters
+
     def update_parameters(self, parameters: dict):
         """
         inplace operation
@@ -160,14 +192,8 @@ class QCircuit():
             if g.is_parametrized():
                 for k,v in parameters.items():
                     if has_variable(g.parameter,k):
-                        if type(g.parameter) is Variable:
-                            g.parameter.value=v
-                        elif type(g.parameter) is Transform:
-                            for arg in g.parameter.args:
-                                if has_variable(arg,k):
-                                    arg.update({k,v})
-                                else:
-                                    pass
+                        g.parameter.update({k:v})
+
         return self
 
     def get_indices_for_parameter(self, name: str):
@@ -178,7 +204,7 @@ class QCircuit():
         """
         namex=name
         if hasattr(name, "name"):
-            namex=name
+            namex=name.name
 
         result = []
         for i,g in enumerate(self.gates):
@@ -193,16 +219,14 @@ class QCircuit():
         """
         qmax = 0
         for g in self.gates:
-            qmax = max(qmax, g.max_qubit())
+            qmax = max(qmax, g.max_qubit)
         return qmax
 
     def __mul__(self, other):
-        if isinstance(other, QGateImpl):
-            other = self.wrap_gate(other)
         result = QCircuit()
-        result.gates = copy.deepcopy(self.gates + other.gates)
+        result.gates = [g.copy() for g in self.gates + other.gates]
         result.weight = self.weight * other.weight
-        result._n_qubits = max(max(self.max_qubit()+1,self.n_qubits), max(other.max_qubit()+1,other.n_qubits))
+        result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return result
 
     def __imul__(self, other):
@@ -214,7 +238,7 @@ class QCircuit():
         else:
             self.gates += other.gates
             self.weight *= other.weight
-        self._n_qubits = max(max(self.max_qubit()+1,self.n_qubits), max(other.max_qubit()+1,other.n_qubits))
+        self._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return self
 
     def __rmul__(self, other):
@@ -223,7 +247,7 @@ class QCircuit():
         if isinstance(other, QGateImpl):
             return self.__mul__(other)
         else:
-            return QCircuit(gates=copy.deepcopy(self.gates), weight=self.weight * other)
+            return QCircuit(gates=[g.copy() for g in self.gates], weight=self.weight * other)
 
     def __add__(self, other):
         return self.__mul__(other=other)

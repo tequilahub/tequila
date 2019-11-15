@@ -2,12 +2,13 @@ from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, SWAP, QCircuit, 
 from openvqe.simulator.simulator_symbolic import SimulatorSymbolic, sympy
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit._gates_impl import RotationGateImpl
+from openvqe.circuit.variable import Variable
 import numpy
 
 
 def test_conventions():
     qubit = numpy.random.randint(0, 3)
-    angle = "angle"
+    angle = Variable()
 
     Rx1 = Rx(target=qubit, angle=angle)
     Rx2 = QCircuit.wrap_gate(RotationGateImpl(axis="X", target=qubit, angle=angle))

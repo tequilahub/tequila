@@ -1,4 +1,4 @@
-from openvqe import numpy, typing
+from openvqe import numpy, typing, copy
 
 """
 Preliminary structure to carry information over to backends
@@ -45,10 +45,17 @@ class Objective:
             U.update_parameters(parameters=parameters)
         return self
 
-    def __init__(self, observable=None, unitaries=None):
-        self.unitaries = unitaries
+    def to_backend(self, simulator):
+        out = Objective(unitaries=[], observable=[])
+        for U in self.unitaries:
+            out.unitaries += [simulator.backend_handler.recompile(abstract_circuit=U.decompose())]
+            out.unitaries[-1].weight = U.weight
+        out.observable = self.observable
+        return out
 
-        self.observable = observable
+    def __init__(self, observable=None, unitaries=None):
+        self.unitaries = copy.deepcopy(unitaries)
+        self.observable = copy.deepcopy(observable)
 
     def __eq__(self, other):
 

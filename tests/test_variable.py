@@ -4,7 +4,7 @@ from openvqe import numpy as np
 from openvqe.circuit.gates import Rx, H, X
 from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl, PowerGateImpl, MeasurementImpl
 from openvqe.circuit.variable import Variable,Transform,Add,Sub,Div,Mul,Pow,Sqr,has_variable
-from openvqe.circuit.gradient import grad, tgrad, weight_chain
+from openvqe.circuit.gradient import grad, tgrad, __weight_chain
 from openvqe import copy
 
 
@@ -24,7 +24,7 @@ def test_gradient():
 	c=(b*5)/5
 	d=-(-c)
 
-	assert weight_chain(d,a)==1.0
+	assert __weight_chain(d,a)==1.0
 
 def test_equality():
 	a=Variable('a',7)
@@ -43,7 +43,8 @@ def test_transform_update():
 	a=Variable('a',7)
 	b=Variable('a.',23)
 	t=Transform(func=Add,args=[a,b])
-	t.update([{'a':8,'a.':1,'a':9,'c':17}])
+	d={'a':8,'a.':1,'a':9,'c':17}
+	t.update(d)
 	assert np.isclose(float(t),10.0)
 
 

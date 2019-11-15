@@ -5,10 +5,40 @@ from numpy import pi, isclose
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
+import openvqe.simulator as simulator
+import pytest
+import numpy
 
 PX = paulis.X
 PY = paulis.Y
 PZ = paulis.Z
+
+def get_all_wfn_simulators():
+    simulators = []
+    if simulator.has_cirq:
+        simulators.append(simulator.SimulatorCirq)
+    if simulator.has_pyquil:
+        simulators.append(simulator.SimulatorPyquil)
+    if simulator.has_qulacs:
+        simulators.append(simulator.SimulatorQulacs)
+    return simulators
+
+@pytest.mark.parametrize('simulator', get_all_wfn_simulators())
+@pytest.mark.parametrize('angle', numpy.random.uniform(0,2*numpy.pi,3))
+@pytest.mark.parametrize('axis', ['X', 'Y', 'Z'])
+@pytest.mark.parametrize('control', [None, 1])
+def test_exponential_pauli_wfn(simulator, angle, axis, control):
+
+    U1 = gates.RotationGate(axis=axis, angle=angle, target=0, control=control)
+    U2 = gates.ExpPauli(paulistring=axis+"(0)", angle=angle, control=control)
+
+    wfn1 = simulator().simulate_wavefunction(U1).wavefunction
+    wfn2 = simulator().simulate_wavefunction(U2).wavefunction
+
+    assert(wfn1==wfn2)
+
+
+
 
 
 def test_controlled_rotations():

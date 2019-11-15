@@ -1,7 +1,10 @@
 from openvqe.circuit.circuit import QCircuit
-from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl
+from openvqe.circuit.variable import Variable
+from openvqe.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
+    ExponentialPauliGateImpl, TrotterizedGateImpl
 from openvqe import OpenVQEException
-from openvqe import typing
+from openvqe import typing, numbers, dataclass
+from openvqe.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
 import functools
 
 
@@ -73,6 +76,71 @@ def Measurement(target, name=None):
         return MeasurementImpl(name=name, target=target)
 
 
+@wrap_gate
+def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None,
+             frozen: bool = None):
+    """
+    :param paulistring: given as PauliString structure or as string or dict or list
+    if given as string: Format should be like X(0)Y(3)Z(2)
+    if given as list: Format should be like [(0,'X'),(3,'Y'),(2,'Z')]
+    if given as dict: Format should be like { 0:'X', 3:'Y', 2:'Z' }
+    :param angle: the angle (note that PauliString.coeff is ignored)
+    :param control: control qubits
+    :param frozen: is the gate frozen? (will be ignored by optimizers)
+    :return: Gate wrapped in circuit
+    """
+
+    if isinstance(paulistring, str):
+        ps = PauliString.from_string(string=paulistring)
+    elif isinstance(paulistring, list):
+        ps = PauliString.from_openfermion(key=list)
+    elif isinstance(paulistring, dict):
+        ps = PauliString(data=paulistring)
+    else:
+        ps = paulistring
+
+    return ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control, frozen=frozen)
+
+
+@dataclass
+class TrotterParameters:
+    """
+        DataClass to keep Trotter Parameters together
+        See circuit._gate_impl.py:TrotterizedGateImpl
+
+        threshold: neglect terms in the given Hamiltonians if their coefficients are below this threshold
+        join_components: The generators are trotterized together. If False the first generator is trotterized, then the second etc
+        Note that for steps==1 as well as len(generators)==1 this has no effect
+        randomize_component_order: randomize the order in the generators order before trotterizing
+        randomize: randomize the trotter decomposition of each generator
+    """
+    threshold: float = 0.0
+    join_components: bool = True
+    randomize_component_order: bool = False
+    randomize: bool = False
+
+@wrap_gate
+def Trotterized(generators: typing.Union[QubitHamiltonian, typing.List[QubitHamiltonian]],
+                steps: int,
+                angles: typing.Union[list, numbers.Real, Variable]=None,
+                control: typing.Union[list, int] = None,
+                frozen: bool = None,
+                parameters: TrotterParameters = None):
+    """
+    :param generators: list of generators
+    :param angles: coefficients for each generator
+    :param steps: trotter steps
+    :param control: control qubits
+    :param frozen: freeze the gate (optimizers ingnore it)
+    :param parameters: Additional Trotter parameters, if None then defaults are used
+    """
+
+    if parameters is None:
+        parameters = TrotterParameters()
+
+    return TrotterizedGateImpl(generators=generators, angles=angles, steps=steps, control=control, frozen=frozen, **parameters.__dict__)
+
+
 """
 Convenience for Two Qubit Gates
 iSWAP will only work with cirq, the others will be recompiled
@@ -103,7 +171,7 @@ def enforce_integer(function) -> int:
     :return: int(obj)
     """
 
-    def wrapper(control, target, *args,  **kwargs):
+    def wrapper(control, target, *args, **kwargs):
         try:
             control = int(control)
         except ValueError as e:
@@ -155,6 +223,6 @@ def CRz(control: int, target: int, angle: float, frozen: bool = None) -> QCircui
 
 
 if __name__ == "__main__":
-    G = CRx(1,0,2.0)
+    G = CRx(1, 0, 2.0)
 
     print(G)

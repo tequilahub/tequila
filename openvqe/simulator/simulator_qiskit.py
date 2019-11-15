@@ -1,4 +1,4 @@
-from openvqe.simulator.simulator import Simulator, QCircuit, SimulatorReturnType, BackendHandler
+from openvqe.simulator.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendHandler
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe.circuit.compiler import compile_multitarget, compile_controlled_rotation
@@ -82,7 +82,7 @@ class BackenHandlerQiskit(BackendHandler):
         return {'q': q, 'c': c}
 
 
-class SimulatorQiskit(Simulator):
+class SimulatorQiskit(SimulatorBase):
     backend_handler = BackenHandlerQiskit()
 
     @property

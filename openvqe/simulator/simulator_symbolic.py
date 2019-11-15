@@ -1,4 +1,4 @@
-from openvqe.simulator.simulator import Simulator, SimulatorReturnType
+from openvqe.simulator.simulatorbase import SimulatorBase, SimulatorReturnType
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit.gates import QGate, Ry, X
@@ -10,7 +10,7 @@ import sympy
 Simple Symbolic Simulator for debugging purposes
 """
 
-class SimulatorSymbolic(Simulator):
+class SimulatorSymbolic(SimulatorBase):
 
     _convert_to_numpy = False
 

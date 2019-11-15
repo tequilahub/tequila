@@ -1,8 +1,13 @@
+
 import qulacs
-from openvqe import OpenVQEException, BitString, QubitWaveFunction, BitNumbering
-from openvqe.simulator import Simulator, SimulatorReturnType
-from openvqe.simulator.simulator import BackendHandler
+import numpy
+from openvqe.openvqe_exceptions import OpenVQEException
+from openvqe.bitstrings import  BitString, BitNumbering
+from openvqe.qubit_wavefunction import QubitWaveFunction
+from openvqe.simulator.simulatorbase import SimulatorBase, SimulatorReturnType
+from openvqe.simulator.simulatorbase import BackendHandler
 from openvqe.circuit import QCircuit
+
 
 """
 todo: overwrite simulate_objective for this simulator, might be faster
@@ -20,6 +25,7 @@ class BackenHandlerQulacs(BackendHandler):
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = True
+    recompile_exponential_pauli = True
 
     def fast_return(self, abstract_circuit):
         False
@@ -39,7 +45,10 @@ class BackenHandlerQulacs(BackendHandler):
             getattr(circuit, "add_CZ_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
 
     def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], -gate.angle())
+        angle = -gate.angle()
+        if hasattr(angle, "imag") and angle.imag == 0.0:
+            angle = float(angle.real)
+        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], angle)
 
     def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         raise OpenVQEQulacsException("No controlled rotation supported")
@@ -66,7 +75,7 @@ class BackenHandlerQulacs(BackendHandler):
 
 
 
-class SimulatorQulacs(Simulator):
+class SimulatorQulacs(SimulatorBase):
 
     numbering: BitNumbering = BitNumbering.LSB
 
@@ -89,4 +98,5 @@ class SimulatorQulacs(Simulator):
 
         wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
         return SimulatorReturnType(backend_result=state, wavefunction=wfn, circuit=circuit, abstract_circuit=abstract_circuit)
+
 

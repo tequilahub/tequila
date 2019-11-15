@@ -92,7 +92,7 @@ def test_wfn_multitarget(simulator):
 
 @pytest.mark.parametrize("simulator", wfn_backends)
 def test_wfn_multi_control(simulator):
-    if isinstance(simulator(), SimulatorQulacs):
+    if system_has_qulacs and isinstance(simulator(), SimulatorQulacs):
         # does not support multi-control
         return
     ac = gates.X([0, 1, 2])

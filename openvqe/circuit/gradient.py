@@ -1,13 +1,14 @@
 from openvqe.circuit import QCircuit
 from openvqe.circuit.compiler import compile_controlled_rotation
-from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, PowerGateImpl
+from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl
+from openvqe.circuit.compiler import compile_trotterized_gate
 from openvqe.objective import Objective
 from openvqe import OpenVQEException
 from openvqe import copy
 from openvqe import numpy as np
 from openvqe.circuit.variable import Variable,Transform,has_variable,Add,Sub,Inverse,Pow,Mul,Div,Sqr
 
-def weight_chain(par,variable):
+def __weight_chain(par,variable):
     '''
     Because Transform objects are at most
     '''
@@ -102,40 +103,57 @@ def tgrad(f,argnum):
         raise OpenVQEException('sorry, only functions with up to two arguments are supported at present')
 
 
-
-
 def grad(obj, variables=None):
+
+    compiled = compile_trotterized_gate(gate=obj)
+
     if isinstance(obj, QCircuit):
-        return grad_unitary(unitary=obj, variables=variables)
+        return __grad_unitary(unitary=compiled, variables=variables)
     elif isinstance(obj, Objective):
-        return grad_objective(objective=obj, variables=variables)
+        return __grad_objective(objective=compiled, variables=variables)
     elif isinstance(obj, ParametrizedGateImpl):
-        return grad_unitary(QCircuit.wrap_gate(gate=obj), variables=variables)
+        return __grad_unitary(QCircuit.wrap_gate(gate=compiled), variables=variables)
     else:
         raise OpenVQEException("Gradient not implemented for other types than QCircuit or Objective")
 
 
-def grad_unitary(unitary: QCircuit,variables=None):
-    gradient = []
-    if variables is None:
-        for var in unitary.parameters:
-            gradient.append(make_gradient_component(unitary=unitary,var=var))
-    else:
+
+
+def __grad_unitary(unitary: QCircuit,variables=None):
+    gradient = {}
+    if type(variables) is list:
+        names=[]
         for var in variables:
-            gradient.append(make_gradient_component(unitary=unitary,var=var))
+            if hasattr(var,'name'):
+                names.append(var.name)
+            else:
+                names.append(str(var))
+    elif type(variables) is dict:
+        names=[k for k in variables.keys()]
+
+    if variables is None:
+        params = unitary.parameters
+        names=[]
+        for name in params.keys():
+            names.append(name)
+
+
+    for var in names:
+        gradient[var]=(__make_gradient_component(unitary=unitary,var=var))
+
     return gradient
 
 
-def grad_objective(objective: Objective, variables=None):
+def __grad_objective(objective: Objective, variables=None):
     if len(objective.unitaries) > 1:
         raise OpenVQEException("Gradient of Objectives with more than one unitary not supported yet")
-    result = grad_unitary(unitary=objective.unitaries[0], variables=variables)
-    for i in result:
-        i.observable=objective.observable
+    result = __grad_unitary(unitary=objective.unitaries[0], variables=variables)
+    for k in result.keys():
+        result[k].observable=objective.observable
     return result
 
 
-def make_gradient_component(unitary: QCircuit, var):
+def __make_gradient_component(unitary: QCircuit, var):
     """
     :param unitary: the unitary
     :return: dU/dpi as list of Objectives
@@ -159,9 +177,8 @@ def make_gradient_component(unitary: QCircuit, var):
                             ([g.angle / 2, -(g.angle / 2) - pi / 2],.50)
                         ]
                         for ang_set in angles_and_weights:
-
                             U = unitary.replace_gate(position=i,gates=[gate for gate in compile_controlled_rotation(g, angles=ang_set[0])])
-                            U.weight=0.5*ang_set[1]*weight_chain(g.parameter,var)
+                            U.weight=0.5*ang_set[1]*__weight_chain(g.parameter,var)
                             dg.append(U)
                     else:
                         neo_a = copy.deepcopy(g)
@@ -169,13 +186,13 @@ def make_gradient_component(unitary: QCircuit, var):
 
                         neo_a.angle = g.angle + pi/2
                         U1 = unitary.replace_gate(position=i,gates=[neo_a])
-                        U1.weight = 0.5*weight_chain(g.parameter,var)
+                        U1.weight = 0.5*__weight_chain(g.parameter,var)
 
                         neo_b = copy.deepcopy(g)
                         neo_b.frozen=True
                         neo_b.angle = g.angle - pi/2
                         U2=unitary.replace_gate(position=i,gates=[neo_b])
-                        U2.weight = -0.5*weight_chain(g.parameter,var)
+                        U2.weight = -0.5*__weight_chain(g.parameter,var)
                         dg.append(U1)
                         dg.append(U2)
                 elif isinstance(g, PowerGateImpl):
@@ -209,8 +226,8 @@ def make_gradient_component(unitary: QCircuit, var):
                             U1 = unitary.replace_gate(position=i,gates=[RotationGateImpl(axis=axis,target=target,angle=(n_pow+pi/2),frozen=True)])
                             U2 = unitary.replace_gate(position=i,gates=[RotationGateImpl(axis=axis,target=target,angle=(n_pow-pi/2),frozen=True)])
 
-                            U1.weight=0.5*weight_chain(g.parameter,var)
-                            U2.weight=-0.5*weight_chain(g.parameter,var)
+                            U1.weight=0.5*__weight_chain(g.parameter,var)
+                            U2.weight=-0.5*__weight_chain(g.parameter,var)
                             dg.extend([U1,U2])
                     
                 else:

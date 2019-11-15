@@ -84,7 +84,10 @@ class Variable():
 
     def __init__(self,name=None,value=None):
         if value is not None:
-            self._value = float(value)
+            if type(value) in [float,int]:
+                self._value = float(value)
+            else:
+                self._value = np.real(value)
         else:
             self._value = None
 
@@ -318,8 +321,12 @@ class Transform():
 
     def has_var(self,x):
         for k,v in self.variables.items():
-            if k==x or k==x.name:
-                return True
+            if type(x) is dict:
+                if k in x.keys():
+                    return True
+            if type(x) is Variable:
+                if k == x.name:
+                    return True
         return False
 
     def __call__(self):
@@ -421,7 +428,6 @@ class Transform():
 
 
 def has_variable(obj,var):
-    assert type(var) in [Variable,str,dict]
     if hasattr(obj,'has_var'):
         return obj.has_var(var)
     else:

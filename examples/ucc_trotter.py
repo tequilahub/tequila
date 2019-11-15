@@ -3,90 +3,68 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from openvqe.hamiltonian import HamiltonianPsi4, ParametersQC
-from openvqe.ansatz import AnsatzUCC
-from openvqe.simulator.simulator_cirq import SimulatorCirq
+from openvqe.simulator import pick_simulator
 from openvqe.objective import Objective
-from openvqe.circuit.gradient import grad
-from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
-from openvqe.ansatz import prepare_product_state
+from openvqe.optimizers import GradientDescent
+from openvqe.optimizers.scipy_optimizers import OptimizerSciPy
+
+from matplotlib import pyplot as plt
+
+# you need psi4 to be installed for this example
+import openvqe.quantumchemistry as qc
+if not qc.has_psi4:
+    raise Exception("You need Psi4 for this examples: Easy install with conda install psi4 -c psi4")
+# pyscf is coming soon
+
+# initialize your favorite Simulator
+samples = None# none means full wavefunction simulation
+simulator = pick_simulator(samples=samples)
+from openvqe.simulator.simulator_cirq import SimulatorCirq
+simulator = SimulatorCirq
 
 if __name__ == "__main__":
-    print("Demo for closed-shell UCC with psi4-CCSD trial state and first order Trotter decomposition")
 
-    # Configure Psi4
-    parameters_qc = ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    parameters_qc.transformation = "Jordan-Wigner"
-    # we will use already converged CCSD amplitudes amplitudes in this example
-    # so psi4 should run ccsd
-    parameters_qc.psi4.run_ccsd = True
-    # psi4 outputfile
-    parameters_qc.filename = "psi4"
+    # initialize the QuantumChemistry Module
+    qc_param = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
+    psi4_interface = qc.QuantumChemistryPsi4(parameters=qc_param, transformation="jordan-wigner")
 
-    # Initialize the Hamiltonian
-    # This will call OpenFermion as well as Psi4
-    H = HamiltonianPsi4(parameters_qc)
-    H.initialize_hamiltonian()
+    # get the Hamiltonian in QubitForm
+    H = psi4_interface.make_hamiltonian()
 
-    # print out the Hamiltonian
-    print("The Hamiltonian is:\n", H)
+    # configure the trotterization
+    #trotter = DecompositionFirstOrderTrotter(steps=1)
 
-    energies = []
-    gradients = []
-    for factor in [1.0]:
-        # get initial amplitudes from psi4
-        amplitudes = H.parse_ccsd_amplitudes()
-        amplitudes = factor * amplitudes
-        # the only non-zero amplitudes
-        # todo simpify the interface
-        print("amplitude: ", amplitudes(i=0, a=2, j=1, b=3))
-        print("amplitude: ", amplitudes(i=1, a=3, j=0, b=2))
-        print("amplitude: ", amplitudes[(2, 0, 3, 1)]) # format is a i b j
-        print("amplitude: ", amplitudes[(3, 1, 2, 0)])
-        # amplitudes[(2, 0, 3, 1)] = 0.000001
-        # amplitudes[(3, 1, 2, 0)] = 0.000001
-        # print("amplitude: ", amplitudes(i=0, a=2, j=1, b=3))
-        # print("amplitude: ", amplitudes(i=1, a=3, j=0, b=2))
-        print("Number of read-in Amplitudes: ", len(amplitudes))
+    # get the UCC circuit
+    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="ccsd", include_reference_ansatz=True)
 
-        # Prepare Reference State
-        cref = prepare_product_state(H.reference_state())
+    print(U)
 
-        # Construct the UCC ansatz
-        ucc = AnsatzUCC(decomposition=DecompositionFirstOrderTrotter(steps=1, threshold=0.0))
-        cucc = ucc(angles=amplitudes)
+    # make an objective
+    O = Objective(observable=H, unitaries=U)
 
-        # assemble
-        print("cref=", cucc, "\n")
-        abstract_circuit = cref + cucc
+    angles = O.extract_parameters()
+    print(angles)
 
-        # Initialize the Simulator
-        simulator = SimulatorCirq()
-        # simulator = SimulatorPyquil()
+    # compute full energy
+    E = pick_simulator(demand_full_wfn=True)().simulate_objective(objective=O)
 
-        print("abstract_circuit\n", abstract_circuit)
-        result = simulator.simulate_wavefunction(abstract_circuit=abstract_circuit)
-        print("abstract_circuit\n", result.circuit)
-        print("resulting state is:")
-        print("|psi>=", result.wavefunction)
-        print("initial state was: ", H.reference_state(), " = |", H.reference_state().binary, ">")
+    print("Energy = ", E)
+    print("CCSD Parameters:\n", U.extract_parameters())
 
-        O = Objective(observable=H, unitaries=abstract_circuit)
-        energy = SimulatorCirq().simulate_objective(objective=O)
-        energies.append(energy)
-        print("energy = ", energy)
+    # overwrite the initial amplitudes to be zero
+    initial_amplitudes = qc.Amplitudes(data={(2, 0, 3, 1): 0.0, (3, 1, 2, 0): 0.0 })
+    # overwrite the initial amplitudes to be MP2
+    #initial_amplitudes = psi4_interface.compute_mp2_amplitudes()
 
-        # Variable initialization does not work yet in the Psi4 interface
-        # # Gradients for UCC clearly need improvements (i.e. parameter tracking)
-        # dO = grad(O)
-        # # we only have one amplitude
-        # gradient = 0.0
-        # gradients = []
-        # for dOi in dO:
-        #     value = SimulatorCirq().simulate_objective(objective=dOi)
-        #     print("component: ", value)
-        #     gradient += value
-        #     gradients.append(value)
-        #
-        # print("gradient = ", gradient)
-        # gradients.append(gradient)
+    print("initial amplitudes:\n", initial_amplitudes)
+
+    optimizer = OptimizerSciPy(samples=samples, simulator=simulator, maxiter=10)
+    E, angles = optimizer(objective=O, initial_values=initial_amplitudes.export_parameter_dictionary())
+
+    print("final angles are:\n", angles)
+    print("final energy = ", E)
+
+    # plot results
+    optimizer.history.plot(property='energies')
+    optimizer.history.plot(property='gradients')
+    optimizer.history.plot(property='angles')
