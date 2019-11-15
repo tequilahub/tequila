@@ -24,14 +24,14 @@ def compiler(f):
 
     def wrapper(gate, **kwargs):
         if hasattr(gate, "gates"):
-            result = QCircuit()
+            result = QCircuit(weight=gate.weight)
             for g in gate.gates:
                 result += f(gate=g, **kwargs)
             return result
         elif hasattr(gate, "unitaries") and hasattr(gate, "observable"):
             compiled = []
             for U in gate.unitaries:
-                cU = QCircuit()
+                cU = QCircuit(weight=U.weight)
                 for g in U.gates:
                     cU += f(gate=g, **kwargs)
                 compiled.append(cU)

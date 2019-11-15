@@ -197,7 +197,7 @@ class SimulatorBase(OpenVQEModule):
         raise OpenVQEException(
             "called from base class of simulators, or non-supported operation for this backend")
 
-    def measure_objective(self, objective: Objective, samples: int = 1, return_simulation_data: bool = False) -> float:
+    def measure_objective(self, objective: Objective, samples: int, return_simulation_data: bool = False) -> float:
         final_E = 0.0
         data = []
         for U in objective.unitaries:

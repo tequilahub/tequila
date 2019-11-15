@@ -42,19 +42,8 @@ class _GradContainer(_EvalContainer):
         dE_vec = numpy.zeros(self.N)
         memory = dict()
         for i in range(self.N):
-            dO[self.param_keys[i]].update_parameters(
-                dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys))))
+            dO[self.param_keys[i]].update_parameters( dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys))))
             dE_vec[i] = self.eval(dO[self.param_keys[i]])
             memory[self.param_keys[i]] = dE_vec[i]
         self.history.append(memory)
         return dE_vec
-        # dO = grad(self.objective, self.param_keys)
-        # dE_vec = np.zeros(self.N)
-        # memory = dict()
-        # for i in range(self.N):
-        #     dO[self.param_keys[i]].update_parameters(
-        #         dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys))))
-        #     dE_vec[i] = self.eval(dO[self.param_keys[i]])
-        #     memory[self.param_keys[i]] = dE_vec[i]
-        # self.history.append(memory)
-        # return dE_vec

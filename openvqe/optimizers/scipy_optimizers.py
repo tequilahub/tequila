@@ -4,6 +4,7 @@ from .optimizer_base import Optimizer
 from openvqe.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
 from collections import namedtuple
+import copy
 
 SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
 
@@ -61,7 +62,7 @@ class OptimizerSciPy(Optimizer):
         if self.samples is None:
             return simulator.simulate_objective
         else:
-            return simulator.measure_objective
+            return lambda objective : simulator.measure_objective(objective=objective, samples=self.samples)
 
     def __call__(self, objective: Objective,
                  initial_values: typing.Dict[str, numbers.Number] = None,
@@ -79,12 +80,11 @@ class OptimizerSciPy(Optimizer):
         if self.save_history and reset_history:
             self.reset_history()
 
+        # Need that for now to avoid compiler issues with gradients
+        if self.use_gradient:
+            copy_objective = copy.deepcopy(objective)
+
         simulator = self.initialize_simulator(self.samples)
-        recompiled = []
-        for u in objective.unitaries:
-            recompiled.append(simulator.backend_handler.recompile(u))
-        objective.unitaries = recompiled
-        simulator.set_compile_flag(False)
 
         # Generate the function that evaluates <O>
         sim_eval = self.__get_eval_function(simulator=simulator)
@@ -110,8 +110,6 @@ class OptimizerSciPy(Optimizer):
         bounds = None
         if self.method_bounds is not None:
             names, bounds = zip(*self.method_bounds.items())
-            print("names=", names)
-            print("keys =", param_keys)
             assert (names == param_keys)
 
         res = scipy.optimize.minimize(E, param_values, jac=dE,
