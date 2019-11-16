@@ -51,34 +51,43 @@ class OptimizerHistory:
         give key as list if you want to plot multiple properties with different keys
         """
         from matplotlib import pyplot as plt
+        from matplotlib.ticker import MaxNLocator
+        fig = plt.figure()
+        fig.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
+        import pickle
 
-        properties = None
         if hasattr(property, "lower"):
             properties = [property.lower()]
         else:
             properties = property
 
-        keys = key
         if key is None:
             keys = [[k for k in self.angles[-1].keys()]] * len(properties)
         elif hasattr(key, "lower"):
             keys = [[key.lower()]] * len(properties)
         else:
-            keys = [key]*len(properties)
-
+            keys = [key] * len(properties)
         for i, p in enumerate(properties):
-            data = None
             if p.lower() == "energies":
                 data = self.energies
                 plt.plot(data, label=p, marker='o', linestyle='--')
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(data, label=p+" "+k, marker='o', linestyle='--')
+                    plt.plot(data, label=p + " " + k, marker='o', linestyle='--')
 
+        if 'title' in kwargs:
+            plt.title(kwargs['title'])
 
-        plt.legend()
-        plt.show()
+        loc = 'best'
+        if 'loc' in kwargs:
+            loc = kwargs['loc']
+        plt.legend(loc=loc)
+        if filename is None:
+            plt.show()
+        else:
+            pickle.dump(fig, open(filename + ".pickle", "wb"))
+            plt.savefig(fname=filename + ".pdf", **kwargs)
 
 
 class Optimizer:
