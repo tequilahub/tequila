@@ -23,7 +23,7 @@ def __weight_chain(par,variable):
         else:
             return 0.0
 
-    elif type(par) is Transform:
+    elif (type(par) is Transform or (hasattr(par,'args') and hasattr(par,'f'))):
         t=par
         la=len(t.args)
         expan=np.empty(la)
@@ -31,7 +31,7 @@ def __weight_chain(par,variable):
         if t.has_var(var):
             for i in range(la):
                 if has_variable(t.args[i],var):
-                    expan[i]=tgrad(t.f,argnum=i)(*t.args)*weight_chain(t.args[i],var)
+                    expan[i]=tgrad(t.f,argnum=i)(*t.args)*__weight_chain(t.args[i],var)
                 else:
                     expan[i]=0.0
 
@@ -139,7 +139,7 @@ def __grad_unitary(unitary: QCircuit,variables=None):
 
 
     for var in names:
-        gradient[var]=(__make_gradient_component(unitary=unitary,var=var))
+        gradient[var]=__make_gradient_component(unitary=unitary,var=var)
 
     return gradient
 

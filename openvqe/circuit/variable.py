@@ -159,7 +159,7 @@ class Variable():
         return Transform(Sub,[other,self])
 
     def __neg__(self):
-        return Transform(Mul,[self,-1])
+        return Transform(Mul,[self,-1.])
 
 
     def __div__(self, other):
@@ -327,6 +327,10 @@ class Transform():
             if type(x) is Variable:
                 if k == x.name:
                     return True
+            if type(x) is str:
+                if k==x:
+                    return True
+
         return False
 
     def __call__(self):
@@ -425,6 +429,17 @@ class Transform():
 
     def __float__(self):
         return float(self.eval)
+
+    def __str__(self):
+        funcpart= str(self.f) + ' acting on: '
+        argpart = '('
+        for i in range(len(self.args)):
+            argpart+= str(self.args[i])
+            if i<len(self.args)-1:
+                argpart +=', '
+        argpart+= ')'
+        val=str(self())
+        return funcpart+argpart+', val='+val
 
 
 def has_variable(obj,var):
