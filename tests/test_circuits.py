@@ -1,5 +1,5 @@
 from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, SWAP, QCircuit, RotationGate
-from openvqe.simulator.simulator_symbolic import SimulatorSymbolic, sympy
+from openvqe.simulators.simulator_symbolic import SimulatorSymbolic, sympy
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit._gates_impl import RotationGateImpl
 from openvqe.circuit.variable import Variable

@@ -6,7 +6,7 @@ Derived class of HamiltonianBase: Overwrites the get_hamiltonian function
 from openfermion import MolecularData, FermionOperator
 from openfermion.transforms import jordan_wigner, get_fermion_operator, bravyi_kitaev
 from openvqe.hamiltonian import QubitHamiltonian
-from openvqe import BitString, typing
+import typing
 
 
 class HamiltonianQC(QubitHamiltonian):

@@ -1,6 +1,6 @@
 system_has_qiskit = None
 try:
-    from openvqe.simulator.simulator_qiskit import SimulatorQiskit
+    from openvqe.simulators.simulator_qiskit import SimulatorQiskit
 
     system_has_qiskit = True
 except ImportError:

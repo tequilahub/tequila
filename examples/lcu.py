@@ -1,9 +1,9 @@
 from openvqe.circuit import gates
-from openvqe.simulator.simulator_qiskit import SimulatorQiskit
-from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe.simulator.simulator_pyquil import SimulatorPyquil
+from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+from openvqe.simulators.simulator_cirq import SimulatorCirq
+from openvqe.simulators.simulator_pyquil import SimulatorPyquil
 from openvqe.tools import plotters
-from openvqe.simulator.heralding import HeraldingProjector
+from openvqe.simulators.heralding import HeraldingProjector
 from numpy import pi
 
 """

@@ -9,12 +9,12 @@ Note: The UnaryStatePrep code is currently unstable and needs improvement
 """
 
 from openvqe.apps import UnaryStatePrep
-from openvqe.simulator.simulator_cirq import SimulatorCirq
+from openvqe.simulators.simulator_cirq import SimulatorCirq
 from openvqe.qubit_wavefunction import QubitWaveFunction
 
 if __name__ == "__main__":
 
-    # initialize the simulator (can currently be pyquil, cirq or symbolic)
+    # initialize the simulators (can currently be pyquil, cirq or symbolic)
     simulator = SimulatorCirq()
 
     # this is the wavefunction we want to initialize with UnaryStatePrep:

@@ -1,8 +1,8 @@
-from openvqe.simulator.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendHandler
+from openvqe.simulators.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendHandler
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe import OpenVQEException
 from openvqe import BitString, BitNumbering
-from openvqe import typing
+import typing
 import cirq
 
 

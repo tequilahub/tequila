@@ -1,12 +1,11 @@
-import numpy
-import scipy
-import typing
-from dataclasses import dataclass
-import copy
-import numbers
-
-from openvqe.openvqe_abc import OpenVQEParameters, OpenVQEModule, OutputLevel
-from openvqe.openvqe_exceptions import OpenVQEException, OpenVQEParameterError, OpenVQETypeError
-from openvqe.bitstrings import BitString, BitNumbering, BitStringLSB, initialize_bitstring
-from openvqe.qubit_wavefunction import QubitWaveFunction
+from .openvqe_abc import OpenVQEParameters, OpenVQEModule, OutputLevel
+from .openvqe_exceptions import OpenVQEException, OpenVQEParameterError, OpenVQETypeError
+from .bitstrings import BitString, BitNumbering, BitStringLSB, initialize_bitstring
+from .qubit_wavefunction import QubitWaveFunction
+from .circuit import gates
+from .circuit import Variable
+from .hamiltonian import paulis
+from .objective import Objective
+from .optimizers import scipy_optimizers
+from .simulators import pick_simulator
 

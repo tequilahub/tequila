@@ -4,13 +4,13 @@ import numpy
 from openvqe.openvqe_exceptions import OpenVQEException
 from openvqe.bitstrings import  BitString, BitNumbering
 from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.simulator.simulatorbase import SimulatorBase, SimulatorReturnType
-from openvqe.simulator.simulatorbase import BackendHandler
+from openvqe.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
+from openvqe.simulators.simulatorbase import BackendHandler
 from openvqe.circuit import QCircuit
 
 
 """
-todo: overwrite simulate_objective for this simulator, might be faster
+todo: overwrite simulate_objective for this simulators, might be faster
 
 Qulacs uses different Rotational Gate conventions: Rx(angle) = exp(i angle/2 X) instead of exp(-i angle/2 X)
 """

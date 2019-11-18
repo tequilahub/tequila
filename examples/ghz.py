@@ -1,7 +1,7 @@
 from openvqe.circuit import gates
-from openvqe.simulator.simulator_qiskit import SimulatorQiskit # full wavefunction simulation currently not supported
-from openvqe.simulator.simulator_cirq import SimulatorCirq
-from openvqe.simulator.simulator_pyquil import SimulatorPyquil # currently only full wavefunction simulation
+from openvqe.simulators.simulator_qiskit import SimulatorQiskit # full wavefunction simulation currently not supported
+from openvqe.simulators.simulator_cirq import SimulatorCirq
+from openvqe.simulators.simulator_pyquil import SimulatorPyquil # currently only full wavefunction simulation
 from openvqe.tools import plotters # convenience
 from openvqe import numpy
 
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     simulator = SimulatorCirq()
     result = simulator.simulate_wavefunction(abstract_circuit=U)
 
-    # the simulator gives back a lot of information, we only need the computed wavefunction
+    # the simulators gives back a lot of information, we only need the computed wavefunction
     wfn = result.wavefunction
     print("|GHZ>=", wfn)
 
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     print("this was created by the backend:\n", backend_circuit)
 
     # count based simulation
-    # changing simulator (not necessary)
+    # changing simulators (not necessary)
     simulator = SimulatorQiskit()
 
     # we need to add measurement instructions for that

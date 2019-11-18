@@ -1,6 +1,6 @@
 system_has_cirq = None
 try:
-    from openvqe.simulator.simulator_cirq import SimulatorCirq
+    from openvqe.simulators.simulator_cirq import SimulatorCirq
 
     system_has_cirq = True
 except ImportError:

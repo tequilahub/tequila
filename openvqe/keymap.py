@@ -1,6 +1,7 @@
 import typing
+import numbers
 from openvqe import BitNumbering, BitString, BitStringLSB
-from openvqe import numbers
+
 
 class KeyMapABC:
 

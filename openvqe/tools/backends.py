@@ -2,13 +2,13 @@ def initialize_simulator(simulator_type:str):
     """
     And it will allow for eay switching of backens to play around
     :param simulator_type: 'cirq', 'pyquil', 'symbolic' (default), 'qiskit'
-    :return: the initialized simulator backend
+    :return: the initialized simulators backend
     """
     # moving import statements to here, so the example also runs when not all are installed
-    from openvqe.simulator.simulator_cirq import SimulatorCirq
-    from openvqe.simulator.simulator_pyquil import SimulatorPyquil
-    from openvqe.simulator.simulator_symbolic import SimulatorSymbolic
-    from openvqe.simulator.simulator_qiskit import SimulatorQiskit
+    from openvqe.simulators.simulator_cirq import SimulatorCirq
+    from openvqe.simulators.simulator_pyquil import SimulatorPyquil
+    from openvqe.simulators.simulator_symbolic import SimulatorSymbolic
+    from openvqe.simulators.simulator_qiskit import SimulatorQiskit
 
     if simulator_type.lower() == "cirq":
         return SimulatorCirq()

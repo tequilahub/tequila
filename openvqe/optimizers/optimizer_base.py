@@ -4,9 +4,9 @@ Suggestion, feel free to propose new things/changes
 """
 
 from openvqe import OpenVQEException
-from openvqe import typing, numbers
 from openvqe.objective import Objective
-from openvqe.simulator import pick_simulator
+from openvqe.simulators import pick_simulator
+import typing, numbers
 from dataclasses import dataclass, field
 
 
@@ -37,9 +37,11 @@ class OptimizerHistory:
     def extract_angles(self, key: str):
         return [d[key] for d in self.angles]
 
-    def plot(self, filename=None,
+    def plot(self,
              property: typing.Union[str, typing.List[str]] = 'energies',
-             key: str = None, *args, **kwargs):
+             key: str = None,
+             filename=None,
+             *args, **kwargs):
         """
         Convenience function to plot the progress of the optimizer
         :param filename: if given plot to file, otherwise plot to terminal
@@ -49,34 +51,43 @@ class OptimizerHistory:
         give key as list if you want to plot multiple properties with different keys
         """
         from matplotlib import pyplot as plt
+        from matplotlib.ticker import MaxNLocator
+        fig = plt.figure()
+        fig.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
+        import pickle
 
-        properties = None
         if hasattr(property, "lower"):
             properties = [property.lower()]
         else:
             properties = property
 
-        keys = key
         if key is None:
             keys = [[k for k in self.angles[-1].keys()]] * len(properties)
         elif hasattr(key, "lower"):
             keys = [[key.lower()]] * len(properties)
         else:
-            keys = [key]*len(properties)
-
+            keys = [key] * len(properties)
         for i, p in enumerate(properties):
-            data = None
             if p.lower() == "energies":
                 data = self.energies
                 plt.plot(data, label=p, marker='o', linestyle='--')
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(data, label=p+" "+k, marker='o', linestyle='--')
+                    plt.plot(data, label=p + " " + k, marker='o', linestyle='--')
 
+        if 'title' in kwargs:
+            plt.title(kwargs['title'])
 
-        plt.legend()
-        plt.show()
+        loc = 'best'
+        if 'loc' in kwargs:
+            loc = kwargs['loc']
+        plt.legend(loc=loc)
+        if filename is None:
+            plt.show()
+        else:
+            pickle.dump(fig, open(filename + ".pickle", "wb"))
+            plt.savefig(fname=filename + ".pdf", **kwargs)
 
 
 class Optimizer:
@@ -84,7 +95,7 @@ class Optimizer:
     def __init__(self, simulator: typing.Type = None, maxiter: int = None, samples: int = None,
                  save_history: bool = True):
         """
-        :param simulator: The simulator to use (initialized or uninitialized)
+        :param simulator: The simulators to use (initialized or uninitialized)
         :param maxiter: Maximum number of iterations
         :param samples: Number of Samples for the Quantum Backend takes (None means full wavefunction simulation)
         :param save_history: Save the optimization history in self.history

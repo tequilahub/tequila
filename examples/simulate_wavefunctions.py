@@ -4,11 +4,11 @@ Simple example of how to construct a small circuit and simulate the full wavefun
 
 from openvqe.circuit import gates
 from numpy import pi
-from openvqe.simulator import pick_simulator
+from openvqe.simulators import pick_simulator
 
 """
 From the current backends only Pyquil and Cirq support full wavefunction
-Simulation. We also have an internal symbolic simulator which was created
+Simulation. We also have an internal symbolic simulators which was created
 for debugging purposes. It can be described with many words but 'fast'
 or 'efficient' wouldn't be one of them.
 
@@ -16,7 +16,7 @@ If you use Pyquil, make sure you have installed the QVM
  -> open terminal, type 'qvm -S'
 """
 
-from openvqe.simulator import show_available_simulators
+from openvqe.simulators import show_available_simulators
 print(show_available_simulators())
 
 if __name__ == "__main__":

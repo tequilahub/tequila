@@ -1,8 +1,9 @@
-from openvqe.simulator.simulatorbase import SimulatorBase, SimulatorReturnType
+from openvqe.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit.circuit import QCircuit
 from openvqe.circuit.gates import QGate, Ry, X
-from openvqe import BitString, numpy
+from openvqe import BitString
+import numpy
 import copy
 import sympy
 
@@ -41,7 +42,7 @@ class SimulatorSymbolic(SimulatorBase):
                 return QubitWaveFunction.from_int(basisfunction)
 
         if len(gate.target) > 1:
-            raise Exception("Multi-targets not supported for symbolic simulator")
+            raise Exception("Multi-targets not supported for symbolic simulators")
 
         result = QubitWaveFunction()
         for tt in gate.target:
@@ -75,7 +76,7 @@ class SimulatorSymbolic(SimulatorBase):
                 angle = sympy.Rational(1 / 2) * gate.angle()
                 fac1 = sympy.exp(-angle * sympy.I * sympy.Integer(-1) ** (qt))
             else:
-                raise Exception("Gate is not known to simulator, " + str(gate))
+                raise Exception("Gate is not known to simulators, " + str(gate))
 
             if fac1 is None or fac1 == 0:
                 result += fac2 * altered_state

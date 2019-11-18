@@ -1,15 +1,17 @@
-from openvqe import OpenVQEModule, OpenVQEException, BitNumbering, numpy, numbers
+from openvqe import OpenVQEModule, OpenVQEException, BitNumbering
 from openvqe.circuit.circuit import QCircuit
 from openvqe.keymap import KeyMapSubregisterToRegister
 from openvqe.qubit_wavefunction import QubitWaveFunction
 from openvqe.circuit.compiler import change_basis
 from openvqe.circuit.gates import Measurement
 from openvqe import BitString
-from openvqe import dataclass, typing
 from openvqe.objective import Objective
-from openvqe.simulator.heralding import HeraldingABC
+from openvqe.simulators.heralding import HeraldingABC
 from openvqe.circuit import compiler
 from openvqe.circuit._gates_impl import MeasurementImpl
+
+import  numpy, numbers, typing
+from dataclasses import dataclass
 
 @dataclass
 class SimulatorReturnType:
@@ -148,7 +150,7 @@ class SimulatorBase(OpenVQEModule):
 
     def do_simulate_wavefunction(self, circuit, initial_state=0) -> SimulatorReturnType:
         raise OpenVQEException(
-            "called from base class of simulator, or non-supported operation for this backend")
+            "called from base class of simulators, or non-supported operation for this backend")
 
     def create_circuit(self, abstract_circuit: QCircuit):
         """
@@ -193,9 +195,9 @@ class SimulatorBase(OpenVQEModule):
 
     def convert_measurements(self, backend_result) -> typing.Dict[str, QubitWaveFunction]:
         raise OpenVQEException(
-            "called from base class of simulator, or non-supported operation for this backend")
+            "called from base class of simulators, or non-supported operation for this backend")
 
-    def measure_objective(self, objective: Objective, samples: int = 1, return_simulation_data: bool = False) -> float:
+    def measure_objective(self, objective: Objective, samples: int, return_simulation_data: bool = False) -> float:
         final_E = 0.0
         data = []
         for U in objective.unitaries:
@@ -260,7 +262,7 @@ class SimulatorBase(OpenVQEModule):
         else:
             measure += Measurement(name=str(paulistring), target=qubits)
             circuit = abstract_circuit + basis_change + measure
-            # run simulator
+            # run simulators
             sim_result = self.run(abstract_circuit=circuit, samples=samples)
 
             # compute energy

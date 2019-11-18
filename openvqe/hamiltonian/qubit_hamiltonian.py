@@ -311,7 +311,7 @@ class QubitHamiltonian:
     def normalize(self):
         self._hamiltonian.renormalize()
 
-    def tomatrix(self):
+    def to_matrix(self):
         """
         Returns the Hamiltonian as a dense matrix.
 
@@ -335,11 +335,12 @@ class QubitHamiltonian:
 
     @property
     def n_qubits(self):
-        n_qubits = 0
+        max_index = 0
         for key, value in self.items():
             indices = [self.index(k) for k in key]
-            n_qubits = max(n_qubits, max(indices))
-        return n_qubits + 1
+            if len(indices) > 0: # for the case that there is a 1 in the operator
+                max_index = max(max_index, max(indices))
+        return max_index + 1
 
     @property
     def paulistrings(self):

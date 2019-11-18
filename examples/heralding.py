@@ -20,10 +20,10 @@ This will then give the same distribution as in the first state
 Note that the Heralding objects can not yet be used in combination with Objectives
 """
 
-from openvqe.simulator.heralding import HeraldingProjector
+from openvqe.simulators.heralding import HeraldingProjector
 from openvqe.circuit import gates
-from openvqe.simulator.simulator_qiskit import SimulatorQiskit
-from openvqe.simulator.simulator_cirq import SimulatorCirq
+from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+from openvqe.simulators.simulator_cirq import SimulatorCirq
 from openvqe import numpy
 from openvqe.tools import plotters
 from openvqe import BitString

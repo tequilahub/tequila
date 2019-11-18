@@ -12,7 +12,7 @@ class AnsatzBase:
     def __call__(self, angles: list):
         """
         :param angles: The angles which parametrize the circuit
-        :return: the circuit in the correct format for the simulator backend secified by self.parameters.backend
+        :return: the circuit in the correct format for the simulators backend secified by self.parameters.backend
         """
         return self.construct_circuit(angles=angles)
 
@@ -21,7 +21,7 @@ class AnsatzBase:
         Construct the circuit specifified by the given ansatz
         this function should be overwritten by specializations of this baseclass
         :param angles:
-        :return: the circuit in the correct format for the simulator backend secified by self.parameters.backend
+        :return: the circuit in the correct format for the simulators backend secified by self.parameters.backend
         """
         raise OpenVQEException(type(self).__name__ + ": You tried to call the ABC directly")
 

@@ -1,23 +1,25 @@
-from openvqe import typing, numbers
+import scipy, numpy, typing, numbers
 from openvqe.objective import Objective
-from openvqe import scipy
-from openvqe import numpy as np
 from .optimizer_base import Optimizer
 from openvqe.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
+from collections import namedtuple
+import copy
 
+SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
 
 class OptimizerSciPy(Optimizer):
-    gradient_free_methods = ['Nelder-Mead', 'COBYLA', 'Powell']
-    gradient_based_methods = ['BFGS', 'CG', 'dogleg']
+    gradient_free_methods = ['Nelder-Mead', 'COBYLA', 'Powell', 'SLSQP']
+    gradient_based_methods = ['L-BFGS-B', 'BFGS', 'CG', 'dogleg', 'TNC']
 
-    def available_methods(self):
+    @classmethod
+    def available_methods(cls):
         """
         :return: All tested available methods
         """
-        return self.gradient_free_methods + self.gradient_based_methods
+        return cls.gradient_free_methods + cls.gradient_based_methods
 
-    def __init__(self, method: str = "BFGS", tol: numbers.Real = 1.e-3, method_options=None, method_bounds=None,
+    def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = None, method_options=None, method_bounds=None,
                  method_constraints=None, use_gradient: bool = None, **kwargs):
         """
         Optimize a circuit to minimize a given objective using scipy
@@ -60,12 +62,11 @@ class OptimizerSciPy(Optimizer):
         if self.samples is None:
             return simulator.simulate_objective
         else:
-            return simulator.measure_objective
+            return lambda objective : simulator.measure_objective(objective=objective, samples=self.samples)
 
     def __call__(self, objective: Objective,
                  initial_values: typing.Dict[str, numbers.Number] = None,
-                 return_scipy_output: bool = False,
-                 reset_history: bool = True) -> typing.Tuple[numbers.Number, typing.Dict[str, numbers.Number]]:
+                 reset_history: bool = True) -> SciPyReturnType:
         """
         Optimizes with scipi and gives back the optimized angles
         Get the optimized energies over the history
@@ -79,12 +80,11 @@ class OptimizerSciPy(Optimizer):
         if self.save_history and reset_history:
             self.reset_history()
 
+        # Need that for now to avoid compiler issues with gradients
+        if self.use_gradient:
+            copy_objective = copy.deepcopy(objective)
+
         simulator = self.initialize_simulator(self.samples)
-        recompiled = []
-        for u in objective.unitaries:
-            recompiled.append(simulator.backend_handler.recompile(u))
-        objective.unitaries = recompiled
-        simulator.set_compile_flag(False)
 
         # Generate the function that evaluates <O>
         sim_eval = self.__get_eval_function(simulator=simulator)
@@ -96,7 +96,7 @@ class OptimizerSciPy(Optimizer):
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*angles.items())
-        param_values = np.array(param_values)
+        param_values = numpy.array(param_values)
 
         # Make E, grad E
         dE = None
@@ -110,8 +110,6 @@ class OptimizerSciPy(Optimizer):
         bounds = None
         if self.method_bounds is not None:
             names, bounds = zip(*self.method_bounds.items())
-            print("names=", names)
-            print("keys =", param_keys)
             assert (names == param_keys)
 
         res = scipy.optimize.minimize(E, param_values, jac=dE,
@@ -129,7 +127,56 @@ class OptimizerSciPy(Optimizer):
 
         E_final = res.fun
         angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
-        if return_scipy_output:
-            return E_final, angles_final, res
-        else:
-            return E_final, angles_final
+
+        return SciPyReturnType(energy=E_final, angles=angles_final, history=self.history, scipy_output=res)
+
+def available_methods():
+    """
+    Convenience
+    :return: Available methods of the scipy optimizer (lists all gradient free and gradient based methods)
+    """
+    return OptimizerSciPy.available_methods()
+
+def minimize(objective: Objective,
+             initial_values: typing.Dict[str, numbers.Real] = None,
+             samples: int = None,
+             maxiter: int = 100,
+             simulator: type = None,
+             method: str = "L-BFGS-B",
+             tol: float = None,
+             method_options: dict = None,
+             method_bounds: typing.Dict[str, numbers.Real] = None,
+             method_constraints=None,
+             save_history: bool = True) -> SciPyReturnType:
+    """
+    Call this if you don't like objects
+    :param objective: The openvqe Objective to minimize
+    :param initial_values: initial values for the objective
+    :param samples: Number of samples to measure in each simulators run (None means full wavefunction simulation)
+    :param maxiter: maximum number of iterations (can also be set over method_options)
+    Note that some SciPy optimizers also accept 'maxfun' which is the maximum number of function evaluation
+    You might consider massing down that keyword in the method_options dictionary
+    :param simulator: The simulators you want to use (None -> automatically assigned)
+    :param method: The scipy method passed as string
+    :param tol: See scipy documentation for the method you picked
+    :param method_options: See scipy documentation for the method you picked
+    :param method_bounds: See scipy documentation for the method you picked
+    Give in the same format as parameters/initial_values: Dict[str, float]
+    :param return_dictionary: return results as dictionary instead of tuples
+    :param method_constraints: See scipy documentation for the method you picked
+    :return: Named Tuple with: Optimized Energy, optimized angles, history (if return_history is True, scipy_output (if return_scipy_output is True)
+    """
+    optimizer = OptimizerSciPy(save_history=save_history,
+                               samples=samples,
+                               maxiter=maxiter,
+                               method=method,
+                               method_options=method_options,
+                               method_bounds=method_bounds,
+                               method_constraints=method_constraints,
+                               simulator=simulator,
+                               tol=tol)
+
+    return optimizer(objective=objective, initial_values=initial_values)
+
+
+
