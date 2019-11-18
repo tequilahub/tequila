@@ -241,7 +241,7 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
         for i, g in enumerate(gate.generators):
             if gate.angles is not None:
                 c = gate.angles[i]
-            result += do_compile_trotterized_gate(generator=g, factor=c, randomize=gate.randomize, control=gate.control, frozen=gate.frozen, threshold=gate.threshold)
+            result += do_compile_trotterized_gate(generator=g, steps=gate.steps, factor=c, randomize=gate.randomize, control=gate.control, frozen=gate.frozen, threshold=gate.threshold)
 
     if compile_exponential_pauli:
         return compile_exponential_pauli_gate(result)

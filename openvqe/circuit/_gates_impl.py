@@ -354,10 +354,11 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
 
     @property
     def parameter(self):
-        return self._parameter
+        return self.angles
 
     @parameter.setter
     def parameter(self, other):
+        assert (len(other) == len(self.generators))
         self._parameter = other
 
     @property
@@ -366,7 +367,16 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
 
     @angles.setter
     def angles(self, other):
-        self._parameter = list_assignement(other)
+        if other is None:
+            self._parameter = tuple([1] * len(self.generators))
+        elif hasattr(other, "__len__"):
+            if len(other) == 1:
+                self._parameter = tuple([other[0]] * len(self.generators))
+            else:
+                assert (len(other) == len(self.generators))
+                self._parameter = tuple(other)
+        else:
+            self._parameter = tuple([other] * len(self.generators))
 
     def __init__(self, generators: typing.Union[QubitHamiltonian, typing.List[QubitHamiltonian]],
                  steps: int = 1,
@@ -391,7 +401,7 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         """
         self.generators = list_assignement(generators)
         self.target = self.extract_targets()
-        self._parameter = list_assignement(angles)
+        self.angles = angles
         self.control = tuple(list_assignement(control))
         self.frozen = frozen
         self.steps = steps

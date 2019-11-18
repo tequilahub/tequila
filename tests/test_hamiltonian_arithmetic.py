@@ -169,16 +169,16 @@ def test_dagger():
 
 def test_matrix_form():
     H = -1.0 * paulis.Z(0) -1.0 * paulis.Z(1) + 0.1 * paulis.X(0)*paulis.X(1) 
-    Hm= H.tomatrix()
+    Hm= H.to_matrix()
     assert (Hm[0,0] == -2.0)
     assert (Hm[0,3] == 0.10)
     assert (Hm[1,2] == 0.10)
 
-    Hm2 = (H + paulis.Z(2)).tomatrix()
+    Hm2 = (H + paulis.Z(2)).to_matrix()
     Hm2p = kron(Hm, eye(2, dtype=Hm2.dtype)) + kron(eye(len(Hm), dtype=Hm2.dtype), paulis.Z(0).to_matrix())
     assert allclose(Hm2 , Hm2p)
 
-    Hm3 = (H * paulis.Z(2)).tomatrix()
+    Hm3 = (H * paulis.Z(2)).to_matrix()
     Hm3p = kron(Hm, paulis.Z(0).to_matrix())
     assert allclose(Hm3 , Hm3p)
 
