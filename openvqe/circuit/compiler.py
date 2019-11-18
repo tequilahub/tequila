@@ -95,7 +95,7 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
         return QCircuit.wrap_gate(gate)
 
     if angles is None:
-        angles=[gate.angle()+numpy.pi/2,gate.angle()-numpy.pi/2]
+        angles=[gate.angle,-gate.angle]
 
     if len(gate.target) > 1:
         return compile_controlled_rotation(gate=compile_multitarget(gate=gate), angles=angles)

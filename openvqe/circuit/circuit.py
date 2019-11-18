@@ -6,7 +6,7 @@ import copy
 
 
 
-import cleanup, numpy, copy, typing
+import  numpy, copy, typing
 
 class QCircuit():
 
@@ -174,17 +174,7 @@ class QCircuit():
         :return: List of all unique parameters with names as keys
         TODO: deprecate, now identical to the parameters property
         """
-        parameters = dict()
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized() and not g.is_frozen():
-                if hasattr(g.parameter, "__iter__") or hasattr(g.parameter, "__get_item__"):
-                    for parameter in g.parameter:
-                        if parameter.name not in parameters:
-                            parameters[parameter.name] = parameter.value
-                elif g.parameter.name not in parameters:
-                    parameters[g.parameter.name] = g.parameter.value
-
-        return parameters
+        return self.parameters
 
     def update_parameters(self, parameters: dict):
         """

@@ -6,7 +6,7 @@ from openvqe.objective import Objective
 from openvqe import OpenVQEException
 import copy
 import numpy as np
-import cleanup, numpy, copy, typing
+import  numpy, copy, typing
 from openvqe.circuit.variable import Variable,Transform,has_variable,Add,Sub,Inverse,Pow,Mul,Div,Sqr
 
 def __weight_chain(par,variable):
@@ -186,14 +186,14 @@ def __make_gradient_component(unitary: QCircuit, var):
                             dg.append(U)
                     else:
                         neo_a = copy.deepcopy(g)
-                        neo_a.frozen=True
+                        neo_a.frozen=False
 
                         neo_a.angle = g.angle + pi/2
                         U1 = unitary.replace_gate(position=i,gates=[neo_a])
                         U1.weight = 0.5*__weight_chain(g.parameter,var)
 
                         neo_b = copy.deepcopy(g)
-                        neo_b.frozen=True
+                        neo_b.frozen=False
                         neo_b.angle = g.angle - pi/2
                         U2=unitary.replace_gate(position=i,gates=[neo_b])
                         U2.weight = -0.5*__weight_chain(g.parameter,var)

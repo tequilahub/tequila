@@ -36,7 +36,9 @@ def test_controlled_rotations():
             qubit = randint(0, 1)
             control = randint(2, 3)
             U = gates.X(target=control) * gate(target=qubit, control=control, angle=angle)
+            print(U)
             RCU = compile_controlled_rotation(gate=U)
+            print(RCU)
             wfn1 = SimulatorCirq().simulate_wavefunction(abstract_circuit=U, initial_state=0).wavefunction
             wfn2 = SimulatorCirq().simulate_wavefunction(abstract_circuit=RCU, initial_state=0).wavefunction
             assert (wfn1 == wfn2)
