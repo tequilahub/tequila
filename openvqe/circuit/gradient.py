@@ -6,6 +6,7 @@ from openvqe.objective import Objective
 from openvqe import OpenVQEException
 import copy
 import numpy as np
+import cleanup, numpy, copy, typing
 from openvqe.circuit.variable import Variable,Transform,has_variable,Add,Sub,Inverse,Pow,Mul,Div,Sqr
 
 def __weight_chain(par,variable):
@@ -101,6 +102,8 @@ def tgrad(f,argnum):
 
     else:
         raise OpenVQEException('sorry, only functions with up to two arguments are supported at present')
+
+
 
 
 

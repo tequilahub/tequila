@@ -5,6 +5,9 @@ from openvqe.circuit.variable import Variable,Transform,has_variable
 import copy
 
 
+
+import cleanup, numpy, copy, typing
+
 class QCircuit():
 
     

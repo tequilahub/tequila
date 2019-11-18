@@ -2,7 +2,7 @@ from openvqe.apps import UnaryStatePrep
 from openvqe.apps.unary_state_prep import OpenVQEUnaryStateException
 import numpy
 from openvqe import BitString
-from openvqe.simulators import SimulatorSymbolic
+from openvqe.simulator import SimulatorSymbolic
 from openvqe.qubit_wavefunction import QubitWaveFunction
 import pytest
 

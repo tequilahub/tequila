@@ -4,7 +4,10 @@ from .optimizer_base import Optimizer
 from openvqe.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
 from collections import namedtuple
+<<<<<<< HEAD
 import copy
+=======
+>>>>>>> c0cf0e3d080304a742c9bca7e2d6f43afdd466dd
 
 SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
 
@@ -19,7 +22,11 @@ class OptimizerSciPy(Optimizer):
         """
         return cls.gradient_free_methods + cls.gradient_based_methods
 
+<<<<<<< HEAD
     def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = None, method_options=None, method_bounds=None,
+=======
+    def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = 1.e-3, method_options=None, method_bounds=None,
+>>>>>>> c0cf0e3d080304a742c9bca7e2d6f43afdd466dd
                  method_constraints=None, use_gradient: bool = None, **kwargs):
         """
         Optimize a circuit to minimize a given objective using scipy
@@ -130,12 +137,15 @@ class OptimizerSciPy(Optimizer):
 
         return SciPyReturnType(energy=E_final, angles=angles_final, history=self.history, scipy_output=res)
 
+<<<<<<< HEAD
 def available_methods():
     """
     Convenience
     :return: Available methods of the scipy optimizer (lists all gradient free and gradient based methods)
     """
     return OptimizerSciPy.available_methods()
+=======
+>>>>>>> c0cf0e3d080304a742c9bca7e2d6f43afdd466dd
 
 def minimize(objective: Objective,
              initial_values: typing.Dict[str, numbers.Real] = None,
@@ -143,7 +153,11 @@ def minimize(objective: Objective,
              maxiter: int = 100,
              simulator: type = None,
              method: str = "L-BFGS-B",
+<<<<<<< HEAD
              tol: float = None,
+=======
+             tol: float = 1.e-3,
+>>>>>>> c0cf0e3d080304a742c9bca7e2d6f43afdd466dd
              method_options: dict = None,
              method_bounds: typing.Dict[str, numbers.Real] = None,
              method_constraints=None,
@@ -152,11 +166,17 @@ def minimize(objective: Objective,
     Call this if you don't like objects
     :param objective: The openvqe Objective to minimize
     :param initial_values: initial values for the objective
+<<<<<<< HEAD
     :param samples: Number of samples to measure in each simulators run (None means full wavefunction simulation)
     :param maxiter: maximum number of iterations (can also be set over method_options)
     Note that some SciPy optimizers also accept 'maxfun' which is the maximum number of function evaluation
     You might consider massing down that keyword in the method_options dictionary
     :param simulator: The simulators you want to use (None -> automatically assigned)
+=======
+    :param samples: Number of samples to measure in each simulator run (None means full wavefunction simulation)
+    :param maxiter: maximum number of iterations (can also be set over method_options)
+    :param simulator: The simulator you want to use (None -> automatically assigned)
+>>>>>>> c0cf0e3d080304a742c9bca7e2d6f43afdd466dd
     :param method: The scipy method passed as string
     :param tol: See scipy documentation for the method you picked
     :param method_options: See scipy documentation for the method you picked
