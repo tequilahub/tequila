@@ -88,7 +88,7 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
     :return: set of gates wrapped in QCircuit class
     """
 
-    if gate.control is None:
+    if not gate.is_controlled():
         return QCircuit.wrap_gate(gate)
 
     if not hasattr(gate, "angle"):
@@ -100,7 +100,6 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
     assert (len(angles) == 2)
 
     if len(gate.target) > 1:
-        result = QCircuit()
         return compile_controlled_rotation(gate=compile_multitarget(gate=gate), angles=angles)
 
     target = gate.target
