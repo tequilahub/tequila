@@ -4,12 +4,11 @@ Replace with fancier external packages at some point
 """
 from openvqe import OpenVQEException
 from openvqe.circuit.circuit import QCircuit
-from openvqe import numpy
 from openvqe.circuit.gates import Rx, H, X, Rz, ExpPauli
 from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
-from openvqe import copy
-from numpy.random import shuffle
 from openvqe.objective import Objective
+
+import numpy, copy
 
 
 class OpenVQECompilerException(OpenVQEException):
@@ -208,7 +207,7 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control, th
     for index in range(steps):
         paulistrings = generator.paulistrings
         if randomize:
-            shuffle(paulistrings)
+            numpy.random.shuffle(paulistrings)
         for ps in paulistrings:
             value = ps.coeff
             # don't make circuit for too small values
@@ -229,14 +228,14 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
     if gate.join_components:
         for step in range(gate.steps):
             if gate.randomize_component_order:
-                shuffle(gate.generators)
+                numpy.random.shuffle(gate.generators)
             for i, g in enumerate(gate.generators):
                 if gate.angles is not None:
                     c = gate.angles[i]
                 result += do_compile_trotterized_gate(generator=g, steps=1, factor=c / gate.steps, randomize=gate.randomize, control=gate.control, frozen=gate.frozen, threshold=gate.threshold)
     else:
         if gate.randomize_component_order:
-            shuffle(gate.generators)
+            numpy.random.shuffle(gate.generators)
         for i, g in enumerate(gate.generators):
             if gate.angles is not None:
                 c = gate.angles[i]

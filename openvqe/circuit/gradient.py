@@ -1,11 +1,9 @@
 from openvqe.circuit import QCircuit
 from openvqe.circuit.compiler import compile_controlled_rotation
-from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl
+from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, ExponentialPauliGateImpl
 from openvqe.circuit.compiler import compile_trotterized_gate
 from openvqe.objective import Objective
 from openvqe import OpenVQEException
-from openvqe import copy
-from openvqe import numpy as np
 from openvqe.circuit.variable import Variable,Transform,has_variable,Add,Sub,Inverse,Pow,Mul,Div,Sqr
 
 def __weight_chain(par,variable):
@@ -101,6 +99,10 @@ def tgrad(f,argnum):
 
     else:
         raise OpenVQEException('sorry, only functions with up to two arguments are supported at present')
+=======
+import copy
+import numpy
+>>>>>>> import cleanup, numpy, copy, typing
 
 
 def grad(obj, variables=None):

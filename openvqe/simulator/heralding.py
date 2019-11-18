@@ -3,9 +3,10 @@ Project out undesired measurements
 """
 
 from openvqe.qubit_wavefunction import QubitWaveFunction, BitString
-from openvqe import typing
-from openvqe.keymap import KeyMapRegisterToSubregister, KeyMapSubregisterToRegister, KeyMapABC
+from openvqe.keymap import KeyMapRegisterToSubregister, KeyMapABC
 from openvqe.tools import list_assignement
+
+import typing
 
 class HeraldingABC:
 

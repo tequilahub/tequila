@@ -5,7 +5,7 @@ from openvqe.hamiltonian import paulis
 from openvqe.simulator.simulator_qiskit import SimulatorQiskit
 from openvqe.simulator.simulator_cirq import SimulatorCirq
 #from openvqe.simulator.simulator_qulacs import SimulatorQulacs
-from openvqe import numpy
+import numpy
 import pytest
 
 

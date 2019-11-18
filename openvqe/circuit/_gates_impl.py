@@ -1,9 +1,9 @@
 import typing
+import copy
+import numbers
 from abc import ABC
 from openvqe import OpenVQEException
-from openvqe import typing
 from openvqe.circuit.variable import Variable, SympyVariable
-from openvqe import numbers, copy
 from openvqe.hamiltonian import PauliString, QubitHamiltonian
 from openvqe.tools import number_to_string, list_assignement
 

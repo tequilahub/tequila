@@ -1,4 +1,4 @@
-from openvqe import numpy, typing, copy
+import numpy, typing, copy
 
 """
 Preliminary structure to carry information over to backends

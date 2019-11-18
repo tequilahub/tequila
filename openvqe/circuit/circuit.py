@@ -1,8 +1,10 @@
 from openvqe.circuit._gates_impl import QGateImpl
 from openvqe import OpenVQEException
 from openvqe import BitNumbering
-from openvqe import copy
 from openvqe.circuit.variable import Variable,Transform,has_variable
+
+
+import cleanup, numpy, copy, typing
 
 class QCircuit():
 

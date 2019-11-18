@@ -2,7 +2,7 @@
 Convenience initialization
 Of Pauli Operators
 """
-from openvqe import typing
+import typing
 from openvqe.hamiltonian import QubitHamiltonian
 from openvqe import BitString
 
