@@ -138,6 +138,7 @@ class QCircuit():
             return QCircuit(gates=new,weight=self.weight)
         elif inplace is True:
             self.gates=new
+            return self
 
     def __getitem__(self, item):
         """

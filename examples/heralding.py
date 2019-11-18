@@ -24,7 +24,7 @@ from openvqe.simulators.heralding import HeraldingProjector
 from openvqe.circuit import gates
 from openvqe.simulators.simulator_qiskit import SimulatorQiskit
 from openvqe.simulators.simulator_cirq import SimulatorCirq
-from openvqe import numpy
+import numpy
 from openvqe.tools import plotters
 from openvqe import BitString
 

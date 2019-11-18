@@ -9,7 +9,7 @@ from openvqe.circuit import gates
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
 from openvqe.circuit.gradient import grad
-from openvqe import numpy
+import numpy
 from openvqe.circuit import Variable
 from openvqe.optimizers import GradientDescent #Doesn't do much, but is convenient for the plots in this example
 

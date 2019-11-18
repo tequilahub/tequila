@@ -2,7 +2,7 @@ from openvqe.simulators.simulator_qiskit import SimulatorQiskit
 from openvqe.circuit import gates
 from openvqe.hamiltonian import paulis
 from openvqe.tools import plotters
-from openvqe import numpy
+import numpy
 from openvqe import BitString
 
 """

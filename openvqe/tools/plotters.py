@@ -3,7 +3,7 @@ Convenience plot functions
 """
 from openvqe import QubitWaveFunction
 from openvqe.simulators import SimulatorReturnType
-from openvqe import typing
+import typing
 
 
 def plot_counts(counts: typing.Union[dict, QubitWaveFunction, SimulatorReturnType], filename: str = None,

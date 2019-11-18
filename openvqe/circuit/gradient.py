@@ -27,7 +27,7 @@ def __weight_chain(par,variable):
     elif (type(par) is Transform or (hasattr(par,'args') and hasattr(par,'f'))):
         t=par
         la=len(t.args)
-        expan=np.empty(la)
+        expan=np.zeros(la)
 
         if t.has_var(var):
             for i in range(la):
@@ -101,7 +101,7 @@ def tgrad(f,argnum):
 
 
     else:
-        raise OpenVQEException('sorry, only functions with up to two arguments are supported at present')
+        print('sorry! dont have it.')
 
 
 

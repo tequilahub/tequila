@@ -34,8 +34,8 @@ from openvqe.simulators.simulator_qiskit import SimulatorQiskit, QubitWaveFuncti
 from openvqe.circuit import gates
 from openvqe.hamiltonian import QubitHamiltonian, paulis
 from openvqe.tools import plotters
-from openvqe import typing
-from openvqe import numpy
+import typing
+import numpy
 from openvqe import dataclass
 
 import multiprocessing as mp

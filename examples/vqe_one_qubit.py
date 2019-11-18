@@ -8,7 +8,7 @@ Try to use the OptimizerSciPy instead as an exercise (see vqe_two_qubit.py examp
 from openvqe.circuit import gates
 from openvqe.hamiltonian import paulis
 from openvqe.objective import Objective
-from openvqe import numpy
+import numpy
 from openvqe.circuit import Variable
 from openvqe.optimizers import GradientDescent
 
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # do the optimization
     optimizer = GradientDescent(stepsize=stepsize, maxiter=maxiter, samples=samples, simulator=simulator)
-    E, angles = optimizer(objective=O, initial_values={"angle": initial_angle}) # don't need to set initial_values
+    E, angles,history = optimizer(objective=O, initial_values={"angle": initial_angle}) # don't need to set initial_values
 
     print("optimal energy = ", -1.0)
     print("optimal angle  = ", optimal_angle)

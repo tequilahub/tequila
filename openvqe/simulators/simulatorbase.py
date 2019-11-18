@@ -61,7 +61,7 @@ class BackendHandler:
             recompiled = compiler.compile_controlled_rotation(gate=recompiled)
         if self.recompile_swap:
             recompiled = compiler.compile_swap(gate=recompiled)
-
+        
         return recompiled
 
     def fast_return(self, abstract_circuit):

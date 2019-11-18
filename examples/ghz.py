@@ -3,7 +3,7 @@ from openvqe.simulators.simulator_qiskit import SimulatorQiskit # full wavefunct
 from openvqe.simulators.simulator_cirq import SimulatorCirq
 from openvqe.simulators.simulator_pyquil import SimulatorPyquil # currently only full wavefunction simulation
 from openvqe.tools import plotters # convenience
-from openvqe import numpy
+import numpy
 
 """
 Basic examples on how to simulate a GHZ State as full wavefunction or with individual measurements
