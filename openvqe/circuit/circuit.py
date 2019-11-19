@@ -218,8 +218,8 @@ class QCircuit():
         return qmax
 
     def __mul__(self, other):
-        result = QCircuit()
-        result.gates = [g.copy() for g in self.gates + other.gates]
+        gates = [g.copy() for g in self.gates + other.gates]
+        result = QCircuit(gates=gates)
         result.weight = self.weight * other.weight
         result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return result
