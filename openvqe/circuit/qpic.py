@@ -5,6 +5,7 @@ https://github.com/qpic/qpic/blob/master/doc/qpic_doc.pdf
 
 from openvqe.circuit import QCircuit
 from openvqe.circuit import gates
+from openvqe.tools import number_to_string
 
 import subprocess
 from shutil import which, move
@@ -14,8 +15,10 @@ system_has_qpic = which("qpic") is not None
 system_has_pdflatex = which("pdflatex") is not None
 
 def assign_name(parameter):
+    if isinstance(parameter, tuple):
+        return "\\theta"
     if parameter.name == "none":
-        return str(parameter())
+        return number_to_string(number=parameter(), precision=1 )
     else:
         return parameter.name
 
@@ -35,11 +38,11 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
                 result += names[c] + " "
 
             if hasattr(g, "angle"):
-                result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + g.angle.name + ")$ width=" + str(
-                    30 + len(assign_name(g.angle))) + " "
+                result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.angle) + ")$ width=" + str(
+                    50 + len(assign_name(g.angle))) + " "
             elif hasattr(g, "parameter") and g.parameter is not None:
                 result += " G $"+ g.name+"(" + g.parameter.name + ")$ width=" + str(
-                    30 + len(assign_name(g.parameter))) + " "
+                    50 + len(assign_name(g.parameter))) + " "
             elif g.name.lower() == "x":
                 result += "+"
             else:
@@ -52,10 +55,10 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
                 result += names[t] + " "
             if hasattr(g, "angle"):
                 result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.angle) + ")$ width=" + str(
-                    30 + len(assign_name(g.angle))) + " "
+                    50 + len(assign_name(g.angle))) + " "
             elif hasattr(g, "parameter") and g.parameter is not None:
                 result += " G $"+ g.name+"(" + assign_name(g.parameter) + ")$ width=" + str(
-                    30 + len(assign_name(g.parameter))) + " "
+                    50 + len(assign_name(g.parameter))) + " "
             else:
                 result += g.name + " "
 

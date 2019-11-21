@@ -11,12 +11,13 @@ class _EvalContainer:
     This class is used by the SciPy optimizer and should not be used somewhere else
     """
 
-    def __init__(self, objective, param_keys, eval, save_history):
+    def __init__(self, objective, param_keys, eval, save_history, silent:bool=True):
         self.objective = objective
         self.param_keys = param_keys
         self.eval = eval
         self.N = len(param_keys)
         self.save_history = save_history
+        self.silent = silent
         if save_history:
             self.history = []
             self.history_angles = []
@@ -25,6 +26,8 @@ class _EvalContainer:
         angles = dict((self.param_keys[i], p[i]) for i in range(self.N))
         self.objective.update_parameters(angles)
         E = self.eval(self.objective)
+        if not self.silent:
+            print("E=", E, " angles=", angles)
         if self.save_history:
             self.history.append(E)
             self.history_angles.append(angles)

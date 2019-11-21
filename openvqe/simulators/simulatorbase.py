@@ -10,8 +10,9 @@ from openvqe.simulators.heralding import HeraldingABC
 from openvqe.circuit import compiler
 from openvqe.circuit._gates_impl import MeasurementImpl
 
-import  numpy, numbers, typing
+import numpy, numbers, typing, copy
 from dataclasses import dataclass
+
 
 @dataclass
 class SimulatorReturnType:
@@ -31,13 +32,12 @@ class SimulatorReturnType:
                 return self.measurements[key]
         elif self.wavefunction is not None:
             measurement = copy.deepcopy(self.wavefunction)
-            for k,v in measurement.items():
-                measurement[k] = numpy.fabs(v)**2
-            return measurements
+            for k, v in measurement.items():
+                measurement[k] = numpy.abs(v) ** 2
+            return measurement
 
 
 class BackendHandler:
-
     """
     This needs to be overwritten by all supported Backends
     """
@@ -49,10 +49,11 @@ class BackendHandler:
     recompile_exponential_pauli = True
 
     def recompile(self, abstract_circuit: QCircuit) -> QCircuit:
-        #order matters!
+        # order matters!
         recompiled = abstract_circuit
         if self.recompile_trotter:
-            recompiled = compiler.compile_trotterized_gate(gate=recompiled, compile_exponential_pauli=self.recompile_exponential_pauli)
+            recompiled = compiler.compile_trotterized_gate(gate=recompiled,
+                                                           compile_exponential_pauli=self.recompile_exponential_pauli)
         if self.recompile_exponential_pauli:
             recompiled = compiler.compile_exponential_pauli_gate(gate=recompiled)
         if self.recompile_multitarget:
@@ -67,7 +68,7 @@ class BackendHandler:
     def fast_return(self, abstract_circuit):
         return True
 
-    def initialize_circuit(self, qubit_map,  *args, **kwargs):
+    def initialize_circuit(self, qubit_map, *args, **kwargs):
         OpenVQEException("Backend Handler needs to be overwritten for supported simulators")
 
     def add_gate(self, gate, circuit, qubit_map, *args, **kwargs):
@@ -94,6 +95,7 @@ class BackendHandler:
     def make_qubit_map(self, abstract_circuit: QCircuit):
         return [i for i in range(len(abstract_circuit.qubits))]
 
+
 class SimulatorBase(OpenVQEModule):
     """
     Abstract Base Class for OpenVQE interfaces to simulators
@@ -104,6 +106,26 @@ class SimulatorBase(OpenVQEModule):
     def __init__(self, heralding: HeraldingABC = None, ):
         self._heralding = heralding
         self.__decompose_and_compile = True
+
+    def __call__(self, objective: typing.Union[Objective, QCircuit], samples: int = None, **kwargs) \
+            -> typing.Union[numbers.Real, SimulatorReturnType]:
+        """
+        :param objective: Objective or simple QCircuit
+        :param samples: Number of Samples to evaluate, None means full wavefunction simulation
+        :param kwargs: keyword arguments to further pass down
+        :return: Energy, or simulator return type depending on what was passed down as objective
+        """
+
+        if isinstance(objective, QCircuit):
+            if samples is None:
+                return self.simulate_wavefunction(abstract_circuit=objective)
+            else:
+                return self.run(abstract_circuit=objective, samples=samples)
+        else:
+            if samples is None:
+                return self.simulate_objective(objective=objective, **kwargs)
+            else:
+                return self.measure_objective(objective=objective, samples=samples, **kwargs)
 
     def run(self, abstract_circuit: QCircuit, samples: int = 1) -> SimulatorReturnType:
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)
