@@ -403,7 +403,22 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         self.target = self.extract_targets()
         self.angles = angles
         self.control = tuple(list_assignement(control))
-        self.frozen = frozen
+
+        # failsafe for now
+        all_variable = True
+        all_number = True
+        for a in self.angles:
+            if isinstance(a, numbers.Number):
+                all_variable = False
+            if hasattr(a, "name"):
+                all_number = False
+        assert(all_variable != all_number)
+        if all_number:
+            self.frozen = True
+        else:
+            self.frozen = frozen
+
+
         self.steps = steps
         self.threshold = threshold
         self.join_components = join_components

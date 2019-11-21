@@ -20,7 +20,7 @@ class OptimizerSciPy(Optimizer):
         return cls.gradient_free_methods + cls.gradient_based_methods
 
     def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = None, method_options=None, method_bounds=None,
-                 method_constraints=None, use_gradient: bool = None, **kwargs):
+                 method_constraints=None, silent :bool = True, use_gradient: bool = None, **kwargs):
         """
         Optimize a circuit to minimize a given objective using scipy
         See the Optimizer class for all other parameters to initialize
@@ -30,12 +30,15 @@ class OptimizerSciPy(Optimizer):
         :param method_options: See scipy documentation for the method you picked
         :param method_bounds: See scipy documentation for the method you picked
         :param method_constraints: See scipy documentation for the method you picked
+        :param silent: if False the optimizer print out all evaluated energies
+        :param use_gradient: select if gradients shall be used. Can be done automatically for most methods
         """
         super().__init__(**kwargs)
         self.method = method.upper()
         self.tol = tol
         self.method_options = method_options
         self.method_bounds = method_bounds
+        self.silent = silent
         if use_gradient is None:
             if method in self.gradient_based_methods:
                 self.use_gradient = True
@@ -101,11 +104,15 @@ class OptimizerSciPy(Optimizer):
         # Make E, grad E
         dE = None
         Es = []
-        E = _EvalContainer(objective=objective, param_keys=param_keys, eval=sim_eval, save_history=self.save_history)
+        E = _EvalContainer(objective=objective,
+                           param_keys=param_keys,
+                           eval=sim_eval,
+                           save_history=self.save_history,
+                           silent=self.silent)
         if self.use_gradient:
             dO = grad(objective)
             dE = _GradContainer(objective=dO, param_keys=param_keys, eval=sim_eval,
-                                save_history=self.save_history)
+                                save_history=self.save_history, silent=self.silent)
 
         bounds = None
         if self.method_bounds is not None:
@@ -147,7 +154,8 @@ def minimize(objective: Objective,
              method_options: dict = None,
              method_bounds: typing.Dict[str, numbers.Real] = None,
              method_constraints=None,
-             save_history: bool = True) -> SciPyReturnType:
+             save_history: bool = True,
+             silent: bool = True) -> SciPyReturnType:
     """
     Call this if you don't like objects
     :param objective: The openvqe Objective to minimize
@@ -164,6 +172,7 @@ def minimize(objective: Objective,
     Give in the same format as parameters/initial_values: Dict[str, float]
     :param return_dictionary: return results as dictionary instead of tuples
     :param method_constraints: See scipy documentation for the method you picked
+    :param silent: If False the optimizer prints out evaluated energies
     :return: Named Tuple with: Optimized Energy, optimized angles, history (if return_history is True, scipy_output (if return_scipy_output is True)
     """
     optimizer = OptimizerSciPy(save_history=save_history,
@@ -173,6 +182,7 @@ def minimize(objective: Objective,
                                method_options=method_options,
                                method_bounds=method_bounds,
                                method_constraints=method_constraints,
+                               silent=silent,
                                simulator=simulator,
                                tol=tol)
 
