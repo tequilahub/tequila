@@ -12,41 +12,54 @@ class QCircuit():
 
     
     def decompose(self):
+        '''
+        decomposes all gates into a more general format, if possible.
+        returns: a qcircuit with decomposed gates instead.
+        '''
         primitives = []
         for g in self.gates:
             if hasattr(g, "decompose"):
                 primitives += g.decompose()
             else:
                 primitives.append(g)
-        return QCircuit(gates=primitives)
+        return QCircuit(gates=primitives,weight=self.weight)
 
 
     @property
     def parameter_list(self):
+        '''
+        this property is designed to return a list of the variables in a gate, and for the list to be equal in length 
+        to the number of gates. Unparametrized or Frozen gates will insert None. This can be used to experiment with the behavior
+        of the circuit; changes to the object in the list (unless it is deepcopied) will change the object in the gate directly.
+        This is an unprotected property and abuse will break it, but if you've come this far, you knew that.
+        :returns: list
+        '''
         parameters=[]
         for g in self.gates:
             if g.is_parametrized() and not g.is_frozen():
                 if hasattr(g.parameter,'f'):
-                    gpars=g.parameter.var_list
-                    for p in gpars:
-                        if p not in parameters:
-                            parameters.append(p)
+                    gpars=g.parameter.parameter_list
+                    parameters.append(gpars)
                 elif hasattr(g.parameter,'_name') and hasattr(g.parameter,'_value'):
                     parameters.append(g.parameter)
+            else:
+                parameters.append(None)
         return parameters
     
     @property
     def parameters(self):
-        parameters = dict()
+        '''
+        return a dict containing all the variable objects contained in any of the gates within the unitary
+        including those nested within transforms.
+        rtype dict: {parameter.name:parameter.value} 
+        '''
+        pars = dict()
         for i, g in enumerate(self.gates):
             if g.is_parametrized() and not g.is_frozen():
-                if type(g.parameter) is Transform:
-                    pars=g.parameter.variables
-                    for name,val in pars.items():
-                        parameters[name] = val
-                elif type(g.parameter )is Variable:
-                    parameters[g.parameter.name] = g.parameter.value
-        return parameters
+                for name,val in g.parameter.variables.items():
+                    pars[name] = val
+
+        return pars
     
 
     @property
@@ -84,6 +97,7 @@ class QCircuit():
 
 
     def __init__(self, gates=None,weight=1.0):
+
         self._n_qubits = None
         self._min_n_qubits = 0
         if gates is None:
@@ -91,32 +105,32 @@ class QCircuit():
         else:
             self.gates = list(gates)
         self._weight = weight
-        #self.individuate_parameters()
-        self.validate()
 
-    def individuate_parameters(self):
-        count=0
-        for parameter in self.parameters:
-            if hasattr(parameter,'is_default'):
-                if parameter.is_default:
-                    parameter.name= 'v.{}'.format(str(count))
-                    count+=1
+
 
     def validate(self):
-        for k,v in self.parameters.items():
-            found_frozen=False
-            found_live=False
-            for g in self.gates:
-                if g.is_parametrized():
-                    if has_variable(g.parameter,{k:v}):
-                        if g.is_frozen():
-                            found_frozen=True
-                        else:
-                            found_live=True
-                if found_frozen and found_live:
-                    error_string='This circuit contains gates depending on parameter named {} which are frozen and unfrozen simultaneously. This breaks the gradient! please rebuild your circuit without doing so.'.format(k)
-                    raise OpenVQEException(error_string)
+        '''
+        helper function to ensure consistency between frozen and unfrozen gates; makes sure no Variable
+        parametrizes both frozen and unfrozen gates. Reproduces something alike to the parameters attribute, but note that it also looks at frozen gates.
+        '''
+        pars = dict()
+        for i, g in enumerate(self.gates):
+            if g.is_parametrized():
+                for name,val in g.parameter.variables.items():
+                    pars[name] = [0,0]
 
+        for g in self.gates:
+            if g.is_parametrized():
+                if g.is_frozen():
+                    for k in g.parameter.variables.keys():
+                        pars[k][1]=1 
+                else:
+                    for k in g.parameter.variables.keys():
+                        pars[k][0]=1 
+
+        if any([numpy.sum(pars[k])>1 for k in pars.keys()]):
+            error_string='This circuit contains gates depending on a given parameter, some of which are frozen and others not. \n This breaks the gradient! please rebuild your circuit without doing so.'
+            raise OpenVQEException(error_string)
 
     def is_primitive(self):
         """
@@ -218,7 +232,7 @@ class QCircuit():
         return qmax
 
     def __mul__(self, other):
-        gates = [g.copy() for g in self.gates + other.gates]
+        gates = [g.copy() for g in (self.gates + other.gates)]
         result = QCircuit(gates=gates)
         result.weight = self.weight * other.weight
         result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)

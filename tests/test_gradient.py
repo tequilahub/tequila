@@ -35,8 +35,8 @@ def test_gradient_UY_HX(simulator,angle, controlled, silent=True):
     assert (len(dO) == 1)
     for k,v in dO.items():
         dE = simulator().measure_objective(objective=v, samples=10000)
-    assert (numpy.isclose(E, numpy.sin(angle()), atol=0.03))
-    assert (numpy.isclose(dE, numpy.cos(angle()), atol=0.03))
+        assert (numpy.isclose(E, numpy.sin(angle()), atol=0.03))
+        assert (numpy.isclose(dE, numpy.cos(angle()), atol=0.03))
     if not silent:
         print("E         =", E)
         print("sin(angle)=", numpy.sin(angle()))
@@ -67,8 +67,8 @@ def test_gradient_UX_HY(simulator,angle, controlled, silent=False):
     assert (len(dO) == 1)
     for k,v in dO.items():
         dE = simulator().measure_objective(objective=v, samples=10000)
-    assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.03))
-    assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.03))
+        assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.03))
+        assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.03))
     if not silent:
         print("E         =", E)
         print("-sin(angle)=", -numpy.sin(angle()))
@@ -103,6 +103,7 @@ def test_gradient_UY_HX_wfnsim(simulator, angle, controlled, silent=True):
     O = Objective(unitaries=U, observable=H)
     E = simulator().simulate_objective(objective=O)
     dO = grad(obj=O)
+    print(dO)
     assert (len(dO) == 1)
     for k,v in dO.items():
         dE = simulator().simulate_objective(objective=v)

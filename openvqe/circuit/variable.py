@@ -125,6 +125,12 @@ class Variable():
             raise TypeError('Unsupported type')
 
     def update(self,x):
+        '''
+        :param x: dict, Variable, or number.
+        convenience function for updating the value of a variable; allows the arguments higher order updates (QCircuit, Transform)
+        to be passed down so that the Variable value updates.
+        '''
+
         if type(x) is dict:
             for k in x.keys():
                 if self.name ==k:
@@ -255,14 +261,9 @@ class Transform():
         vl=[]
         for obj in self.args:
             if type(obj) is Variable:
-                if obj not in vl:
-                    vl.append(obj)
+                vl.append(obj)
             elif type(obj) is Transform:
-                for v in obj.variables:
-                    if v not in vl:
-                        vl.append(v)
-            else:
-                pass
+                vl.extend(obj.parameter_list)
         return vl
 
 
@@ -325,6 +326,11 @@ class Transform():
 
 
     def has_var(self,x):
+        '''
+        :param x: dict, Variable, or str
+        checks if (any of the ) variable(s) passed are present within the transform. Looks for them by name, NOT value.
+        return: bool: true if a match found else false.
+        '''
         for k,v in self.variables.items():
             if type(x) is dict:
                 if k in x.keys():
@@ -448,6 +454,11 @@ class Transform():
 
 
 def has_variable(obj,var):
+    '''
+    wrapper over the has_var method of transform and variable; for easy, no-error use by higher order functions.
+    :param obj: any, meant to be a variable or Transform
+    :param var: any, meant to be a variable, a dict, or a str, such as is suitable for has_var
+    '''
     if hasattr(obj,'has_var'):
         return obj.has_var(var)
     else:
