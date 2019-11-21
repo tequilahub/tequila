@@ -14,13 +14,12 @@ from os import remove
 system_has_qpic = which("qpic") is not None
 system_has_pdflatex = which("pdflatex") is not None
 
+
 def assign_name(parameter):
     if isinstance(parameter, tuple):
         return "\\theta"
-    if parameter.name == "none":
-        return number_to_string(number=parameter(), precision=1 )
-    else:
-        return parameter.name
+    return str(parameter)
+
 
 def export_to_qpic(circuit: QCircuit, filename=None) -> str:
     result = ""
@@ -32,33 +31,33 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
         result += name + " W " + str(q) + "\n"
 
     for g in circuit.gates:
-        name = g.name
         if g.is_controlled():
-            for c in g.control:
-                result += names[c] + " "
+
+            for t in g.target:
+                result += names[t] + " "
 
             if hasattr(g, "angle"):
                 result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.angle) + ")$ width=" + str(
-                    50 + len(assign_name(g.angle))) + " "
+                    25 + 5*len(assign_name(g.angle))) + " "
             elif hasattr(g, "parameter") and g.parameter is not None:
-                result += " G $"+ g.name+"(" + g.parameter.name + ")$ width=" + str(
-                    50 + len(assign_name(g.parameter))) + " "
+                result += " G $" + g.name + "(" + g.parameter.name + ")$ width=" + str(
+                    25 + 5*len(assign_name(g.parameter))) + " "
             elif g.name.lower() == "x":
                 result += "+"
             else:
                 result += g.name + " "
 
-            for t in g.target:
-                result += names[t]
+            for c in g.control:
+                result += names[c] + " "
         else:
             for t in g.target:
                 result += names[t] + " "
             if hasattr(g, "angle"):
                 result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.angle) + ")$ width=" + str(
-                    50 + len(assign_name(g.angle))) + " "
+                    25 + 5*len(assign_name(g.angle))) + " "
             elif hasattr(g, "parameter") and g.parameter is not None:
-                result += " G $"+ g.name+"(" + assign_name(g.parameter) + ")$ width=" + str(
-                    50 + len(assign_name(g.parameter))) + " "
+                result += " G $" + g.name + "(" + assign_name(g.parameter) + ")$ width=" + str(
+                    25 + 5*len(assign_name(g.parameter))) + " "
             else:
                 result += g.name + " "
 
@@ -86,11 +85,10 @@ def export_to_pdf(circuit: QCircuit, filename, keep_tex=True, keep_qpic=True):
 
     if filename_qpic is None:
         export_to_qpic(circuit, filename=filename)
-        filename_qpic = filename+".qpic"
+        filename_qpic = filename + ".qpic"
 
     with open(filename + ".tex", "w") as file:
         subprocess.call(["qpic", str(filename_qpic)], stdout=file)
-
 
     latex_header = """
 \\documentclass[]{standalone}
@@ -111,17 +109,17 @@ def export_to_pdf(circuit: QCircuit, filename, keep_tex=True, keep_qpic=True):
         file.write("\\input{" + filename + "}\n")
         file.write("\\end{document}\n")
 
-    with open(filename+"tmp.log", "w") as file:
+    with open(filename + "tmp.log", "w") as file:
         subprocess.call(["pdflatex", str(filename) + ".tmp.tex"], stdout=file)
 
-    move(filename+".tmp.pdf", filename+".pdf")
-    remove(filename+".tmp.aux")
-    remove(filename+".tmp.log")
-    remove(filename+".tmp.tex")
+    move(filename + ".tmp.pdf", filename + ".pdf")
+    remove(filename + ".tmp.aux")
+    remove(filename + ".tmp.log")
+    remove(filename + ".tmp.tex")
     if not keep_qpic:
-        remove(filename+".qpic")
+        remove(filename + ".qpic")
     if not keep_tex:
-        remove(filename+".tex")
+        remove(filename + ".tex")
 
 
 if __name__ == "__main__":

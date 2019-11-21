@@ -2,19 +2,19 @@ import copy
 import numbers
 
 from openvqe import OpenVQEException
+from openvqe.tools import number_to_string
 from functools import total_ordering
 from inspect import signature
 import numpy as np
 
+import numpy, copy, typing
 
-
-import  numpy, copy, typing
 
 class SympyVariable:
 
     def __init__(self, name=None, value=None):
-        self._value=value
-        self._name=name
+        self._value = value
+        self._name = name
 
     def __call__(self, *args, **kwargs):
         return self._value
@@ -30,6 +30,7 @@ class SympyVariable:
 
     def __neg__(self):
         return SympyVariable(name=self._name, value=-self._value)
+
 
 def enforce_number(number, numeric_type=complex) -> complex:
     """
@@ -64,32 +65,31 @@ def enforce_number_decorator(*numeric_types):
 
     return decorator
 
+
 class Variable():
     @property
     def variables(self):
-        return {self.name:self.value}
-    
+        return {self.name: self.value}
+
     @property
     def parameter_list(self):
         return [self]
-    
+
     @property
     def value(self):
         return self._value
 
     @value.setter
     def value(self, value):
-        self._value=float(value)
+        self._value = float(value)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
-    
 
-
-    def __init__(self,name=None,value=None):
+    def __init__(self, name=None, value=None):
         if value is not None:
-            if type(value) in [float,int]:
+            if type(value) in [float, int]:
                 self._value = float(value)
             else:
                 self._value = np.real(value)
@@ -98,23 +98,19 @@ class Variable():
 
         if type(name) is str:
             self._name = name
-
+        elif type(name) is not None:
+                self._name = str(name)
         else:
-            if type(name) is not None:
-                self._name= str(name)
-            else:
-                self.name='None'
+            self._name = name
 
-        if self._name is 'None':
-            self.is_default=True
-        else:
-            self.is_default=False
+        self.is_default = name is None
+
         if self._value is None:
-            self.needs_init=True
+            self.needs_init = True
         else:
-            self.needs_init=False
+            self.needs_init = False
 
-    def has_var(self,x):
+    def has_var(self, x):
         if type(x) is Variable:
             return self == x
         elif type(x) is str:
@@ -124,7 +120,7 @@ class Variable():
         else:
             raise TypeError('Unsupported type')
 
-    def update(self,x):
+    def update(self, x):
         '''
         :param x: dict, Variable, or number.
         convenience function for updating the value of a variable; allows the arguments higher order updates (QCircuit, Transform)
@@ -133,80 +129,77 @@ class Variable():
 
         if type(x) is dict:
             for k in x.keys():
-                if self.name ==k:
-                    self._value=x[k]
+                if self.name == k:
+                    self._value = x[k]
         elif type(x) is Variable:
             if x.name == self.name:
-                self._value=x.value
+                self._value = x.value
         else:
-            self._value=float(x)
+            self._value = float(x)
 
-    def __eq__(self,other):
-        if type(self)==type(other):
-            if self.name ==other.name and self.value==other.value:
-                    return True
+    def __eq__(self, other):
+        if type(self) == type(other):
+            if self.name == other.name and self.value == other.value:
+                return True
         return False
 
     def __add__(self, other: float):
-        return Transform(Add,[self,other])
+        return Transform(Add, [self, other])
 
     def __radd__(self, other: float):
         if other == 0:
             return self
         else:
-            return Transform(Add,[other,self])
+            return Transform(Add, [other, self])
 
     def __sub__(self, other):
-        return Transform(Sub,[self,other])
+        return Transform(Sub, [self, other])
 
-    def __rsub__(self,other):
-            return Transform(Sub,[other,self])
+    def __rsub__(self, other):
+        return Transform(Sub, [other, self])
 
     def __mul__(self, other):
-         return Transform(Mul,[self,other])
+        return Transform(Mul, [self, other])
 
-    def __rmul__(self,other):
+    def __rmul__(self, other):
 
-        return Transform(Sub,[other,self])
+        return Transform(Sub, [other, self])
 
     def __neg__(self):
-        return Transform(Mul,[self,-1.])
-
+        return Transform(Mul, [self, -1.])
 
     def __div__(self, other):
-        return Transform(Div,[self,other])
+        return Transform(Div, [self, other])
 
     def __rdiv__(self, other):
-        return Transform(Div,[other,self])
+        return Transform(Div, [other, self])
 
     def __truediv__(self, other):
-        return Transform(Div,[self,other])
-
+        return Transform(Div, [self, other])
 
     def __pow__(self, other):
-        return Transform(Pow,[self,other])
+        return Transform(Pow, [self, other])
 
-    def __rpow__(self,other):
-        return Transform(Pow,[other,self])
+    def __rpow__(self, other):
+        return Transform(Pow, [other, self])
 
-    def __iadd__(self,other):
-        self._value+=other
+    def __iadd__(self, other):
+        self._value += other
         return self
 
-    def __isub__(self,other):
+    def __isub__(self, other):
         self._value -= other
         return self
 
-    def __imul__(self,other):
+    def __imul__(self, other):
         self._value *= other
         return self
 
-
-    def __idiv__(self,other):
+    def __idiv__(self, other):
         self._value /= other
         return self
 
-    def __ipow__(self,other):
+    def __ipow__(self, other):
         self._value **= other
         return self
 
@@ -249,16 +242,23 @@ class Variable():
         return self.value
 
     def __repr__(self):
-        return self.name + ', ' + str(self._value) 
+        return self.name + ', ' + str(self._value)
+
+    def __str__(self):
+        if self.name == "None":
+            return number_to_string(self.__call__())
+        else:
+            return self.name
 
     def __float__(self):
         return float(self.value)
+
 
 class Transform():
 
     @property
     def parameter_list(self):
-        vl=[]
+        vl = []
         for obj in self.args:
             if type(obj) is Variable:
                 vl.append(obj)
@@ -266,72 +266,66 @@ class Transform():
                 vl.extend(obj.parameter_list)
         return vl
 
-
     @property
     def variables(self):
-        vl={}
+        vl = {}
         for obj in self.args:
             if type(obj) is Variable:
                 if obj.name not in vl.keys():
-                    vl[obj.name]=obj.value
+                    vl[obj.name] = obj.value
                 else:
-                    if not np.isclose(vl[obj.name],obj.value):
-                        raise OpenVQEException('found two variables with the same name and different values, this is unacceptable')
+                    if not np.isclose(vl[obj.name], obj.value):
+                        raise OpenVQEException(
+                            'found two variables with the same name and different values, this is unacceptable')
             elif type(obj) is Transform:
-                for k,v in obj.variables.items():
+                for k, v in obj.variables.items():
                     if k not in vl.keys():
-                        vl[k]=v
+                        vl[k] = v
                     else:
-                        if not np.isclose(vl[k],v):
-                            raise OpenVQEException('found two variables with the same name and different values, this is unacceptable')
+                        if not np.isclose(vl[k], v):
+                            raise OpenVQEException(
+                                'found two variables with the same name and different values, this is unacceptable')
             else:
                 pass
         return vl
-    
+
     @property
     def eval(self):
-        new_a=[]
+        new_a = []
         for arg in self.args:
-            if hasattr(arg,'__call__'):
+            if hasattr(arg, '__call__'):
                 new_a.append(arg())
             else:
                 new_a.append(arg)
 
         return self.f(*new_a)
 
-
-    
-    
-    def __init__(self,func,args):
+    def __init__(self, func, args):
         assert callable(func)
         assert len(args) == len(signature(func).parameters)
-        self.args=args
-        self.f=func
+        self.args = args
+        self.f = func
 
-
-
-
-    def update(self,pars):
+    def update(self, pars):
         for arg in self.args:
             if type(pars) is dict:
-                for k,v in pars.items():
-                    if hasattr(arg,'update'):
+                for k, v in pars.items():
+                    if hasattr(arg, 'update'):
                         if k in arg.variables.keys():
-                            arg.update({k:v})
+                            arg.update({k: v})
             elif type(pars) is list:
-                if hasattr(arg,'has_var'):
+                if hasattr(arg, 'has_var'):
                     for par in pars:
                         if arg.has_var(par):
                             arg.update(par)
 
-
-    def has_var(self,x):
+    def has_var(self, x):
         '''
         :param x: dict, Variable, or str
         checks if (any of the ) variable(s) passed are present within the transform. Looks for them by name, NOT value.
         return: bool: true if a match found else false.
         '''
-        for k,v in self.variables.items():
+        for k, v in self.variables.items():
             if type(x) is dict:
                 if k in x.keys():
                     return True
@@ -339,7 +333,7 @@ class Transform():
                 if k == x.name:
                     return True
             if type(x) is str:
-                if k==x:
+                if k == x:
                     return True
 
         return False
@@ -348,60 +342,56 @@ class Transform():
         return self.eval
 
     def __eq__(self, other):
-        if hasattr(other,'eval'):
-            if hasattr(other,'variables'):
-                if self.eval==other.eval and self.variables==other.variables:
+        if hasattr(other, 'eval'):
+            if hasattr(other, 'variables'):
+                if self.eval == other.eval and self.variables == other.variables:
                     ### is this safe?
                     return True
         return False
 
-
     def __add__(self, other: float):
-        return Transform(Add,[self,other])
+        return Transform(Add, [self, other])
 
     def __radd__(self, other: float):
         if other == 0:
             return self
         else:
-            return Transform(Add,[other,self])
+            return Transform(Add, [other, self])
 
     def __sub__(self, other):
-        return Transform(Sub,[self,other])
+        return Transform(Sub, [self, other])
 
-    def __rsub__(self,other):
-            return Transform(Sub,[other,self])
+    def __rsub__(self, other):
+        return Transform(Sub, [other, self])
 
     def __mul__(self, other):
         # return self._return*other
-         return Transform(Mul,[self,other])
+        return Transform(Mul, [self, other])
 
-    def __rmul__(self,other):
+    def __rmul__(self, other):
 
-        return Transform(Sub,[other,self])
+        return Transform(Sub, [other, self])
 
     def __neg__(self):
-        return Transform(Mul,[self,-1])
-
+        return Transform(Mul, [self, -1])
 
     def __div__(self, other):
-        return Transform(Div,[self,other])
+        return Transform(Div, [self, other])
 
     def __rdiv__(self, other):
-        return Transform(Div,[other,self])
+        return Transform(Div, [other, self])
 
     def __truediv__(self, other):
-        return Transform(Div,[self,other])
+        return Transform(Div, [self, other])
 
-    def __rtruediv__(self,other):
-        return Transform(Div,[other,self])
-
-
+    def __rtruediv__(self, other):
+        return Transform(Div, [other, self])
 
     def __pow__(self, other):
-        return Transform(Pow,[self,other])
+        return Transform(Pow, [self, other])
 
-    def __rpow__(self,other):
-        return Transform(Pow,[other,self])
+    def __rpow__(self, other):
+        return Transform(Pow, [other, self])
 
     def __getstate__(self):
         return self
@@ -441,94 +431,122 @@ class Transform():
     def __float__(self):
         return float(self.eval)
 
-    def __str__(self):
-        funcpart= str(self.f) + ' acting on: '
+    def __repr__(self):
+        funcpart = str(self.f) + ' acting on: '
         argpart = '('
         for i in range(len(self.args)):
-            argpart+= str(self.args[i])
-            if i<len(self.args)-1:
-                argpart +=', '
-        argpart+= ')'
-        val=str(self())
-        return funcpart+argpart+', val='+val
+            argpart += str(self.args[i])
+            if i < len(self.args) - 1:
+                argpart += ', '
+        argpart += ')'
+        val = str(self())
+        return funcpart + argpart + ', val=' + val
+
+    def __str__(self):
+        result = ""
+        fname = self._operation_names[str(self.f.__name__)]
+        if len(self.args) == 2:
+            result += "(" + str(self.args[0]) + ")" + fname + "(" + str(self.args[-1]) + ")"
+        else:
+            result += fname + "(" + str(self.args) + ")"
+
+        return result
+
+    _operation_names = {
+        "Add":"+",
+        "Sub": "-",
+        "Div": "/",
+        "Mul": "*",
+        "Pow": "**",
+        "Sqr": "**(0.5)",
+        "Inverse": "**(-1)"
+    }
 
 
-def has_variable(obj,var):
+def has_variable(obj, var):
     '''
     wrapper over the has_var method of transform and variable; for easy, no-error use by higher order functions.
     :param obj: any, meant to be a variable or Transform
     :param var: any, meant to be a variable, a dict, or a str, such as is suitable for has_var
     '''
-    if hasattr(obj,'has_var'):
+    if hasattr(obj, 'has_var'):
         return obj.has_var(var)
     else:
         return False
 
-def Add(l,r):
-    if type(l) in [Variable, Transform]:
-        lv=l()
-    else:
-        lv=l
-    if type(r) in [Variable, Transform]:
-        rv=r()
-    else:
-        rv=r
-    return lv+rv
 
-def Sub(l,r):
-    if type(l) in [Variable, Transform]:
-        lv=l()
-    else:
-        lv=l
-    if type(r) in [Variable, Transform]:
-        rv=r()
-    else:
-        rv=r
-    return lv -rv
 
-def Mul(l,r):
+def Add(l, r):
     if type(l) in [Variable, Transform]:
-        lv=l()
+        lv = l()
     else:
-        lv=l
+        lv = l
     if type(r) in [Variable, Transform]:
-        rv=r()
+        rv = r()
     else:
-        rv=r
-    return lv*rv
+        rv = r
+    return lv + rv
 
-def Div(l,r):
+
+def Sub(l, r):
     if type(l) in [Variable, Transform]:
-        lv=l()
+        lv = l()
     else:
-        lv=l
+        lv = l
     if type(r) in [Variable, Transform]:
-        rv=r()
+        rv = r()
     else:
-        rv=r
-    return lv/rv
+        rv = r
+    return lv - rv
+
+
+def Mul(l, r):
+    if type(l) in [Variable, Transform]:
+        lv = l()
+    else:
+        lv = l
+    if type(r) in [Variable, Transform]:
+        rv = r()
+    else:
+        rv = r
+    return lv * rv
+
+
+def Div(l, r):
+    if type(l) in [Variable, Transform]:
+        lv = l()
+    else:
+        lv = l
+    if type(r) in [Variable, Transform]:
+        rv = r()
+    else:
+        rv = r
+    return lv / rv
+
 
 def Inverse(l):
     if type(l) in [Variable, Transform]:
-        lv=l()
+        lv = l()
     else:
-        lv=l
+        lv = l
 
-    return 1.0/l
+    return 1.0 / l
 
-def Pow(l,r):
+
+def Pow(l, r):
     if type(l) in [Variable, Transform]:
-        lv=l()
+        lv = l()
     else:
-        lv=l
+        lv = l
     if type(r) in [Variable, Transform]:
-        rv=r()
+        rv = r()
     else:
-        rv=r
-    return l**r
+        rv = r
+    return l ** r
+
 
 def Sqr(arg):
-    if type(arg) in [Variable,Transform]:
+    if type(arg) in [Variable, Transform]:
         return np.sqrt(arg())
     else:
         return np.sqrt(arg)
