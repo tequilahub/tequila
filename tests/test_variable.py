@@ -1,19 +1,16 @@
-from openvqe import OpenVQEException
-from openvqe.circuit.circuit import QCircuit
 import numpy as np
-from openvqe.circuit.gates import Rx, H, X
-from openvqe.circuit._gates_impl import RotationGateImpl, QGateImpl, PowerGateImpl, MeasurementImpl
-from openvqe.circuit.variable import Variable,Transform,Add,Sub,Div,Mul,Pow,Sqr,has_variable
+#from openvqe.circuit.variable import Variable,Transform,Sub,Div,Mul,Pow,Sqr,has_variable
 from openvqe.circuit.gradient import grad, tgrad, __weight_chain
-import copy
-
+from openvqe import Variable
+from openvqe.circuit.variable import Transform
+import operator
 
 def test_nesting():
 	a=Variable(name='',value=3)
 	b=a+2-2
 	c=(b*5)/5
 	d=-(-c)
-	e=Transform(Sqr,[d])
+	e=d**0.5
 	f=e**2
 
 	assert np.isclose(a(),f())
@@ -42,7 +39,7 @@ def test_var_update():
 def test_transform_update():
 	a=Variable('a',7)
 	b=Variable('a.',23)
-	t=Transform(func=Add,args=[a,b])
+	t=Transform(func=operator.add,args=[a,b])
 	d={'a':8,'a.':1,'a':9,'c':17}
 	t.update(d)
 	assert np.isclose(float(t),10.0)

@@ -3,11 +3,10 @@ import numbers
 
 from openvqe import OpenVQEException
 from openvqe.tools import number_to_string
-from functools import total_ordering
 from inspect import signature
 import numpy as np
-
-import numpy, copy, typing
+import operator
+import copy
 
 
 class SympyVariable:
@@ -99,7 +98,7 @@ class Variable():
         if type(name) is str:
             self._name = name
         elif type(name) is not None:
-                self._name = str(name)
+            self._name = str(name)
         else:
             self._name = name
 
@@ -144,44 +143,44 @@ class Variable():
         return False
 
     def __add__(self, other: float):
-        return Transform(Add, [self, other])
+        return Transform(operator.add, [self, other])
 
     def __radd__(self, other: float):
         if other == 0:
             return self
         else:
-            return Transform(Add, [other, self])
+            return Transform(operator.add, [other, self])
 
     def __sub__(self, other):
-        return Transform(Sub, [self, other])
+        return Transform(operator.sub, [self, other])
 
     def __rsub__(self, other):
-        return Transform(Sub, [other, self])
+        return Transform(operator.sub, [other, self])
 
     def __mul__(self, other):
-        return Transform(Mul, [self, other])
+        return Transform(operator.mul, [self, other])
 
     def __rmul__(self, other):
 
-        return Transform(Sub, [other, self])
+        return Transform(operator.sub, [other, self])
 
     def __neg__(self):
-        return Transform(Mul, [self, -1.])
+        return Transform(operator.mul, [self, -1.])
 
     def __div__(self, other):
-        return Transform(Div, [self, other])
+        return Transform((operator.itruediv), [self, other])
 
     def __rdiv__(self, other):
-        return Transform(Div, [other, self])
+        return Transform(operator.truediv, [other, self])
 
     def __truediv__(self, other):
-        return Transform(Div, [self, other])
+        return Transform(operator.truediv, [self, other])
 
     def __pow__(self, other):
-        return Transform(Pow, [self, other])
+        return Transform(operator.pow, [self, other])
 
     def __rpow__(self, other):
-        return Transform(Pow, [other, self])
+        return Transform(operator.pow, [other, self])
 
     def __iadd__(self, other):
         self._value += other
@@ -254,7 +253,7 @@ class Variable():
         return float(self.value)
 
 
-class Transform():
+class Transform:
 
     @property
     def parameter_list(self):
@@ -302,9 +301,8 @@ class Transform():
 
     def __init__(self, func, args):
         assert callable(func)
-        assert len(args) == len(signature(func).parameters)
         self.args = args
-        self.f = func
+        self.f = DressedOperator(op=func)
 
     def update(self, pars):
         for arg in self.args:
@@ -350,48 +348,47 @@ class Transform():
         return False
 
     def __add__(self, other: float):
-        return Transform(Add, [self, other])
+        return Transform(operator.add, [self, other])
 
     def __radd__(self, other: float):
         if other == 0:
             return self
         else:
-            return Transform(Add, [other, self])
+            return Transform(operator.add, [other, self])
 
     def __sub__(self, other):
-        return Transform(Sub, [self, other])
+        return Transform(operator.sub, [self, other])
 
     def __rsub__(self, other):
-        return Transform(Sub, [other, self])
+        return Transform(operator.sub, [other, self])
 
     def __mul__(self, other):
-        # return self._return*other
-        return Transform(Mul, [self, other])
+        return Transform(operator.mul, [self, other])
 
     def __rmul__(self, other):
 
-        return Transform(Sub, [other, self])
+        return Transform(operator.sub, [other, self])
 
     def __neg__(self):
-        return Transform(Mul, [self, -1])
+        return Transform(operator.mul, [self, -1])
 
     def __div__(self, other):
-        return Transform(Div, [self, other])
+        return Transform(operator.truediv, [self, other])
 
     def __rdiv__(self, other):
-        return Transform(Div, [other, self])
+        return Transform(operator.truediv, [other, self])
 
     def __truediv__(self, other):
-        return Transform(Div, [self, other])
+        return Transform(operator.truediv, [self, other])
 
     def __rtruediv__(self, other):
-        return Transform(Div, [other, self])
+        return Transform(operator.truediv, [other, self])
 
     def __pow__(self, other):
-        return Transform(Pow, [self, other])
+        return Transform(operator.pow, [self, other])
 
     def __rpow__(self, other):
-        return Transform(Pow, [other, self])
+        return Transform(operator.pow, [other, self])
 
     def __getstate__(self):
         return self
@@ -444,23 +441,14 @@ class Transform():
 
     def __str__(self):
         result = ""
-        fname = self._operation_names[str(self.f.__name__)]
+        fname = str(self.f)
+
         if len(self.args) == 2:
             result += "(" + str(self.args[0]) + ")" + fname + "(" + str(self.args[-1]) + ")"
         else:
             result += fname + "(" + str(self.args) + ")"
 
         return result
-
-    _operation_names = {
-        "Add":"+",
-        "Sub": "-",
-        "Div": "/",
-        "Mul": "*",
-        "Pow": "**",
-        "Sqr": "**(0.5)",
-        "Inverse": "**(-1)"
-    }
 
 
 def has_variable(obj, var):
@@ -475,78 +463,40 @@ def has_variable(obj, var):
         return False
 
 
+class DressedOperator:
+    """
+    Can be a function later
+    Currently the gradient needs information about the wrapped operator
+    """
 
-def Add(l, r):
-    if type(l) in [Variable, Transform]:
-        lv = l()
-    else:
-        lv = l
-    if type(r) in [Variable, Transform]:
-        rv = r()
-    else:
-        rv = r
-    return lv + rv
+    _operator_names = {
+        "add": "+",
+        "sub": "-",
+        "mul": "*",
+        "truediv": "/",
+        "pow": "**"
+    }
 
+    def __str__(self):
+        name = self.op.__name__
+        if name in self._operator_names:
+            return self._operator_names[name]
+        else:
+            return name
 
-def Sub(l, r):
-    if type(l) in [Variable, Transform]:
-        lv = l()
-    else:
-        lv = l
-    if type(r) in [Variable, Transform]:
-        rv = r()
-    else:
-        rv = r
-    return lv - rv
+    def __init__(self, op):
+        self.op = op
 
+    def wrapper(self, l, r=None, *args, **kwargs):
+        if type(l) in [Variable, Transform]:
+            lv = l()
+        else:
+            lv = l
+        if type(r) in [Variable, Transform]:
+            rv = r()
+        else:
+            rv = r
+        return self.op(lv, rv)
 
-def Mul(l, r):
-    if type(l) in [Variable, Transform]:
-        lv = l()
-    else:
-        lv = l
-    if type(r) in [Variable, Transform]:
-        rv = r()
-    else:
-        rv = r
-    return lv * rv
-
-
-def Div(l, r):
-    if type(l) in [Variable, Transform]:
-        lv = l()
-    else:
-        lv = l
-    if type(r) in [Variable, Transform]:
-        rv = r()
-    else:
-        rv = r
-    return lv / rv
-
-
-def Inverse(l):
-    if type(l) in [Variable, Transform]:
-        lv = l()
-    else:
-        lv = l
-
-    return 1.0 / l
-
-
-def Pow(l, r):
-    if type(l) in [Variable, Transform]:
-        lv = l()
-    else:
-        lv = l
-    if type(r) in [Variable, Transform]:
-        rv = r()
-    else:
-        rv = r
-    return l ** r
-
-
-def Sqr(arg):
-    if type(arg) in [Variable, Transform]:
-        return np.sqrt(arg())
-    else:
-        return np.sqrt(arg)
+    def __call__(self, *args, **kwargs):
+        return self.wrapper(*args, **kwargs)

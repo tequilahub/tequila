@@ -1,13 +1,14 @@
 from openvqe.circuit import QCircuit
 from openvqe.circuit.compiler import compile_controlled_rotation
-from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl, ExponentialPauliGateImpl,PowerGateImpl
+from openvqe.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl
 from openvqe.circuit.compiler import compile_trotterized_gate
 from openvqe.objective import Objective
 from openvqe import OpenVQEException
-import copy
+
 import numpy as np
-import  numpy, copy, typing
-from openvqe.circuit.variable import Variable,Transform,has_variable,Add,Sub,Inverse,Pow,Mul,Div,Sqr
+import copy
+from openvqe.circuit.variable import Variable,Transform,has_variable
+import operator
 
 def __weight_chain(par,variable):
     '''
@@ -48,7 +49,8 @@ def __weight_chain(par,variable):
     else:
         s='Object of type {} passed to weight_chain; only strings, Variables and Transforms are allowed.'.format(str(type(par)))
         raise OpenVQEException(s)
-                
+
+
 def tgrad(f,argnum):
     '''
     function to be replaced entirely by the use of jax.grad(); completely identical thereto but restricted to our toy functions.
@@ -59,27 +61,20 @@ def tgrad(f,argnum):
     assert callable(f)
 
     if argnum == 0:
-
-        if f ==Add:
+        if f.op == operator.add:
             return lambda x,y: 1.0
 
-        elif f == Inverse:
-            return  lambda x: -1/(float(x)**2)
-
-        elif f  == Mul:
+        elif f.op  == operator.mul:
             return lambda x,y: float(y)
 
-        elif f == Sub:
+        elif f.op == operator.sub:
             return lambda x,y: 1.0
 
-        elif f == Div:
+        elif f.op == operator.truediv:
             return lambda x,y: 1/float(y)
 
-        elif f  == Pow:
+        elif f.op  == operator.pow:
             return lambda x,y: float(y)*float(x)**(float(y)-1)
-
-        elif f  == Sqr:
-            return lambda x: 1/(2*np.sqrt(float(x)))
 
         else:
             raise OpenVQEException('Sorry, only pre-built openvqe functions supported for tgrad at the moment.')
@@ -87,27 +82,20 @@ def tgrad(f,argnum):
 
     elif argnum ==1:
 
-        if f == Add:
+        if f.op == operator.add:
             return lambda x,y: 1.0
 
-        elif f  == Inverse:
-            return  lambda x: -1/(float(x)**2)
-
-        elif f  == Mul:
+        elif f.op == operator.mul:
             return lambda x,y: float(x)
 
-        elif f  == Sub:
+        elif f.op == operator.sub:
             return lambda x,y: -1.0
 
-        elif f  == Div:
+        elif f.op == operator.truediv:
             return lambda x,y: -float(x)/(float(y)**2)
 
-        elif f  == Pow:
+        elif f.op == operator.pow:
             return lambda x,y: (float(x)**float(y))*np.log(float(x))
-
-        elif f == Sqr:
-            return lambda x: 1/(2*np.sqrt(float(x)))
-
 
         else:
             raise OpenVQEException('Sorry, only pre-built openvqe functions supported for tgrad at the moment.')
