@@ -5,7 +5,10 @@ setuptools
 pytest
 openfermion
 openfermionpsi4 # trying to get rid of this
+pyscf>=1.6.5 # Find the right wheel 
+openfermionpyscf # trying to get rid of this
 cirq>=0.5.0 # not really a requirement
+networkx==2.3 # It is required for cirq
 pyquil # not really a requirement
 qiskit # not really a requirement
 qulacs # not really a requirement
