@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import os
 
 requirements = None
 with open('requirements.txt') as file:
@@ -10,15 +11,14 @@ if requirements is None:
 
 setup(
     name='openvqe',
-    version=__version__,
+    version="XXXX",
     author='Jakob S. Kottmann, Sumner Alperin-Lea, Abhinav Anand, Maha Kesebi',
     author_email='jakob.kottmann@gmail.com',
     install_requires=requirements,
-    packages=find_packages(where='openvqe'),
-    package_dir={'': 'openvqe'},
+    packages=find_packages(include=['src','src/openvqe',"src/openvqe."]),
+    package_dir={'': 'src'},
     include_package_data=True,
     package_data={
-        '': [os.path.join('openvqe'),
-             os.path.join('openvqe')]
+        '': [os.path.join('src')]
     }
 )

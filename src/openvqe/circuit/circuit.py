@@ -55,6 +55,7 @@ class QCircuit():
         '''
         pars = dict()
         for i, g in enumerate(self.gates):
+            print(i,g)
             if g.is_parametrized() and not g.is_frozen():
                 for name,val in g.parameter.variables.items():
                     pars[name] = val

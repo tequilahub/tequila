@@ -1,4 +1,4 @@
-from openvqe.openvqe_exceptions import OpenVQETypeError
+from openvqe import OpenVQETypeError
 from dataclasses import dataclass, field
 from enum import Enum
 
