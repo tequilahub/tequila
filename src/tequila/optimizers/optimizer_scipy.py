@@ -6,8 +6,8 @@ from ._scipy_containers import _EvalContainer, _GradContainer
 from collections import namedtuple
 import copy
 
-
 SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
+
 
 class OptimizerSciPy(Optimizer):
     gradient_free_methods = ['Nelder-Mead', 'COBYLA', 'Powell', 'SLSQP']
@@ -21,7 +21,7 @@ class OptimizerSciPy(Optimizer):
         return cls.gradient_free_methods + cls.gradient_based_methods
 
     def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = None, method_options=None, method_bounds=None,
-                 method_constraints=None, silent :bool = True, use_gradient: bool = None, **kwargs):
+                 method_constraints=None, silent: bool = True, use_gradient: bool = None, **kwargs):
         """
         Optimize a circuit to minimize a given objective using scipy
         See the Optimizer class for all other parameters to initialize
@@ -66,7 +66,7 @@ class OptimizerSciPy(Optimizer):
         if self.samples is None:
             return simulator.simulate_objective
         else:
-            return lambda objective : simulator.measure_objective(objective=objective, samples=self.samples)
+            return lambda objective: simulator.measure_objective(objective=objective, samples=self.samples)
 
     def __call__(self, objective: Objective,
                  initial_values: typing.Dict[str, numbers.Number] = None,
@@ -86,9 +86,15 @@ class OptimizerSciPy(Optimizer):
 
         # Need that for now to avoid compiler issues with gradients
         if self.use_gradient:
-            copy_objective = copy.deepcopy(objective)
+            grad_objective = copy.deepcopy(objective)
 
         simulator = self.initialize_simulator(self.samples)
+
+        # do the compilation here to avoid costly recompilation during the optimization
+        compiled_objective = simulator.backend_handler.recompile(objective)
+        if self.use_gradient:
+            compiled_grad_objective = grad(obj=compiled_objective)
+        simulator.set_compile_flag(False)
 
         # Generate the function that evaluates <O>
         sim_eval = self.__get_eval_function(simulator=simulator)
@@ -105,14 +111,13 @@ class OptimizerSciPy(Optimizer):
         # Make E, grad E
         dE = None
         Es = []
-        E = _EvalContainer(objective=objective,
+        E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
                            eval=sim_eval,
                            save_history=self.save_history,
                            silent=self.silent)
         if self.use_gradient:
-            dO = grad(objective)
-            dE = _GradContainer(objective=dO, param_keys=param_keys, eval=sim_eval,
+            dE = _GradContainer(objective=compiled_grad_objective, param_keys=param_keys, eval=sim_eval,
                                 save_history=self.save_history, silent=self.silent)
 
         bounds = None
@@ -138,12 +143,14 @@ class OptimizerSciPy(Optimizer):
 
         return SciPyReturnType(energy=E_final, angles=angles_final, history=self.history, scipy_output=res)
 
+
 def available_methods():
     """
     Convenience
     :return: Available methods of the scipy optimizer (lists all gradient free and gradient based methods)
     """
     return OptimizerSciPy.available_methods()
+
 
 def minimize(objective: Objective,
              initial_values: typing.Dict[str, numbers.Real] = None,
@@ -188,6 +195,3 @@ def minimize(objective: Objective,
                                tol=tol)
 
     return optimizer(objective=objective, initial_values=initial_values)
-
-
-
