@@ -12,7 +12,7 @@ if requirements is None:
 setup(
     name='openvqe',
     version="XXXX",
-    author='Jakob S. Kottmann, Sumner Alperin-Lea, Abhinav Anand, Maha Kesebi',
+    author='Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo, Cyrille Lavigne, Abhinav Anand, Maha Kesebi',
     author_email='jakob.kottmann@gmail.com',
     install_requires=requirements,
     packages=find_packages(include=['src','src/openvqe',"src/openvqe."]),
