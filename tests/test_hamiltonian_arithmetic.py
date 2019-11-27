@@ -1,6 +1,6 @@
-from openvqe.hamiltonian import QubitHamiltonian, PauliString, paulis
+from tequila.hamiltonian import QubitHamiltonian, PauliString, paulis
 from numpy import random, kron, eye, allclose
-from openvqe import BitString
+from tequila import BitString
 
 
 def test_paulistring_conversion():

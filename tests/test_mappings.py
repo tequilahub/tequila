@@ -1,7 +1,6 @@
-from openvqe.simulators import SimulatorBase
-from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.keymap import KeyMapSubregisterToRegister
-from openvqe import BitString, BitNumbering, BitStringLSB
+from tequila.wavefunction import QubitWaveFunction
+from tequila.utils.keymap import KeyMapSubregisterToRegister
+from tequila import BitString, BitStringLSB
 
 
 def test_keymaps():
@@ -41,9 +40,9 @@ def test_endianness():
         assert (i2 == BitString.from_bitstring(i11))
 
 
-from openvqe.circuit import QCircuit, gates
-from openvqe.simulators.simulator_cirq import SimulatorCirq
-from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+from tequila.circuit import QCircuit, gates
+from tequila.simulators.simulator_cirq import SimulatorCirq
+from tequila.simulators.simulator_qiskit import SimulatorQiskit
 
 
 def test_endianness_simulators():

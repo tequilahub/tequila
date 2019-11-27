@@ -20,13 +20,13 @@ This will then give the same distribution as in the first state
 Note that the Heralding objects can not yet be used in combination with Objectives
 """
 
-from openvqe.simulators.heralding import HeraldingProjector
-from openvqe.circuit import gates
-from openvqe.simulators.simulator_qiskit import SimulatorQiskit
-from openvqe.simulators.simulator_cirq import SimulatorCirq
+from tequila.simulators.heralding import HeraldingProjector
+from tequila.circuit import gates
+from tequila.simulators.simulator_qiskit import SimulatorQiskit
+from tequila.simulators.simulator_cirq import SimulatorCirq
 import numpy
-from openvqe.tools import plotters
-from openvqe import BitString
+from tequila.tools import plotters
+from tequila import BitString
 
 if __name__ == "__main__":
     targets = [1]

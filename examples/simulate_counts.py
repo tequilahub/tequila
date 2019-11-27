@@ -2,10 +2,10 @@
 Small example on how to construct a circuit and simulate its measurements in the computational standardbasis (counts)
 """
 
-from openvqe.circuit import gates
+from tequila.circuit import gates
 from numpy import pi
-from openvqe.simulators import pick_simulator
-from openvqe.tools import plotters
+from tequila.simulators import pick_simulator
+from tequila.tools import plotters
 """
 Same example as 'simulate_wavefunctions' but here we simulate counts
 

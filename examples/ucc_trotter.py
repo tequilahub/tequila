@@ -3,15 +3,15 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from openvqe.simulators import pick_simulator
-from openvqe.objective import Objective
-from openvqe.optimizers import GradientDescent
-from openvqe.optimizers.scipy_optimizers import OptimizerSciPy
+from tequila.simulators import pick_simulator
+from tequila.objective import Objective
+from tequila.optimizers import GradientDescent
+from tequila.optimizers.optimizer_scipy import minimize
 
 from matplotlib import pyplot as plt
 
 # you need psi4 to be installed for this example
-import openvqe.quantumchemistry as qc
+import tequila.quantumchemistry as qc
 if not qc.has_psi4:
     raise Exception("You need Psi4 for this examples: Easy install with conda install psi4 -c psi4")
 # pyscf is coming soon
@@ -19,7 +19,7 @@ if not qc.has_psi4:
 # initialize your favorite Simulator
 samples = None# none means full wavefunction simulation
 simulator = pick_simulator(samples=samples)
-from openvqe.simulators.simulator_cirq import SimulatorCirq
+from tequila.simulators.simulator_cirq import SimulatorCirq
 simulator = SimulatorCirq
 
 if __name__ == "__main__":
@@ -58,13 +58,12 @@ if __name__ == "__main__":
 
     print("initial amplitudes:\n", initial_amplitudes)
 
-    optimizer = OptimizerSciPy(samples=samples, simulator=simulator, maxiter=10)
-    E, angles = optimizer(objective=O, initial_values=initial_amplitudes.export_parameter_dictionary())
+    result = minimize(objective=O, initial_values=initial_amplitudes.export_parameter_dictionary(), samples=samples, simulator=simulator, maxiter=10, method="TNC")
 
     print("final angles are:\n", angles)
-    print("final energy = ", E)
+    print("final energy = ", result.energy)
 
     # plot results
-    optimizer.history.plot(property='energies')
-    optimizer.history.plot(property='gradients')
-    optimizer.history.plot(property='angles')
+    result.history.plot(property='energies')
+    result.history.plot(property='gradients')
+    result.history.plot(property='angles')

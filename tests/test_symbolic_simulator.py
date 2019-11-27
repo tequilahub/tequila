@@ -1,7 +1,7 @@
-from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.simulators.simulator_symbolic import SimulatorSymbolic
-from openvqe.circuit import gates
-from openvqe.hamiltonian import paulis
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.simulators.simulator_symbolic import SimulatorSymbolic
+from tequila.circuit import gates
+from tequila.hamiltonian import paulis
 
 import numpy
 import pytest

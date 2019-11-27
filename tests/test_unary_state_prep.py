@@ -1,9 +1,9 @@
-from openvqe.apps import UnaryStatePrep
-from openvqe.apps.unary_state_prep import OpenVQEUnaryStateException
+from tequila.apps import UnaryStatePrep
+from tequila.apps.unary_state_prep import TequilaUnaryStateException
 import numpy
-from openvqe import BitString
-from openvqe.simulators import SimulatorSymbolic
-from openvqe.qubit_wavefunction import QubitWaveFunction
+from tequila import BitString
+from tequila.simulators import SimulatorSymbolic
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 import pytest
 
 @pytest.mark.parametrize("target_space", [['00', '11'], ['01', '11'], ['001', '010', '100'], ['0011', '1010'],
@@ -78,5 +78,5 @@ def test_random_instances(target_space):
         for k, v in wfn.items():
             assert (numpy.isclose(wfn2[k], v))
 
-    except OpenVQEUnaryStateException:
+    except TequilaUnaryStateException:
         print("caught a tolerated excpetion")

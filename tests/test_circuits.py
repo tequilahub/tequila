@@ -1,8 +1,8 @@
-from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, SWAP, QCircuit, RotationGate
-from openvqe.simulators.simulator_symbolic import SimulatorSymbolic, sympy
-from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.circuit._gates_impl import RotationGateImpl
-from openvqe.circuit.variable import Variable
+from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate
+from tequila.simulators.simulator_symbolic import SimulatorSymbolic, sympy
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.circuit._gates_impl import RotationGateImpl
+from tequila.circuit.variable import Variable
 import numpy
 
 

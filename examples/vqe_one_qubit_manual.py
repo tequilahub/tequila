@@ -5,19 +5,19 @@ This does the same as vqe_one_qubit.py just performs the steps manual
 
 """
 
-from openvqe.circuit import gates
-from openvqe.hamiltonian import paulis
-from openvqe.objective import Objective
-from openvqe.circuit.gradient import grad
+from tequila.circuit import gates
+from tequila.hamiltonian import paulis
+from tequila.objective import Objective
+from tequila.circuit.gradient import grad
 import numpy
-from openvqe.circuit import Variable
-from openvqe.optimizers import GradientDescent #Doesn't do much, but is convenient for the plots in this example
+from tequila.circuit import Variable
+from tequila.optimizers import GradientDescent #Doesn't do much, but is convenient for the plots in this example
 
 # uncomment if you want to try a different simulators (not all combinations of samples and simulators are possible)
-from openvqe.simulators.simulator_cirq import SimulatorCirq
-# from openvqe.simulators.simulator_qiskit import SimulatorQiskit
-# from openvqe.simulators.simulator_qulacs import SimulatorQulacs
-# from openvqe.simulators.simulator_pyquil import SimulatorPyquil
+from tequila.simulators.simulator_cirq import SimulatorCirq
+# from tequila.simulators.simulator_qiskit import SimulatorQiskit
+# from tequila.simulators.simulator_qulacs import SimulatorQulacs
+# from tequila.simulators.simulator_pyquil import SimulatorPyquil
 
 # some variables to play around with for this example
 stepsize = 0.1

@@ -1,8 +1,8 @@
-from openvqe.circuit import gates
-from openvqe.simulators.simulator_qiskit import SimulatorQiskit # full wavefunction simulation currently not supported
-from openvqe.simulators.simulator_cirq import SimulatorCirq
-from openvqe.simulators.simulator_pyquil import SimulatorPyquil # currently only full wavefunction simulation
-from openvqe.tools import plotters # convenience
+from tequila.circuit import gates
+from tequila.simulators.simulator_qiskit import SimulatorQiskit # full wavefunction simulation currently not supported
+from tequila.simulators.simulator_cirq import SimulatorCirq
+from tequila.simulators.simulator_pyquil import SimulatorPyquil # currently only full wavefunction simulation
+from tequila.tools import plotters # convenience
 import numpy
 
 """

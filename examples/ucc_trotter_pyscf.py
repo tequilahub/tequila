@@ -3,15 +3,15 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from openvqe.simulators import pick_simulator
-from openvqe.objective import Objective
-from openvqe.circuit.exponential_gate import DecompositionFirstOrderTrotter
-from openvqe.optimizers import  GradientDescent
+from tequila.simulators import pick_simulator
+from tequila.objective import Objective
+from tequila.circuit.exponential_gate import DecompositionFirstOrderTrotter
+from tequila.optimizers import  GradientDescent
 
 from matplotlib import pyplot as plt
 
 # you need psi4 to be installed for this example
-import openvqe.quantumchemistry as qc
+import tequila.quantumchemistry as qc
 
 if not qc.has_pyscf:
     raise Exception("You need PySCF for this examples: Easy install with conda install -c pyscf pyscf")

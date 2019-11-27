@@ -1,9 +1,9 @@
-from openvqe.circuit import gates, Variable
-from openvqe.circuit.gradient import grad
-from openvqe.objective import Objective
-from openvqe.hamiltonian import paulis
-from openvqe.simulators.simulator_qiskit import SimulatorQiskit
-from openvqe.simulators.simulator_cirq import SimulatorCirq
+from tequila.circuit import gates, Variable
+from tequila.circuit.gradient import grad
+from tequila.objective import Objective
+from tequila.hamiltonian import paulis
+from tequila.simulators.simulator_qiskit import SimulatorQiskit
+from tequila.simulators.simulator_cirq import SimulatorCirq
 import numpy
 import pytest
 

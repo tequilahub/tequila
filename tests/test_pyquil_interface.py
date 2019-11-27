@@ -1,12 +1,12 @@
 system_has_pyquil = True
 try:
-    from openvqe.simulators.simulator_pyquil import SimulatorPyquil
+    from tequila.simulators.simulator_pyquil import SimulatorPyquil
     system_has_pyquil = True
 except ImportError:
     system_has_pyquil = False
 
-from openvqe.circuit.circuit import QCircuit
-from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, CNOT, SWAP, H
+from tequila.circuit.circuit import QCircuit
+from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, CNOT, SWAP, H
 from numpy import pi, random
 
 import pytest

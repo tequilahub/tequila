@@ -1,8 +1,7 @@
 import numpy as np
-#from openvqe.circuit.variable import Variable,Transform,Sub,Div,Mul,Pow,Sqr,has_variable
-from openvqe.circuit.gradient import grad, tgrad, __weight_chain
-from openvqe import Variable
-from openvqe.circuit.variable import Transform
+from tequila.circuit.gradient import __weight_chain
+from tequila import Variable
+from tequila.circuit.variable import Transform
 import operator
 
 def test_nesting():

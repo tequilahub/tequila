@@ -1,9 +1,9 @@
-from openvqe.circuit import gates
-from openvqe.simulators.simulator_qiskit import SimulatorQiskit
-from openvqe.simulators.simulator_cirq import SimulatorCirq
-from openvqe.simulators.simulator_pyquil import SimulatorPyquil
-from openvqe.tools import plotters
-from openvqe.simulators.heralding import HeraldingProjector
+from tequila.circuit import gates
+from tequila.simulators.simulator_qiskit import SimulatorQiskit
+from tequila.simulators.simulator_cirq import SimulatorCirq
+from tequila.simulators.simulator_pyquil import SimulatorPyquil
+from tequila.tools import plotters
+from tequila.simulators.heralding import HeraldingProjector
 from numpy import pi
 
 """

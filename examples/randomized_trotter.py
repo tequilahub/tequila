@@ -1,9 +1,9 @@
-from openvqe.simulators.simulator_qiskit import SimulatorQiskit
-from openvqe.circuit import gates
-from openvqe.hamiltonian import paulis
-from openvqe.tools import plotters
+from tequila.simulators.simulator_qiskit import SimulatorQiskit
+from tequila.circuit import gates
+from tequila.hamiltonian import paulis
+from tequila.tools import plotters
 import numpy
-from openvqe import BitString
+from tequila import BitString
 
 """
 In this example we implement a unitary which acts only on the two-qubit basis states

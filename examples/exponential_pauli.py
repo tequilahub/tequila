@@ -13,9 +13,9 @@ ExpPauli(Z(0), angle) = Exp(-i angle/2 * Z(0))
 
 """
 
-from openvqe.circuit import gates
-from openvqe.hamiltonian import PauliString
-from openvqe.simulators.simulator_cirq import SimulatorCirq
+from tequila.circuit import gates
+from tequila.hamiltonian import PauliString
+from tequila.simulators.simulator_cirq import SimulatorCirq
 
 
 # default initialization

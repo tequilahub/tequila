@@ -1,5 +1,5 @@
-from openvqe.circuit.gradient import grad
-from openvqe import Variable, gates, paulis, simulators, Objective
+from tequila.circuit.gradient import grad
+from tequila import Variable, gates, paulis, simulators, Objective
 from numpy import pi
 
 print("Weights are inconsistent")

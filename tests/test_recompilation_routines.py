@@ -1,11 +1,11 @@
-from openvqe.circuit import gates
-from openvqe.circuit.compiler import compile_controlled_rotation, change_basis
+from tequila.circuit import gates
+from tequila.circuit.compiler import compile_controlled_rotation, change_basis
 from numpy.random import uniform, randint
 from numpy import pi, isclose
-from openvqe.simulators.simulator_cirq import SimulatorCirq
-from openvqe.hamiltonian import paulis
-from openvqe.objective import Objective
-from openvqe import simulators
+from tequila.simulators.simulator_cirq import SimulatorCirq
+from tequila.hamiltonian import paulis
+from tequila.objective import Objective
+from tequila import simulators
 import pytest
 import numpy
 

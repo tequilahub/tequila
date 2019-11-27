@@ -8,9 +8,9 @@ In this example we are constructing CIS excitation states for a 2-electron syste
 Note: The UnaryStatePrep code is currently unstable and needs improvement
 """
 
-from openvqe.apps import UnaryStatePrep
-from openvqe.simulators.simulator_cirq import SimulatorCirq
-from openvqe.qubit_wavefunction import QubitWaveFunction
+from tequila.apps import UnaryStatePrep
+from tequila.simulators.simulator_cirq import SimulatorCirq
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
 if __name__ == "__main__":
 

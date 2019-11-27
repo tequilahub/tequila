@@ -1,18 +1,18 @@
 system_has_cirq = None
 try:
-    from openvqe.simulators.simulator_cirq import SimulatorCirq
+    from tequila.simulators.simulator_cirq import SimulatorCirq
 
     system_has_cirq = True
 except ImportError:
     system_has_cirq = False
 
-from openvqe.circuit.circuit import QCircuit
-from openvqe.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H, iSWAP
+from tequila.circuit.circuit import QCircuit
+from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H, iSWAP
 from numpy import pi, random, isclose, sqrt
-from openvqe.hamiltonian import PauliString
-from openvqe.objective import Objective
-from openvqe.circuit.gradient import grad
-from openvqe.circuit import Variable
+from tequila.hamiltonian import PauliString
+from tequila.objective import Objective
+from tequila.circuit.gradient import grad
+from tequila.circuit import Variable
 import pytest
 
 supported_primitive_gates = [X, Y, Z, H]
@@ -89,7 +89,7 @@ def test_power_gates(g):
 
 @pytest.mark.skipif(condition=not system_has_cirq, reason="cirq not found")
 def test_expectation_values():
-    from openvqe.hamiltonian.paulis import X as PX
+    from tequila.hamiltonian.paulis import X as PX
     hamiltonian = PX(qubit=0)
 
     U = Ry(target=0, angle=pi / 4)

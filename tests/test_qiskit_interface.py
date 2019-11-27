@@ -1,12 +1,12 @@
 system_has_qiskit = None
 try:
-    from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+    from tequila.simulators.simulator_qiskit import SimulatorQiskit
 
     system_has_qiskit = True
 except ImportError:
     system_has_qiskit = False
-from openvqe.circuit import gates
-from openvqe.circuit.circuit import QCircuit
+from tequila.circuit import gates
+from tequila.circuit.circuit import QCircuit
 from numpy import pi, random
 
 import pytest

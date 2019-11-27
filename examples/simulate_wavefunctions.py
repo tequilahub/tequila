@@ -2,9 +2,9 @@
 Simple example of how to construct a small circuit and simulate the full wavefunction it creates
 """
 
-from openvqe.circuit import gates
+from tequila.circuit import gates
 from numpy import pi
-from openvqe.simulators import pick_simulator
+from tequila.simulators import pick_simulator
 
 """
 From the current backends only Pyquil and Cirq support full wavefunction
@@ -16,7 +16,7 @@ If you use Pyquil, make sure you have installed the QVM
  -> open terminal, type 'qvm -S'
 """
 
-from openvqe.simulators import show_available_simulators
+from tequila.simulators import show_available_simulators
 print(show_available_simulators())
 
 if __name__ == "__main__":

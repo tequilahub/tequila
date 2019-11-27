@@ -1,4 +1,4 @@
-from openvqe import BitString, BitNumbering, BitStringLSB
+from tequila import BitString, BitNumbering, BitStringLSB
 
 
 def test_bitstrings():

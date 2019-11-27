@@ -1,8 +1,8 @@
-from openvqe.circuit import gates
-from openvqe.circuit import Variable
-from openvqe.hamiltonian import paulis
-from openvqe.objective import Objective
-from openvqe.optimizers.scipy_optimizers import OptimizerSciPy
+from tequila.circuit import gates
+from tequila.circuit import Variable
+from tequila.hamiltonian import paulis
+from tequila.objective import Objective
+from tequila.optimizers.optimizer_scipy import OptimizerSciPy
 
 """
 Same example as vqe_two_qubit.py with lazy variable initialization (less expressive)
@@ -18,10 +18,10 @@ since the signs are now part of the variable
 """
 
 # uncomment if you want to use a specific simulators
-# from openvqe.simulators.simulator_cirq import SimulatorCirq
-# from openvqe.simulators.simulator_qiskit import SimulatorQiskit
-# from openvqe.simulators.simulator_qulacs import SimulatorQulacs
-# from openvqe.simulators.simulator_pyquil import SimulatorPyquil
+# from tequila.simulators.simulator_cirq import SimulatorCirq
+# from tequila.simulators.simulator_qiskit import SimulatorQiskit
+# from tequila.simulators.simulator_qulacs import SimulatorQulacs
+# from tequila.simulators.simulator_pyquil import SimulatorPyquil
 
 # parameters with explanation:
 samples = None      # number of samples for each run, None means full wavefunction simulation

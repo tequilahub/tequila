@@ -6,17 +6,16 @@ The example uses the Jordan-Wigner transformation to not overcomplicate things
 Other mappings are also possible
 
 Note that you can not print the Cirq object after simulation since there is currently a bug in cirq
-which messes with the printout for multi-control gates (at least if they are initialized in the way openvqe
+which messes with the printout for multi-control gates (at least if they are initialized in the way tequila
 does it
 
 If you want pretty printout: Use Qiskit for printing out the circuit
 """
 
-from openvqe.apps import UnaryStatePrep
-from openvqe.simulators.simulator_cirq import SimulatorCirq
-from openvqe.simulators.simulator_symbolic import SimulatorSymbolic
-from openvqe.qubit_wavefunction import QubitWaveFunction
-from openvqe.circuit import gates
+from tequila.apps import UnaryStatePrep
+from tequila.simulators.simulator_cirq import SimulatorCirq
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.circuit import gates
 
 
 def unary_compressor(q: list):

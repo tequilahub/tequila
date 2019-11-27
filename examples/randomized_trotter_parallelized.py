@@ -30,13 +30,13 @@ this example is especially slow. For that reason the evaluation of the circuits 
 
 """
 
-from openvqe.simulators.simulator_qiskit import SimulatorQiskit, QubitWaveFunction
-from openvqe.circuit import gates
-from openvqe.hamiltonian import QubitHamiltonian, paulis
-from openvqe.tools import plotters
+from tequila.simulators.simulator_qiskit import SimulatorQiskit, QubitWaveFunction
+from tequila.circuit import gates
+from tequila.hamiltonian import QubitHamiltonian, paulis
+from tequila.tools import plotters
 import typing
 import numpy
-from openvqe import dataclass
+from tequila import dataclass
 
 import multiprocessing as mp
 

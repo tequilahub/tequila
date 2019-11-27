@@ -5,10 +5,10 @@ Todo: write real test class with tear_down procedure to get rid of psi4 output f
 """
 
 import pytest
-import openvqe.quantumchemistry as qc
+import tequila.quantumchemistry as qc
 import numpy
-from openvqe.simulators import pick_simulator
-from openvqe.objective import Objective
+from tequila.simulators import pick_simulator
+from tequila.objective import Objective
 
 
 @pytest.mark.skipif(condition=not (qc.has_pyscf and qc.has_psi4),

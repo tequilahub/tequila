@@ -4,11 +4,20 @@ All Backends need to be installed for full testing
 
 import pytest
 import random
-from openvqe.circuit import gates
-from openvqe import simulators
+from tequila.circuit import gates
+from tequila import simulators
+
+"""
+Warn if Simulators are not installed
+"""
+import warnings
 
 
-
+@pytest.mark.parametrize("name", simulators.supported_simulators())
+def test_backend_availability(name):
+    installed = getattr(simulators, "HAS_" + name.upper())
+    if not installed:
+        warnings.warn(name + " is not installed!", UserWarning)
 
 def create_random_circuit():
     primitive_gates = [gates.X, gates.Y, gates.Z, gates.H]
@@ -92,7 +101,7 @@ def test_shot_multi_control(simulator):
 @pytest.mark.skipif(condition=not simulators.HAS_CIRQ or not simulators.HAS_QISKIT, reason="need qiskit and cirq")
 def test_shot_simple_consistency():
     ac = create_random_circuit()
-    ac += gates.Measurement([0,1,2,3,4,5])
+    ac += gates.Measurement([0, 1, 2, 3, 4, 5])
     wfn0 = simulators.SimulatorQiskit().run(abstract_circuit=ac).counts
     wfn1 = simulators.SimulatorCirq().run(abstract_circuit=ac).counts
     assert (wfn0 == wfn1)

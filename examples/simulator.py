@@ -1,4 +1,4 @@
-from openvqe import simulators, gates, paulis, Objective
+from tequila import simulators, gates, paulis, Objective
 
 Simulator = simulators.pick_simulator(samples=100, demand_full_wfn=True)
 simulator = Simulator()

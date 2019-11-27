@@ -1,7 +1,7 @@
-from openvqe.simulators.heralding import HeraldingProjector
-from openvqe.circuit import gates
-from openvqe.simulators.simulator_qiskit import SimulatorQiskit
-from openvqe.simulators.simulator_cirq import SimulatorCirq
+from tequila.simulators.heralding import HeraldingProjector
+from tequila.circuit import gates
+from tequila.simulators.simulator_qiskit import SimulatorQiskit
+from tequila.simulators.simulator_cirq import SimulatorCirq
 
 import typing
 import numpy
