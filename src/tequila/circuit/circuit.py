@@ -173,15 +173,15 @@ class QCircuit():
                 pars = {**pars, **g.extract_variables()}
         return pars
 
-    def update_variables(self, parameters: dict):
+    def update_variables(self, variables: dict):
         """
         inplace operation
-        :param parameters: a dict of all parameters that shall be updated (order does not matter)
+        :param variables: a dict of all parameters that shall be updated (order does not matter)
         :return: self for chaining
         """
         for g in self.gates:
             if g.is_parametrized():
-                g.update_variables(parameters)
+                g.update_variables(variables)
 
         return self
 

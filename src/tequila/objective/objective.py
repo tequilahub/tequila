@@ -35,14 +35,14 @@ class Objective:
             parameters = {**parameters, **U.extract_variables()}
         return parameters
 
-    def update_variables(self, parameters: typing.Dict[str, float]):
+    def update_variables(self, variables: typing.Dict[str, float]):
         """
         Update parameters of all unitaries
-        :param parameters: parameters to update
+        :param variables: parameters to update
         :return: self for chaining
         """
         for U in self.unitaries:
-            U.update_variables(parameters=parameters)
+            U.update_variables(variables=variables)
         return self
 
     def to_backend(self, simulator):
