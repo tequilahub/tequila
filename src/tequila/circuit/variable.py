@@ -428,14 +428,14 @@ class Transform:
     def __float__(self):
         number = self.eval
         if hasattr(number, "imag"):
-            assert(number.imag == 0.0)
+            assert (number.imag == 0.0)
             number = number.real
         return float(number)
 
     def __complex__(self):
         number = self.eval
         if hasattr(number, "imag"):
-            assert(number.imag == 0.0)
+            assert (number.imag == 0.0)
             number = number.real
         return complex(number)
 

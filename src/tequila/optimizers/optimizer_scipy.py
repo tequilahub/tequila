@@ -96,7 +96,7 @@ class OptimizerSciPy(Optimizer):
         # Extract initial values
         angles = initial_values
         if angles is None:
-            angles = objective.extract_parameters()
+            angles = objective.extract_variables()
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*angles.items())

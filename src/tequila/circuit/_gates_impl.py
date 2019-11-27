@@ -125,6 +125,14 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def dagger(self):
         raise TequilaException("should not be called from ABC")
 
+    def update_variables(self, parameters: typing.Dict[str, numbers.Real]):
+        for k, v in parameters.items():
+            if has_variable(self.parameter, k):
+                self.parameter.update({k: v})
+
+    def extract_variables(self):
+        return self.parameter.variables
+
     @property
     def parameter(self):
         return self._parameter
@@ -353,24 +361,18 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
 
 class TrotterizedGateImpl(ParametrizedGateImpl):
 
-    def extract_parameters(self) -> typing.Dict[str, numbers.Number]:
+    def update_variables(self, parameters: typing.Dict[str, numbers.Real]):
+        for k, v in parameters.items():
+            for angle in self.angles:
+                if has_variable(angle, k):
+                    angle.update({k: v})
+
+    def extract_variables(self) -> typing.Dict[str, numbers.Number]:
         tmp = dict()
         for angle in self.angles:
             for k, v in angle.variables.items():
                 tmp[k] = v
         return tmp
-
-    @property
-    def parameters(self):
-        return self.extract_parameters()
-
-    @parameters.setter
-    def parameters(self, other):
-        for k,v in other.items():
-            for angle in self.angles:
-                if has_variable(angle, k):
-                    angle.update({k: v})
-
 
     @property
     def parameter(self):

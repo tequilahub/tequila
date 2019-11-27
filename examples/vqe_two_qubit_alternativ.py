@@ -49,7 +49,7 @@ if __name__ == "__main__":
     O = Objective(unitaries=U, observable=H)
 
     # extract parameters from circuit
-    angles = U.extract_parameters()
+    angles = U.extract_variables()
 
     # define initial values for the optimizer
     angles['a'] = -4.0

@@ -5,10 +5,7 @@ This is far from optimal and needs major improvements
 
 from tequila.simulators import pick_simulator
 from tequila.objective import Objective
-from tequila.optimizers import GradientDescent
 from tequila.optimizers.optimizer_scipy import minimize
-
-from matplotlib import pyplot as plt
 
 # you need psi4 to be installed for this example
 import tequila.quantumchemistry as qc
@@ -42,14 +39,14 @@ if __name__ == "__main__":
     # make an objective
     O = Objective(observable=H, unitaries=U)
 
-    angles = O.extract_parameters()
+    angles = O.extract_variables()
     print(angles)
 
     # compute full energy
     E = pick_simulator(demand_full_wfn=True)().simulate_objective(objective=O)
 
     print("Energy = ", E)
-    print("CCSD Parameters:\n", U.extract_parameters())
+    print("CCSD Parameters:\n", U.extract_variables())
 
     # overwrite the initial amplitudes to be zero
     initial_amplitudes = qc.Amplitudes(data={(2, 0, 3, 1): 0.0, (3, 1, 2, 0): 0.0 })

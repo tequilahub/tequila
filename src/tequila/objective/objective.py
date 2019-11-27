@@ -26,23 +26,23 @@ class Objective:
         else:
             self._unitaries = [u]
 
-    def extract_parameters(self) -> typing.Dict[str, float]:
+    def extract_variables(self) -> typing.Dict[str, float]:
         """
         :return: All parameters of the objective
         """
         parameters = dict()
         for U in self.unitaries:
-            parameters = {**parameters, **U.extract_parameters()}
+            parameters = {**parameters, **U.extract_variables()}
         return parameters
 
-    def update_parameters(self, parameters: typing.Dict[str, float]):
+    def update_variables(self, parameters: typing.Dict[str, float]):
         """
         Update parameters of all unitaries
         :param parameters: parameters to update
         :return: self for chaining
         """
         for U in self.unitaries:
-            U.update_parameters(parameters=parameters)
+            U.update_variables(parameters=parameters)
         return self
 
     def to_backend(self, simulator):

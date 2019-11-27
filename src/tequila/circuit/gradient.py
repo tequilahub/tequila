@@ -137,7 +137,7 @@ def __grad_unitary(unitary: QCircuit,variables=None):
     '''
     unitary.validate()
     if variables is None:
-        out= __make_selected_components(unitary,unitary.parameters)
+        out= __make_selected_components(unitary, unitary.extract_variables())
     elif type(variables) is dict:
         out= __make_selected_components(unitary,variables)
     elif type(variables) is list:

@@ -45,7 +45,7 @@ if __name__ == "__main__":
     U = gates.Ry(target=0, angle=angle)
 
     # do the optimization
-    angles = U.extract_parameters()
+    angles = U.extract_variables()
     E = 100.0
     for iter in range(max_iter):
         print(angles)
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
         # update the angle
         angles['angle'] = angles['angle'] - stepsize*dE['angle']
-        U.update_parameters(angles)
+        U.update_variables(angles)
 
     print("angle after ", max_iter, "iterations : ", angles)
     print("optimal angle : ", optimal_angle)

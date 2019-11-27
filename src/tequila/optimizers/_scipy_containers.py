@@ -24,7 +24,7 @@ class _EvalContainer:
 
     def __call__(self, p, *args, **kwargs):
         angles = dict((self.param_keys[i], p[i]) for i in range(self.N))
-        self.objective.update_parameters(angles)
+        self.objective.update_variables(angles)
         E = self.eval(self.objective)
         if not self.silent:
             print("E=", E, " angles=", angles)
@@ -45,7 +45,7 @@ class _GradContainer(_EvalContainer):
         dE_vec = numpy.zeros(self.N)
         memory = dict()
         for i in range(self.N):
-            dO[self.param_keys[i]].update_parameters( dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys))))
+            dO[self.param_keys[i]].update_variables(dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys))))
             dE_vec[i] = self.eval(dO[self.param_keys[i]])
             memory[self.param_keys[i]] = dE_vec[i]
         self.history.append(memory)

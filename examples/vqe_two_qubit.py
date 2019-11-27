@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     # Extract parameters from circuit and set initial values
     # not necessary if already initialized above
-    angles = U.extract_parameters()
+    angles = U.extract_variables()
     angles['a'] = 4.0
     angles['b'] = 2.0
 

@@ -42,23 +42,6 @@ class QCircuit():
         return parameters
 
     @property
-    def parameters(self) -> typing.Dict[str, numbers.Number]:
-        """
-        return a dict containing all the variable objects contained in any of the gates within the unitary
-        including those nested within transforms.
-        rtype dict: {parameter.name:parameter.value}
-        """
-        pars = dict()
-        for i, g in enumerate(self.gates):
-            print(i, g)
-            if g.is_parametrized() and not g.is_frozen():
-                if hasattr(g, "parameters"):
-                    pars = {**pars, **g.parameters}
-                else:
-                    pars = {**pars, **g.parameter.variables}
-        return pars
-
-    @property
     def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
 
@@ -178,15 +161,19 @@ class QCircuit():
             result *= g.dagger()
         return result
 
-    def extract_parameters(self) -> dict:
+    def extract_variables(self) -> dict:
         """
-        Extract all parameters from the circuit
-        :return: List of all unique parameters with names as keys
-        TODO: deprecate, now identical to the parameters property
+        return a dict containing all the variable objects contained in any of the gates within the unitary
+        including those nested within transforms.
+        rtype dict: {parameter.name:parameter.value}
         """
-        return self.parameters
+        pars = dict()
+        for i, g in enumerate(self.gates):
+            if g.is_parametrized():
+                pars = {**pars, **g.extract_variables()}
+        return pars
 
-    def update_parameters(self, parameters: dict):
+    def update_variables(self, parameters: dict):
         """
         inplace operation
         :param parameters: a dict of all parameters that shall be updated (order does not matter)
@@ -194,11 +181,7 @@ class QCircuit():
         """
         for g in self.gates:
             if g.is_parametrized():
-                for k, v in parameters.items():
-                    if hasattr(g, "parameters"):
-                        g.parameters = parameters
-                    elif has_variable(g.parameter, k):
-                        g.parameter.update({k: v})
+                g.update_variables(parameters)
 
         return self
 

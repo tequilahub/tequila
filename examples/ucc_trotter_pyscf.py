@@ -35,11 +35,11 @@ if __name__ == "__main__":
 
     # get the UCC circuit
     U = pyscf_interface.make_uccsd_ansatz(decomposition=trotter, initial_amplitudes="ccsd", include_reference_ansatz=True)
-    print("CCSD Parameters:\n", U.extract_parameters())
+    print("CCSD Parameters:\n", U.extract_variables())
     # make an objective
     O = Objective(observable=H, unitaries=U)
 
-    angles = O.extract_parameters()
+    angles = O.extract_variables()
 
     # compute energy
     E = simulator().simulate_objective(objective=O)

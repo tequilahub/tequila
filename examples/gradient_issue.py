@@ -18,7 +18,7 @@ H = paulis.X(0)
 a = Variable(name='a', value=0.0)
 b = Variable(name='b', value=0.0)
 U = gates.Ry(target=0, angle=a/2) + gates.Ry(target=0, angle=b/2)
-U.update_parameters({'a': 0.0})
+U.update_variables({'a': 0.0})
 
 E = simulators.SimulatorQulacs().simulate_objective(objective=Objective(unitaries=U, observable=H))
 dO = grad(Objective(unitaries=U, observable=H))['a']
