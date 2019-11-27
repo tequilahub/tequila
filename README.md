@@ -15,10 +15,12 @@ if you are using conda you can install it with
 conda install psi4 -c psi4
 PSI4 WILL NOT RUN WITH PYTHON 3.7x
 
-# Installation
+# Installation as user
 Just run 'pip install . ' in the OpenVQE directory (thats the directory where setup.py is)
-Since the package is currently under development we haven't spend much time on installers .... but maybe it works :-)
-If you plan to develop the code we recommend to not install it anyway (see below)
+Feel free to comment out simulators in requirements.txt if you do not want to install them all (but you should at least install one of them)
+
+# Installation as developer
+same as above but run 'python -m pip install setyp.py -e .' 
 
 # Usage without installation
 1. go into the OpenVQE main directory (where setup.py and requirements.txt are)
