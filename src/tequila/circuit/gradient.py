@@ -113,6 +113,8 @@ def grad(obj, variables=None):
     return: dictionary of Objectives
     '''
     compiled = compile_trotterized_gate(gate=obj)
+    compiled = compile_controlled_rotation(gate=compiled)
+
 
     if isinstance(obj, QCircuit):
         return __grad_unitary(unitary=compiled, variables=variables)

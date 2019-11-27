@@ -65,10 +65,13 @@ def enforce_number_decorator(*numeric_types):
     return decorator
 
 
-class Variable():
+class Variable:
     @property
     def variables(self):
-        return {self.name: self.value}
+        if self.name is not None:
+            return {self.name: self.value}
+        else:
+            return dict()
 
     @property
     def parameter_list(self):
@@ -97,7 +100,7 @@ class Variable():
 
         if type(name) is str:
             self._name = name
-        elif type(name) is not None:
+        elif name is not None:
             self._name = str(name)
         else:
             self._name = name
@@ -244,12 +247,13 @@ class Variable():
         return self.name + ', ' + str(self._value)
 
     def __str__(self):
-        if self.name == "None":
+        if self.name is None:
             return number_to_string(self.__call__())
         else:
             return self.name
 
     def __float__(self):
+        #TODO remove
         return float(self.value)
 
 
@@ -270,7 +274,7 @@ class Transform:
         vl = {}
         for obj in self.args:
             if type(obj) is Variable:
-                if obj.name not in vl.keys():
+                if obj.name is not None:
                     vl[obj.name] = obj.value
                 else:
                     if not np.isclose(vl[obj.name], obj.value):
@@ -278,7 +282,7 @@ class Transform:
                             'found two variables with the same name and different values, this is unacceptable')
             elif type(obj) is Transform:
                 for k, v in obj.variables.items():
-                    if k not in vl.keys():
+                    if k is not None:
                         vl[k] = v
                     else:
                         if not np.isclose(vl[k], v):
