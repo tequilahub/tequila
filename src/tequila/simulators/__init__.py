@@ -65,6 +65,8 @@ def pick_simulator(samples=None, demand_full_wfn=None):
         # need full wavefunction simulators
         if HAS_QULACS:
             return SimulatorQulacs
+        elif HAS_QISKIT:
+            return SimulatorQiskit
         elif HAS_CIRQ:
             return SimulatorCirq
         elif HAS_PYQUIL:
@@ -73,6 +75,8 @@ def pick_simulator(samples=None, demand_full_wfn=None):
             return SimulatorSymbolic
 
     elif samples is not None and demand_full_wfn:
+        if HAS_QISKIT:
+            return SimulatorQiskit
         if HAS_CIRQ:
             return SimulatorCirq
         else:

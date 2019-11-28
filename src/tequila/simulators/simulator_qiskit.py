@@ -92,7 +92,18 @@ class SimulatorQiskit(SimulatorBase):
         return qiskit.execute(experiments=circuit, backend=simulator, shots=samples)
 
     def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0) -> SimulatorReturnType:
-        raise TequilaQiskitException("Qiskit can (currently) not simulate general wavefunctions")
+        simulator = qiskit.Aer.get_backend("statevector_simulator")
+        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+        if initial_state != 0:
+            # need something like this
+            # there is a keyword for the backend for tolerance on norm
+            #circuit.initialize(normed_array)
+            raise TequilaQiskitException("initial state for Qiskit not yet supported here")
+        backend_result = qiskit.execute(experiments=circuit, backend=simulator).result()
+        return SimulatorReturnType(abstract_circuit=abstract_circuit, circuit=circuit,
+                                   wavefunction=QubitWaveFunction.from_array(arr=backend_result.get_statevector(circuit),
+                                   numbering=self.numbering),
+                                   backend_result=backend_result)
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
         """
