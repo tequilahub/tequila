@@ -131,7 +131,8 @@ class ParametrizedGateImpl(QGateImpl, ABC):
                 self.parameter.update({k: v})
 
     def extract_variables(self):
-        return self.parameter.variables
+        if hasattr(self.parameter, "variables"):
+            return self.parameter.variables
 
     @property
     def parameter(self):
@@ -370,8 +371,9 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
     def extract_variables(self) -> typing.Dict[str, numbers.Number]:
         tmp = dict()
         for angle in self.angles:
-            for k, v in angle.variables.items():
-                tmp[k] = v
+            if hasattr(angle, "variables"):
+                for k, v in angle.variables.items():
+                    tmp[k] = v
         return tmp
 
     @property

@@ -274,17 +274,17 @@ class Transform:
         vl = {}
         for obj in self.args:
             if type(obj) is Variable:
-                if obj.name is not None:
+                if obj.name is not None and obj.name not in vl:
                     vl[obj.name] = obj.value
-                else:
+                elif obj.name is not None:
                     if not np.isclose(vl[obj.name], obj.value):
                         raise TequilaException(
                             'found two variables with the same name and different values, this is unacceptable')
             elif type(obj) is Transform:
                 for k, v in obj.variables.items():
-                    if k is not None:
+                    if k is not None and k not in vl:
                         vl[k] = v
-                    else:
+                    elif k is not None:
                         if not np.isclose(vl[k], v):
                             raise TequilaException(
                                 'found two variables with the same name and different values, this is unacceptable')
