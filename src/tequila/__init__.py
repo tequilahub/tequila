@@ -1,11 +1,12 @@
-from .utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException
-from .circuit import gates
-from .circuit import Variable
-from .hamiltonian import paulis
-from .objective import Objective
-from .optimizers import optimizer_scipy
-from .simulators import pick_simulator
-from .wavefunction import QubitWaveFunction
+from tequila.utils.bitstrings import BitString, BitNumbering, BitStringLSB, initialize_bitstring
+from tequila.utils.exceptions import TequilaException
+from tequila.circuit import gates
+from tequila.circuit import Variable
+from tequila.hamiltonian import paulis
+from tequila.objective import Objective
+from tequila.optimizers import optimizer_scipy
+from tequila.simulators import pick_simulator
+from tequila.wavefunction import QubitWaveFunction
 
 
 __version__ = "vorlauf"
