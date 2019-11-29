@@ -3,9 +3,14 @@ import typing
 import numpy
 
 from tequila.tools import number_to_string
+from tequila import TequilaException
 
 from openfermion import QubitOperator
 from functools import reduce
+
+from collections import namedtuple
+
+BinaryPauli = namedtuple("BinaryPauli", "coeff, binary")
 
 """
 Explicit matrix forms for the Pauli operators for the tomatrix method
@@ -18,6 +23,7 @@ pauli_matrices = {
     'X': numpy.array([[0, 1], [1, 0]], dtype=numpy.complex),
     'Y': numpy.array([[0, -1j], [1j, 0]], dtype=numpy.complex)
 }
+
 
 class PauliString:
     """
@@ -94,7 +100,11 @@ class PauliString:
             if part == "":
                 break
             pauli_dim = part.split('(')
-            data[int(pauli_dim[1])] = pauli_dim[0].upper()
+            string = pauli_dim[0].upper()
+            if not string in ['X', 'Y', 'Z']:
+                raise TequilaException("PauliString.from_string initialization failed, unknown pauliterm: " + string)
+            data[int(pauli_dim[1])] = string
+
         return PauliString(data=data, coeff=coeff)
 
     @classmethod
@@ -143,6 +153,27 @@ class PauliString:
         :return: naked paulistring without the coefficient
         """
         return PauliString(data=self._data, coeff=None)
+
+    def binary(self, n_qubits: int = None):
+        maxq = max(self._data.keys()) + 1
+        if n_qubits is None:
+            n_qubits = maxq
+
+        if n_qubits<maxq:
+            raise TequilaException("PauliString acts on qubit number larger than n_qubits given\n PauliString="+self.__repr__()+", n_qubits="+ str(n_qubits))
+
+        binary = numpy.zeros(2 * n_qubits)
+        for k, v in self._data.items():
+            if v.upper() == "X":
+                binary[k] = 1
+            elif v.upper() == "Y":
+                binary[k] = 1
+                binary[n_qubits + k] = 1
+            elif v.upper() == "Z":
+                binary[n_qubits + k] = 1
+            else:
+                raise TequilaException("Unknown Pauli: %" + str(v))
+        return BinaryPauli(coeff=self.coeff, binary=binary)
 
 
 class QubitHamiltonian:
