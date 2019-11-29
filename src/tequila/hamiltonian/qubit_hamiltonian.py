@@ -2,9 +2,22 @@ import numbers
 import typing
 import numpy
 
-from openfermion import QubitOperator
 from tequila.tools import number_to_string
+
+from openfermion import QubitOperator
 from functools import reduce
+
+"""
+Explicit matrix forms for the Pauli operators for the tomatrix method
+"""
+import numpy as np
+
+pauli_matrices = {
+    'I': numpy.array([[1, 0], [0, 1]], dtype=numpy.complex),
+    'Z': numpy.array([[1, 0], [0, -1]], dtype=numpy.complex),
+    'X': numpy.array([[0, 1], [1, 0]], dtype=numpy.complex),
+    'Y': numpy.array([[0, -1j], [1j, 0]], dtype=numpy.complex)
+}
 
 class PauliString:
     """
@@ -17,6 +30,9 @@ class PauliString:
 
     @property
     def qubits(self):
+        """
+        :return: The qubits on which the PauliString acts non-trivial as list
+        """
         accumulate = [k for k in self.keys()]
         return sorted(list(set(accumulate)))
 
@@ -65,7 +81,7 @@ class PauliString:
         return self._data.values()
 
     @classmethod
-    def from_string(cls, string:str, coeff=None):
+    def from_string(cls, string: str, coeff=None):
         """
         :param string: Format is for example: X(0)Y(100)Z(2)
         :param coeff: coefficient
@@ -80,7 +96,6 @@ class PauliString:
             pauli_dim = part.split('(')
             data[int(pauli_dim[1])] = pauli_dim[0].upper()
         return PauliString(data=data, coeff=coeff)
-
 
     @classmethod
     def from_openfermion(cls, key, coeff=None):
@@ -100,6 +115,9 @@ class PauliString:
 
     @property
     def coeff(self):
+        """
+        :return: The coefficient of this paulistring
+        """
         if self._coeff is None:
             return 1
         else:
@@ -121,22 +139,11 @@ class PauliString:
 
     def naked(self):
         """
-        :return: naked paulistring without coefficient
+        Convenience function to strip coefficients from the PauliStrings and avoid having two coefficients
+        :return: naked paulistring without the coefficient
         """
         return PauliString(data=self._data, coeff=None)
 
-
-"""
-Explicit matrix forms for the Pauli operators for the tomatrix method
-"""
-import numpy as np
-
-pauli_matrices = {
-    'I': numpy.array([[1, 0], [0, 1]], dtype=numpy.complex),
-    'Z': numpy.array([[1, 0], [0, -1]], dtype=numpy.complex),
-    'X': numpy.array([[0, 1], [1, 0]], dtype=numpy.complex),
-    'Y': numpy.array([[0, -1j], [1j, 0]], dtype=numpy.complex)
-}
 
 class QubitHamiltonian:
     """
@@ -144,7 +151,7 @@ class QubitHamiltonian:
     Uses OpenFermion Structures for arithmetics
     """
 
-    #convenience
+    # convenience
     axis_to_string = {0: "x", 1: "y", 2: "z"}
     string_to_axis = {"x": 0, "y": 1, "z": 2}
 
@@ -175,7 +182,7 @@ class QubitHamiltonian:
     def pauli(selfs, ituple):
         return ituple[1]
 
-    def __init__(self, hamiltonian: typing.Union[QubitOperator,str, numbers.Number] = None):
+    def __init__(self, hamiltonian: typing.Union[QubitOperator, str, numbers.Number] = None):
         """
         Initialize from string or from a preexisting OpenFermion QubitOperator instance
         :param hamiltonian: string or openfermion.QubitOperator
@@ -188,7 +195,7 @@ class QubitHamiltonian:
         elif hamiltonian is None:
             self._hamiltonian = QubitOperator.identity()
         elif isinstance(hamiltonian, numbers.Number):
-            self._hamiltonian = hamiltonian*QubitOperator.identity()
+            self._hamiltonian = hamiltonian * QubitOperator.identity()
         else:
             self._hamiltonian = hamiltonian
 
@@ -321,10 +328,10 @@ class QubitHamiltonian:
         :return: numpy.ndarray(2**N, 2**N) with type numpy.complex
         """
         nq = self.n_qubits
-        I = numpy.eye(2,dtype=numpy.complex)
-        Hm = numpy.zeros((2**nq, 2**nq), dtype=numpy.complex)
+        I = numpy.eye(2, dtype=numpy.complex)
+        Hm = numpy.zeros((2 ** nq, 2 ** nq), dtype=numpy.complex)
 
-        for key,val in self.items():
+        for key, val in self.items():
             term = [I] * nq
 
             for ind, op in key:
@@ -338,7 +345,7 @@ class QubitHamiltonian:
         max_index = 0
         for key, value in self.items():
             indices = [self.index(k) for k in key]
-            if len(indices) > 0: # for the case that there is a 1 in the operator
+            if len(indices) > 0:  # for the case that there is a 1 in the operator
                 max_index = max(max_index, max(indices))
         return max_index + 1
 
@@ -352,7 +359,7 @@ class QubitHamiltonian:
     @paulistrings.setter
     def paulistrings(self, other):
         """
-        Reassign with OpenVQE PauliString format
+        Reassign with Tequila PauliString format
         :param other: list of PauliStrings
         :return: self for chaining
         """
