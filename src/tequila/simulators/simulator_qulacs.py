@@ -38,8 +38,10 @@ class BackenHandlerQulacs(BackendHandler):
         assert (len(gate.control) == 1)
         if gate.name.upper() == "X":
             getattr(circuit, "add_CNOT_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
-        if gate.name.upper() == "Z":
+        elif gate.name.upper() == "Z":
             getattr(circuit, "add_CZ_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
+        else:
+            raise TequilaQulacsException("Qulacs does not know the gate: " + str(gate))
 
     def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         angle = -gate.angle()
