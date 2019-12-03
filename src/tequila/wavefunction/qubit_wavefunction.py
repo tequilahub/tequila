@@ -14,7 +14,6 @@ if typing.TYPE_CHECKING:
     # don't need those structures, just for convenient type hinting
     from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian, PauliString
 
-
 class QubitWaveFunction:
     """
     Store Wavefunction as dictionary of comp. basis state and complex numbers
@@ -80,12 +79,22 @@ class QubitWaveFunction:
     def values(self):
         return self.state.values()
 
-    def __getitem__(self, item):
-        return self.state[item]
+    @staticmethod
+    def convert_bitstring(key:typing.Union[BitString,numbers.Integral]):
+        if isinstance(key, numbers.Integral):
+            return BitString.from_int(integer=key)
+        else:
+            return key
 
-    def __setitem__(self, key, value):
-        self._state[key] = value
+    def __getitem__(self, item: BitString):
+        return self.state[self.convert_bitstring(item)]
+
+    def __setitem__(self, key: BitString, value: numbers.Number):
+        self._state[self.convert_bitstring(key)] = value
         return self
+
+    def __contains__(self, item: BitString):
+        return self.convert_bitstring(item) in self.keys()
 
     def __len__(self):
         return len(self.state)

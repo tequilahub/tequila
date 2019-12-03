@@ -1,12 +1,10 @@
-
 import qulacs
 from tequila import TequilaException
-from tequila.utils.bitstrings import BitNumbering
+from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
 from tequila.simulators.simulatorbase import BackendHandler
 from tequila.circuit import QCircuit
-
 
 """
 todo: overwrite simulate_objective for this simulators, might be faster
@@ -14,13 +12,13 @@ todo: overwrite simulate_objective for this simulators, might be faster
 Qulacs uses different Rotational Gate conventions: Rx(angle) = exp(i angle/2 X) instead of exp(-i angle/2 X)
 """
 
+
 class TequilaQulacsException(TequilaException):
     def __str__(self):
         return "Error in qulacs backend:" + self.message
 
 
 class BackenHandlerQulacs(BackendHandler):
-
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = True
@@ -68,14 +66,12 @@ class BackenHandlerQulacs(BackendHandler):
 
     def make_qubit_map(self, abstract_circuit: QCircuit):
         qubit_map = dict()
-        for i,q in enumerate(abstract_circuit.qubits):
+        for i, q in enumerate(abstract_circuit.qubits):
             qubit_map[q] = i
         return qubit_map
 
 
-
 class SimulatorQulacs(SimulatorBase):
-
     numbering: BitNumbering = BitNumbering.LSB
 
     backend_handler = BackenHandlerQulacs()
@@ -90,12 +86,11 @@ class SimulatorQulacs(SimulatorBase):
             count += 1
 
         n_qubits = len(abstract_circuit.qubits)
-
         state = qulacs.QuantumState(n_qubits)
-        state.set_computational_basis(initial_state)
+        lsb = BitStringLSB.from_int(initial_state, nbits=n_qubits)
+        state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
         circuit.update_quantum_state(state)
 
         wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
-        return SimulatorReturnType(backend_result=state, wavefunction=wfn, circuit=circuit, abstract_circuit=abstract_circuit)
-
-
+        return SimulatorReturnType(backend_result=state, wavefunction=wfn, circuit=circuit,
+                                   abstract_circuit=abstract_circuit)

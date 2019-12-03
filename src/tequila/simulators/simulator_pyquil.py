@@ -1,7 +1,7 @@
 from tequila.simulators.simulatorbase import SimulatorBase, QCircuit, TequilaException, \
     SimulatorReturnType, BackendHandler
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila import BitString, BitNumbering
+from tequila import BitString, BitStringLSB, BitNumbering
 import subprocess
 
 import pyquil
@@ -82,9 +82,10 @@ class SimulatorPyquil(SimulatorBase):
         try:
             simulator = pyquil.api.WavefunctionSimulator()
             circuit = self.create_circuit(abstract_circuit=abstract_circuit)
-            initial_state = BitString.from_int(integer=initial_state)
+            n_qubits = len(abstract_circuit.qubits)
+            msb = BitString.from_int(initial_state, nbits=n_qubits)
             iprep = pyquil.Program()
-            for i, val in enumerate(initial_state):
+            for i, val in enumerate(msb.array):
                 if val > 0:
                     iprep += pyquil.gates.X(i)
 
