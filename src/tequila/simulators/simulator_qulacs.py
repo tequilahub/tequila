@@ -21,7 +21,7 @@ class TequilaQulacsException(TequilaException):
 class BackenHandlerQulacs(BackendHandler):
     recompile_swap = False
     recompile_multitarget = True
-    recompile_controlled_rotation = True
+    recompile_controlled_rotation = False
     recompile_exponential_pauli = True
 
     def fast_return(self, abstract_circuit):
@@ -35,22 +35,41 @@ class BackenHandlerQulacs(BackendHandler):
         getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]])
 
     def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        assert (len(gate.control) == 1)
-        if gate.name.upper() == "X":
+        #assert (len(gate.control) == 1)
+        if len(gate.control) == 1 and gate.name.upper() == "X":
             getattr(circuit, "add_CNOT_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
-        elif gate.name.upper() == "Z":
+        elif len(gate.control) == 1 and gate.name.upper() == "Z":
             getattr(circuit, "add_CZ_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
         else:
-            raise TequilaQulacsException("Qulacs does not know the gate: " + str(gate))
+            try:
+                qulacs_gate = getattr(qulacs.gate, gate.name.upper())(qubit_map[gate.target[0]])
+                qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
+                for c in gate.control:
+                    qulacs_gate.add_control_qubit(qubit_map[c], 1)
+                circuit.add_gate(qulacs_gate)
+            except:
+                raise TequilaQulacsException("Qulacs does not know the controlled gate: " + str(gate))
 
     def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         angle = -gate.angle()
         if hasattr(angle, "imag") and angle.imag == 0.0:
             angle = float(angle.real)
+        else:
+            raise TequilaQulacsException("Angle as imaginary part; gate=" + str(gate))
         getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], angle)
 
     def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        raise TequilaQulacsException("No controlled rotation supported")
+        angle = -gate.angle()
+        if hasattr(angle, "imag") and angle.imag == 0.0:
+            angle = float(angle.real)
+        else:
+            raise TequilaQulacsException("Angle as imaginary part; gate=" + str(gate))
+        qulacs_gate = getattr(qulacs.gate, gate.name.upper())(qubit_map[gate.target[0]], angle)
+        qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
+        for c in gate.control:
+            qulacs_gate.add_control_qubit(qubit_map[c], 1)
+        circuit.add_gate(qulacs_gate)
+
 
     def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         if gate.power() == 1:
