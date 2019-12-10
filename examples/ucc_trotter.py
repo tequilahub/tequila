@@ -43,7 +43,7 @@ if __name__ == "__main__":
     print(angles)
 
     # compute full energy
-    E = pick_simulator(demand_full_wfn=True)().simulate_objective(objective=O)
+    E = pick_simulator(demand_full_wfn=True)().simulate_expectationvalue(E=O)
 
     print("Energy = ", E)
     print("CCSD Parameters:\n", U.extract_variables())

@@ -101,12 +101,12 @@ def test_gradient_UY_HX_wfnsim(simulator, angle, controlled, silent=True):
     else:
         U = gates.Ry(target=qubit, angle=angle)
     O = Objective(unitaries=U, observable=H)
-    E = simulator().simulate_objective(objective=O)
+    E = simulator().simulate_expectationvalue(E=O)
     dO = grad(obj=O)
     print(dO)
     assert (len(dO) == 1)
     for k,v in dO.items():
-        dE = simulator().simulate_objective(objective=v)
+        dE = simulator().simulate_expectationvalue(E=v)
     E = numpy.float(E)  # for isclose
     dE = numpy.float(dE)  # for isclose
     assert (numpy.isclose(E, numpy.sin(angle()), atol=0.0001))
@@ -139,11 +139,11 @@ def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
     else:
         U = gates.Rx(target=qubit, angle=angle)
     O = Objective(unitaries=U, observable=H)
-    E = simulator().simulate_objective(objective=O)
+    E = simulator().simulate_expectationvalue(E=O)
     dO = grad(obj=O)
     assert (len(dO) == 1)
     for k,v in dO.items():
-        dE = simulator().simulate_objective(objective=v)
+        dE = simulator().simulate_expectationvalue(E=v)
         assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.0001))
         assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.0001))
     if not silent:

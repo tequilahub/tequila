@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
         # compute the energy
         if use_full_wavefunction_simulation:
-            Enew = simulator.simulate_objective(objective=O)
+            Enew = simulator.simulate_expectationvalue(E=O)
         else:
             Enew = simulator.measure_objective(objective=O, samples=samples)
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         dE = dict()
         for k in dO.keys():
             if use_full_wavefunction_simulation:
-                dE[k] = simulator.simulate_objective(objective=dO[k])
+                dE[k] = simulator.simulate_expectationvalue(E=dO[k])
             else:
                 dE[k] = simulator.measure_objective(objective=dO[k], samples=samples)
         print("dE  =", dE)

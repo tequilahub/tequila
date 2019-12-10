@@ -20,9 +20,9 @@ b = Variable(name='b', value=0.0)
 U = gates.Ry(target=0, angle=a/2) + gates.Ry(target=0, angle=b/2)
 U.update_variables({'a': 0.0})
 
-E = simulators.SimulatorQulacs().simulate_objective(objective=Objective(unitaries=U, observable=H))
+E = simulators.SimulatorQulacs().simulate_expectationvalue(E=Objective(unitaries=U, observable=H))
 dO = grad(Objective(unitaries=U, observable=H))['a']
-dE = simulators.SimulatorQulacs().simulate_objective(objective=dO)
+dE = simulators.SimulatorQulacs().simulate_expectationvalue(E=dO)
 print("E=", E)
 print("dE=", dE)
 

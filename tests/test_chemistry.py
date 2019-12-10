@@ -72,7 +72,7 @@ def do_test_ucc(qc_interface, parameters, result, trafo):
     H = psi4_interface.make_hamiltonian()
     O = Objective(observable=H, unitaries=U)
     Simulator = pick_simulator(samples=None)
-    energy = Simulator().simulate_objective(objective=O)
+    energy = Simulator().simulate_expectationvalue(E=O)
     assert (numpy.isclose(energy, result))
 
 
@@ -106,5 +106,5 @@ def do_test_mp2(qc_interface, parameters, result):
     O = Objective(observable=H, unitaries=U)
     Simulator = pick_simulator(samples=None)
 
-    energy = Simulator().simulate_objective(objective=O)
+    energy = Simulator().simulate_expectationvalue(E=O)
     assert (numpy.isclose(energy, result))

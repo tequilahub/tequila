@@ -1,4 +1,6 @@
-import numpy, typing, copy
+import typing, copy, numbers
+from jax import numpy as numpy
+from tequila import paulis
 
 """
 Preliminary structure to carry information over to backends
@@ -6,122 +8,129 @@ Needs to be restructured and clarified but currently does the job
 """
 
 
-# todo A lot!
+class ExpectationValue:
+
+    @property
+    def U(self):
+        if self._unitary is None:
+            return None
+        else:
+            return self._unitary
+
+    @property
+    def H(self):
+        if self._hamiltonian is None:
+            return paulis.QubitHamiltonian.init_unit()
+        else:
+            return self._hamiltonian
+
+    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+        result = dict()
+        if self.U is not None:
+            result = self.U.extract_variables()
+        return result
+
+    def update_variables(self, variables: typing.Dict[str, numbers.Real]):
+        if self.U is not None:
+            self.U.update_variables(variables)
+
+    def __init__(self, U=None, H=None):
+        self._unitary = copy.deepcopy(U)
+        self._hamiltonian = copy.deepcopy(H)
+
+
+class JoinedTransformation:
+
+    def __init__(self, left, right, split, op):
+        self.split = split
+        self.left = left
+        self.right = right
+        self.op = op
+
+    def __call__(self, E, *args, **kwargs):
+        E_left = E[:self.split]
+        E_right = E[self.split:]
+        return self.op(self.left(E_left, *args, **kwargs), self.right(E_right, *args, **kwargs))
+
 
 class Objective:
 
-    @property
-    def unitaries(self):
-        if self._unitaries is None:
-            return []
-        else:
-            return self._unitaries
+    def extract_variables(self):
+        variables = dict()
+        for E in self._expectationvalues:
+            variables = {**variables, **E.extract_variables()}
+        return variables
 
-    @unitaries.setter
-    def unitaries(self, u):
-        if u is None:
-            self._unitaries = u
-        elif hasattr(u, "__iter__") or hasattr(u, "__get_item__"):
-            self._unitaries = u
-        else:
-            self._unitaries = [u]
-
-    def extract_variables(self) -> typing.Dict[str, float]:
-        """
-        :return: All parameters of the objective
-        """
-        parameters = dict()
-        for U in self.unitaries:
-            parameters = {**parameters, **U.extract_variables()}
-        return parameters
-
-    def update_variables(self, variables: typing.Dict[str, float]):
-        """
-        Update parameters of all unitaries
-        :param variables: parameters to update
-        :return: self for chaining
-        """
-        for U in self.unitaries:
-            U.update_variables(variables=variables)
+    def update_variables(self, variables=dict):
+        for E in self._expectationvalues:
+            E.update_variables(variables=variables)
         return self
 
-    def to_backend(self, simulator):
-        out = Objective(unitaries=[], observable=[])
-        for U in self.unitaries:
-            out.unitaries += [simulator.backend_handler.recompile(abstract_circuit=U.decompose())]
-            out.unitaries[-1].weight = U.weight
-        out.observable = self.observable
-        return out
+    def __init__(self, expectationvalues: typing.Iterable[ExpectationValue], transformation: typing.Callable = None):
+        self._expectationvalues = tuple(expectationvalues)
+        self._transformation = transformation
 
-    def __init__(self, observable=None, unitaries=None):
-        self.unitaries = copy.deepcopy(unitaries)
-        self.observable = copy.deepcopy(observable)
+    @classmethod
+    def ExpectationValue(cls, H=None, U=None):
+        """
+        Initialize a wrapped expectationvalue directly as Objective
+        """
+        E = ExpectationValue(H=H, U=U)
+        return Objective(expectationvalues=[E])
 
-    def __eq__(self, other):
+    @property
+    def transformation(self) -> typing.Callable:
+        if self._transformation is None:
+            return numpy.sum
+        else:
+            return self._transformation
 
-        if len(self.unitaries) != len(other.unitaries):
-            return False
-
-        for i, U in enumerate(self.unitaries):
-            if U != other.unitaries[i]:
-                print("oha \n", U, "\n", other.unitaries[i])
-                return False
-
-        return True
-
-    def __add__(self, other):
-        assert (self.observable == other.observable)
-        return Objective(unitaries=self.unitaries + other.unitaries, observable=self.observable)
+    @property
+    def expectationvalues(self) -> typing.Tuple:
+        if self._expectationvalues is None:
+            return tuple()
+        else:
+            return self._expectationvalues
 
     def __mul__(self, other):
-        # todo comming soon
-        raise NotImplementedError("* not implemented yet")
+        return self.binary_operator(left=self, right=other, op=numpy.multiply)
 
-    def objective_function(self, values, weights=None):
-        """
-        The abstract function which defines the operation performed on the expectation values
-        The default is summation
-        Overwrite this function to get different functions
+    def __add__(self, other):
+        return self.binary_operator(left=self, right=other, op=numpy.add)
 
-        Potentially better Idea for the future: Maybe just use objectives as primitives, since they will have +,-,*,...,
-        So the functions can be created and differentiated from the outside
-        Then overwriting this functions is not necessary anymore
+    def __sub__(self, other):
+        return self.binary_operator(left=self, right=other, op=numpy.subtract)
 
-        :param values: Measurement results corresponding to <Psi_i|H|Psi_i> with |Psi_i> = U_i|Psi>
-        :param weights: weights on the measurements
-        :return:
-        """
-        if weights is None:
-            weights = numpy.asarray([1] * len(values))
-        else:
-            weights = numpy.asarray(weights)
-        values = numpy.asarray(values)
-        assert (len(weights) == len(values))
-        return weights.dot(values)
+    def __truediv__(self, other):
+        return self.binary_operator(left=self, right=other, op=numpy.true_divide)
+
+    def __neg__(self):
+        return self.unary_operator(left=self, op=numpy.negative)
+
+    def __pow__(self, power):
+        return self.unary_operator(left=self, op=lambda E: numpy.float_power(E, power))
+
+    def __rpow__(self, other):
+        raise NotImplementedError("not yet")
+
+    def __rmul__(self, other):
+        return Objective(expectationvalues=self.expectationvalues,
+                         transformation=lambda E: numpy.multiply(self.transformation(E),other))
+
+    def __radd__(self, other):
+        return self.unary_operator(left=self, op=lambda E: other + E)
+
+    @classmethod
+    def unary_operator(cls, left, op):
+        return Objective(expectationvalues=left.expectationvalues,
+                         transformation=lambda E: op(left.transformation(E)))
+
+    @classmethod
+    def binary_operator(self, left, right, op):
+        split_at = len(left.expectationvalues)
+        return Objective(expectationvalues=left.expectationvalues + right.expectationvalues,
+                         transformation=JoinedTransformation(left=left.transformation, right=right.transformation,
+                                                             split=split_at, op=op))
 
     def __repr__(self):
-        nu = 0
-        if self.unitaries is not None:
-            nu = len(self.unitaries)
-        no = "no "
-        if self.observable is not None:
-            no = "with "
-        return "Objective(" + str(nu) + " unitaries, " + str(no) + " observable"
-
-    def __str__(self):
-
-        nu = "no"
-        if self.unitaries is not None:
-            nu = str(len(self.unitaries))
-
-        result = "Objective " + nu + " Unitaries:\n"
-        for U in self.unitaries:
-            result += str(U) + "\n"
-
-        if self.observable is None:
-            result += "No Observable\n"
-        else:
-            result += "Observable:\n"
-            result += str(self.observable)
-
-        return result
+        return "Objective with " + str(len(self.expectationvalues)) + " expectationvalues"

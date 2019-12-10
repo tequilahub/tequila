@@ -64,7 +64,7 @@ class OptimizerSciPy(Optimizer):
 
     def __get_eval_function(self, simulator) -> _EvalContainer:
         if self.samples is None:
-            return simulator.simulate_objective
+            return simulator.simulate_expectationvalue
         else:
             return lambda objective: simulator.measure_objective(objective=objective, samples=self.samples)
 

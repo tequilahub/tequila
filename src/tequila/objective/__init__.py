@@ -1,2 +1,2 @@
-from tequila.objective.objective import Objective
+from tequila.objective.objective import Objective, ExpectationValue
 

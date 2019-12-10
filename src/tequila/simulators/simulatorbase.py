@@ -5,7 +5,7 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
 from tequila import BitString
-from tequila.objective import Objective
+from tequila.objective import Objective, ExpectationValue
 from tequila.simulators.heralding import HeraldingABC
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
@@ -107,8 +107,7 @@ class SimulatorBase:
         self._heralding = heralding
         self.__decompose_and_compile = True
 
-    def __call__(self, objective: typing.Union[Objective, QCircuit], samples: int = None, **kwargs) \
-            -> typing.Union[numbers.Real, SimulatorReturnType]:
+    def __call__(self, objective: typing.Union[QCircuit, Objective, ExpectationValue], samples: int = None, **kwargs) -> numbers.Real:
         """
         :param objective: Objective or simple QCircuit
         :param samples: Number of Samples to evaluate, None means full wavefunction simulation
@@ -121,9 +120,14 @@ class SimulatorBase:
                 return self.simulate_wavefunction(abstract_circuit=objective)
             else:
                 return self.run(abstract_circuit=objective, samples=samples)
+        elif isinstance(objective, ExpectationValue):
+            if samples is None:
+                return self.simulate_expectationvalue(E=objective)
+            else:
+                NotImplementedError("not here yet")
         else:
             if samples is None:
-                return self.simulate_objective(objective=objective, **kwargs)
+                return self.simulate_objective(objective=objective)
             else:
                 return self.measure_objective(objective=objective, samples=samples, **kwargs)
 
@@ -165,8 +169,7 @@ class SimulatorBase:
         # maps from reduced register to full register
         keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
 
-        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit,
-                                               initial_state=keymap.inverted(initial_state).integer)
+        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=keymap.inverted(initial_state).integer)
         result.wavefunction.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
@@ -244,31 +247,41 @@ class SimulatorBase:
         else:
             return final_E
 
-    def simulate_objective(self, objective: Objective, return_simulation_data: bool = False) -> numbers.Real:
+    def simulate_expectationvalue(self, E: ExpectationValue, return_simulation_data: bool = False) -> numbers.Real:
         final_E = 0.0
         data = []
-        H = objective.observable
-        for U in objective.unitaries:
-            # The hamiltonian can be defined on more qubits as the unitaries
-            qubits_h = objective.observable.qubits
-            qubits_u = U.qubits
-            all_qubits = list(set(qubits_h) | set(qubits_u))
-            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
-            simresult = self.simulate_wavefunction(abstract_circuit=U)
-            wfn = simresult.wavefunction.apply_keymap(keymap=keymap)
-            final_E += U.weight * wfn.compute_expectationvalue(operator=H)
-            if return_simulation_data:
-                data.append(simresult)
+        H = E.H
+        U = E.U
+        # The hamiltonian can be defined on more qubits as the unitaries
+        qubits_h = H.qubits
+        qubits_u = U.qubits
+        all_qubits = list(set(qubits_h) | set(qubits_u))
+        keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
+        simresult = self.simulate_wavefunction(abstract_circuit=U)
+        wfn = simresult.wavefunction.apply_keymap(keymap=keymap)
+        final_E += wfn.compute_expectationvalue(operator=H)
+        if return_simulation_data:
+            data.append(simresult)
 
-        # in principle complex weights are allowed, but it probably will never occur
-        # however, for now here is the type conversion to not confuse optimizers
-        if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
+        # type conversion to not confuse optimizers
+        if hasattr(final_E, "imag"):
+            assert(numpy.isclose(final_E.imag, 0.0))
             final_E = float(final_E.real)
 
         if return_simulation_data:
             return final_E, data
         else:
             return final_E
+
+    def simulate_objective(self, objective: Objective):
+        # simulate all expectation values
+        # TODO easy to parallelize
+        E = []
+        for Ei in objective._expectationvalues:
+            E.append(self.simulate_expectationvalue(E=Ei))
+        # return evaluated result
+        return objective.transformation(E)
+
 
     def measure_paulistring(self, abstract_circuit: QCircuit, paulistring, samples: int = 1):
         # make basis change

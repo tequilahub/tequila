@@ -42,7 +42,7 @@ if __name__ == "__main__":
     angles = O.extract_variables()
 
     # compute energy
-    E = simulator().simulate_objective(objective=O)
+    E = simulator().simulate_expectationvalue(E=O)
 
     print("Energy = ", E)
 

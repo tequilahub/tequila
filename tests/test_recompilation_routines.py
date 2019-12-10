@@ -46,22 +46,22 @@ def test_controlled_rotations():
 
 def test_basis_change():
     for angle in list(uniform(0, 2 * pi, 5)):
-        EX = SimulatorCirq().simulate_objective(
-            objective=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PX(0)))
-        EY = SimulatorCirq().simulate_objective(
-            objective=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PY(0)))
-        EZ = SimulatorCirq().simulate_objective(
-            objective=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PZ(0)))
+        EX = SimulatorCirq().simulate_expectationvalue(
+            E=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PX(0)))
+        EY = SimulatorCirq().simulate_expectationvalue(
+            E=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PY(0)))
+        EZ = SimulatorCirq().simulate_expectationvalue(
+            E=Objective(unitaries=[gates.Rx(target=0, angle=angle)], observable=PZ(0)))
 
-        EXX = SimulatorCirq().simulate_objective(
-            objective=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=0)],
-                                observable=PZ(0)))
-        EYY = SimulatorCirq().simulate_objective(
-            objective=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=1)],
-                                observable=PZ(0)))
-        EZZ = SimulatorCirq().simulate_objective(
-            objective=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=2)],
-                                observable=PZ(0)))
+        EXX = SimulatorCirq().simulate_expectationvalue(
+            E=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=0)],
+                        observable=PZ(0)))
+        EYY = SimulatorCirq().simulate_expectationvalue(
+            E=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=1)],
+                        observable=PZ(0)))
+        EZZ = SimulatorCirq().simulate_expectationvalue(
+            E=Objective(unitaries=[gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=2)],
+                        observable=PZ(0)))
 
         assert (isclose(EX, EXX, atol=1.e-4))
         assert (isclose(EY, EYY, atol=1.e-4))
