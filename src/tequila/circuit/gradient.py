@@ -121,10 +121,12 @@ def grad(obj, variable: str = None, no_compile=False):
     if variable is None:
         variable = compiled.extract_variables()
     if not isinstance(variable, str):
-        return [grad(obj=compiled, variable=v, no_compile=True) for v in variable]
+        return {v : grad(obj=compiled, variable=v, no_compile=True) for v in variable}
 
     if isinstance(obj, ExpectationValue):
         return __grad_expectationvalue(E=compiled, variable=variable)
+    elif hasattr(obj, "is_expectationvalue") and obj.is_expectationvalue():
+        return __grad_expectationvalue(E=compiled.expectationvalues[-1], variable=variable)
     elif isinstance(obj, Objective):
         return __grad_objective(objective=compiled, variable=variable)
     else:
@@ -139,7 +141,7 @@ def __grad_objective(objective: Objective, variable: str = None):
         if variable not in E.extract_variables():
             continue
         df = jax.jit(jax.grad(transformation, argnums=i))
-        outer = Objective(expectationvalues=expectationvalues, transformation=df) # this seems to be a problem
+        outer = Objective(expectationvalues=expectationvalues, transformation=df)
         inner = grad(E, variable=variable)
         if dO is None:
             dO = outer * inner

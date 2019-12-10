@@ -70,6 +70,9 @@ class Objective:
         self._expectationvalues = tuple(expectationvalues)
         self._transformation = transformation
 
+    def is_expectationvalue(self):
+        return len(self.expectationvalues) == 1 and self._transformation is None
+
     @classmethod
     def ExpectationValue(cls, H=None, U=None):
         """
