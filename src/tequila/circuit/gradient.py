@@ -135,11 +135,11 @@ def __grad_objective(objective: Objective, variable: str = None):
     expectationvalues = objective.expectationvalues
     transformation = objective.transformation
     dO = None
-    df = jax.jit(jax.grad(transformation))
     for i, E in enumerate(expectationvalues):
         if variable not in E.extract_variables():
             continue
-        outer = Objective(expectationvalues=expectationvalues, transformation=lambda E: df(E)[i]) # this seems to be a problem
+        df = jax.jit(jax.grad(transformation, argnums=i))
+        outer = Objective(expectationvalues=expectationvalues, transformation=df) # this seems to be a problem
         inner = grad(E, variable=variable)
         if dO is None:
             dO = outer * inner

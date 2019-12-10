@@ -280,7 +280,7 @@ class SimulatorBase:
         for Ei in objective._expectationvalues:
             E.append(self.simulate_expectationvalue(E=Ei))
         # return evaluated result
-        return objective.transformation(E)
+        return objective.transformation(*E)
 
 
     def measure_paulistring(self, abstract_circuit: QCircuit, paulistring, samples: int = 1):

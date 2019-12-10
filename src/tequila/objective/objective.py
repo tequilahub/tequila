@@ -47,10 +47,10 @@ class JoinedTransformation:
         self.right = right
         self.op = op
 
-    def __call__(self, E, *args, **kwargs):
-        E_left = E[:self.split]
-        E_right = E[self.split:]
-        return self.op(self.left(E_left, *args, **kwargs), self.right(E_right, *args, **kwargs))
+    def __call__(self, *args, **kwargs):
+        E_left = args[:self.split]
+        E_right = args[self.split:]
+        return self.op(self.left(*E_left, **kwargs), self.right(*E_right, **kwargs))
 
 
 class Objective:
@@ -111,26 +111,34 @@ class Objective:
         return self.unary_operator(left=self, op=lambda E: numpy.float_power(E, power))
 
     def __rpow__(self, other):
-        raise NotImplementedError("not yet")
+        return self.unary_operator(left=self, op=lambda E: other ** E)
 
     def __rmul__(self, other):
-        return Objective(expectationvalues=self.expectationvalues,
-                         transformation=lambda E: numpy.multiply(self.transformation(E),other))
+        return self.unary_operator(left=self, op=lambda E: numpy.multiply(other, E))
 
     def __radd__(self, other):
-        return self.unary_operator(left=self, op=lambda E: other + E)
+        return self.unary_operator(left=self, op=lambda E: numpy.add(other, E))
+
+    def __rtruediv__(self, other):
+        return self.unary_operator(left=self, op=lambda E: numpy.true_divide(other, E))
+
+    def __invert__(self):
+        return self.unary_operator(left=self, op=lambda E: numpy.power(E, -1))
 
     @classmethod
     def unary_operator(cls, left, op):
         return Objective(expectationvalues=left.expectationvalues,
-                         transformation=lambda E: op(left.transformation(E)))
+                         transformation=lambda *args: op(left.transformation(*args)))
 
     @classmethod
-    def binary_operator(self, left, right, op):
-        split_at = len(left.expectationvalues)
-        return Objective(expectationvalues=left.expectationvalues + right.expectationvalues,
-                         transformation=JoinedTransformation(left=left.transformation, right=right.transformation,
-                                                             split=split_at, op=op))
+    def binary_operator(cls, left, right, op):
+        if isinstance(right, numbers.Number):
+            return cls.unary_operator(left=left, op=lambda E: op(E, right))
+        else:
+            split_at = len(left.expectationvalues)
+            return Objective(expectationvalues=left.expectationvalues + right.expectationvalues,
+                             transformation=JoinedTransformation(left=left.transformation, right=right.transformation,
+                                                                 split=split_at, op=op))
 
     def __repr__(self):
         return "Objective with " + str(len(self.expectationvalues)) + " expectationvalues"
