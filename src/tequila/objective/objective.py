@@ -125,3 +125,15 @@ class Objective:
             result += str(self.observable)
 
         return result
+
+    def with_parameters(self, variables: typing.Dict[str, float]):
+        """
+        change parameters of all unitaries and return a new objective
+        :param parameters: new parameters to overwrite the old
+        :return: objective, with the same unitaries as self, but with new parameters
+        """
+
+        clone=copy.deepcopy(self)
+        for U in clone.unitaries:
+            U.update_variables(variables=variables)
+        return clone
