@@ -10,7 +10,7 @@ from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H, iSWAP
 from numpy import pi, random, isclose, sqrt
 from tequila.hamiltonian import PauliString
-from tequila.objective import Objective
+from tequila.objective import Objective, ExpectationValue
 from tequila.circuit.gradient import grad
 from tequila.circuit import Variable
 import pytest
@@ -98,28 +98,32 @@ def test_expectation_values():
 
     state = simulator.simulate_wavefunction(abstract_circuit=U)
 
-    O = Objective(observable=hamiltonian, unitaries=U)
+    O = ExpectationValue(H=hamiltonian, U=U)
 
     E = simulator.simulate_expectationvalue(E=O)
     assert (isclose(E, 1.0 / sqrt(2)))
 
     U1 = X(0)
     U2 = Y(0)
-    O = Objective(observable=hamiltonian, unitaries=[U1, U2])
-    E = simulator.simulate_expectationvalue(E=O)
+    e1=ExpectationValue(U=U1,H=hamiltonian)
+    e2=ExpectationValue(U=U2,H=hamiltonian)
+    O = e1+e2
+    E = simulator.simulate_objective(objective=O)
     assert (isclose(E, 0.0))
 
     dU1 = Ry(target=0, angle=pi / 2 + pi / 2)
-    dU1.weight = 0.5
+    dw1 = 0.5
     dU2 = Ry(target=0, angle=pi / 2 - pi / 2)
-    dU2.weight = -0.5
-    O = Objective(observable=hamiltonian, unitaries=[dU1, dU2])
-    dE = simulator.simulate_expectationvalue(E=O)
+    dw2 = -0.5
+    de1=ExpectationValue(H=hamiltonian,U=dU1)
+    de2 = ExpectationValue(H=hamiltonian, U=dU2)
+    O = dw1*de1 +dw2*de2
+    dE = simulator.simulate_objective(objective=O)
     assert (isclose(dE, 0.0))
 
     U = Ry(target=0, angle=Variable(name="angle",value=pi / 2))
     dU = grad(U)
     for k,v in dU.items():
         v.observable = hamiltonian
-        dEx = simulator.simulate_expectationvalue(E=v)
+        dEx = simulator.simulate_objective(objective=v)
     assert (isclose(dEx, dE))

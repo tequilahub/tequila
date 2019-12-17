@@ -50,11 +50,11 @@ if __name__ == "__main__":
     for iter in range(max_iter):
         print(angles)
         # initialize an objective and compute Energy and gradient
-        O = Objective(unitaries=U, observable=H)
+        O = Objective.ExpectationValue(U, H)
 
         # compute the energy
         if use_full_wavefunction_simulation:
-            Enew = simulator.simulate_expectationvalue(E=O)
+            Enew = simulator.simulate_expectationvalue(E=O.expectationvalues[0])
         else:
             Enew = simulator.measure_objective(objective=O, samples=samples)
 

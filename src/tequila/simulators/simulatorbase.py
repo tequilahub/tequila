@@ -222,23 +222,44 @@ class SimulatorBase:
         raise TequilaException(
             "called from base class of simulators, or non-supported operation for this backend")
 
-    def measure_objective(self, objective: Objective, samples: int, return_simulation_data: bool = False) -> float:
+    def measure_expectationvalue(self, E: ExpectationValue,samples: int,return_simulation_data: bool = False) -> numbers.Real:
+        H = E.H
+        U = E.U
+        # The hamiltonian can be defined on more qubits as the unitaries
+        result_data = {}
         final_E = 0.0
+        for ps in H.paulistrings:
+            Etmp, tmp = self.measure_paulistring(abstract_circuit=U, paulistring=ps, samples=samples)
+            final_E += Etmp
+            result_data[str(ps)] = tmp
+
+        # type conversion to not confuse optimizers
+        if hasattr(final_E, "imag"):
+            assert(numpy.isclose(final_E.imag, 0.0))
+            final_E = float(final_E.real)
+
+        if return_simulation_data:
+            return final_E, result_data
+        else:
+            return final_E
+
+    def measure_objective(self, objective: Objective, samples: int, return_simulation_data: bool = False) -> float:
+        elist = []
         data = []
-        for U in objective.unitaries:
-            weight = U.weight
-            E = 0.0
+        for ex in objective.expectationvalues:
             result_data = {}
-            for ps in objective.observable.paulistrings:
-                Etmp, tmp = self.measure_paulistring(abstract_circuit=U, paulistring=ps, samples=samples)
-                E += Etmp
+            evalue=0.0
+            for ps in ex.H.paulistrings:
+                Etmp, tmp = self.measure_paulistring(abstract_circuit=ex.U, paulistring=ps, samples=samples)
+                evalue += Etmp
                 result_data[str(ps)] = tmp
-            final_E += weight * E
+            elist.append(evalue)
             if return_simulation_data:
                 data.append(tmp)
 
         # in principle complex weights are allowed, but it probably will never occur
         # however, for now here is the type conversion to not confuse optimizers
+        final_E=objective.transformation(*elist)
         if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
             final_E = float(final_E.real)
 
@@ -288,7 +309,7 @@ class SimulatorBase:
         basis_change = QCircuit()
         for idx, p in paulistring.items():
             basis_change += change_basis(target=idx, axis=p)
-        # make measurment instruction
+        # make measurement instruction
         measure = QCircuit()
         qubits = [idx[0] for idx in paulistring.items()]
         if len(qubits) == 0:

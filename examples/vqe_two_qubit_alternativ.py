@@ -46,7 +46,7 @@ if __name__ == "__main__":
     U += gates.Rx(target=0, angle=1.234) # this gate will not be recognized as parametrized (it also has no effect on the energy in this example)
 
     # initialize the objective
-    O = Objective(unitaries=U, observable=H)
+    O = Objective.ExpectationValue(U=U, H=H)
 
     # extract parameters from circuit
     angles = U.extract_variables()
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     # Optimize
     optimizer = OptimizerSciPy(simulator=simulator, samples=samples, method=method)
-    E, angles = optimizer(objective=O, initial_values=angles)
+    out = optimizer(objective=O, initial_values=angles)
 
     # plot the history
     optimizer.history.plot()
@@ -70,11 +70,11 @@ if __name__ == "__main__":
     optimizer.history.plot(property=['angles', 'energies'], key=['a', 'b'])
 
     # plot other results
-    print("final angles are:\n", angles)
-    print("final energy is :\n", E)
+    print("final angles are:\n", out.angles)
+    print("final energy is :\n", out.energy)
     print("iterations      :", optimizer.history.iterations)
 
-    # some inntuitive ways to deal with the history
+    # some intuitive ways to deal with the history
     history = optimizer.history
     all_energies = history.energies
     all_angles = history.angles

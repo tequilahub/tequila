@@ -37,13 +37,13 @@ if __name__ == "__main__":
     print(U)
 
     # make an objective
-    O = Objective(observable=H, unitaries=U)
+    O = Objective.ExpectationValue(H=H,U=U)
 
     angles = O.extract_variables()
     print(angles)
 
     # compute full energy
-    E = pick_simulator(demand_full_wfn=True)().simulate_expectationvalue(E=O)
+    E = pick_simulator(demand_full_wfn=True)().simulate_objective(O)
 
     print("Energy = ", E)
     print("CCSD Parameters:\n", U.extract_variables())

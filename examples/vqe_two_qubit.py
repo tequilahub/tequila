@@ -70,7 +70,7 @@ if __name__ == "__main__":
     U += gates.Rx(target=0,angle=1.234)  # this gate will not be recognized as parametrized (it also has no effect on the energy in this example)
 
     # initialize the objective
-    O = Objective(unitaries=U, observable=H)
+    O = Objective.ExpectationValue(U=U, H=H)
 
     # Extract parameters from circuit and set initial values
     # not necessary if already initialized above

@@ -117,17 +117,18 @@ def grad(obj, variable: str = None, no_compile=False):
         compiled = compile_controlled_rotation(gate=compiled)
     else:
         compiled = obj
-
+    if type(compiled) is QCircuit:
+        compiled=ExpectationValue(U=compiled)
     if variable is None:
         variable = compiled.extract_variables()
     if not isinstance(variable, str):
         return {v : grad(obj=compiled, variable=v, no_compile=True) for v in variable}
 
-    if isinstance(obj, ExpectationValue):
+    if isinstance(compiled, ExpectationValue):
         return __grad_expectationvalue(E=compiled, variable=variable)
-    elif hasattr(obj, "is_expectationvalue") and obj.is_expectationvalue():
+    elif hasattr(compiled, "is_expectationvalue") and obj.is_expectationvalue():
         return __grad_expectationvalue(E=compiled.expectationvalues[-1], variable=variable)
-    elif isinstance(obj, Objective):
+    elif isinstance(compiled, Objective):
         return __grad_objective(objective=compiled, variable=variable)
     else:
         raise TequilaException("Gradient not implemented for other types than ExpectationValue and Objective.")
@@ -159,36 +160,105 @@ def __grad_expectationvalue(E: ExpectationValue, variable: str):
     '''
     hamiltonian = E.H
     unitary = E.U
-
-    pi = np.pi
     dO = None
     for i, g in enumerate(unitary.gates):
         if g.is_parametrized() and not g.is_frozen():
-            if hasattr(g, 'angle'):
-                neo_a = copy.deepcopy(g)
-                neo_a.frozen = True
+            if has_variable(g.parameter,variable):
+                if hasattr(g, 'angle'):
+                    if g.is_controlled():
+                        dOinc =__grad_controlled_rotation(unitary,g,i,variable,hamiltonian)
+                        if dO is None:
+                            dO = dOinc
+                        else:
+                            dO = dO + dOinc
+                    else:
+                        dOinc  = __grad_rotation(unitary,g,i,variable,hamiltonian)
+                        if dO is None:
+                            dO = dOinc
+                        else:
+                            dO = dO + dOinc
 
-                neo_a.angle = g.angle + pi / 2
-                U1 = unitary.replace_gate(position=i, gates=[neo_a])
-                w1 = 0.5 * __weight_chain(g.parameter, variable)
+                elif hasattr(g, 'power'):
+                    if g.is_controlled():
+                        raise NotImplementedError("Gradient for controlled PowerGate not here yet")
+                    else:
+                        if g.name in ['H', 'Hadamard']:
+                            raise TequilaException('sorry, cannot figure out hadamard gradients yet')
+                        else:
+                            dOinc=__grad_power(unitary,g,i,variable,hamiltonian)
+                            if dO is None:
+                                dO = dOinc
+                            else:
+                                dO = dO + dOinc
 
-                neo_b = copy.deepcopy(g)
-                neo_b.frozen = True
-                neo_b.angle = g.angle - pi / 2
-                U2 = unitary.replace_gate(position=i, gates=[neo_b])
-                w2 = -0.5 * __weight_chain(g.parameter, variable)
-
-                Oplus = ExpectationValue(U=U1, H=hamiltonian)
-                Ominus = ExpectationValue(U=U2, H=hamiltonian)
-                dOinc  = w1 * Objective(expectationvalues=[Oplus]) + w2 * Objective(expectationvalues=[Ominus])
-                if dO is None:
-                    dO = dOinc
                 else:
-                    dO = dO + dOinc
-
-            elif hasattr(g, 'power'):
-                raise NotImplementedError("broken on this branch")
-            else:
-                print(type(g))
-                raise TequilaException("Automatic differentiation is implemented only for Rotational Gates")
+                    print(type(g))
+                    raise TequilaException("Automatic differentiation is implemented only for Rotational Gates")
     return dO
+
+def __grad_controlled_rotation(unitary,g,i,variable,hamiltonian):
+    angles_and_weights = [
+        ([(g.angle / 2) + np.pi / 2, -g.angle / 2], .50),
+        ([(g.angle) / 2 - np.pi / 2, -g.angle / 2], -.50),
+        ([g.angle / 2, -(g.angle / 2) + np.pi / 2], -.50),
+        ([g.angle / 2, -(g.angle / 2) - np.pi / 2], .50)
+    ]
+    dO=None
+    for ang_set in angles_and_weights:
+        U = unitary.replace_gate(position=i, gates=[gate for gate in compile_controlled_rotation(g, angles=ang_set[0])])
+        w = 0.5 * ang_set[1] * __weight_chain(g.parameter, variable)
+        ev=ExpectationValue(U=U,H=hamiltonian)
+        dOinc=w *ev
+        if dO is None:
+            dO = dOinc
+        else:
+            dO = dO + dOinc
+
+    return dO
+
+def __grad_rotation(unitary,g,i,variable,hamiltonian):
+
+    neo_a = copy.deepcopy(g)
+    neo_a.frozen = True
+
+    neo_a.angle = g.angle + np.pi / 2
+    U1 = unitary.replace_gate(position=i, gates=[neo_a])
+    w1 = 0.5 * __weight_chain(g.parameter, variable)
+
+    neo_b = copy.deepcopy(g)
+    neo_b.frozen = True
+    neo_b.angle = g.angle - np.pi / 2
+    U2 = unitary.replace_gate(position=i, gates=[neo_b])
+    w2 = -0.5 * __weight_chain(g.parameter, variable)
+
+    Oplus = ExpectationValue(U=U1, H=hamiltonian)
+    Ominus = ExpectationValue(U=U2, H=hamiltonian)
+    dOinc = w1 * Objective(expectationvalues=[Oplus]) + w2 * Objective(expectationvalues=[Ominus])
+    return dOinc
+
+def __grad_power(unitary,g,i,variable,hamiltonian):
+    target = g.target
+    if g.name in ['H', 'Hadamard']:
+        raise TequilaException('sorry, cannot figure out hadamard gradients yet')
+    else:
+        n_pow = g.parameter * np.pi
+        if g.name in ['X', 'x']:
+            axis = 0
+        elif g.name in ['Y', 'y']:
+            axis = 1
+        elif g.name in ['Z', 'z']:
+            axis = 2
+        else:
+            raise NotImplementedError(
+                'sorry, I have no idea what this gate is and cannot build the gradient.')
+        U1 = unitary.replace_gate(position=i, gates=[
+            RotationGateImpl(axis=axis, target=target, angle=(n_pow + np.pi / 2), frozen=True)])
+        U2 = unitary.replace_gate(position=i, gates=[
+            RotationGateImpl(axis=axis, target=target, angle=(n_pow - np.pi / 2), frozen=True)])
+
+        w1 = 0.5 * __weight_chain(g.parameter, variable)
+        w2 = -0.5 * __weight_chain(g.parameter, variable)
+        Oplus = ExpectationValue(U=U1, H=hamiltonian)
+        Ominus = ExpectationValue(U=U2, H=hamiltonian)
+        dOinc = w1 * Objective(expectationvalues=[Oplus]) + w2 * Objective(expectationvalues=[Ominus])
+        return dOinc

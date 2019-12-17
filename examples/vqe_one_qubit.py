@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # U = gates.Ry(target=0, angle="angle")
 
     # initialize the objective
-    O = Objective(unitaries=U, observable=H)
+    O = Objective.ExpectationValue(U=U,H=H)
 
     # do the optimization
     optimizer = GradientDescent(stepsize=stepsize, maxiter=maxiter, samples=samples, simulator=simulator)

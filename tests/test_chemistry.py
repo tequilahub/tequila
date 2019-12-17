@@ -8,7 +8,7 @@ import pytest
 import tequila.quantumchemistry as qc
 import numpy
 from tequila.simulators import pick_simulator
-from tequila.objective import Objective
+from tequila.objective import Objective, ExpectationValue
 
 
 @pytest.mark.skipif(condition=not (qc.has_pyscf and qc.has_psi4),
@@ -70,9 +70,9 @@ def do_test_ucc(qc_interface, parameters, result, trafo):
     U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="ccsd",
                                          include_reference_ansatz=True)
     H = psi4_interface.make_hamiltonian()
-    O = Objective(observable=H, unitaries=U)
+    ex=ExpectationValue(U=U,H=H)
     Simulator = pick_simulator(samples=None)
-    energy = Simulator().simulate_expectationvalue(E=O)
+    energy = Simulator().simulate_expectationvalue(E=ex)
     assert (numpy.isclose(energy, result))
 
 
@@ -103,7 +103,7 @@ def do_test_mp2(qc_interface, parameters, result):
     U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="mp2",
                                          include_reference_ansatz=True)
     H = psi4_interface.make_hamiltonian()
-    O = Objective(observable=H, unitaries=U)
+    O = ExpectationValue(U=U,H=H)
     Simulator = pick_simulator(samples=None)
 
     energy = Simulator().simulate_expectationvalue(E=O)

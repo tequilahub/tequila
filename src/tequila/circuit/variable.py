@@ -205,8 +205,6 @@ class Variable:
         self._value **= other
         return self
 
-    def __getstate__(self):
-        return self
 
     def __lt__(self, other):
         return self.value < other
@@ -394,8 +392,7 @@ class Transform:
     def __rpow__(self, other):
         return Transform(operator.pow, [other, self])
 
-    def __getstate__(self):
-        return self
+
 
     def __lt__(self, other):
         return self.eval < other
