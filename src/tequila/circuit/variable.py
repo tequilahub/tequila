@@ -393,7 +393,6 @@ class Transform:
         return Transform(operator.pow, [other, self])
 
 
-
     def __lt__(self, other):
         return self.eval < other
 
