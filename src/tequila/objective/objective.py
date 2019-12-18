@@ -1,6 +1,6 @@
 import typing, copy, numbers
 from jax import numpy as numpy
-from tequila import paulis,TequilaException
+from tequila import paulis, TequilaException
 
 """
 Preliminary structure to carry information over to backends
@@ -9,11 +9,11 @@ Needs to be restructured and clarified but currently does the job
 
 
 class ExpectationValue:
-    '''
+    """
     the implementation of Expectation Values as a class. Capable of being simulated, and differentiated.
     common arithmetical operations like addition, multiplication, etc. are defined, to return Objective objects.
+    """
 
-    '''
     @property
     def U(self):
         if self._unitary is None:
@@ -43,56 +43,58 @@ class ExpectationValue:
         self._hamiltonian = copy.deepcopy(H)
 
     def __mul__(self, other):
-        new=Objective([self])
+        new = Objective([self])
         return new.binary_operator(left=new, right=other, op=numpy.multiply)
 
     def __add__(self, other):
-        new=Objective([self])
+        new = Objective([self])
         return new.binary_operator(left=new, right=other, op=numpy.add)
 
     def __sub__(self, other):
-        new=Objective([self])
+        new = Objective([self])
         return new.binary_operator(left=new, right=other, op=numpy.subtract)
 
     def __truediv__(self, other):
-        new=Objective([self])
+        new = Objective([self])
         return new.binary_operator(left=new, right=other, op=numpy.true_divide)
 
     def __neg__(self):
-        new=Objective([self])
+        new = Objective([self])
         return new.unary_operator(left=new, op=numpy.negative)
 
     def __pow__(self, power):
-        new=Objective([self])
-        #return new.unary_operator(left=new, op=lambda E: numpy.float_power(E, power))
+        new = Objective([self])
+        # return new.unary_operator(left=new, op=lambda E: numpy.float_power(E, power))
         return new.binary_operator(left=new, right=power, op=lambda l, r: numpy.float_power(l, r))
 
     def __rpow__(self, other):
-        new=Objective([self])
-        #return new.unary_operator(left=new, op=lambda E: other ** E)
-        return new.binary_operator(left=new, right=other, op=lambda l, r: numpy.float_power(r,l))
+        new = Objective([self])
+        # return new.unary_operator(left=new, op=lambda E: other ** E)
+        return new.binary_operator(left=new, right=other, op=lambda l, r: numpy.float_power(r, l))
 
     def __rmul__(self, other):
-        new=Objective([self])
+        new = Objective([self])
         return new.unary_operator(left=new, op=lambda E: numpy.multiply(other, E))
 
     def __radd__(self, other):
-        new=Objective([self])
+        new = Objective([self])
         return new.unary_operator(left=new, op=lambda E: numpy.add(other, E))
 
     def __rtruediv__(self, other):
-        new=Objective([self])
-        return new.binary_operator(left=new, right=other,op=lambda l,r: numpy.true_divide(r, l))
+        new = Objective([self])
+        return new.binary_operator(left=new, right=other, op=lambda l, r: numpy.true_divide(r, l))
 
     def __invert__(self):
-        new=Objective([self])
+        new = Objective([self])
         return new.unary_operator(left=new, op=lambda E: numpy.power(E, -1))
+
 
 class JoinedTransformation:
     '''
     class structure used to construct,track, and permit differentiation of the computation required for nontrivial objectives --
     that is to say, those which take more than 2 expectation values.
     '''
+
     def __init__(self, left, right, split, op):
         self.split = split
         self.left = left
@@ -106,14 +108,15 @@ class JoinedTransformation:
 
 
 class Objective:
-    '''
+    """
     the class which represents mathematical manipulation of ExpectationValue objects. Capable of being simulated,
     and differentiated with respect to the Variables of its Expectationvalues.
-    '''
+    """
+
     def extract_variables(self):
-        '''
+        """
         :return: a dictionary, containing every variable from every ExpectationValue in the objective.
-        '''
+        """
         variables = dict()
         for E in self._expectationvalues:
             variables = {**variables, **E.extract_variables()}
@@ -130,9 +133,9 @@ class Objective:
         self._transformation = transformation
 
     def is_expectationvalue(self):
-        '''
+        """
         :return: bool: whether or not this objective is just a wrapped ExpectationValue
-        '''
+        """
         return len(self.expectationvalues) == 1 and self._transformation is None
 
     @classmethod
@@ -177,10 +180,10 @@ class Objective:
 
     def __pow__(self, power):
         return self.binary_operator(left=self, right=power, op=lambda l, r: numpy.float_power(l, r))
-        #return self.binary_operator(left=self, op=lambda E: numpy.float_power(E, power))
+        # return self.binary_operator(left=self, op=lambda E: numpy.float_power(E, power))
 
     def __rpow__(self, other):
-        return self.binary_operator(left=self, right=other,op=lambda l,r: numpy.float_power(r,l))
+        return self.binary_operator(left=self, right=other, op=lambda l, r: numpy.float_power(r, l))
 
     def __rmul__(self, other):
         return self.unary_operator(left=self, op=lambda E: numpy.multiply(other, E))
@@ -189,14 +192,13 @@ class Objective:
         return self.unary_operator(left=self, op=lambda E: numpy.add(other, E))
 
     def __rtruediv__(self, other):
-        return self.binary_operator(left=self, right=other,op=lambda l,r: numpy.true_divide(r, l))
+        return self.binary_operator(left=self, right=other, op=lambda l, r: numpy.true_divide(r, l))
 
     def __invert__(self):
         return self.unary_operator(left=self, op=lambda E: numpy.power(E, -1))
 
     @classmethod
     def unary_operator(cls, left, op):
-
         return Objective(expectationvalues=left.expectationvalues,
                          transformation=lambda *args: op(left.transformation(*args)))
 
@@ -215,32 +217,34 @@ class Objective:
         is a number, calls unary_operator instead.
 
         '''
-        r=None
-        l=None
+        r = None
+        l = None
         if isinstance(left, ExpectationValue):
             l = Objective([left])
-        if isinstance(left,Objective):
-            l=left
+        if isinstance(left, Objective):
+            l = left
         if isinstance(right, ExpectationValue):
             r = Objective(expectationvalues=[right])
         if isinstance(right, Objective):
             r = right
 
         if isinstance(right, numbers.Number):
-            if isinstance(l,Objective) or isinstance(left,Objective):
+            if isinstance(l, Objective) or isinstance(left, Objective):
                 return cls.unary_operator(left=left, op=lambda E: op(E, right))
             else:
-                raise TequilaException('BinaryOperator method called on types ' + str(type(left)) + ',' +str(type(right)))
+                raise TequilaException(
+                    'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
         elif isinstance(left, numbers.Number):
-            if isinstance(r,Objective):
-                return cls.unary_operator(left=r, op=lambda E: op(left,E))
+            if isinstance(r, Objective):
+                return cls.unary_operator(left=r, op=lambda E: op(left, E))
             else:
-                raise TequilaException('BinaryOperator method called on types ' + str(type(left)) + ',' +str(type(right)))
+                raise TequilaException(
+                    'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
         else:
             split_at = len(l.expectationvalues)
             return Objective(expectationvalues=l.expectationvalues + r.expectationvalues,
-                         transformation=JoinedTransformation(left=l.transformation, right=r.transformation,
-                                                             split=split_at, op=op))
+                             transformation=JoinedTransformation(left=l.transformation, right=r.transformation,
+                                                                 split=split_at, op=op))
 
     def __repr__(self):
         return "Objective with " + str(len(self.expectationvalues)) + " expectationvalues"
