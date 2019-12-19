@@ -1,5 +1,5 @@
 from tequila.hamiltonian import QubitHamiltonian, PauliString, paulis
-from tequila.grouping.parser import hamiltonian_to_binary
+from tequila.grouping.binary_rep import BinaryPauliString, BinaryHamiltonian
 from collections import namedtuple
 import numpy as np
 
@@ -33,17 +33,32 @@ def test_binarypauli_conversion():
     assert (word3.coeff == coeff_sol[2])
     assert (all(word3.binary == binary_sol[2, :]))
 
-def test_binarypauli_group_conversion():
+def test_binary_pauli():
     '''
-    Testing binary form conversion for entire Hamiltonian
+    Testing binary form of the pauli strings 
+    '''
+
+    x1 = BinaryPauliString([1, 0], 1)
+    x1_other = BinaryPauliString(np.array([1, 0]), 2.1)
+    assert (x1.same_pauli(x1_other))
+    assert (x1.commute(x1_other))
+
+    y1 = BinaryPauliString([1, 1], 1)
+    assert (not x1.commute(y1))
+
+    xx = BinaryPauliString([1, 1, 0, 0], 2)
+    yy = BinaryPauliString([1, 1, 1, 1], 2.1 + 2j)
+    assert (xx.commute(yy))
+
+def test_binary_hamiltonian_initialization():
+    '''
+    Testing binary form of the hamiltonian
     '''
     H, n_qubits, binary_sol, coeff_sol = prepare_test_hamiltonian()
 
-    H_binary, H_coeff = hamiltonian_to_binary(H)
+    H_binary = BinaryHamiltonian(H)
 
-    binary_equal_matrix = H_binary == binary_sol
+    binary_equal_matrix = H_binary.get_binary_matrix() == binary_sol
 
     assert (binary_equal_matrix.all())
-    assert (all(H_coeff == coeff_sol))
-
-test_binarypauli_group_conversion()
+    assert (all(H_binary.get_coeff() == coeff_sol))
