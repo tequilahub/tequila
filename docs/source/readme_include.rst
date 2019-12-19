@@ -1,2 +1,5 @@
-.. include:: ../../../README.md
-  :start-after: inclusion-marker-do-not-remove
+.. _intro:
+
+.. title:: README
+
+.. mdinclude:: ../../README.md

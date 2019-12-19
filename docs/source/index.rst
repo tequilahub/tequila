@@ -9,7 +9,8 @@ Welcome to tequila's documentation!
 
 
 Contents
-        * :ref:`readme`: Introduction and installation
+========
+        * :ref:`intro`: Introduction and installation
         * :ref:`codedoc`: The code documentation of *Tequila*
         * :ref:`todo`: Current features
 
@@ -17,7 +18,6 @@ Contents
    :maxdepth: 2
    :caption: Contents:
 
-.. mdinclude:: ../../README.md`
 
 Indices and tables
 ==================
