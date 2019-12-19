@@ -10,7 +10,8 @@ Welcome to tequila's documentation!
 
 Contents
 ========
-        * :ref:`intro`: Introduction and installation
+        * :ref:`intro` Introduction and installation
+        * :ref:`examples`
         * :ref:`codedoc`: The code documentation of *Tequila*
         * :ref:`todo`: Current features
 
@@ -25,5 +26,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
 

@@ -49,14 +49,14 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 pygments_style = 'sphinx'
-html_theme = "sphinx_rtd_theme"
+html_theme = "nature"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-extensions = ['sphinx.ext.napoleon','m2r','sphinx.ext.autodoc'] ## For docstring syntax 
+extensions = ['sphinx.ext.napoleon','m2r','sphinx.ext.autodoc','sphinx.ext.autosummary'] ## For docstring syntax 
 source_suffix = ['.rst', '.md']
 
 napoleon_google_docstring = True

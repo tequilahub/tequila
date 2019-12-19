@@ -1,5 +1,5 @@
 .. _intro:
 
-.. title:: README
-
-.. mdinclude:: ../../README.md
+README
+======
+  .. mdinclude:: ../../README.md
