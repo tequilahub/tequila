@@ -1,6 +1,7 @@
 from tequila import TequilaException
 import numpy as np
 
+
 def get_lagrangian_subspace(binary_matrix):
     '''
     Given a list of vectors. 
@@ -16,6 +17,7 @@ def get_lagrangian_subspace(binary_matrix):
 
     return lagrangian_basis
 
+
 def flip_first_second_half(vector):
     '''
     Modify: Flip the first half the vector to second half, and vice versa. 
@@ -24,6 +26,7 @@ def flip_first_second_half(vector):
     tmp = vector[:dim].copy()
     vector[:dim] = vector[dim:]
     vector[dim:] = tmp
+
 
 def binary_null_space(binary_matrix):
     '''
@@ -72,14 +75,14 @@ def binary_symplectic_gram_schmidt(coisotropic_space):
     x_set = []
     # If is lagrangian already
     if symplectic_dim == 0:
-        x_set = coisotropic_space.deepcopy()
+        x_set = coisotropic_space
     else:
         for i in range(symplectic_dim):
             x_cur, y_cur = pick_symplectic_pair(coisotropic_space)
             binary_symplectic_orthogonalization(coisotropic_space, x_cur,
                                                 y_cur)
             x_set.append(x_cur)
-    x_set.extend(coisotropic_space)
+        x_set.extend(coisotropic_space)
     return x_set
 
 
@@ -129,3 +132,103 @@ def binary_symplectic_inner_product(a, b):
     re = a[:dim] @ b[dim:] + b[:dim] @ a[dim:]
 
     return re % 2
+
+
+def binary_solve(basis, target):
+    '''
+    Get the expansion of the target in the given basis in binary space. 
+    '''
+    coeff = np.zeros(len(basis))
+    tsf_mat, pivot = binary_reduced_row_echelon(basis)
+    for i, pivot_idx in enumerate(pivot):
+        if target[int(pivot_idx)] == 1:
+            coeff = (coeff + tsf_mat[:, i]) % 2
+    return coeff
+
+
+def binary_reduced_row_echelon(basis):
+    '''
+    Get a list of basis vectors. 
+    Perfrom reduced row echelon and return the pivot and the transformation matrix such that
+    np.array(basis) @ transformation_matrix = reduced_row_echelon_form
+    '''
+    num_basis = len(basis)
+    dim = len(basis[0])
+
+    # Initiate. No change.
+    tsf_mat = np.identity(num_basis)
+    reduced_basis = [vec.copy() for vec in basis]
+    pivot = np.zeros(num_basis)
+
+    for i, i_col in enumerate(reduced_basis):
+        non_zero_row = np.where(i_col == 1)[0][0]
+        pivot[i] = non_zero_row
+        for j, j_col in enumerate(reduced_basis):
+            if (i != j and j_col[non_zero_row] == 1):
+                reduced_basis[j] = (j_col + i_col) % 2
+                tsf_mat[:, j] = (tsf_mat[:, i] + tsf_mat[:, j]) % 2
+    return tsf_mat, pivot
+
+
+def binary_phase(self_binary, other_binary, n_qubit):
+    '''
+    Obtain the phase due to binary pauli string self * other. Get 0, 1, 2, 3 for 1, i, -1, -i.
+    '''
+    def get_phase_helper(this, other):
+        '''
+        Return the phase incured due to multiplying this * other on a single qubit. 
+        '''
+        identity = [0, 0]
+        x = [1, 0]
+        y = [1, 1]
+        z = [0, 1]
+        if this == identity or other == identity or this == other:
+            return 0
+        elif this == x:
+            if other == y:
+                return 1
+            else:
+                return 3
+        elif this == y:
+            if other == z:
+                return 1
+            else:
+                return 3
+        elif this == z:
+            if other == x:
+                return 1
+            else:
+                return 3
+
+    phase = 0
+    for i in range(n_qubit):
+        self_cur_qub = [self_binary[i], self_binary[i + n_qubit]]
+        other_cur_qub = [other_binary[i], other_binary[i + n_qubit]]
+        phase += get_phase_helper(self_cur_qub, other_cur_qub)
+    phase = phase % 4
+
+    if phase == 0:
+        return 1
+    elif phase == 1:
+        return 1j
+    elif phase == 2:
+        return -1
+    else:
+        return -1j
+
+
+def gen_single_qubit_term(dim, qub, term):
+    '''
+    Generate single qubit term on the given qubit with given term (0, 1, 2 represents x, y, z) 
+
+    Return: A binary vector representing the single qubit term specified. 
+    '''
+    word = np.zeros(dim * 2)
+    if term == 0:
+        word[qub] = 1
+    elif term == 1:
+        word[qub] = 1
+        word[qub + dim] = 1
+    elif term == 2:
+        word[qub + dim] = 1
+    return word
