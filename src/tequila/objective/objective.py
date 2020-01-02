@@ -1,6 +1,7 @@
 import typing, copy, numbers
 from jax import numpy as numpy
 from tequila import paulis,TequilaException
+from tequila.utils import JoinedTransformation
 
 """
 Preliminary structure to carry information over to backends
@@ -12,7 +13,8 @@ class ExpectationValue:
     '''
     the implementation of Expectation Values as a class. Capable of being simulated, and differentiated.
     common arithmetical operations like addition, multiplication, etc. are defined, to return Objective objects.
-
+    :param U: a QCircuit, for preparing a state
+    :param H: a Hamiltonian, whose expectation value with the state prepared by U is to be determined.
     '''
     @property
     def U(self):
@@ -88,31 +90,18 @@ class ExpectationValue:
         new=Objective([self])
         return new.unary_operator(left=new, op=lambda E: numpy.power(E, -1))
 
-class JoinedTransformation:
-    '''
-    class structure used to construct,track, and permit differentiation of the computation required for nontrivial objectives --
-    that is to say, those which take more than 2 expectation values.
-    '''
-    def __init__(self, left, right, split, op):
-        self.split = split
-        self.left = left
-        self.right = right
-        self.op = op
-
-    def __call__(self, *args, **kwargs):
-        E_left = args[:self.split]
-        E_right = args[self.split:]
-        return self.op(self.left(*E_left, **kwargs), self.right(*E_right, **kwargs))
-
 
 class Objective:
     '''
     the class which represents mathematical manipulation of ExpectationValue objects. Capable of being simulated,
     and differentiated with respect to the Variables of its Expectationvalues.
+    :param expectationvalues: an iterable of ExpectationValue's.
+    :param transformation: a callable whose positional arguments (potentially, by nesting in a JoinedTransformation)
+    are the expectationvalues, in order.
     '''
     def extract_variables(self):
         '''
-        :return: a dictionary, containing every variable from every ExpectationValue in the objective.
+        :return: a dictionary, containing every Variable from every ExpectationValue in the objective.
         '''
         variables = dict()
         for E in self._expectationvalues:
@@ -120,7 +109,13 @@ class Objective:
         return variables
 
     def update_variables(self, variables):
-
+        '''
+        :param variables: a list of Variables or dictionary of str, number pairs with which ALL expectationvalues of the
+        Objective are to be updated. Calls the update_variables method of ExpectationValue,
+        which in turn calls that of QCircuit, which ultimately accesses the update methods of
+        Transform and Variable's themselves.
+        :return: self, for ease of use
+        '''
         for E in self._expectationvalues:
             E.update_variables(variables=variables)
         return self
@@ -213,7 +208,6 @@ class Objective:
         :return: an objective whose Transformation  is the JoinedTransformation of the lower arguments and transformations
         of the left and right objects, alongside op (if they are or can be rendered as objectives). In case one of left or right
         is a number, calls unary_operator instead.
-
         '''
         r=None
         l=None
@@ -240,7 +234,6 @@ class Objective:
             split_at = len(l.expectationvalues)
             return Objective(expectationvalues=l.expectationvalues + r.expectationvalues,
                          transformation=JoinedTransformation(left=l.transformation, right=r.transformation,
-                                                             split=split_at, op=op))
-
+                                                              split=split_at, op=op))
     def __repr__(self):
         return "Objective with " + str(len(self.expectationvalues)) + " expectationvalues"
