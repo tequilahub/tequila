@@ -59,9 +59,9 @@ def test_endianness_simulators():
         c = QCircuit()
         for i, v in enumerate(binary):
             if v == 1:
-                c *= gates.X(target=i)
+                c += gates.X(target=i)
 
-        c *= gates.Measurement(name="", target=[x for x in range(len(string))])
+        c += gates.Measurement(name="", target=[x for x in range(len(string))])
 
         wfn_cirq = SimulatorCirq().simulate_wavefunction(abstract_circuit=c, initial_state=0).wavefunction
         counts_cirq = SimulatorCirq().run(abstract_circuit=c, samples=1).measurements

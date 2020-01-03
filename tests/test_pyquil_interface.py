@@ -23,8 +23,8 @@ supported_powers = []
 @pytest.mark.skipif(condition=not system_has_pyquil, reason="pyquil not found")
 def test_simple_execution():
     ac = QCircuit()
-    ac *= X(0)
-    ac *= Ry(target=1, control=0, angle=pi / 2)
+    ac += X(0)
+    ac += Ry(target=1, control=0, angle=pi / 2)
 
     simulator = SimulatorPyquil()
 

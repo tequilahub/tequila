@@ -39,7 +39,6 @@ def __grad_transform(par, variable):
             for i in range(la):
                 if has_variable(t.args[i], var):
                     floats = [complex(arg).real for arg in t.args]
-                    #expan[i] = jax.jit(jax.grad(t.transformation, argnums=i))(*floats) * __weight_chain(t.args[i], var)
                     expan[i] = jax.jit(jax.grad(t.transformation, argnums=i))(*floats)
                 else:
                     expan[i] = 0.0
@@ -52,7 +51,6 @@ def __grad_transform(par, variable):
         raise TequilaException(s)
 
 
-
 def grad(obj, variable: str = None, no_compile=False):
     '''
     wrapper function for getting the gradients of Objectives,ExpectationValues, Unitaries (including single gates), and Transforms.
@@ -61,8 +59,8 @@ def grad(obj, variable: str = None, no_compile=False):
         default None: total gradient.
     return: dictionary of Objectives, if called on gate, circuit, exp.value, or objective; if Variable or Transform, returns number.
     '''
-    if isinstance(obj,Variable) or isinstance(obj,Transform):
-        return __grad_transform(obj,variable)
+    if isinstance(obj, Variable) or isinstance(obj, Transform):
+        return __grad_transform(obj, variable)
     if not no_compile:
         compiled = compile_trotterized_gate(gate=obj)
         compiled = compile_controlled_rotation(gate=compiled)
@@ -71,9 +69,10 @@ def grad(obj, variable: str = None, no_compile=False):
     if variable is None:
         variable = compiled.extract_variables()
     if not isinstance(variable, str):
-        return {v : grad(obj=compiled, variable=v, no_compile=True) for v in variable}
-
-    if obj.is_expectationvalue():
+        return {v: grad(obj=compiled, variable=v, no_compile=True) for v in variable}
+    if isinstance(obj, ExpectationValueImpl):
+        return __grad_expectationvalue(E=obj, variable=variable)
+    elif obj.is_expectationvalue():
         return __grad_expectationvalue(E=compiled.expectationvalues[-1], variable=variable)
     elif isinstance(compiled, Objective):
         return __grad_objective(objective=compiled, variable=variable)
@@ -110,16 +109,12 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: str):
     dO = None
     for i, g in enumerate(unitary.gates):
         if g.is_parametrized() and not g.is_frozen():
-            if has_variable(g.parameter,variable):
+            if has_variable(g.parameter, variable):
                 if hasattr(g, 'angle'):
                     if g.is_controlled():
-                        dOinc =__grad_controlled_rotation(unitary,g,i,variable,hamiltonian)
-                        if dO is None:
-                            dO = dOinc
-                        else:
-                            dO = dO + dOinc
+                        raise TequilaException("controlled rotation in gradient: Compiler was not called")
                     else:
-                        dOinc  = __grad_rotation(unitary,g,i,variable,hamiltonian)
+                        dOinc = __grad_rotation(unitary, g, i, variable, hamiltonian)
                         if dO is None:
                             dO = dOinc
                         else:
@@ -132,7 +127,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: str):
                         if g.name in ['H', 'Hadamard']:
                             raise TequilaException('sorry, cannot figure out hadamard gradients yet')
                         else:
-                            dOinc=__grad_power(unitary,g,i,variable,hamiltonian)
+                            dOinc = __grad_power(unitary, g, i, variable, hamiltonian)
                             if dO is None:
                                 dO = dOinc
                             else:
@@ -143,37 +138,8 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: str):
                     raise TequilaException("Automatic differentiation is implemented only for Rotational Gates")
     return dO
 
-def __grad_controlled_rotation(unitary,g,i,variable,hamiltonian):
-    '''
-    function for getting the gradient of a controlled rotation gate. Should only be called on such objects.
-    :param unitary: QCircuit: the QCircuit object containing the gate to be differentiated
-    :param g: ParametrizedGateImpl: the gate being differentiated
-    :param i: Int: the position in unitary at which g appears
-    :param variable: Variable or String: the variable with respect to which gate g is being differentiated
-    :param hamiltonian: the hamiltonian with respect to which unitary is to be measured, in the case that unitary
-        is contained within an ExpectationValue
-    :return: an Objective, whose calculation yields the gradient of g w.r.t variable
-    '''
-    angles_and_weights = [
-        ([(g.angle / 2) + np.pi / 2, -g.angle / 2], .50),
-        ([(g.angle) / 2 - np.pi / 2, -g.angle / 2], -.50),
-        ([g.angle / 2, -(g.angle / 2) + np.pi / 2], -.50),
-        ([g.angle / 2, -(g.angle / 2) - np.pi / 2], .50)
-    ]
-    dO=None
-    for ang_set in angles_and_weights:
-        U = unitary.replace_gate(position=i, gates=[gate for gate in compile_controlled_rotation(g, angles=ang_set[0])])
-        w = 0.5 * ang_set[1] * __grad_transform(g.parameter, variable)
-        ev=ExpectationValueImpl(U=U, H=hamiltonian)
-        dOinc=w *ev
-        if dO is None:
-            dO = dOinc
-        else:
-            dO = dO + dOinc
 
-    return dO
-
-def __grad_rotation(unitary,g,i,variable,hamiltonian):
+def __grad_rotation(unitary, g, i, variable, hamiltonian):
     '''
     function for getting the gradients of UNCONTROLLED rotation gates.
     :param unitary: QCircuit: the QCircuit object containing the gate to be differentiated
@@ -203,7 +169,8 @@ def __grad_rotation(unitary,g,i,variable,hamiltonian):
     dOinc = w1 * Objective(expectationvalues=[Oplus]) + w2 * Objective(expectationvalues=[Ominus])
     return dOinc
 
-def __grad_power(unitary,g,i,variable,hamiltonian):
+
+def __grad_power(unitary, g, i, variable, hamiltonian):
     '''
     function for getting the gradient of Power gates. note: doesn't yet work on Hadamard
     :param unitary: QCircuit: the QCircuit object containing the gate to be differentiated

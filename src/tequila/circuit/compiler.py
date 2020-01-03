@@ -24,10 +24,15 @@ def compiler(f):
 
     def wrapper(gate, **kwargs):
         if hasattr(gate, "gates"):
-            result = QCircuit(weight=gate.weight)
+            result = QCircuit()
             for g in gate.gates:
                 result += f(gate=g, **kwargs)
             return result
+        elif isinstance(gate, ExpectationValueImpl):
+            cU = QCircuit()
+            for g in gate.U.gates:
+                cU += f(gate=g, **kwargs)
+            return ExpectationValueImpl(H=gate.H, U=cU)
         elif isinstance(gate, Objective):
             compiled = []
             for E in gate._expectationvalues:

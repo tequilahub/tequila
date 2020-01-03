@@ -106,7 +106,7 @@ class SimulatorBase:
 
     def __init__(self, heralding: HeraldingABC = None, ):
         self._heralding = heralding
-        self.__decompose_and_compile = True
+        self.__do_recompilation = True
 
     def __call__(self, objective: typing.Union[QCircuit, Objective], samples: int = None, **kwargs) -> numbers.Real:
         """
@@ -139,7 +139,7 @@ class SimulatorBase:
         raise TequilaException("do_run needs to be overwritten by corresponding backend")
 
     def set_compile_flag(self, b):
-        self.__decompose_and_compile = b
+        self.__do_recompilation = b
 
     def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=None,
                               initial_state: int = 0) -> SimulatorReturnType:
@@ -181,9 +181,8 @@ class SimulatorBase:
         :return: translated circuit
         """
 
-        if self.__decompose_and_compile:
-            decomposed_ac = abstract_circuit.decompose()
-            decomposed_ac = self.backend_handler.recompile(abstract_circuit=decomposed_ac)
+        if self.__do_recompilation:
+            decomposed_ac = self.backend_handler.recompile(abstract_circuit=abstract_circuit)
         else:
             decomposed_ac = abstract_circuit
 

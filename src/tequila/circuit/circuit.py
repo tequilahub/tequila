@@ -7,19 +7,6 @@ import numpy, typing, numbers
 
 class QCircuit():
 
-    def decompose(self):
-        """
-        decomposes all gates into a more general format, if possible.
-        returns: a qcircuit with decomposed gates instead.
-        """
-        primitives = []
-        for g in self.gates:
-            if hasattr(g, "decompose"):
-                primitives += g.decompose()
-            else:
-                primitives.append(g)
-        return QCircuit(gates=primitives, weight=self.weight)
-
     @property
     def parameter_list(self):
         """
@@ -65,18 +52,7 @@ class QCircuit():
                     self.max_qubit() + 1))
         return self
 
-    @property
-    def weight(self):
-        if self._weight is None:
-            return 1
-        else:
-            return self._weight
-
-    @weight.setter
-    def weight(self, value):
-        self._weight = value
-
-    def __init__(self, gates=None, weight=1.0):
+    def __init__(self, gates=None):
 
         self._n_qubits = None
         self._min_n_qubits = 0
@@ -84,7 +60,6 @@ class QCircuit():
             self.gates = []
         else:
             self.gates = list(gates)
-        self._weight = weight
 
     def validate(self):
         '''
@@ -127,7 +102,7 @@ class QCircuit():
         new.extend(gs)
         new.extend(self.gates[(position + 1):])
         if inplace is False:
-            return QCircuit(gates=new, weight=self.weight)
+            return QCircuit(gates=new)
         elif inplace is True:
             self.gates = new
             return self
@@ -158,7 +133,7 @@ class QCircuit():
         """
         result = QCircuit()
         for g in reversed(self.gates):
-            result *= g.dagger()
+            result += g.dagger()
         return result
 
     def extract_variables(self) -> dict:
@@ -210,14 +185,7 @@ class QCircuit():
             qmax = max(qmax, g.max_qubit)
         return qmax
 
-    def __mul__(self, other):
-        gates = [g.copy() for g in (self.gates + other.gates)]
-        result = QCircuit(gates=gates)
-        result.weight = self.weight * other.weight
-        result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
-        return result
-
-    def __imul__(self, other):
+    def __iadd__(self, other):
         if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
 
@@ -225,23 +193,14 @@ class QCircuit():
             self.gates += other
         else:
             self.gates += other.gates
-            self.weight *= other.weight
         self._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return self
 
-    def __rmul__(self, other):
-        if isinstance(other, QCircuit):
-            return self.__mul__(other)
-        if isinstance(other, QGateImpl):
-            return self.__mul__(other)
-        else:
-            return QCircuit(gates=[g.copy() for g in self.gates], weight=self.weight * other)
-
     def __add__(self, other):
-        return self.__mul__(other=other)
-
-    def __iadd__(self, other):
-        return self.__imul__(other=other)
+        gates = [g.copy() for g in (self.gates + other.gates)]
+        result = QCircuit(gates=gates)
+        result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
+        return result
 
     def __pow__(self, power, modulo=None):
         if modulo is not None:
@@ -252,7 +211,7 @@ class QCircuit():
         pgates = []
         for g in self.gates:
             pgates.append(g ** power)
-        return QCircuit(gates=pgates, weight=self.weight ** power)
+        return QCircuit(gates=pgates)
 
     def __ipow__(self, power, modulo=None):
         if modulo is not None:
@@ -260,24 +219,17 @@ class QCircuit():
         if not self.is_primitive():
             raise TequilaException("Powers are currently only supported for single gates")
 
-        self.weight = self.weight ** power
         for i, g in enumerate(self.gates):
             self.gates[i] **= power
         return self
 
     def __str__(self):
-        result = "circuit: "
-        if self.weight != 1.0:
-            result += " weight=" + "{:06.2f}".format(self.weight) + " \n"
-        else:
-            result += "\n"
+        result = "circuit: \n"
         for g in self.gates:
             result += str(g) + "\n"
         return result
 
     def __eq__(self, other):
-        if self.weight != other.weight:
-            return False
         if len(self.gates) != len(other.gates):
             return False
         for i, g in enumerate(self.gates):
@@ -288,24 +240,6 @@ class QCircuit():
     def __repr__(self):
         return self.__str__()
 
-
-    def __getitem__(self, item):
-        """
-        iteration over gates is possible
-        :param item:
-        :return: returns the ith gate in the circuit where i=item
-        """
-        return self.gates[item]
-
-    def __setitem__(self, key: int, value: QGateImpl):
-        """
-        Insert a gate at a specific position
-        :param key:
-        :param value:
-        :return: self for chaining
-        """
-        self.gates[key] = value
-        return self
     @staticmethod
     def wrap_gate(gate: QGateImpl):
         """

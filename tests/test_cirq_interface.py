@@ -23,8 +23,8 @@ supported_powers = (X, Y, Z, H)
 @pytest.mark.skipif(condition=not system_has_cirq, reason="cirq not found")
 def test_simple_execution():
     ac = QCircuit()
-    ac *= X(0)
-    ac *= Ry(target=1, control=0, angle=pi / 2)
+    ac += X(0)
+    ac += Ry(target=1, control=0, angle=pi / 2)
 
     simulator = SimulatorCirq()
 
@@ -49,8 +49,8 @@ def test_primitive_gates(g):
 @pytest.mark.parametrize("g", supported_two_qubit_gates)
 def test_two_qubit_gates(g):
     init = random.randint(0, 1)
-    result = SimulatorCirq().simulate_wavefunction(abstract_circuit=g(2,1), initial_state=init)
-    result = SimulatorCirq().simulate_wavefunction(abstract_circuit=g(1,2, control=3),
+    result = SimulatorCirq().simulate_wavefunction(abstract_circuit=g(2, 1), initial_state=init)
+    result = SimulatorCirq().simulate_wavefunction(abstract_circuit=g(1, 2, control=3),
                                                    initial_state=init)
 
 
@@ -104,9 +104,9 @@ def test_expectation_values():
 
     U1 = X(0)
     U2 = Y(0)
-    e1=ExpectationValue(U=U1, H=hamiltonian)
-    e2=ExpectationValue(U=U2, H=hamiltonian)
-    O = e1+e2
+    e1 = ExpectationValue(U=U1, H=hamiltonian)
+    e2 = ExpectationValue(U=U2, H=hamiltonian)
+    O = e1 + e2
     E = simulator.simulate_objective(objective=O)
     assert (isclose(E, 0.0))
 
@@ -114,15 +114,15 @@ def test_expectation_values():
     dw1 = 0.5
     dU2 = Ry(target=0, angle=pi / 2 - pi / 2)
     dw2 = -0.5
-    de1=ExpectationValue(H=hamiltonian, U=dU1)
+    de1 = ExpectationValue(H=hamiltonian, U=dU1)
     de2 = ExpectationValue(H=hamiltonian, U=dU2)
-    O = dw1*de1 +dw2*de2
+    O = dw1 * de1 + dw2 * de2
     dE = simulator.simulate_objective(objective=O)
     assert (isclose(dE, 0.0))
 
-    U = Ry(target=0, angle=Variable(name="angle",value=pi / 2))
+    U = Ry(target=0, angle=Variable(name="angle", value=pi / 2))
     dU = grad(ExpectationValue(U=U, H=None))
-    for k,v in dU.items():
+    for k, v in dU.items():
         v.observable = hamiltonian
         dEx = simulator.simulate_objective(objective=v)
     assert (isclose(dEx, dE))
