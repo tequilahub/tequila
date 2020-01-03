@@ -8,6 +8,13 @@ import numpy, typing, numbers
 class QCircuit():
 
     @property
+    def gates(self):
+        if self._gates is None:
+            return []
+        else:
+            return self._gates
+
+    @property
     def parameter_list(self):
         """
         this property is designed to return a list of the variables in a gate, and for the list to be equal in length
@@ -57,9 +64,9 @@ class QCircuit():
         self._n_qubits = None
         self._min_n_qubits = 0
         if gates is None:
-            self.gates = []
+            self._gates = []
         else:
-            self.gates = list(gates)
+            self._gates = list(gates)
 
     def validate(self):
         '''
@@ -92,7 +99,7 @@ class QCircuit():
         """
         return len(self.gates) == 1
 
-    def replace_gate(self, position, gates, inplace=False):
+    def replace_gate(self, position, gates):
         if hasattr(gates, '__iter__'):
             gs = gates
         else:
@@ -101,29 +108,7 @@ class QCircuit():
         new = self.gates[:position]
         new.extend(gs)
         new.extend(self.gates[(position + 1):])
-        if inplace is False:
-            return QCircuit(gates=new)
-        elif inplace is True:
-            self.gates = new
-            return self
-
-    def __getitem__(self, item):
-        """
-        iteration over gates is possible
-        :param item:
-        :return: returns the ith gate in the circuit where i=item
-        """
-        return self.gates[item]
-
-    def __setitem__(self, key: int, value: QGateImpl):
-        """
-        Insert a gate at a specific position
-        :param key:
-        :param value:
-        :return: self for chaining
-        """
-        self.gates[key] = value
-        return self
+        return QCircuit(gates=new)
 
     def dagger(self):
         """
@@ -190,9 +175,9 @@ class QCircuit():
             other = self.wrap_gate(other)
 
         if isinstance(other, list) and isinstance(other[0], QGateImpl):
-            self.gates += other
+            self._gates += other
         else:
-            self.gates += other.gates
+            self._gates += other.gates
         self._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return self
 
@@ -212,16 +197,6 @@ class QCircuit():
         for g in self.gates:
             pgates.append(g ** power)
         return QCircuit(gates=pgates)
-
-    def __ipow__(self, power, modulo=None):
-        if modulo is not None:
-            raise TequilaException("Modulo powers for circuits/unitaries not supported")
-        if not self.is_primitive():
-            raise TequilaException("Powers are currently only supported for single gates")
-
-        for i, g in enumerate(self.gates):
-            self.gates[i] **= power
-        return self
 
     def __str__(self):
         result = "circuit: \n"

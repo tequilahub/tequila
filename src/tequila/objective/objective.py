@@ -2,6 +2,7 @@ import typing, copy, numbers
 from jax import numpy as numpy
 
 from tequila import paulis, TequilaException
+from tequila.utils import JoinedTransformation
 
 """
 Preliminary structure to carry information over to backends
@@ -46,24 +47,6 @@ class ExpectationValueImpl:
     def __init__(self, U=None, H=None):
         self._unitary = copy.deepcopy(U)
         self._hamiltonian = copy.deepcopy(H)
-
-class JoinedTransformation:
-    '''
-    class structure used to construct,track, and permit differentiation of the computation required for nontrivial objectives --
-    that is to say, those which take more than 2 expectation values.
-    '''
-
-    def __init__(self, left, right, split, op):
-        self.split = split
-        self.left = left
-        self.right = right
-        self.op = op
-
-    def __call__(self, *args, **kwargs):
-        E_left = args[:self.split]
-        E_right = args[self.split:]
-        return self.op(self.left(*E_left, **kwargs), self.right(*E_right, **kwargs))
-
 
 class Objective:
     """

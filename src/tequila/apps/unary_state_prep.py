@@ -188,7 +188,7 @@ class UnaryStatePrep(AnsatzBase):
 
         # construct new circuit with evaluated angles
         result = QCircuit()
-        for g in self._abstract_circuit:
+        for g in self._abstract_circuit.gates:
             g2 = copy.deepcopy(g)
             if hasattr(g, "angle"):
                 symbol = g.angle
