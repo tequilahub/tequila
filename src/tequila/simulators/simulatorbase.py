@@ -5,7 +5,8 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
 from tequila import BitString
-from tequila.objective import Objective, ExpectationValue
+from tequila.objective import Objective
+from tequila.objective.objective import ExpectationValueImpl
 from tequila.simulators.heralding import HeraldingABC
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
@@ -107,7 +108,7 @@ class SimulatorBase:
         self._heralding = heralding
         self.__decompose_and_compile = True
 
-    def __call__(self, objective: typing.Union[QCircuit, Objective, ExpectationValue], samples: int = None, **kwargs) -> numbers.Real:
+    def __call__(self, objective: typing.Union[QCircuit, Objective], samples: int = None, **kwargs) -> numbers.Real:
         """
         :param objective: Objective or simple QCircuit
         :param samples: Number of Samples to evaluate, None means full wavefunction simulation
@@ -120,11 +121,6 @@ class SimulatorBase:
                 return self.simulate_wavefunction(abstract_circuit=objective)
             else:
                 return self.run(abstract_circuit=objective, samples=samples)
-        elif isinstance(objective, ExpectationValue):
-            if samples is None:
-                return self.simulate_expectationvalue(E=objective)
-            else:
-                NotImplementedError("not here yet")
         else:
             if samples is None:
                 return self.simulate_objective(objective=objective)
@@ -222,7 +218,7 @@ class SimulatorBase:
         raise TequilaException(
             "called from base class of simulators, or non-supported operation for this backend")
 
-    def measure_expectationvalue(self, E: ExpectationValue,samples: int,return_simulation_data: bool = False) -> numbers.Real:
+    def measure_expectationvalue(self, E: ExpectationValueImpl, samples: int, return_simulation_data: bool = False) -> numbers.Real:
         H = E.H
         U = E.U
         # The hamiltonian can be defined on more qubits as the unitaries
@@ -268,7 +264,7 @@ class SimulatorBase:
         else:
             return final_E
 
-    def simulate_expectationvalue(self, E: ExpectationValue, return_simulation_data: bool = False) -> numbers.Real:
+    def simulate_expectationvalue(self, E: ExpectationValueImpl, return_simulation_data: bool = False) -> numbers.Real:
         final_E = 0.0
         data = []
         H = E.H

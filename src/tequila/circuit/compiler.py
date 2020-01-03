@@ -6,7 +6,7 @@ from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, H, X, Rz, ExpPauli
 from tequila.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
-from tequila.objective import Objective, ExpectationValue
+from tequila.objective.objective import Objective, ExpectationValueImpl
 
 import numpy, copy
 
@@ -28,19 +28,13 @@ def compiler(f):
             for g in gate.gates:
                 result += f(gate=g, **kwargs)
             return result
-        elif isinstance(gate, ExpectationValue):
-            U = gate.U
-            compiled = QCircuit()
-            for g in U.gates:
-                compiled += f(gate=g, **kwargs)
-            return ExpectationValue(H=gate.H, U=compiled)
         elif isinstance(gate, Objective):
             compiled = []
             for E in gate._expectationvalues:
                 cU = QCircuit()
                 for g in E.U.gates:
                     cU += f(gate=g, **kwargs)
-                compiled.append(ExpectationValue(H=E.H, U=cU))
+                compiled.append(ExpectationValueImpl(H=E.H, U=cU))
             return Objective(expectationvalues=compiled, transformation=gate._transformation)
         else:
             return f(gate=gate, **kwargs)

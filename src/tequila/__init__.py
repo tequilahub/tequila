@@ -1,5 +1,4 @@
-from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException, \
-    JoinedTransformation
+from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException
 from tequila.circuit import gates
 from tequila.circuit import Variable
 from tequila.hamiltonian import paulis

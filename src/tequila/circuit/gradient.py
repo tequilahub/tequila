@@ -1,15 +1,12 @@
-from tequila.circuit import QCircuit
 from tequila.circuit.compiler import compile_controlled_rotation
-from tequila.circuit._gates_impl import ParametrizedGateImpl, RotationGateImpl
+from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.circuit.compiler import compile_trotterized_gate
-from tequila.objective import Objective, ExpectationValue
+from tequila.objective.objective import Objective, ExpectationValueImpl
 from tequila import TequilaException
 from tequila.circuit.variable import Variable, Transform, has_variable
 
 import numpy as np
-from jax import numpy as jnp
 import copy
-import operator
 
 import jax
 
@@ -71,16 +68,12 @@ def grad(obj, variable: str = None, no_compile=False):
         compiled = compile_controlled_rotation(gate=compiled)
     else:
         compiled = obj
-    if type(compiled) is QCircuit:
-        compiled=ExpectationValue(U=compiled)
     if variable is None:
         variable = compiled.extract_variables()
     if not isinstance(variable, str):
         return {v : grad(obj=compiled, variable=v, no_compile=True) for v in variable}
 
-    if isinstance(compiled, ExpectationValue):
-        return __grad_expectationvalue(E=compiled, variable=variable)
-    elif hasattr(compiled, "is_expectationvalue") and obj.is_expectationvalue():
+    if obj.is_expectationvalue():
         return __grad_expectationvalue(E=compiled.expectationvalues[-1], variable=variable)
     elif isinstance(compiled, Objective):
         return __grad_objective(objective=compiled, variable=variable)
@@ -105,7 +98,7 @@ def __grad_objective(objective: Objective, variable: str = None):
     return dO
 
 
-def __grad_expectationvalue(E: ExpectationValue, variable: str):
+def __grad_expectationvalue(E: ExpectationValueImpl, variable: str):
     '''
     implements the analytic partial derivative of a unitary as it would appear in an expectation value. See the paper.
     :param unitary: the unitary whose gradient should be obtained
@@ -171,7 +164,7 @@ def __grad_controlled_rotation(unitary,g,i,variable,hamiltonian):
     for ang_set in angles_and_weights:
         U = unitary.replace_gate(position=i, gates=[gate for gate in compile_controlled_rotation(g, angles=ang_set[0])])
         w = 0.5 * ang_set[1] * __grad_transform(g.parameter, variable)
-        ev=ExpectationValue(U=U,H=hamiltonian)
+        ev=ExpectationValueImpl(U=U, H=hamiltonian)
         dOinc=w *ev
         if dO is None:
             dO = dOinc
@@ -205,8 +198,8 @@ def __grad_rotation(unitary,g,i,variable,hamiltonian):
     U2 = unitary.replace_gate(position=i, gates=[neo_b])
     w2 = -0.5 * __grad_transform(g.parameter, variable)
 
-    Oplus = ExpectationValue(U=U1, H=hamiltonian)
-    Ominus = ExpectationValue(U=U2, H=hamiltonian)
+    Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
+    Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
     dOinc = w1 * Objective(expectationvalues=[Oplus]) + w2 * Objective(expectationvalues=[Ominus])
     return dOinc
 
@@ -242,7 +235,7 @@ def __grad_power(unitary,g,i,variable,hamiltonian):
 
         w1 = 0.5 * __grad_transform(g.parameter, variable)
         w2 = -0.5 * __grad_transform(g.parameter, variable)
-        Oplus = ExpectationValue(U=U1, H=hamiltonian)
-        Ominus = ExpectationValue(U=U2, H=hamiltonian)
+        Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
+        Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
         dOinc = w1 * Objective(expectationvalues=[Oplus]) + w2 * Objective(expectationvalues=[Ominus])
         return dOinc

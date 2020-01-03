@@ -288,6 +288,24 @@ class QCircuit():
     def __repr__(self):
         return self.__str__()
 
+
+    def __getitem__(self, item):
+        """
+        iteration over gates is possible
+        :param item:
+        :return: returns the ith gate in the circuit where i=item
+        """
+        return self.gates[item]
+
+    def __setitem__(self, key: int, value: QGateImpl):
+        """
+        Insert a gate at a specific position
+        :param key:
+        :param value:
+        :return: self for chaining
+        """
+        self.gates[key] = value
+        return self
     @staticmethod
     def wrap_gate(gate: QGateImpl):
         """

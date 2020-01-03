@@ -492,9 +492,6 @@ class Transform:
     def __rtruediv__(self, other):
         return self.binary_operator(left=other, right=self, op=numpy.true_divide)
 
-    def __invert__(self):
-        return self.unary_operator(left=self, op=lambda E: numpy.power(E, -1))
-
     def __lt__(self, other):
         return self.eval < other
 

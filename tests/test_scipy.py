@@ -1,6 +1,5 @@
 import pytest, numpy
 import tequila as tq
-from tequila.objective import ExpectationValue,Objective
 
 
 @pytest.mark.parametrize("simulator", tq.simulators.get_all_wfn_simulators())
@@ -14,7 +13,7 @@ def test_execution(simulator):
                                generators=[-0.25 * tq.paulis.Z(1), tq.paulis.X(0) + tq.paulis.Y(1)], steps=2) \
         + tq.gates.ExpPauli(angle="a", paulistring="X(0)Y(1)Z(2)")
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
-    O = tq.Objective(expectationvalues=[ExpectationValue(U=U,H=H)])
+    O = tq.ExpectationValue(U=U, H=H)
 
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", simulator=simulator)
     assert (len(result.history.energies) == 3)
@@ -31,7 +30,7 @@ def test_execution_shot(simulator):
                                generators=[-0.25 * tq.paulis.Z(1), tq.paulis.X(0) + tq.paulis.Y(1)], steps=2) \
         + tq.gates.ExpPauli(angle="a", paulistring="X(0)Y(1)Z(2)")
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
-    O = tq.Objective(expectationvalues=[ExpectationValue(U=U, H=H)])
+    O = tq.ExpectationValue(U=U, H=H)
 
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", simulator=simulator, samples=3)
     assert (len(result.history.energies) == 3)
@@ -41,7 +40,7 @@ def test_execution_shot(simulator):
 def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=[tq.Variable(name="a", value=0.0)], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
-    O = tq.Objective(expectationvalues=[ExpectationValue(U=U, H=H)])
+    O = tq.ExpectationValue(U=U, H=H)
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, simulator=simulator)
     assert (numpy.isclose(result.energy, -1.0))
 
@@ -50,6 +49,6 @@ def test_one_qubit_wfn(simulator):
 def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=[tq.Variable(name="a", value=0.0)], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
-    O = tq.Objective(expectationvalues=[ExpectationValue(U=U,H=H)])
+    O = tq.ExpectationValue(U=U, H=H)
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, simulator=simulator, samples=10000)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-2))

@@ -4,8 +4,8 @@ from numpy.random import uniform, randint
 from numpy import pi, isclose
 from tequila.simulators.simulator_cirq import SimulatorCirq
 from tequila.hamiltonian import paulis
-from tequila.objective import Objective,ExpectationValue
 from tequila import simulators
+from tequila.objective.objective import ExpectationValueImpl
 import pytest
 import numpy
 
@@ -47,21 +47,21 @@ def test_controlled_rotations():
 def test_basis_change():
     for angle in list(uniform(0, 2 * pi, 5)):
         EX = SimulatorCirq().simulate_expectationvalue(
-            E=ExpectationValue(U=gates.Rx(target=0, angle=angle), H=PX(0)))
+            E=ExpectationValueImpl(U=gates.Rx(target=0, angle=angle), H=PX(0)))
         EY = SimulatorCirq().simulate_expectationvalue(
-            E=ExpectationValue(U=gates.Rx(target=0, angle=angle), H=PY(0)))
+            E=ExpectationValueImpl(U=gates.Rx(target=0, angle=angle), H=PY(0)))
         EZ = SimulatorCirq().simulate_expectationvalue(
-            E=ExpectationValue(U=gates.Rx(target=0, angle=angle), H=PZ(0)))
+            E=ExpectationValueImpl(U=gates.Rx(target=0, angle=angle), H=PZ(0)))
 
         EXX = SimulatorCirq().simulate_expectationvalue(
-            E=ExpectationValue(U=gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=0),
-                        H=PZ(0)))
+            E=ExpectationValueImpl(U=gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=0),
+                                   H=PZ(0)))
         EYY = SimulatorCirq().simulate_expectationvalue(
-            E=ExpectationValue(U=gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=1),
-                        H=PZ(0)))
+            E=ExpectationValueImpl(U=gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=1),
+                                   H=PZ(0)))
         EZZ = SimulatorCirq().simulate_expectationvalue(
-            E=ExpectationValue(U=gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=2),
-                        H=PZ(0)))
+            E=ExpectationValueImpl(U=gates.Rx(target=0, angle=angle) * change_basis(target=0, axis=2),
+                                   H=PZ(0)))
 
         assert (isclose(EX, EXX, atol=1.e-4))
         assert (isclose(EY, EYY, atol=1.e-4))
