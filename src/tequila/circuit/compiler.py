@@ -6,7 +6,7 @@ from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, H, X, Rz, ExpPauli
 from tequila.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
-from tequila.objective import Objective
+from tequila.objective.objective import Objective, ExpectationValueImpl
 
 import numpy, copy
 
@@ -24,18 +24,23 @@ def compiler(f):
 
     def wrapper(gate, **kwargs):
         if hasattr(gate, "gates"):
-            result = QCircuit(weight=gate.weight)
+            result = QCircuit()
             for g in gate.gates:
                 result += f(gate=g, **kwargs)
             return result
-        elif hasattr(gate, "unitaries") and hasattr(gate, "observable"):
+        elif isinstance(gate, ExpectationValueImpl):
+            cU = QCircuit()
+            for g in gate.U.gates:
+                cU += f(gate=g, **kwargs)
+            return ExpectationValueImpl(H=gate.H, U=cU)
+        elif isinstance(gate, Objective):
             compiled = []
-            for U in gate.unitaries:
-                cU = QCircuit(weight=U.weight)
-                for g in U.gates:
+            for E in gate._expectationvalues:
+                cU = QCircuit()
+                for g in E.U.gates:
                     cU += f(gate=g, **kwargs)
-                compiled.append(cU)
-            return Objective(observable=gate.observable, unitaries=compiled)
+                compiled.append(ExpectationValueImpl(H=E.H, U=cU))
+            return Objective(expectationvalues=compiled, transformation=gate._transformation)
         else:
             return f(gate=gate, **kwargs)
 

@@ -1,4 +1,8 @@
-import numpy, typing, copy
+import typing, copy, numbers
+from jax import numpy as numpy
+
+from tequila import paulis, TequilaException
+from tequila.utils import JoinedTransformation
 
 """
 Preliminary structure to carry information over to backends
@@ -6,122 +10,186 @@ Needs to be restructured and clarified but currently does the job
 """
 
 
-# todo A lot!
-
-class Objective:
+class ExpectationValueImpl:
+    """
+    Internal Object, do not use from the outside
+    the implementation of Expectation Values as a class. Capable of being simulated, and differentiated.
+    common arithmetical operations like addition, multiplication, etc. are defined, to return Objective objects.
+    :param U: a QCircuit, for preparing a state
+    :param H: a Hamiltonian, whose expectation value with the state prepared by U is to be determined.
+    '''
+    """
 
     @property
-    def unitaries(self):
-        if self._unitaries is None:
-            return []
+    def U(self):
+        if self._unitary is None:
+            return None
         else:
-            return self._unitaries
+            return self._unitary
 
-    @unitaries.setter
-    def unitaries(self, u):
-        if u is None:
-            self._unitaries = u
-        elif hasattr(u, "__iter__") or hasattr(u, "__get_item__"):
-            self._unitaries = u
+    @property
+    def H(self):
+        if self._hamiltonian is None:
+            return paulis.QubitHamiltonian.init_unit()
         else:
-            self._unitaries = [u]
+            return self._hamiltonian
 
-    def extract_variables(self) -> typing.Dict[str, float]:
-        """
-        :return: All parameters of the objective
-        """
-        parameters = dict()
-        for U in self.unitaries:
-            parameters = {**parameters, **U.extract_variables()}
-        return parameters
+    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+        result = dict()
+        if self.U is not None:
+            result = self.U.extract_variables()
+        return result
 
-    def update_variables(self, variables: typing.Dict[str, float]):
+    def update_variables(self, variables: typing.Dict[str, numbers.Real]):
+        if self.U is not None:
+            self.U.update_variables(variables)
+
+    def __init__(self, U=None, H=None):
+        self._unitary = copy.deepcopy(U)
+        self._hamiltonian = copy.deepcopy(H)
+
+class Objective:
+    """
+    the class which represents mathematical manipulation of ExpectationValue objects. Capable of being simulated,
+    and differentiated with respect to the Variables of its Expectationvalues.
+    :param expectationvalues: an iterable of ExpectationValue's.
+    :param transformation: a callable whose positional arguments (potentially, by nesting in a JoinedTransformation)
+    are the expectationvalues, in order.
+    """
+
+    def extract_variables(self):
         """
-        Update parameters of all unitaries
-        :param variables: parameters to update
-        :return: self for chaining
+        :return: a dictionary, containing every variable from every ExpectationValue in the objective.
         """
-        for U in self.unitaries:
-            U.update_variables(variables=variables)
+        variables = dict()
+        for E in self._expectationvalues:
+            variables = {**variables, **E.extract_variables()}
+        return variables
+
+    def update_variables(self, variables):
+        '''
+        :param variables: a list of Variables or dictionary of str, number pairs with which ALL expectationvalues of the
+        Objective are to be updated. Calls the update_variables method of ExpectationValue,
+        which in turn calls that of QCircuit, which ultimately accesses the update methods of
+        Transform and Variable's themselves.
+        :return: self, for ease of use
+        '''
+        for E in self._expectationvalues:
+            E.update_variables(variables=variables)
         return self
 
-    def to_backend(self, simulator):
-        out = Objective(unitaries=[], observable=[])
-        for U in self.unitaries:
-            out.unitaries += [simulator.backend_handler.recompile(abstract_circuit=U.decompose())]
-            out.unitaries[-1].weight = U.weight
-        out.observable = self.observable
-        return out
+    def __init__(self, expectationvalues: typing.Iterable[ExpectationValueImpl], transformation: typing.Callable = None):
+        self._expectationvalues = tuple(expectationvalues)
+        self._transformation = transformation
 
-    def __init__(self, observable=None, unitaries=None):
-        self.unitaries = copy.deepcopy(unitaries)
-        self.observable = copy.deepcopy(observable)
+    def is_expectationvalue(self):
+        """
+        :return: bool: whether or not this objective is just a wrapped ExpectationValue
+        """
+        return len(self.expectationvalues) == 1 and self._transformation is None
 
-    def __eq__(self, other):
+    @classmethod
+    def ExpectationValue(cls, U=None, H=None):
+        """
+        Initialize a wrapped expectationvalue directly as Objective
+        """
+        E = ExpectationValueImpl(H=H, U=U)
+        return Objective(expectationvalues=[E])
 
-        if len(self.unitaries) != len(other.unitaries):
-            return False
+    @property
+    def transformation(self) -> typing.Callable:
+        if self._transformation is None:
+            return numpy.sum
+        else:
+            return self._transformation
 
-        for i, U in enumerate(self.unitaries):
-            if U != other.unitaries[i]:
-                print("oha \n", U, "\n", other.unitaries[i])
-                return False
-
-        return True
-
-    def __add__(self, other):
-        assert (self.observable == other.observable)
-        return Objective(unitaries=self.unitaries + other.unitaries, observable=self.observable)
+    @property
+    def expectationvalues(self) -> typing.Tuple:
+        '''
+        :return: self._expectationvalues
+        '''
+        if self._expectationvalues is None:
+            return tuple()
+        else:
+            return self._expectationvalues
 
     def __mul__(self, other):
-        # todo comming soon
-        raise NotImplementedError("* not implemented yet")
+        return self.binary_operator(left=self, right=other, op=numpy.multiply)
 
-    def objective_function(self, values, weights=None):
-        """
-        The abstract function which defines the operation performed on the expectation values
-        The default is summation
-        Overwrite this function to get different functions
+    def __add__(self, other):
+        return self.binary_operator(left=self, right=other, op=numpy.add)
 
-        Potentially better Idea for the future: Maybe just use objectives as primitives, since they will have +,-,*,...,
-        So the functions can be created and differentiated from the outside
-        Then overwriting this functions is not necessary anymore
+    def __sub__(self, other):
+        return self.binary_operator(left=self, right=other, op=numpy.subtract)
 
-        :param values: Measurement results corresponding to <Psi_i|H|Psi_i> with |Psi_i> = U_i|Psi>
-        :param weights: weights on the measurements
-        :return:
-        """
-        if weights is None:
-            weights = numpy.asarray([1] * len(values))
+    def __truediv__(self, other):
+        return self.binary_operator(left=self, right=other, op=numpy.true_divide)
+
+    def __neg__(self):
+        return self.unary_operator(left=self, op=numpy.negative)
+
+    def __pow__(self, power):
+        return self.binary_operator(left=self, right=power, op=lambda l, r: numpy.float_power(l, r))
+        # return self.binary_operator(left=self, op=lambda E: numpy.float_power(E, power))
+
+    def __rpow__(self, other):
+        return self.binary_operator(left=self, right=other, op=lambda l, r: numpy.float_power(r, l))
+
+    def __rmul__(self, other):
+        return self.unary_operator(left=self, op=lambda E: numpy.multiply(other, E))
+
+    def __radd__(self, other):
+        return self.unary_operator(left=self, op=lambda E: numpy.add(other, E))
+
+    def __rtruediv__(self, other):
+        return self.binary_operator(left=self, right=other, op=lambda l, r: numpy.true_divide(r, l))
+
+    def __invert__(self):
+        return self.unary_operator(left=self, op=lambda E: numpy.power(E, -1))
+
+    @classmethod
+    def unary_operator(cls, left, op):
+        return Objective(expectationvalues=left.expectationvalues,
+                         transformation=lambda *args: op(left.transformation(*args)))
+
+    @classmethod
+    def binary_operator(cls, left, right, op):
+        '''
+        this function, usually called by the convenience magic-methods of Observable and ExpectationValue objects, constructs a new Objective
+        whose Transformation  is the JoinedTransformation of the lower arguments and transformations
+        of the left and right objects, alongside op (if they are or can be rendered as objectives). In case one of left or right
+        is a number, calls unary_operator instead.
+        :param left: the left hand argument to op
+        :param right: the right hand argument to op.
+        :param op: an operation; a function object.
+        :return: an objective whose Transformation  is the JoinedTransformation of the lower arguments and transformations
+        of the left and right objects, alongside op (if they are or can be rendered as objectives). In case one of left or right
+        is a number, calls unary_operator instead.
+        '''
+
+        if isinstance(right, numbers.Number):
+            if isinstance(left, Objective):
+                return cls.unary_operator(left=left, op=lambda E: op(E, right))
+            else:
+                raise TequilaException(
+                    'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
+        elif isinstance(left, numbers.Number):
+            if isinstance(right, Objective):
+                return cls.unary_operator(left=right, op=lambda E: op(left, E))
+            else:
+                raise TequilaException(
+                    'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
         else:
-            weights = numpy.asarray(weights)
-        values = numpy.asarray(values)
-        assert (len(weights) == len(values))
-        return weights.dot(values)
+            split_at = len(left.expectationvalues)
+            return Objective(expectationvalues=left.expectationvalues + right.expectationvalues,
+                             transformation=JoinedTransformation(left=left.transformation, right=right.transformation,
+                                                                 split=split_at, op=op))
 
     def __repr__(self):
-        nu = 0
-        if self.unitaries is not None:
-            nu = len(self.unitaries)
-        no = "no "
-        if self.observable is not None:
-            no = "with "
-        return "Objective(" + str(nu) + " unitaries, " + str(no) + " observable"
+        return "Objective with " + str(len(self.expectationvalues)) + " expectationvalues"
 
-    def __str__(self):
-
-        nu = "no"
-        if self.unitaries is not None:
-            nu = str(len(self.unitaries))
-
-        result = "Objective " + nu + " Unitaries:\n"
-        for U in self.unitaries:
-            result += str(U) + "\n"
-
-        if self.observable is None:
-            result += "No Observable\n"
-        else:
-            result += "Observable:\n"
-            result += str(self.observable)
-
-        return result
+def ExpectationValue(U, H) -> Objective:
+    """
+    Initialize an Objective which is just a single expectationvalue
+    """
+    return Objective.ExpectationValue(U=U, H=H)

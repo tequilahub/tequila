@@ -10,7 +10,7 @@ from tequila.hamiltonian import paulis
 from tequila.objective import Objective
 import numpy
 from tequila.circuit import Variable
-from tequila.optimizers import GradientDescent
+from tequila.optimizers import optimizer_scipy
 
 # uncomment if you want to use a specific simulators
 # from tequila.simulators.simulator_cirq import SimulatorCirq
@@ -40,18 +40,17 @@ if __name__ == "__main__":
     # U = gates.Ry(target=0, angle="angle")
 
     # initialize the objective
-    O = Objective(unitaries=U, observable=H)
+    O = Objective.ExpectationValue(U=U,H=H)
 
     # do the optimization
-    optimizer = GradientDescent(stepsize=stepsize, maxiter=maxiter, samples=samples, simulator=simulator)
-    E, angles,history = optimizer(objective=O, initial_values={"angle": initial_angle}) # don't need to set initial_values
+    result = optimizer_scipy.minimize(objective=O, method="CG", maxiter=maxiter, samples=samples, simulator=simulator)
 
     print("optimal energy = ", -1.0)
     print("optimal angle  = ", optimal_angle)
-    print("found energy   = ", E)
-    print("found angle    = ", angles)
+    print("found energy   = ", result.energy)
+    print("found angle    = ", result.angles)
 
-    optimizer.history.plot('energies')
-    optimizer.history.plot('gradients')
+    result.history.plot('energies')
+    result.history.plot('gradients')
 
 

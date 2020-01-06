@@ -512,8 +512,8 @@ class UnaryStatePrepImpl:
 
         elif gate == "aCNOT":
             sub_circ = X(control_bit)
-            sub_circ *= CNOT(control= control_bit, target= target_bit)
-            sub_circ *= X(control_bit)
+            sub_circ += CNOT(control= control_bit, target= target_bit)
+            sub_circ += X(control_bit)
 
         elif gate == "CROT":
             a_angle = self.coefficients[self.c_i]
@@ -528,8 +528,8 @@ class UnaryStatePrepImpl:
             #self.symbols.append(sa)
             self.c_i += 1
             sub_circ = X(control_bit)
-            sub_circ *= Ry(control= control_bit, target= target_bit, angle=sa)
-            sub_circ *= X(control_bit)
+            sub_circ += Ry(control= control_bit, target= target_bit, angle=sa)
+            sub_circ += X(control_bit)
 
         elif gate == "X":
             sub_circ = X(target_bit)
@@ -599,7 +599,7 @@ class UnaryStatePrepImpl:
 
         circuit = QCircuit()
         for move in moves_list:
-            circuit *= self.create_sub_circ(move[0], move[1], move[2])
+            circuit += self.create_sub_circ(move[0], move[1], move[2])
 
         return circuit.dagger()
 

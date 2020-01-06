@@ -2,12 +2,14 @@
 BaseCalss for Optimizers
 Suggestion, feel free to propose new things/changes
 """
+import typing, numbers
 
 from tequila import TequilaException
 from tequila.objective import Objective
 from tequila.simulators import pick_simulator
-import typing, numbers
 from dataclasses import dataclass, field
+
+import pickle
 
 
 class TequilaOptimizerException(TequilaException):

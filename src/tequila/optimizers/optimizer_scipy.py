@@ -84,16 +84,13 @@ class OptimizerSciPy(Optimizer):
         if self.save_history and reset_history:
             self.reset_history()
 
-        # Need that for now to avoid compiler issues with gradients
-        if self.use_gradient:
-            grad_objective = copy.deepcopy(objective)
-
         simulator = self.initialize_simulator(self.samples)
 
         # do the compilation here to avoid costly recompilation during the optimization
         compiled_objective = simulator.backend_handler.recompile(objective)
         if self.use_gradient:
             compiled_grad_objective = grad(obj=compiled_objective)
+
         simulator.set_compile_flag(False)
 
         # Generate the function that evaluates <O>

@@ -6,6 +6,7 @@ from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
 from tequila import BitString
 from tequila.objective import Objective
+from tequila.objective.objective import ExpectationValueImpl
 from tequila.simulators.heralding import HeraldingABC
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
@@ -105,10 +106,9 @@ class SimulatorBase:
 
     def __init__(self, heralding: HeraldingABC = None, ):
         self._heralding = heralding
-        self.__decompose_and_compile = True
+        self.__do_recompilation = True
 
-    def __call__(self, objective: typing.Union[Objective, QCircuit], samples: int = None, **kwargs) \
-            -> typing.Union[numbers.Real, SimulatorReturnType]:
+    def __call__(self, objective: typing.Union[QCircuit, Objective], samples: int = None, **kwargs) -> numbers.Real:
         """
         :param objective: Objective or simple QCircuit
         :param samples: Number of Samples to evaluate, None means full wavefunction simulation
@@ -123,7 +123,7 @@ class SimulatorBase:
                 return self.run(abstract_circuit=objective, samples=samples)
         else:
             if samples is None:
-                return self.simulate_objective(objective=objective, **kwargs)
+                return self.simulate_objective(objective=objective)
             else:
                 return self.measure_objective(objective=objective, samples=samples, **kwargs)
 
@@ -139,7 +139,7 @@ class SimulatorBase:
         raise TequilaException("do_run needs to be overwritten by corresponding backend")
 
     def set_compile_flag(self, b):
-        self.__decompose_and_compile = b
+        self.__do_recompilation = b
 
     def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=None,
                               initial_state: int = 0) -> SimulatorReturnType:
@@ -165,8 +165,7 @@ class SimulatorBase:
         # maps from reduced register to full register
         keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
 
-        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit,
-                                               initial_state=keymap.inverted(initial_state).integer)
+        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit, initial_state=keymap.inverted(initial_state).integer)
         result.wavefunction.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
@@ -182,9 +181,8 @@ class SimulatorBase:
         :return: translated circuit
         """
 
-        if self.__decompose_and_compile:
-            decomposed_ac = abstract_circuit.decompose()
-            decomposed_ac = self.backend_handler.recompile(abstract_circuit=decomposed_ac)
+        if self.__do_recompilation:
+            decomposed_ac = self.backend_handler.recompile(abstract_circuit=abstract_circuit)
         else:
             decomposed_ac = abstract_circuit
 
@@ -219,23 +217,44 @@ class SimulatorBase:
         raise TequilaException(
             "called from base class of simulators, or non-supported operation for this backend")
 
-    def measure_objective(self, objective: Objective, samples: int, return_simulation_data: bool = False) -> float:
+    def measure_expectationvalue(self, E: ExpectationValueImpl, samples: int, return_simulation_data: bool = False) -> numbers.Real:
+        H = E.H
+        U = E.U
+        # The hamiltonian can be defined on more qubits as the unitaries
+        result_data = {}
         final_E = 0.0
+        for ps in H.paulistrings:
+            Etmp, tmp = self.measure_paulistring(abstract_circuit=U, paulistring=ps, samples=samples)
+            final_E += Etmp
+            result_data[str(ps)] = tmp
+
+        # type conversion to not confuse optimizers
+        if hasattr(final_E, "imag"):
+            assert(numpy.isclose(final_E.imag, 0.0))
+            final_E = float(final_E.real)
+
+        if return_simulation_data:
+            return final_E, result_data
+        else:
+            return final_E
+
+    def measure_objective(self, objective: Objective, samples: int, return_simulation_data: bool = False) -> float:
+        elist = []
         data = []
-        for U in objective.unitaries:
-            weight = U.weight
-            E = 0.0
+        for ex in objective.expectationvalues:
             result_data = {}
-            for ps in objective.observable.paulistrings:
-                Etmp, tmp = self.measure_paulistring(abstract_circuit=U, paulistring=ps, samples=samples)
-                E += Etmp
+            evalue=0.0
+            for ps in ex.H.paulistrings:
+                Etmp, tmp = self.measure_paulistring(abstract_circuit=ex.U, paulistring=ps, samples=samples)
+                evalue += Etmp
                 result_data[str(ps)] = tmp
-            final_E += weight * E
+            elist.append(evalue)
             if return_simulation_data:
                 data.append(tmp)
 
         # in principle complex weights are allowed, but it probably will never occur
         # however, for now here is the type conversion to not confuse optimizers
+        final_E=objective.transformation(*elist)
         if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
             final_E = float(final_E.real)
 
@@ -244,38 +263,48 @@ class SimulatorBase:
         else:
             return final_E
 
-    def simulate_objective(self, objective: Objective, return_simulation_data: bool = False) -> numbers.Real:
+    def simulate_expectationvalue(self, E: ExpectationValueImpl, return_simulation_data: bool = False) -> numbers.Real:
         final_E = 0.0
         data = []
-        H = objective.observable
-        for U in objective.unitaries:
-            # The hamiltonian can be defined on more qubits as the unitaries
-            qubits_h = objective.observable.qubits
-            qubits_u = U.qubits
-            all_qubits = list(set(qubits_h) | set(qubits_u))
-            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
-            simresult = self.simulate_wavefunction(abstract_circuit=U)
-            wfn = simresult.wavefunction.apply_keymap(keymap=keymap)
-            final_E += U.weight * wfn.compute_expectationvalue(operator=H)
-            if return_simulation_data:
-                data.append(simresult)
+        H = E.H
+        U = E.U
+        # The hamiltonian can be defined on more qubits as the unitaries
+        qubits_h = H.qubits
+        qubits_u = U.qubits
+        all_qubits = list(set(qubits_h) | set(qubits_u))
+        keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
+        simresult = self.simulate_wavefunction(abstract_circuit=U)
+        wfn = simresult.wavefunction.apply_keymap(keymap=keymap)
+        final_E += wfn.compute_expectationvalue(operator=H)
+        if return_simulation_data:
+            data.append(simresult)
 
-        # in principle complex weights are allowed, but it probably will never occur
-        # however, for now here is the type conversion to not confuse optimizers
-        if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
+        # type conversion to not confuse optimizers
+        if hasattr(final_E, "imag"):
+            assert(numpy.isclose(final_E.imag, 0.0))
             final_E = float(final_E.real)
 
         if return_simulation_data:
             return final_E, data
         else:
             return final_E
+
+    def simulate_objective(self, objective: Objective):
+        # simulate all expectation values
+        # TODO easy to parallelize
+        E = []
+        for Ei in objective._expectationvalues:
+            E.append(self.simulate_expectationvalue(E=Ei))
+        # return evaluated result
+        return objective.transformation(*E)
+
 
     def measure_paulistring(self, abstract_circuit: QCircuit, paulistring, samples: int = 1):
         # make basis change
         basis_change = QCircuit()
         for idx, p in paulistring.items():
             basis_change += change_basis(target=idx, axis=p)
-        # make measurment instruction
+        # make measurement instruction
         measure = QCircuit()
         qubits = [idx[0] for idx in paulistring.items()]
         if len(qubits) == 0:

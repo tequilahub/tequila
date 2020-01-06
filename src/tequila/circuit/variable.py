@@ -1,11 +1,9 @@
-import copy
 import numbers
-
 from tequila import TequilaException
 from tequila.tools import number_to_string
-from inspect import signature
-import numpy as np
-import operator
+from jax import numpy as numpy
+from jax import numpy as np
+from tequila.utils import JoinedTransformation
 import copy
 
 
@@ -145,45 +143,115 @@ class Variable:
                 return True
         return False
 
-    def __add__(self, other: float):
-        return Transform(operator.add, [self, other])
+    def __mul__(self, other):
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.multiply(v,other)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=numpy.multiply
+            new=Transform(args=[self,other],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__rmul__(self)
+        return new
 
-    def __radd__(self, other: float):
-        if other == 0:
-            return self
-        else:
-            return Transform(operator.add, [other, self])
+    def __add__(self, other):
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.add(v,other)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=numpy.add
+            new=Transform(args=[self,other],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__radd__(self)
+        return new
 
     def __sub__(self, other):
-        return Transform(operator.sub, [self, other])
-
-    def __rsub__(self, other):
-        return Transform(operator.sub, [other, self])
-
-    def __mul__(self, other):
-        return Transform(operator.mul, [self, other])
-
-    def __rmul__(self, other):
-
-        return Transform(operator.sub, [other, self])
-
-    def __neg__(self):
-        return Transform(operator.mul, [self, -1.])
-
-    def __div__(self, other):
-        return Transform((operator.itruediv), [self, other])
-
-    def __rdiv__(self, other):
-        return Transform(operator.truediv, [other, self])
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.subtract(v,other)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=lambda v1,v2: numpy.subtract(v1,v2)
+            new=Transform(args=[self,other],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__rsub__(self)
+        return new
 
     def __truediv__(self, other):
-        return Transform(operator.truediv, [self, other])
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.true_divide(v,other)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=numpy.true_divide
+            new=Transform(args=[self,other],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__rtruediv__(self)
+        return new
+
+    def __neg__(self):
+        return Transform(args=[self],transformation=lambda v: numpy.multiply(v,-1))
 
     def __pow__(self, other):
-        return Transform(operator.pow, [self, other])
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.float_power(v,other)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=numpy.float_power
+            new=Transform(args=[self,other],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__rpow__(self)
+        return new
+        # return self.binary_operator(left=self, op=lambda E: numpy.float_power(E, power))
 
     def __rpow__(self, other):
-        return Transform(operator.pow, [other, self])
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.float_power(other,v)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=numpy.float_power
+            new=Transform(args=[other,self],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__pow__(self)
+        return new
+        #return new.binary_operator(left=new,right=other, op=lambda l, r: numpy.float_power(r, l))
+
+    def __rmul__(self, other):
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.multiply(other,v)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=numpy.multiply
+            new=Transform(args=[other,self],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__mul__(self)
+        return new
+
+    def __radd__(self, other):
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.add(other,v)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=numpy.add
+            new=Transform(args=[other,self],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__add__(self)
+        return new
+
+    def __rtruediv__(self, other):
+        if isinstance(other, numbers.Number):
+            t=lambda v: numpy.true_divide(other,v)
+            new=Transform(args=[self],transformation=t)
+        elif isinstance(other,Variable):
+            t=numpy.true_divide
+            new=Transform(args=[other,self],transformation=t)
+        elif isinstance(other,Transform):
+            new=other.__truediv__(self)
+        return new
+        #return new.binary_operator(left=new, right=other, op=lambda l, r: numpy.true_divide(r, l))
+
+
+    def __invert__(self):
+        new=Transform(args=[self])
+        return new**-1
 
     def __iadd__(self, other):
         self._value += other
@@ -205,8 +273,6 @@ class Variable:
         self._value **= other
         return self
 
-    def __getstate__(self):
-        return self
 
     def __lt__(self, other):
         return self.value < other
@@ -244,7 +310,7 @@ class Variable:
         return self.value
 
     def __repr__(self):
-        return self.name + ', ' + str(self._value)
+        return str(self.name) + ', ' + str(self._value)
 
     def __str__(self):
         if self.name is None:
@@ -256,8 +322,10 @@ class Variable:
         #TODO remove
         return float(self.value)
 
-
 class Transform:
+    def __init__(self,args,transformation=None):
+        self.args=args
+        self.transformation=transformation
 
     @property
     def parameter_list(self):
@@ -280,6 +348,7 @@ class Transform:
                     if not np.isclose(vl[obj.name], obj.value):
                         raise TequilaException(
                             'found two variables with the same name and different values, this is unacceptable')
+
             elif type(obj) is Transform:
                 for k, v in obj.variables.items():
                     if k is not None and k not in vl:
@@ -300,13 +369,8 @@ class Transform:
                 new_a.append(arg())
             else:
                 new_a.append(arg)
-
-        return self.f(*new_a)
-
-    def __init__(self, func, args):
-        assert callable(func)
-        self.args = args
-        self.f = DressedOperator(op=func)
+        newer_a=[i for i in new_a]
+        return float(self.transformation(*newer_a).real)
 
     def update(self, pars):
         for arg in self.args:
@@ -340,6 +404,53 @@ class Transform:
 
         return False
 
+    @classmethod
+    def unary_operator(cls, left, op):
+
+        return Transform(args=left.args,
+                         transformation=lambda *args: op(left.transformation(*args)))
+
+    @classmethod
+
+    def binary_operator(cls, left, right, op):
+        '''
+        this function, usually called by the convenience magic-methods of Variable and Transform objects, constructs a new Objective
+        whose Transformation  is the JoinedTransformation of the lower arguments and transformations
+        of the left and right objects, alongside op (if they are or can be rendered as objectives). In case one of left or right
+        is a number, calls unary_operator instead.
+        :param left: the left hand argument to op
+        :param right: the right hand argument to op.
+        :param op: an operation; a function object.
+        :return: a Transform whose Transformation  is the JoinedTransformation of the lower arguments and transformations
+        of the left and right objects, alongside op. In case one of left or right is a number, calls unary_operator instead.
+
+        '''
+        r=None
+        l=None
+        if isinstance(left, Variable):
+            l=Transform([left])
+        if isinstance(left,Transform):
+            l=left
+        if isinstance(right, Variable):
+            r=Transform([right])
+        if isinstance(right, Transform):
+            r = right
+
+        if isinstance(right, numbers.Number):
+            if isinstance(left, Variable) or isinstance(left,Transform):
+                return cls.unary_operator(left=l, op=lambda E: op(E, right))
+            else:
+                raise TequilaException('BinaryOperator method called on types ' + str(type(left)) + ',' +str(type(right)))
+        elif isinstance(left, numbers.Number):
+            if isinstance(right, Variable) or isinstance(right,Transform):
+                return cls.unary_operator(left=r, op=lambda E: op(left,E))
+            else:
+                raise TequilaException('BinaryOperator method called on types ' + str(type(left)) + ',' +str(type(right)))
+        else:
+            split_at = len(l.args)
+            return Transform(args=l.args + r.args,
+                         transformation=JoinedTransformation(left=l.transformation, right=r.transformation,
+                                                             split=split_at, op=op))
     def __call__(self):
         return self.eval
 
@@ -347,55 +458,39 @@ class Transform:
         if hasattr(other, 'eval'):
             if hasattr(other, 'variables'):
                 if self.eval == other.eval and self.variables == other.variables:
-                    ### is this safe?
                     return True
         return False
 
-    def __add__(self, other: float):
-        return Transform(operator.add, [self, other])
+    def __mul__(self, other):
+        return self.binary_operator(left=self, right=other, op=numpy.multiply)
 
-    def __radd__(self, other: float):
-        if other == 0:
-            return self
-        else:
-            return Transform(operator.add, [other, self])
+    def __add__(self, other):
+        return self.binary_operator(left=self, right=other, op=numpy.add)
 
     def __sub__(self, other):
-        return Transform(operator.sub, [self, other])
-
-    def __rsub__(self, other):
-        return Transform(operator.sub, [other, self])
-
-    def __mul__(self, other):
-        return Transform(operator.mul, [self, other])
-
-    def __rmul__(self, other):
-
-        return Transform(operator.sub, [other, self])
-
-    def __neg__(self):
-        return Transform(operator.mul, [self, -1])
-
-    def __div__(self, other):
-        return Transform(operator.truediv, [self, other])
-
-    def __rdiv__(self, other):
-        return Transform(operator.truediv, [other, self])
+        return self.binary_operator(left=self, right=other, op=numpy.subtract)
 
     def __truediv__(self, other):
-        return Transform(operator.truediv, [self, other])
+        return self.binary_operator(left=self, right=other, op=numpy.true_divide)
 
-    def __rtruediv__(self, other):
-        return Transform(operator.truediv, [other, self])
+    def __neg__(self):
+        return self.unary_operator(left=self, op=numpy.negative)
 
-    def __pow__(self, other):
-        return Transform(operator.pow, [self, other])
+    def __pow__(self, power):
+        return self.binary_operator(left=self, right=power, op=numpy.float_power)
 
     def __rpow__(self, other):
-        return Transform(operator.pow, [other, self])
+        #return self.binary_operator(left=self, right=other, op=lambda l, r: numpy.float_power(r, l))
+        return self.binary_operator(left=other, right=self, op=numpy.float_power)
 
-    def __getstate__(self):
-        return self
+    def __rmul__(self, other):
+        return self.binary_operator(left=other,right=self, op=numpy.multiply)
+
+    def __radd__(self, other):
+        return self.binary_operator(left=other, right=self, op=numpy.add)
+
+    def __rtruediv__(self, other):
+        return self.binary_operator(left=other, right=self, op=numpy.true_divide)
 
     def __lt__(self, other):
         return self.eval < other
@@ -444,7 +539,7 @@ class Transform:
         return complex(number)
 
     def __repr__(self):
-        funcpart = str(self.f) + ' acting on: '
+        funcpart = str(self.transformation) + ' acting on: '
         argpart = '('
         for i in range(len(self.args)):
             argpart += str(self.args[i])
@@ -455,16 +550,15 @@ class Transform:
         return funcpart + argpart + ', val=' + val
 
     def __str__(self):
-        result = ""
-        fname = str(self.f)
-
-        if len(self.args) == 2:
-            result += "(" + str(self.args[0]) + ")" + fname + "(" + str(self.args[-1]) + ")"
-        else:
-            result += fname + "(" + str(self.args) + ")"
-
-        return result
-
+        funcpart = str(self.transformation) + ' acting on: '
+        argpart = '('
+        for i in range(len(self.args)):
+            argpart += str(self.args[i])
+            if i < len(self.args) - 1:
+                argpart += ', '
+        argpart += ')'
+        val = str(self())
+        return funcpart + argpart + ', val=' + val
 
 def has_variable(obj, var):
     '''
@@ -476,42 +570,3 @@ def has_variable(obj, var):
         return obj.has_var(var)
     else:
         return False
-
-
-class DressedOperator:
-    """
-    Can be a function later
-    Currently the gradient needs information about the wrapped operator
-    """
-
-    _operator_names = {
-        "add": "+",
-        "sub": "-",
-        "mul": "*",
-        "truediv": "/",
-        "pow": "**"
-    }
-
-    def __str__(self):
-        name = self.op.__name__
-        if name in self._operator_names:
-            return self._operator_names[name]
-        else:
-            return name
-
-    def __init__(self, op):
-        self.op = op
-
-    def wrapper(self, l, r=None, *args, **kwargs):
-        if type(l) in [Variable, Transform]:
-            lv = l()
-        else:
-            lv = l
-        if type(r) in [Variable, Transform]:
-            rv = r()
-        else:
-            rv = r
-        return self.op(lv, rv)
-
-    def __call__(self, *args, **kwargs):
-        return self.wrapper(*args, **kwargs)
