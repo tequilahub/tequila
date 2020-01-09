@@ -264,6 +264,7 @@ class Objective:
         '''
         if all([hasattr(arg,'name')==True for arg in self.args]):
             back=self.transformation(*[arg() for arg in self.args])
+            return float(back)
         if self.loaded is None:
             raise TequilaException('Objective cannot be called when Expectation Values are present if no simulator is attached!')
         else:

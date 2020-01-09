@@ -97,15 +97,15 @@ class PhoenicsOptimizer(Optimizer):
 
         simulator = self.initialize_simulator(samples=self.samples)
         recompiled = []
-        for u in objective.unitaries:
+        for u in objective.args:
             recompiled.append(simulator.backend_handler.recompile(u))
-        objective.unitaries =recompiled
+        objective._args=recompiled
         simulator.set_compile_flag(False)
         best=None
         best_angles=None
         O = objective
         u_num = mp.cpu_count()
-        o_list = [copy.deepcopy(O) for i in range(u_num)]
+        #o_list = [copy.deepcopy(O) for i in range(u_num)]
         for i in range(maxiter):
             with warnings.catch_warnings():
                 np.testing.suppress_warnings()
@@ -115,23 +115,23 @@ class PhoenicsOptimizer(Optimizer):
                     precs=bird.recommend(observations=obs)
                 else:
                     precs=bird.recommend()
-
-            pool=mp.Pool()
+            #pool=mp.Pool()
             runs=[]
             recs=self._process_for_sim(precs)
             for i,rec in enumerate(recs):
-                running = o_list[i].update_variables(rec)
+                #running = o_list[i].update_variables(rec)
+                O=O.update_variables(rec)
                 if self.samples is None:
-                    En=pool.apply_async(simulator.simulate_objective,[running])
-                    # En = simulator.simulate_objective(objective=running)
+                    #En=pool.apply_async(simulator.simulate_objective,[running])
+                     En = simulator.simulate_objective(objective=O)
                 else:
-                    En = pool.apply_async(simulator.measure_objective, [running, self.samples])
-                    # En = simulator.measure_objective(objective=running, samples=self.samples)
+                    #En = pool.apply_async(simulator.measure_objective, [running, self.samples])
+                    En = simulator.measure_objective(objective=O, samples=self.samples)
                 runs.append((rec, En))
             for run in runs:
                 angles=run[0]
-                E=run[1].get()
-                #E=run[1]
+                #E=run[1].get()
+                E=run[1]
                 if best is None:
                     best=E
                     best_angles=angles

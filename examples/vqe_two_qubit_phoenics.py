@@ -67,7 +67,7 @@ if __name__ == "__main__":
     angles['b'] = 2.0
 
     # Optimize
-    result = PhoenicsOptimizer(samples=samples,simulator=simulator)(O,20)
+    result = PhoenicsOptimizer(samples=samples,simulator=simulator)(O,10)
 
     # plot the history, default are energies
     result.history.plot()
