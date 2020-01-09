@@ -1,6 +1,7 @@
-from tequila.circuit import gates, Variable
+from tequila.circuit import gates
 from tequila.circuit.gradient import grad
 from tequila.objective import Objective, ExpectationValue
+from tequila.circuit.variable import Variable
 from tequila.hamiltonian import paulis
 from tequila.simulators.simulator_qiskit import SimulatorQiskit
 from tequila.simulators.simulator_cirq import SimulatorCirq
@@ -32,12 +33,11 @@ def test_gradient_UY_HX(simulator, angle, controlled, silent=True):
         U = gates.Ry(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
     E = simulator().measure_objective(objective=O, samples=10000)
-    dO = grad(obj=O)
+    dO = grad(obj=O,variable='angle')
     print(dO)
-    for k, v in dO.items():
-        dE = simulator().measure_objective(objective=v, samples=10000)
-        assert (numpy.isclose(E, numpy.sin(angle()), atol=0.03))
-        assert (numpy.isclose(dE, numpy.cos(angle()), atol=0.03))
+    dE = simulator().measure_objective(objective=dO, samples=10000)
+    assert (numpy.isclose(E, numpy.sin(angle()), atol=0.03))
+    assert (numpy.isclose(dE, numpy.cos(angle()), atol=0.03))
     if not silent:
         print("E         =", E)
         print("sin(angle)=", numpy.sin(angle()))
@@ -65,12 +65,10 @@ def test_gradient_UX_HY(simulator, angle, controlled, silent=False):
         U = gates.Rx(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
     E = simulator().measure_objective(objective=O, samples=10000)
-    dO = grad(obj=O)
-    assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = simulator().measure_objective(objective=v, samples=10000)
-        assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.03))
-        assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.03))
+    dO = grad(obj=O,variable='angle')
+    dE = simulator().measure_objective(objective=dO, samples=10000)
+    assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.03))
+    assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.03))
     if not silent:
         print("E         =", E)
         print("-sin(angle)=", -numpy.sin(angle()))
@@ -104,11 +102,9 @@ def test_gradient_UY_HX_wfnsim(simulator, angle, controlled, silent=True):
         U = gates.Ry(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
     E = simulator().simulate_objective(O)
-    dO = grad(obj=O)
+    dO = grad(obj=O,variable='angle')
     print(dO)
-    assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = simulator().simulate_objective(v)
+    dE = simulator().simulate_objective(dO)
     E = numpy.float(E)  # for isclose
     dE = numpy.float(dE)  # for isclose
     assert (numpy.isclose(E, numpy.sin(angle()), atol=0.0001))
@@ -142,12 +138,10 @@ def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
         U = gates.Rx(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
     E = simulator().simulate_objective(O)
-    dO = grad(obj=O)
-    assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = simulator().simulate_objective(v)
-        assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.0001))
-        assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.0001))
+    dO = grad(obj=O,variable='angle')
+    dE = simulator().simulate_objective(dO)
+    assert (numpy.isclose(E, -numpy.sin(angle()), atol=0.0001))
+    assert (numpy.isclose(dE, -numpy.cos(angle()), atol=0.0001))
     if not silent:
         print("E         =", E)
         print("-sin(angle)=", -numpy.sin(angle()))
@@ -164,12 +158,10 @@ def test_gradient_X(simulator, power):
     U = gates.X(target=qubit, power=power)
     O = ExpectationValue(U=U, H=H)
     E = simulator().measure_objective(objective=O, samples=10000)
-    dO = grad(obj=O)
-    assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = simulator().measure_objective(objective=v, samples=10000)
-        assert (numpy.isclose(E, -numpy.sin(power() * (numpy.pi)), atol=0.03))
-        assert (numpy.isclose(dE, -numpy.cos(power() * (numpy.pi)), atol=0.03))
+    dO = grad(obj=O,variable='angle')
+    dE = simulator().measure_objective(objective=dO, samples=10000)
+    assert (numpy.isclose(E, -numpy.sin(power() * (numpy.pi)), atol=0.03))
+    assert (numpy.isclose(dE, -numpy.cos(power() * (numpy.pi)), atol=0.03))
 
 
 @pytest.mark.parametrize("simulator", [SimulatorCirq])
@@ -181,9 +173,7 @@ def test_gradient_Y(simulator, power):
     U = gates.Y(target=qubit, power=power)
     O = ExpectationValue(U=U, H=H)
     E = simulator().measure_objective(objective=O, samples=10000)
-    dO = grad(obj=O)
-    assert (len(dO) == 1)
-    for k, v in dO.items():
-        dE = simulator().measure_objective(objective=v, samples=10000)
-        assert (numpy.isclose(E, numpy.sin(power() * (numpy.pi)), atol=0.03))
-        assert (numpy.isclose(dE, numpy.cos(power() * (numpy.pi)), atol=0.03))
+    dO = grad(obj=O,variable='angle')
+    dE = simulator().measure_objective(objective=dO, samples=10000)
+    assert (numpy.isclose(E, numpy.sin(power() * (numpy.pi)), atol=0.03))
+    assert (numpy.isclose(dE, numpy.cos(power() * (numpy.pi)), atol=0.03))

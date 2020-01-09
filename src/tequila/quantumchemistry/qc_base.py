@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from tequila import TequilaException, BitString
 from tequila.hamiltonian import HamiltonianQC, QubitHamiltonian
-from tequila.circuit import QCircuit, Variable, gates
+from tequila.circuit import QCircuit,gates,Variable
 from tequila.ansatz import prepare_product_state
 
 import typing, numpy, numbers

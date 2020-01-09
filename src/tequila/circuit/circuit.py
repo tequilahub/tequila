@@ -1,9 +1,8 @@
 from tequila.circuit._gates_impl import QGateImpl
 from tequila import TequilaException
 from tequila import BitNumbering
-from tequila.circuit.variable import has_variable
+from tequila.utils import has_variable
 import numpy, typing, numbers
-
 
 class QCircuit():
 
@@ -157,7 +156,7 @@ class QCircuit():
 
         result = []
         for i, g in enumerate(self.gates):
-            if g.is_parametrized() and not g.is_frozen() and g.parameter.name == namex:
+            if g.is_parametrized() and not g.is_frozen() and has_variable(g.parameter,namex):
                 result.append(i)
         return result
 

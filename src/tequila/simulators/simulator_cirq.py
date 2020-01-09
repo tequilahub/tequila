@@ -93,7 +93,8 @@ class SimulatorCirq(SimulatorBase):
         simulator = cirq.Simulator()
         circuit = self.create_circuit(abstract_circuit=abstract_circuit)
         backend_result = simulator.simulate(program=circuit, initial_state=initial_state)
-        return SimulatorReturnType(abstract_circuit=abstract_circuit, circuit=circuit,
+        return SimulatorReturnType(abstract_circuit=abstract_circuit,
+                                   circuit=circuit,
                                    wavefunction=QubitWaveFunction.from_array(arr=backend_result.final_state,
                                    numbering=self.numbering),
                                    backend_result=backend_result)

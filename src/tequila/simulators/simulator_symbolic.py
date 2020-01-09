@@ -115,7 +115,7 @@ class SimulatorSymbolic(SimulatorBase):
         else:
             wfn = result
 
-        return SimulatorReturnType(backend_result=result, wavefunction=wfn, circuit=abstract_circuit)
+        return SimulatorReturnType(backend_result=result, wavefunction=wfn, abstract_circuit=abstract_circuit)
 
 
 if __name__ == "__main__":

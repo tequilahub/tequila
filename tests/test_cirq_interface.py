@@ -7,11 +7,11 @@ except ImportError:
     system_has_cirq = False
 
 from tequila.circuit.circuit import QCircuit
+from tequila.circuit.variable import Variable
 from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H, iSWAP
 from numpy import pi, random, isclose, sqrt
 from tequila.objective import ExpectationValue
 from tequila.circuit.gradient import grad
-from tequila.circuit import Variable
 import pytest
 
 supported_primitive_gates = [X, Y, Z, H]

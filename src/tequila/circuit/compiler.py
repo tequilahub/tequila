@@ -6,7 +6,6 @@ from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, H, X, Rz, ExpPauli
 from tequila.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
-from tequila.objective.objective import Objective, ExpectationValueImpl
 
 import numpy, copy
 
@@ -28,19 +27,26 @@ def compiler(f):
             for g in gate.gates:
                 result += f(gate=g, **kwargs)
             return result
-        elif isinstance(gate, ExpectationValueImpl):
+
+        elif hasattr(gate,'U'):
             cU = QCircuit()
             for g in gate.U.gates:
                 cU += f(gate=g, **kwargs)
-            return ExpectationValueImpl(H=gate.H, U=cU)
-        elif isinstance(gate, Objective):
+            inkwargs={'H':gate.H,'U':cU}
+            return type(gate)(U=cU,H=gate.H)
+        elif hasattr(gate, 'transformation'):
             compiled = []
-            for E in gate._expectationvalues:
-                cU = QCircuit()
-                for g in E.U.gates:
-                    cU += f(gate=g, **kwargs)
-                compiled.append(ExpectationValueImpl(H=E.H, U=cU))
-            return Objective(expectationvalues=compiled, transformation=gate._transformation)
+            for E in gate.args:
+                if hasattr(E,'name'):
+                    compiled.append(E)
+                else:
+                    cU = QCircuit()
+                    for g in E.U.gates:
+                        cU += f(gate=g, **kwargs)
+                    #inkwargs={'U':cU,'H':E.H}
+                    compiled.append(type(E)(U=cU,H=E.H))
+            #nukwargs={'args':compiled,'transformation':gate._transformation}
+            return type(gate)(args=compiled,transformation=gate._transformation)
         else:
             return f(gate=gate, **kwargs)
 
@@ -125,7 +131,7 @@ def compile_swap(gate) -> QCircuit:
     if gate.name.lower() == "swap":
         if len(gate.target) != 2:
             raise TequilaCompilerException("SWAP gates needs two targets")
-        if hasattr(gate, "power") and power != 1:
+        if hasattr(gate, "power") and gate.power != 1:
             raise TequilaCompilerException("SWAP gate with power can not be compiled into CNOTS")
 
         c = []

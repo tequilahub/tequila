@@ -217,7 +217,7 @@ class SimulatorBase:
         raise TequilaException(
             "called from base class of simulators, or non-supported operation for this backend")
 
-    def measure_expectationvalue(self, E: ExpectationValueImpl, samples: int, return_simulation_data: bool = False) -> numbers.Real:
+    def measure_expectationvalue(self, E, samples: int, return_simulation_data: bool = False) -> numbers.Real:
         H = E.H
         U = E.U
         # The hamiltonian can be defined on more qubits as the unitaries
@@ -234,23 +234,27 @@ class SimulatorBase:
             final_E = float(final_E.real)
 
         if return_simulation_data:
-            return final_E, result_data
+            return float(final_E), result_data
         else:
-            return final_E
+            return float(final_E)
 
-    def measure_objective(self, objective: Objective, samples: int, return_simulation_data: bool = False) -> float:
+    def measure_objective(self, objective, samples: int, return_simulation_data: bool = False) -> float:
         elist = []
         data = []
-        for ex in objective.expectationvalues:
-            result_data = {}
-            evalue=0.0
-            for ps in ex.H.paulistrings:
-                Etmp, tmp = self.measure_paulistring(abstract_circuit=ex.U, paulistring=ps, samples=samples)
-                evalue += Etmp
-                result_data[str(ps)] = tmp
-            elist.append(evalue)
-            if return_simulation_data:
-                data.append(tmp)
+        for ex in objective.args:
+            if hasattr(ex,'U'):
+                result_data = {}
+                evalue=0.0
+                for ps in ex.H.paulistrings:
+                    Etmp, tmp = self.measure_paulistring(abstract_circuit=ex.U, paulistring=ps, samples=samples)
+                    evalue += Etmp
+                    result_data[str(ps)] = tmp
+                elist.append(evalue)
+                if return_simulation_data:
+                    data.append(tmp)
+            elif hasattr(ex,'name'):
+                elist.append(ex())
+
 
         # in principle complex weights are allowed, but it probably will never occur
         # however, for now here is the type conversion to not confuse optimizers
@@ -259,11 +263,11 @@ class SimulatorBase:
             final_E = float(final_E.real)
 
         if return_simulation_data:
-            return final_E, data
+            return float(final_E), data
         else:
-            return final_E
+            return float(final_E)
 
-    def simulate_expectationvalue(self, E: ExpectationValueImpl, return_simulation_data: bool = False) -> numbers.Real:
+    def simulate_expectationvalue(self, E, return_simulation_data: bool = False) -> numbers.Real:
         final_E = 0.0
         data = []
         H = E.H
@@ -285,16 +289,19 @@ class SimulatorBase:
             final_E = float(final_E.real)
 
         if return_simulation_data:
-            return final_E, data
+            return float(final_E), data
         else:
-            return final_E
+            return float(final_E)
 
-    def simulate_objective(self, objective: Objective):
+    def simulate_objective(self, objective):
         # simulate all expectation values
         # TODO easy to parallelize
         E = []
-        for Ei in objective._expectationvalues:
-            E.append(self.simulate_expectationvalue(E=Ei))
+        for Ei in objective.args:
+            if hasattr(Ei,'U'):
+                E.append(self.simulate_expectationvalue(E=Ei))
+            else:
+                E.append(Ei())
         # return evaluated result
         return objective.transformation(*E)
 

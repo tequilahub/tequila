@@ -1,6 +1,5 @@
 from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException
-from tequila.circuit import gates
-from tequila.circuit import Variable
+from tequila.circuit import gates,Variable
 from tequila.hamiltonian import paulis
 from tequila.objective import Objective, ExpectationValue
 from tequila.optimizers import optimizer_scipy

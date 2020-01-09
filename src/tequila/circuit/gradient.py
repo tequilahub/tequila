@@ -2,8 +2,9 @@ from tequila.circuit.compiler import compile_controlled_rotation
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.circuit.compiler import compile_trotterized_gate
 from tequila.objective.objective import Objective, ExpectationValueImpl
+from tequila.circuit.variable import Variable
 from tequila import TequilaException
-from tequila.circuit.variable import Variable, Transform, has_variable
+from tequila.utils import has_variable
 
 import numpy as np
 import copy
@@ -11,44 +12,30 @@ import copy
 import jax
 
 
-def __grad_transform(par, variable):
+def __grad_inner(par, variable):
     '''
-    function for getting and evaluating partial derivatives of transforn and variable objects with respect to the aforementioned.
+    a modified loop over __grad_objective, which gets derivatives
+     all the way down to variables, return 1 or 0 when a variable is (isnt) identical to var.
     :param par: a transform or variable object, to be differentiated
     :param variable: the Variable with respect to which par should be differentiated.
     :ivar var: the string representation of variable
-    :ivar expan: the list of terms in the expansion of the derivative of a transform
     '''
     if type(variable) is Variable:
         var = variable.name
     if type(variable) is str:
         var = variable
-
+    elif type(variable) is dict:
+        var= list(variable.keys())[0]
     if type(par) is Variable:
-        if par.name == var:
+        if par.name == variable:
             return 1.0
         else:
             return 0.0
 
-    elif (type(par) is Transform or (hasattr(par, 'args') and hasattr(par, 'f'))):
-        t = par
-        la = len(t.args)
-        expan = np.zeros(la)
-
-        if t.has_var(var):
-            for i in range(la):
-                if has_variable(t.args[i], var):
-                    floats = [complex(arg).real for arg in t.args]
-                    expan[i] = jax.jit(jax.grad(t.transformation, argnums=i))(*floats)
-                else:
-                    expan[i] = 0.0
-
-        return np.sum(expan)
-
+    elif (type(par) is Objective or (hasattr(par, 'args') and hasattr(par, 'transformation'))):
+        return grad(par,variable)
     else:
-        s = 'Object of type {} passed to grad_transform; only strings and Variables are allowed.'.format(
-            str(type(par)))
-        raise TequilaException(s)
+        return 0.0
 
 
 def grad(obj, variable: str = None, no_compile=False):
@@ -59,8 +46,10 @@ def grad(obj, variable: str = None, no_compile=False):
         default None: total gradient.
     return: dictionary of Objectives, if called on gate, circuit, exp.value, or objective; if Variable or Transform, returns number.
     '''
-    if isinstance(obj, Variable) or isinstance(obj, Transform):
-        return __grad_transform(obj, variable)
+    if isinstance(variable,Variable):
+        return grad(obj,variable.name)
+    if isinstance(obj, Variable):
+        return __grad_inner(obj, variable)
     if not no_compile:
         compiled = compile_trotterized_gate(gate=obj)
         compiled = compile_controlled_rotation(gate=compiled)
@@ -68,12 +57,14 @@ def grad(obj, variable: str = None, no_compile=False):
         compiled = obj
     if variable is None:
         variable = compiled.extract_variables()
-    if not isinstance(variable, str):
-        return {v: grad(obj=compiled, variable=v, no_compile=True) for v in variable}
+        out={}
+        for k in variable.keys():
+            out[k]=grad(compiled,k)
+        return out
     if isinstance(obj, ExpectationValueImpl):
         return __grad_expectationvalue(E=obj, variable=variable)
     elif obj.is_expectationvalue():
-        return __grad_expectationvalue(E=compiled.expectationvalues[-1], variable=variable)
+        return __grad_expectationvalue(E=compiled.args[-1], variable=variable)
     elif isinstance(compiled, Objective):
         return __grad_objective(objective=compiled, variable=variable)
     else:
@@ -81,19 +72,19 @@ def grad(obj, variable: str = None, no_compile=False):
 
 
 def __grad_objective(objective: Objective, variable: str = None):
-    expectationvalues = objective.expectationvalues
+    args = objective.args
     transformation = objective.transformation
     dO = None
-    for i, E in enumerate(expectationvalues):
-        if variable not in E.extract_variables():
-            continue
+    for i, E in enumerate(args):
         df = jax.jit(jax.grad(transformation, argnums=i))
-        outer = Objective(expectationvalues=expectationvalues, transformation=df)
+        outer = Objective(args=args, transformation=df)
         inner = grad(E, variable=variable)
         if dO is None:
             dO = outer * inner
         else:
             dO = dO + outer * inner
+    if dO is None:
+        return 0.0
     return dO
 
 
@@ -156,17 +147,17 @@ def __grad_rotation(unitary, g, i, variable, hamiltonian):
 
     neo_a.angle = g.angle + np.pi / 2
     U1 = unitary.replace_gate(position=i, gates=[neo_a])
-    w1 = 0.5 * __grad_transform(g.parameter, variable)
+    w1 = 0.5 * __grad_inner(g.parameter, variable)
 
     neo_b = copy.deepcopy(g)
     neo_b.frozen = True
     neo_b.angle = g.angle - np.pi / 2
     U2 = unitary.replace_gate(position=i, gates=[neo_b])
-    w2 = -0.5 * __grad_transform(g.parameter, variable)
+    w2 = -0.5 * __grad_inner(g.parameter, variable)
 
     Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
-    dOinc = w1 * Objective(expectationvalues=[Oplus]) + w2 * Objective(expectationvalues=[Ominus])
+    dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
     return dOinc
 
 
@@ -200,9 +191,9 @@ def __grad_power(unitary, g, i, variable, hamiltonian):
         U2 = unitary.replace_gate(position=i, gates=[
             RotationGateImpl(axis=axis, target=target, angle=(n_pow - np.pi / 2), frozen=True)])
 
-        w1 = 0.5 * __grad_transform(g.parameter, variable)
-        w2 = -0.5 * __grad_transform(g.parameter, variable)
+        w1 = 0.5 * __grad_inner(g.parameter, variable)
+        w2 = -0.5 * __grad_inner(g.parameter, variable)
         Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
         Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
-        dOinc = w1 * Objective(expectationvalues=[Oplus]) + w2 * Objective(expectationvalues=[Ominus])
+        dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
         return dOinc

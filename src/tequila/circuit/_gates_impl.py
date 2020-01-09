@@ -3,10 +3,10 @@ import copy
 import numbers
 from abc import ABC
 from tequila import TequilaException
-from tequila.circuit.variable import Variable, SympyVariable
+from tequila.circuit.variable import SympyVariable,Variable
 from tequila.hamiltonian import PauliString, QubitHamiltonian
 from tequila.tools import number_to_string, list_assignement
-from tequila.circuit.variable import has_variable
+from tequila.utils import has_variable
 
 
 class QGateImpl:
@@ -128,11 +128,13 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def update_variables(self, variables: typing.Dict[str, numbers.Real]):
         for k, v in variables.items():
             if has_variable(self.parameter, k):
-                self.parameter.update({k: v})
+                self.parameter.update_variables({k: v})
 
     def extract_variables(self):
         if hasattr(self.parameter, "variables"):
             return self.parameter.variables
+        elif hasattr(self.parameter,'args'):
+            return self.parameter.extract_variables()
 
     @property
     def parameter(self):
