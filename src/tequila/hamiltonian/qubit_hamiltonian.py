@@ -129,7 +129,7 @@ class PauliString:
         :return: The coefficient of this paulistring
         """
         if self._coeff is None:
-            return 1
+            return 1.0
         else:
             return self._coeff
 

@@ -6,6 +6,7 @@ from tequila import TequilaException
 import typing, numbers
 from dataclasses import dataclass
 from tequila.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
+from numpy import isclose
 import functools
 
 
@@ -81,11 +82,15 @@ def Measurement(target, name=None):
 def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None,
              frozen: bool = None):
     """
+    Exponentiated Pauligate:
+
+    ExpPauli(PauliString, angle) = exp(-i* angle/2* PauliString)
+
     :param paulistring: given as PauliString structure or as string or dict or list
     if given as string: Format should be like X(0)Y(3)Z(2)
     if given as list: Format should be like [(0,'X'),(3,'Y'),(2,'Z')]
     if given as dict: Format should be like { 0:'X', 3:'Y', 2:'Z' }
-    :param angle: the angle (note that PauliString.coeff is ignored)
+    :param angle: the angle (will be multiplied by paulistring coefficient if there is one)
     :param control: control qubits
     :param frozen: is the gate frozen? (will be ignored by optimizers)
     :return: Gate wrapped in circuit

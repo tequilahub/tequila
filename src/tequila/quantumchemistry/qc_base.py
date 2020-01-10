@@ -132,7 +132,8 @@ class Amplitudes:
             result[str(k)] = v
         return result
 
-    def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[typing.Tuple, numbers.Number]:
+    def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[
+        typing.Tuple, numbers.Number]:
         transformed = dict()
         for key, value in data.items():
             if len(key) == 2:
@@ -146,7 +147,8 @@ class Amplitudes:
             return transformed
 
     @classmethod
-    def from_ndarray(cls, array: numpy.ndarray, closed_shell=None, index_offset: typing.Tuple[int, int, int, int] = None):
+    def from_ndarray(cls, array: numpy.ndarray, closed_shell=None,
+                     index_offset: typing.Tuple[int, int, int, int] = None):
         """
         :param array: The array to convert
         :param closed_shell: amplitudes are given as closed-shell array (i.e alpha-alpha, beta-beta)
@@ -167,7 +169,7 @@ class Amplitudes:
         data = dict()
         for k, v in self.data.items():
             data[k] = v * other
-        return  Amplitudes(data=data)
+        return Amplitudes(data=data)
 
     def __neg__(self):
         data = dict()
@@ -186,7 +188,6 @@ class Amplitudes:
 
     def __len__(self):
         return self.data.__len__()
-
 
 
 class QuantumChemistryBase:
@@ -211,6 +212,27 @@ class QuantumChemistryBase:
             self.transformation = transformation
         self.molecule = self.make_molecule()
 
+    def make_excitation_operator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
+        """
+        Creates the excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
+        And gives it back multiplied with 1j to make it hermitian
+        :param indices: List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
+        :return: Transformed qubit excitation operator, depends on self.transformation
+        """
+        # convert to openfermion input format
+        ofi = []
+        dag = []
+        for pair in indices:
+            assert (len(pair) == 2)
+            ofi += [(pair[0], 1), (pair[1], 0)]
+            dag += [(pair[0], 0), (pair[1], 1)]
+
+        op = openfermion.FermionOperator(tuple(ofi), 1.j) #1j makes it hermitian
+        op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
+
+        return QubitHamiltonian(hamiltonian=self.transformation(op))
+
+    
     def reference_state(self) -> BitString:
         """
         Does a really lazy workaround ... but it works
@@ -287,10 +309,10 @@ class QuantumChemistryBase:
         raise Exception("BaseClass Method")
 
     def make_uccsd_ansatz(self,
-                          trotter_steps:int,
+                          trotter_steps: int,
                           initial_amplitudes: typing.Union[str, Amplitudes] = "mp2",
                           include_reference_ansatz=True,
-                          trotter_parameters: gates.TrotterParameters=None) -> QCircuit:
+                          trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
 
         """
         :param initial_amplitudes: initial amplitudes given as ManyBodyAmplitudes structure or as string
@@ -317,27 +339,12 @@ class QuantumChemistryBase:
         generators = []
         variables = []
         for key, t in amplitudes.items():
+            assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0):
-                amplitude = Variable(name=str(key), value=t)
-                if len(key) == 2:
-                    pass
-                elif len(key) == 4:
-                    i = key[0]
-                    j = key[1]
-                    k = key[2]
-                    l = key[3]
-                    op = openfermion.FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), 2.0j)
-                    op += openfermion.FermionOperator(((l, 1), (k, 0), (j, 1), (i, 0)), -2.0j)
-                    generators.append(QubitHamiltonian(hamiltonian=self.transformation(op)))
-                    variables.append(amplitude)
+                variables.append(2.0*Variable(name=str(key), value=t)) # 2.0 for convention angle/2 in ExpPauli Gates
+                indices = [(key[2 * i], key[2 * i + 1]) for i in range(len(key)//2)]
+                generators.append(self.make_excitation_operator(indices=indices))
 
-                else:
-                    raise Exception("Expected index for one or two body term. Got {} instead".format(k))
-
-        # factor 2 counters the -1/2 convention in rotational gates
-        # 1.0j makes the anti-hermitian cluster operator hermitian
-        # another factor 1.0j will be added which counters the minus sign in the -1/2 convention
-        # generator = 1.0j * QubitHamiltonian(hamiltonian=self.__make_cluster_operator(amplitudes=2.0 * amplitudes))
         return Uref + gates.Trotterized(generators=generators, angles=variables, steps=trotter_steps, parameters=trotter_parameters)
 
     def initialize_zero_amplitudes(self) -> Amplitudes:
@@ -365,4 +372,5 @@ class QuantumChemistryBase:
         E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
                                                                                 optimize='optimize')
         self.molecule.mp2_energy = E + self.molecule.hf_energy
-        return Amplitudes.from_ndarray(array=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'), closed_shell=True, index_offset=(nocc,0,nocc,0))
+        return Amplitudes.from_ndarray(array=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'),
+                                       closed_shell=True, index_offset=(nocc, 0, nocc, 0))
