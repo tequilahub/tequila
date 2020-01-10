@@ -12,7 +12,6 @@ import typing, numpy, copy
 from tequila import TequilaException
 from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
 from tequila.simulators.simulator_symbolic import SimulatorSymbolic
-from tequila.ansatz import AnsatzBase
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
 
@@ -27,7 +26,7 @@ class TequilaUnaryStateException(TequilaException):
     pass
 
 
-class UnaryStatePrep(AnsatzBase):
+class UnaryStatePrep:
 
     @property
     def n_qubits(self) -> int:

@@ -2,13 +2,17 @@ from dataclasses import dataclass
 from tequila import TequilaException, BitString
 from tequila.hamiltonian import HamiltonianQC, QubitHamiltonian
 from tequila.circuit import QCircuit, Variable, gates
-from tequila.ansatz import prepare_product_state
 
 import typing, numpy, numbers
-
 import openfermion
 from openfermion.hamiltonians import MolecularData
 
+def prepare_product_state(state: BitString) -> QCircuit:
+    result = QCircuit()
+    for i, v in enumerate(state.array):
+        if v == 1:
+            result += gates.X(target=i)
+    return result
 
 @dataclass
 class ParametersQC:
@@ -308,6 +312,9 @@ class QuantumChemistryBase:
     def compute_ccsd_amplitudes(self) -> Amplitudes:
         raise Exception("BaseClass Method")
 
+    def prepare_reference(self):
+        return prepare_product_state(self.reference_state())
+
     def make_uccsd_ansatz(self,
                           trotter_steps: int,
                           initial_amplitudes: typing.Union[str, Amplitudes] = "mp2",
@@ -323,7 +330,7 @@ class QuantumChemistryBase:
 
         Uref = QCircuit()
         if include_reference_ansatz:
-            Uref = prepare_product_state(self.reference_state())
+            Uref = self.prepare_reference()
 
         amplitudes = initial_amplitudes
         if hasattr(initial_amplitudes, "lower"):

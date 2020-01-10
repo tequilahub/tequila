@@ -341,6 +341,11 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
     def name(self):
         return "Exp(" + number_to_string(self.angle() * 1j) + "/2 PS)"
 
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result.angle = -self.angle
+        return result
+
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None, frozen: bool = False):
         self.paulistring = paulistring
         self.parameter = angle
