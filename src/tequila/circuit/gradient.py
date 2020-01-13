@@ -35,7 +35,7 @@ def __grad_inner(par, variable):
     elif (type(par) is Objective or (hasattr(par, 'args') and hasattr(par, 'transformation'))):
         return grad(par,variable)
     else:
-        return 0.0
+        raise TequilaException('No fucking clue what kind of objects you have sent me')
 
 
 def grad(obj, variable: str = None, no_compile=False):

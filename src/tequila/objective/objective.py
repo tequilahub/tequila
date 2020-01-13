@@ -250,6 +250,13 @@ class Objective:
                              transformation=JoinedTransformation(left=left.transformation, right=right.transformation,
                                                                  split=split_at, op=op))
 
+    def wrap(self,op):
+        '''
+        convenience function for doing unary_operator with non-arithmetical operations like sin, cosine, etc.
+        :param op: an operation to perform on the output of self
+        :return: an objective
+        '''
+        return self.unary_operator(self,op)
     def __repr__(self):
         string="Objective with " + str(len(self.args)) + " arguments"
         if self.last is not None:
