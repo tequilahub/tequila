@@ -66,7 +66,6 @@ class TequilaCirqException(TequilaException):
     def __str__(self):
         return "Error in cirq backend:" + self.message
 
-
 class SimulatorCirq(SimulatorBase):
 
     numbering: BitNumbering = BitNumbering.MSB

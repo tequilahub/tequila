@@ -343,8 +343,13 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
     def name(self):
         return "Exp(" + number_to_string(self.angle() * 1j) + "/2 PS)"
 
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result.angle = -self.angle
+        return result
+
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None, frozen: bool = False):
-        self.paulistring = paulistring.naked()
+        self.paulistring = paulistring
         self.parameter = angle
         self.target = tuple(t for t in paulistring.keys())
         self.control = tuple(list_assignement(control))
@@ -436,7 +441,7 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         for a in self.angles:
             if isinstance(a, numbers.Number):
                 all_variable = False
-            if hasattr(a, "name"):
+            if hasattr(a, "has_var"):
                 all_number = False
         assert (all_variable != all_number)
         if all_number:

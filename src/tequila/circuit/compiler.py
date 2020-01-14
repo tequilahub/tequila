@@ -157,7 +157,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
     """
 
     if hasattr(gate, "angle") and hasattr(gate, "paulistring"):
-        angle = gate.angle
+        angle = gate.paulistring.coeff*gate.angle
 
         if not numpy.isclose(numpy.imag(angle()), 0.0):
             raise TequilaException("angle is not real, angle=" + str(angle))
@@ -173,7 +173,6 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
         ubasis = QCircuit()
         ubasis_t = QCircuit()
         cnot_cascade = QCircuit()
-        reversed_cnot = QCircuit()
 
         last_qubit = None
         previous_qubit = None
@@ -210,7 +209,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
         return QCircuit.wrap_gate(gate)
 
 
-def do_compile_trotterized_gate(generator, steps, factor, randomize, control, threshold, frozen):
+def do_compile_trotterized_gate(generator, steps, factor, randomize, control, frozen):
 
     assert (generator.is_hermitian())
     circuit = QCircuit()
@@ -220,10 +219,7 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control, th
         if randomize:
             numpy.random.shuffle(paulistrings)
         for ps in paulistrings:
-            value = ps.coeff
-            # don't make circuit for too small values
-            if len(ps) != 0 and not numpy.isclose(value, 0.0, atol=threshold):
-                circuit += ExpPauli(paulistring=ps, angle=factor * value, control=control, frozen=frozen)
+            circuit += ExpPauli(paulistring=ps.naked(), angle=factor * ps.coeff, control=control, frozen=frozen)
 
     return circuit
 
@@ -243,14 +239,14 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
             for i, g in enumerate(gate.generators):
                 if gate.angles is not None:
                     c = gate.angles[i]
-                result += do_compile_trotterized_gate(generator=g, steps=1, factor=c / gate.steps, randomize=gate.randomize, control=gate.control, frozen=gate.frozen, threshold=gate.threshold)
+                result += do_compile_trotterized_gate(generator=g, steps=1, factor=c / gate.steps, randomize=gate.randomize, control=gate.control, frozen=gate.frozen)
     else:
         if gate.randomize_component_order:
             numpy.random.shuffle(gate.generators)
         for i, g in enumerate(gate.generators):
             if gate.angles is not None:
                 c = gate.angles[i]
-            result += do_compile_trotterized_gate(generator=g, steps=gate.steps, factor=c, randomize=gate.randomize, control=gate.control, frozen=gate.frozen, threshold=gate.threshold)
+            result += do_compile_trotterized_gate(generator=g, steps=gate.steps, factor=c, randomize=gate.randomize, control=gate.control, frozen=gate.frozen)
 
     if compile_exponential_pauli:
         return compile_exponential_pauli_gate(result)
