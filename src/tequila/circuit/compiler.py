@@ -157,6 +157,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
     """
 
     if hasattr(gate, "angle") and hasattr(gate, "paulistring"):
+
         angle = gate.paulistring.coeff*gate.angle
 
         if not numpy.isclose(numpy.imag(angle()), 0.0):

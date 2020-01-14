@@ -1,9 +1,11 @@
 import typing, copy, numbers
 from jax import numpy as numpy
-import numpy as np
+
 from tequila import TequilaException
-from tequila.utils import JoinedTransformation
+from tequila.utils import JoinedTransformation, to_float
 from tequila.hamiltonian import paulis
+
+
 class ExpectationValueImpl:
     """
     Internal Object, do not use from the outside
@@ -64,7 +66,7 @@ class Objective:
             if type(x) is dict:
                 if k in x.keys():
                     return True
-            if hasattr(x,'name') and hasattr(x,'value'):
+            if hasattr(x, 'name') and hasattr(x, 'value'):
                 if k == x.name:
                     return True
             if type(x) is str:
@@ -72,6 +74,7 @@ class Objective:
                     return True
 
         return False
+
     def extract_variables(self):
         """
         :return: a dictionary, containing every variable from every ExpectationValue in the objective and every Variable.
@@ -93,20 +96,21 @@ class Objective:
             E.update_variables(variables=variables)
         return self
 
-    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None,loaded=None):
+    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None, loaded=None):
         self._args = tuple(args)
         self._transformation = transformation
-        self.loaded=loaded
-        self.last=None
+        self.loaded = loaded
+        self.last = None
 
-    def load(self,simulator):
+    def load(self, simulator):
         '''
         attach a simulator to the Objective to render it callable
         :param simulator: a Tequila simulator object
         :return: self, for ease of use
         '''
-        self.loaded=simulator
+        self.loaded = simulator
         return self
+
     def is_expectationvalue(self):
         """
         :return: bool: whether or not this objective is just a wrapped ExpectationValue
@@ -138,7 +142,7 @@ class Objective:
         else:
             return self._args
 
-    def left_helper(self,op,other):
+    def left_helper(self, op, other):
         '''
         function for use by magic methods, which all have an identical structure, differing only by the
         external operator they call. left helper is responsible for all 'self # other' operations
@@ -147,56 +151,56 @@ class Objective:
         :return: an Objective, who transform is the joined_transform of self with op, acting on self and other
         '''
         if isinstance(other, numbers.Number):
-            t = lambda v: op(v,other)
-            new = self.unary_operator(left=self,op=t)
-        elif hasattr(other,'name'):
+            t = lambda v: op(v, other)
+            new = self.unary_operator(left=self, op=t)
+        elif hasattr(other, 'name'):
             t = op
             nother = Objective(args=[other])
-            new = self.binary_operator(left=self,right=nother,op=t)
+            new = self.binary_operator(left=self, right=nother, op=t)
         elif isinstance(other, Objective):
-            new=self.binary_operator(left=self,right=other,op=op)
-        elif isinstance(other,ExpectationValueImpl):
-            new=self.binary_operator(left=self,right=Objective(args=[other]),op=op)
+            new = self.binary_operator(left=self, right=other, op=op)
+        elif isinstance(other, ExpectationValueImpl):
+            new = self.binary_operator(left=self, right=Objective(args=[other]), op=op)
         return new
 
-    def right_helper(self,op,other):
+    def right_helper(self, op, other):
         '''
         see the doc of left_helper above for explanation
         '''
         if isinstance(other, numbers.Number):
-            t = lambda v: op(other,v)
-            new = self.unary_operator(left=self,op=t)
-        elif hasattr(other,'name'):
+            t = lambda v: op(other, v)
+            new = self.unary_operator(left=self, op=t)
+        elif hasattr(other, 'name'):
             t = op
             nother = Objective(args=[other])
-            new = self.binary_operator(left=nother,right=self,op=t)
+            new = self.binary_operator(left=nother, right=self, op=t)
         elif isinstance(other, Objective):
-            new=self.binary_operator(left=other,right=self,op=op)
-        elif isinstance(other,ExpectationValueImpl):
-            new=self.binary_operator(left=Objective(args=[other]),right=self,op=op)
+            new = self.binary_operator(left=other, right=self, op=op)
+        elif isinstance(other, ExpectationValueImpl):
+            new = self.binary_operator(left=Objective(args=[other]), right=self, op=op)
         return new
 
     def __mul__(self, other):
-        return self.left_helper(numpy.multiply,other)
+        return self.left_helper(numpy.multiply, other)
 
     def __add__(self, other):
-        return self.left_helper(numpy.add,other)
+        return self.left_helper(numpy.add, other)
 
     def __sub__(self, other):
-        return self.left_helper(numpy.subtract,other)
+        return self.left_helper(numpy.subtract, other)
 
     def __truediv__(self, other):
-        return self.left_helper(numpy.true_divide,other)
-
+        return self.left_helper(numpy.true_divide, other)
 
     def __neg__(self):
         return self.unary_operator(left=self, op=lambda v: numpy.multiply(v, -1))
 
     def __pow__(self, other):
-        return self.left_helper(numpy.float_power,other)
+        return self.left_helper(numpy.float_power, other)
         # return self.binary_operator(left=self, op=lambda E: numpy.float_power(E, power))
+
     def __rpow__(self, other):
-        return self.right_helper(numpy.float_power,other)
+        return self.right_helper(numpy.float_power, other)
         # return new.binary_operator(left=new,right=other, op=lambda l, r: numpy.float_power(r, l))
 
     def __rmul__(self, other):
@@ -250,41 +254,45 @@ class Objective:
                              transformation=JoinedTransformation(left=left.transformation, right=right.transformation,
                                                                  split=split_at, op=op))
 
-    def wrap(self,op):
+    def wrap(self, op):
         '''
         convenience function for doing unary_operator with non-arithmetical operations like sin, cosine, etc.
         :param op: an operation to perform on the output of self
-        :return: an objective
+        :return: an objective which is evaluated as op(self)
         '''
-        return self.unary_operator(self,op)
+        return self.unary_operator(self, op)
+
     def __repr__(self):
-        string="Objective with " + str(len(self.args)) + " arguments"
+        string = "Objective with " + str(len(self.args)) + " arguments"
         if self.last is not None:
-            string+=" , last call value = "+str(self.last)
+            string += " , last call value = " + str(self.last)
         return string
 
-    def __call__(self,samples=None):
+    def __call__(self, samples=None):
         '''
         Evaluates the expression which Objective represents, if possible.
         :param samples:
         :return:
         '''
-        if all([hasattr(arg,'name')==True for arg in self.args]):
-            back=self.transformation(*[arg() for arg in self.args])
-            return float(back)
+        if all([hasattr(arg, 'name') is True for arg in self.args]):
+            back = self.transformation(*[arg() for arg in self.args])
+            return to_float(back)
         if self.loaded is None:
-            raise TequilaException('Objective cannot be called when Expectation Values are present if no simulator is attached!')
+            raise TequilaException(
+                'Objective cannot be called when Expectation Values are present if no simulator is attached!')
         else:
             if samples is None:
-                back=self.loaded.simulate_objective(objective=self)
+                back = self.loaded.simulate_objective(objective=self)
             else:
-                back= self.loaded.measure_objective(objective=self,samples=samples)
+                back = self.loaded.measure_objective(objective=self, samples=samples)
         try:
-            self.last=float(back)
+            self.last = float(back)
             return float(back)
         except:
-            self.last=back
+            self.last = back
             return back
+
+
 def ExpectationValue(U, H) -> Objective:
     """
     Initialize an Objective which is just a single expectationvalue
