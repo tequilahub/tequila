@@ -6,12 +6,14 @@ import tequila as tq
 def test_execution(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
-        + tq.gates.Ry(angle=tq.Variable(name="b", value=2.0), target=1, control=2) \
-        + tq.gates.Trotterized(angles=[tq.Variable(name="c", value=1.23), tq.Variable(name="d", value=1.23)],
+        + tq.gates.Ry(angle="b", target=1, control=2) \
+        + tq.gates.Trotterized(angles=["c", "d"],
                                generators=[-0.25 * tq.paulis.Z(1), tq.paulis.X(0) + tq.paulis.Y(1)], steps=2) \
         + tq.gates.Trotterized(angles=[1.0, 2.0],
                                generators=[-0.25 * tq.paulis.Z(1), tq.paulis.X(0) + tq.paulis.Y(1)], steps=2) \
         + tq.gates.ExpPauli(angle="a", paulistring="X(0)Y(1)Z(2)")
+
+    print(U.extract_variables())
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
 
@@ -23,8 +25,8 @@ def test_execution(simulator):
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
-        + tq.gates.Ry(angle=tq.Variable(name="b", value=2.0), target=1, control=2) \
-        + tq.gates.Trotterized(angles=[tq.Variable(name="c", value=1.23), tq.Variable(name="d", value=1.23)],
+        + tq.gates.Ry(angle="b", target=1, control=2) \
+        + tq.gates.Trotterized(angles=["c","d"],
                                generators=[-0.25 * tq.paulis.Z(1), tq.paulis.X(0) + tq.paulis.Y(1)], steps=2) \
         + tq.gates.Trotterized(angles=[1.0, 2.0],
                                generators=[-0.25 * tq.paulis.Z(1), tq.paulis.X(0) + tq.paulis.Y(1)], steps=2) \
@@ -38,7 +40,7 @@ def test_execution_shot(simulator):
 
 @pytest.mark.parametrize("simulator", tq.simulators.get_all_wfn_simulators())
 def test_one_qubit_wfn(simulator):
-    U = tq.gates.Trotterized(angles=[tq.Variable(name="a", value=0.0)], steps=1, generators=[tq.paulis.Y(0)])
+    U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, simulator=simulator)
@@ -47,7 +49,7 @@ def test_one_qubit_wfn(simulator):
 
 @pytest.mark.parametrize("simulator", tq.simulators.get_all_samplers())
 def test_one_qubit_shot(simulator):
-    U = tq.gates.Trotterized(angles=[tq.Variable(name="a", value=0.0)], steps=1, generators=[tq.paulis.Y(0)])
+    U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, simulator=simulator, samples=10000)

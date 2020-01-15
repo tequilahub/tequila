@@ -65,14 +65,17 @@ def do_test_ucc(qc_interface, parameters, result, trafo):
 
     # called twice on purpose (see if reloading works)
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
-    amplitudes = psi4_interface.compute_ccsd_amplitudes()
+
+    variables = amplitudes.export_parameter_dictionary()
+    print("variables=", variables)
 
     U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="ccsd",
                                          include_reference_ansatz=True)
+    print("variables=", U.extract_variables())
     H = psi4_interface.make_hamiltonian()
     ex=ExpectationValue(U=U, H=H)
     Simulator = pick_simulator(samples=None)
-    energy = Simulator()(ex)
+    energy = Simulator()(ex, variables=variables)
     assert (numpy.isclose(energy, result))
 
 
@@ -97,8 +100,9 @@ def do_test_mp2(qc_interface, parameters, result):
     hqc = psi4_interface.make_hamiltonian()
 
     # called twice on purpose (see if reloading works)
-    amplitudes = psi4_interface.compute_ccsd_amplitudes()
-    amplitudes = psi4_interface.compute_ccsd_amplitudes()
+    amplitudes = psi4_interface.compute_mp2_amplitudes()
+    amplitudes = psi4_interface.compute_mp2_amplitudes()
+    variables = amplitudes.export_parameter_dictionary()
 
     U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="mp2",
                                          include_reference_ansatz=True)
@@ -106,5 +110,5 @@ def do_test_mp2(qc_interface, parameters, result):
     O = ExpectationValue(U=U, H=H)
     Simulator = pick_simulator(samples=None)
 
-    energy = Simulator().simulate_objective(objective=O)
+    energy = Simulator().simulate_objective(objective=O, variables=variables)
     assert (numpy.isclose(energy, result))

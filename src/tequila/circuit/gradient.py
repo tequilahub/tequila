@@ -4,41 +4,15 @@ from tequila.circuit.compiler import compile_trotterized_gate
 from tequila.objective.objective import Objective, ExpectationValueImpl
 from tequila.circuit.variable import Variable
 from tequila import TequilaException
-from tequila.utils import has_variable
 
 import numpy as np
 import copy
+import typing
 
 import jax
 
 
-def __grad_inner(par, variable):
-    '''
-    a modified loop over __grad_objective, which gets derivatives
-     all the way down to variables, return 1 or 0 when a variable is (isnt) identical to var.
-    :param par: a transform or variable object, to be differentiated
-    :param variable: the Variable with respect to which par should be differentiated.
-    :ivar var: the string representation of variable
-    '''
-    if type(variable) is Variable:
-        var = variable.name
-    if type(variable) is str:
-        var = variable
-    elif type(variable) is dict:
-        var= list(variable.keys())[0]
-    if type(par) is Variable:
-        if par.name == variable:
-            return 1.0
-        else:
-            return 0.0
-
-    elif (type(par) is Objective or (hasattr(par, 'args') and hasattr(par, 'transformation'))):
-        return grad(par,variable)
-    else:
-        raise TequilaException('No fucking clue what kind of objects you have sent me')
-
-
-def grad(obj, variable: str = None, no_compile=False):
+def grad(objective: Objective, variable: Variable = None, no_compile=False):
     '''
     wrapper function for getting the gradients of Objectives,ExpectationValues, Unitaries (including single gates), and Transforms.
     :param obj (QCircuit,ParametrizedGateImpl,Objective,ExpectationValue,Transform,Variable): structure to be differentiated
@@ -46,24 +20,31 @@ def grad(obj, variable: str = None, no_compile=False):
         default None: total gradient.
     return: dictionary of Objectives, if called on gate, circuit, exp.value, or objective; if Variable or Transform, returns number.
     '''
-    if isinstance(variable,Variable):
-        return grad(obj,variable.name)
-    if isinstance(obj, Variable):
-        return __grad_inner(obj, variable)
+
     if not no_compile:
-        compiled = compile_trotterized_gate(gate=obj)
+        compiled = compile_trotterized_gate(gate=objective)
         compiled = compile_controlled_rotation(gate=compiled)
     else:
-        compiled = obj
+        compiled = objective
+
     if variable is None:
-        variable = compiled.extract_variables()
-        out={}
-        for k in variable.keys():
-            out[k]=grad(compiled,k)
-        return out
-    if isinstance(obj, ExpectationValueImpl):
-        return __grad_expectationvalue(E=obj, variable=variable)
-    elif obj.is_expectationvalue():
+        # None means that all components are created
+        variables = compiled.extract_variables()
+        result = {}
+
+        if len(variables) == 0:
+            raise TequilaException("Error in gradient: Objective has no variables")
+
+        for k in variables:
+            assert (k is not None)
+            result[k] = grad(compiled, k)
+        return result
+    elif not isinstance(variable, Variable) and hasattr(variable, "__hash__"):
+        variable = Variable(name=variable)
+
+    if isinstance(objective, ExpectationValueImpl):
+        return __grad_expectationvalue(E=objective, variable=variable)
+    elif objective.is_expectationvalue():
         return __grad_expectationvalue(E=compiled.args[-1], variable=variable)
     elif isinstance(compiled, Objective):
         return __grad_objective(objective=compiled, variable=variable)
@@ -71,24 +52,49 @@ def grad(obj, variable: str = None, no_compile=False):
         raise TequilaException("Gradient not implemented for other types than ExpectationValue and Objective.")
 
 
-def __grad_objective(objective: Objective, variable: str = None):
+def __grad_objective(objective: Objective, variable: Variable):
     args = objective.args
     transformation = objective.transformation
     dO = None
-    for i, E in enumerate(args):
+    for i, arg in enumerate(args):
         df = jax.jit(jax.grad(transformation, argnums=i))
         outer = Objective(args=args, transformation=df)
-        inner = grad(E, variable=variable)
+
+        inner = __grad_inner(arg=arg, variable=variable)
+
+        if inner == 0.0:
+            # don't pile up zero expectationvalues
+            continue
+
         if dO is None:
             dO = outer * inner
         else:
             dO = dO + outer * inner
-    if dO is None:
-        return 0.0
     return dO
 
 
-def __grad_expectationvalue(E: ExpectationValueImpl, variable: str):
+def __grad_inner(arg, variable):
+    '''
+    a modified loop over __grad_objective, which gets derivatives
+     all the way down to variables, return 1 or 0 when a variable is (isnt) identical to var.
+    :param arg: a transform or variable object, to be differentiated
+    :param variable: the Variable with respect to which par should be differentiated.
+    :ivar var: the string representation of variable
+    '''
+
+    assert (isinstance(variable, Variable))
+    if isinstance(arg, Variable):
+        if arg == variable:
+            return 1.0
+        else:
+            return 0.0
+    elif isinstance(arg, ExpectationValueImpl):
+        return __grad_expectationvalue(arg, variable=variable)
+    else:
+        return __grad_objective(objective=arg, variable=variable)
+
+
+def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     '''
     implements the analytic partial derivative of a unitary as it would appear in an expectation value. See the paper.
     :param unitary: the unitary whose gradient should be obtained
@@ -100,7 +106,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: str):
     dO = None
     for i, g in enumerate(unitary.gates):
         if g.is_parametrized() and not g.is_frozen():
-            if has_variable(g.parameter, variable):
+            if variable in g.extract_variables():
                 if hasattr(g, 'angle'):
                     if g.is_controlled():
                         raise TequilaException("controlled rotation in gradient: Compiler was not called")

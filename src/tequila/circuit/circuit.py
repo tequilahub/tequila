@@ -1,7 +1,6 @@
 from tequila.circuit._gates_impl import QGateImpl
 from tequila import TequilaException
 from tequila import BitNumbering
-from tequila.utils import has_variable
 import numpy, typing, numbers
 
 class QCircuit():
@@ -122,43 +121,14 @@ class QCircuit():
 
     def extract_variables(self) -> dict:
         """
-        return a dict containing all the variable objects contained in any of the gates within the unitary
+        return a list containing all the variable objects contained in any of the gates within the unitary
         including those nested within transforms.
-        rtype dict: {parameter.name:parameter.value}
         """
-        pars = dict()
+        variables = []
         for i, g in enumerate(self.gates):
             if g.is_parametrized():
-                pars = {**pars, **g.extract_variables()}
-        return pars
-
-    def update_variables(self, variables: dict):
-        """
-        inplace operation
-        :param variables: a dict of all parameters that shall be updated (order does not matter)
-        :return: self for chaining
-        """
-        for g in self.gates:
-            if g.is_parametrized():
-                g.update_variables(variables)
-
-        return self
-
-    def get_indices_for_parameter(self, name: str):
-        """
-        Lookup all the indices of gates parameterized by a paramter with this name
-        :param name: the name of the parameter
-        :return: all indices as list
-        """
-        namex = name
-        if hasattr(name, "name"):
-            namex = name.name
-
-        result = []
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized() and not g.is_frozen() and has_variable(g.parameter,namex):
-                result.append(i)
-        return result
+                variables += g.extract_variables()
+        return variables
 
     def max_qubit(self):
         """
@@ -185,17 +155,6 @@ class QCircuit():
         result = QCircuit(gates=gates)
         result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return result
-
-    def __pow__(self, power, modulo=None):
-        if modulo is not None:
-            raise TequilaException("Modulo powers for circuits/unitaries not supported")
-        if not self.is_primitive():
-            raise TequilaException("Powers are currently only supported for single gates")
-
-        pgates = []
-        for g in self.gates:
-            pgates.append(g ** power)
-        return QCircuit(gates=pgates)
 
     def __str__(self):
         result = "circuit: \n"

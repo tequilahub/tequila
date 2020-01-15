@@ -32,11 +32,11 @@ class BackenHandlerPyquil(BackendHandler):
             pyquil_gate = pyquil_gate.controlled(qubit_map[c])
         circuit += pyquil_gate
 
-    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        circuit += getattr(pyquil.gates, gate.name.upper())(gate.angle(), qubit_map[gate.target[0]])
+    def add_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+        circuit += getattr(pyquil.gates, gate.name.upper())(gate.angle(variables), qubit_map[gate.target[0]])
 
-    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(gate.angle(), qubit_map[gate.target[0]])
+    def add_controlled_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(gate.angle(variables), qubit_map[gate.target[0]])
         for c in gate.control:
             pyquil_gate = pyquil_gate.controlled(qubit_map[c])
         circuit += pyquil_gate
@@ -78,10 +78,10 @@ class SimulatorPyquil(SimulatorBase):
         if self.qvm is not None:
             self.qvm.terminate()
 
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0):
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, variables, initial_state=0):
         try:
             simulator = pyquil.api.WavefunctionSimulator()
-            circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+            circuit = self.create_circuit(abstract_circuit=abstract_circuit, variables=variables)
             n_qubits = len(abstract_circuit.qubits)
             msb = BitString.from_int(initial_state, nbits=n_qubits)
             iprep = pyquil.Program()

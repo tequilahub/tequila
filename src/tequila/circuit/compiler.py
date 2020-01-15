@@ -28,25 +28,25 @@ def compiler(f):
                 result += f(gate=g, **kwargs)
             return result
 
-        elif hasattr(gate,'U'):
+        elif hasattr(gate, 'U'):
             cU = QCircuit()
             for g in gate.U.gates:
                 cU += f(gate=g, **kwargs)
-            inkwargs={'H':gate.H,'U':cU}
-            return type(gate)(U=cU,H=gate.H)
+            inkwargs = {'H': gate.H, 'U': cU}
+            return type(gate)(U=cU, H=gate.H)
         elif hasattr(gate, 'transformation'):
             compiled = []
             for E in gate.args:
-                if hasattr(E,'name'):
+                if hasattr(E, 'name'):
                     compiled.append(E)
                 else:
                     cU = QCircuit()
                     for g in E.U.gates:
                         cU += f(gate=g, **kwargs)
-                    #inkwargs={'U':cU,'H':E.H}
-                    compiled.append(type(E)(U=cU,H=E.H))
-            #nukwargs={'args':compiled,'transformation':gate._transformation}
-            return type(gate)(args=compiled,transformation=gate._transformation)
+                    # inkwargs={'U':cU,'H':E.H}
+                    compiled.append(type(E)(U=cU, H=E.H))
+            # nukwargs={'args':compiled,'transformation':gate._transformation}
+            return type(gate)(args=compiled, transformation=gate._transformation)
         else:
             return f(gate=gate, **kwargs)
 
@@ -106,7 +106,7 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
         return QCircuit.wrap_gate(gate)
 
     if angles is None:
-        angles=[gate.angle/2,-gate.angle/2]
+        angles = [gate.angle / 2, -gate.angle / 2]
 
     if len(gate.target) > 1:
         return compile_controlled_rotation(gate=compile_multitarget(gate=gate), angles=angles)
@@ -158,10 +158,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
 
     if hasattr(gate, "angle") and hasattr(gate, "paulistring"):
 
-        angle = gate.paulistring.coeff*gate.angle
-
-        if not numpy.isclose(numpy.imag(angle()), 0.0):
-            raise TequilaException("angle is not real, angle=" + str(angle))
+        angle = gate.paulistring.coeff * gate.angle
 
         circuit = QCircuit()
 
@@ -211,7 +208,6 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
 
 
 def do_compile_trotterized_gate(generator, steps, factor, randomize, control, frozen):
-
     assert (generator.is_hermitian())
     circuit = QCircuit()
     factor = factor / steps
@@ -227,7 +223,6 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control, fr
 
 @compiler
 def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
-
     if not hasattr(gate, "generators") or not hasattr(gate, "steps"):
         return QCircuit.wrap_gate(gate)
 
@@ -240,17 +235,19 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
             for i, g in enumerate(gate.generators):
                 if gate.angles is not None:
                     c = gate.angles[i]
-                result += do_compile_trotterized_gate(generator=g, steps=1, factor=c / gate.steps, randomize=gate.randomize, control=gate.control, frozen=gate.frozen)
+                result += do_compile_trotterized_gate(generator=g, steps=1, factor=c / gate.steps,
+                                                      randomize=gate.randomize, control=gate.control,
+                                                      frozen=gate.frozen)
     else:
         if gate.randomize_component_order:
             numpy.random.shuffle(gate.generators)
         for i, g in enumerate(gate.generators):
             if gate.angles is not None:
                 c = gate.angles[i]
-            result += do_compile_trotterized_gate(generator=g, steps=gate.steps, factor=c, randomize=gate.randomize, control=gate.control, frozen=gate.frozen)
+            result += do_compile_trotterized_gate(generator=g, steps=gate.steps, factor=c, randomize=gate.randomize,
+                                                  control=gate.control, frozen=gate.frozen)
 
     if compile_exponential_pauli:
         return compile_exponential_pauli_gate(result)
     else:
         return result
-

@@ -29,24 +29,28 @@ class BackenHandlerCirq(BackendHandler):
         cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
 
-    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name)(rads=gate.angle())
+    def add_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+        angle = gate.angle(variables)
+        cirq_gate = getattr(cirq, gate.name)(rads=angle)
         cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
-    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name)(rads=gate.angle())
+    def add_controlled_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+        angle = gate.angle(variables)
+        cirq_gate = getattr(cirq, gate.name)(rads=angle)
         cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
         cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
 
-    def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=gate.power())
+    def add_power_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+        power = gate.power(variables)
+        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
         cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
-    def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=gate.power())
+    def add_controlled_power_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+        power = gate.power(variables)
+        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
         cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
         cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
@@ -88,9 +92,9 @@ class SimulatorCirq(SimulatorBase):
     def do_run(self, circuit: cirq.Circuit, samples: int = 1) -> cirq.TrialResult:
         return cirq.Simulator().run(program=circuit, repetitions=samples)
 
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0) -> SimulatorReturnType:
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, variables, initial_state=0) -> SimulatorReturnType:
         simulator = cirq.Simulator()
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+        circuit = self.create_circuit(abstract_circuit=abstract_circuit, variables=variables)
         backend_result = simulator.simulate(program=circuit, initial_state=initial_state)
         return SimulatorReturnType(abstract_circuit=abstract_circuit,
                                    circuit=circuit,

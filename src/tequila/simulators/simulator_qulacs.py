@@ -1,4 +1,5 @@
 import qulacs
+import typing, numbers
 from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
@@ -35,7 +36,7 @@ class BackenHandlerQulacs(BackendHandler):
         getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]])
 
     def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        #assert (len(gate.control) == 1)
+        # assert (len(gate.control) == 1)
         if len(gate.control) == 1 and gate.name.upper() == "X":
             getattr(circuit, "add_CNOT_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
         elif len(gate.control) == 1 and gate.name.upper() == "Z":
@@ -50,31 +51,25 @@ class BackenHandlerQulacs(BackendHandler):
             except:
                 raise TequilaQulacsException("Qulacs does not know the controlled gate: " + str(gate))
 
-    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        angle = -gate.angle()
-        if hasattr(angle, "imag") and angle.imag == 0.0:
-            angle = float(angle.real)
-        else:
-            raise TequilaQulacsException("Angle as imaginary part; gate=" + str(gate))
+    def add_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+        angle = -gate.angle(variables=variables)  # minus sign due to different conventions in qulacs
         getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], angle)
 
-    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        angle = -gate.angle()
-        if hasattr(angle, "imag") and angle.imag == 0.0:
-            angle = float(angle.real)
-        else:
-            raise TequilaQulacsException("Angle as imaginary part; gate=" + str(gate))
+    def add_controlled_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+        angle = -gate.angle(variables=variables)
         qulacs_gate = getattr(qulacs.gate, gate.name.upper())(qubit_map[gate.target[0]], angle)
         qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
         for c in gate.control:
             qulacs_gate.add_control_qubit(qubit_map[c], 1)
         circuit.add_gate(qulacs_gate)
 
+    def add_power_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
 
-    def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        if gate.power() == 1:
+        power = gate.power(variables=variables)
+
+        if power == 1:
             return self.add_gate(gate=gate, qubit_map=qubit_map, circuit=circuit)
-        elif gate.power() == 0.5:
+        elif power == 0.5:
             getattr(circuit, "add_sqrt" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]])
         else:
             raise TequilaQulacsException("Only sqrt gates supported as power gates")
@@ -97,8 +92,9 @@ class SimulatorQulacs(SimulatorBase):
 
     backend_handler = BackenHandlerQulacs()
 
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0):
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit,
+                                 variables: typing.Dict[typing.Hashable, numbers.Real], initial_state=0):
+        circuit = self.create_circuit(abstract_circuit=abstract_circuit, variables=variables)
 
         qubits = dict()
         count = 0

@@ -11,10 +11,10 @@ class _EvalContainer:
     This class is used by the SciPy optimizer and should not be used somewhere else
     """
 
-    def __init__(self, objective, param_keys, eval, save_history, silent:bool=True):
+    def __init__(self, objective, param_keys, simulator, save_history, silent:bool=True):
         self.objective = objective
+        self.simulator = simulator
         self.param_keys = param_keys
-        self.eval = eval
         self.N = len(param_keys)
         self.save_history = save_history
         self.silent = silent
@@ -24,8 +24,7 @@ class _EvalContainer:
 
     def __call__(self, p, *args, **kwargs):
         angles = dict((self.param_keys[i], p[i]) for i in range(self.N))
-        self.objective.update_variables(angles)
-        E = self.eval(self.objective)
+        E = self.simulator(self.objective, variables=angles)
         if not self.silent:
             print("E=", E, " angles=", angles)
         if self.save_history:
@@ -44,9 +43,9 @@ class _GradContainer(_EvalContainer):
         dO = self.objective
         dE_vec = numpy.zeros(self.N)
         memory = dict()
+        variables = dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys)))
         for i in range(self.N):
-            dO[self.param_keys[i]].update_variables(dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys))))
-            dE_vec[i] = self.eval(dO[self.param_keys[i]])
+            dE_vec[i] = self.simulator(dO[self.param_keys[i]], variables=variables)
             memory[self.param_keys[i]] = dE_vec[i]
         self.history.append(memory)
         return dE_vec

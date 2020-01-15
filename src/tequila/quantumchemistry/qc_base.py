@@ -139,7 +139,8 @@ class Amplitudes:
     def export_parameter_dictionary(self):
         result = dict()
         for k, v in self.items():
-            result[str(k)] = v
+            if not numpy.isclose(numpy.abs(v), 0.0):
+                result[Variable(k)] = v
         return result
 
     def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[
@@ -354,7 +355,7 @@ class QuantumChemistryBase:
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0):
-                variables.append(2.0*Variable(name=str(key), value=t)) # 2.0 for convention angle/2 in ExpPauli Gates
+                variables.append(2.0*Variable(name=key)) # 2.0 for convention angle/2 in ExpPauli Gates
                 indices = [(key[2 * i], key[2 * i + 1]) for i in range(len(key)//2)]
                 generators.append(self.make_excitation_operator(indices=indices))
 

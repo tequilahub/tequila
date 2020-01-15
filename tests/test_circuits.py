@@ -8,7 +8,7 @@ import numpy
 
 def test_conventions():
     qubit = numpy.random.randint(0, 3)
-    angle = Variable()
+    angle = Variable("angle")
 
     Rx1 = Rx(target=qubit, angle=angle)
     Rx2 = QCircuit.wrap_gate(RotationGateImpl(axis="X", target=qubit, angle=angle))
@@ -81,38 +81,6 @@ def test_consistency():
         wfn1 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[0], initial_state=0).wavefunction
         wfn2 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[1], initial_state=0).wavefunction
         assert (wfn1 == wfn2)
-
-
-def test_arithmetic():
-    for c in [None, 4, [4, 5]]:
-        qubit = numpy.random.randint(0, 3)
-        power = numpy.random.uniform(0, 5)
-        X2 = X(target=qubit, control=c, power=power)
-        X1 = X(target=qubit, control=c, power=1.0)
-        assert (X2 == X1 ** power)
-        X2 = Y(target=qubit, control=c, power=power)
-        X1 = Y(target=qubit, control=c, power=1.0)
-        assert (X2 == X1 ** power)
-        X2 = Z(target=qubit, control=c, power=power)
-        X1 = Z(target=qubit, control=c, power=1.0)
-        assert (X2 == X1 ** power)
-        X2 = H(target=qubit, control=c, power=power)
-        X1 = H(target=qubit, control=c, power=1.0)
-        assert (X2 == X1 ** power)
-        X2 = Rx(target=qubit, control=c, angle=power)
-        X1 = Rx(target=qubit, control=c, angle=1.0)
-        assert (X2 == X1 ** power)
-        X2 = Ry(target=qubit, control=c, angle=power)
-        X1 = Ry(target=qubit, control=c, angle=1.0)
-        assert (X2 == X1 ** power)
-        X2 = Rz(target=qubit, control=c, angle=power)
-        X1 = Rz(target=qubit, control=c, angle=1.0)
-        assert (X2 == X1 ** power)
-
-        # not supported yet
-        # X1 = X(target=qubit, control=c, power=2.0)
-        # X2 = X(target=qubit, control=c, power=1.0)
-        # assert (X1 == X2*X2)
 
 
 if __name__ == "__main__":

@@ -24,13 +24,13 @@ print(simulator(F2))
 print(simulator(F3))
 
 # compute the gradients w.r.t a variable
-dE = grad(obj=E, variable="a")
+dE = grad(objective=E, variable="a")
 print(simulator(dE))
 
-dF1 = grad(obj=F1, variable="a")
+dF1 = grad(objective=F1, variable="a")
 print(simulator(dF1))
 
-dF2 = grad(obj=F2, variable="a")
+dF2 = grad(objective=F2, variable="a")
 print(simulator(dF2))
 
 

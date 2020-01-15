@@ -1,12 +1,11 @@
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.variable import Variable
+from tequila.circuit.variable import Variable, assign_variable
 from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl
 from tequila import TequilaException
 import typing, numbers
 from dataclasses import dataclass
 from tequila.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
-from numpy import isclose
 import functools
 
 
@@ -125,10 +124,11 @@ class TrotterParameters:
     randomize_component_order: bool = False
     randomize: bool = False
 
+
 @wrap_gate
-def Trotterized(generators: typing.Union[QubitHamiltonian, typing.List[QubitHamiltonian]],
+def Trotterized(generators: typing.List[QubitHamiltonian],
                 steps: int,
-                angles: typing.Union[list, numbers.Real, Variable]=None,
+                angles: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real], typing.List[Variable]] = None,
                 control: typing.Union[list, int] = None,
                 frozen: bool = None,
                 parameters: TrotterParameters = None):
@@ -144,7 +144,10 @@ def Trotterized(generators: typing.Union[QubitHamiltonian, typing.List[QubitHami
     if parameters is None:
         parameters = TrotterParameters()
 
-    return TrotterizedGateImpl(generators=generators, angles=angles, steps=steps, control=control, frozen=frozen, **parameters.__dict__)
+    assigned_angles = [assign_variable(angle) for angle in angles]
+
+    return TrotterizedGateImpl(generators=generators, angles=assigned_angles, steps=steps, control=control, frozen=frozen,
+                               **parameters.__dict__)
 
 
 """

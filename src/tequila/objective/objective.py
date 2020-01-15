@@ -56,66 +56,35 @@ class Objective:
 
     """
 
-    def has_var(self, x):
-        '''
-        :param x: dict, Variable, or str
-        checks if (any of the ) variable(s) passed are present within Objective. Looks for them by name, NOT value.
-        return: bool: true if a match found else false.
-        '''
-        for k, v in self.extract_variables().items():
-            if type(x) is dict:
-                if k in x.keys():
-                    return True
-            if hasattr(x, 'name') and hasattr(x, 'value'):
-                if k == x.name:
-                    return True
-            if type(x) is str:
-                if k == x:
-                    return True
-
-        return False
+    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None, simulator=None):
+        self._args = tuple(args)
+        self._transformation = transformation
+        self.simulator = simulator
+        self.last = None
 
     def extract_variables(self):
         """
-        :return: a dictionary, containing every variable from every ExpectationValue in the objective and every Variable.
+        Extract all variables on which the objective depends
+        :return: List of all Variables
         """
-        variables = dict()
-        for E in self.args:
-            variables = {**variables, **E.extract_variables()}
+        variables = []
+        for arg in self.args:
+            variables += arg.extract_variables()
+
         return variables
-
-    def update_variables(self, variables):
-        '''
-        :param variables: a list of Variables or dictionary of str, number pairs with which ALL expectationvalues and variables of the
-        Objective are to be updated. Calls the update_variables method of ExpectationValue (and Variable),
-        The former of which in turn calls that of QCircuit, which ultimately accesses the update methods of
-         Variable's themselves.
-        :return: self, for ease of use
-        '''
-        for E in self.args:
-            E.update_variables(variables=variables)
-        return self
-
-    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None, loaded=None):
-        self._args = tuple(args)
-        self._transformation = transformation
-        self.loaded = loaded
-        self.last = None
-
-    def load(self, simulator):
-        '''
-        attach a simulator to the Objective to render it callable
-        :param simulator: a Tequila simulator object
-        :return: self, for ease of use
-        '''
-        self.loaded = simulator
-        return self
 
     def is_expectationvalue(self):
         """
         :return: bool: whether or not this objective is just a wrapped ExpectationValue
         """
         return len(self.args) == 1 and self._transformation is None and type(self.args[0]) is ExpectationValueImpl
+
+    def has_expectationvalues(self):
+        """
+        :return: bool: wether or not this objective has expectationvalues or is just a function of the variables
+        """
+        # testing if all arguments are only variables and give back the negative
+        return not all([hasattr(arg, "name") for arg in self.args])
 
     @classmethod
     def ExpectationValue(cls, U=None, H=None):
@@ -153,7 +122,7 @@ class Objective:
         if isinstance(other, numbers.Number):
             t = lambda v: op(v, other)
             new = self.unary_operator(left=self, op=t)
-        elif hasattr(other, 'name'):
+        elif hasattr(other, 'name') or isinstance(other, str):
             t = op
             nother = Objective(args=[other])
             new = self.binary_operator(left=self, right=nother, op=t)
@@ -268,29 +237,24 @@ class Objective:
             string += " , last call value = " + str(self.last)
         return string
 
-    def __call__(self, samples=None):
+    def __call__(self, variables: typing.Dict[typing.Hashable, numbers.Real], simulator=None, samples=None, *args,
+                 **kwargs):
         '''
         Evaluates the expression which Objective represents, if possible.
         :param samples:
         :return:
         '''
-        if all([hasattr(arg, 'name') is True for arg in self.args]):
-            back = self.transformation(*[arg() for arg in self.args])
-            return to_float(back)
-        if self.loaded is None:
-            raise TequilaException(
-                'Objective cannot be called when Expectation Values are present if no simulator is attached!')
+
+        if self.has_expectationvalues():
+            if simulator is None:
+                simulator = self.simulator
+            if simulator is None:
+                raise TequilaException("No simulator was specified")
+            return to_float(simulator(self, variables=variables, samples=samples, *args, **kwargs))
         else:
-            if samples is None:
-                back = self.loaded.simulate_objective(objective=self)
-            else:
-                back = self.loaded.measure_objective(objective=self, samples=samples)
-        try:
-            self.last = float(back)
-            return float(back)
-        except:
-            self.last = back
-            return back
+            # in case that no simulator is actually needed
+            evaluated_args = [variables[arg] for arg in self.args]
+            return to_float(self.transformation(*evaluated_args))
 
 
 def ExpectationValue(U, H) -> Objective:

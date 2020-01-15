@@ -62,12 +62,6 @@ class OptimizerSciPy(Optimizer):
         else:
             self.method_constraints = method_constraints
 
-    def __get_eval_function(self, simulator) -> _EvalContainer:
-        if self.samples is None:
-            return simulator.simulate_objective
-        else:
-            return lambda objective: simulator.measure_objective(objective=objective, samples=self.samples)
-
     def __call__(self, objective: Objective,
                  initial_values: typing.Dict[str, numbers.Number] = None,
                  reset_history: bool = True) -> SciPyReturnType:
@@ -89,17 +83,15 @@ class OptimizerSciPy(Optimizer):
         # do the compilation here to avoid costly recompilation during the optimization
         compiled_objective = simulator.backend_handler.recompile(objective)
         if self.use_gradient:
-            compiled_grad_objective = grad(obj=compiled_objective)
+            compiled_grad_objective = grad(objective=compiled_objective)
 
         simulator.set_compile_flag(False)
-
-        # Generate the function that evaluates <O>
-        sim_eval = self.__get_eval_function(simulator=simulator)
 
         # Extract initial values
         angles = initial_values
         if angles is None:
-            angles = objective.extract_variables()
+            variables = objective.extract_variables()
+            angles = {v: 0.0 for v in variables}
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*angles.items())
@@ -110,12 +102,15 @@ class OptimizerSciPy(Optimizer):
         Es = []
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
-                           eval=sim_eval,
+                           simulator=simulator,
                            save_history=self.save_history,
                            silent=self.silent)
         if self.use_gradient:
-            dE = _GradContainer(objective=compiled_grad_objective, param_keys=param_keys, eval=sim_eval,
-                                save_history=self.save_history, silent=self.silent)
+            dE = _GradContainer(objective=compiled_grad_objective,
+                                param_keys=param_keys,
+                                simulator=simulator,
+                                save_history=self.save_history,
+                                silent=self.silent)
 
         bounds = None
         if self.method_bounds is not None:

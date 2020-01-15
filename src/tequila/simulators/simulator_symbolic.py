@@ -20,16 +20,16 @@ class SimulatorSymbolic(SimulatorBase):
         return self
 
     @staticmethod
-    def apply_gate(state: QubitWaveFunction, gate: QGate, qubits: dict) -> QubitWaveFunction:
+    def apply_gate(state: QubitWaveFunction, gate: QGate, qubits: dict, variables) -> QubitWaveFunction:
         result = QubitWaveFunction()
         n_qubits = len(qubits.keys())
         for s, v in state.items():
             s.nbits = n_qubits
-            result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, basisfunction=s, qubits=qubits)
+            result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, basisfunction=s, qubits=qubits, variables=variables)
         return result
 
     @staticmethod
-    def apply_on_standard_basis(gate: QGate, basisfunction: BitString, qubits:dict) -> QubitWaveFunction:
+    def apply_on_standard_basis(gate: QGate, basisfunction: BitString, qubits:dict, variables) -> QubitWaveFunction:
 
         basis_array = basisfunction.array
         if gate.is_controlled():
@@ -65,11 +65,11 @@ class SimulatorSymbolic(SimulatorBase):
             elif gate.name.upper() == "Z":
                 fac1 = sympy.Integer(-1) ** (qt)
             elif gate.name.upper() == "RX":
-                angle = sympy.Rational(1 / 2) * gate.angle()
+                angle = sympy.Rational(1 / 2) * gate.angle(variables)
                 fac1 = sympy.cos(angle)
                 fac2 = -sympy.sin(angle) * sympy.I
             elif gate.name.upper() == "RY":
-                angle = -sympy.Rational(1 / 2) * gate.angle()
+                angle = -sympy.Rational(1 / 2) * gate.angle(variables)
                 fac1 = sympy.cos(angle)
                 fac2 = +sympy.sin(angle) * sympy.Integer(-1) ** (qt + 1)
             elif gate.name.upper() == "RZ":
@@ -89,8 +89,8 @@ class SimulatorSymbolic(SimulatorBase):
 
         return result
 
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state: int = None) -> SimulatorReturnType:
-        abstract_circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, variables, initial_state: int = None) -> SimulatorReturnType:
+        abstract_circuit = self.create_circuit(abstract_circuit=abstract_circuit, variables=variables)
         qubits = dict()
         count = 0
         for q in abstract_circuit.qubits:
@@ -106,7 +106,7 @@ class SimulatorSymbolic(SimulatorBase):
 
         result = initial_state
         for g in abstract_circuit.gates:
-            result = self.apply_gate(state=result, gate=g, qubits=qubits)
+            result = self.apply_gate(state=result, gate=g, qubits=qubits, variables=variables)
 
         wfn = QubitWaveFunction()
         if self._convert_to_numpy:

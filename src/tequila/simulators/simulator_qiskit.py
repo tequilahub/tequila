@@ -43,21 +43,21 @@ class BackenHandlerQiskit(BackendHandler):
         else:
             raise TequilaQiskitException("More than two control gates currently not supported")
 
-    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+    def add_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
         if len(gate.target) > 1:
             raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
         gfunc = getattr(circuit, gate.name.lower())
-        gfunc(gate.angle(), qubit_map['q'][gate.target[0]])
+        gfunc(gate.angle(variables), qubit_map['q'][gate.target[0]])
 
-    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+    def add_controlled_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
         if len(gate.target) > 1:
             raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
         if len(gate.control) == 1:
             gfunc = getattr(circuit, "c" + gate.name.lower())
-            gfunc(gate.angle(), qubit_map['q'][gate.control[0]], qubit_map['q'][gate.target[0]])
+            gfunc(gate.angle(variables), qubit_map['q'][gate.control[0]], qubit_map['q'][gate.target[0]])
         elif len(gate.control) == 2:
             gfunc = getattr(circuit, "cc" + gate.name.lower())
-            gfunc(gate.angle(), qubit_map['q'][gate.control[0]], qubit_map['q'][gate.control[1]],
+            gfunc(gate.angle(variables), qubit_map['q'][gate.control[0]], qubit_map['q'][gate.control[1]],
                   qubit_map['q'][gate.target[0]])
         else:
             raise TequilaQiskitException("More than two control gates currently not supported")
@@ -91,9 +91,9 @@ class SimulatorQiskit(SimulatorBase):
         simulator = qiskit.Aer.get_backend("qasm_simulator")
         return qiskit.execute(experiments=circuit, backend=simulator, shots=samples)
 
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0) -> SimulatorReturnType:
+    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, variables, initial_state=0) -> SimulatorReturnType:
         simulator = qiskit.Aer.get_backend("statevector_simulator")
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+        circuit = self.create_circuit(abstract_circuit=abstract_circuit, variables=variables)
         if initial_state != 0:
             # need something like this
             # there is a keyword for the backend for tolerance on norm
