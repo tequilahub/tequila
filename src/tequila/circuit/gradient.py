@@ -105,7 +105,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     unitary = E.U
     dO = None
     for i, g in enumerate(unitary.gates):
-        if g.is_parametrized() and not g.is_frozen():
+        if g.is_parametrized():
             if variable in g.extract_variables():
                 if hasattr(g, 'angle'):
                     if g.is_controlled():
@@ -148,16 +148,16 @@ def __grad_rotation(unitary, g, i, variable, hamiltonian):
     :return: an Objective, whose calculation yields the gradient of g w.r.t variable
     '''
 
-    neo_a = copy.deepcopy(g)
-    neo_a.frozen = True
+    shift_a = g._parameter + np.pi / 2
+    neo_a = RotationGateImpl(axis=g.axis,target=g.target, control=g.control, angle=shift_a)
 
-    neo_a.angle = g.angle + np.pi / 2
+    neo_a._parameter = g._parameter + np.pi / 2
     U1 = unitary.replace_gate(position=i, gates=[neo_a])
     w1 = 0.5 * __grad_inner(g.parameter, variable)
 
-    neo_b = copy.deepcopy(g)
-    neo_b.frozen = True
-    neo_b.angle = g.angle - np.pi / 2
+    shift_b = g._parameter - np.pi / 2
+    neo_b = RotationGateImpl(axis=g.axis, target=g.target, control=g.control, angle=shift_b)
+
     U2 = unitary.replace_gate(position=i, gates=[neo_b])
     w2 = -0.5 * __grad_inner(g.parameter, variable)
 
@@ -193,9 +193,9 @@ def __grad_power(unitary, g, i, variable, hamiltonian):
             raise NotImplementedError(
                 'sorry, I have no idea what this gate is and cannot build the gradient.')
         U1 = unitary.replace_gate(position=i, gates=[
-            RotationGateImpl(axis=axis, target=target, angle=(n_pow + np.pi / 2), frozen=True)])
+            RotationGateImpl(axis=axis, target=target, angle=(n_pow + np.pi / 2))])
         U2 = unitary.replace_gate(position=i, gates=[
-            RotationGateImpl(axis=axis, target=target, angle=(n_pow - np.pi / 2), frozen=True)])
+            RotationGateImpl(axis=axis, target=target, angle=(n_pow - np.pi / 2))])
 
         w1 = 0.5 * __grad_inner(g.parameter, variable)
         w2 = -0.5 * __grad_inner(g.parameter, variable)

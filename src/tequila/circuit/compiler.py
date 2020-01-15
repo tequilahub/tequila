@@ -58,11 +58,11 @@ def change_basis(target, axis, daggered=False):
         axis = RotationGateImpl.string_to_axis[axis.lower()]
 
     if axis == 0:
-        return H(target=target, frozen=True)
+        return H(target=target)
     elif axis == 1 and daggered:
-        return Rx(angle=-numpy.pi / 2, target=target, frozen=True)
+        return Rx(angle=-numpy.pi / 2, target=target)
     elif axis == 1:
-        return Rx(angle=numpy.pi / 2, target=target, frozen=True)
+        return Rx(angle=numpy.pi / 2, target=target)
     else:
         return QCircuit()
 
@@ -83,7 +83,7 @@ def compile_multitarget(gate) -> QCircuit:
     result = QCircuit()
     for t in targets:
         gx = copy.deepcopy(gate)
-        gx.target = (t,)
+        gx._target = (t,)
         result += gx
 
     return result
@@ -116,9 +116,9 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
 
     result = QCircuit()
     result += change_basis(target=target, axis=gate._axis)
-    result += RotationGateImpl(axis="z", target=target, angle=angles[0], frozen=gate.frozen)
+    result += RotationGateImpl(axis="z", target=target, angle=angles[0])
     result += QGateImpl(name="X", target=target, control=control)
-    result += RotationGateImpl(axis="Z", target=target, angle=angles[1], frozen=gate.frozen)
+    result += RotationGateImpl(axis="Z", target=target, angle=angles[1])
     result += QGateImpl(name="X", target=target, control=control)
     result += change_basis(target=target, axis=gate._axis, daggered=True)
 
@@ -197,7 +197,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
         # assemble the circuit
         circuit += ubasis
         circuit += cnot_cascade
-        circuit += Rz(target=last_qubit, angle=angle, control=gate.control, frozen=gate.frozen)
+        circuit += Rz(target=last_qubit, angle=angle, control=gate.control)
         circuit += reversed_cnot
         circuit += ubasis_t
 
@@ -207,7 +207,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
         return QCircuit.wrap_gate(gate)
 
 
-def do_compile_trotterized_gate(generator, steps, factor, randomize, control, frozen):
+def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
     assert (generator.is_hermitian())
     circuit = QCircuit()
     factor = factor / steps
@@ -216,7 +216,7 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control, fr
         if randomize:
             numpy.random.shuffle(paulistrings)
         for ps in paulistrings:
-            circuit += ExpPauli(paulistring=ps.naked(), angle=factor * ps.coeff, control=control, frozen=frozen)
+            circuit += ExpPauli(paulistring=ps.naked(), angle=factor * ps.coeff, control=control)
 
     return circuit
 
@@ -236,8 +236,7 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
                 if gate.angles is not None:
                     c = gate.angles[i]
                 result += do_compile_trotterized_gate(generator=g, steps=1, factor=c / gate.steps,
-                                                      randomize=gate.randomize, control=gate.control,
-                                                      frozen=gate.frozen)
+                                                      randomize=gate.randomize, control=gate.control)
     else:
         if gate.randomize_component_order:
             numpy.random.shuffle(gate.generators)
@@ -245,7 +244,7 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
             if gate.angles is not None:
                 c = gate.angles[i]
             result += do_compile_trotterized_gate(generator=g, steps=gate.steps, factor=c, randomize=gate.randomize,
-                                                  control=gate.control, frozen=gate.frozen)
+                                                  control=gate.control)
 
     if compile_exponential_pauli:
         return compile_exponential_pauli_gate(result)

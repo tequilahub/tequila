@@ -10,6 +10,7 @@ from tequila.objective import Objective
 from tequila.simulators.heralding import HeraldingABC
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
+from tequila.circuit.variable import assign_variable
 
 import numpy, numbers, typing, copy
 from dataclasses import dataclass
@@ -118,16 +119,19 @@ class SimulatorBase:
         :return: Energy, or simulator return type depending on what was passed down as objective
         """
 
+        # user convenience
+        formatted_variables = {assign_variable(k): v for k, v in variables.items()}
+
         if isinstance(objective, QCircuit):
             if samples is None:
-                return self.simulate_wavefunction(abstract_circuit=objective, variables=variables, *args, **kwargs)
+                return self.simulate_wavefunction(abstract_circuit=objective, variables=formatted_variables, *args, **kwargs)
             else:
-                return self.run(abstract_circuit=objective, samples=samples, variables=variables, *args, **kwargs)
+                return self.run(abstract_circuit=objective, samples=samples, variables=formatted_variables, *args, **kwargs)
         else:
             if samples is None:
-                return self.simulate_objective(objective=objective, variables=variables, *args, **kwargs)
+                return self.simulate_objective(objective=objective, variables=formatted_variables, *args, **kwargs)
             else:
-                return self.measure_objective(objective=objective, samples=samples, variables=variables, *args,
+                return self.measure_objective(objective=objective, samples=samples, variables=formatted_variables, *args,
                                               **kwargs)
 
     def run(self, abstract_circuit: QCircuit, variables: typing.Dict[typing.Hashable, numbers.Real] = None,

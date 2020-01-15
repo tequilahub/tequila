@@ -5,11 +5,10 @@ Suggestion, feel free to propose new things/changes
 import typing, numbers
 
 from tequila import TequilaException
+from tequila.circuit.variable import assign_variable
 from tequila.objective import Objective
 from tequila.simulators import pick_simulator
 from dataclasses import dataclass, field
-
-import pickle
 
 
 class TequilaOptimizerException(TequilaException):
@@ -49,7 +48,7 @@ class OptimizerHistory:
         :param filename: if given plot to file, otherwise plot to terminal
         :param property: the property to plot, given as string
         :param key: for properties like angles and gradients you can specifiy which one you want to plot
-        if set to none all keys are plotted
+        if set to none all keys are plotted. You can pass down single keys or lists of keys. DO NOT use tuples of keys or any other hashable list types
         give key as list if you want to plot multiple properties with different keys
         """
         from matplotlib import pyplot as plt
@@ -65,18 +64,19 @@ class OptimizerHistory:
 
         if key is None:
             keys = [[k for k in self.angles[-1].keys()]] * len(properties)
-        elif hasattr(key, "lower"):
-            keys = [[key.lower()]] * len(properties)
+        elif isinstance(key, typing.Hashable):
+            keys = [[assign_variable(key)]] * len(properties)
         else:
+            key = [assign_variable(k) for k in key]
             keys = [key] * len(properties)
         for i, p in enumerate(properties):
             if p.lower() == "energies":
                 data = self.energies
-                plt.plot(data, label=p, marker='o', linestyle='--')
+                plt.plot(data, label=str(p), marker='o', linestyle='--')
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(data, label=p + " " + k, marker='o', linestyle='--')
+                    plt.plot(data, label=str(p) + " " + str(k), marker='o', linestyle='--')
 
         if 'title' in kwargs:
             plt.title(kwargs['title'])

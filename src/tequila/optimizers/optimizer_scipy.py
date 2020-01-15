@@ -1,5 +1,6 @@
 import scipy, numpy, typing, numbers
 from tequila.objective import Objective
+from tequila.circuit.variable import assign_variable
 from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
@@ -38,6 +39,9 @@ class OptimizerSciPy(Optimizer):
         self.method = method.upper()
         self.tol = tol
         self.method_options = method_options
+
+        if method_bounds is not None:
+            method_bounds = {assign_variable(k): v for k, v in method_bounds.items()}
         self.method_bounds = method_bounds
         self.silent = silent
         if use_gradient is None:
@@ -89,9 +93,12 @@ class OptimizerSciPy(Optimizer):
 
         # Extract initial values
         angles = initial_values
-        if angles is None:
+        if initial_values is None:
             variables = objective.extract_variables()
             angles = {v: 0.0 for v in variables}
+        else:
+            # convenience which allows the user to just pass down the keys of Variables
+            angles = {assign_variable(k):v for k,v in initial_values.items()}
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*angles.items())
@@ -103,12 +110,14 @@ class OptimizerSciPy(Optimizer):
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
                            simulator=simulator,
+                           samples = self.samples,
                            save_history=self.save_history,
                            silent=self.silent)
         if self.use_gradient:
             dE = _GradContainer(objective=compiled_grad_objective,
                                 param_keys=param_keys,
                                 simulator=simulator,
+                                samples = self.samples,
                                 save_history=self.save_history,
                                 silent=self.silent)
 
@@ -169,7 +178,7 @@ def minimize(objective: Objective,
     :param tol: See scipy documentation for the method you picked
     :param method_options: See scipy documentation for the method you picked
     :param method_bounds: See scipy documentation for the method you picked
-    Give in the same format as parameters/initial_values: Dict[str, float]
+    Give in the same format as parameters/initial_values: Dict[hashable_type, float]
     :param return_dictionary: return results as dictionary instead of tuples
     :param method_constraints: See scipy documentation for the method you picked
     :param silent: If False the optimizer prints out evaluated energies

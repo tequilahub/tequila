@@ -13,27 +13,6 @@ class QCircuit():
             return self._gates
 
     @property
-    def parameter_list(self):
-        """
-        this property is designed to return a list of the variables in a gate, and for the list to be equal in length
-        to the number of gates. Unparametrized or Frozen gates will insert None. This can be used to experiment with the behavior
-        of the circuit; changes to the object in the list (unless it is deepcopied) will change the object in the gate directly.
-        This is an unprotected property and abuse will break it, but if you've come this far, you knew that.
-        :returns: list
-        """
-        parameters = []
-        for g in self.gates:
-            if g.is_parametrized() and not g.is_frozen():
-                if hasattr(g.parameter, 'f'):
-                    gpars = g.parameter.parameter_list
-                    parameters.append(gpars)
-                elif hasattr(g.parameter, '_name') and hasattr(g.parameter, '_value'):
-                    parameters.append(g.parameter)
-            else:
-                parameters.append(None)
-        return parameters
-
-    @property
     def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
 
@@ -65,30 +44,6 @@ class QCircuit():
             self._gates = []
         else:
             self._gates = list(gates)
-
-    def validate(self):
-        '''
-        helper function to ensure consistency between frozen and unfrozen gates; makes sure no Variable
-        parametrizes both frozen and unfrozen gates. Reproduces something alike to the parameters attribute, but note that it also looks at frozen gates.
-        '''
-        pars = dict()
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized():
-                for name, val in g.parameter.variables.items():
-                    pars[name] = [0, 0]
-
-        for g in self.gates:
-            if g.is_parametrized():
-                if g.is_frozen():
-                    for k in g.parameter.variables.keys():
-                        pars[k][1] = 1
-                else:
-                    for k in g.parameter.variables.keys():
-                        pars[k][0] = 1
-
-        if any([numpy.sum(pars[k]) > 1 for k in pars.keys()]):
-            error_string = 'This circuit contains gates depending on a given parameter, some of which are frozen and others not. \n This breaks the gradient! please rebuild your circuit without doing so.'
-            raise TequilaException(error_string)
 
     def is_primitive(self):
         """
@@ -128,7 +83,7 @@ class QCircuit():
         for i, g in enumerate(self.gates):
             if g.is_parametrized():
                 variables += g.extract_variables()
-        return variables
+        return list(set(variables))
 
     def max_qubit(self):
         """

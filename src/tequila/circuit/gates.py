@@ -18,15 +18,13 @@ def wrap_gate(func):
 
 
 @wrap_gate
-def RotationGate(axis, angle, target: typing.Union[list, int], control: typing.Union[list, int] = None,
-                 frozen: bool = None):
-    return RotationGateImpl(axis=axis, angle=angle, target=target, control=control, frozen=frozen)
+def RotationGate(axis, angle, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    return RotationGateImpl(axis=axis, angle=angle, target=target, control=control)
 
 
 @wrap_gate
-def PowerGate(name, target: typing.Union[list, int], power: bool = None, control: typing.Union[list, int] = None,
-              frozen: bool = None):
-    return PowerGateImpl(name=name, power=power, target=target, control=control, frozen=frozen)
+def PowerGate(name, target: typing.Union[list, int], power: bool = None, control: typing.Union[list, int] = None):
+    return PowerGateImpl(name=name, power=power, target=target, control=control)
 
 
 @wrap_gate
@@ -35,39 +33,44 @@ def QGate(name, target: typing.Union[list, int], control: typing.Union[list, int
 
 
 @wrap_gate
-def Rx(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None):
-    return RotationGateImpl(axis=0, angle=angle, target=target, control=control, frozen=frozen)
+def Rx(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    return RotationGateImpl(axis=0, angle=angle, target=target, control=control)
 
 
 @wrap_gate
-def Ry(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None):
-    return RotationGateImpl(axis=1, angle=angle, target=target, control=control, frozen=frozen)
+def Ry(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    return RotationGateImpl(axis=1, angle=angle, target=target, control=control)
 
 
 @wrap_gate
-def Rz(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None, frozen: bool = None):
-    return RotationGateImpl(axis=2, angle=angle, target=target, control=control, frozen=frozen)
+def Rz(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    return RotationGateImpl(axis=2, angle=angle, target=target, control=control)
 
 
 @wrap_gate
-def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None):
-    return PowerGateImpl(name="X", power=power, target=target, control=control, frozen=frozen)
+def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None):
+    return initialize_power_gate(name="X", power=power, target=target, control=control)
 
 
 @wrap_gate
-def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None):
-    return PowerGateImpl(name="H", power=power, target=target, control=control, frozen=frozen)
+def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None):
+    return initialize_power_gate(name="H", power=power, target=target, control=control)
 
 
 @wrap_gate
-def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None):
-    return PowerGateImpl(name="Y", power=power, target=target, control=control, frozen=frozen)
+def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None):
+    return initialize_power_gate(name="Y", power=power, target=target, control=control)
 
 
 @wrap_gate
-def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, frozen: bool = None):
-    return PowerGateImpl(name="Z", power=power, target=target, control=control, frozen=frozen)
+def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None):
+    return initialize_power_gate(name="Z", power=power, target=target, control=control)
 
+def initialize_power_gate(name: str, target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None):
+    if power is None or power in [1, 1.0]:
+        return QGateImpl(name=name, target=target, control=control)
+    else:
+        return PowerGateImpl(name=name, power=power, target=target, control=control)
 
 @wrap_gate
 def Measurement(target, name=None):
@@ -79,7 +82,7 @@ def Measurement(target, name=None):
 
 @wrap_gate
 def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None,
-             frozen: bool = None):
+             ):
     """
     Exponentiated Pauligate:
 
@@ -91,7 +94,6 @@ def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing
     if given as dict: Format should be like { 0:'X', 3:'Y', 2:'Z' }
     :param angle: the angle (will be multiplied by paulistring coefficient if there is one)
     :param control: control qubits
-    :param frozen: is the gate frozen? (will be ignored by optimizers)
     :return: Gate wrapped in circuit
     """
 
@@ -104,7 +106,7 @@ def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing
     else:
         ps = paulistring
 
-    return ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control, frozen=frozen)
+    return ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control)
 
 
 @dataclass
@@ -130,14 +132,12 @@ def Trotterized(generators: typing.List[QubitHamiltonian],
                 steps: int,
                 angles: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real], typing.List[Variable]] = None,
                 control: typing.Union[list, int] = None,
-                frozen: bool = None,
                 parameters: TrotterParameters = None):
     """
     :param generators: list of generators
     :param angles: coefficients for each generator
     :param steps: trotter steps
     :param control: control qubits
-    :param frozen: freeze the gate (optimizers ingnore it)
     :param parameters: Additional Trotter parameters, if None then defaults are used
     """
 
@@ -146,7 +146,7 @@ def Trotterized(generators: typing.List[QubitHamiltonian],
 
     assigned_angles = [assign_variable(angle) for angle in angles]
 
-    return TrotterizedGateImpl(generators=generators, angles=assigned_angles, steps=steps, control=control, frozen=frozen,
+    return TrotterizedGateImpl(generators=generators, angles=assigned_angles, steps=steps, control=control,
                                **parameters.__dict__)
 
 
@@ -157,14 +157,13 @@ iSWAP will only work with cirq, the others will be recompiled
 
 
 @wrap_gate
-def SWAP(q0: int, q1: int, control: typing.Union[int, list] = None, power: float = None,
-         frozen: bool = None):
-    return PowerGateImpl(name="SWAP", target=[q0, q1], control=control, power=power, frozen=frozen)
+def SWAP(q0: int, q1: int, control: typing.Union[int, list] = None, power: float = None):
+    return initialize_power_gate(name="SWAP", target=[q0, q1], control=control, power=power)
 
 
 @wrap_gate
 def iSWAP(q0: int, q1: int, control: typing.Union[int, list] = None):
-    return PowerGateImpl(name="ISWAP", target=[q0, q1], control=control)
+    return initialize_power_gate(name="ISWAP", target=[q0, q1], control=control)
 
 
 """
@@ -197,38 +196,38 @@ def enforce_integer(function) -> int:
 
 
 @enforce_integer
-def CNOT(control: int, target: int, frozen: bool = None) -> QCircuit:
-    return X(target=target, control=control, frozen=frozen)
+def CNOT(control: int, target: int) -> QCircuit:
+    return X(target=target, control=control)
 
 
 @enforce_integer
-def CX(control: int, target: int, frozen: bool = None) -> QCircuit:
-    return X(target=target, control=control, frozen=frozen)
+def CX(control: int, target: int) -> QCircuit:
+    return X(target=target, control=control)
 
 
 @enforce_integer
-def CY(control: int, target: int, frozen: bool = None) -> QCircuit:
-    return Y(target=target, control=control, frozen=frozen)
+def CY(control: int, target: int) -> QCircuit:
+    return Y(target=target, control=control)
 
 
 @enforce_integer
-def CZ(control: int, target: int, frozen: bool = None) -> QCircuit:
-    return Z(target=target, control=control, frozen=frozen)
+def CZ(control: int, target: int) -> QCircuit:
+    return Z(target=target, control=control)
 
 
 @enforce_integer
-def CRx(control: int, target: int, angle: float, frozen: bool = None) -> QCircuit:
-    return Rx(target=target, control=control, angle=angle, frozen=frozen)
+def CRx(control: int, target: int, angle: float) -> QCircuit:
+    return Rx(target=target, control=control, angle=angle)
 
 
 @enforce_integer
-def CRy(control: int, target: int, angle: float, frozen: bool = None) -> QCircuit:
-    return Ry(target=target, control=control, angle=angle, frozen=frozen)
+def CRy(control: int, target: int, angle: float) -> QCircuit:
+    return Ry(target=target, control=control, angle=angle)
 
 
 @enforce_integer
-def CRz(control: int, target: int, angle: float, frozen: bool = None) -> QCircuit:
-    return Rz(target=target, control=control, angle=angle, frozen=frozen)
+def CRz(control: int, target: int, angle: float) -> QCircuit:
+    return Rz(target=target, control=control, angle=angle)
 
 
 if __name__ == "__main__":

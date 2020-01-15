@@ -188,7 +188,7 @@ class FixedVariable(float):
     def __call__(self, *args, **kwargs):
         return self
 
-def assign_variable(variable: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real], typing.List[Variable]]) -> typing.Union[Variable, FixedVariable]:
+def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[Variable, FixedVariable]:
     """
     :param variable: a string, a number or a variable
     :return: Variable or FixedVariable depending on the input
@@ -197,7 +197,7 @@ def assign_variable(variable: typing.Union[typing.List[typing.Hashable], typing.
         return Variable(name=variable)
     elif isinstance(variable, Variable):
         return variable
-    elif hasattr(variable, 'args'):
+    elif isinstance(variable, Objective):
         return variable
     elif isinstance(variable, FixedVariable):
         return variable
@@ -205,7 +205,9 @@ def assign_variable(variable: typing.Union[typing.List[typing.Hashable], typing.
         if not isinstance(variable, numbers.Real):
             raise TequilaVariableException("You tried to assign a complex number to a FixedVariable")
         return FixedVariable(variable)
+    elif  hasattr(variable, "evalf"): # evalf detects sympy types ... not differentiable, hidden in the type hinting since it should not really be used
+        return SympyVariable(value=variable)
     elif isinstance(variable, typing.Hashable):
         return Variable(name=variable)
     else:
-        raise TequilaVariableException("Only hashable types can be assigned to Variables")
+        raise TequilaVariableException("Only hashable types can be assigned to Variables. You passed down " + str(variable) + " type=" + str(type(variable)))

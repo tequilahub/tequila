@@ -13,6 +13,7 @@ from tequila import TequilaException
 from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
 from tequila.simulators.simulator_symbolic import SimulatorSymbolic
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.circuit.variable import assign_variable
 
 
 class TequilaUnaryStateException(TequilaException):
@@ -191,7 +192,8 @@ class UnaryStatePrep:
             g2 = copy.deepcopy(g)
             if hasattr(g, "angle"):
                 symbol = g.angle
-                g2.angle = -angles[-symbol()]  # the minus follows mahas convention since the circuits are daggered in the end
+                # the module needs repairing ....
+                g2._parameter = assign_variable(-angles[-symbol()])  # the minus follows mahas convention since the circuits are daggered in the end
             result += g2
 
         return result

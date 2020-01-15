@@ -31,7 +31,7 @@ class ExpectationValueImpl:
             return self._hamiltonian
 
     def extract_variables(self) -> typing.Dict[str, numbers.Real]:
-        result = dict()
+        result = []
         if self.U is not None:
             result = self.U.extract_variables()
         return result
@@ -71,7 +71,7 @@ class Objective:
         for arg in self.args:
             variables += arg.extract_variables()
 
-        return variables
+        return list(set(variables))
 
     def is_expectationvalue(self):
         """
