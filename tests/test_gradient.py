@@ -1,7 +1,7 @@
 from tequila.circuit import gates
 from tequila.circuit.gradient import grad
 from tequila.objective import Objective, ExpectationValue
-from tequila.circuit.variable import Variable
+from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.simulators.simulator_qiskit import SimulatorQiskit
 from tequila.simulators.simulator_cirq import SimulatorCirq

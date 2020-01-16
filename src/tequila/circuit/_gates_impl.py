@@ -3,7 +3,7 @@ import copy
 import numbers
 from abc import ABC
 from tequila import TequilaException
-from tequila.circuit.variable import SympyVariable, Variable, FixedVariable, assign_variable
+from tequila.objective.objective import SympyVariable, Variable, FixedVariable, assign_variable
 from tequila.hamiltonian import PauliString, QubitHamiltonian
 from tequila.tools import number_to_string, list_assignement
 

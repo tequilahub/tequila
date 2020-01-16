@@ -1,9 +1,13 @@
 SUPPORTED_SIMULATORS = ["qulacs", "pyquil", "qiskit", "cirq"]
+
+
 def supported_simulators():
     """
     :return: List of all supported simulators
     """
     return SUPPORTED_SIMULATORS
+
+
 """
 Check which simulators are installed
 """
@@ -15,6 +19,7 @@ HAS_QULACS = True
 try:
     import qulacs
     from tequila.simulators.simulator_qulacs import SimulatorQulacs
+
     HAS_QULACS = True
     INSTALLED_FULL_WFN_SIMULATORS["qulacs"] = SimulatorQulacs
 except ImportError:
@@ -26,9 +31,10 @@ from shutil import which
 HAS_QVM = which("qvm") is not None
 try:
     from tequila.simulators.simulator_pyquil import SimulatorPyquil
+
     HAS_PYQUIL = True
     INSTALLED_FULL_WFN_SIMULATORS["pyquil"] = SimulatorPyquil
-    #INSTALLED_SAMPLERS["pyquil"] = SimulatorPyquil # not yet implemented
+    # INSTALLED_SAMPLERS["pyquil"] = SimulatorPyquil # not yet implemented
 except ImportError:
     HAS_PYQUIL = False
 
@@ -38,6 +44,7 @@ if not HAS_QVM:
 HAS_QISKIT = True
 try:
     from tequila.simulators.simulator_qiskit import SimulatorQiskit
+
     HAS_QISKIT = True
     INSTALLED_FULL_WFN_SIMULATORS["qiskit"] = SimulatorQiskit
     INSTALLED_SAMPLERS["qiskit"] = SimulatorQiskit
@@ -47,6 +54,7 @@ except ImportError:
 HAS_CIRQ = True
 try:
     from tequila.simulators.simulator_cirq import SimulatorCirq
+
     HAS_CIRQ = True
     INSTALLED_FULL_WFN_SIMULATORS["cirq"] = SimulatorCirq
     INSTALLED_SAMPLERS["cirq"] = SimulatorCirq
@@ -63,7 +71,6 @@ def show_available_simulators() -> str:
     print("\nWavefunction Samplers:\n")
     for k in INSTALLED_SAMPLERS.keys():
         print(k)
-
 
 
 def pick_simulator(samples=None, demand_full_wfn=None):
@@ -104,6 +111,7 @@ def pick_simulator(samples=None, demand_full_wfn=None):
 from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
 from tequila.simulators.simulator_symbolic import SimulatorSymbolic
 
+
 def get_all_wfn_simulators():
     """
     :return: List of all currently availabe wfn simulators as noninitialized types
@@ -117,6 +125,7 @@ def get_all_wfn_simulators():
         result.append(SimulatorQulacs)
     return result
 
+
 def get_all_samplers():
     """
     :return: List of all currently availabe sampling based simulators as noninitialized types
@@ -127,6 +136,7 @@ def get_all_samplers():
     if HAS_QISKIT:
         result.append(SimulatorQiskit)
     return result
+
 
 def initialize_simulator(backend: str = None, samples=None, *args, **kwargs):
     """
@@ -140,7 +150,7 @@ def initialize_simulator(backend: str = None, samples=None, *args, **kwargs):
     if backend is None:
         return pick_simulator(samples=samples)
 
-    assert(isinstance(backend, str))
+    assert (isinstance(backend, str))
 
     if backend not in SUPPORTED_SIMULATORS:
         raise Exception("Simulator " + backend + " is not known to by tequila")
@@ -150,18 +160,17 @@ def initialize_simulator(backend: str = None, samples=None, *args, **kwargs):
 
     if samples is None:
         if backend.lower() not in INSTALLED_FULL_WFN_SIMULATORS:
-            raise Exception("You demaded a full wavefunction simulation with the simulator " + backend + " but this is not possible")
+            raise Exception(
+                "You demaded a full wavefunction simulation with the simulator " + backend + " but this is not possible")
         return INSTALLED_FULL_WFN_SIMULATORS[backend](*args, **kwargs)
     else:
         if backend.lower() not in INSTALLED_SAMPLERS:
-            raise Exception("You demaded shot based simulation with the simulator " + backend + " but this is not possible")
+            raise Exception(
+                "You demaded shot based simulation with the simulator " + backend + " but this is not possible")
         return INSTALLED_SAMPLERS[backend](*args, **kwargs)
 
 
-
-
-
-def simulate(objective, variables=None, samples=None, backend: str=None, *args, **kwargs):
+def simulate(objective, variables=None, samples=None, backend: str = None, *args, **kwargs):
     """
     Convenience function which automatically picks the best simulator available and runs it
     :param objective: A tequila Objective/ExpectationValue or Circuit
@@ -179,3 +188,33 @@ def simulate(objective, variables=None, samples=None, backend: str=None, *args, 
         simulator = pick_simulator(samples=samples)
 
     return simulator(objective=objective, variables=variables, samples=samples, *args, **kwargs)
+
+def draw(objective, backend:str=None, *args, **kwargs):
+    """
+    Draw a circuit or objective with the prettiest backend you have
+    Circuit is translated into the backend, so avoid using this in loops
+    :param objective: objective or circuit object
+    :param backend: choose the backend by keyword, if None it is autopicked
+    :return: pretty printout
+    """
+
+    if backend is not None:
+        simulator = initialize_simulator(backend)
+    else:
+        if HAS_QISKIT:
+            simulator = SimulatorQiskit(*args, **kwargs)
+        elif HAS_CIRQ:
+            simulator = SimulatorCirq(*args, **kwargs)
+        else:
+            simulator = SimulatorBase(*args, **kwargs)
+
+    simulator.draw(objective=objective, *args, **kwargs)
+
+
+
+
+
+
+
+
+

@@ -1,5 +1,5 @@
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.variable import Variable, assign_variable
+from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl
 from tequila import TequilaException

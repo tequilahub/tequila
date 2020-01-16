@@ -1,4 +1,4 @@
-from tequila.circuit import Variable
+from tequila.objective.objective import Variable
 from tequila.circuit import gates
 from tequila.hamiltonian import paulis
 from tequila.objective import Objective

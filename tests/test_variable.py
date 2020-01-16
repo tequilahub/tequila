@@ -1,8 +1,7 @@
 import pytest
 from jax import numpy as np
 from tequila.circuit.gradient import grad
-from tequila.objective.objective import Objective
-from tequila.circuit.variable import Variable
+from tequila.objective.objective import Objective, Variable
 import operator
 
 

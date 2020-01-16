@@ -1,4 +1,4 @@
-from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType, BackendHandler,QCircuit
+from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType, BackendHandler, QCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering, BitStringLSB
@@ -11,7 +11,6 @@ class TequilaQiskitException(TequilaException):
 
 
 class BackenHandlerQiskit(BackendHandler):
-
     recompile_swap = True
     recompile_multitarget = True
     recompile_controlled_rotation = True
@@ -97,12 +96,13 @@ class SimulatorQiskit(SimulatorBase):
         if initial_state != 0:
             # need something like this
             # there is a keyword for the backend for tolerance on norm
-            #circuit.initialize(normed_array)
+            # circuit.initialize(normed_array)
             raise TequilaQiskitException("initial state for Qiskit not yet supported here")
         backend_result = qiskit.execute(experiments=circuit, backend=simulator).result()
         return SimulatorReturnType(abstract_circuit=abstract_circuit, circuit=circuit,
-                                   wavefunction=QubitWaveFunction.from_array(arr=backend_result.get_statevector(circuit),
-                                   numbering=self.numbering),
+                                   wavefunction=QubitWaveFunction.from_array(
+                                       arr=backend_result.get_statevector(circuit),
+                                       numbering=self.numbering),
                                    backend_result=backend_result)
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
@@ -117,6 +117,15 @@ class SimulatorQiskit(SimulatorBase):
             converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
             result._state[converted_key] = v
         return {"": result}
+
+    def draw_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
+        """
+        Default drawing is just the printout of the stringification ... feel free to add a nice representation
+        """
+        # currently need dummy variables if the circuit is parametrized
+        varnames = abstract_circuit.extract_variables()
+        variables = {k: 111. for k in varnames}
+        print(self.create_circuit(abstract_circuit=abstract_circuit, variables=variables))
 
 
 if __name__ == "__main__":

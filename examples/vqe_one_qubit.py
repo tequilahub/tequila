@@ -9,7 +9,7 @@ from tequila.circuit import gates
 from tequila.hamiltonian import paulis
 from tequila.objective import Objective
 import numpy
-from tequila.circuit import Variable
+from tequila.objective.objective import Variable
 from tequila.optimizers import optimizer_scipy
 
 # uncomment if you want to use a specific simulators

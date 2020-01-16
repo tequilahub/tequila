@@ -1,4 +1,5 @@
 import tequila as tq
+import tequila.objective.objective
 from jax import numpy as numpy
 from tequila.circuit.gradient import grad
 from matplotlib import pyplot as plt
@@ -9,7 +10,7 @@ def my_trafo(E):
 simulator = tq.simulators.SimulatorQulacs()
 
 # create a simple expectationvalue (this is actually a wrapped objective)
-U = tq.gates.Ry(target=0, angle=tq.Variable(name="a", value=2.0))
+U = tq.gates.Ry(target=0, angle=tequila.objective.objective.Variable(name="a", value=2.0))
 H = tq.paulis.X(qubit=0)
 E = tq.Objective.ExpectationValue(H=H, U=U)
 
@@ -77,7 +78,7 @@ my_test(objective=tq.Objective(args=E.args + N.args,
 my_test(objective=tq.Objective(args=E.args, transformation=lambda E: numpy.exp(-E ** 2)), title="F= exp(-E**2)", steps=100)
 my_test(objective=numpy.e ** (-E ** 2), title="F= exp(-E**2)", steps=100)
 
-U2 = tq.gates.Rx(target=0, angle=tq.Variable(name="a", value=2.0))
+U2 = tq.gates.Rx(target=0, angle=tequila.objective.objective.Variable(name="a", value=2.0))
 H2 = tq.paulis.Y(qubit=0)
 E2 = tq.Objective.ExpectationValue(H=H2, U=U2)
 

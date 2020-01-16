@@ -2,7 +2,7 @@ from tequila.simulators.heralding import HeraldingProjector
 from tequila.circuit import gates
 from tequila.simulators.simulator_qiskit import SimulatorQiskit
 from tequila.simulators.simulator_cirq import SimulatorCirq
-from tequila import Variable
+from tequila.objective.objective import Variable
 
 import typing
 import numpy

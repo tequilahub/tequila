@@ -56,8 +56,11 @@ class Objective:
 
     """
 
-    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None, simulator=None):
-        self._args = tuple(args)
+    def __init__(self, args: typing.Iterable = None, transformation: typing.Callable = None, simulator=None):
+        if args is None:
+            self._args = tuple()
+        else:
+            self._args = tuple(args)
         self._transformation = transformation
         self.simulator = simulator
         self.last = None
@@ -122,14 +125,14 @@ class Objective:
         if isinstance(other, numbers.Number):
             t = lambda v: op(v, other)
             new = self.unary_operator(left=self, op=t)
-        elif hasattr(other, 'name') or isinstance(other, str):
-            t = op
-            nother = Objective(args=[other])
-            new = self.binary_operator(left=self, right=nother, op=t)
         elif isinstance(other, Objective):
             new = self.binary_operator(left=self, right=other, op=op)
         elif isinstance(other, ExpectationValueImpl):
             new = self.binary_operator(left=self, right=Objective(args=[other]), op=op)
+        else:
+            t = op
+            nother = Objective(args=[assign_variable(other)])
+            new = self.binary_operator(left=self, right=nother, op=t)
         return new
 
     def right_helper(self, op, other):
@@ -139,14 +142,14 @@ class Objective:
         if isinstance(other, numbers.Number):
             t = lambda v: op(other, v)
             new = self.unary_operator(left=self, op=t)
-        elif hasattr(other, 'name'):
-            t = op
-            nother = Objective(args=[other])
-            new = self.binary_operator(left=nother, right=self, op=t)
         elif isinstance(other, Objective):
             new = self.binary_operator(left=other, right=self, op=op)
         elif isinstance(other, ExpectationValueImpl):
             new = self.binary_operator(left=Objective(args=[other]), right=self, op=op)
+        else:
+            t = op
+            nother = Objective(args=[assign_variable(other)])
+            new = self.binary_operator(left=nother, right=self, op=t)
         return new
 
     def __mul__(self, other):
@@ -262,3 +265,211 @@ def ExpectationValue(U, H) -> Objective:
     Initialize an Objective which is just a single expectationvalue
     """
     return Objective.ExpectationValue(U=U, H=H)
+
+
+class TequilaVariableException(TequilaException):
+    def __str__(self):
+        return "Error in tequila variable:" + self.message
+
+
+class SympyVariable:
+    '''
+    TODO: can we pleaseeeeee get rid of this thing, Jakob? pretty please?
+    '''
+
+    def __init__(self, name=None, value=None):
+        self._value = value
+        self._name = name
+
+    def __call__(self, *args, **kwargs):
+        return self._value
+
+    def __sub__(self, other):
+        return SympyVariable(name=self._name, value=self._value - other)
+
+    def __add__(self, other):
+        return SympyVariable(name=self._name, value=self._value + other)
+
+    def __mul__(self, other):
+        return SympyVariable(name=self._name, value=self._value * other)
+
+    def __neg__(self):
+        return SympyVariable(name=self._name, value=-self._value)
+
+
+class Variable:
+
+    @property
+    def name(self):
+        return self._name
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __init__(self, name: typing.Union[str, typing.Hashable]):
+        if not isinstance(name, typing.Hashable) or not hasattr(name, "__hash__"):
+            raise TequilaVariableException("Name of variable has to ba a hashable type")
+        self._name = name
+
+    def __call__(self, variables):
+        """
+        Convenience function for easy usage
+        :param variables: dictionary which carries all variable values
+        :return: evaluate variable
+        """
+        return variables[self]
+
+    def extract_variables(self):
+        """
+        Convenience function for easy usage
+        :return: self wrapped in list
+        """
+        return [self]
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.name == other.name
+
+    def left_helper(self, op, other):
+        '''
+        function for use by magic methods, which all have an identical structure, differing only by the
+        external operator they call. left helper is responsible for all 'self # other' operations. Note similarity
+        to the same function in Objective.
+        :param op: the operation to be performed
+        :param other: the right-hand argument of the operation to be performed
+        :return: an Objective, who transform is op, acting on self and other
+        '''
+        if isinstance(other, numbers.Number):
+            t = lambda v: op(v, other)
+            new = Objective(args=[self], transformation=t)
+        elif isinstance(other, Variable):
+            t = op
+            new = Objective(args=[self, other], transformation=t)
+        elif isinstance(other, Objective):
+            new = Objective(args=[self])
+            new = new.binary_operator(left=new, right=other, op=op)
+        elif isinstance(other, ExpectationValueImpl):
+            new = Objective(args=[self, other], transformation=op)
+        return new
+
+    def right_helper(self, op, other):
+        '''
+        see left helper above
+        '''
+        if isinstance(other, numbers.Number):
+            t = lambda v: op(other, v)
+            new = Objective(args=[self], transformation=t)
+        elif isinstance(other, Variable):
+            t = op
+            new = Objective(args=[other, self], transformation=t)
+        elif isinstance(other, Objective):
+            new = Objective(args=[self])
+            new = new.binary_operator(right=new, left=other, op=op)
+        elif isinstance(other, ExpectationValueImpl):
+            new = Objective(args=[other, self], transformation=op)
+        return new
+
+    def __mul__(self, other):
+        return self.left_helper(numpy.multiply, other)
+
+    def __add__(self, other):
+        return self.left_helper(numpy.add, other)
+
+    def __sub__(self, other):
+        return self.left_helper(numpy.subtract, other)
+
+    def __truediv__(self, other):
+        return self.left_helper(numpy.true_divide, other)
+
+    def __neg__(self):
+        return Objective(args=[self], transformation=lambda v: numpy.multiply(v, -1))
+
+    def __pow__(self, other):
+        return self.left_helper(numpy.float_power, other)
+
+    def __rpow__(self, other):
+        return self.right_helper(numpy.float_power, other)
+
+    def __rmul__(self, other):
+        return self.right_helper(numpy.multiply, other)
+
+    def __radd__(self, other):
+        return self.right_helper(numpy.add, other)
+
+    def __rtruediv__(self, other):
+        return self.right_helper(numpy.true_divide, other)
+
+    def __invert__(self):
+        new = Objective(args=[self])
+        return new ** -1
+
+    def __iadd__(self, other):
+        self._value += other
+        return self
+
+    def __isub__(self, other):
+        self._value -= other
+        return self
+
+    def __imul__(self, other):
+        self._value *= other
+        return self
+
+    def __idiv__(self, other):
+        self._value /= other
+        return self
+
+    def __ipow__(self, other):
+        self._value **= other
+        return self
+
+    def __lt__(self, other):
+        return self.value < other
+
+    def __gt__(self, other):
+        return self.value > other
+
+    def __ge__(self, other):
+        return self.value >= other
+
+    def __le__(self, other):
+        return self.value <= other
+
+    def __ne__(self, other):
+        if self.__eq__(other):
+            return False
+        else:
+            return True
+
+    def __repr__(self):
+        return str(self.name)
+
+
+class FixedVariable(float):
+
+    def __call__(self, *args, **kwargs):
+        return self
+
+
+def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[Variable, FixedVariable]:
+    """
+    :param variable: a string, a number or a variable
+    :return: Variable or FixedVariable depending on the input
+    """
+    if isinstance(variable, str):
+        return Variable(name=variable)
+    elif isinstance(variable, Variable):
+        return variable
+    elif isinstance(variable, Objective):
+        return variable
+    elif isinstance(variable, FixedVariable):
+        return variable
+    elif isinstance(variable, numbers.Number):
+        if not isinstance(variable, numbers.Real):
+            raise TequilaVariableException("You tried to assign a complex number to a FixedVariable")
+        return FixedVariable(variable)
+    elif  hasattr(variable, "evalf"): # evalf detects sympy types ... not differentiable, hidden in the type hinting since it should not really be used
+        return SympyVariable(value=variable)
+    elif isinstance(variable, typing.Hashable):
+        return Variable(name=variable)
+    else:
+        raise TequilaVariableException("Only hashable types can be assigned to Variables. You passed down " + str(variable) + " type=" + str(type(variable)))

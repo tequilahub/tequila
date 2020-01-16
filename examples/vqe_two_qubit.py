@@ -1,5 +1,5 @@
 from tequila.circuit import gates
-from tequila.circuit import Variable
+from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.objective import Objective
 from tequila.optimizers.optimizer_scipy import minimize

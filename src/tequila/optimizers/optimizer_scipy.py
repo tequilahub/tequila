@@ -1,6 +1,6 @@
 import scipy, numpy, typing, numbers
 from tequila.objective import Objective
-from tequila.circuit.variable import assign_variable
+from tequila.objective.objective import assign_variable
 from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer

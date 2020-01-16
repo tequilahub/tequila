@@ -1,6 +1,6 @@
 from tequila.circuit import gates
 from tequila.objective import Objective, ExpectationValue
-from tequila.circuit.variable import Variable
+from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.circuit.gradient import grad
 import jax.numpy as np
@@ -316,8 +316,8 @@ def test_mixed_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.
     en2 = simulator().simulate_objective(e2, variables=variables)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, en1 / en2)) is True
-    assert bool(np.isclose(val, an1 / an2)) is True
+    assert np.isclose(val, en1 / en2)
+    assert np.isclose(val, an1 / an2)
 
 
 @pytest.mark.parametrize("simulator", simulators.get_all_wfn_simulators())

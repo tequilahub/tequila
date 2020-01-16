@@ -7,10 +7,10 @@ from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
 from tequila import BitString
 from tequila.objective import Objective
+from tequila.objective.objective import Variable, assign_variable
 from tequila.simulators.heralding import HeraldingABC
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
-from tequila.circuit.variable import assign_variable
 
 import numpy, numbers, typing, copy
 from dataclasses import dataclass
@@ -124,14 +124,17 @@ class SimulatorBase:
 
         if isinstance(objective, QCircuit):
             if samples is None:
-                return self.simulate_wavefunction(abstract_circuit=objective, variables=formatted_variables, *args, **kwargs)
+                return self.simulate_wavefunction(abstract_circuit=objective, variables=formatted_variables, *args,
+                                                  **kwargs)
             else:
-                return self.run(abstract_circuit=objective, samples=samples, variables=formatted_variables, *args, **kwargs)
+                return self.run(abstract_circuit=objective, samples=samples, variables=formatted_variables, *args,
+                                **kwargs)
         else:
             if samples is None:
                 return self.simulate_objective(objective=objective, variables=formatted_variables, *args, **kwargs)
             else:
-                return self.measure_objective(objective=objective, samples=samples, variables=formatted_variables, *args,
+                return self.measure_objective(objective=objective, samples=samples, variables=formatted_variables,
+                                              *args,
                                               **kwargs)
 
     def run(self, abstract_circuit: QCircuit, variables: typing.Dict[typing.Hashable, numbers.Real] = None,
@@ -183,7 +186,7 @@ class SimulatorBase:
         raise TequilaException(
             "called from base class of simulators, or non-supported operation for this backend")
 
-    def create_circuit(self, abstract_circuit: QCircuit, variables: typing.Dict[typing.Hashable, numbers.Real]):
+    def create_circuit(self, abstract_circuit: QCircuit, variables: typing.Dict[typing.Hashable, numbers.Real] = None):
         """
         Translates abstract circuits into the specific backend type
         Overwrite the BackendHandler Class to implement new backends
@@ -283,7 +286,8 @@ class SimulatorBase:
         else:
             return float(final_E)
 
-    def simulate_expectationvalue(self, E, variables: typing.Dict[typing.Hashable, numbers.Real]=None) -> numbers.Real:
+    def simulate_expectationvalue(self, E,
+                                  variables: typing.Dict[typing.Hashable, numbers.Real] = None) -> numbers.Real:
         final_E = 0.0
         data = []
         H = E.H
@@ -354,3 +358,41 @@ class SimulatorBase:
         for k, v in measurements.items():
             result[k] = self._heralding(input=v)
         return result
+
+    def draw(self, objective: typing.Union[QCircuit, Objective], *args, **kwargs):
+
+        if isinstance(objective, Objective):
+            self.draw_objective(objective=objective, *args, **kwargs)
+        else:
+            self.draw_circuit(abstract_circuit=objective, *args, **kwargs)
+
+    def draw_objective(self, objective: Objective, *args, **kwargs):
+        """
+        Default drawing is just the printout of the stringification ... feel free to add a nice representation
+        """
+
+        transform = objective.transformation
+        objective_string = "f("
+        exp_ind = []
+        for i, arg in enumerate(objective._args):
+            if isinstance(arg, Variable):
+                objective_string += str(arg) + ", "
+            elif hasattr(arg, "U"):
+                objective_string += "E_" + str(i) + ", "
+                exp_ind.append(i)
+        objective_string += ")"
+
+        print("Tequila Objective:")
+        print("O = ", objective_string)
+        print("f = ", transform)
+
+        for i in exp_ind:
+            print("E_", i, " expectation value with:")
+            print("H = ", objective._args[i].H, ", U=")
+            self.draw_circuit(abstract_circuit=objective._args[i].U)
+
+    def draw_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
+        """
+        Default drawing is just the printout of the stringification ... feel free to add a nice representation
+        """
+        print(abstract_circuit)

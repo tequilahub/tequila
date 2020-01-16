@@ -13,7 +13,7 @@ from tequila import TequilaException
 from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
 from tequila.simulators.simulator_symbolic import SimulatorSymbolic
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.circuit.variable import assign_variable
+from tequila.objective.objective import assign_variable
 
 
 class TequilaUnaryStateException(TequilaException):

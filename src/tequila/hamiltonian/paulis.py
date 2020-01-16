@@ -27,7 +27,7 @@ def Z(qubit):
     return QubitHamiltonian.init_from_string("Z" + str(qubit))
 
 
-def I(qubit):
+def I(*args, **kwargs):
     return QubitHamiltonian.init_unit()
 
 
