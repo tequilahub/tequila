@@ -56,11 +56,8 @@ class Objective:
 
     """
 
-    def __init__(self, args: typing.Iterable = None, transformation: typing.Callable = None, simulator=None):
-        if args is None:
-            self._args = tuple()
-        else:
-            self._args = tuple(args)
+    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None, simulator=None):
+        self._args = tuple(args)
         self._transformation = transformation
         self.simulator = simulator
         self.last = None

@@ -1,4 +1,5 @@
 from shutil import which
+import typing
 
 SUPPORTED_QCHEMISTRY_BACKENDS = ["psi4", "pyscf"]
 INSTALLED_QCHEMISTRY_BACKENDS = {}
@@ -30,7 +31,24 @@ def show_available_modules():
 def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
 
-def pick_backend(backend: str):
+def Molecule(geometry: str, basis_set: str, transformation: typing.Union[str, typing.Callable] = None, backend: str = None, **kwargs):
+    """
+    :param geometry: filename to an xyz file
+    :param basis_set: basis set in standard notation
+    :param transformation: Jordan-Wigner, Bravyi-Kitaev, and whatever OpenFermion supports
+    :param backend: psi4 or pyscf
+    :param kwargs: further parameters defined in ParametersQC
+    :return:
+    """
+
+    parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **kwargs)
+
+    if backend is None and "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
+        backend = "psi4"
+    elif "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
+        backend = "pyscf"
+    else:
+        raise Exception("No quantum chemistry backends installed on your syste,")
 
     if backend not in INSTALLED_QCHEMISTRY_BACKENDS:
         raise Exception(str(backend) + " was not found on your system")
@@ -38,4 +56,4 @@ def pick_backend(backend: str):
     if backend not in SUPPORTED_QCHEMISTRY_BACKENDS:
         raise Exception(str(backend) + " is not (yet) supported by tequila")
 
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend]
+    return INSTALLED_QCHEMISTRY_BACKENDS[backend](parameters=parameters, transformation=transformation)

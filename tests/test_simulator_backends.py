@@ -5,6 +5,7 @@ All Backends need to be installed for full testing
 import numpy
 import pytest
 import random
+import numbers
 import tequila as tq
 
 """
@@ -12,6 +13,15 @@ Warn if Simulators are not installed
 """
 import warnings
 
+@pytest.mark.parametrize("backend", list(set([None] + [k for k in tq.simulators.INSTALLED_FULL_WFN_SIMULATORS.keys()] + [k for k in tq.simulators.INSTALLED_SAMPLERS.keys()])))
+def test_interface(backend):
+    H = tq.paulis.X(0)
+    U = tq.gates.X(target=0)
+    a = tq.simulators.simulate(objective=U, backend=backend)
+    assert(isinstance(a, tq.QubitWaveFunction))
+    E = tq.ExpectationValue(H=H, U=U)
+    a = tq.simulators.simulate(objective=E, backend=backend)
+    assert(isinstance(a, numbers.Number))
 
 @pytest.mark.parametrize("name", tq.simulators.supported_simulators())
 def test_backend_availability(name):

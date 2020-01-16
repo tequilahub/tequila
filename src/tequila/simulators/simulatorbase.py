@@ -120,22 +120,22 @@ class SimulatorBase:
         """
 
         # user convenience
-        formatted_variables = {assign_variable(k): v for k, v in variables.items()}
+        formatted_variables = variables
+        if formatted_variables is not None:
+            formatted_variables = {assign_variable(k): v for k, v in variables.items()}
 
         if isinstance(objective, QCircuit):
             if samples is None:
                 return self.simulate_wavefunction(abstract_circuit=objective, variables=formatted_variables, *args,
-                                                  **kwargs)
+                                                  **kwargs).wavefunction
             else:
                 return self.run(abstract_circuit=objective, samples=samples, variables=formatted_variables, *args,
-                                **kwargs)
+                                **kwargs).wavefunction
         else:
             if samples is None:
-                return self.simulate_objective(objective=objective, variables=formatted_variables, *args, **kwargs)
+                return to_float(self.simulate_objective(objective=objective, variables=formatted_variables, *args, **kwargs))
             else:
-                return self.measure_objective(objective=objective, samples=samples, variables=formatted_variables,
-                                              *args,
-                                              **kwargs)
+                return to_float(self.measure_objective(objective=objective, samples=samples, variables=formatted_variables, *args, **kwargs))
 
     def run(self, abstract_circuit: QCircuit, variables: typing.Dict[typing.Hashable, numbers.Real] = None,
             samples: int = 1) -> SimulatorReturnType:

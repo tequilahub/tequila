@@ -148,7 +148,7 @@ def initialize_simulator(backend: str = None, samples=None, *args, **kwargs):
     """
 
     if backend is None:
-        return pick_simulator(samples=samples)
+        return pick_simulator(samples=samples)(*args, **kwargs)
 
     assert (isinstance(backend, str))
 
@@ -182,10 +182,7 @@ def simulate(objective, variables=None, samples=None, backend: str = None, *args
     :return: The evaluated objective, returns an energy or a wavefunction depending on the input type
     """
 
-    if backend is not None:
-        simulator = initialize_simulator(backend=backend, samples=samples, *args, **kwargs)
-    else:
-        simulator = pick_simulator(samples=samples)
+    simulator = initialize_simulator(backend=backend, samples=samples, *args, **kwargs)
 
     return simulator(objective=objective, variables=variables, samples=samples, *args, **kwargs)
 

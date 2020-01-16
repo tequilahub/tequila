@@ -10,6 +10,10 @@ import numpy
 from tequila.simulators import pick_simulator
 from tequila.objective import ExpectationValue
 
+@pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0, reason="no quantum chemistry backends installed")
+def test_interface():
+    import tequila as tq
+    molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JW")
 
 @pytest.mark.skipif(condition=not (qc.has_pyscf and qc.has_psi4),
                     reason="you don't have a quantum chemistry backend installed")
@@ -41,7 +45,6 @@ def do_test_h2_hamiltonian(qc_interface):
     assert (numpy.isclose(vals[1], -0.52718972, atol=1.e-4))
     assert (numpy.isclose(vals[2], -0.52718972, atol=1.e-4))
     assert (numpy.isclose(vals[-1], 0.9871391, atol=1.e-4))
-
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])

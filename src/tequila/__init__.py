@@ -5,9 +5,6 @@ from tequila.objective import Objective, ExpectationValue, Variable, assign_vari
 from tequila.optimizers import optimizer_scipy
 from tequila.simulators import pick_simulator
 from tequila.wavefunction import QubitWaveFunction
-
-def chemistry(backend="psi4"):
-    import tequila.quantumchemistry as chem
-    return chem.pick_backend(backend)
+import tequila.quantumchemistry as chemistry
 
 __version__ = "The Ghost of Mittens The Kitten"
