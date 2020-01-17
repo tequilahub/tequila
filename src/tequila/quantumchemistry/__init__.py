@@ -43,17 +43,18 @@ def Molecule(geometry: str, basis_set: str, transformation: typing.Union[str, ty
 
     parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **kwargs)
 
-    if backend is None and "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
-        backend = "psi4"
-    elif "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
-        backend = "pyscf"
-    else:
-        raise Exception("No quantum chemistry backends installed on your syste,")
-
-    if backend not in INSTALLED_QCHEMISTRY_BACKENDS:
-        raise Exception(str(backend) + " was not found on your system")
+    if backend is None:
+        if "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
+            backend = "psi4"
+        elif "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
+            backend = "pyscf"
+        else:
+            raise Exception("No quantum chemistry backends installed on your syste,")
 
     if backend not in SUPPORTED_QCHEMISTRY_BACKENDS:
         raise Exception(str(backend) + " is not (yet) supported by tequila")
+
+    if backend not in INSTALLED_QCHEMISTRY_BACKENDS:
+        raise Exception(str(backend) + " was not found on your system")
 
     return INSTALLED_QCHEMISTRY_BACKENDS[backend](parameters=parameters, transformation=transformation)

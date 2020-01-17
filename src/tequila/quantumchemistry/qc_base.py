@@ -9,6 +9,7 @@ import typing, numpy, numbers
 import openfermion
 from openfermion.hamiltonians import MolecularData
 
+
 def prepare_product_state(state: BitString) -> QCircuit:
     """
     Small convenience function
@@ -20,6 +21,7 @@ def prepare_product_state(state: BitString) -> QCircuit:
         if v == 1:
             result += gates.X(target=i)
     return result
+
 
 @dataclass
 class ParametersQC:
@@ -33,7 +35,14 @@ class ParametersQC:
     multiplicity: int = 1
     charge: int = 0
     closed_shell: bool = True
-    filename: str = "molecule"
+    datafile: str = None
+
+    @property
+    def filename(self):
+        if self.datafile is None:
+            return "molecule"
+        else:
+            return self.datafile
 
     @property
     def molecular_data_param(self) -> dict:
@@ -41,7 +50,7 @@ class ParametersQC:
         :return: Give back all parameters for the MolecularData format from openfermion as dictionary
         """
         return {'basis': self.basis_set, 'geometry': self.get_geometry(), 'description': self.description,
-                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.filename
+                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.datafile
                 }
 
     @staticmethod
@@ -88,7 +97,10 @@ class ParametersQC:
         """
         if self.geometry.split('.')[-1] == 'xyz':
             geomstring, comment = self.read_xyz_from_file(self.geometry)
-            self.description = comment
+            if self.description == '':
+                self.description = comment
+            if self.datafile is None:
+                self.datafile = self.geometry.split('.')[0]
             return self.convert_to_list(geomstring)
         elif self.geometry is not None:
             return self.convert_to_list(self.geometry)
@@ -137,10 +149,10 @@ class Amplitudes:
     def __str__(self):
         return self.data.__str__()
 
-    def export_parameter_dictionary(self):
+    def export_parameter_dictionary(self, atol=1.e-8, rtol=1.e-8):
         result = dict()
         for k, v in self.items():
-            if not numpy.isclose(numpy.abs(v), 0.0):
+            if not numpy.isclose(numpy.abs(v), 0.0, atol=atol, rtol=rtol):
                 result[Variable(k)] = v
         return result
 
@@ -152,11 +164,11 @@ class Amplitudes:
                 transformed[(2 * key[0], 2 * key[1])] = value
                 transformed[(2 * key[0] + 1, 2 * key[1] + 1)] = value
             if len(key) == 4:
-                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value
-                transformed[(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])] = value
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value # aa bb
+                transformed[(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])] = value # bb aa
             else:
                 raise Exception("???")
-            return transformed
+        return transformed
 
     @classmethod
     def from_ndarray(cls, array: numpy.ndarray, closed_shell=None,
@@ -167,7 +179,6 @@ class Amplitudes:
         :param index_offsets: indices will start from 0 but are supposed to start from index_offset
         :return:
         """
-        assert all([x == array.shape[0] for x in array.shape])  # all indices should run over ALL orbitals
         data = dict(numpy.ndenumerate(array))
         if index_offset is not None:
             offset_data = dict()
@@ -239,12 +250,11 @@ class QuantumChemistryBase:
             ofi += [(pair[0], 1), (pair[1], 0)]
             dag += [(pair[0], 0), (pair[1], 1)]
 
-        op = openfermion.FermionOperator(tuple(ofi), 1.j) #1j makes it hermitian
+        op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
 
         return QubitHamiltonian(hamiltonian=self.transformation(op))
 
-    
     def reference_state(self) -> BitString:
         """
         Does a really lazy workaround ... but it works
@@ -280,10 +290,10 @@ class QuantumChemistryBase:
         # try to load
 
         do_compute = True
-        if self.parameters.filename:
+        if self.parameters.datafile:
             try:
                 import os
-                if os.path.exists(self.parameters.filename):
+                if os.path.exists(self.parameters.datafile):
                     molecule.load()
                     do_compute = False
             except OSError:
@@ -356,11 +366,12 @@ class QuantumChemistryBase:
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0):
-                variables.append(2.0*Variable(name=key)) # 2.0 for convention angle/2 in ExpPauli Gates
-                indices = [(key[2 * i], key[2 * i + 1]) for i in range(len(key)//2)]
+                variables.append(2.0 * Variable(name=key))  # 2.0 for convention angle/2 in ExpPauli Gates
+                indices = [(key[2 * i], key[2 * i + 1]) for i in range(len(key) // 2)]
                 generators.append(self.make_excitation_operator(indices=indices))
 
-        return Uref + gates.Trotterized(generators=generators, angles=variables, steps=trotter_steps, parameters=trotter_parameters)
+        return Uref + gates.Trotterized(generators=generators, angles=variables, steps=trotter_steps,
+                                        parameters=trotter_parameters)
 
     def initialize_zero_amplitudes(self) -> Amplitudes:
         # function not needed anymore
@@ -382,10 +393,15 @@ class QuantumChemistryBase:
         ai = fij[nocc:]
         abgij = g[nocc:, nocc:, :nocc, :nocc]
         amplitudes = abgij * 1.0 / (
-                ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1,
-                                                                                                         1))
+                ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
         E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
                                                                                 optimize='optimize')
         self.molecule.mp2_energy = E + self.molecule.hf_energy
         return Amplitudes.from_ndarray(array=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'),
                                        closed_shell=True, index_offset=(nocc, 0, nocc, 0))
+
+    def __str__(self) -> str:
+        result = str(type(self)) + "\n"
+        for k, v in self.parameters.__dict__.items():
+            result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
+        return result
