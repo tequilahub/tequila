@@ -4,8 +4,10 @@ from tequila.hamiltonian import HamiltonianQC, QubitHamiltonian
 
 from tequila.circuit import QCircuit, gates
 from tequila.objective.objective import Variable
+from tequila.utils import to_float
 
 import typing, numpy, numbers
+
 import openfermion
 from openfermion.hamiltonians import MolecularData
 
@@ -149,9 +151,15 @@ class Amplitudes:
     def __str__(self):
         return self.data.__str__()
 
-    def export_parameter_dictionary(self, atol=1.e-8, rtol=1.e-8):
+    def export_parameter_dictionary(self, atol=1.e-8, rtol=1.e-8, only_singles: bool = False,
+                                    only_doubles: bool = False):
         result = dict()
+        assert not (only_doubles and only_singles)
         for k, v in self.items():
+            if only_doubles and len(k) != 4:
+                continue
+            if only_singles and len(k) != 2:
+                continue
             if not numpy.isclose(numpy.abs(v), 0.0, atol=atol, rtol=rtol):
                 result[Variable(k)] = v
         return result
@@ -164,8 +172,12 @@ class Amplitudes:
                 transformed[(2 * key[0], 2 * key[1])] = value
                 transformed[(2 * key[0] + 1, 2 * key[1] + 1)] = value
             if len(key) == 4:
-                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value # aa bb
-                transformed[(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])] = value # bb aa
+                same_spin = data[key[0], key[1], key[2], key[3]] - data[key[2], key[1], key[0], key[3]]  # abij - baij
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3])] = same_spin  # aa aa
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3])] = same_spin  # bb bb
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value  # aa bb
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value  # aa bb
+                transformed[(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])] = value  # bb aa
             else:
                 raise Exception("???")
         return transformed
@@ -237,10 +249,10 @@ class QuantumChemistryBase:
 
     def make_excitation_operator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
         """
-        Creates the excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
+        Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
         And gives it back multiplied with 1j to make it hermitian
         :param indices: List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
-        :return: Transformed qubit excitation operator, depends on self.transformation
+        :return: 1j*Transformed qubit excitation operator, depends on self.transformation
         """
         # convert to openfermion input format
         ofi = []
@@ -253,7 +265,14 @@ class QuantumChemistryBase:
         op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
 
-        return QubitHamiltonian(hamiltonian=self.transformation(op))
+        qop = QubitHamiltonian(hamiltonian=self.transformation(op))
+
+        # check if the operator is hermitian and cast coefficients to floats
+        assert qop.is_hermitian()
+        for k, v in qop.hamiltonian.terms.items():
+            qop.hamiltonian.terms[k] = to_float(v)
+
+        return qop
 
     def reference_state(self) -> BitString:
         """

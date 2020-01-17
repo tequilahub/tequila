@@ -10,7 +10,7 @@ def to_float(number) -> float:
         if isclose(number.imag, 0.0):
             return float(number.real)
         else:
-            raise Exception("imaginary part detected")
+            raise Exception("imaginary part detected {number}".format(number=number))
     else:
         try:
             return float(number)

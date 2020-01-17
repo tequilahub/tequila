@@ -6,6 +6,7 @@ from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, H, X, Rz, ExpPauli
 from tequila.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
+from tequila.utils import to_float
 
 import numpy, copy
 
@@ -216,7 +217,8 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
         if randomize:
             numpy.random.shuffle(paulistrings)
         for ps in paulistrings:
-            circuit += ExpPauli(paulistring=ps.naked(), angle=factor * ps.coeff, control=control)
+            coeff = to_float(ps.coeff)
+            circuit += ExpPauli(paulistring=ps.naked(), angle=factor * coeff, control=control)
 
     return circuit
 
