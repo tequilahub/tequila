@@ -1,4 +1,4 @@
-SUPPORTED_SIMULATORS = ["qulacs", "pyquil", "qiskit", "cirq"]
+SUPPORTED_SIMULATORS = ["qulacs", "pyquil", "qiskit", "cirq", "symbolic"]
 
 
 def supported_simulators():
@@ -62,6 +62,7 @@ except ImportError:
     HAS_CIRQ = False
 
 from tequila.simulators.simulator_symbolic import SimulatorSymbolic
+INSTALLED_FULL_WFN_SIMULATORS["symbolic"] = SimulatorSymbolic
 
 
 def show_available_simulators() -> str:
