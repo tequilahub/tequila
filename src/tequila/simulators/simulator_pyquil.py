@@ -1,5 +1,5 @@
 from tequila.simulators.simulatorbase import SimulatorBase, QCircuit, TequilaException, \
-    SimulatorReturnType, BackendHandler
+    SimulatorReturnType, BackendCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import BitString, BitStringLSB, BitNumbering
 import subprocess
@@ -12,7 +12,7 @@ class TequilaPyquilException(TequilaException):
         return "simulator_pyquil: " + self.message
 
 
-class BackenHandlerPyquil(BackendHandler):
+class BackenCircuitPyquil(BackendCircuit):
     recompile_swap = True
     recompile_multitarget = True
     recompile_controlled_rotation = False
@@ -65,7 +65,7 @@ class SimulatorPyquil(SimulatorBase):
     def numbering(self):
         return BitNumbering.LSB
 
-    backend_handler = BackenHandlerPyquil()
+    backend_handler = BackenCircuitPyquil
 
     def __init__(self, initialize_qvm: bool = True,*args, **kwargs):
         super().__init__(*args, **kwargs)

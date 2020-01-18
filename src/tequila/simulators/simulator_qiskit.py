@@ -1,4 +1,4 @@
-from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType, BackendHandler, QCircuit
+from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType, BackendCircuit, QCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering, BitStringLSB
@@ -10,7 +10,7 @@ class TequilaQiskitException(TequilaException):
         return "Error in qiskit backend:" + self.message
 
 
-class BackenHandlerQiskit(BackendHandler):
+class BackenCircuitQiskit(BackendCircuit):
     recompile_swap = True
     recompile_multitarget = True
     recompile_controlled_rotation = True
@@ -80,7 +80,7 @@ class BackenHandlerQiskit(BackendHandler):
 
 
 class SimulatorQiskit(SimulatorBase):
-    backend_handler = BackenHandlerQiskit()
+    backend_handler = BackenCircuitQiskit
 
     @property
     def numbering(self):

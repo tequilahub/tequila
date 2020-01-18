@@ -7,12 +7,88 @@ from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, H, X, Rz, ExpPauli
 from tequila.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
 from tequila.utils import to_float
+from tequila import Variable
+from tequila import Objective
+from tequila.objective.objective import ExpectationValueImpl
 
-import numpy, copy
+import numpy, copy, typing
 
 
 class TequilaCompilerException(TequilaException):
     pass
+
+
+class Compiler:
+
+    def __init__(self,
+                 multitarget=True,
+                 multicontrol=False,
+                 trotterized=True,
+                 exponential_pauli=True,
+                 controlled_exponential_pauli=True,
+                 controlled_rotation=True,
+                 swap=True
+                 ):
+        self.multitarget = multitarget
+        self.multicontrol = multicontrol
+        self.trotterized = trotterized
+        self.exponential_pauli = exponential_pauli
+        self.controlled_exponential_pauli = controlled_exponential_pauli
+        self.controlled_rotation = controlled_rotation
+        self.swap = swap
+
+    def __call__(self, objective: typing.Union[Objective, QCircuit, ExpectationValueImpl], *args, **kwargs):
+        if isinstance(objective, Objective) or hasattr(objective, "args"):
+            return self.compile_objective(objective=objective)
+        elif isinstance(objective, QCircuit) or hasattr(objective, "gates"):
+            return self.compile_circuit(abstract_circuit=objective)
+        elif isinstance(objective, ExpectationValueImpl) or hasattr(objective, "U"):
+            return self.compile_objective_argument(arg=objective)
+
+    def compile_objective(self, objective):
+        compiled_args = []
+        for arg in objective.args:
+            compiled_args.append(self.compile_objective_argument(arg))
+        return type(objective)(args=compiled_args, transformation=objective._transformation)
+
+    def compile_objective_argument(self, arg):
+        if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
+            return ExpectationValueImpl(H=arg.H, U=self.compile_circuit(abstract_circuit=arg.U))
+        elif isinstance(arg, Variable) or hasattr(arg, "name"):
+            return arg
+        else:
+            raise TequilaCompilerException(
+                "Unknown argument type for objectives: {arg} or type {type}".format(arg=arg, type=type(arg)))
+
+    def compile_circuit(self, abstract_circuit: QCircuit) -> QCircuit:
+
+        compiled = QCircuit()
+        for gate in abstract_circuit.gates:
+            cg = gate
+            controlled = gate.is_controlled()
+
+            # order matters
+            # first the real multi-target gates
+            if controlled or self.trotterized:
+                cg = compile_trotterized_gate(gate=cg)
+            if controlled or self.exponential_pauli:
+                cg = compile_exponential_pauli_gate(gate=cg)
+            if self.swap:
+                cg = compile_swap(gate=cg)
+            # now every other multitarget gate which might be defined
+            if self.multitarget:
+                cg = compile_multitarget(gate=cg)
+            if self.multicontrol:
+                raise NotImplementedError("Multicontrol compilation does not work yet")
+            if controlled:
+                if self.controlled_rotation:
+                    cg = compile_controlled_rotation(gate=cg)
+                if self.controlled_exponential_pauli:
+                    cg = compile_exponential_pauli_gate(gate=cg)
+
+            compiled += cg
+
+        return compiled
 
 
 def compiler(f):

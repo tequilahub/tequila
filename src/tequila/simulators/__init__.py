@@ -63,6 +63,7 @@ except ImportError:
 
 from tequila.simulators.simulator_symbolic import SimulatorSymbolic
 INSTALLED_FULL_WFN_SIMULATORS["symbolic"] = SimulatorSymbolic
+HAS_SYMBOLIC = True
 
 
 def show_available_simulators() -> str:
@@ -110,7 +111,6 @@ def pick_simulator(samples=None, demand_full_wfn=None):
 
 
 from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
-from tequila.simulators.simulator_symbolic import SimulatorSymbolic
 
 
 def get_all_wfn_simulators():

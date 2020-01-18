@@ -8,7 +8,7 @@ except ImportError:
 
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable
-from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H, iSWAP
+from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, SWAP, H
 from numpy import pi, random, isclose, sqrt
 from tequila.objective import ExpectationValue
 from tequila.circuit.gradient import grad

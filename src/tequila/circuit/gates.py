@@ -161,9 +161,9 @@ def SWAP(q0: int, q1: int, control: typing.Union[int, list] = None, power: float
     return initialize_power_gate(name="SWAP", target=[q0, q1], control=control, power=power)
 
 
-@wrap_gate
-def iSWAP(q0: int, q1: int, control: typing.Union[int, list] = None):
-    return initialize_power_gate(name="ISWAP", target=[q0, q1], control=control)
+# @wrap_gate
+# def iSWAP(q0: int, q1: int, control: typing.Union[int, list] = None):
+#     return initialize_power_gate(name="ISWAP", target=[q0, q1], control=control)
 
 
 """

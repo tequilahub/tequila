@@ -1,4 +1,4 @@
-from tequila.simulators.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendHandler
+from tequila.simulators.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering
@@ -6,7 +6,7 @@ import typing
 import cirq
 
 
-class BackenHandlerCirq(BackendHandler):
+class BackenCircuitCirq(BackendCircuit):
 
     recompile_swap = False
     recompile_multitarget = True
@@ -74,7 +74,7 @@ class SimulatorCirq(SimulatorBase):
 
     numbering: BitNumbering = BitNumbering.MSB
 
-    backend_handler = BackenHandlerCirq()
+    backend_handler = BackenCircuitCirq
 
     def convert_measurements(self, backend_result: cirq.TrialResult) -> typing.Dict[str, QubitWaveFunction]:
         result = dict()
