@@ -23,7 +23,7 @@ class BackenCircuitQulacs(BackendCircuit):
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = False
-    recompile_exponential_pauli = True
+    recompile_exponential_pauli = False
 
     numbering = BitNumbering.LSB
 
@@ -58,6 +58,14 @@ class BackenCircuitQulacs(BackendCircuit):
     def initialize_circuit(self, *args, **kwargs):
         n_qubits = len(self.qubit_map)
         return qulacs.ParametricQuantumCircuit(n_qubits)
+
+    def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
+        if len(gate.extract_variables()) > 0:
+            self.variables.append(-gate.angle)
+        convert = {'x':1, 'y':2, 'z':3}
+        pind = [convert[x.lower()] for x in gate.paulistring.values()]
+        qind = [x for x in gate.paulistring.keys()]
+        circuit.add_parametric_multi_Pauli_rotation_gate(qind, pind, gate.angle(variables))
 
     def add_gate(self, gate, circuit, *args, **kwargs):
         getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]])

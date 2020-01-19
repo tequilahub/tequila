@@ -5,6 +5,7 @@ from tequila.utils.misc import to_float
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
+from tequila.circuit.gates import RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl
 from tequila import BitString
 from tequila.objective import Objective
 from tequila.objective.objective import Variable, assign_variable
@@ -43,6 +44,8 @@ class BackendCircuit:
     """
     Functions in the end need to be overwritten by specific backend implementation
     Other functions can be overwritten to improve performance
+    self.circuit : translated circuit
+    self.abstract_circuit: compiled tequila circuit
     """
 
     # compiler instructions
@@ -87,17 +90,19 @@ class BackendCircuit:
             if isinstance(g, MeasurementImpl):
                 self.add_measurement(gate=g, circuit=result)
             elif g.is_controlled():
-                if hasattr(g, "angle"):
+                if isinstance(g, RotationGateImpl):
                     self.add_controlled_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif hasattr(g, "power") and g.power != 1:
+                elif isinstance(g, PowerGateImpl) and g.power != 1:
                     self.add_controlled_power_gate(gate=g, variables=variables, qubit_map=qubit_map, circuit=result)
                 else:
                     self.add_controlled_gate(gate=g, circuit=result)
             else:
-                if hasattr(g, "angle"):
+                if isinstance(g, RotationGateImpl):
                     self.add_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif hasattr(g, "power") and g.power != 1:
+                elif isinstance(g, PowerGateImpl) and g.power != 1:
                     self.add_power_gate(gate=g, variables=variables, circuit=result)
+                elif isinstance(g, ExponentialPauliGateImpl):
+                    self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
                 else:
                     self.add_gate(gate=g, circuit=result)
 
@@ -110,7 +115,7 @@ class BackendCircuit:
         """
         self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
 
-    def simulate(self, variables, initial_state = 0) -> QubitWaveFunction:
+    def simulate(self, variables, initial_state=0) -> QubitWaveFunction:
         """
         Simulate the wavefunction
         :param returntype: specifies how the result should be given back
@@ -136,7 +141,6 @@ class BackendCircuit:
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
-
     # Those functions need to be overwritten:
 
     def do_simulate(self, variables, initial_state):
@@ -144,6 +148,9 @@ class BackendCircuit:
 
     def fast_return(self, abstract_circuit):
         return True
+
+    def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def add_controlled_gate(self, gate, circuit, *args, **kwargs):
         return self.add_gate(gate, circuit, args, kwargs)
@@ -174,7 +181,6 @@ class BackendCircuit:
 
 
 class BackendExpectationValue:
-
     BackendCircuitType = BackendCircuit
 
     @property
