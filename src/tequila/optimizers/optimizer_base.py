@@ -7,7 +7,7 @@ import typing, numbers
 from tequila import TequilaException
 from tequila.objective.objective import assign_variable
 from tequila.objective import Objective
-from tequila.simulators import pick_simulator
+from tequila.simulators import pick_backend
 from dataclasses import dataclass, field
 
 
@@ -94,10 +94,10 @@ class OptimizerHistory:
 
 class Optimizer:
 
-    def __init__(self, simulator: typing.Type = None, maxiter: int = None, samples: int = None,
+    def __init__(self, simulator: str = None, maxiter: int = None, samples: int = None,
                  save_history: bool = True):
         """
-        :param simulator: The simulators to use (initialized or uninitialized)
+        :param simulator: The simulators to use (None means autopick)
         :param maxiter: Maximum number of iterations
         :param samples: Number of Samples for the Quantum Backend takes (None means full wavefunction simulation)
         :param save_history: Save the optimization history in self.history
@@ -148,4 +148,4 @@ class Optimizer:
             else:
                 return self.simulator()
         else:
-            return pick_simulator(samples=samples)()
+            return pick_backend(samples=samples)()

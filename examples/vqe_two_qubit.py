@@ -84,7 +84,7 @@ if __name__ == "__main__":
     bounds = {'a': (0.1, 1.9 * numpy.pi), 'b': (0.1, 1.9 * numpy.pi)}
 
     # Optimize
-    result = minimize(objective=O, simulator=simulator, samples=samples, method=method, method_bounds=bounds)
+    result = minimize(objective=O, backend=simulator, samples=samples, method=method, method_bounds=bounds)
 
     # plot the history, default are energies
     result.history.plot()

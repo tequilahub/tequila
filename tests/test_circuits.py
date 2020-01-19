@@ -1,9 +1,9 @@
 from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate
-from tequila.simulators.simulator_symbolic import SimulatorSymbolic, sympy
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.objective.objective import Variable
-import numpy
+from tequila import simulate
+import numpy, sympy
 
 
 def test_conventions():
@@ -61,7 +61,7 @@ def test_basic_gates():
         1 / sympy.sqrt(2) * (BS(0) + BS(1))
     ]
     for i, g in enumerate(gates):
-        wfn = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=g, initial_state=0).backend_result
+        wfn = simulate(g, backend="symbolic")
         assert (wfn == strip_sympy_zeros(results[i]))
 
 
@@ -78,10 +78,8 @@ def test_consistency():
 
     for c in cpairs:
         print("circuit=", c[0], "\n", c[1])
-        wfn1 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[0], initial_state=0).wavefunction
-        wfn2 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit=c[1], initial_state=0).wavefunction
+        wfn1 = simulate(c[0], backend="symbolic")
+        wfn2 = simulate(c[1], backend="symbolic")
         assert (wfn1 == wfn2)
 
 
-if __name__ == "__main__":
-    test_basic_gates()

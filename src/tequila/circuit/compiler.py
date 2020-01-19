@@ -81,10 +81,10 @@ class Compiler:
             if self.multicontrol:
                 raise NotImplementedError("Multicontrol compilation does not work yet")
             if controlled:
-                if self.controlled_rotation:
-                    cg = compile_controlled_rotation(gate=cg)
                 if self.controlled_exponential_pauli:
                     cg = compile_exponential_pauli_gate(gate=cg)
+                if self.controlled_rotation:
+                    cg = compile_controlled_rotation(gate=cg)
 
             compiled += cg
 
@@ -164,7 +164,6 @@ def compile_multitarget(gate) -> QCircuit:
         result += gx
 
     return result
-
 
 @compiler
 def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> QCircuit:

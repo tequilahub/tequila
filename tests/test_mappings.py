@@ -1,6 +1,8 @@
 from tequila.wavefunction import QubitWaveFunction
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila import BitString, BitStringLSB
+from tequila.circuit import QCircuit, gates
+from tequila import simulate
 
 
 def test_keymaps():
@@ -40,11 +42,6 @@ def test_endianness():
         assert (i2 == BitString.from_bitstring(i11))
 
 
-from tequila.circuit import QCircuit, gates
-from tequila.simulators.simulator_cirq import SimulatorCirq
-from tequila.simulators.simulator_qiskit import SimulatorQiskit
-
-
 def test_endianness_simulators():
     tests = ["000111",
              "111000",
@@ -63,13 +60,13 @@ def test_endianness_simulators():
 
         c += gates.Measurement(name="", target=[x for x in range(len(string))])
 
-        wfn_cirq = SimulatorCirq().simulate_wavefunction(abstract_circuit=c, initial_state=0).wavefunction
-        counts_cirq = SimulatorCirq().run(abstract_circuit=c, samples=1).measurements
-        counts_qiskit = SimulatorQiskit().run(abstract_circuit=c, samples=1).measurements
+        wfn_cirq = simulate(c, initial_state=0, backend="cirq")
+        counts_cirq = simulate(c, samples=1, backend="cirq")
+        counts_qiskit = simulate(c, samples=1)
         print("counts_cirq  =", type(counts_cirq))
         print("counts_qiskit=", type(counts_qiskit))
         print("counts_cirq  =", counts_cirq)
         print("counts_qiskit=", counts_qiskit)
         assert (counts_cirq == counts_qiskit)
-        assert (wfn_cirq.state == counts_cirq[''].state)
+        assert (wfn_cirq.state == counts_cirq.state)
 

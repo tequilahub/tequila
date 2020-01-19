@@ -1,7 +1,7 @@
-from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
+from tequila.simulators.simulatorbase import BackendExpectationValue, BackendCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.gates import QGate, Ry, X
+from tequila.circuit.gates import QGate
 from tequila import BitString
 import numpy
 import copy
@@ -11,25 +11,34 @@ import sympy
 Simple Symbolic Simulator for debugging purposes
 """
 
-class SimulatorSymbolic(SimulatorBase):
+class BackendCircuitSymbolic(BackendCircuit):
 
-    _convert_to_numpy = False
+    # compiler instructions
+    recompile_trotter = True
+    recompile_swap = True
+    recompile_multitarget = True
+    recompile_controlled_rotation = False
+    recompile_exponential_pauli = True
 
-    def convert_to_numpy(self, value):
-        self._convert_to_numpy = value
-        return self
+    convert_to_numpy = True
 
-    @staticmethod
-    def apply_gate(state: QubitWaveFunction, gate: QGate, qubits: dict, variables) -> QubitWaveFunction:
+    def create_circuit(self, abstract_circuit: QCircuit, variables=None):
+        return abstract_circuit
+
+    def update_variables(self, variables):
+        pass
+
+    @classmethod
+    def apply_gate(cls, state: QubitWaveFunction, gate: QGate, qubits: dict, variables) -> QubitWaveFunction:
         result = QubitWaveFunction()
         n_qubits = len(qubits.keys())
         for s, v in state.items():
             s.nbits = n_qubits
-            result += v * SimulatorSymbolic.apply_on_standard_basis(gate=gate, basisfunction=s, qubits=qubits, variables=variables)
+            result += v * cls.apply_on_standard_basis(gate=gate, basisfunction=s, qubits=qubits, variables=variables)
         return result
 
-    @staticmethod
-    def apply_on_standard_basis(gate: QGate, basisfunction: BitString, qubits:dict, variables) -> QubitWaveFunction:
+    @classmethod
+    def apply_on_standard_basis(cls, gate: QGate, basisfunction: BitString, qubits:dict, variables) -> QubitWaveFunction:
 
         basis_array = basisfunction.array
         if gate.is_controlled():
@@ -73,7 +82,7 @@ class SimulatorSymbolic(SimulatorBase):
                 fac1 = sympy.cos(angle)
                 fac2 = +sympy.sin(angle) * sympy.Integer(-1) ** (qt + 1)
             elif gate.name.upper() == "RZ":
-                angle = sympy.Rational(1 / 2) * gate.angle()
+                angle = sympy.Rational(1 / 2) * gate.angle(variables)
                 fac1 = sympy.exp(-angle * sympy.I * sympy.Integer(-1) ** (qt))
             else:
                 raise Exception("Gate is not known to simulators, " + str(gate))
@@ -89,15 +98,14 @@ class SimulatorSymbolic(SimulatorBase):
 
         return result
 
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, variables, initial_state: int = None) -> SimulatorReturnType:
-        abstract_circuit = self.create_circuit(abstract_circuit=abstract_circuit, variables=variables)
+    def do_simulate(self, variables, initial_state: int = None) -> QubitWaveFunction:
         qubits = dict()
         count = 0
-        for q in abstract_circuit.qubits:
+        for q in self.abstract_circuit.qubits:
             qubits[q] = count
             count +=1
 
-        n_qubits = len(abstract_circuit.qubits)
+        n_qubits = len(self.abstract_circuit.qubits)
 
         if initial_state is None:
             initial_state = QubitWaveFunction.from_int(i=0, n_qubits=n_qubits)
@@ -105,31 +113,17 @@ class SimulatorSymbolic(SimulatorBase):
             initial_state = QubitWaveFunction.from_int(initial_state, n_qubits=n_qubits)
 
         result = initial_state
-        for g in abstract_circuit.gates:
+        for g in self.abstract_circuit.gates:
             result = self.apply_gate(state=result, gate=g, qubits=qubits, variables=variables)
 
         wfn = QubitWaveFunction()
-        if self._convert_to_numpy:
+        if self.convert_to_numpy:
             for k,v in result.items():
                 wfn[k] = numpy.complex(v)
         else:
             wfn = result
 
-        return SimulatorReturnType(backend_result=result, wavefunction=wfn, abstract_circuit=abstract_circuit)
+        return wfn
 
-
-if __name__ == "__main__":
-    circuit = X(0)
-    circuit += Ry(target=1, angle=sympy.Symbol("a"))
-    circuit += Ry(target=2, control=1, angle=sympy.Symbol("b"))
-
-    simulator = SimulatorSymbolic()
-
-    result = simulator.simulate_wavefunction(abstract_circuit=circuit)
-    print("result=", result)
-
-    circuit = X(0)
-    circuit += Ry(target=0, angle=sympy.Symbol("a"))
-
-    result = simulator.simulate_wavefunction(abstract_circuit=circuit)
-    print("result=", result)
+class BackendExpectationValueSymbolic(BackendExpectationValue):
+    BackendCircuitType = BackendCircuitSymbolic

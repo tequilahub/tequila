@@ -4,7 +4,7 @@ Simple example of how to construct a small circuit and simulate the full wavefun
 
 from tequila.circuit import gates
 from numpy import pi
-from tequila.simulators import pick_simulator
+from tequila.simulators import pick_backend
 
 """
 From the current backends only Pyquil and Cirq support full wavefunction
@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     # choose a backend which supports full wavefunction simulation
     # Qiskit can not do it for example --> error will be thrown when you try it later
-    Simulator = pick_simulator(demand_full_wfn=True)
+    Simulator = pick_backend(demand_full_wfn=True)
     simulator = Simulator()
     simulator_results = simulator.simulate_wavefunction(abstract_circuit=ac, initial_state=0)
     wfn = simulator_results.wavefunction

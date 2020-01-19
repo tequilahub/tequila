@@ -3,7 +3,7 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from tequila.simulators import pick_simulator
+from tequila.simulators import pick_backend
 from tequila.objective import Objective
 from tequila.optimizers.optimizer_scipy import minimize
 
@@ -15,7 +15,7 @@ if not qc.has_psi4:
 
 # initialize your favorite Simulator
 samples = None# none means full wavefunction simulation
-simulator = pick_simulator(samples=samples)
+simulator = pick_backend(samples=samples)
 from tequila.simulators.simulator_cirq import SimulatorCirq
 simulator = SimulatorCirq
 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     print(angles)
 
     # compute full energy
-    E = pick_simulator(demand_full_wfn=True)().simulate_objective(O)
+    E = pick_backend(demand_full_wfn=True)().simulate_objective(O)
 
     print("Energy = ", E)
     print("CCSD Parameters:\n", U.extract_variables())
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     print("initial amplitudes:\n", initial_amplitudes)
 
-    result = minimize(objective=O, initial_values=initial_amplitudes.export_parameter_dictionary(), samples=samples, simulator=simulator, maxiter=10, method="TNC")
+    result = minimize(objective=O, initial_values=initial_amplitudes.export_parameter_dictionary(), samples=samples, backend=simulator, maxiter=10, method="TNC")
 
     print("final angles are:\n", angles)
     print("final energy = ", result.energy)

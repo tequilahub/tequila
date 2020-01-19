@@ -1,6 +1,6 @@
 from tequila import simulators, gates, paulis, ExpectationValue
 
-Simulator = simulators.pick_simulator(samples=100, demand_full_wfn=True)
+Simulator = simulators.pick_backend(samples=100, demand_full_wfn=True)
 simulator = Simulator()
 
 U = gates.X(0) + gates.Ry(target=1, angle=2.0) + gates.CNOT(0, 1)

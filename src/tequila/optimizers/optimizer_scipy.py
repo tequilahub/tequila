@@ -1,10 +1,11 @@
 import scipy, numpy, typing, numbers
 from tequila.objective import Objective
-from tequila.objective.objective import assign_variable
+from tequila.objective.objective import assign_variable, Variable
 from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
 from collections import namedtuple
+from tequila.simulators import compile_objective, simulate_objective
 import copy
 
 SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
@@ -21,8 +22,14 @@ class OptimizerSciPy(Optimizer):
         """
         return cls.gradient_free_methods + cls.gradient_based_methods
 
-    def __init__(self, method: str = "L-BFGS-B", tol: numbers.Real = None, method_options=None, method_bounds=None,
-                 method_constraints=None, silent: bool = True, use_gradient: bool = None, **kwargs):
+    def __init__(self, method: str = "L-BFGS-B",
+                 tol: numbers.Real = None,
+                 method_options=None,
+                 method_bounds=None,
+                 method_constraints=None,
+                 silent: bool = True,
+                 use_gradient: bool = None,
+                 **kwargs):
         """
         Optimize a circuit to minimize a given objective using scipy
         See the Optimizer class for all other parameters to initialize
@@ -67,7 +74,7 @@ class OptimizerSciPy(Optimizer):
             self.method_constraints = method_constraints
 
     def __call__(self, objective: Objective,
-                 initial_values: typing.Dict[str, numbers.Number] = None,
+                 initial_values: typing.Dict[Variable, numbers.Real] = None,
                  reset_history: bool = True) -> SciPyReturnType:
         """
         Optimizes with scipi and gives back the optimized angles
@@ -82,15 +89,6 @@ class OptimizerSciPy(Optimizer):
         if self.save_history and reset_history:
             self.reset_history()
 
-        simulator = self.initialize_simulator(self.samples)
-
-        # do the compilation here to avoid costly recompilation during the optimization
-        compiled_objective = simulator.backend_handler.recompile(objective)
-        if self.use_gradient:
-            compiled_grad_objective = grad(objective=compiled_objective)
-
-        simulator.set_compile_flag(False)
-
         # Extract initial values
         angles = initial_values
         if initial_values is None:
@@ -99,6 +97,15 @@ class OptimizerSciPy(Optimizer):
         else:
             # convenience which allows the user to just pass down the keys of Variables
             angles = {assign_variable(k):v for k,v in initial_values.items()}
+
+        # do the compilation here to avoid costly recompilation during the optimization
+        compiled_objective = compile_objective(objective=objective, variables=angles, backend=self.simulator, samples=self.samples)
+        print("compiled objective: {}".format(type(compiled_objective)))
+        compiled_grad_objectives = dict()
+        if self.use_gradient:
+            for k in angles.keys():
+                dO = grad(objective=objective, variable=k)
+                compiled_grad_objectives[k] = compile_objective(objective=dO, variables=angles, samples=self.samples, backend=self.simulator)
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*angles.items())
@@ -109,14 +116,12 @@ class OptimizerSciPy(Optimizer):
         Es = []
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
-                           simulator=simulator,
                            samples = self.samples,
                            save_history=self.save_history,
                            silent=self.silent)
         if self.use_gradient:
-            dE = _GradContainer(objective=compiled_grad_objective,
+            dE = _GradContainer(objective=compiled_grad_objectives,
                                 param_keys=param_keys,
-                                simulator=simulator,
                                 samples = self.samples,
                                 save_history=self.save_history,
                                 silent=self.silent)
@@ -157,7 +162,7 @@ def minimize(objective: Objective,
              initial_values: typing.Dict[str, numbers.Real] = None,
              samples: int = None,
              maxiter: int = 100,
-             simulator: type = None,
+             backend: str = None,
              method: str = "L-BFGS-B",
              tol: float = 1.e-3,
              method_options: dict = None,
@@ -173,7 +178,7 @@ def minimize(objective: Objective,
     :param maxiter: maximum number of iterations (can also be set over method_options)
     Note that some SciPy optimizers also accept 'maxfun' which is the maximum number of function evaluation
     You might consider massing down that keyword in the method_options dictionary
-    :param simulator: The simulators you want to use (None -> automatically assigned)
+    :param backend: The quantum simulator you want to use (None -> automatically assigned)
     :param method: The scipy method passed as string
     :param tol: See scipy documentation for the method you picked
     :param method_options: See scipy documentation for the method you picked
@@ -192,7 +197,7 @@ def minimize(objective: Objective,
                                method_bounds=method_bounds,
                                method_constraints=method_constraints,
                                silent=silent,
-                               simulator=simulator,
+                               simulator=backend,
                                tol=tol)
 
     return optimizer(objective=objective, initial_values=initial_values)

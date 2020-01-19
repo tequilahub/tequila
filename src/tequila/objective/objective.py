@@ -56,10 +56,9 @@ class Objective:
 
     """
 
-    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None, simulator=None):
+    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None):
         self._args = tuple(args)
         self._transformation = transformation
-        self.simulator = simulator
         self.last = None
 
     def extract_variables(self):
@@ -237,20 +236,19 @@ class Objective:
             string += " , last call value = " + str(self.last)
         return string
 
-    def __call__(self, variables: typing.Dict[typing.Hashable, numbers.Real], simulator=None, samples=None, *args,
-                 **kwargs):
-        '''
-        Evaluates the expression which Objective represents, if possible.
-        :param samples:
-        :return:
-        '''
+    def __call__(self, variables, *args, **kwargs):
 
         if self.has_expectationvalues():
-            if simulator is None:
-                simulator = self.simulator
-            if simulator is None:
-                raise TequilaException("No simulator was specified")
-            return to_float(simulator(self, variables=variables, samples=samples, *args, **kwargs))
+            E = []
+            for Ei in self.args:
+                if hasattr(Ei, "simulate"):
+                    E.append(Ei.simulate(variables=variables, *args, **kwargs))
+                elif hasattr(Ei, "U"):
+                    raise TequilaException("You are trying to evaluate a non-compiled objective.\nTry passing this object to tequila.simulate(...)")
+                else:
+                    E.append(Ei(variables=variables))
+            # return evaluated result
+            return to_float(self.transformation(*E))
         else:
             # in case that no simulator is actually needed
             evaluated_args = [variables[arg] for arg in self.args]

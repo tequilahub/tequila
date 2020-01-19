@@ -7,8 +7,14 @@ Todo: write real test class with tear_down procedure to get rid of psi4 output f
 import pytest
 import tequila.quantumchemistry as qc
 import numpy
-from tequila.simulators import pick_simulator
 from tequila.objective import ExpectationValue
+from tequila import simulate
+from tequila.simulators import INSTALLED_SIMULATORS
+
+simulators = []
+for k in INSTALLED_SIMULATORS.keys():
+    if k != "symbolic":
+        simulators.append(k)
 
 @pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0, reason="no quantum chemistry backends installed")
 def test_interface():
@@ -48,9 +54,10 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])
-def test_ucc_psi4(trafo):
+@pytest.mark.parametrize("backend", simulators)
+def test_ucc_psi4(trafo, backend):
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo)
+    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo, backend=backend)
 
 
 @pytest.mark.skipif(condition=not qc.has_pyscf, reason="you don't have pyscf")
@@ -60,7 +67,7 @@ def test_ucc_pyscf(trafo):
     do_test_ucc(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo)
 
 
-def do_test_ucc(qc_interface, parameters, result, trafo):
+def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     # check examples for comments
     psi4_interface = qc_interface(parameters=parameters, transformation=trafo)
 
@@ -77,8 +84,7 @@ def do_test_ucc(qc_interface, parameters, result, trafo):
     print("variables=", U.extract_variables())
     H = psi4_interface.make_hamiltonian()
     ex=ExpectationValue(U=U, H=H)
-    Simulator = pick_simulator(samples=None)
-    energy = Simulator()(ex, variables=variables)
+    energy = simulate(ex, variables=variables, backend=backend)
     assert (numpy.isclose(energy, result))
 
 
@@ -111,7 +117,6 @@ def do_test_mp2(qc_interface, parameters, result):
                                          include_reference_ansatz=True)
     H = psi4_interface.make_hamiltonian()
     O = ExpectationValue(U=U, H=H)
-    Simulator = pick_simulator(samples=None)
 
-    energy = Simulator().simulate_objective(objective=O, variables=variables)
+    energy = simulate(objective=O, variables=variables)
     assert (numpy.isclose(energy, result))

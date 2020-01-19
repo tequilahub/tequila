@@ -1,27 +1,36 @@
-SUPPORTED_SIMULATORS = ["qulacs", "pyquil", "qiskit", "cirq", "symbolic"]
+from tequila.utils.exceptions import TequilaException
+from tequila.simulators.simulatorbase import BackendCircuit, BackendExpectationValue
+from tequila.utils.misc import to_float
 
+from collections import namedtuple
 
-def supported_simulators():
-    """
-    :return: List of all supported simulators
-    """
-    return SUPPORTED_SIMULATORS
+SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
+BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 
+import typing
+
+if typing.TYPE_CHECKING:
+    from tequila.objective import Objective, Variable
+    from tequila.circuit.gates import QCircuit
+    import numbers.Real as RealNumber
 
 """
 Check which simulators are installed
+We are distinguishing two classes of simulators: Samplers and full wavefunction simuators
 """
 
-INSTALLED_FULL_WFN_SIMULATORS = {}
+INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
 
 HAS_QULACS = True
 try:
     import qulacs
-    from tequila.simulators.simulator_qulacs import SimulatorQulacs
+    from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
 
     HAS_QULACS = True
-    INSTALLED_FULL_WFN_SIMULATORS["qulacs"] = SimulatorQulacs
+    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
+                                                  ExpValueType=BackendExpectationValueQulacs)
+
 except ImportError:
     HAS_QULACS = False
 
@@ -29,190 +38,247 @@ HAS_PYQUIL = True
 from shutil import which
 
 HAS_QVM = which("qvm") is not None
-try:
-    from tequila.simulators.simulator_pyquil import SimulatorPyquil
+if HAS_QVM:
+    try:
+        from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil
 
-    HAS_PYQUIL = True
-    INSTALLED_FULL_WFN_SIMULATORS["pyquil"] = SimulatorPyquil
-    # INSTALLED_SAMPLERS["pyquil"] = SimulatorPyquil # not yet implemented
-except ImportError:
-    HAS_PYQUIL = False
-
-if not HAS_QVM:
+        HAS_PYQUIL = True
+        INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+        # INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+    except ImportError:
+        HAS_PYQUIL = False
+else:
     HAS_PYQUIL = False
 
 HAS_QISKIT = True
 try:
-    from tequila.simulators.simulator_qiskit import SimulatorQiskit
+    from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit
 
     HAS_QISKIT = True
-    INSTALLED_FULL_WFN_SIMULATORS["qiskit"] = SimulatorQiskit
-    INSTALLED_SAMPLERS["qiskit"] = SimulatorQiskit
+    INSTALLED_SIMULATORS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
+    INSTALLED_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
 except ImportError:
     HAS_QISKIT = False
 
 HAS_CIRQ = True
 try:
-    from tequila.simulators.simulator_cirq import SimulatorCirq
+    from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq
 
     HAS_CIRQ = True
-    INSTALLED_FULL_WFN_SIMULATORS["cirq"] = SimulatorCirq
-    INSTALLED_SAMPLERS["cirq"] = SimulatorCirq
+    INSTALLED_SIMULATORS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
+    INSTALLED_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
 except ImportError:
     HAS_CIRQ = False
 
-from tequila.simulators.simulator_symbolic import SimulatorSymbolic
-INSTALLED_FULL_WFN_SIMULATORS["symbolic"] = SimulatorSymbolic
+from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
+
+INSTALLED_SIMULATORS["symbolic"] = BackendTypes(CircType=BackendCircuitSymbolic,
+                                                ExpValueType=BackendExpectationValueSymbolic)
 HAS_SYMBOLIC = True
 
 
-def show_available_simulators() -> str:
-    print("Full Wavefunction Simulators:\n")
-    for k in INSTALLED_FULL_WFN_SIMULATORS.keys():
+def show_available_simulators():
+    print("Supported Backends:\n")
+    for k in SUPPORTED_BACKENDS:
         print(k)
-    print("\nWavefunction Samplers:\n")
+    print("Installed Wavefunction Simulators:\n")
+    for k in INSTALLED_SIMULATORS.keys():
+        print(k)
+    print("\nInstalled Wavefunction Samplers:\n")
     for k in INSTALLED_SAMPLERS.keys():
         print(k)
 
 
-def pick_simulator(samples=None, demand_full_wfn=None):
-    if samples is None:
-        # need full wavefunction simulators
-        if HAS_QULACS:
-            return SimulatorQulacs
-        elif HAS_QISKIT:
-            return SimulatorQiskit
-        elif HAS_CIRQ:
-            return SimulatorCirq
-        elif HAS_PYQUIL:
-            return SimulatorPyquil
-        else:
-            return SimulatorSymbolic
-
-    elif samples is not None and demand_full_wfn:
-        if HAS_QISKIT:
-            return SimulatorQiskit
-        if HAS_CIRQ:
-            return SimulatorCirq
-        else:
-            raise Exception(
-                "You have no simulators installed which can simulate finite measurements as well as full wavefunctions\n"
-                "Use different simulators or install Cirq\n"
-                "Or contribute to this package and implement a measurement sampler from full wavefunctions :-) ")
-    else:
-        # Measurement based simulations
-        if HAS_QISKIT:
-            return SimulatorQiskit
-        elif HAS_CIRQ:
-            return SimulatorCirq
-        else:
-            raise Exception(
-                "You have no simulators installed which can simulate finite measurements\nInstall Qiskit or Cirq")
-
-
-from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
-
-
-def get_all_wfn_simulators():
+def pick_backend(backend: str = None, samples: int = None):
     """
-    :return: List of all currently availabe wfn simulators as noninitialized types
+    verifies if the backend is installed and picks one automatically if set to None
+    :param backend: the demanded backend
+    :param samples: if not None the simulator needs to be able to sample wavefunctions
+    :return: An installed backend as string
     """
-    result = []
-    if HAS_CIRQ:
-        result.append(SimulatorCirq)
-    if HAS_PYQUIL:
-        result.append(SimulatorPyquil)
-    if HAS_QULACS:
-        result.append(SimulatorQulacs)
-    return result
 
-
-def get_all_samplers():
-    """
-    :return: List of all currently availabe sampling based simulators as noninitialized types
-    """
-    result = []
-    if HAS_CIRQ:
-        result.append(SimulatorCirq)
-    if HAS_QISKIT:
-        result.append(SimulatorQiskit)
-    return result
-
-
-def initialize_simulator(backend: str = None, samples=None, *args, **kwargs):
-    """
-    Initializes simulator based on simulation type demaded
-    checks if necesarry simulators are installed
-    :param backend: string specifying the backend, if none it will be automatically picked
-    :param samples: if None a full wavefunction simulation is demaded otherwise shot based
-    :return: initializes simulator object
-    """
+    if len(INSTALLED_SIMULATORS) == 0:
+        raise TequilaException("No simulators installed on your system")
 
     if backend is None:
-        return pick_simulator(samples=samples)(*args, **kwargs)
+        for f in SUPPORTED_BACKENDS:
+            if samples is None:
+                if f in INSTALLED_SIMULATORS:
+                    return f
+            else:
+                if f in INSTALLED_SAMPLERS:
+                    return f
 
-    assert (isinstance(backend, str))
+    if backend not in SUPPORTED_BACKENDS:
+        raise TequilaException("Backend {backend} not supported ".format(backend=backend))
 
-    if backend not in SUPPORTED_SIMULATORS:
-        raise Exception("Simulator " + backend + " is not known to by tequila")
+    if samples is None and backend not in INSTALLED_SIMULATORS:
+        raise TequilaException("Backend {backend} not installed ".format(backend=backend))
+    elif samples is not None and backend not in INSTALLED_SAMPLERS:
+        raise TequilaException("Backend {backend} not installed ".format(backend=backend))
 
-    if backend not in INSTALLED_SAMPLERS and backend not in INSTALLED_FULL_WFN_SIMULATORS:
-        raise Exception("Simulator " + backend + " is not installed on your system")
-
-    if samples is None:
-        if backend.lower() not in INSTALLED_FULL_WFN_SIMULATORS:
-            raise Exception(
-                "You demaded a full wavefunction simulation with the simulator " + backend + " but this is not possible")
-        return INSTALLED_FULL_WFN_SIMULATORS[backend](*args, **kwargs)
-    else:
-        if backend.lower() not in INSTALLED_SAMPLERS:
-            raise Exception(
-                "You demaded shot based simulation with the simulator " + backend + " but this is not possible")
-        return INSTALLED_SAMPLERS[backend](*args, **kwargs)
+    return backend
 
 
-def simulate(objective, variables=None, samples=None, backend: str = None, *args, **kwargs):
+def compile_objective(objective: 'Objective',
+                      variables: typing.Dict['Variable', 'RealNumber'],
+                      backend: str = None,
+                      samples: int = None,
+                      *args,
+                      **kwargs):
     """
-    Convenience function which automatically picks the best simulator available and runs it
-    :param objective: A tequila Objective/ExpectationValue or Circuit
-    :param variables: If the objective is parametrized pass down the values of the parameters as dictionary
-    of the with tq.Variable as keys and float-types as Values
-    :param samples: If None a full wavefunction simulation is carried out, otherwise a shot based simulation is performed
-    affects the type of simulator chosen
-    :param backend: specify which simulator you want to chose, can be passed down as string or as tq.SimulatorObject/type
-    :return: The evaluated objective, returns an energy or a wavefunction depending on the input type
-    """
-
-    simulator = initialize_simulator(backend=backend, samples=samples, *args, **kwargs)
-
-    return simulator(objective=objective, variables=variables, samples=samples, *args, **kwargs)
-
-def draw(objective, backend:str=None, *args, **kwargs):
-    """
-    Draw a circuit or objective with the prettiest backend you have
-    Circuit is translated into the backend, so avoid using this in loops
-    :param objective: objective or circuit object
-    :param backend: choose the backend by keyword, if None it is autopicked
-    :return: pretty printout
+    Compiles an objective to a chosen backend
+    The abstract circuits are replaced by the circuit objects of the backend
+    Direct return if the objective was alrady compiled
+    :param objective: abstract objective
+    :param variables: The variables of the objective given as dictionary
+    with keys as tequila Variables and values the corresponding real numbers
+    :param backend: specify the backend or give None for automatic assignment
+    :return: Compiled Objective
     """
 
-    if backend is not None:
-        simulator = initialize_simulator(backend)
-    else:
-        if HAS_QISKIT:
-            simulator = SimulatorQiskit(*args, **kwargs)
-        elif HAS_CIRQ:
-            simulator = SimulatorCirq(*args, **kwargs)
+    backend = pick_backend(backend=backend, samples=samples)
+
+    ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
+
+    if hasattr(objective, "simulate"):
+        for arg in objective.args:
+            if hasattr(arg, "U") and not isinstance(arg, ExpValueType):
+                raise TequilaException(
+                    "Looks like the objective was already compiled for another backend. You gave {} and tried to compile to {}".format(
+                        type(objective), ExpValueType))
+        return objective
+
+    compiled_args = []
+    for arg in objective.args:
+        if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, ExpValueType):
+            compiled_args.append(ExpValueType(arg, variables))
         else:
-            simulator = SimulatorBase(*args, **kwargs)
-
-    simulator.draw(objective=objective, *args, **kwargs)
-
+            compiled_args.append(arg)
+    return type(objective)(args=compiled_args, transformation=objective._transformation)
 
 
+def simulate_objective(objective: 'Objective',
+                       variables: typing.Dict['Variable', 'RealNumber'],
+                       backend: str = None,
+                       *args,
+                       **kwargs):
+    """
+    Simulate a tequila Objective
+    The Objective will be compiled and then simulated
+    :param objective: abstract or compiled objective
+    :param variables: The variables of the objective given as dictionary
+    :param backend: specify the backend or give None for automatic assignment
+    :return: The evaluated objective
+    """
+
+    compiled = compile_objective(objective, variables, backend)
+
+    E = []
+    for Ei in compiled.args:
+        if hasattr(Ei, "simulate"):
+            E.append(Ei.simulate(variables=variables, *args, **kwargs))
+        else:
+            E.append(Ei(variables=variables))
+    # return evaluated result
+    return to_float(objective.transformation(*E))
 
 
+def sample_objective(objective: 'Objective',
+                     variables: typing.Dict['Variable', 'RealNumber'],
+                     samples: int,
+                     backend: str = None,
+                     *args,
+                     **kwargs):
+    """
+    Sample a tequila Objective
+    The Objective will be compiled and then simulated
+    :param objective: abstract or compiled objective
+    :param variables: The variables of the objective given as dictionary
+    :param samples: The number of samples/measurements to take for each expectationvalue
+    :param backend: specify the backend or give None for automatic assignment
+    :return: The sampled objective
+    """
+
+    backend = pick_backend(backend=backend, samples=samples)
+    compiled = compile_objective(objective, variables, backend)
+
+    # break the objective apart into its individual pauli components in every expectationvalue
+    # then sample all of those
+    evaluated = []
+    for arg in compiled.args:
+        if hasattr(arg, "H"):
+            E = 0.0
+            for ps in arg.H.paulistrings:
+                E += arg.sample_paulistring(variables=variables, samples=samples, paulistring=ps, *args, **kwargs)
+            evaluated.append(E)
+        else:
+            evaluated.append(arg(variables))
+
+    return to_float(compiled.transformation(*evaluated))
 
 
+def compile_circuit(abstract_circuit: 'QCircuit',
+                    variables: typing.Dict['Variable', 'RealNumber'],
+                    backend: str = None,
+                    *args,
+                    **kwargs) -> BackendCircuit:
+    """
+    Compile an abstract tequila circuit into a circuit corresponding to a supported backend
+    direct return if the abstract circuit was already compiled
+    :param abstract_circuit: The abstract tequila circuit
+    :param variables: The variables of the objective given as dictionary
+    with keys as tequila Variables and values the corresponding real numbers
+    :param backend: specify the backend or give None for automatic assignment
+    :return: The compiled circuit object
+    """
+
+    CircType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].CircType
+
+    if hasattr(abstract_circuit, "simulate"):
+        if not isinstance(abstract_circuit, CircType):
+            raise TequilaException(
+                "Looks like the circuit was already compiled for another backend. You gave {} and tried to compile to {}".format(
+                    type(abstract_circuit), CircType))
+        else:
+            return abstract_circuit
+
+    return CircType(abstract_circuit=abstract_circuit, variables=variables)
 
 
+def simulate_wavefunction(abstract_circuit: 'QCircuit',
+                          variables: typing.Dict['Variable', 'RealNumber'],
+                          backend: str = None,
+                          *args,
+                          **kwargs):
+    """
+    Simulate an abstract tequila circuit
+    :param abstract_circuit: abstract or compiled circuit
+    :param variables: The variables of the objective given as dictionary
+    with keys as tequila Variables and values the corresponding real numbers
+    :param backend: specify the backend or give None for automatic assignment
+    :return:
+    """
+
+    compiled = compile_circuit(abstract_circuit=abstract_circuit, variables=variables, backend=backend, *args, **kwargs)
+    return compiled.simulate(variables=variables, *args, **kwargs)
+
+
+def sample_wavefunction(abstract_circuit: 'QCircuit',
+                        variables: typing.Dict['Variable', 'RealNumber'],
+                        samples: int,
+                        backend: str = None,
+                        *args, **kwargs):
+    """
+    Sample an abstract tequila circuit
+    :param abstract_circuit: abstract or compiled circuit
+    :param variables: The variables of the objective given as dictionary
+    with keys as tequila Variables and values the corresponding real numbers
+    :param samples: Number of samples/measurements
+    :param backend: specify the backend or give None for automatic assignment
+    :return:
+    """
+
+    backend = pick_backend(backend, samples=samples)
+    compiled = compile_circuit(abstract_circuit=abstract_circuit, variables=variables, backend=backend, *args, **kwargs)
+    return compiled.sample(variables=variables, samples=samples, *args, **kwargs)

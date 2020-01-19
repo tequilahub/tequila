@@ -3,7 +3,6 @@ import typing, numbers
 from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
 from tequila.simulators.simulatorbase import BackendCircuit, BackendExpectationValue
 from tequila.circuit import QCircuit
 
@@ -19,10 +18,10 @@ class TequilaQulacsException(TequilaException):
         return "Error in qulacs backend:" + self.message
 
 
-class BackenCircuitQulacs(BackendCircuit):
+class BackendCircuitQulacs(BackendCircuit):
     recompile_swap = False
     recompile_multitarget = True
-    recompile_controlled_rotation = False
+    recompile_controlled_rotation = True
     recompile_exponential_pauli = False
 
     numbering = BitNumbering.LSB
@@ -35,7 +34,7 @@ class BackenCircuitQulacs(BackendCircuit):
         for k, angle in enumerate(self.variables):
             self.circuit.set_parameter(k, angle(variables))
 
-    def do_simulate(self, variables, initial_state):
+    def do_simulate(self, variables, initial_state, *args, **kwargs):
 
         qubits = dict()
         count = 0
@@ -60,12 +59,15 @@ class BackenCircuitQulacs(BackendCircuit):
         return qulacs.ParametricQuantumCircuit(n_qubits)
 
     def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
-        if len(gate.extract_variables()) > 0:
-            self.variables.append(-gate.angle)
-        convert = {'x':1, 'y':2, 'z':3}
+        convert = {'x': 1, 'y': 2, 'z': 3}
         pind = [convert[x.lower()] for x in gate.paulistring.values()]
         qind = [x for x in gate.paulistring.keys()]
-        circuit.add_parametric_multi_Pauli_rotation_gate(qind, pind, gate.angle(variables))
+        if len(gate.extract_variables()) > 0:
+            self.variables.append(-gate.angle * gate.paulistring.coeff)
+            circuit.add_parametric_multi_Pauli_rotation_gate(qind, pind,
+                                                             -gate.angle(variables) * gate.paulistring.coeff)
+        else:
+            circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.angle(variables) * gate.paulistring.coeff)
 
     def add_gate(self, gate, circuit, *args, **kwargs):
         getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]])
@@ -87,19 +89,26 @@ class BackenCircuitQulacs(BackendCircuit):
                 raise TequilaQulacsException("Qulacs does not know the controlled gate: " + str(gate))
 
     def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
+        # minus sign due to different conventions in qulacs
         if len(gate.extract_variables()) > 0:
             self.variables.append(-gate.angle)
-        angle = -gate.angle(variables=variables)  # minus sign due to different conventions in qulacs
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]], angle)
+            getattr(circuit, "add_parametric_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]],
+                                                                              -gate.angle(variables=variables))
+        else:
+            getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]],
+                                                                   -gate.angle(variables=variables))
 
     def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        if len(gate.extract_variables()) > 0:
-            self.variables.append(-gate.angle)
         angle = -gate.angle(variables=variables)
         qulacs_gate = getattr(qulacs.gate, gate.name.upper())(self.qubit_map[gate.target[0]], angle)
         qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
         for c in gate.control:
             qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
+
+        if len(gate.extract_variables()) > 0:
+            self.variables.append(-gate.angle)
+            raise TequilaQulacsException("Parametric controlled-rotations are currently not possible")
+
         circuit.add_gate(qulacs_gate)
 
     def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
@@ -127,45 +136,19 @@ class BackenCircuitQulacs(BackendCircuit):
 
 
 class BackendExpectationValueQulacs(BackendExpectationValue):
-    BackendCircuitType = BackenCircuitQulacs
+    BackendCircuitType = BackendCircuitQulacs
 
-    def simulate(self, variables):
+    def simulate(self, variables, *args, **kwargs):
         self.update_variables(variables)
         state = qulacs.QuantumState(self.U.n_qubits)
         self.U.circuit.update_quantum_state(state)
         return self.H.get_expectation_value(state)
 
     def initialize_hamiltonian(self, H):
-        qulacs_H = qulacs.Observable(H.n_qubits)
+        qulacs_H = qulacs.Observable(self.n_qubits)
         for ps in H.paulistrings:
             string = ""
             for k, v in ps.items():
                 string += v.upper() + " " + str(k)
             qulacs_H.add_operator(ps.coeff, string)
         return qulacs_H
-
-
-class SimulatorQulacs(SimulatorBase):
-    numbering: BitNumbering = BitNumbering.LSB
-
-    backend_handler = BackenCircuitQulacs
-
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit,
-                                 variables: typing.Dict[typing.Hashable, numbers.Real], initial_state=0):
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit, variables=variables)
-
-        qubits = dict()
-        count = 0
-        for q in abstract_circuit.qubits:
-            qubits[q] = count
-            count += 1
-
-        n_qubits = len(abstract_circuit.qubits)
-        state = qulacs.QuantumState(n_qubits)
-        lsb = BitStringLSB.from_int(initial_state, nbits=n_qubits)
-        state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
-        circuit.update_quantum_state(state)
-
-        wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
-        return SimulatorReturnType(backend_result=state, wavefunction=wfn, circuit=circuit,
-                                   abstract_circuit=abstract_circuit)

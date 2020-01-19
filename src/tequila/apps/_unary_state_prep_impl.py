@@ -10,8 +10,8 @@ Implemented with OpenVQE structures
 '''
 
 from tequila.circuit import QCircuit
-from tequila.circuit.gates import H, CNOT, Ry, Ry, X
-from tequila.simulators import SimulatorSymbolic
+from tequila.circuit.gates import CNOT, Ry, X
+from tequila.simulators import BackendCircuitSymbolic
 import sympy
 
 class UnaryStatePrepImpl:

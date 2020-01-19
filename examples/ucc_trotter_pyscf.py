@@ -3,7 +3,7 @@ Play around with UCC
 This is far from optimal and needs major improvements
 """
 
-from tequila.simulators import pick_simulator
+from tequila.simulators import pick_backend
 from tequila.objective import Objective
 from tequila.circuit.exponential_gate import DecompositionFirstOrderTrotter
 from tequila.optimizers import  GradientDescent
@@ -18,7 +18,7 @@ if not qc.has_pyscf:
 
 # initialize your favorite Simulator
 samples = None # none means full wavefunction simulation
-simulator = pick_simulator(samples=samples)
+simulator = pick_backend(samples=samples)
 
 if __name__ == "__main__":
 

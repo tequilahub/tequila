@@ -11,7 +11,7 @@ from tequila import BitString
 import typing, numpy, copy
 from tequila import TequilaException
 from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
-from tequila.simulators.simulator_symbolic import SimulatorSymbolic
+from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.objective.objective import assign_variable
 
@@ -85,9 +85,9 @@ class UnaryStatePrep:
             "Could not disentangle the given state after " + str(count) + " restarts")
 
         # get the equations to determine the angles
-        simulator = SimulatorSymbolic()
-        wfn = simulator.simulate_wavefunction(abstract_circuit=self._abstract_circuit,
-                                              initial_state=BitString.from_int(0, nbits=self.n_qubits)).wavefunction
+        simulator = BackendCircuitSymbolic(abstract_circuit=self._abstract_circuit, variables={})
+        simulator.convert_to_numpy = False
+        wfn = simulator.simulate(initial_state=BitString.from_int(0, nbits=self.n_qubits), variables=None)
 
         equations = []
         for k in target_space:

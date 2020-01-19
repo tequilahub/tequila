@@ -1,16 +1,41 @@
-from tequila.simulators.simulatorbase import SimulatorBase, QCircuit, SimulatorReturnType, BackendCircuit
+from tequila.simulators.simulatorbase import QCircuit, BackendCircuit, BackendExpectationValue
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering
-import typing
 import cirq
 
 
-class BackenCircuitCirq(BackendCircuit):
+class TequilaCirqException(TequilaException):
+    def __str__(self):
+        return "Error in cirq backend:" + self.message
 
+
+class BackendCircuitCirq(BackendCircuit):
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = False
+
+    numbering: BitNumbering = BitNumbering.MSB
+
+    def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
+        simulator = cirq.Simulator()
+        backend_result = simulator.simulate(program=self.circuit, initial_state=initial_state)
+        return QubitWaveFunction.from_array(arr=backend_result.final_state, numbering=self.numbering)
+
+    def convert_measurements(self, backend_result: cirq.TrialResult) -> QubitWaveFunction:
+        assert (len(backend_result.measurements) == 1)
+        for key, value in backend_result.measurements.items():
+            counter = QubitWaveFunction()
+            for sample in value:
+                binary = BitString.from_array(array=sample.astype(int))
+                if binary in counter._state:
+                    counter._state[binary] += 1
+                else:
+                    counter._state[binary] = 1
+            return counter
+
+    def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
+        return self.convert_measurements(cirq.Simulator().run(program=circuit, repetitions=samples))
 
     def fast_return(self, abstract_circuit):
         return isinstance(abstract_circuit, cirq.Circuit)
@@ -18,45 +43,45 @@ class BackenCircuitCirq(BackendCircuit):
     def initialize_circuit(self, *args, **kwargs):
         return cirq.Circuit()
 
-    def add_gate(self, gate, circuit, qubit_map, *args, **kwargs):
+    def add_gate(self, gate, circuit, *args, **kwargs):
         cirq_gate = getattr(cirq, gate.name)
-        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
-    def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
         cirq_gate = getattr(cirq, gate.name)
-        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
-        cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
+        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
 
-    def add_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+    def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
         angle = gate.angle(variables)
         cirq_gate = getattr(cirq, gate.name)(rads=angle)
-        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
-    def add_controlled_rotation_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
         angle = gate.angle(variables)
         cirq_gate = getattr(cirq, gate.name)(rads=angle)
-        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
-        cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
+        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
 
-    def add_power_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+    def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
         power = gate.power(variables)
         cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
-        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
-    def add_controlled_power_gate(self, gate, variables, qubit_map, circuit, *args, **kwargs):
+    def add_controlled_power_gate(self, gate, variables, circuit, *args, **kwargs):
         power = gate.power(variables)
         cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
-        cirq_gate = cirq_gate.on(*[qubit_map[t] for t in gate.target])
-        cirq_gate = cirq_gate.controlled_by(*[qubit_map[t] for t in gate.control])
+        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
+        cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
 
-    def add_measurement(self, gate, qubit_map, circuit, *args, **kwargs):
-        qubits = [qubit_map[i] for i in gate.target]
+    def add_measurement(self, gate, circuit, *args, **kwargs):
+        qubits = [self.qubit_map[i] for i in gate.target]
         m = cirq.measure(*qubits, key=gate.name)
         circuit.append(m)
 
@@ -66,45 +91,5 @@ class BackenCircuitCirq(BackendCircuit):
         return qubit_map
 
 
-class TequilaCirqException(TequilaException):
-    def __str__(self):
-        return "Error in cirq backend:" + self.message
-
-class SimulatorCirq(SimulatorBase):
-
-    numbering: BitNumbering = BitNumbering.MSB
-
-    backend_handler = BackenCircuitCirq
-
-    def convert_measurements(self, backend_result: cirq.TrialResult) -> typing.Dict[str, QubitWaveFunction]:
-        result = dict()
-        for key, value in backend_result.measurements.items():
-            counter = QubitWaveFunction()
-            for sample in value:
-                binary = BitString.from_array(array=sample.astype(int))
-                if binary in counter._state:
-                    counter._state[binary] += 1
-                else:
-                    counter._state[binary] = 1
-            result[key] = counter
-        return result
-
-    def do_run(self, circuit: cirq.Circuit, samples: int = 1) -> cirq.TrialResult:
-        return cirq.Simulator().run(program=circuit, repetitions=samples)
-
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, variables, initial_state=0) -> SimulatorReturnType:
-        simulator = cirq.Simulator()
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit, variables=variables)
-        backend_result = simulator.simulate(program=circuit, initial_state=initial_state)
-        return SimulatorReturnType(abstract_circuit=abstract_circuit,
-                                   circuit=circuit,
-                                   wavefunction=QubitWaveFunction.from_array(arr=backend_result.final_state,
-                                   numbering=self.numbering),
-                                   backend_result=backend_result)
-
-    def do_simulate_density_matrix(self, circuit: cirq.Circuit, initial_state=0):
-        simulator = cirq.DensityMatrixSimulator()
-        result = SimulatorReturnType(result=simulator.simulate(program=circuit, initial_state=initial_state),
-                                     circuit=circuit)
-        result.density_matrix = result.backend_result.final_density_matrix
-        return result
+class BackendExpectationValueCirq(BackendExpectationValue):
+    BackendCircuitType = BackendCircuitCirq
