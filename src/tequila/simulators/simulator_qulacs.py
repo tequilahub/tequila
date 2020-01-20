@@ -10,6 +10,8 @@ from tequila.circuit import QCircuit
 todo: overwrite simulate_objective for this simulators, might be faster
 
 Qulacs uses different Rotational Gate conventions: Rx(angle) = exp(i angle/2 X) instead of exp(-i angle/2 X)
+And the same for MultiPauli rotational gates
+The angles are scaled with -1.0 to keep things consistent
 """
 
 
@@ -35,16 +37,8 @@ class BackendCircuitQulacs(BackendCircuit):
             self.circuit.set_parameter(k, angle(variables))
 
     def do_simulate(self, variables, initial_state, *args, **kwargs):
-
-        qubits = dict()
-        count = 0
-        for q in self.abstract_circuit.qubits:
-            qubits[q] = count
-            count += 1
-
-        n_qubits = len(self.abstract_circuit.qubits)
-        state = qulacs.QuantumState(n_qubits)
-        lsb = BitStringLSB.from_int(initial_state, nbits=n_qubits)
+        state = qulacs.QuantumState(self.n_qubits)
+        lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
         state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
         self.circuit.update_quantum_state(state)
 
@@ -61,7 +55,7 @@ class BackendCircuitQulacs(BackendCircuit):
     def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
         convert = {'x': 1, 'y': 2, 'z': 3}
         pind = [convert[x.lower()] for x in gate.paulistring.values()]
-        qind = [x for x in gate.paulistring.keys()]
+        qind = [self.qubit_map[x] for x in gate.paulistring.keys()]
         if len(gate.extract_variables()) > 0:
             self.variables.append(-gate.angle * gate.paulistring.coeff)
             circuit.add_parametric_multi_Pauli_rotation_gate(qind, pind,
@@ -73,7 +67,6 @@ class BackendCircuitQulacs(BackendCircuit):
         getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]])
 
     def add_controlled_gate(self, gate, circuit, *args, **kwargs):
-        # assert (len(gate.control) == 1)
         if len(gate.control) == 1 and gate.name.upper() == "X":
             getattr(circuit, "add_CNOT_gate")(self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
         elif len(gate.control) == 1 and gate.name.upper() == "Z":
@@ -128,23 +121,27 @@ class BackendCircuitQulacs(BackendCircuit):
     def add_measurement(self, gate, circuit, *args, **kwargs):
         raise TequilaQulacsException("only full wavefunction simulation, no measurements")
 
-    def make_qubit_map(self, abstract_circuit: QCircuit):
-        qubit_map = dict()
-        for i, q in enumerate(abstract_circuit.qubits):
-            qubit_map[q] = i
-        return qubit_map
-
 
 class BackendExpectationValueQulacs(BackendExpectationValue):
     BackendCircuitType = BackendCircuitQulacs
+    use_mapping = False
 
     def simulate(self, variables, *args, **kwargs):
-        self.update_variables(variables)
-        state = qulacs.QuantumState(self.U.n_qubits)
-        self.U.circuit.update_quantum_state(state)
-        return self.H.get_expectation_value(state)
+        if self.use_mapping:
+            raise TequilaQulacsException("Can not yet simulate mapped expectationvalues with qulacs")
+        else:
+            print(self.U.n_qubits)
+            print(self.U.circuit)
+            self.update_variables(variables)
+            state = qulacs.QuantumState(self.U.n_qubits)
+            self.U.circuit.update_quantum_state(state)
+            return self.H.get_expectation_value(state)
 
     def initialize_hamiltonian(self, H):
+        if self.U.n_qubits < H.n_qubits:
+            raise TequilaQulacsException(
+                "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are not yet implemented")
+
         qulacs_H = qulacs.Observable(self.n_qubits)
         for ps in H.paulistrings:
             string = ""

@@ -2,7 +2,12 @@ from tequila.wavefunction import QubitWaveFunction
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila import BitString, BitStringLSB
 from tequila.circuit import QCircuit, gates
-from tequila import simulate
+from tequila import simulate, ExpectationValue, Objective
+from tequila.simulators import INSTALLED_SAMPLERS
+from tequila.hamiltonian import QubitHamiltonian, PauliString
+
+import pytest
+from numpy import isclose
 
 
 def test_keymaps():
@@ -62,7 +67,7 @@ def test_endianness_simulators():
 
         wfn_cirq = simulate(c, initial_state=0, backend="cirq")
         counts_cirq = simulate(c, samples=1, backend="cirq")
-        counts_qiskit = simulate(c, samples=1)
+        counts_qiskit = simulate(c, samples=1, backend="qiskit")
         print("counts_cirq  =", type(counts_cirq))
         print("counts_qiskit=", type(counts_qiskit))
         print("counts_cirq  =", counts_cirq)
@@ -70,3 +75,23 @@ def test_endianness_simulators():
         assert (counts_cirq == counts_qiskit)
         assert (wfn_cirq.state == counts_cirq.state)
 
+
+@pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
+@pytest.mark.parametrize("case",
+                         [("X(0)Y(1)Z(4)", 0.0), ("Z(0)", 1.0), ("Z(0)Z(1)Z(3)", 1.0), ("Z(0)Z(1)Z(2)Z(3)Z(5)", -1.0)])
+def test_paulistring_sampling(backend, case):
+    H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
+    U = gates.X(target=1) + gates.X(target=3) + gates.X(target=5)
+    E = ExpectationValue(H=H, U=U)
+    result = simulate(E, samples=1)
+    assert (isclose(result, case[1], 1.e-4))
+
+
+@pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
+@pytest.mark.parametrize("case", [("X(0)Y(1)Z(4)", 0.0), ("Z(0)X(1)X(5)", -1.0), ("Z(0)X(1)X(3)", 1.0), ("Z(0)X(1)Z(2)X(3)X(5)", -1.0)])
+def test_paulistring_sampling_2(backend, case):
+    H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
+    U = gates.H(target=1) + gates.H(target=3) + gates.X(target=5) + gates.H(target=5)
+    E = ExpectationValue(H=H, U=U)
+    result = simulate(E, samples=1)
+    assert (isclose(result, case[1], 1.e-4))

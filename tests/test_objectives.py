@@ -82,8 +82,8 @@ def test_r_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.p
     val = simulate(added, variables=variables, backend=simulator)
     en1 = 2 * simulate(e1, variables=variables, backend=simulator)
     an1 = np.sin(value) * 2
-    assert bool(np.isclose(val, en1)) is True
-    assert bool(np.isclose(val, an1)) is True
+    assert np.isclose(val, en1, atol=1.e-4)
+    assert np.isclose(val, an1, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -99,8 +99,8 @@ def test_l_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator) / 2
     an1 = np.sin(value) / 2.
-    assert bool(np.isclose(val, en1)) is True
-    assert bool(np.isclose(val, an1)) is True
+    assert np.isclose(val, en1, atol=1.e-4)
+    assert np.isclose(val, an1, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -116,8 +116,8 @@ def test_r_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
     val = simulate(added, variables=variables, backend=simulator)
     en1 = 2 / simulate(e1, variables=variables, backend=simulator)
     an1 = 2 / np.sin(value)
-    assert bool(np.isclose(val, en1)) is True
-    assert bool(np.isclose(val, an1)) is True
+    assert np.isclose(val, en1, atol=1.e-4)
+    assert np.isclose(val, an1, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -133,8 +133,8 @@ def test_l_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0])
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator) ** 2
     an1 = np.sin(angle1(variables=variables)) ** 2.
-    assert bool(np.isclose(val, en1)) is True
-    assert bool(np.isclose(val, an1)) is True
+    assert np.isclose(val, en1, atol=1.e-4)
+    assert np.isclose(val, an1, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -150,8 +150,8 @@ def test_r_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0])
     val = simulate(added, variables=variables, backend=simulator)
     en1 = 2 ** simulate(e1, variables=variables, backend=simulator)
     an1 = 2. ** np.sin(angle1(variables=variables))
-    assert bool(np.isclose(val, en1)) is True
-    assert bool(np.isclose(val, an1)) is True
+    assert np.isclose(val, en1, atol=1.e-4)
+    assert np.isclose(val, an1, atol=1.e-4)
 
 
 ### these four tests test mutual operations. We skip minus cuz it's not needed.
@@ -176,8 +176,8 @@ def test_ex_addition(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, en1 + en2)) is True
-    assert bool(np.isclose(val, an1 + an2)) is True
+    assert np.isclose(val, en1 + en2, atol=1.e-4)
+    assert np.isclose(val, an1 + an2, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -200,8 +200,8 @@ def test_ex_multiplication(simulator, value1=(numpy.random.randint(0, 1000) / 10
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, en1 * en2)) is True
-    assert bool(np.isclose(val, an1 * an2)) is True
+    assert np.isclose(val, en1 * en2, atol=1.e-4)
+    assert np.isclose(val, an1 * an2, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -224,8 +224,8 @@ def test_ex_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, en1 / en2)) is True
-    assert bool(np.isclose(val, an1 / an2)) is True
+    assert np.isclose(val, en1 / en2, atol=1.e-4)
+    assert np.isclose(val, an1 / an2, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -248,8 +248,8 @@ def test_ex_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (n
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, en1 ** en2)) is True
-    assert bool(np.isclose(val, an1 ** an2)) is True
+    assert np.isclose(val, en1 ** en2, atol=1.e-4)
+    assert np.isclose(val, an1 ** an2, atol=1.e-4)
 
 
 ### these four tests test the mixed Objective,ExpectationValue operations to ensure propriety
@@ -274,8 +274,8 @@ def test_mixed_addition(simulator, value1=(numpy.random.randint(0, 1000) / 1000.
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, en1 + en2)) is True
-    assert bool(np.isclose(val, float(an1 + an2))) is True
+    assert np.isclose(val, en1 + en2, atol=1.e-4)
+    assert np.isclose(val, float(an1 + an2), atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -298,9 +298,8 @@ def test_mixed_multiplication(simulator, value1=(numpy.random.randint(0, 1000) /
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, en1 * en2)) is True
-    assert bool(np.isclose(val, an1 * an2)) is True
-
+    assert np.isclose(val, en1 * en2, atol=1.e-4)
+    assert np.isclose(val, an1 * an2, atol=1.e-4)
 
 @pytest.mark.parametrize("simulator", simulators)
 def test_mixed_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
@@ -322,8 +321,8 @@ def test_mixed_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert np.isclose(val, en1 / en2)
-    assert np.isclose(val, an1 / an2)
+    assert np.isclose(val, en1 / en2, atol=1.e-4)
+    assert np.isclose(val, an1 / an2, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -346,8 +345,8 @@ def test_mixed_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, en1 ** en2)) is True
-    assert bool(np.isclose(val, an1 ** an2)) is True
+    assert np.isclose(val, en1 ** en2, atol=1.e-4)
+    assert np.isclose(val, an1 ** an2, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -367,8 +366,8 @@ def test_heterogeneous_operations_l(simulator, op, value1=(numpy.random.randint(
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = angle1(variables=variables)
     an2 = np.sin(angle2(variables=variables))
-    assert bool(np.isclose(val, float(op(an1, en2)))) is True
-    assert np.isclose(en2, an2)
+    assert np.isclose(val, float(op(an1, en2)), atol=1.e-4)
+    assert np.isclose(en2, an2, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -388,8 +387,8 @@ def test_heterogeneous_operations_r(simulator, op, value1=(numpy.random.randint(
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
     an2 = angle2(variables=variables)
-    assert bool(np.isclose(val, float(op(en1, an2)))) is True
-    assert np.isclose(en1, an1)
+    assert np.isclose(val, float(op(en1, an2)), atol=1.e-4)
+    assert np.isclose(en1, an1, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -414,8 +413,8 @@ def test_heterogeneous_gradient_r_add(simulator):
     doval = simulate(dO, variables=variables, backend=simulator)
     dtrue = 1.0 + deval
     assert bool(np.isclose(val, float(np.add(en1, anval)))) is True
-    assert np.isclose(en1, an1)
-    assert np.isclose(doval, dtrue)
+    assert np.isclose(en1, an1, atol=1.e-4)
+    assert np.isclose(doval, dtrue, atol=1.e-4)
 
 
 @ pytest.mark.parametrize("simulator", simulators)
@@ -440,8 +439,8 @@ def test_heterogeneous_gradient_r_mul(simulator):
     doval = simulate(dO, variables=variables, backend=simulator)
     dtrue = deval * anval + en1
     assert bool(np.isclose(val, float(np.multiply(en1, anval)))) is True
-    assert np.isclose(en1, an1)
-    assert np.isclose(doval, dtrue)
+    assert np.isclose(en1, an1, atol=1.e-4)
+    assert np.isclose(doval, dtrue, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -466,8 +465,8 @@ def test_heterogeneous_gradient_r_div(simulator):
     doval = simulate(dO, variables=variables, backend=simulator)
     dtrue = deval / anval - en1 / (anval ** 2)
     assert bool(np.isclose(val, float(np.true_divide(en1, anval)))) is True
-    assert np.isclose(en1, an1)
-    assert np.isclose(doval, dtrue)
+    assert np.isclose(en1, an1, atol=1.e-4)
+    assert np.isclose(doval, dtrue, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -495,8 +494,8 @@ def test_inside(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (num
     deval = simulate(dE, variables=variables, backend=simulator)
     dpval = simulate(dP, variables=variables, backend=simulator)
     dtrue = an2 * (uen + den)
-    assert np.isclose(en1, an1)
-    assert np.isclose(deval, dtrue)
+    assert np.isclose(en1, an1, atol=1.e-4)
+    assert np.isclose(deval, dtrue, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -527,8 +526,8 @@ def test_akward_expression(simulator, value1=(numpy.random.randint(0, 1000) / 10
     doval = simulate(dO, variables=variables, backend=simulator)
     dtrue = angle1(variables=variables) * deval + en1
     assert np.isclose(en1, an1)
-    assert np.isclose(deval, an2 * (uen + den))
-    assert np.isclose(doval, dtrue)
+    assert np.isclose(deval, an2 * (uen + den), atol=1.e-4)
+    assert np.isclose(doval, dtrue, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -562,6 +561,6 @@ def test_really_awfull_thing(simulator, value1=(numpy.random.randint(0, 1000) / 
     deval = simulate(dE, variables=variables, backend=simulator)
     doval = simulate(dO, variables=variables, backend=simulator)
     dtrue = np.cos(val) * dave
-    assert np.isclose(en1, an1)
-    assert np.isclose(deval, an2 * (uen + den))
-    assert np.isclose(doval, dtrue)
+    assert np.isclose(en1, an1, atol=1.e-4)
+    assert np.isclose(deval, an2 * (uen + den), atol=1.e-4)
+    assert np.isclose(doval, dtrue, atol=1.e-4)

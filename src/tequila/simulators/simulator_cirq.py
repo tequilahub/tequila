@@ -2,6 +2,9 @@ from tequila.simulators.simulatorbase import QCircuit, BackendCircuit, BackendEx
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering
+
+import typing, numbers
+
 import cirq
 
 
@@ -85,10 +88,10 @@ class BackendCircuitCirq(BackendCircuit):
         m = cirq.measure(*qubits, key=gate.name)
         circuit.append(m)
 
-    def make_qubit_map(self, abstract_circuit: QCircuit):
-        n_qubits = abstract_circuit.n_qubits
-        qubit_map = [cirq.LineQubit(i) for i in range(n_qubits)]
-        return qubit_map
+    def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
+        return {q: cirq.LineQubit(i) for i,q in enumerate(qubits)}
+
+
 
 
 class BackendExpectationValueCirq(BackendExpectationValue):

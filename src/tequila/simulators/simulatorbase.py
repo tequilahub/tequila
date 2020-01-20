@@ -7,14 +7,11 @@ from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
 from tequila.circuit.gates import RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl
 from tequila import BitString
-from tequila.objective import Objective
-from tequila.objective.objective import Variable, assign_variable
-from tequila.simulators.heralding import HeraldingABC
+from tequila.objective.objective import Variable
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
 
-import numpy, numbers, typing, copy
-from dataclasses import dataclass
+import numpy, numbers, typing
 
 
 class BackendCircuit:
@@ -32,7 +29,17 @@ class BackendCircuit:
     recompile_controlled_rotation = False
     recompile_exponential_pauli = True
 
-    def __init__(self, abstract_circuit: QCircuit, variables):
+    @property
+    def n_qubits(self) -> numbers.Integral:
+        return len(self.qubit_map)
+
+    @property
+    def qubits(self) -> typing.Iterable[numbers.Integral]:
+        return tuple(self._qubits)
+
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, *args, **kwargs):
+
+        self.use_mapping = use_mapping
 
         # compile the abstract_circuit
         c = compiler.Compiler(multitarget=self.recompile_multitarget,
@@ -43,9 +50,15 @@ class BackendCircuit:
                               controlled_rotation=self.recompile_controlled_rotation,
                               swap=self.recompile_swap)
 
-        self.qubit_map = self.make_qubit_map(abstract_circuit=abstract_circuit)
-        self.qubits = abstract_circuit.qubits
-        self.n_qubits = abstract_circuit.n_qubits
+        if self.use_mapping:
+            qubits=abstract_circuit.qubits
+        else:
+            qubits=range(abstract_circuit.n_qubits)
+
+        self._qubits = qubits
+        self.abstract_qubit_map = {q: i for i, q in enumerate(qubits)}
+        self.qubit_map = self.make_qubit_map(qubits)
+
         compiled = c(abstract_circuit)
         self.abstract_circuit = compiled
         # translate into the backend object
@@ -102,7 +115,7 @@ class BackendCircuit:
         """
         self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
 
-    def simulate(self, variables, initial_state=0, *args, **kwargs)-> QubitWaveFunction:
+    def simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         """
         Simulate the wavefunction
         :param returntype: specifies how the result should be given back
@@ -118,25 +131,42 @@ class BackendCircuit:
                 raise TequilaException("only product states as initial states accepted")
             initial_state = list(initial_state.keys())[0].integer
 
-        active_qubits = self.abstract_circuit.qubits
         all_qubits = [i for i in range(self.abstract_circuit.n_qubits)]
-
-        # maps from reduced register to full register
-        keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
+        if self.use_mapping:
+            active_qubits = self.abstract_circuit.qubits
+            # maps from reduced register to full register
+            keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
+        else:
+            keymap = KeyMapSubregisterToRegister(subregister=all_qubits, register=all_qubits)
 
         result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer)
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
-    def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int,
-                           paulistring, *args, **kwargs) -> numbers.Real:
+    def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int, paulistring, *args,
+                           **kwargs) -> numbers.Real:
         # make basis change and translate to backend
+
         basis_change = QCircuit()
+        not_in_u = [] # all indices of the paulistring which are not part of the circuit i.e. will always have the same outcome
+        qubits = []
         for idx, p in paulistring.items():
-            basis_change += change_basis(target=idx, axis=p)
+            if idx not in self.abstract_qubit_map:
+                not_in_u.append(idx)
+            else:
+                qubits.append(idx)
+                basis_change += change_basis(target=idx, axis=p)
+
+        # check the constant parts as <0|pauli|0>, can only be 0 or 1
+        # so we can do a fast return of one of them is not Z
+        print("{} not in u : {}".format(paulistring, not_in_u))
+        for i in not_in_u:
+            pauli = paulistring[i]
+            if pauli.upper() != "Z":
+                return 0.0
+
         # make measurement instruction
         measure = QCircuit()
-        qubits = [idx[0] for idx in paulistring.items()]
         if len(qubits) == 0:
             # no measurement instructions for a constant term as paulistring
             return paulistring.coeff
@@ -202,12 +232,16 @@ class BackendCircuit:
     def add_measurement(self, gate, circuit, *args, **kwargs):
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
-    def make_qubit_map(self, abstract_circuit: QCircuit):
-        return [i for i in range(len(abstract_circuit.qubits))]
-
+    def make_qubit_map(self, qubits):
+        assert(len(self.abstract_qubit_map) == len(qubits))
+        return self.abstract_qubit_map
 
 class BackendExpectationValue:
     BackendCircuitType = BackendCircuit
+
+    # map to smaller subsystem if there are qubits which are not touched by the circuits,
+    # should be deactivated if expectationvalues are computed by the backend since the hamiltonians are currently not mapped
+    use_mapping = True
 
     @property
     def n_qubits(self):
@@ -230,22 +264,33 @@ class BackendExpectationValue:
         return H
 
     def initialize_unitary(self, U, variables):
-        return self.BackendCircuitType(abstract_circuit=U, variables=variables)
+        return self.BackendCircuitType(abstract_circuit=U, variables=variables, use_mapping=self.use_mapping)
 
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)
 
     def simulate(self, variables, *args, **kwargs):
+        # TODO the whole procedure is quite inefficient but at least it works for general backends
+        # overwrite on specific the backend implementation for better performance (see qulacs)
         self.update_variables(variables)
         final_E = 0.0
-        # The hamiltonian can be defined on more qubits as the unitaries
-        qubits_h = self.H.qubits
-        qubits_u = self.U.qubits
-        all_qubits = list(set(qubits_h) | set(qubits_u))
-        keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
+        if self.use_mapping:
+            # The hamiltonian can be defined on more qubits as the unitaries
+            qubits_h = self.H.qubits
+            qubits_u = self.U.qubits
+            all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit()+1)))
+            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
+        else:
+            if self.H.qubits != self.U.qubits:
+                raise TequilaException(
+                    "Can not compute expectation value without using qubit mappings."
+                    " Your Hamiltonian and your Unitary act not on the same set of qubits. "
+                    "Hamiltonian acts on {}, Unitary acts on {}".format(
+                        self.H.qubits, self.U.qubits))
+            keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
+        # TODO inefficient, let the backend do it if possible or interface some library
         simresult = self.U.simulate(variables=variables, *args, **kwargs)
         wfn = simresult.apply_keymap(keymap=keymap)
-        # TODO inefficient, let the backend do it if possible or interface some library
         final_E += wfn.compute_expectationvalue(operator=self.H)
 
         return to_float(final_E)

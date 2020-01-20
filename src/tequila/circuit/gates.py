@@ -106,7 +106,13 @@ def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing
     else:
         ps = paulistring
 
-    return ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control)
+    # Failsave: If the paulistring contains just one pauli matrix
+    # it is better to initialize a rotational gate due to strange conventions in some simulators
+    if len(ps.items()) == 1:
+        target, axis = tuple(ps.items())[0]
+        return RotationGateImpl(axis=axis, target=target, angle=ps.coeff*assign_variable(angle), control=control)
+    else:
+        return ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control)
 
 
 @dataclass

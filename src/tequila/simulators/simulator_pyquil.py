@@ -79,10 +79,6 @@ class BackendCircuitPyquil(BackendCircuit):
         for i, t in enumerate(gate.target):
             circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
 
-    def make_qubit_map(self, abstract_circuit: QCircuit):
-        n_qubits = abstract_circuit.n_qubits
-        qubit_map = [i for i in range(n_qubits)]
-        return qubit_map
 
 
 class BackendExpectationValuePyquil(BackendExpectationValue):

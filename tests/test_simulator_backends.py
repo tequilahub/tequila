@@ -34,6 +34,68 @@ def test_backend_availability(name):
         warnings.warn(name + " is not installed!", UserWarning)
 
 
+@pytest.mark.parametrize("simulator", tq.simulators.INSTALLED_SIMULATORS.keys())
+@pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0*numpy.pi,2))
+def test_rotations(simulator, angle):
+    U1 = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.Rx(angle=angle, target=0)
+    U2 = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle=angle, paulistring="X(0)")
+    wfn1 = tq.simulate(U1, backend=None)
+    wfn2 = tq.simulate(U2, backend=None)
+    wfn3 = tq.simulate(U2, backend=simulator)
+    wfn4 = tq.simulate(U2, backend=simulator)
+
+    assert (numpy.isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+    assert (numpy.isclose(numpy.abs(wfn3.inner(wfn4)) ** 2, 1.0, atol=1.e-4))
+    assert (numpy.isclose(numpy.abs(wfn1.inner(wfn3)) ** 2, 1.0, atol=1.e-4))
+
+    U = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle=angle, paulistring="X(0)Y(3)")
+    wfn1 = tq.simulate(U2, backend=None)
+    wfn2 = tq.simulate(U2, backend=simulator)
+
+    assert (numpy.isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+
+
+@pytest.mark.parametrize("simulator", tq.simulators.INSTALLED_SIMULATORS.keys())
+@pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0 * numpy.pi, 2))
+@pytest.mark.parametrize("ps", ["X(0)Y(3)", "Y(2)X(4)"]) # it is important to test paulistrings on qubits which are not explicitly initialized through other gates
+def test_multi_pauli_rotation(simulator, angle, ps):
+
+    U = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle=angle, paulistring=ps)
+    wfn1 = tq.simulate(U, backend=None)
+    wfn2 = tq.simulate(U, backend=simulator)
+
+    assert (numpy.isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+
+@pytest.mark.parametrize("simulator", tq.simulators.INSTALLED_SIMULATORS.keys())
+@pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0*numpy.pi,2))
+def test_parametrized_rotations(simulator, angle):
+    U1 = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.Rx(angle="a", target=0)
+    U2 = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle="a", paulistring="X(0)")
+    variables = {"a": angle}
+    wfn1 = tq.simulate(U1, variables, backend=None)
+    wfn2 = tq.simulate(U2, variables, backend=None)
+    wfn3 = tq.simulate(U2, variables, backend=simulator)
+    wfn4 = tq.simulate(U2, variables, backend=simulator)
+
+    assert (numpy.isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+    assert (numpy.isclose(numpy.abs(wfn3.inner(wfn4)) ** 2, 1.0, atol=1.e-4))
+    assert (numpy.isclose(numpy.abs(wfn1.inner(wfn3)) ** 2, 1.0, atol=1.e-4))
+
+@pytest.mark.parametrize("simulator", tq.simulators.INSTALLED_SIMULATORS.keys())
+@pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0 * numpy.pi, 2))
+@pytest.mark.parametrize("ps", ["X(0)Z(3)", "Y(2)X(4)"])
+def test_parametrized_multi_pauli_rotation(simulator, angle, ps):
+    a = tq.Variable("a")
+    variables = {a:angle}
+    U = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle=a, paulistring=ps)
+    wfn1 = tq.simulate(U, variables, backend=None)
+    wfn2 = tq.simulate(U, variables, backend=simulator)
+
+    print(wfn1)
+    print(wfn2)
+
+    assert (numpy.isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+
 def create_random_circuit():
     primitive_gates = [tq.gates.X, tq.gates.Y, tq.gates.Z, tq.gates.H]
     rot_gates = [tq.gates.Rx, tq.gates.Ry, tq.gates.Rz]
@@ -75,7 +137,7 @@ def test_wfn_multi_control(simulator):
     ac += tq.gates.H(target=[0], control=[1])
     tq.simulate(ac, backend=simulator)
 
-    if simulator == "qiskit": # can't compile the CCH currently ... but throws error
+    if simulator == "qiskit":  # can't compile the CCH currently ... but throws error
         return
 
     ac = tq.gates.X([0, 1, 2])

@@ -5,7 +5,7 @@ Replace with fancier external packages at some point
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, H, X, Rz, ExpPauli
-from tequila.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl
+from tequila.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl, ExponentialPauliGateImpl, TrotterizedGateImpl
 from tequila.utils import to_float
 from tequila import Variable
 from tequila import Objective
@@ -147,6 +147,9 @@ def change_basis(target, axis, daggered=False):
 @compiler
 def compile_multitarget(gate) -> QCircuit:
     targets = gate.target
+
+    if isinstance(gate, ExponentialPauliGateImpl) or isinstance(gate, TrotterizedGateImpl):
+        return QCircuit.wrap_gate(gate)
 
     if len(targets) == 1:
         return QCircuit.wrap_gate(gate)
