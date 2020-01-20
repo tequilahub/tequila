@@ -124,28 +124,63 @@ class BackendCircuitQulacs(BackendCircuit):
 
 class BackendExpectationValueQulacs(BackendExpectationValue):
     BackendCircuitType = BackendCircuitQulacs
-    use_mapping = False
+    use_mapping = True
 
     def simulate(self, variables, *args, **kwargs):
-        if self.use_mapping:
-            raise TequilaQulacsException("Can not yet simulate mapped expectationvalues with qulacs")
-        else:
-            print(self.U.n_qubits)
-            print(self.U.circuit)
-            self.update_variables(variables)
-            state = qulacs.QuantumState(self.U.n_qubits)
-            self.U.circuit.update_quantum_state(state)
-            return self.H.get_expectation_value(state)
+
+        # fast return if possible
+        if self.H is None:
+            return 0.0
+        elif isinstance(self.H, numbers.Number):
+            return self.H
+
+        self.update_variables(variables)
+        state = qulacs.QuantumState(self.U.n_qubits)
+        self.U.circuit.update_quantum_state(state)
+        return self.H.get_expectation_value(state)
 
     def initialize_hamiltonian(self, H):
-        if self.U.n_qubits < H.n_qubits:
-            raise TequilaQulacsException(
-                "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are not yet implemented")
+        if self.use_mapping:
+            # initialize only the active parts of the Hamiltonian and pre-evaluate the passive ones
+            # passive parts are the components of each individual pauli string which act on qubits where the circuit does not act on
+            # if the circuit does not act on those qubits the passive parts are always evaluating to 1 (if the pauli operator is Z) or 0 (otherwise)
+            # since those qubits are always in state |0>
+            non_zero_strings = []
+            unit_strings = 0
+            for ps in H.paulistrings:
+                string = ""
+                for k, v in ps.items():
+                    if k in self.U.qubit_map:
+                        string += v.upper() + " " + str(self.U.qubit_map[k]) + " "
+                    elif v.upper() != "Z":
+                        string = "ZERO"
+                        break
+                string = string.strip()
+                if string != "ZERO":
+                    non_zero_strings.append((ps.coeff, string))
+                elif string == "":
+                    unit_strings += 1
 
-        qulacs_H = qulacs.Observable(self.n_qubits)
-        for ps in H.paulistrings:
-            string = ""
-            for k, v in ps.items():
-                string += v.upper() + " " + str(k)
-            qulacs_H.add_operator(ps.coeff, string)
-        return qulacs_H
+            if len(non_zero_strings) == 0:
+                return unit_strings
+            else:
+                assert unit_strings == 0
+
+            qulacs_H = qulacs.Observable(self.n_qubits)
+            for coeff, string in non_zero_strings:
+                qulacs_H.add_operator(coeff, string)
+
+            return qulacs_H
+        else:
+            if self.U.n_qubits < H.n_qubits:
+                raise TequilaQulacsException(
+                    "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are not yet implemented")
+
+            qulacs_H = qulacs.Observable(self.n_qubits)
+
+            for ps in H.paulistrings:
+                string = ""
+                for k, v in ps.items():
+                    string += v.upper() + " " + str(k)
+                qulacs_H.add_operator(ps.coeff, string)
+            return qulacs_H

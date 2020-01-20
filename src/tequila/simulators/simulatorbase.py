@@ -245,7 +245,7 @@ class BackendExpectationValue:
 
     @property
     def n_qubits(self):
-        return self._n_qubits
+        return self.U.n_qubits
 
     @property
     def H(self):
@@ -256,7 +256,6 @@ class BackendExpectationValue:
         return self._U
 
     def __init__(self, E, variables):
-        self._n_qubits = max(E.U.n_qubits, E.H.n_qubits)
         self._U = self.initialize_unitary(E.U, variables)
         self._H = self.initialize_hamiltonian(E.H)
 
