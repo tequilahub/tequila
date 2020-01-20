@@ -44,6 +44,14 @@ class ExpectationValueImpl:
         self._unitary = copy.deepcopy(U)
         self._hamiltonian = copy.deepcopy(H)
 
+    def info(self, short=True, *args, **kwargs):
+        if short:
+            print("Expectation Value with {qubits} active qubits and {paulis} paulistrings".format(
+                qubits=len(self.U.qubits), paulis=len(self.H)))
+        else:
+            print("Hamiltonian:\n", str(self.H))
+            print("\n", str(self.U))
+
 
 class Objective:
     """
@@ -59,7 +67,6 @@ class Objective:
     def __init__(self, args: typing.Iterable, transformation: typing.Callable = None):
         self._args = tuple(args)
         self._transformation = transformation
-        self.last = None
 
     def extract_variables(self):
         """
@@ -165,11 +172,9 @@ class Objective:
 
     def __pow__(self, other):
         return self.left_helper(numpy.float_power, other)
-        # return self.binary_operator(left=self, op=lambda E: numpy.float_power(E, power))
 
     def __rpow__(self, other):
         return self.right_helper(numpy.float_power, other)
-        # return new.binary_operator(left=new,right=other, op=lambda l, r: numpy.float_power(r, l))
 
     def __rmul__(self, other):
         return self.right_helper(numpy.multiply, other)
@@ -230,11 +235,35 @@ class Objective:
         '''
         return self.unary_operator(self, op)
 
+    def apply(self, op):
+        # same as wrap, might be more intuitive for some
+        return self.wrap(op=op)
+
+    def count_expectationvalues(self):
+        i = 0
+        for arg in self.args:
+            if hasattr(arg, "U"):
+                i +=1
+        return i
+
     def __repr__(self):
-        string = "Objective with " + str(len(self.args)) + " arguments"
-        if self.last is not None:
-            string += " , last call value = " + str(self.last)
-        return string
+        variables = self.extract_variables()
+        ev = []
+        argstring = ""
+        i = 0
+        for arg in self.args:
+            if hasattr(arg, "U"):
+                ev.append(i)
+                argstring += "E_" + str(i) + ", "
+                i += 1
+            elif hasattr(arg, "name"):
+                argstring += str(arg) + ", "
+            else:
+                assert not arg.has_expectationvalues()
+                argstring += "g({}), ".format(arg.extract_variables())
+        return "Objective with {} expectation values\n" \
+               "Objective = f({})\n" \
+               "variables = {}".format(len(ev), argstring.strip().rstrip(','), variables)
 
     def __call__(self, variables, *args, **kwargs):
 
@@ -244,7 +273,8 @@ class Objective:
                 if hasattr(Ei, "simulate"):
                     E.append(Ei.simulate(variables=variables, *args, **kwargs))
                 elif hasattr(Ei, "U"):
-                    raise TequilaException("You are trying to evaluate a non-compiled objective.\nTry passing this object to tequila.simulate(...)")
+                    raise TequilaException(
+                        "You are trying to evaluate a non-compiled objective.\nTry passing this object to tequila.simulate(...)")
                 else:
                     E.append(Ei(variables=variables))
             # return evaluated result
@@ -435,6 +465,10 @@ class Variable:
         else:
             return True
 
+    def apply(self, other):
+        assert (callable(other))
+        return Objective(args=[self], transformation=other)
+
     def __repr__(self):
         return str(self.name)
 
@@ -445,7 +479,8 @@ class FixedVariable(float):
         return self
 
 
-def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[Variable, FixedVariable]:
+def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[
+    Variable, FixedVariable]:
     """
     :param variable: a string, a number or a variable
     :return: Variable or FixedVariable depending on the input
@@ -462,9 +497,12 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
         if not isinstance(variable, numbers.Real):
             raise TequilaVariableException("You tried to assign a complex number to a FixedVariable")
         return FixedVariable(variable)
-    elif  hasattr(variable, "evalf"): # evalf detects sympy types ... not differentiable, hidden in the type hinting since it should not really be used
+    elif hasattr(variable,
+                 "evalf"):  # evalf detects sympy types ... not differentiable, hidden in the type hinting since it should not really be used
         return SympyVariable(value=variable)
     elif isinstance(variable, typing.Hashable):
         return Variable(name=variable)
     else:
-        raise TequilaVariableException("Only hashable types can be assigned to Variables. You passed down " + str(variable) + " type=" + str(type(variable)))
+        raise TequilaVariableException(
+            "Only hashable types can be assigned to Variables. You passed down " + str(variable) + " type=" + str(
+                type(variable)))

@@ -119,7 +119,7 @@ class BackendCircuitQulacs(BackendCircuit):
         raise TequilaQulacsException("no controlled power gates")
 
     def add_measurement(self, gate, circuit, *args, **kwargs):
-        raise TequilaQulacsException("only full wavefunction simulation, no measurements")
+        raise TequilaQulacsException("only full wavefunction simulation, no measurements. Did you forget to add the number of samples?")
 
 
 class BackendExpectationValueQulacs(BackendExpectationValue):

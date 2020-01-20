@@ -86,6 +86,9 @@ class OptimizerSciPy(Optimizer):
         :return: tuple of optimized energy ,optimized angles and scipy output
         """
 
+        infostring = "Starting {method} optimization\n".format(method=self.method)
+        infostring += "Objective: {} expectationvalues\n".format(objective.count_expectationvalues())
+
         if self.save_history and reset_history:
             self.reset_history()
 
@@ -96,16 +99,21 @@ class OptimizerSciPy(Optimizer):
             angles = {v: 0.0 for v in variables}
         else:
             # convenience which allows the user to just pass down the keys of Variables
-            angles = {assign_variable(k):v for k,v in initial_values.items()}
+            angles = {assign_variable(k): v for k, v in initial_values.items()}
 
         # do the compilation here to avoid costly recompilation during the optimization
-        compiled_objective = compile_objective(objective=objective, variables=angles, backend=self.simulator, samples=self.samples)
-        print("compiled objective: {}".format(type(compiled_objective)))
+        compiled_objective = compile_objective(objective=objective, variables=angles, backend=self.simulator,
+                                               samples=self.samples)
+
+        grad_exval = []
         compiled_grad_objectives = dict()
         if self.use_gradient:
             for k in angles.keys():
                 dO = grad(objective=objective, variable=k)
+                grad_exval.append(dO.count_expectationvalues())
                 compiled_grad_objectives[k] = compile_objective(objective=dO, variables=angles, samples=self.samples, backend=self.simulator)
+
+        infostring += "Gradients: {} expectationvalues (min={}, max={})\n".format(sum(grad_exval), min(grad_exval), max(grad_exval))
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*angles.items())
@@ -116,13 +124,13 @@ class OptimizerSciPy(Optimizer):
         Es = []
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
-                           samples = self.samples,
+                           samples=self.samples,
                            save_history=self.save_history,
                            silent=self.silent)
         if self.use_gradient:
             dE = _GradContainer(objective=compiled_grad_objectives,
                                 param_keys=param_keys,
-                                samples = self.samples,
+                                samples=self.samples,
                                 save_history=self.save_history,
                                 silent=self.silent)
 
@@ -131,18 +139,30 @@ class OptimizerSciPy(Optimizer):
             names, bounds = zip(*self.method_bounds.items())
             assert (names == param_keys)
 
+        if not self.silent:
+            print(infostring)
+
+        # get the number of real scipy iterations for better histories
+        real_iterations = []
         res = scipy.optimize.minimize(E, param_values, jac=dE,
                                       args=(Es,),
                                       method=self.method, tol=self.tol,
                                       bounds=bounds,
                                       constraints=self.method_constraints,
-                                      options=self.method_options)
+                                      options=self.method_options,
+                                      callback=lambda x: real_iterations.append(len(E.history) - 1))
 
+        # failsafe since callback is not implemented everywhere
+        if len(real_iterations) == 0:
+            real_iterations = range(len(E.history))
         if self.save_history:
-            self.history.energies = E.history
-            self.history.angles = E.history_angles
+            self.history.energies = [E.history[i] for i in real_iterations]
+            self.history.energy_evaluations = E.history
+            self.history.angles = [E.history_angles[i] for i in real_iterations]
+            self.history.angles_evaluations = E.history_angles
             if self.use_gradient:
-                self.history.gradients = dE.history
+                self.history.gradients = [dE.history[i] for i in real_iterations]
+                self.history.gradients_evaluations = dE.history
 
         E_final = res.fun
         angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
@@ -199,5 +219,6 @@ def minimize(objective: Objective,
                                silent=silent,
                                simulator=backend,
                                tol=tol)
-
+    if initial_values is not None:
+        initial_values = {assign_variable(k): v for k,v in initial_values.items()}
     return optimizer(objective=objective, initial_values=initial_values)

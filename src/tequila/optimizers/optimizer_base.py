@@ -25,18 +25,53 @@ class OptimizerHistory:
         else:
             return len(self.energies)
 
+    # history of all true iterations (epochs)
     energies: typing.List[numbers.Real] = field(default_factory=list)
     gradients: typing.List[typing.Dict[str, numbers.Real]] = field(default_factory=list)
     angles: typing.List[typing.Dict[str, numbers.Number]] = field(default_factory=list)
 
-    def extract_energies(self):
-        return self.energies
+    # history of all function evaluations
+    energies_calls: typing.List[numbers.Real] = field(default_factory=list)
+    gradients_calls: typing.List[typing.Dict[str, numbers.Real]] = field(default_factory=list)
+    angles_calls: typing.List[typing.Dict[str, numbers.Number]] = field(default_factory=list)
 
-    def extract_gradients(self, key: str):
-        return [d[key] for d in self.gradients]
+    def __add__(self, other):
+        result = OptimizerHistory()
+        result.energies = self.energies + other.energies
+        result.gradients = self.energies + other.energies
+        result.angles = self.energies + other.energies
+        return result
 
-    def extract_angles(self, key: str):
-        return [d[key] for d in self.angles]
+    def __iadd__(self, other):
+        self.energies += other.energies
+        self.gradients += other.gradients
+        self.angles += other.angles
+        return self
+
+    def extract_energies(self, *args, **kwargs) -> typing.Dict[numbers.Integral, numbers.Real]:
+        return {i: e for i, e in enumerate(self.energies)}
+
+    def extract_gradients(self, key: str) -> typing.Dict[numbers.Integral, numbers.Real]:
+        """
+        :param key: the key specifiying which gradient shall be extracted
+        :return: dictionary with dictionary_key=iteration, dictionary_value=gradient[key]
+        """
+        gradients = {}
+        for i, d in enumerate(self.gradients):
+            if key in d:
+                gradients[i] = d[key]
+        return gradients
+
+    def extract_angles(self, key: str) -> typing.Dict[numbers.Integral, numbers.Real]:
+        """
+        :param key: the key specifiying which angle shall be extracted
+        :return: dictionary with dictionary_key=iteration, dictionary_value=angle[key]
+        """
+        angles = {}
+        for i, d in enumerate(self.angles):
+            if key in d:
+                angles[i] = d[key]
+        return angles
 
     def plot(self,
              property: typing.Union[str, typing.List[str]] = 'energies',
@@ -69,14 +104,15 @@ class OptimizerHistory:
         else:
             key = [assign_variable(k) for k in key]
             keys = [key] * len(properties)
+
         for i, p in enumerate(properties):
-            if p.lower() == "energies":
-                data = self.energies
-                plt.plot(data, label=str(p), marker='o', linestyle='--')
+            if p == "energies":
+                data = getattr(self, "extract_" + p)()
+                plt.plot(list(data.keys()), list(data.values()), label=str(p), marker='o', linestyle='--')
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(data, label=str(p) + " " + str(k), marker='o', linestyle='--')
+                    plt.plot(list(data.keys()), list(data.values()), label=str(p) + " " + str(k), marker='o', linestyle='--')
 
         if 'title' in kwargs:
             plt.title(kwargs['title'])

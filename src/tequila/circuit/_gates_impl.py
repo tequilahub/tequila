@@ -349,3 +349,11 @@ class TrotterizedGateImpl(QGateImpl):
             for ps in g.paulistrings:
                 targets += [k for k in ps.keys()]
         return tuple(set(targets))
+
+    def dagger(self):
+        result = copy.deepcopy(self)
+        angles = []
+        for angle in self.angles:
+            angles.append(-angle)
+        result.angles=angles
+        return result

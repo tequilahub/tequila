@@ -159,7 +159,6 @@ class BackendCircuit:
 
         # check the constant parts as <0|pauli|0>, can only be 0 or 1
         # so we can do a fast return of one of them is not Z
-        print("{} not in u : {}".format(paulistring, not_in_u))
         for i in not_in_u:
             pauli = paulistring[i]
             if pauli.upper() != "Z":

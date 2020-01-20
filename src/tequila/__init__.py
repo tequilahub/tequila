@@ -1,6 +1,6 @@
 from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException
 from tequila.circuit import gates, QCircuit
-from tequila.hamiltonian import paulis
+from tequila.hamiltonian import paulis, QubitHamiltonian, PauliString
 from tequila.objective import Objective, ExpectationValue, Variable, assign_variable
 from tequila.optimizers import optimizer_scipy
 from tequila.simulators import pick_backend
@@ -11,6 +11,10 @@ import tequila.quantumchemistry as chemistry
 from typing import Dict, Union, Hashable
 from numbers import Real as RealNumber
 
+from tequila.circuit.gradient import grad
+
+# make sure to use the jax numpy
+from tequila.objective.objective import numpy
 
 def simulate(objective: Objective,
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,

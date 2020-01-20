@@ -356,12 +356,14 @@ class QuantumChemistryBase:
                           trotter_steps: int,
                           initial_amplitudes: typing.Union[str, Amplitudes] = "mp2",
                           include_reference_ansatz=True,
+                          parametrized = True,
                           trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
 
         """
         :param initial_amplitudes: initial amplitudes given as ManyBodyAmplitudes structure or as string
         where 'mp2' 'ccsd' or 'zero' are possible initializations
         :param include_reference_ansatz: Also do the reference ansatz (prepare closed-shell Hartree-Fock)
+        :param parametrized: Initialize with variables, otherwise with static numbers
         :return: Parametrized QCircuit
         """
 
@@ -385,7 +387,10 @@ class QuantumChemistryBase:
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0):
-                variables.append(2.0 * Variable(name=key))  # 2.0 for convention angle/2 in ExpPauli Gates
+                if parametrized:
+                    variables.append(2.0 * Variable(name=key))  # 2.0 for convention angle/2 in ExpPauli Gates
+                else:
+                    variables.append(2.0 * t)
                 indices = [(key[2 * i], key[2 * i + 1]) for i in range(len(key) // 2)]
                 generators.append(self.make_excitation_operator(indices=indices))
 

@@ -43,6 +43,9 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
     elif not isinstance(variable, Variable) and hasattr(variable, "__hash__"):
         variable = Variable(name=variable)
 
+    if variable not in compiled.extract_variables():
+        raise TequilaException("Error in taking gradient. Objective does not depend on variable {} ".format(variable))
+
     if isinstance(objective, ExpectationValueImpl):
         return __grad_expectationvalue(E=objective, variable=variable)
     elif objective.is_expectationvalue():
