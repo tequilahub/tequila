@@ -64,8 +64,9 @@ for iteration, t_group in enumerate(t_groups):
     print("angles: ", result.angles)
     variables = result.angles
     history += result.history
-    if iteration == 2:
+    if iteration == 100:
         break
+
 
 print("Computations Ended:")
 print("RHF  energy = {:8.5f} ", molecule.molecule.hf_energy)

@@ -63,7 +63,8 @@ class BackendCircuitQulacs(BackendCircuit):
             circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.angle(variables) * gate.paulistring.coeff)
 
     def add_gate(self, gate, circuit, *args, **kwargs):
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]])
+        targets = tuple([self.qubit_map[t] for t in gate.target])
+        getattr(circuit, "add_" + gate.name.upper() + "_gate")(*targets)
 
     def add_controlled_gate(self, gate, circuit, *args, **kwargs):
         if len(gate.control) == 1 and gate.name.upper() == "X":
@@ -133,7 +134,11 @@ class BackendCircuitQulacs(BackendCircuit):
         # available threads
         if max_block_size is None:
             import os
-            max_block_size = int(os.environ.get('OMP_NUM_THREADS'))
+            omp_threads = os.environ.get('OMP_NUM_THREADS')
+            if omp_threads is None:
+                max_block_size = 1
+            else:
+                max_block_size = int(omp_threads)
 
         old = circuit.calculate_depth()
         opt = qulacs.circuit.QuantumCircuitOptimizer()

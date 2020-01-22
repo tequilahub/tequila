@@ -12,8 +12,8 @@ SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_out
 
 
 class OptimizerSciPy(Optimizer):
-    gradient_free_methods = ['Nelder-Mead', 'COBYLA', 'Powell', 'SLSQP']
-    gradient_based_methods = ['L-BFGS-B', 'BFGS', 'CG', 'dogleg', 'TNC']
+    gradient_free_methods = ['NELDER-MEAD', 'COBYLA', 'POWELL', 'SLSQP']
+    gradient_based_methods = ['L-BFGS-B', 'BFGS', 'CG', 'DOGLEG', 'TNC']
 
     @classmethod
     def available_methods(cls):
@@ -52,9 +52,9 @@ class OptimizerSciPy(Optimizer):
         self.method_bounds = method_bounds
         self.silent = silent
         if use_gradient is None:
-            if method in self.gradient_based_methods:
+            if method.upper() in self.gradient_based_methods:
                 self.use_gradient = True
-            elif method in self.gradient_free_methods:
+            elif method.upper() in self.gradient_free_methods:
                 self.use_gradient = False
             else:
                 self.use_gradient = True
@@ -114,7 +114,7 @@ class OptimizerSciPy(Optimizer):
                 grad_exval.append(dO.count_expectationvalues())
                 compiled_grad_objectives[k] = compile_objective(objective=dO, variables=angles, samples=self.samples, backend=self.simulator)
 
-        infostring += "Gradients: {} expectationvalues (min={}, max={})\n".format(sum(grad_exval), min(grad_exval), max(grad_exval))
+            infostring += "Gradients: {} expectationvalues (min={}, max={})\n".format(sum(grad_exval), min(grad_exval), max(grad_exval))
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*angles.items())
@@ -190,7 +190,7 @@ def minimize(objective: Objective,
              method_bounds: typing.Dict[str, numbers.Real] = None,
              method_constraints=None,
              save_history: bool = True,
-             silent: bool = True) -> SciPyReturnType:
+             silent: bool = False) -> SciPyReturnType:
     """
     Call this if you don't like objects
     :param objective: The tequila Objective to minimize
