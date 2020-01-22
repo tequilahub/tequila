@@ -57,14 +57,14 @@ for iteration, t_group in enumerate(t_groups):
     print("Starting Macro-Iteration {}".format(iteration))
     print(O)
     print("{} active qubits: {}".format(len(U.qubits), U.qubits))
-    options = {'gtol': 1e-02, 'maxiter': 3, 'disp': True}
+    options = {'gtol': 1e-02, 'maxiter': 3}
     result = tq.optimizer_scipy.minimize(objective=O, method_options=options, method='bfgs', backend="qulacs", initial_values=variables, tol=1.e-3, silent=False)
     print("Macro-Iteration ", iteration, ":")
     print("energy {energy:6.4f}".format(energy=result.energy))
     print("angles: ", result.angles)
     variables = result.angles
     history += result.history
-    if iteration == 1:
+    if iteration == 2:
         break
 
 print("Computations Ended:")
@@ -72,8 +72,7 @@ print("RHF  energy = {:8.5f} ", molecule.molecule.hf_energy)
 print("MP2  energy = {:8.5f} ", molecule.molecule.mp2_energy)
 print("CCSD energy = {:8.5f} ", -15.594728547924952)
 print("FCI  energy = {:8.5f} ", -15.59512472620611)
-print("VQE  energy = {:8.5f} ",  result.energy + hf_energy)
-print(history.energies)
+print("VQE  energy = {:8.5f} ",  result.energy)
 
 with open("history.pickle", "wb") as f:
     pickle.dump(result.history, f, pickle.HIGHEST_PROTOCOL)

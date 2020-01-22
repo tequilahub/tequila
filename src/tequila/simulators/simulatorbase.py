@@ -37,7 +37,7 @@ class BackendCircuit:
     def qubits(self) -> typing.Iterable[numbers.Integral]:
         return tuple(self._qubits)
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, *args, **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, optimize_circuit=True, *args, **kwargs):
 
         self.use_mapping = use_mapping
 
@@ -63,6 +63,9 @@ class BackendCircuit:
         self.abstract_circuit = compiled
         # translate into the backend object
         self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
+
+        if optimize_circuit:
+            self.circuit = self.optimize_circuit(circuit=self.circuit)
 
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
@@ -234,6 +237,17 @@ class BackendCircuit:
     def make_qubit_map(self, qubits):
         assert(len(self.abstract_qubit_map) == len(qubits))
         return self.abstract_qubit_map
+
+    def optimize_circuit(self, circuit, *args, **kwargs):
+        """
+        Can be overwritten if the backend supports its own circuit optimization
+        To be clear: Optimization means optimizing the compiled circuit w.r.t depth not
+        optimizing parameters
+        :return: Optimized circuit, if supported by backend, else no action is taken
+        """
+        return circuit
+
+
 
 class BackendExpectationValue:
     BackendCircuitType = BackendCircuit

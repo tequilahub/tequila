@@ -4,7 +4,6 @@ from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulatorbase import BackendCircuit, BackendExpectationValue
-from tequila.circuit import QCircuit
 
 """
 todo: overwrite simulate_objective for this simulators, might be faster
@@ -119,7 +118,29 @@ class BackendCircuitQulacs(BackendCircuit):
         raise TequilaQulacsException("no controlled power gates")
 
     def add_measurement(self, gate, circuit, *args, **kwargs):
-        raise TequilaQulacsException("only full wavefunction simulation, no measurements. Did you forget to add the number of samples?")
+        raise TequilaQulacsException(
+            "only full wavefunction simulation, no measurements. Did you forget to add the number of samples?")
+
+    def optimize_circuit(self, circuit, max_block_size: int = None, silent: bool = True, *args, **kwargs):
+        """
+        Can be overwritten if the backend supports its own circuit optimization
+        To be clear: Optimization means optimizing the compiled circuit w.r.t depth not
+        optimizing parameters
+        :return: Optimized circuit
+        """
+
+        # as far as I interpret it it makes most sense to set the block_size to the number of
+        # available threads
+        if max_block_size is None:
+            import os
+            max_block_size = int(os.environ.get('OMP_NUM_THREADS'))
+
+        old = circuit.calculate_depth()
+        opt = qulacs.circuit.QuantumCircuitOptimizer()
+        opt.optimize(circuit, max_block_size)
+        if not silent:
+            print("qulacs: optimized circuit depth from {} to {} with max_block_size {}".format(old, circuit.calculate_depth(), max_block_size))
+        return circuit
 
 
 class BackendExpectationValueQulacs(BackendExpectationValue):

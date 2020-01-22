@@ -67,6 +67,7 @@ class OptimizerSciPy(Optimizer):
             self.method_options = method_options
             if 'maxiter' not in method_options:
                 self.method_options['maxiter'] = self.maxiter
+        self.method_options['disp'] = not silent
 
         if method_constraints is None:
             self.method_constraints = ()
