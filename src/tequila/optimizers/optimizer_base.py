@@ -38,8 +38,8 @@ class OptimizerHistory:
     def __add__(self, other):
         result = OptimizerHistory()
         result.energies = self.energies + other.energies
-        result.gradients = self.energies + other.energies
-        result.angles = self.energies + other.energies
+        result.gradients = self.gradients + other.gradients
+        result.angles = self.angles + other.angles
         return result
 
     def __iadd__(self, other):

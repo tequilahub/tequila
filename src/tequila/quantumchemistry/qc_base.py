@@ -252,12 +252,26 @@ class QuantumChemistryBase:
         Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
         And gives it back multiplied with 1j to make it hermitian
         :param indices: List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
+        can also be given as one big list: [a_0, i_0, a_1, i_1 ...]
         :return: 1j*Transformed qubit excitation operator, depends on self.transformation
         """
+        # check indices and convert to list of tuples if necessary
+        if len(indices) == 0:
+            raise TequilaException("make_excitation_operator: no indices given")
+        elif not isinstance(indices[0], typing.Iterable):
+            if len(indices % 2) != 0:
+                raise TequilaException("make_excitation_operator: unexpected input format of infices\n"
+                                       "use list of tuples as [(a_0, i_0),(a_1, i_1) ...]\n"
+                                       "or list as [a_0, i_0, a_1, i_1, ... ]\n"
+                                       "you gave: {}".format(indices))
+            converted = [(indices[2*i], indices[2*i+1]) for i in range(len(indices)//2)]
+        else:
+            converted = indices
+
         # convert to openfermion input format
         ofi = []
         dag = []
-        for pair in indices:
+        for pair in converted:
             assert (len(pair) == 2)
             ofi += [(pair[0], 1), (pair[1], 0)]
             dag += [(pair[0], 0), (pair[1], 1)]

@@ -143,10 +143,7 @@ class BackendCircuit:
             keymap = KeyMapSubregisterToRegister(subregister=all_qubits, register=all_qubits)
 
         result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer)
-        print("result is {}".format(result))
-        print(keymap)
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
-        print("result is {}".format(result))
         return result
 
     def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int, paulistring, *args,
