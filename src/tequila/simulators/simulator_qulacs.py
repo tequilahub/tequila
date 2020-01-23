@@ -122,7 +122,7 @@ class BackendCircuitQulacs(BackendCircuit):
         raise TequilaQulacsException(
             "only full wavefunction simulation, no measurements. Did you forget to add the number of samples?")
 
-    def optimize_circuit(self, circuit, max_block_size: int = None, silent: bool = True, *args, **kwargs):
+    def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
         """
         Can be overwritten if the backend supports its own circuit optimization
         To be clear: Optimization means optimizing the compiled circuit w.r.t depth not
