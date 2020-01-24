@@ -12,6 +12,7 @@ Implemented with OpenVQE structures
 from tequila.circuit import QCircuit
 from tequila.circuit.gates import CNOT, Ry, X
 from tequila.simulators import BackendCircuitSymbolic
+from tequila.objective.objective import SympyVariable
 import sympy
 
 class UnaryStatePrepImpl:
@@ -520,7 +521,7 @@ class UnaryStatePrepImpl:
             sa = sympy.Symbol(a_angle)
             #self.symbols.append(sa)
             self.c_i += 1
-            sub_circ = Ry(control= control_bit, target= target_bit, angle=sa)
+            sub_circ = Ry(control= control_bit, target= target_bit, angle=SympyVariable(sa))
 
         elif gate == "aCROT":
             a_angle = self.coefficients[self.c_i]
@@ -528,7 +529,7 @@ class UnaryStatePrepImpl:
             #self.symbols.append(sa)
             self.c_i += 1
             sub_circ = X(control_bit)
-            sub_circ += Ry(control= control_bit, target= target_bit, angle=sa)
+            sub_circ += Ry(control= control_bit, target= target_bit, angle=SympyVariable(sa))
             sub_circ += X(control_bit)
 
         elif gate == "X":
@@ -537,7 +538,7 @@ class UnaryStatePrepImpl:
         elif gate == "ROT":
             a_angle = self.coefficients[self.c_i]
             self.c_i += 1
-            sub_circ = Ry(control= None, target= target_bit, angle=sympy.Symbol(a_angle))
+            sub_circ = Ry(control= None, target= target_bit, angle=SympyVariable(sympy.Symbol(a_angle)))
 
         return sub_circ
 
@@ -603,40 +604,6 @@ class UnaryStatePrepImpl:
 
         return circuit.dagger()
 
-    def main(self,s):
-        '''
-        Use the script as a standalone package (path to OpenVQE must be known to python)
-        s = []
-        for counter in range(4):
-            string = input("Enter your state: ")
-            s.append(string)
-        if not silenced: print(s)
-        '''
-
-        moves_list = []
-        moves_list = get_next_move(s, moves_list)
-
-        if not self.silenced: print()
-        if not self.silenced: print("moves: ", moves_list)
-
-
-        circuit = QCircuit()
-        for move in moves_list:
-            circuit *= self.create_sub_circ(move[0], move[1], move[2])
-
-        if not self.silenced: print()
-        if not self.silenced: print(circuit)
-
-
-        cr = circuit.dagger()
-        if not self.silenced: print("final circuit:\n", cr)
-        result2 = SimulatorSymbolic().simulate_wavefunction(abstract_circuit= cr)
-        if not self.silenced: print("result=", result2)
-
-        return result2
-
-        ## choose the coefficients
-        # solve for a, b, c
 
 
 

@@ -230,7 +230,7 @@ class RotationGateImpl(ParametrizedGateImpl):
 
     def dagger(self):
         result = copy.deepcopy(self)
-        result._parameter = -self.angle
+        result._parameter = assign_variable(-self.angle)
         return result
 
 

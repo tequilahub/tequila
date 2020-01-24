@@ -72,13 +72,13 @@ class UnaryStatePrep:
         success = False
 
         while (not success and count < self.max_repeat):
-            try:
+            #try:
                 count += 1
                 IMPL = UnaryStatePrepImpl()
                 abstract_angles = [sympy.var(IMPL.alphabets[i]) for i in range(len(target_space) - 1)]
                 self._abstract_circuit = IMPL.get_circuit(s=[i.binary for i in target_space])
                 success = True
-            except:
+            #except:
                 numpy.random.shuffle(target_space)
 
         if not success: raise TequilaUnaryStateException(
@@ -87,7 +87,8 @@ class UnaryStatePrep:
         # get the equations to determine the angles
         simulator = BackendCircuitSymbolic(abstract_circuit=self._abstract_circuit, variables={})
         simulator.convert_to_numpy = False
-        wfn = simulator.simulate(initial_state=BitString.from_int(0, nbits=self.n_qubits), variables=None)
+        variables = None # {k:k.name.evalf() for k in self._abstract_circuit.extract_variables()}
+        wfn = simulator.simulate(initial_state=BitString.from_int(0, nbits=self.n_qubits), variables=variables)
 
         equations = []
         for k in target_space:

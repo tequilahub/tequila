@@ -302,12 +302,11 @@ class SympyVariable:
     TODO: can we pleaseeeeee get rid of this thing, Jakob? pretty please?
     '''
 
-    def __init__(self, name=None, value=None):
-        self._value = value
+    def __init__(self, name=None):
         self._name = name
 
     def __call__(self, *args, **kwargs):
-        return self._value
+        return self._name
 
     def __sub__(self, other):
         return SympyVariable(name=self._name, value=self._value - other)
@@ -319,7 +318,7 @@ class SympyVariable:
         return SympyVariable(name=self._name, value=self._value * other)
 
     def __neg__(self):
-        return SympyVariable(name=self._name, value=-self._value)
+        return SympyVariable(name=-self._name)
 
 
 class Variable:
@@ -492,6 +491,8 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
     elif isinstance(variable, Objective):
         return variable
     elif isinstance(variable, FixedVariable):
+        return variable
+    elif isinstance(variable, SympyVariable):
         return variable
     elif isinstance(variable, numbers.Number):
         if not isinstance(variable, numbers.Real):
