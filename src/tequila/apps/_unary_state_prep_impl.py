@@ -11,9 +11,21 @@ Implemented with OpenVQE structures
 
 from tequila.circuit import QCircuit
 from tequila.circuit.gates import CNOT, Ry, X
-from tequila.simulators import BackendCircuitSymbolic
-from tequila.objective.objective import SympyVariable
+from tequila.objective.objective import Variable
 import sympy
+
+class SympyVariable(Variable):
+    """
+    Still need this structure for the dagger operation
+    """
+    def __init__(self, name=None):
+        self._name = name
+
+    def __call__(self, *args, **kwargs):
+        return self._name
+
+    def __neg__(self):
+        return SympyVariable(name=-self._name)
 
 class UnaryStatePrepImpl:
 

@@ -10,10 +10,10 @@ from tequila.circuit import QCircuit
 from tequila import BitString
 import typing, numpy, copy
 from tequila import TequilaException
-from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
+from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy, SympyVariable
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.objective.objective import assign_variable
+from tequila.objective.objective import assign_variable, Variable
 
 
 class TequilaUnaryStateException(TequilaException):
@@ -25,7 +25,6 @@ class TequilaUnaryStateException(TequilaException):
     """
 
     pass
-
 
 class UnaryStatePrep:
 
@@ -72,13 +71,13 @@ class UnaryStatePrep:
         success = False
 
         while (not success and count < self.max_repeat):
-            #try:
+            try:
                 count += 1
                 IMPL = UnaryStatePrepImpl()
                 abstract_angles = [sympy.var(IMPL.alphabets[i]) for i in range(len(target_space) - 1)]
                 self._abstract_circuit = IMPL.get_circuit(s=[i.binary for i in target_space])
                 success = True
-            #except:
+            except NotImplementedError:
                 numpy.random.shuffle(target_space)
 
         if not success: raise TequilaUnaryStateException(
