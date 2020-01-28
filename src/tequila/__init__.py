@@ -52,5 +52,24 @@ def simulate(objective: Objective,
             "Don't know how to simulate object of type: {type}, \n{object}".format(type=type(objective),
                                                                                    object=objective))
 
+def draw(objective, backend:str=None):
+    if backend is None:
+        if "cirq" in simulators.INSTALLED_SIMULATORS:
+            backend = "cirq"
+        elif "qiskit" in simulators.INSTALLED_SIMULATORS:
+            backend = "qiskit"
+
+    if isinstance(objective, Objective):
+        #pretty printer not here yet
+        print(objective)
+    else:
+        if backend is None:
+            print(objective)
+        else:
+            variables = {k:i for i,k in enumerate(objective.extract_variables())}
+            compiled=simulators.compile_circuit(abstract_circuit=objective, backend=backend, variables=variables)
+            print(compiled.circuit)
+
+
 
 __version__ = "AndreasDorn"
