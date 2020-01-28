@@ -472,9 +472,6 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
         if not isinstance(variable, numbers.Real):
             raise TequilaVariableException("You tried to assign a complex number to a FixedVariable")
         return FixedVariable(variable)
-    elif hasattr(variable,
-                 "evalf"):  # evalf detects sympy types ... not differentiable, hidden in the type hinting since it should not really be used
-        return SympyVariable(value=variable)
     elif isinstance(variable, typing.Hashable):
         return Variable(name=variable)
     else:

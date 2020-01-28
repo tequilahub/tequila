@@ -10,10 +10,10 @@ from tequila.circuit import QCircuit
 from tequila import BitString
 import typing, numpy, copy
 from tequila import TequilaException
-from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy, SympyVariable
+from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.objective.objective import assign_variable, Variable
+from tequila.objective.objective import assign_variable
 
 
 class TequilaUnaryStateException(TequilaException):
@@ -74,8 +74,9 @@ class UnaryStatePrep:
             try:
                 count += 1
                 IMPL = UnaryStatePrepImpl()
-                abstract_angles = [sympy.var(IMPL.alphabets[i]) for i in range(len(target_space) - 1)]
+                abstract_angles = [sympy.var(IMPL.alphabet(i)) for i in range(len(target_space) - 1)]
                 self._abstract_circuit = IMPL.get_circuit(s=[i.binary for i in target_space])
+                self._abstract_circuit.n_qubits = self._n_qubits
                 success = True
             except NotImplementedError:
                 numpy.random.shuffle(target_space)
@@ -88,7 +89,7 @@ class UnaryStatePrep:
         simulator.convert_to_numpy = False
         variables = None # {k:k.name.evalf() for k in self._abstract_circuit.extract_variables()}
         wfn = simulator.simulate(initial_state=BitString.from_int(0, nbits=self.n_qubits), variables=variables)
-
+        wfn.n_qubits = self._n_qubits
         equations = []
         for k in target_space:
             equations.append(wfn[k] - abstract_coefficients[k])
@@ -123,14 +124,16 @@ class UnaryStatePrep:
         result += str(self._abstract_circuit)
         return result
 
-    def evaluate_angles(self, wfn: QubitWaveFunction) -> typing.Dict[sympy.Symbol, float]:
+    def _evaluate_angles(self, wfn: QubitWaveFunction) -> typing.Dict[sympy.Symbol, float]:
         # coeffs need to be normalized
         wfn = wfn.normalize()
 
         # initialize the map that will substitute the abstract_coefficients with the QubitWaveFunction coefficients
         subs = dict()
         for key, ac in self._abstract_coeffs.items():
-            coeff = wfn[key]
+            coeff = 0.0
+            if key in wfn:
+                coeff = wfn[key]
             if coeff.imag != 0.0:
                 raise TequilaException("UnaryStatePrep currently only possible for real coefficients")
             subs[ac] = sympy.Float(float(coeff.real))
@@ -184,7 +187,7 @@ class UnaryStatePrep:
                                                               "But the target_space is " + str(
                 [k.binary for k in self._target_space]) + "\n")
 
-        angles = self.evaluate_angles(wfn=wfn)
+        angles = self._evaluate_angles(wfn=wfn)
 
         # construct new circuit with evaluated angles
         result = QCircuit()
@@ -198,16 +201,22 @@ class UnaryStatePrep:
 
         return result
 
+    def get_circuit(self):
+        """
+        :return: Return the abstract circuit with tequila parameters
+        """
+        result = QCircuit()
+        for g in self._abstract_circuit.gates:
+            g2 = copy.deepcopy(g)
+            if hasattr(g, "angle"):
+                symbol = g.angle
+                name = str(-symbol) # kill the minus from the dagger
+                g2._parameter = assign_variable(name)
+            result += g2
 
-if __name__ == "__main__":
-    # test and play around
-    USP = UnaryStatePrep(target_space=['001', '010', '100'])
-    print(USP)
+        return result
 
-    print("angles=", USP.evaluate_angles(coeffs=[1, 1, 1]))
-    # print(U.circuit)
-    U = USP(coeffs=[1, 1, 1])
-
-    print(SimulatorSymbolic().simulate_wavefunction(abstract_circuit=U).wavefunction)
-    print(SimulatorCirq().simulate_wavefunction(abstract_circuit=U).wavefunction)
-    # print(SimulatorPyquil().simulate_wavefunction(abstract_circuit=U).wavefunction)
+    def angles(self, wfn: QubitWaveFunction) -> typing.Dict[typing.Hashable, float]:
+        sympy_angles = self._evaluate_angles(wfn=wfn)
+        angles = {assign_variable(str(key)):value for key, value in sympy_angles.items()}
+        return angles
