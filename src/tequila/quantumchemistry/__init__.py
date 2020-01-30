@@ -31,7 +31,7 @@ def show_available_modules():
 def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
 
-def Molecule(geometry: str, basis_set: str, transformation: typing.Union[str, typing.Callable] = None, backend: str = None, **kwargs):
+def Molecule(geometry: str, basis_set: str, transformation: typing.Union[str, typing.Callable] = None, backend: str = None, *args, **kwargs):
     """
     :param geometry: filename to an xyz file
     :param basis_set: basis set in standard notation
@@ -41,7 +41,13 @@ def Molecule(geometry: str, basis_set: str, transformation: typing.Union[str, ty
     :return:
     """
 
-    parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **kwargs)
+
+    keyvals = {}
+    for k,v in kwargs.items():
+        if k in ParametersQC.__dict__.keys():
+            keyvals[k] = v
+
+    parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
     if backend is None:
         if "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
@@ -57,4 +63,4 @@ def Molecule(geometry: str, basis_set: str, transformation: typing.Union[str, ty
     if backend not in INSTALLED_QCHEMISTRY_BACKENDS:
         raise Exception(str(backend) + " was not found on your system")
 
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend](parameters=parameters, transformation=transformation)
+    return INSTALLED_QCHEMISTRY_BACKENDS[backend](parameters=parameters, transformation=transformation, *args, **kwargs)

@@ -227,7 +227,10 @@ class Amplitudes:
 
 class QuantumChemistryBase:
 
-    def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None):
+    def __init__(self, parameters: ParametersQC,
+                 transformation: typing.Union[str, typing.Callable] = None,
+                 *args,
+                 **kwargs):
         self.parameters = parameters
         if transformation is None:
             self.transformation = openfermion.jordan_wigner
@@ -241,7 +244,8 @@ class QuantumChemistryBase:
                                                                              "bravykitaevtree", "b-k-t"]:
             self.transformation = openfermion.bravyi_kitaev_tree
         elif hasattr(transformation, "lower"):
-            self.transformation = getattr(openfermion, transformation.lower())
+            trafo = getattr(openfermion, transformation.lower())
+            self.transformation = lambda x: trafo(x, *args, **kwargs)
         else:
             assert (callable(transformation))
             self.transformation = transformation
@@ -264,7 +268,7 @@ class QuantumChemistryBase:
                                        "use list of tuples as [(a_0, i_0),(a_1, i_1) ...]\n"
                                        "or list as [a_0, i_0, a_1, i_1, ... ]\n"
                                        "you gave: {}".format(indices))
-            converted = [(indices[2*i], indices[2*i+1]) for i in range(len(indices)//2)]
+            converted = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
         else:
             converted = indices
 
@@ -370,7 +374,7 @@ class QuantumChemistryBase:
                           trotter_steps: int,
                           initial_amplitudes: typing.Union[str, Amplitudes] = "mp2",
                           include_reference_ansatz=True,
-                          parametrized = True,
+                          parametrized=True,
                           trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
 
         """

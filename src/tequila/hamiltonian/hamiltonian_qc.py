@@ -61,14 +61,7 @@ class HamiltonianQC(QubitHamiltonian):
         :return: The total number of (spatial) orbitals (occupied and virtual)
         """
         return self.molecule.n_orbitals
-
-    @property
-    def n_qubits(self):
-        """
-        Convenience function
-        :return: Number of qubits needed
-        """
-        return 2 * self.n_orbitals
+    
 
     def make_fermionic_hamiltonian(self) -> FermionOperator:
         """
