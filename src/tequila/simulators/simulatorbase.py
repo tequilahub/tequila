@@ -272,6 +272,12 @@ class BackendExpectationValue:
         self._U = self.initialize_unitary(E.U, variables)
         self._H = self.initialize_hamiltonian(E.H)
 
+    def __call__(self, variables, samples:int=None, *args, **kwargs):
+        if samples is None:
+            return self.simulate(variables=variables, *args, **kwargs)
+        else:
+            return self.sample(variables=variables, samples=samples, *args, **kwargs)
+
     def initialize_hamiltonian(self, H):
         return H
 
@@ -280,6 +286,12 @@ class BackendExpectationValue:
 
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)
+
+    def sample(self, variables, samples, *args, **kwargs):
+        E = 0.0
+        for ps in self.H.paulistrings:
+            E += self.sample_paulistring(variables=variables, samples=samples, paulistring=ps, *args, **kwargs)
+        return E
 
     def simulate(self, variables, *args, **kwargs):
         # TODO the whole procedure is quite inefficient but at least it works for general backends

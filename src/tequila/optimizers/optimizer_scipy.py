@@ -76,6 +76,8 @@ class OptimizerSciPy(Optimizer):
 
     def __call__(self, objective: Objective,
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
+                 samples:int = None,
+                 backend:str = None,
                  reset_history: bool = True) -> SciPyReturnType:
         """
         Optimizes with scipi and gives back the optimized angles
@@ -103,8 +105,8 @@ class OptimizerSciPy(Optimizer):
             angles = {assign_variable(k): v for k, v in initial_values.items()}
 
         # do the compilation here to avoid costly recompilation during the optimization
-        compiled_objective = compile_objective(objective=objective, variables=angles, backend=self.simulator,
-                                               samples=self.samples)
+        compiled_objective = compile_objective(objective=objective, variables=angles, backend=backend,
+                                               samples=samples)
 
         grad_exval = []
         compiled_grad_objectives = dict()
@@ -112,7 +114,7 @@ class OptimizerSciPy(Optimizer):
             for k in angles.keys():
                 dO = grad(objective=objective, variable=k)
                 grad_exval.append(dO.count_expectationvalues())
-                compiled_grad_objectives[k] = compile_objective(objective=dO, variables=angles, samples=self.samples, backend=self.simulator)
+                compiled_grad_objectives[k] = compile_objective(objective=dO, variables=angles, samples=samples, backend=backend)
 
             infostring += "Gradients: {} expectationvalues (min={}, max={})\n".format(sum(grad_exval), min(grad_exval), max(grad_exval))
 
@@ -125,13 +127,13 @@ class OptimizerSciPy(Optimizer):
         Es = []
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
-                           samples=self.samples,
+                           samples=samples,
                            save_history=self.save_history,
                            silent=self.silent)
         if self.use_gradient:
             dE = _GradContainer(objective=compiled_grad_objectives,
                                 param_keys=param_keys,
-                                samples=self.samples,
+                                samples=samples,
                                 save_history=self.save_history,
                                 silent=self.silent)
 
@@ -141,10 +143,13 @@ class OptimizerSciPy(Optimizer):
             assert (names == param_keys)
 
         if not self.silent:
+            print("ObjectiveType is {}".format(type(compiled_objective)))
             print(infostring)
+            print("backend: {}".format(compiled_objective.backend))
+            print("samples: {}".format(samples))
 
         # get the number of real scipy iterations for better histories
-        real_iterations = []
+        real_iterations = [0]
         res = scipy.optimize.minimize(E, param_values, jac=dE,
                                       args=(Es,),
                                       method=self.method, tol=self.tol,
@@ -184,7 +189,7 @@ def minimize(objective: Objective,
              samples: int = None,
              maxiter: int = 100,
              backend: str = None,
-             method: str = "L-BFGS-B",
+             method: str = "BFGS",
              tol: float = 1.e-3,
              method_options: dict = None,
              method_bounds: typing.Dict[str, numbers.Real] = None,
@@ -211,7 +216,6 @@ def minimize(objective: Objective,
     :return: Named Tuple with: Optimized Energy, optimized angles, history (if return_history is True, scipy_output (if return_scipy_output is True)
     """
     optimizer = OptimizerSciPy(save_history=save_history,
-                               samples=samples,
                                maxiter=maxiter,
                                method=method,
                                method_options=method_options,
@@ -222,4 +226,4 @@ def minimize(objective: Objective,
                                tol=tol)
     if initial_values is not None:
         initial_values = {assign_variable(k): v for k,v in initial_values.items()}
-    return optimizer(objective=objective, initial_values=initial_values)
+    return optimizer(objective=objective, initial_values=initial_values, samples=samples)

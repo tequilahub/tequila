@@ -26,7 +26,7 @@ class _EvalContainer:
         angles = dict((self.param_keys[i], p[i]) for i in range(self.N))
         E = self.objective(variables=angles, samples=self.samples)
         if not self.silent:
-            print("E=", E, " angles=", angles)
+            print("E=", E, " angles=", angles, " samples=", self.samples)
         if self.save_history:
             self.history.append(E)
             self.history_angles.append(angles)

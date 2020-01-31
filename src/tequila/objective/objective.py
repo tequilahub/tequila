@@ -68,6 +68,20 @@ class Objective:
         self._args = tuple(args)
         self._transformation = transformation
 
+    @property
+    def backend(self) -> str:
+        """
+        Checks if the objective is compiled and gives back the name of the backend if so
+        Otherwise returns None
+        If the objective has no expectationvalues it gives back 'free'
+        """
+        if self.has_expectationvalues():
+            for arg in self.args:
+                if hasattr(arg, "U"):
+                    return str(type(arg))
+        else:
+            return "free"
+
     def extract_variables(self):
         """
         Extract all variables on which the objective depends
@@ -271,7 +285,7 @@ class Objective:
             E = []
             for Ei in self.args:
                 if hasattr(Ei, "simulate"):
-                    E.append(Ei.simulate(variables=variables, *args, **kwargs))
+                    E.append(Ei(variables=variables, *args, **kwargs))
                 elif hasattr(Ei, "U"):
                     raise TequilaException(
                         "You are trying to evaluate a non-compiled objective.\nTry passing this object to tequila.simulate(...)")
