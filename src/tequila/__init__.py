@@ -13,6 +13,7 @@ from numbers import Real as RealNumber
 
 # make sure to use the jax/autograd numpy
 from tequila.autograd_imports import numpy, __AUTOGRAD__BACKEND__
+from tequila.circuit.gradient import grad
 
 
 # get rid of the jax GPU/CPU warnings

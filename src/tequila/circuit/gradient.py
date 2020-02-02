@@ -1,7 +1,7 @@
 from tequila.circuit.compiler import compile_controlled_rotation
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget
-from tequila.objective.objective import Objective, ExpectationValueImpl, Variable
+from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable
 from tequila import TequilaException
 
 import copy

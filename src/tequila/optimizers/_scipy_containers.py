@@ -11,19 +11,22 @@ class _EvalContainer:
     This class is used by the SciPy optimizer and should not be used somewhere else
     """
 
-    def __init__(self, objective, param_keys, samples=None, save_history=True, silent: bool = True):
+    def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True, silent: bool = True):
         self.objective = objective
         self.samples = samples
         self.param_keys = param_keys
         self.N = len(param_keys)
         self.save_history = save_history
         self.silent = silent
+        self.passive_angles = passive_angles
         if save_history:
             self.history = []
             self.history_angles = []
 
     def __call__(self, p, *args, **kwargs):
         angles = dict((self.param_keys[i], p[i]) for i in range(self.N))
+        if self.passive_angles is not None:
+            angles = {**angles, **self.passive_angles}
         E = self.objective(variables=angles, samples=self.samples)
         if not self.silent:
             print("E=", E, " angles=", angles, " samples=", self.samples)
@@ -44,6 +47,8 @@ class _GradContainer(_EvalContainer):
         dE_vec = numpy.zeros(self.N)
         memory = dict()
         variables = dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys)))
+        if self.passive_angles is not None:
+            variables = {**variables, **self.passive_angles}
         for i in range(self.N):
             dE_vec[i] = dO[self.param_keys[i]](variables=variables, samples=self.samples)
             memory[self.param_keys[i]] = dE_vec[i]
