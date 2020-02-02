@@ -1,10 +1,9 @@
 import typing, copy, numbers
-from jax import numpy as numpy
 
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
 from tequila.hamiltonian import paulis
-
+from tequila.autograd_imports import numpy
 
 class ExpectationValueImpl:
     """

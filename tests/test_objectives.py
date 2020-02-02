@@ -3,7 +3,7 @@ from tequila.objective import Objective, ExpectationValue
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.circuit.gradient import grad
-import jax.numpy as np
+from tequila import numpy as np
 import numpy
 import pytest
 from tequila.simulators import INSTALLED_SIMULATORS

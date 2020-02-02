@@ -11,10 +11,14 @@ import tequila.quantumchemistry as chemistry
 from typing import Dict, Union, Hashable
 from numbers import Real as RealNumber
 
-from tequila.circuit.gradient import grad
+# make sure to use the jax/autograd numpy
+from tequila.autograd_imports import numpy, __AUTOGRAD__BACKEND__
 
-# make sure to use the jax numpy
-from tequila.objective.objective import numpy
+
+# get rid of the jax GPU/CPU warnings
+import warnings
+warnings.filterwarnings("ignore", module="jax")
+
 
 def simulate(objective: Objective,
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,

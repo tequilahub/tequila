@@ -4,11 +4,11 @@ from tequila.circuit.compiler import compile_trotterized_gate, compile_exponenti
 from tequila.objective.objective import Objective, ExpectationValueImpl, Variable
 from tequila import TequilaException
 
-import numpy as np
 import copy
 import typing
 
-import jax
+# make sure to use the jax/autograd numpy
+from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
 
 
 def grad(objective: Objective, variable: Variable = None, no_compile=False):
@@ -61,7 +61,12 @@ def __grad_objective(objective: Objective, variable: Variable):
     transformation = objective.transformation
     dO = None
     for i, arg in enumerate(args):
-        df = jax.jit(jax.grad(transformation, argnums=i))
+        if __AUTOGRAD__BACKEND__ == "jax":
+            df = jax.grad(transformation, argnums=i)
+        elif __AUTOGRAD__BACKEND__ == "autograd":
+            df = jax.grad(transformation, argnum=i)
+        else:
+            raise TequilaException("Can't differentiate without autograd or jax")
         outer = Objective(args=args, transformation=df)
 
         inner = __grad_inner(arg=arg, variable=variable)
@@ -152,14 +157,14 @@ def __grad_rotation(unitary, g, i, variable, hamiltonian):
     :return: an Objective, whose calculation yields the gradient of g w.r.t variable
     '''
 
-    shift_a = g._parameter + np.pi / 2
+    shift_a = g._parameter + numpy.pi / 2
     neo_a = RotationGateImpl(axis=g.axis,target=g.target, control=g.control, angle=shift_a)
 
-    neo_a._parameter = g._parameter + np.pi / 2
+    neo_a._parameter = g._parameter + numpy.pi / 2
     U1 = unitary.replace_gate(position=i, gates=[neo_a])
     w1 = 0.5 * __grad_inner(g.parameter, variable)
 
-    shift_b = g._parameter - np.pi / 2
+    shift_b = g._parameter - numpy.pi / 2
     neo_b = RotationGateImpl(axis=g.axis, target=g.target, control=g.control, angle=shift_b)
 
     U2 = unitary.replace_gate(position=i, gates=[neo_b])
@@ -186,7 +191,7 @@ def __grad_power(unitary, g, i, variable, hamiltonian):
     if g.name in ['H', 'Hadamard']:
         raise TequilaException('sorry, cannot figure out hadamard gradients yet')
     else:
-        n_pow = g.parameter * np.pi
+        n_pow = g.parameter * numpy.pi
         if g.name in ['X', 'x']:
             axis = 0
         elif g.name in ['Y', 'y']:
@@ -197,9 +202,9 @@ def __grad_power(unitary, g, i, variable, hamiltonian):
             raise NotImplementedError(
                 'sorry, I have no idea what this gate is and cannot build the gradient.')
         U1 = unitary.replace_gate(position=i, gates=[
-            RotationGateImpl(axis=axis, target=target, angle=(n_pow + np.pi / 2))])
+            RotationGateImpl(axis=axis, target=target, angle=(n_pow + numpy.pi / 2))])
         U2 = unitary.replace_gate(position=i, gates=[
-            RotationGateImpl(axis=axis, target=target, angle=(n_pow - np.pi / 2))])
+            RotationGateImpl(axis=axis, target=target, angle=(n_pow - numpy.pi / 2))])
 
         w1 = 0.5 * __grad_inner(g.parameter, variable)
         w2 = -0.5 * __grad_inner(g.parameter, variable)
