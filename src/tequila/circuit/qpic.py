@@ -18,6 +18,8 @@ system_has_pdflatex = which("pdflatex") is not None
 def assign_name(parameter):
     if isinstance(parameter, tuple):
         return "\\theta"
+    if hasattr(parameter, "extract_variables"):
+        return str(parameter.extract_variables()).lstrip('[').rstrip(']')
     return str(parameter)
 
 
