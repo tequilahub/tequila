@@ -1,6 +1,6 @@
 import scipy, numpy, typing, numbers
 from tequila.objective import Objective
-from tequila.objective.objective import assign_variable, Variable
+from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer
@@ -99,21 +99,16 @@ class OptimizerSciPy(Optimizer):
 
         if variables is None:
             variables = objective.extract_variables()
-        else:
-            # convenience which allows the user to just pass down the keys of Variables
-            variables = [assign_variable(v) for v in variables]
 
         # Extract initial values
         angles = initial_values
         if initial_values is None:
             angles = {v: 0.0 for v in objective.extract_variables()}
-        else:
-            # convenience which allows the user to just pass down the keys of Variables
-            angles = {assign_variable(k): v for k, v in initial_values.items()}
 
         active_angles = {}
         for v in variables:
-            active_angles = {v: angles[v]}
+            active_angles[v] = angles[v]
+
         passive_angles = {}
         for k, v in angles.items():
             if k not in active_angles.keys():
@@ -125,19 +120,15 @@ class OptimizerSciPy(Optimizer):
 
         grad_exval = []
         compiled_grad_objectives = dict()
-        if self.use_gradient and gradient is None:
-            for k in active_angles.keys():
-                dO = grad(objective=objective, variable=k)
-                grad_exval.append(dO.count_expectationvalues())
-                compiled_grad_objectives[k] = compile_objective(objective=dO, variables=angles, samples=samples,
-                                                                backend=backend)
-        elif self.use_gradient:
-            gradient = {assign_variable(k): v for k, v in gradient.items()}
+        if self.use_gradient:
+            if gradient is None:
+                gradient = {assign_variable(k): grad(objective=objective, variable=k) for k in active_angles.keys()}
+            else:
+                gradient = {assign_variable(k): v for k, v in gradient.items()}
+
             for k in active_angles.keys():
                 if k not in gradient:
-                    raise Exception(
-                        "Something was passed down as gradient but it does not contain the gradient for the variable {}".format(
-                            k))
+                    raise Exception("No gradient for variable {}".format(k))
                 grad_exval.append(gradient[k].count_expectationvalues())
                 compiled_grad_objectives[k] = compile_objective(objective=gradient[k], variables=angles, samples=samples, backend=backend)
 
@@ -175,6 +166,7 @@ class OptimizerSciPy(Optimizer):
             print(infostring)
             print("backend: {}".format(compiled_objective.backend))
             print("samples: {}".format(samples))
+            print("{} active variables".format(len(active_angles)))
 
         # get the number of real scipy iterations for better histories
         real_iterations = [0]
@@ -215,15 +207,15 @@ def available_methods():
 
 def minimize(objective: Objective,
              gradient: typing.Dict[Variable, Objective] = None,
-             initial_values: typing.Dict[str, numbers.Real] = None,
-             variables: typing.List[typing.Union[Variable, typing.Hashable]] = None,
+             initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
+             variables: typing.List[typing.Hashable] = None,
              samples: int = None,
              maxiter: int = 100,
              backend: str = None,
              method: str = "BFGS",
              tol: float = 1.e-3,
              method_options: dict = None,
-             method_bounds: typing.Dict[str, numbers.Real] = None,
+             method_bounds: typing.Dict[typing.Hashable, numbers.Real] = None,
              method_constraints=None,
              save_history: bool = True,
              silent: bool = False) -> SciPyReturnType:
@@ -249,6 +241,13 @@ def minimize(objective: Objective,
     :param silent: If False the optimizer prints out evaluated energies
     :return: Named Tuple with: Optimized Energy, optimized angles, history (if return_history is True, scipy_output (if return_scipy_output is True)
     """
+
+    # bring into right format
+    variables = format_variable_list(variables)
+    initial_values = format_variable_dictionary(initial_values)
+    gradient = format_variable_dictionary(gradient)
+    method_bounds = format_variable_dictionary(method_bounds)
+
     optimizer = OptimizerSciPy(save_history=save_history,
                                maxiter=maxiter,
                                method=method,

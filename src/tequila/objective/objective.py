@@ -5,6 +5,7 @@ from tequila.utils import JoinedTransformation, to_float
 from tequila.hamiltonian import paulis
 from tequila.autograd_imports import numpy
 
+
 class ExpectationValueImpl:
     """
     Internal Object, do not use from the outside
@@ -256,7 +257,7 @@ class Objective:
         i = 0
         for arg in self.args:
             if hasattr(arg, "U"):
-                i +=1
+                i += 1
         return i
 
     def __repr__(self):
@@ -465,6 +466,31 @@ class FixedVariable(float):
 
     def __call__(self, *args, **kwargs):
         return self
+
+
+def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List[Variable]:
+    """
+    Convenience functions to assign tequila variables
+    :param variables: a list with Hashables as keys
+    :return: a list with tq.Variable types as keys
+    """
+    if variables is None:
+        return variables
+    else:
+        return [assign_variable(k) for k in variables]
+
+
+def format_variable_dictionary(variables: typing.Dict[typing.Hashable, typing.Any]) -> typing.Dict[
+    Variable, typing.Any]:
+    """
+    Convenience functions to assign tequila variables
+    :param variables: a dictionary with Hashables as keys
+    :return: a dictionary with tq.Variable types as keys
+    """
+    if variables is None:
+        return variables
+    else:
+        return {assign_variable(k): v for k, v in variables.items()}
 
 
 def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[

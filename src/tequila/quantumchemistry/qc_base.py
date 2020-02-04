@@ -87,6 +87,19 @@ class ParametersQC:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
         return result
 
+    def get_geometry_string(self) -> str:
+        """
+        returns the geometry as a string
+        :return: geometrystring
+        """
+        if self.geometry.split('.')[-1] == 'xyz':
+            geomstring, comment = self.read_xyz_from_file(self.geometry)
+            if comment is not None:
+                self.description = comment
+            return geomstring
+        else:
+            return self.geometry
+
     def get_geometry(self):
         """
         Returns the geometry
