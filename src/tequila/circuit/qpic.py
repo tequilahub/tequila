@@ -45,7 +45,7 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
                 result += " G $" + g.name + "(" + g.parameter.name + ")$ width=" + str(
                     25 + 5*len(assign_name(g.parameter))) + " "
             elif g.name.lower() == "x":
-                result += "+"
+                result += " C "
             else:
                 result += g.name + " "
 
