@@ -1,5 +1,5 @@
 from numpy import isclose, pi
-from math import hypot, atan2
+from cmath import polar
 import numbers
 
 def list_assignement(o):
@@ -25,25 +25,15 @@ def number_to_string(number: complex, precision: int=4, threshold: float = 1.e-6
     number = complex(number)
     real = number.real
     imag = number.imag
-    prec = '{:.'+str(precision)+'f}'
+    prec = '{:+.'+str(precision)+'f}'
 
     if isclose(real, 0.0, atol=threshold):
         return prec.format(imag)+"i" if imag < 0 else ('+'+prec).format(imag)+"i"
     elif isclose(imag, 0.0, atol=threshold):
         return prec.format(real) if real < 0 else ('+'+prec).format(real)
     else:
-        r = hypot(real, imag)
-        theta = atan2(real, imag)
-        if isclose(theta, 0.5, atol=threshold):
-            return "+" + prec.format(r) + "i"
-        elif isclose(theta, -0.5, atol=threshold):
-            return "-" + prec.format(r) + "i"
-        elif isclose(theta, 1.0, atol=threshold):
-            return "-" + prec.format(r) + "i"
-        elif isclose(theta, -1.0, atol=threshold):
-            return "-" + prec.format(r) + "i"
-        else:
-            return "+"+prec.format(r) + ('e^('+prec).format(theta/pi) + 'πi)'
+        r, theta = polar(number)
+        return prec.format(r) + ('e^('+prec).format(theta/pi) + 'πi)'
 
 
 if __name__ == "__main__":
