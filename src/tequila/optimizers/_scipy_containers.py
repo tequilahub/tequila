@@ -11,7 +11,8 @@ class _EvalContainer:
     This class is used by the SciPy optimizer and should not be used somewhere else
     """
 
-    def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True, silent: bool = True):
+    def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True,
+                 silent: bool = True):
         self.objective = objective
         self.samples = samples
         self.param_keys = param_keys
@@ -54,3 +55,23 @@ class _GradContainer(_EvalContainer):
             memory[self.param_keys[i]] = dE_vec[i]
         self.history.append(memory)
         return dE_vec
+
+
+class _HessContainer(_EvalContainer):
+
+    def __call__(self, p, *args, **kwargs):
+        ddO = self.objective
+        ddE_mat = numpy.zeros(shape=[self.N, self.N])
+        memory = dict()
+        variables = dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys)))
+        if self.passive_angles is not None:
+            variables = {**variables, **self.passive_angles}
+        for i in range(self.N):
+            for j in range(i, self.N):
+                key = (self.param_keys[i], self.param_keys[j])
+                value = ddO[key](variables=variables, samples=self.samples)
+                ddE_mat[i, j] = value
+                ddE_mat[j, i] = value
+                memory[key] = value
+        self.history.append(memory)
+        return ddE_mat

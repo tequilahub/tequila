@@ -3,7 +3,7 @@ from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
-from ._scipy_containers import _EvalContainer, _GradContainer
+from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer
 from collections import namedtuple
 from tequila.simulators import compile_objective, simulate_objective
 import copy
@@ -13,8 +13,8 @@ SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_out
 
 class OptimizerSciPy(Optimizer):
     gradient_free_methods = ['NELDER-MEAD', 'COBYLA', 'POWELL', 'SLSQP']
-    gradient_based_methods = ['L-BFGS-B', 'BFGS', 'CG', 'DOGLEG', 'TNC']
-
+    gradient_based_methods = ['L-BFGS-B', 'BFGS', 'CG', 'TNC']
+    hessian_based_methods = ["TRUST-KRYLOV", "NEWTON-CG", "DOGLEG", "TRUST-NCG", "TRUST-EXACT", "TRUST-CONSTR"]
     @classmethod
     def available_methods(cls):
         """
@@ -29,6 +29,7 @@ class OptimizerSciPy(Optimizer):
                  method_constraints=None,
                  silent: bool = True,
                  use_gradient: bool = None,
+                 use_hessian: bool = None,
                  **kwargs):
         """
         Optimize a circuit to minimize a given objective using scipy
@@ -51,15 +52,32 @@ class OptimizerSciPy(Optimizer):
             method_bounds = {assign_variable(k): v for k, v in method_bounds.items()}
         self.method_bounds = method_bounds
         self.silent = silent
+
+        # set defaults
+        default_use_gradient = False
+        default_use_hessian = False
+        if method.upper() in self.gradient_based_methods + self.hessian_based_methods:
+            default_use_gradient = True
+            if method.upper() in self.hessian_based_methods:
+                default_use_hessian = True
+
+        # overwrite if use_gradient/use_hessian are explicitly given (proceed on own risk)
+        # if you chose a method which requires gradients/hessian scipy will evaluate numerically
+        # if possible
         if use_gradient is None:
-            if method.upper() in self.gradient_based_methods:
-                self.use_gradient = True
-            elif method.upper() in self.gradient_free_methods:
-                self.use_gradient = False
-            else:
-                self.use_gradient = True
+            self.use_gradient = default_use_gradient
         else:
             self.use_gradient = use_gradient
+            #failsafe
+            if use_gradient is False and method.upper() in self.gradient_based_methods + self.hessian_based_methods:
+                self.use_gradient = '2-point'
+        if use_hessian is None:
+            self.use_hessian = default_use_hessian
+        else:
+            self.use_hessian = use_hessian
+            # failsafe
+            if use_hessian is False and method.upper() in self.hessian_based_methods:
+                self.use_hessian = '2-point'
 
         if method_options is None:
             self.method_options = {'maxiter': self.maxiter}
@@ -92,6 +110,8 @@ class OptimizerSciPy(Optimizer):
         """
 
         infostring = "Starting {method} optimization\n".format(method=self.method)
+        infostring += "use_gradient : {}\n".format(self.use_gradient)
+        infostring += "use_hessian  : {}\n".format(self.use_hessian)
         infostring += "Objective: {} expectationvalues\n".format(objective.count_expectationvalues())
 
         if self.save_history and reset_history:
@@ -119,8 +139,9 @@ class OptimizerSciPy(Optimizer):
                                                samples=samples)
 
         grad_exval = []
-        compiled_grad_objectives = dict()
-        if self.use_gradient:
+        compiled_grad_objectives = None
+        if self.use_gradient is True:
+            compiled_grad_objectives = dict()
             if gradient is None:
                 gradient = {assign_variable(k): grad(objective=objective, variable=k) for k in active_angles.keys()}
             else:
@@ -130,17 +151,37 @@ class OptimizerSciPy(Optimizer):
                 if k not in gradient:
                     raise Exception("No gradient for variable {}".format(k))
                 grad_exval.append(gradient[k].count_expectationvalues())
-                compiled_grad_objectives[k] = compile_objective(objective=gradient[k], variables=angles, samples=samples, backend=backend)
+                compiled_grad_objectives[k] = compile_objective(objective=gradient[k], variables=angles,
+                                                                samples=samples, backend=backend)
 
             infostring += "Gradients: {} expectationvalues (min={}, max={})\n".format(sum(grad_exval), min(grad_exval),
                                                                                       max(grad_exval))
+
+        compiled_hess_objective = None
+        if self.use_hessian is True:
+            compiled_hess_objective = dict()
+            for i, k in enumerate(active_angles.keys()):
+                for j, l in enumerate(active_angles.keys()):
+                    if j > i: continue
+                    hess = grad(gradient[k], l)
+                    compiled_hess = compile_objective(objective=hess, variables=angles, samples=samples,
+                                                       backend=backend)
+                    compiled_hess_objective[(k, l)] = compiled_hess
+                    compiled_hess_objective[(l, k)] = compiled_hess
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*active_angles.items())
         param_values = numpy.array(param_values)
 
-        # Make E, grad E
-        dE = None
+        # Make E, grad
+        if self.method in self.gradient_based_methods + self.hessian_based_methods:
+            dE = self.use_gradient
+        else:
+            dE = None
+        if self.method in self.hessian_based_methods:
+            ddE = self.use_hessian
+        else:
+            ddE = None
         Es = []
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
@@ -148,13 +189,20 @@ class OptimizerSciPy(Optimizer):
                            passive_angles=passive_angles,
                            save_history=self.save_history,
                            silent=self.silent)
-        if self.use_gradient:
+        if self.use_gradient is True:
             dE = _GradContainer(objective=compiled_grad_objectives,
                                 param_keys=param_keys,
                                 samples=samples,
                                 passive_angles=passive_angles,
                                 save_history=self.save_history,
                                 silent=self.silent)
+        if self.use_hessian is True:
+            ddE = _HessContainer(objective=compiled_hess_objective,
+                                 param_keys=param_keys,
+                                 samples=samples,
+                                 passive_angles=passive_angles,
+                                 save_history=self.save_history,
+                                 silent=self.silent)
 
         bounds = None
         if self.method_bounds is not None:
@@ -170,13 +218,14 @@ class OptimizerSciPy(Optimizer):
 
         # get the number of real scipy iterations for better histories
         real_iterations = [0]
-        res = scipy.optimize.minimize(E, param_values, jac=dE,
+
+        res = scipy.optimize.minimize(E, param_values, jac=dE, hess=ddE,
                                       args=(Es,),
                                       method=self.method, tol=self.tol,
                                       bounds=bounds,
                                       constraints=self.method_constraints,
                                       options=self.method_options,
-                                      callback=lambda x: real_iterations.append(len(E.history) - 1))
+                                      callback=lambda x, *args: real_iterations.append(len(E.history) - 1))
 
         # failsafe since callback is not implemented everywhere
         if len(real_iterations) == 0:
@@ -186,9 +235,17 @@ class OptimizerSciPy(Optimizer):
             self.history.energy_evaluations = E.history
             self.history.angles = [E.history_angles[i] for i in real_iterations]
             self.history.angles_evaluations = E.history_angles
-            if self.use_gradient:
-                self.history.gradients = [dE.history[i] for i in real_iterations]
+            if self.use_gradient is True:
+                # can currently only save gradients if explicitly evaluated
+                # and will fail for hessian based approaches
+                # need better callback functions
+                if self.method not in self.hessian_based_methods:
+                    self.history.gradients = [dE.history[i] for i in real_iterations]
                 self.history.gradients_evaluations = dE.history
+            if self.use_hessian is True:
+                # hessians are not evaluated in the same frequencies as energies
+                # therefore we can not store the "real" iterations currently
+                self.history.hessians_evaluations = ddE.history
 
         E_final = res.fun
         angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
@@ -218,7 +275,9 @@ def minimize(objective: Objective,
              method_bounds: typing.Dict[typing.Hashable, numbers.Real] = None,
              method_constraints=None,
              save_history: bool = True,
-             silent: bool = False) -> SciPyReturnType:
+             silent: bool = False,
+             use_gradient: bool = None,
+             use_hessian: bool = None) -> SciPyReturnType:
     """
     Call this if you don't like objects
     :param objective: The tequila Objective to minimize
@@ -256,7 +315,10 @@ def minimize(objective: Objective,
                                method_constraints=method_constraints,
                                silent=silent,
                                simulator=backend,
-                               tol=tol)
+                               tol=tol,
+                               use_gradient = use_gradient,
+                               use_hessian = use_hessian)
     if initial_values is not None:
         initial_values = {assign_variable(k): v for k, v in initial_values.items()}
-    return optimizer(objective=objective, gradient=gradient, initial_values=initial_values, variables=variables, samples=samples)
+    return optimizer(objective=objective, gradient=gradient, initial_values=initial_values, variables=variables,
+                     samples=samples)
