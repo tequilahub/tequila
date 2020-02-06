@@ -1,15 +1,16 @@
 import qulacs
+import typing, numbers
 from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.simulators.simulatorbase import SimulatorBase, SimulatorReturnType
-from tequila.simulators.simulatorbase import BackendHandler
-from tequila.circuit import QCircuit
+from tequila.simulators.simulatorbase import BackendCircuit, BackendExpectationValue
 
 """
 todo: overwrite simulate_objective for this simulators, might be faster
 
 Qulacs uses different Rotational Gate conventions: Rx(angle) = exp(i angle/2 X) instead of exp(-i angle/2 X)
+And the same for MultiPauli rotational gates
+The angles are scaled with -1.0 to keep things consistent
 """
 
 
@@ -18,100 +19,194 @@ class TequilaQulacsException(TequilaException):
         return "Error in qulacs backend:" + self.message
 
 
-class BackenHandlerQulacs(BackendHandler):
+class BackendCircuitQulacs(BackendCircuit):
     recompile_swap = False
     recompile_multitarget = True
-    recompile_controlled_rotation = False
-    recompile_exponential_pauli = True
+    recompile_controlled_rotation = True
+    recompile_exponential_pauli = False
+
+    numbering = BitNumbering.LSB
+
+    def __init__(self, *args, **kwargs):
+        self.variables = []  # the order of this list will be the order of variables in the qulacs circuit
+        super().__init__(*args, **kwargs)
+
+    def update_variables(self, variables):
+        for k, angle in enumerate(self.variables):
+            self.circuit.set_parameter(k, angle(variables))
+
+    def do_simulate(self, variables, initial_state, *args, **kwargs):
+        state = qulacs.QuantumState(self.n_qubits)
+        lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
+        state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
+        self.circuit.update_quantum_state(state)
+
+        wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
+        return wfn
 
     def fast_return(self, abstract_circuit):
-        False
+        return False
 
-    def initialize_circuit(self, qubit_map, *args, **kwargs):
-        n_qubits = len(qubit_map)
-        return qulacs.QuantumCircuit(n_qubits)
+    def initialize_circuit(self, *args, **kwargs):
+        n_qubits = len(self.qubit_map)
+        return qulacs.ParametricQuantumCircuit(n_qubits)
 
-    def add_gate(self, gate, circuit, qubit_map, *args, **kwargs):
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]])
+    def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
+        convert = {'x': 1, 'y': 2, 'z': 3}
+        pind = [convert[x.lower()] for x in gate.paulistring.values()]
+        qind = [self.qubit_map[x] for x in gate.paulistring.keys()]
+        if len(gate.extract_variables()) > 0:
+            self.variables.append(-gate.angle * gate.paulistring.coeff)
+            circuit.add_parametric_multi_Pauli_rotation_gate(qind, pind,
+                                                             -gate.angle(variables) * gate.paulistring.coeff)
+        else:
+            circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.angle(variables) * gate.paulistring.coeff)
 
-    def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        #assert (len(gate.control) == 1)
+    def add_gate(self, gate, circuit, *args, **kwargs):
+        targets = tuple([self.qubit_map[t] for t in gate.target])
+        getattr(circuit, "add_" + gate.name.upper() + "_gate")(*targets)
+
+    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
         if len(gate.control) == 1 and gate.name.upper() == "X":
-            getattr(circuit, "add_CNOT_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
+            getattr(circuit, "add_CNOT_gate")(self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
         elif len(gate.control) == 1 and gate.name.upper() == "Z":
-            getattr(circuit, "add_CZ_gate")(qubit_map[gate.control[0]], qubit_map[gate.target[0]])
+            getattr(circuit, "add_CZ_gate")(self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
         else:
             try:
-                qulacs_gate = getattr(qulacs.gate, gate.name.upper())(qubit_map[gate.target[0]])
+                qulacs_gate = getattr(qulacs.gate, gate.name.upper())(self.qubit_map[gate.target[0]])
                 qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
                 for c in gate.control:
-                    qulacs_gate.add_control_qubit(qubit_map[c], 1)
+                    qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
                 circuit.add_gate(qulacs_gate)
             except:
                 raise TequilaQulacsException("Qulacs does not know the controlled gate: " + str(gate))
 
-    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        angle = -gate.angle()
-        if hasattr(angle, "imag") and angle.imag == 0.0:
-            angle = float(angle.real)
+    def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
+        # minus sign due to different conventions in qulacs
+        if len(gate.extract_variables()) > 0:
+            self.variables.append(-gate.angle)
+            getattr(circuit, "add_parametric_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]],
+                                                                              -gate.angle(variables=variables))
         else:
-            raise TequilaQulacsException("Angle as imaginary part; gate=" + str(gate))
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]], angle)
+            getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]],
+                                                                   -gate.angle(variables=variables))
 
-    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        angle = -gate.angle()
-        if hasattr(angle, "imag") and angle.imag == 0.0:
-            angle = float(angle.real)
-        else:
-            raise TequilaQulacsException("Angle as imaginary part; gate=" + str(gate))
-        qulacs_gate = getattr(qulacs.gate, gate.name.upper())(qubit_map[gate.target[0]], angle)
+    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
+        angle = -gate.angle(variables=variables)
+        qulacs_gate = getattr(qulacs.gate, gate.name.upper())(self.qubit_map[gate.target[0]], angle)
         qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
         for c in gate.control:
-            qulacs_gate.add_control_qubit(qubit_map[c], 1)
+            qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
+
+        if len(gate.extract_variables()) > 0:
+            self.variables.append(-gate.angle)
+            raise TequilaQulacsException("Parametric controlled-rotations are currently not possible")
+
         circuit.add_gate(qulacs_gate)
 
+    def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
+        assert (len(gate.extract_variables()) == 0)
+        power = gate.power(variables=variables)
 
-    def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        if gate.power() == 1:
-            return self.add_gate(gate=gate, qubit_map=qubit_map, circuit=circuit)
-        elif gate.power() == 0.5:
-            getattr(circuit, "add_sqrt" + gate.name.upper() + "_gate")(qubit_map[gate.target[0]])
+        if power == 1:
+            return self.add_gate(gate=gate, qubit_map=self.qubit_map, circuit=circuit)
+        elif power == 0.5:
+            getattr(circuit, "add_sqrt" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]])
         else:
             raise TequilaQulacsException("Only sqrt gates supported as power gates")
 
     def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
         raise TequilaQulacsException("no controlled power gates")
 
-    def add_measurement(self, gate, qubit_map, circuit, *args, **kwargs):
-        raise TequilaQulacsException("only full wavefunction simulation, no measurements")
+    def add_measurement(self, gate, circuit, *args, **kwargs):
+        raise TequilaQulacsException(
+            "only full wavefunction simulation, no measurements. Did you forget to add the number of samples?")
 
-    def make_qubit_map(self, abstract_circuit: QCircuit):
-        qubit_map = dict()
-        for i, q in enumerate(abstract_circuit.qubits):
-            qubit_map[q] = i
-        return qubit_map
+    def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
+        """
+        Can be overwritten if the backend supports its own circuit optimization
+        To be clear: Optimization means optimizing the compiled circuit w.r.t depth not
+        optimizing parameters
+        :return: Optimized circuit
+        """
+
+        # as far as I interpret it it makes most sense to set the block_size to the number of
+        # available threads
+        if max_block_size is None:
+            import os
+            omp_threads = os.environ.get('OMP_NUM_THREADS')
+            if omp_threads is None:
+                max_block_size = 1
+            else:
+                max_block_size = int(omp_threads)
+
+        old = circuit.calculate_depth()
+        opt = qulacs.circuit.QuantumCircuitOptimizer()
+        opt.optimize(circuit, max_block_size)
+        if not silent:
+            print("qulacs: optimized circuit depth from {} to {} with max_block_size {}".format(old, circuit.calculate_depth(), max_block_size))
+        return circuit
 
 
-class SimulatorQulacs(SimulatorBase):
-    numbering: BitNumbering = BitNumbering.LSB
+class BackendExpectationValueQulacs(BackendExpectationValue):
+    BackendCircuitType = BackendCircuitQulacs
+    use_mapping = True
 
-    backend_handler = BackenHandlerQulacs()
+    def simulate(self, variables, *args, **kwargs):
 
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0):
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
+        # fast return if possible
+        if self.H is None:
+            return 0.0
+        elif isinstance(self.H, numbers.Number):
+            return self.H
 
-        qubits = dict()
-        count = 0
-        for q in abstract_circuit.qubits:
-            qubits[q] = count
-            count += 1
+        self.update_variables(variables)
+        state = qulacs.QuantumState(self.U.n_qubits)
+        self.U.circuit.update_quantum_state(state)
+        return self.H.get_expectation_value(state)
 
-        n_qubits = len(abstract_circuit.qubits)
-        state = qulacs.QuantumState(n_qubits)
-        lsb = BitStringLSB.from_int(initial_state, nbits=n_qubits)
-        state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
-        circuit.update_quantum_state(state)
+    def initialize_hamiltonian(self, H):
+        if self.use_mapping:
+            # initialize only the active parts of the Hamiltonian and pre-evaluate the passive ones
+            # passive parts are the components of each individual pauli string which act on qubits where the circuit does not act on
+            # if the circuit does not act on those qubits the passive parts are always evaluating to 1 (if the pauli operator is Z) or 0 (otherwise)
+            # since those qubits are always in state |0>
+            non_zero_strings = []
+            unit_strings = 0
+            for ps in H.paulistrings:
+                string = ""
+                for k, v in ps.items():
+                    if k in self.U.qubit_map:
+                        string += v.upper() + " " + str(self.U.qubit_map[k]) + " "
+                    elif v.upper() != "Z":
+                        string = "ZERO"
+                        break
+                string = string.strip()
+                if string != "ZERO":
+                    non_zero_strings.append((ps.coeff, string))
+                elif string == "":
+                    unit_strings += 1
 
-        wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
-        return SimulatorReturnType(backend_result=state, wavefunction=wfn, circuit=circuit,
-                                   abstract_circuit=abstract_circuit)
+            if len(non_zero_strings) == 0:
+                return unit_strings
+            else:
+                assert unit_strings == 0
+
+            qulacs_H = qulacs.Observable(self.n_qubits)
+            for coeff, string in non_zero_strings:
+                qulacs_H.add_operator(coeff, string)
+
+            return qulacs_H
+        else:
+            if self.U.n_qubits < H.n_qubits:
+                raise TequilaQulacsException(
+                    "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are not yet implemented")
+
+            qulacs_H = qulacs.Observable(self.n_qubits)
+
+            for ps in H.paulistrings:
+                string = ""
+                for k, v in ps.items():
+                    string += v.upper() + " " + str(k)
+                qulacs_H.add_operator(ps.coeff, string)
+            return qulacs_H

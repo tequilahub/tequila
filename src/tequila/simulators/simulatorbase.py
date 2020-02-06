@@ -1,151 +1,126 @@
 from tequila import TequilaException, BitNumbering
 from tequila.circuit.circuit import QCircuit
 from tequila.utils.keymap import KeyMapSubregisterToRegister
+from tequila.utils.misc import to_float
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
+from tequila.circuit.gates import RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl
 from tequila import BitString
-from tequila.objective import Objective
-from tequila.simulators.heralding import HeraldingABC
+from tequila.objective.objective import Variable
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
 
-import numpy, numbers, typing, copy
-from dataclasses import dataclass
+import numpy, numbers, typing
 
 
-@dataclass
-class SimulatorReturnType:
-    abstract_circuit: QCircuit = None
-    circuit: int = None
-    wavefunction: QubitWaveFunction = None
-    measurements: typing.Dict[str, QubitWaveFunction] = None
-    backend_result: int = None
-
-    @property
-    def counts(self, key: str = None):
-        if self.measurements is not None:
-            if key is None:
-                keys = [k for k in self.measurements.keys()]
-                return self.measurements[keys[0]]
-            else:
-                return self.measurements[key]
-        elif self.wavefunction is not None:
-            measurement = copy.deepcopy(self.wavefunction)
-            for k, v in measurement.items():
-                measurement[k] = numpy.abs(v) ** 2
-            return measurement
-
-
-class BackendHandler:
+class BackendCircuit:
     """
-    This needs to be overwritten by all supported Backends
+    Functions in the end need to be overwritten by specific backend implementation
+    Other functions can be overwritten to improve performance
+    self.circuit : translated circuit
+    self.abstract_circuit: compiled tequila circuit
     """
 
+    # compiler instructions
     recompile_trotter = True
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = False
     recompile_exponential_pauli = True
 
-    def recompile(self, abstract_circuit: QCircuit) -> QCircuit:
-        # order matters!
-        recompiled = abstract_circuit
-        if self.recompile_trotter:
-            recompiled = compiler.compile_trotterized_gate(gate=recompiled,
-                                                           compile_exponential_pauli=self.recompile_exponential_pauli)
-        if self.recompile_exponential_pauli:
-            recompiled = compiler.compile_exponential_pauli_gate(gate=recompiled)
-        if self.recompile_multitarget:
-            recompiled = compiler.compile_multitarget(gate=recompiled)
-        if self.recompile_controlled_rotation:
-            recompiled = compiler.compile_controlled_rotation(gate=recompiled)
-        if self.recompile_swap:
-            recompiled = compiler.compile_swap(gate=recompiled)
+    @property
+    def n_qubits(self) -> numbers.Integral:
+        return len(self.qubit_map)
 
-        return recompiled
+    @property
+    def qubits(self) -> typing.Iterable[numbers.Integral]:
+        return tuple(self._qubits)
 
-    def fast_return(self, abstract_circuit):
-        return True
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, optimize_circuit=True, *args, **kwargs):
 
-    def initialize_circuit(self, qubit_map, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        self.use_mapping = use_mapping
 
-    def add_gate(self, gate, circuit, qubit_map, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        # compile the abstract_circuit
+        c = compiler.Compiler(multitarget=self.recompile_multitarget,
+                              multicontrol=False,
+                              trotterized=self.recompile_trotter,
+                              exponential_pauli=self.recompile_exponential_pauli,
+                              controlled_exponential_pauli=True,
+                              controlled_rotation=self.recompile_controlled_rotation,
+                              swap=self.recompile_swap)
 
-    def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_measurement(self, gate, qubit_map, circuit, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
-    def make_qubit_map(self, abstract_circuit: QCircuit):
-        return [i for i in range(len(abstract_circuit.qubits))]
-
-
-class SimulatorBase:
-    """
-    Abstract Base Class for OpenVQE interfaces to simulators
-    """
-    numbering: BitNumbering = BitNumbering.MSB
-    backend_handler = BackendHandler()
-
-    def __init__(self, heralding: HeraldingABC = None, ):
-        self._heralding = heralding
-        self.__decompose_and_compile = True
-
-    def __call__(self, objective: typing.Union[Objective, QCircuit], samples: int = None, **kwargs) \
-            -> typing.Union[numbers.Real, SimulatorReturnType]:
-        """
-        :param objective: Objective or simple QCircuit
-        :param samples: Number of Samples to evaluate, None means full wavefunction simulation
-        :param kwargs: keyword arguments to further pass down
-        :return: Energy, or simulator return type depending on what was passed down as objective
-        """
-
-        if isinstance(objective, QCircuit):
-            if samples is None:
-                return self.simulate_wavefunction(abstract_circuit=objective)
-            else:
-                return self.run(abstract_circuit=objective, samples=samples)
+        if self.use_mapping:
+            qubits=abstract_circuit.qubits
         else:
-            if samples is None:
-                return self.simulate_objective(objective=objective, **kwargs)
-            else:
-                return self.measure_objective(objective=objective, samples=samples, **kwargs)
+            qubits=range(abstract_circuit.n_qubits)
 
-    def run(self, abstract_circuit: QCircuit, samples: int = 1) -> SimulatorReturnType:
-        circuit = self.create_circuit(abstract_circuit=abstract_circuit)
-        backend_result = self.do_run(circuit=circuit, samples=samples)
-        return SimulatorReturnType(circuit=circuit,
-                                   abstract_circuit=abstract_circuit,
-                                   backend_result=backend_result,
-                                   measurements=self.postprocessing(self.convert_measurements(backend_result)))
+        self._qubits = qubits
+        self.abstract_qubit_map = {q: i for i, q in enumerate(qubits)}
+        self.qubit_map = self.make_qubit_map(qubits)
 
-    def do_run(self, circuit, samples: int = 1):
-        raise TequilaException("do_run needs to be overwritten by corresponding backend")
+        compiled = c(abstract_circuit)
+        self.abstract_circuit = compiled
+        # translate into the backend object
+        self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
 
-    def set_compile_flag(self, b):
-        self.__decompose_and_compile = b
+        if optimize_circuit:
+            self.circuit = self.optimize_circuit(circuit=self.circuit)
 
-    def simulate_wavefunction(self, abstract_circuit: QCircuit, returntype=None,
-                              initial_state: int = 0) -> SimulatorReturnType:
+    def __call__(self,
+                 variables: typing.Dict[Variable, numbers.Real] = None,
+                 samples: int = None,
+                 *args,
+                 **kwargs):
+        if samples is None:
+            return self.simulate(variables=variables, *args, **kwargs)
+        else:
+            return self.sample(variables=variables, samples=samples, *args, **kwargs)
+
+    def create_circuit(self, abstract_circuit: QCircuit, variables: typing.Dict[Variable, numbers.Real] = None):
         """
-        Simulates an abstract circuit with the backend specified by specializations of this class
-        :param abstract_circuit: The abstract circuit
+        Translates abstract circuits into the specific backend type
+        :param abstract_circuit: Abstract circuit to be translated
+        :return: translated circuit
+        """
+
+        if self.fast_return(abstract_circuit):
+            return abstract_circuit
+
+        result = self.initialize_circuit()
+
+        for g in abstract_circuit.gates:
+            if isinstance(g, MeasurementImpl):
+                self.add_measurement(gate=g, circuit=result)
+            elif g.is_controlled():
+                if isinstance(g, RotationGateImpl):
+                    self.add_controlled_rotation_gate(gate=g, variables=variables, circuit=result)
+                elif isinstance(g, PowerGateImpl) and g.power != 1:
+                    self.add_controlled_power_gate(gate=g, variables=variables, qubit_map=qubit_map, circuit=result)
+                else:
+                    self.add_controlled_gate(gate=g, circuit=result)
+            else:
+                if isinstance(g, RotationGateImpl):
+                    self.add_rotation_gate(gate=g, variables=variables, circuit=result)
+                elif isinstance(g, PowerGateImpl) and g.power != 1:
+                    self.add_power_gate(gate=g, variables=variables, circuit=result)
+                elif isinstance(g, ExponentialPauliGateImpl):
+                    self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
+                else:
+                    self.add_gate(gate=g, circuit=result)
+
+        return result
+
+    def update_variables(self, variables):
+        """
+        This is the default which just translates the circuit again
+        Overwrite in backend if parametrized circuits are supported
+        """
+        self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
+
+    def simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
+        """
+        Simulate the wavefunction
         :param returntype: specifies how the result should be given back
         :param initial_state: The initial state of the simulation,
         if given as an integer this is interpreted as the corresponding multi-qubit basis state
@@ -159,136 +134,51 @@ class SimulatorBase:
                 raise TequilaException("only product states as initial states accepted")
             initial_state = list(initial_state.keys())[0].integer
 
-        active_qubits = abstract_circuit.qubits
-        all_qubits = [i for i in range(abstract_circuit.n_qubits)]
+        all_qubits = [i for i in range(self.abstract_circuit.n_qubits)]
+        if self.use_mapping:
+            active_qubits = self.abstract_circuit.qubits
+            # maps from reduced register to full register
+            keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
+        else:
+            keymap = KeyMapSubregisterToRegister(subregister=all_qubits, register=all_qubits)
 
-        # maps from reduced register to full register
-        keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
-
-        result = self.do_simulate_wavefunction(abstract_circuit=abstract_circuit,
-                                               initial_state=keymap.inverted(initial_state).integer)
-        result.wavefunction.apply_keymap(keymap=keymap, initial_state=initial_state)
+        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer)
+        result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
-    def do_simulate_wavefunction(self, circuit, initial_state=0) -> SimulatorReturnType:
-        raise TequilaException(
-            "called from base class of simulators, or non-supported operation for this backend")
+    def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int, paulistring, *args,
+                           **kwargs) -> numbers.Real:
+        # make basis change and translate to backend
 
-    def create_circuit(self, abstract_circuit: QCircuit):
-        """
-        Translates abstract circuits into the specific backend type
-        Overwrite the BackendHandler Class to implement new backends
-        :param abstract_circuit: Abstract circuit to be translated
-        :return: translated circuit
-        """
-
-        if self.__decompose_and_compile:
-            decomposed_ac = abstract_circuit.decompose()
-            decomposed_ac = self.backend_handler.recompile(abstract_circuit=decomposed_ac)
-        else:
-            decomposed_ac = abstract_circuit
-
-        if self.backend_handler.fast_return(decomposed_ac):
-            return decomposed_ac
-
-        qubit_map = self.backend_handler.make_qubit_map(abstract_circuit=decomposed_ac)
-
-        result = self.backend_handler.initialize_circuit(qubit_map=qubit_map)
-
-        for g in decomposed_ac.gates:
-            if isinstance(g, MeasurementImpl):
-                self.backend_handler.add_measurement(gate=g, qubit_map=qubit_map, circuit=result)
-            elif g.is_controlled():
-                if hasattr(g, "angle"):
-                    self.backend_handler.add_controlled_rotation_gate(gate=g, qubit_map=qubit_map, circuit=result)
-                elif hasattr(g, "power") and g.power != 1:
-                    self.backend_handler.add_controlled_power_gate(gate=g, qubit_map=qubit_map, circuit=result)
-                else:
-                    self.backend_handler.add_controlled_gate(gate=g, qubit_map=qubit_map, circuit=result)
-            else:
-                if hasattr(g, "angle"):
-                    self.backend_handler.add_rotation_gate(gate=g, qubit_map=qubit_map, circuit=result)
-                elif hasattr(g, "power") and g.power != 1:
-                    self.backend_handler.add_power_gate(gate=g, qubit_map=qubit_map, circuit=result)
-                else:
-                    self.backend_handler.add_gate(gate=g, qubit_map=qubit_map, circuit=result)
-
-        return result
-
-    def convert_measurements(self, backend_result) -> typing.Dict[str, QubitWaveFunction]:
-        raise TequilaException(
-            "called from base class of simulators, or non-supported operation for this backend")
-
-    def measure_objective(self, objective: Objective, samples: int, return_simulation_data: bool = False) -> float:
-        final_E = 0.0
-        data = []
-        for U in objective.unitaries:
-            weight = U.weight
-            E = 0.0
-            result_data = {}
-            for ps in objective.observable.paulistrings:
-                Etmp, tmp = self.measure_paulistring(abstract_circuit=U, paulistring=ps, samples=samples)
-                E += Etmp
-                result_data[str(ps)] = tmp
-            final_E += weight * E
-            if return_simulation_data:
-                data.append(tmp)
-
-        # in principle complex weights are allowed, but it probably will never occur
-        # however, for now here is the type conversion to not confuse optimizers
-        if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
-            final_E = float(final_E.real)
-
-        if return_simulation_data:
-            return final_E, data
-        else:
-            return final_E
-
-    def simulate_objective(self, objective: Objective, return_simulation_data: bool = False) -> numbers.Real:
-        final_E = 0.0
-        data = []
-        H = objective.observable
-        for U in objective.unitaries:
-            # The hamiltonian can be defined on more qubits as the unitaries
-            qubits_h = objective.observable.qubits
-            qubits_u = U.qubits
-            all_qubits = list(set(qubits_h) | set(qubits_u))
-            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
-            simresult = self.simulate_wavefunction(abstract_circuit=U)
-            wfn = simresult.wavefunction.apply_keymap(keymap=keymap)
-            final_E += U.weight * wfn.compute_expectationvalue(operator=H)
-            if return_simulation_data:
-                data.append(simresult)
-
-        # in principle complex weights are allowed, but it probably will never occur
-        # however, for now here is the type conversion to not confuse optimizers
-        if hasattr(final_E, "imag") and numpy.isclose(final_E.imag, 0.0):
-            final_E = float(final_E.real)
-
-        if return_simulation_data:
-            return final_E, data
-        else:
-            return final_E
-
-    def measure_paulistring(self, abstract_circuit: QCircuit, paulistring, samples: int = 1):
-        # make basis change
         basis_change = QCircuit()
+        not_in_u = [] # all indices of the paulistring which are not part of the circuit i.e. will always have the same outcome
+        qubits = []
         for idx, p in paulistring.items():
-            basis_change += change_basis(target=idx, axis=p)
-        # make measurment instruction
+            if idx not in self.abstract_qubit_map:
+                not_in_u.append(idx)
+            else:
+                qubits.append(idx)
+                basis_change += change_basis(target=idx, axis=p)
+
+        # check the constant parts as <0|pauli|0>, can only be 0 or 1
+        # so we can do a fast return of one of them is not Z
+        for i in not_in_u:
+            pauli = paulistring[i]
+            if pauli.upper() != "Z":
+                return 0.0
+
+        # make measurement instruction
         measure = QCircuit()
-        qubits = [idx[0] for idx in paulistring.items()]
         if len(qubits) == 0:
             # no measurement instructions for a constant term as paulistring
-            return (paulistring.coeff, SimulatorReturnType())
+            return paulistring.coeff
         else:
             measure += Measurement(name=str(paulistring), target=qubits)
-            circuit = abstract_circuit + basis_change + measure
+            circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
-            sim_result = self.run(abstract_circuit=circuit, samples=samples)
+            counts = self.do_sample(samples=samples, circuit=circuit)
 
             # compute energy
-            counts = sim_result.counts
             E = 0.0
             n_samples = 0
             for key, count in counts.items():
@@ -296,17 +186,139 @@ class SimulatorBase:
                 sign = (-1) ** parity
                 E += sign * count
                 n_samples += count
-            if self._heralding is None:
-                assert (n_samples == samples)  # failsafe
             E = E / samples * paulistring.coeff
-            return (E, sim_result)
+            return E
 
-    def postprocessing(self, measurements: typing.Dict[str, QubitWaveFunction]) -> typing.Dict[str, QubitWaveFunction]:
-        # fast return
-        if self._heralding is None:
-            return measurements
+    def sample(self, variables, samples, *args, **kwargs):
+        self.update_variables(variables=variables)
+        return self.do_sample(samples=samples, circuit=self.circuit)
 
-        result = dict()
-        for k, v in measurements.items():
-            result[k] = self._heralding(input=v)
-        return result
+    def do_sample(self, variables, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    # Those functions need to be overwritten:
+
+    def do_simulate(self, variables, initial_state, *args, **kwargs) -> QubitWaveFunction:
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def convert_measurements(self, backend_result) -> QubitWaveFunction:
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def fast_return(self, abstract_circuit):
+        return True
+
+    def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_rotation_gate(self, gate, circuit, variables, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_controlled_power_gate(self, gate, variables, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def initialize_circuit(self, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_gate(self, gate, circuit, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_measurement(self, gate, circuit, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def make_qubit_map(self, qubits):
+        assert(len(self.abstract_qubit_map) == len(qubits))
+        return self.abstract_qubit_map
+
+    def optimize_circuit(self, circuit, *args, **kwargs):
+        """
+        Can be overwritten if the backend supports its own circuit optimization
+        To be clear: Optimization means optimizing the compiled circuit w.r.t depth not
+        optimizing parameters
+        :return: Optimized circuit, if supported by backend, else no action is taken
+        """
+        return circuit
+
+
+
+class BackendExpectationValue:
+    BackendCircuitType = BackendCircuit
+
+    # map to smaller subsystem if there are qubits which are not touched by the circuits,
+    # should be deactivated if expectationvalues are computed by the backend since the hamiltonians are currently not mapped
+    use_mapping = True
+
+    @property
+    def n_qubits(self):
+        return self.U.n_qubits
+
+    @property
+    def H(self):
+        return self._H
+
+    @property
+    def U(self):
+        return self._U
+
+    def __init__(self, E, variables):
+        self._U = self.initialize_unitary(E.U, variables)
+        self._H = self.initialize_hamiltonian(E.H)
+
+    def __call__(self, variables, samples:int=None, *args, **kwargs):
+        if samples is None:
+            return self.simulate(variables=variables, *args, **kwargs)
+        else:
+            return self.sample(variables=variables, samples=samples, *args, **kwargs)
+
+    def initialize_hamiltonian(self, H):
+        return H
+
+    def initialize_unitary(self, U, variables):
+        return self.BackendCircuitType(abstract_circuit=U, variables=variables, use_mapping=self.use_mapping)
+
+    def update_variables(self, variables):
+        self._U.update_variables(variables=variables)
+
+    def sample(self, variables, samples, *args, **kwargs):
+        E = 0.0
+        for ps in self.H.paulistrings:
+            E += self.sample_paulistring(variables=variables, samples=samples, paulistring=ps, *args, **kwargs)
+        return E
+
+    def simulate(self, variables, *args, **kwargs):
+        # TODO the whole procedure is quite inefficient but at least it works for general backends
+        # overwrite on specific the backend implementation for better performance (see qulacs)
+        self.update_variables(variables)
+        final_E = 0.0
+        if self.use_mapping:
+            # The hamiltonian can be defined on more qubits as the unitaries
+            qubits_h = self.H.qubits
+            qubits_u = self.U.qubits
+            all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit()+1)))
+            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
+        else:
+            if self.H.qubits != self.U.qubits:
+                raise TequilaException(
+                    "Can not compute expectation value without using qubit mappings."
+                    " Your Hamiltonian and your Unitary act not on the same set of qubits. "
+                    "Hamiltonian acts on {}, Unitary acts on {}".format(
+                        self.H.qubits, self.U.qubits))
+            keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
+        # TODO inefficient, let the backend do it if possible or interface some library
+        simresult = self.U.simulate(variables=variables, *args, **kwargs)
+        wfn = simresult.apply_keymap(keymap=keymap)
+        final_E += wfn.compute_expectationvalue(operator=self.H)
+
+        return to_float(final_E)
+
+    def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int,
+                           paulistring) -> numbers.Real:
+        return self.U.sample_paulistring(variables=variables, samples=samples, paulistring=paulistring)

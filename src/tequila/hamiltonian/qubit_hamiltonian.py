@@ -3,6 +3,7 @@ import typing
 import numpy
 
 from tequila.tools import number_to_string
+from tequila.utils import to_float
 from tequila import TequilaException
 
 from openfermion import QubitOperator
@@ -129,7 +130,7 @@ class PauliString:
         :return: The coefficient of this paulistring
         """
         if self._coeff is None:
-            return 1
+            return 1.0
         else:
             return self._coeff
 
@@ -304,10 +305,20 @@ class QubitHamiltonian:
         return self._hamiltonian == other._hamiltonian
 
     def is_hermitian(self):
-        for v in self.values():
-            if v.imag != 0.0:
-                return False
-        return True
+        try:
+            for k,v in self.hamiltonian.terms.items():
+                self.hamiltonian.terms[k] = to_float(v)
+            return True
+        except TypeError:
+            return False
+
+    def simplify(self, threshold=None):
+        simplified = {}
+        for k, v in self.hamiltonian.terms.items():
+            if not numpy.isclose(v, 0.0, atol=threshold):
+                simplified[k] = v
+        self._hamiltonian.terms = simplified
+        return self
 
     def is_antihermitian(self):
         for v in self.values():

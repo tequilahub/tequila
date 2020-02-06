@@ -5,6 +5,7 @@ Of Pauli Operators
 import typing
 from tequila.hamiltonian import QubitHamiltonian
 from tequila import BitString
+import numpy
 
 
 def pauli(qubit, type):
@@ -27,7 +28,7 @@ def Z(qubit):
     return QubitHamiltonian.init_from_string("Z" + str(qubit))
 
 
-def I(qubit):
+def I(*args, **kwargs):
     return QubitHamiltonian.init_unit()
 
 
@@ -45,6 +46,21 @@ def Sp(qubit):
 
 def Sm(qubit):
     return 0.5 * (X(qubit=qubit) - 1.j * Y(qubit=qubit))
+
+
+def Projector(wfn, threshold=0.0) -> QubitHamiltonian:
+    """
+    :param wfn: a QubitWaveFunction
+    :param threshold: neglect all close to zero with given threshold
+    :return: The projector |wfn><wfn|
+    """
+    H = QubitHamiltonian.init_zero()
+    for k1, v1 in wfn.items():
+        for k2, v2 in wfn.items():
+            c = v1 * v2
+            if not numpy.isclose(c, 0.0, atol=threshold):
+                H += c * decompose_transfer_operator(bra=k1, ket=k2)
+    return H
 
 
 def decompose_transfer_operator(ket: BitString, bra: BitString, qubits: typing.List[int] = None) -> QubitHamiltonian:

@@ -2,11 +2,12 @@
 BaseCalss for Optimizers
 Suggestion, feel free to propose new things/changes
 """
+import typing, numbers
 
 from tequila import TequilaException
+from tequila.objective.objective import assign_variable
 from tequila.objective import Objective
-from tequila.simulators import pick_simulator
-import typing, numbers
+from tequila.simulators import pick_backend
 from dataclasses import dataclass, field
 
 
@@ -24,18 +25,53 @@ class OptimizerHistory:
         else:
             return len(self.energies)
 
+    # history of all true iterations (epochs)
     energies: typing.List[numbers.Real] = field(default_factory=list)
     gradients: typing.List[typing.Dict[str, numbers.Real]] = field(default_factory=list)
     angles: typing.List[typing.Dict[str, numbers.Number]] = field(default_factory=list)
 
-    def extract_energies(self):
-        return self.energies
+    # history of all function evaluations
+    energies_calls: typing.List[numbers.Real] = field(default_factory=list)
+    gradients_calls: typing.List[typing.Dict[str, numbers.Real]] = field(default_factory=list)
+    angles_calls: typing.List[typing.Dict[str, numbers.Number]] = field(default_factory=list)
 
-    def extract_gradients(self, key: str):
-        return [d[key] for d in self.gradients]
+    def __add__(self, other):
+        result = OptimizerHistory()
+        result.energies = self.energies + other.energies
+        result.gradients = self.gradients + other.gradients
+        result.angles = self.angles + other.angles
+        return result
 
-    def extract_angles(self, key: str):
-        return [d[key] for d in self.angles]
+    def __iadd__(self, other):
+        self.energies += other.energies
+        self.gradients += other.gradients
+        self.angles += other.angles
+        return self
+
+    def extract_energies(self, *args, **kwargs) -> typing.Dict[numbers.Integral, numbers.Real]:
+        return {i: e for i, e in enumerate(self.energies)}
+
+    def extract_gradients(self, key: str) -> typing.Dict[numbers.Integral, numbers.Real]:
+        """
+        :param key: the key specifiying which gradient shall be extracted
+        :return: dictionary with dictionary_key=iteration, dictionary_value=gradient[key]
+        """
+        gradients = {}
+        for i, d in enumerate(self.gradients):
+            if key in d:
+                gradients[i] = d[key]
+        return gradients
+
+    def extract_angles(self, key: str) -> typing.Dict[numbers.Integral, numbers.Real]:
+        """
+        :param key: the key specifiying which angle shall be extracted
+        :return: dictionary with dictionary_key=iteration, dictionary_value=angle[key]
+        """
+        angles = {}
+        for i, d in enumerate(self.angles):
+            if key in d:
+                angles[i] = d[key]
+        return angles
 
     def plot(self,
              property: typing.Union[str, typing.List[str]] = 'energies',
@@ -47,7 +83,7 @@ class OptimizerHistory:
         :param filename: if given plot to file, otherwise plot to terminal
         :param property: the property to plot, given as string
         :param key: for properties like angles and gradients you can specifiy which one you want to plot
-        if set to none all keys are plotted
+        if set to none all keys are plotted. You can pass down single keys or lists of keys. DO NOT use tuples of keys or any other hashable list types
         give key as list if you want to plot multiple properties with different keys
         """
         from matplotlib import pyplot as plt
@@ -63,18 +99,20 @@ class OptimizerHistory:
 
         if key is None:
             keys = [[k for k in self.angles[-1].keys()]] * len(properties)
-        elif hasattr(key, "lower"):
-            keys = [[key.lower()]] * len(properties)
+        elif isinstance(key, typing.Hashable):
+            keys = [[assign_variable(key)]] * len(properties)
         else:
+            key = [assign_variable(k) for k in key]
             keys = [key] * len(properties)
+
         for i, p in enumerate(properties):
-            if p.lower() == "energies":
-                data = self.energies
-                plt.plot(data, label=p, marker='o', linestyle='--')
+            if p == "energies":
+                data = getattr(self, "extract_" + p)()
+                plt.plot(list(data.keys()), list(data.values()), label=str(p), marker='o', linestyle='--')
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(data, label=p + " " + k, marker='o', linestyle='--')
+                    plt.plot(list(data.keys()), list(data.values()), label=str(p) + " " + str(k), marker='o', linestyle='--')
 
         if 'title' in kwargs:
             plt.title(kwargs['title'])
@@ -92,10 +130,10 @@ class OptimizerHistory:
 
 class Optimizer:
 
-    def __init__(self, simulator: typing.Type = None, maxiter: int = None, samples: int = None,
+    def __init__(self, simulator: str = None, maxiter: int = None, samples: int = None,
                  save_history: bool = True):
         """
-        :param simulator: The simulators to use (initialized or uninitialized)
+        :param simulator: The simulators to use (None means autopick)
         :param maxiter: Maximum number of iterations
         :param samples: Number of Samples for the Quantum Backend takes (None means full wavefunction simulation)
         :param save_history: Save the optimization history in self.history
@@ -146,4 +184,4 @@ class Optimizer:
             else:
                 return self.simulator()
         else:
-            return pick_simulator(samples=samples)()
+            return pick_backend(samples=samples)()

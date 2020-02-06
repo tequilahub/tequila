@@ -1,2 +1,0 @@
-from tequila.ansatz.ansatz_base import AnsatzBase
-from tequila.ansatz.simple_state_preps import prepare_product_state

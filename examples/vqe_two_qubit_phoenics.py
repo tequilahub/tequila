@@ -2,11 +2,11 @@ from tequila.circuit import gates
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.objective import Objective
-from tequila.optimizers.optimizer_scipy import minimize
+from tequila.optimizers.optimizer_phoenics import PhoenicsOptimizer
 import numpy
 
 """
-A very simple example for a two qubit VQE optimized with scipy
+A very simple example for a two qubit VQE optimized with PHoenics
 This is the string based initialization which might be more convenient but initialization with Variables
 Is way more flexible (see the original vqe_two_qubit.py)
 
@@ -15,8 +15,6 @@ Keynotes:
 - Rough demonstration of how the optimizers work
 - Usage of optimizer History
 - Usage of convenience plot function in history
-
-Play around with stepsize, iterations and initial values
 - The true minimum is at -1
 - The true maximum is at +1
 - there is a stationary point at a=0 and b=0 and others where the Energy is also 0.0
@@ -25,13 +23,13 @@ Play around with stepsize, iterations and initial values
 """
 
 # uncomment if you want to use a specific simulators
-# from tequila.simulators.simulator_cirq import SimulatorCirq
-# from tequila.simulators.simulator_qiskit import SimulatorQiskit
-# from tequila.simulators.simulator_qulacs import SimulatorQulacs
-# from tequila.simulators.simulator_pyquil import SimulatorPyquil
+# from openvqe.simulators.simulator_cirq import SimulatorCirq
+# from openvqe.simulators.simulator_qiskit import SimulatorQiskit
+# from openvqe.simulators.simulator_qulacs import SimulatorQulacs
+# from openvqe.simulators.simulator_pyquil import SimulatorPyquil
 
 # parameters with explanation:
-samples = None  # number of samples for each run, None means full wavefunction simulation
+samples = 100 # number of samples for each run, None means full wavefunction simulation
 simulator = None  # pick the simulators, None means it is automatically picked. Does not need to be initialized
 
 # Sympy specific variables which you can set in 'minimize'
@@ -41,16 +39,6 @@ simulator = None  # pick the simulators, None means it is automatically picked. 
 # You should get a meaningful scipy error if you chose them
 
 # Gradient based methods
-
-method = 'L-BFGS-B'
-#method = 'BFGS'
-# method = 'CG'
-# method = 'TNC'
-
-# Gradient Free Methods
-# method = 'Powell'
-# method = 'COBYLA'
-# method = 'Nelder-Mead'
 
 tol = 1.e-3
 # see the minimize function signature for more
@@ -67,7 +55,7 @@ if __name__ == "__main__":
     U = gates.Ry(target=0, angle=-a / 2, frozen=False)  # frozen=true: this variable will not be optimized
     U += gates.Ry(target=0, angle=-a / 2)  # will behave the same as only one time Ry with angle=-a, this is just to demonstrate that it works. This is not possible in the string based initialization
     U += gates.Ry(target=1, control=0, angle=b, frozen=False)  # frozen=true: this variable will not be optimized
-    U += gates.Rx(target=0,angle=1.234)  # this gate will not be recognized as parametrized (it also has no effect on the energy in this example)
+    U += gates.Rx(target=0, angle=1.234)  # this gate will not be recognized as parametrized (it also has no effect on the energy in this example)
 
     # initialize the objective
     O = Objective.ExpectationValue(U=U, H=H)
@@ -78,18 +66,11 @@ if __name__ == "__main__":
     angles['a'] = 4.0
     angles['b'] = 2.0
 
-    # some of the SciPy optimizers support bounds on the variables
-    #bounds = {'a': (0.0, 4.0 * numpy.pi), 'b': (0.0, 4.0 * numpy.pi)}
-    # avoid the stationary point with E=0.0
-    bounds = {'a': (0.1, 1.9 * numpy.pi), 'b': (0.1, 1.9 * numpy.pi)}
-
     # Optimize
-    result = minimize(objective=O, backend=simulator, samples=samples, method=method, method_bounds=bounds)
+    result = PhoenicsOptimizer(samples=samples,simulator=simulator)(O,10)
 
     # plot the history, default are energies
     result.history.plot()
-    result.history.plot(property='gradients', key='a')  # if no key is given it will plot all of them
-    result.history.plot(property='gradients', key='b')
     result.history.plot(property='angles', key='a')
     result.history.plot(property='angles', key='b')
     # combine plots

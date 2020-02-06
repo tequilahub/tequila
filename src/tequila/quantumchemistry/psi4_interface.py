@@ -9,6 +9,18 @@ import numpy
 import typing
 from dataclasses import dataclass
 
+__HAS_PSI4_PYTHON__ = False
+try:
+    import psi4
+    __HAS_PSI4_PYTHON__ = True
+except ModuleNotFoundError:
+    __HAS_PSI4_PYTHON__ = False
+
+
+class TequilaPsi4Exception(TequilaException):
+    pass
+
+
 class OpenVQEEPySCFException(TequilaException):
     pass
 
@@ -29,13 +41,13 @@ class ParametersPsi4:
 
 class QuantumChemistryPsi4(QuantumChemistryBase):
     def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None,
-                 parameters_psi4: ParametersPsi4 = None):
+                 parameters_psi4: ParametersPsi4 = None, *args, **kwargs):
         if parameters_psi4 is None:
             self.parameters_psi4 = ParametersPsi4()
         else:
             self.parameters_psi4 = parameters_psi4
 
-        super().__init__(parameters=parameters, transformation=transformation)
+        super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
 
     def do_make_molecule(self, molecule=None) -> MolecularData:
         if molecule is None:
@@ -67,3 +79,18 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         tmp1 = Amplitudes.from_ndarray(array=singles, closed_shell=False)
         tmp2 = Amplitudes.from_ndarray(array=doubles, closed_shell=False)
         return Amplitudes(data={**tmp1.data, **tmp2.data}, closed_shell=False)
+
+    def compute_energy(self, method:str = "fci", filename:str=None):
+        if __HAS_PSI4_PYTHON__:
+            if filename is None:
+                filename = "{}_{}.out".format(self.parameters.filename, method)
+            psi4.core.set_output_file(filename, False)
+            mol = psi4.geometry(self.parameters.get_geometry_string())
+
+            psi4.set_options({'basis': self.parameters.basis_set,
+                              'scf_type': 'pk',
+                              'e_convergence': 1e-8,
+                              'd_convergence': 1e-8})
+            return psi4.energy(name=method)
+        else:
+            raise TequilaPsi4Exception("Can't find the psi4 python module")

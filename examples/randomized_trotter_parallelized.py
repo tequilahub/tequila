@@ -36,7 +36,7 @@ from tequila.hamiltonian import QubitHamiltonian, paulis
 from tequila.tools import plotters
 import typing
 import numpy
-from tequila import dataclass
+from dataclasses import dataclass
 
 import multiprocessing as mp
 

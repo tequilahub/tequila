@@ -1,14 +1,18 @@
-numpy>=1.11.0
-scipy>=1.1.0
-dataclasses
+numpy
+scipy
+sympy
+#jax
+#jaxlib
+autograd
+dataclasses # only for python<3.7
 setuptools 
 pytest
 openfermion
 openfermionpsi4 # trying to get rid of this
-pyscf>=1.6.5 # Find the right wheel 
-openfermionpyscf # trying to get rid of this
-cirq # not really a requirement
-networkx==2.3 # It is required for cirq
-pyquil # not really a requirement
-qiskit # not really a requirement
-qulacs # not really a requirement
+#pyscf>=1.6.5 # Find the right wheel 
+qulacs # default simulator, by fast the fastest
+#openfermionpyscf # trying to get rid of this
+#cirq # not really a requirement, but has nice circuit drawer
+#networkx==2.3 # It is required for cirq
+#pyquil # not really a requirement
+#qiskit # not really a requirement

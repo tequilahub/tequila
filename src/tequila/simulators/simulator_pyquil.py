@@ -1,8 +1,8 @@
-from tequila.simulators.simulatorbase import SimulatorBase, QCircuit, TequilaException, \
-    SimulatorReturnType, BackendHandler
+from tequila.simulators.simulatorbase import QCircuit, TequilaException, BackendCircuit, BackendExpectationValue
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila import BitString, BitStringLSB, BitNumbering
+from tequila import BitString, BitNumbering
 import subprocess
+import sys
 
 import pyquil
 
@@ -12,90 +12,74 @@ class TequilaPyquilException(TequilaException):
         return "simulator_pyquil: " + self.message
 
 
-class BackenHandlerPyquil(BackendHandler):
+class BackendCircuitPyquil(BackendCircuit):
     recompile_swap = True
     recompile_multitarget = True
     recompile_controlled_rotation = False
+    recompile_exponential_pauli = True
+    recompile_trotter = True
+
+    numbering = BitNumbering.LSB
+
+    def do_simulate(self, variables, initial_state, *args, **kwargs):
+        simulator = pyquil.api.WavefunctionSimulator()
+        n_qubits = self.n_qubits
+        msb = BitString.from_int(initial_state, nbits=n_qubits)
+        iprep = pyquil.Program()
+        for i, val in enumerate(msb.array):
+            if val > 0:
+                iprep += pyquil.gates.X(i)
+
+        with open('qvm.log', "a+") as outfile:
+            sys.stdout = outfile
+            sys.stderr = outfile
+            outfile.write("\nSTART SIMULATION: \n")
+            outfile.write(str(self.abstract_circuit))
+            process = subprocess.Popen(["qvm", "-S"], stdout=outfile, stderr=outfile)
+            backend_result = simulator.wavefunction(iprep + self.circuit)
+            outfile.write("END SIMULATION: \n")
+            process.terminate()
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
+        return QubitWaveFunction.from_array(arr=backend_result.amplitudes, numbering=self.numbering)
 
     def fast_return(self, abstract_circuit):
         return isinstance(abstract_circuit, pyquil.Program)
 
-    def initialize_circuit(self, qubit_map, *args, **kwargs):
+    def initialize_circuit(self, *args, **kwargs):
         return pyquil.Program()
 
-    def add_gate(self, gate, circuit, qubit_map, *args, **kwargs):
-        circuit += getattr(pyquil.gates, gate.name.upper())(qubit_map[gate.target[0]])
+    def add_gate(self, gate, circuit, *args, **kwargs):
+        circuit += getattr(pyquil.gates, gate.name.upper())(self.qubit_map[gate.target[0]])
 
-    def add_controlled_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(qubit_map[gate.target[0]])
+    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
+        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(self.qubit_map[gate.target[0]])
         for c in gate.control:
-            pyquil_gate = pyquil_gate.controlled(qubit_map[c])
+            pyquil_gate = pyquil_gate.controlled(self.qubit_map[c])
         circuit += pyquil_gate
 
-    def add_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        circuit += getattr(pyquil.gates, gate.name.upper())(gate.angle(), qubit_map[gate.target[0]])
+    def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
+        circuit += getattr(pyquil.gates, gate.name.upper())(gate.angle(variables), self.qubit_map[gate.target[0]])
 
-    def add_controlled_rotation_gate(self, gate, qubit_map, circuit, *args, **kwargs):
-        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(gate.angle(), qubit_map[gate.target[0]])
+    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
+        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(gate.angle(variables), self.qubit_map[gate.target[0]])
         for c in gate.control:
-            pyquil_gate = pyquil_gate.controlled(qubit_map[c])
+            pyquil_gate = pyquil_gate.controlled(self.qubit_map[c])
         circuit += pyquil_gate
 
-    def add_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+    def add_power_gate(self, gate, circuit, *args, **kwargs):
         raise TequilaPyquilException("PowerGates are not supported")
 
-    def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+    def add_controlled_power_gate(self, gate, circuit, *args, **kwargs):
         raise TequilaPyquilException("controlled PowerGates are not supported")
 
-    def add_measurement(self, gate, qubit_map, circuit, *args, **kwargs):
+    def add_measurement(self, gate, circuit, *args, **kwargs):
         bits = len(gate.target)
         ro = circuit.declare('ro', 'BIT', bits)
         for i, t in enumerate(gate.target):
-            circuit += pyquil.gates.MEASURE(qubit_map[t], ro[i])
-
-    def make_qubit_map(self, abstract_circuit: QCircuit):
-        n_qubits = abstract_circuit.n_qubits
-        qubit_map = [i for i in range(n_qubits)]
-        return qubit_map
+            circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
 
 
-class SimulatorPyquil(SimulatorBase):
 
-    @property
-    def numbering(self):
-        return BitNumbering.LSB
-
-    backend_handler = BackenHandlerPyquil()
-
-    def __init__(self, initialize_qvm: bool = True,*args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if initialize_qvm:
-            self.qvm = subprocess.Popen(["qvm", "-S"])
-        else:
-            self.qvm = None
-
-    def __del__(self):
-        if self.qvm is not None:
-            self.qvm.terminate()
-
-    def do_simulate_wavefunction(self, abstract_circuit: QCircuit, initial_state=0):
-        try:
-            simulator = pyquil.api.WavefunctionSimulator()
-            circuit = self.create_circuit(abstract_circuit=abstract_circuit)
-            n_qubits = len(abstract_circuit.qubits)
-            msb = BitString.from_int(initial_state, nbits=n_qubits)
-            iprep = pyquil.Program()
-            for i, val in enumerate(msb.array):
-                if val > 0:
-                    iprep += pyquil.gates.X(i)
-
-            backend_result = simulator.wavefunction(iprep + circuit)
-            return SimulatorReturnType(abstract_circuit=abstract_circuit,
-                                       circuit=circuit,
-                                       backend_result=backend_result,
-                                       wavefunction=QubitWaveFunction.from_array(arr=backend_result.amplitudes,
-                                                                                 numbering=self.numbering))
-
-        except Exception as e:
-            print("\n\n\n!!!!Make sure Rigettis Quantum-Virtual-Machine is running somewhere in the back!!!!\n\n\n")
-            raise e
+class BackendExpectationValuePyquil(BackendExpectationValue):
+    BackendCircuitType = BackendCircuitPyquil

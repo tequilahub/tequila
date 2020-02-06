@@ -1,13 +1,28 @@
 from dataclasses import dataclass
 from tequila import TequilaException, BitString
 from tequila.hamiltonian import HamiltonianQC, QubitHamiltonian
-from tequila.circuit import QCircuit, Variable, gates
-from tequila.ansatz import prepare_product_state
+
+from tequila.circuit import QCircuit, gates
+from tequila.objective.objective import Variable
+from tequila.utils import to_float
 
 import typing, numpy, numbers
 
 import openfermion
 from openfermion.hamiltonians import MolecularData
+
+
+def prepare_product_state(state: BitString) -> QCircuit:
+    """
+    Small convenience function
+    :param state: product state encoded into a bitstring
+    :return: unitary circuit which prepares the product state
+    """
+    result = QCircuit()
+    for i, v in enumerate(state.array):
+        if v == 1:
+            result += gates.X(target=i)
+    return result
 
 
 @dataclass
@@ -22,7 +37,14 @@ class ParametersQC:
     multiplicity: int = 1
     charge: int = 0
     closed_shell: bool = True
-    filename: str = "molecule"
+    datafile: str = None
+
+    @property
+    def filename(self):
+        if self.datafile is None:
+            return "molecule"
+        else:
+            return self.datafile
 
     @property
     def molecular_data_param(self) -> dict:
@@ -30,7 +52,7 @@ class ParametersQC:
         :return: Give back all parameters for the MolecularData format from openfermion as dictionary
         """
         return {'basis': self.basis_set, 'geometry': self.get_geometry(), 'description': self.description,
-                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.filename
+                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.datafile
                 }
 
     @staticmethod
@@ -65,6 +87,19 @@ class ParametersQC:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
         return result
 
+    def get_geometry_string(self) -> str:
+        """
+        returns the geometry as a string
+        :return: geometrystring
+        """
+        if self.geometry.split('.')[-1] == 'xyz':
+            geomstring, comment = self.read_xyz_from_file(self.geometry)
+            if comment is not None:
+                self.description = comment
+            return geomstring
+        else:
+            return self.geometry
+
     def get_geometry(self):
         """
         Returns the geometry
@@ -77,7 +112,10 @@ class ParametersQC:
         """
         if self.geometry.split('.')[-1] == 'xyz':
             geomstring, comment = self.read_xyz_from_file(self.geometry)
-            self.description = comment
+            if self.description == '':
+                self.description = comment
+            if self.datafile is None:
+                self.datafile = self.geometry.split('.')[0]
             return self.convert_to_list(geomstring)
         elif self.geometry is not None:
             return self.convert_to_list(self.geometry)
@@ -126,34 +164,46 @@ class Amplitudes:
     def __str__(self):
         return self.data.__str__()
 
-    def export_parameter_dictionary(self):
+    def export_parameter_dictionary(self, atol=1.e-8, rtol=1.e-8, only_singles: bool = False,
+                                    only_doubles: bool = False):
         result = dict()
+        assert not (only_doubles and only_singles)
         for k, v in self.items():
-            result[str(k)] = v
+            if only_doubles and len(k) != 4:
+                continue
+            if only_singles and len(k) != 2:
+                continue
+            if not numpy.isclose(numpy.abs(v), 0.0, atol=atol, rtol=rtol):
+                result[Variable(k)] = v
         return result
 
-    def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[typing.Tuple, numbers.Number]:
+    def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[
+        typing.Tuple, numbers.Number]:
         transformed = dict()
         for key, value in data.items():
             if len(key) == 2:
                 transformed[(2 * key[0], 2 * key[1])] = value
                 transformed[(2 * key[0] + 1, 2 * key[1] + 1)] = value
             if len(key) == 4:
-                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value
-                transformed[(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])] = value
+                same_spin = data[key[0], key[1], key[2], key[3]] - data[key[2], key[1], key[0], key[3]]  # abij - baij
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3])] = same_spin  # aa aa
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3])] = same_spin  # bb bb
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value  # aa bb
+                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value  # aa bb
+                transformed[(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])] = value  # bb aa
             else:
                 raise Exception("???")
-            return transformed
+        return transformed
 
     @classmethod
-    def from_ndarray(cls, array: numpy.ndarray, closed_shell=None, index_offset: typing.Tuple[int, int, int, int] = None):
+    def from_ndarray(cls, array: numpy.ndarray, closed_shell=None,
+                     index_offset: typing.Tuple[int, int, int, int] = None):
         """
         :param array: The array to convert
         :param closed_shell: amplitudes are given as closed-shell array (i.e alpha-alpha, beta-beta)
         :param index_offsets: indices will start from 0 but are supposed to start from index_offset
         :return:
         """
-        assert all([x == array.shape[0] for x in array.shape])  # all indices should run over ALL orbitals
         data = dict(numpy.ndenumerate(array))
         if index_offset is not None:
             offset_data = dict()
@@ -167,7 +217,7 @@ class Amplitudes:
         data = dict()
         for k, v in self.data.items():
             data[k] = v * other
-        return  Amplitudes(data=data)
+        return Amplitudes(data=data)
 
     def __neg__(self):
         data = dict()
@@ -188,10 +238,12 @@ class Amplitudes:
         return self.data.__len__()
 
 
-
 class QuantumChemistryBase:
 
-    def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None):
+    def __init__(self, parameters: ParametersQC,
+                 transformation: typing.Union[str, typing.Callable] = None,
+                 *args,
+                 **kwargs):
         self.parameters = parameters
         if transformation is None:
             self.transformation = openfermion.jordan_wigner
@@ -205,11 +257,53 @@ class QuantumChemistryBase:
                                                                              "bravykitaevtree", "b-k-t"]:
             self.transformation = openfermion.bravyi_kitaev_tree
         elif hasattr(transformation, "lower"):
-            self.transformation = getattr(openfermion, transformation.lower())
+            trafo = getattr(openfermion, transformation.lower())
+            self.transformation = lambda x: trafo(x, *args, **kwargs)
         else:
             assert (callable(transformation))
             self.transformation = transformation
         self.molecule = self.make_molecule()
+
+    def make_excitation_operator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
+        """
+        Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
+        And gives it back multiplied with 1j to make it hermitian
+        :param indices: List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
+        can also be given as one big list: [a_0, i_0, a_1, i_1 ...]
+        :return: 1j*Transformed qubit excitation operator, depends on self.transformation
+        """
+        # check indices and convert to list of tuples if necessary
+        if len(indices) == 0:
+            raise TequilaException("make_excitation_operator: no indices given")
+        elif not isinstance(indices[0], typing.Iterable):
+            if len(indices % 2) != 0:
+                raise TequilaException("make_excitation_operator: unexpected input format of infices\n"
+                                       "use list of tuples as [(a_0, i_0),(a_1, i_1) ...]\n"
+                                       "or list as [a_0, i_0, a_1, i_1, ... ]\n"
+                                       "you gave: {}".format(indices))
+            converted = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
+        else:
+            converted = indices
+
+        # convert to openfermion input format
+        ofi = []
+        dag = []
+        for pair in converted:
+            assert (len(pair) == 2)
+            ofi += [(pair[0], 1), (pair[1], 0)]
+            dag += [(pair[0], 0), (pair[1], 1)]
+
+        op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
+        op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
+
+        qop = QubitHamiltonian(hamiltonian=self.transformation(op))
+
+        # check if the operator is hermitian and cast coefficients to floats
+        assert qop.is_hermitian()
+        for k, v in qop.hamiltonian.terms.items():
+            qop.hamiltonian.terms[k] = to_float(v)
+
+        return qop
 
     def reference_state(self) -> BitString:
         """
@@ -246,10 +340,10 @@ class QuantumChemistryBase:
         # try to load
 
         do_compute = True
-        if self.parameters.filename:
+        if self.parameters.datafile:
             try:
                 import os
-                if os.path.exists(self.parameters.filename):
+                if os.path.exists(self.parameters.datafile):
                     molecule.load()
                     do_compute = False
             except OSError:
@@ -286,22 +380,27 @@ class QuantumChemistryBase:
     def compute_ccsd_amplitudes(self) -> Amplitudes:
         raise Exception("BaseClass Method")
 
+    def prepare_reference(self):
+        return prepare_product_state(self.reference_state())
+
     def make_uccsd_ansatz(self,
-                          trotter_steps:int,
+                          trotter_steps: int,
                           initial_amplitudes: typing.Union[str, Amplitudes] = "mp2",
                           include_reference_ansatz=True,
-                          trotter_parameters: gates.TrotterParameters=None) -> QCircuit:
+                          parametrized=True,
+                          trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
 
         """
         :param initial_amplitudes: initial amplitudes given as ManyBodyAmplitudes structure or as string
         where 'mp2' 'ccsd' or 'zero' are possible initializations
         :param include_reference_ansatz: Also do the reference ansatz (prepare closed-shell Hartree-Fock)
+        :param parametrized: Initialize with variables, otherwise with static numbers
         :return: Parametrized QCircuit
         """
 
         Uref = QCircuit()
         if include_reference_ansatz:
-            Uref = prepare_product_state(self.reference_state())
+            Uref = self.prepare_reference()
 
         amplitudes = initial_amplitudes
         if hasattr(initial_amplitudes, "lower"):
@@ -317,28 +416,17 @@ class QuantumChemistryBase:
         generators = []
         variables = []
         for key, t in amplitudes.items():
+            assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0):
-                amplitude = Variable(name=str(key), value=t)
-                if len(key) == 2:
-                    pass
-                elif len(key) == 4:
-                    i = key[0]
-                    j = key[1]
-                    k = key[2]
-                    l = key[3]
-                    op = openfermion.FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), 2.0j)
-                    op += openfermion.FermionOperator(((l, 1), (k, 0), (j, 1), (i, 0)), -2.0j)
-                    generators.append(QubitHamiltonian(hamiltonian=self.transformation(op)))
-                    variables.append(amplitude)
-
+                if parametrized:
+                    variables.append(2.0 * Variable(name=key))  # 2.0 for convention angle/2 in ExpPauli Gates
                 else:
-                    raise Exception("Expected index for one or two body term. Got {} instead".format(k))
+                    variables.append(2.0 * t)
+                indices = [(key[2 * i], key[2 * i + 1]) for i in range(len(key) // 2)]
+                generators.append(self.make_excitation_operator(indices=indices))
 
-        # factor 2 counters the -1/2 convention in rotational gates
-        # 1.0j makes the anti-hermitian cluster operator hermitian
-        # another factor 1.0j will be added which counters the minus sign in the -1/2 convention
-        # generator = 1.0j * QubitHamiltonian(hamiltonian=self.__make_cluster_operator(amplitudes=2.0 * amplitudes))
-        return Uref + gates.Trotterized(generators=generators, angles=variables, steps=trotter_steps, parameters=trotter_parameters)
+        return Uref + gates.Trotterized(generators=generators, angles=variables, steps=trotter_steps,
+                                        parameters=trotter_parameters)
 
     def initialize_zero_amplitudes(self) -> Amplitudes:
         # function not needed anymore
@@ -360,9 +448,15 @@ class QuantumChemistryBase:
         ai = fij[nocc:]
         abgij = g[nocc:, nocc:, :nocc, :nocc]
         amplitudes = abgij * 1.0 / (
-                ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1,
-                                                                                                         1))
+                ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
         E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
                                                                                 optimize='optimize')
         self.molecule.mp2_energy = E + self.molecule.hf_energy
-        return Amplitudes.from_ndarray(array=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'), closed_shell=True, index_offset=(nocc,0,nocc,0))
+        return Amplitudes.from_ndarray(array=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'),
+                                       closed_shell=True, index_offset=(nocc, 0, nocc, 0))
+
+    def __str__(self) -> str:
+        result = str(type(self)) + "\n"
+        for k, v in self.parameters.__dict__.items():
+            result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
+        return result
