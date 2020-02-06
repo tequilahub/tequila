@@ -41,6 +41,7 @@ class ExpectationValueImpl:
             self.U.update_variables(variables)
 
     def __init__(self, U=None, H=None):
+        assert(H.is_hermitian())
         self._unitary = copy.deepcopy(U)
         self._hamiltonian = copy.deepcopy(H)
 

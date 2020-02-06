@@ -302,8 +302,8 @@ def test_mixed_multiplication(simulator, value1=(numpy.random.randint(0, 1000) /
     assert np.isclose(val, an1 * an2, atol=1.e-4)
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_mixed_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                        value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_mixed_division(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                        value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
