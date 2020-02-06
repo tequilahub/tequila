@@ -197,6 +197,9 @@ class Objective:
     def __radd__(self, other):
         return self.right_helper(numpy.add, other)
 
+    def __rsub__(self, other):
+        return self.right_helper(numpy.subtract, other)
+
     def __rtruediv__(self, other):
         return self.right_helper(numpy.true_divide, other)
 
