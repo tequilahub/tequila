@@ -9,8 +9,10 @@ from tequila.simulators import compile_objective, simulate_objective
 from tequila.utils.exceptions import TequilaException
 import copy
 
+
 class TequilaScipyException(TequilaException):
     pass
+
 
 SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
 
@@ -109,8 +111,13 @@ class OptimizerSciPy(Optimizer):
 
         bounds = None
         if self.method_bounds is not None:
-            names, bounds = zip(*self.method_bounds.items())
-            assert (names == param_keys)
+            bounds = {k: None for k in active_angles}
+            for k,v in self.method_bounds.items():
+                if k in bounds:
+                    bounds[k] = v
+            infostring += "bounds : {}\n".format(self.method_bounds)
+            names, bounds = zip(*bounds.items())
+            assert (names == param_keys) # make sure the bounds are not shuffled
 
         # do the compilation here to avoid costly recompilation during the optimization
         compiled_objective = compile_objective(objective=objective, variables=initial_values, backend=backend,
@@ -146,7 +153,8 @@ class OptimizerSciPy(Optimizer):
                                 save_history=self.save_history,
                                 silent=self.silent)
 
-            infostring += "Gradients: {} expectationvalues (min={}, max={})\n".format(sum(grad_exval), min(grad_exval),max(grad_exval))
+            infostring += "Gradients: {} expectationvalues (min={}, max={})\n".format(sum(grad_exval), min(grad_exval),
+                                                                                      max(grad_exval))
         else:
             # use numerical gradient
             dE = gradient
@@ -176,14 +184,14 @@ class OptimizerSciPy(Optimizer):
                                  save_history=self.save_history,
                                  silent=self.silent)
 
-            infostring += "Hessian: {} expectationvalues (min={}, max={})\n".format(sum(hess_exval), min(hess_exval),max(hess_exval))
+            infostring += "Hessian: {} expectationvalues (min={}, max={})\n".format(sum(hess_exval), min(hess_exval),
+                                                                                    max(hess_exval))
 
         else:
             infostring += "Hessian: {}\n".format(hessian)
             if self.method is not "TRUST-CONSTR" and hessian is not None:
                 raise TequilaScipyException("numerical hessians only for trust-constr method")
             ddE = hessian
-
 
         if not self.silent:
             print("ObjectiveType is {}".format(type(compiled_objective)))
@@ -250,8 +258,8 @@ def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[s
 
 
 def minimize(objective: Objective,
-             gradient: typing.Union[str,typing.Dict[Variable, Objective]] = None,
-             hessian: typing.Union[str,typing.Dict[typing.Tuple[Variable, Variable], Objective]] = None,
+             gradient: typing.Union[str, typing.Dict[Variable, Objective]] = None,
+             hessian: typing.Union[str, typing.Dict[typing.Tuple[Variable, Variable], Objective]] = None,
              initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
              variables: typing.List[typing.Hashable] = None,
              samples: int = None,
@@ -300,7 +308,7 @@ def minimize(objective: Objective,
     if isinstance(gradient, dict) or hasattr(gradient, "items"):
         gradient = format_variable_dictionary(gradient)
     if isinstance(hessian, dict) or hasattr(hessian, "items"):
-        hessian = {(assign_variable(k[0]), assign_variable([k[1]])):v for k,v in hessian.items()}
+        hessian = {(assign_variable(k[0]), assign_variable([k[1]])): v for k, v in hessian.items()}
     method_bounds = format_variable_dictionary(method_bounds)
 
     # set defaults
@@ -308,7 +316,7 @@ def minimize(objective: Objective,
     if variables is None:
         variables = all_variables
     if initial_values is None:
-        initial_values = {k:0.0 for k in all_variables}
+        initial_values = {k: 0.0 for k in all_variables}
     else:
         # autocomplete initial values, warn if you did
         detected = False
@@ -330,5 +338,6 @@ def minimize(objective: Objective,
                                tol=tol)
     if initial_values is not None:
         initial_values = {assign_variable(k): v for k, v in initial_values.items()}
-    return optimizer(objective=objective, gradient=gradient, hessian=hessian, initial_values=initial_values, variables=variables,
+    return optimizer(objective=objective, gradient=gradient, hessian=hessian, initial_values=initial_values,
+                     variables=variables,
                      samples=samples)
