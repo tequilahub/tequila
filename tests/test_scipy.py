@@ -85,7 +85,7 @@ def test_gradient_free_methods(simulator, method):
 
 @pytest.mark.parametrize("simulator", ["random-backend", tq.simulators.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
-@pytest.mark.parametrize("use_gradient", [True, False]) # False will result in '2-point'
+@pytest.mark.parametrize("use_gradient", [None, '2-point'])
 def test_gradient_based_methods(simulator, method, use_gradient):
     if simulator == "random-backend":
         simulator = numpy.random.choice(simulators,1)[0]
@@ -102,13 +102,13 @@ def test_gradient_based_methods(simulator, method, use_gradient):
     if use_gradient is False:
         initial_values = {"a": 0.3, "b": 0.8}
 
-    result = tq.optimizer_scipy.minimize(objective=-E, use_gradient=use_gradient, method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4}, initial_values=initial_values, silent=True)
+    result = tq.optimizer_scipy.minimize(objective=-E, gradient=use_gradient, method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4}, initial_values=initial_values, silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
 
 
 @pytest.mark.parametrize("simulator", ["random-backend"])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
-@pytest.mark.parametrize("use_hessian", [True, False, '3-point'])  # False will result in '2-point'
+@pytest.mark.parametrize("use_hessian", [None, '2-point', '3-point'])
 def test_hessian_based_methods(simulator, method, use_hessian):
     if simulator == "random":
         simulator = numpy.random.choice(simulators,1)[0]
@@ -129,11 +129,11 @@ def test_hessian_based_methods(simulator, method, use_hessian):
         initial_values = {"a": 0.3, "b": 0.8}
 
     # numerical hessian only works for this method
-    if use_hessian in [False, '3-point']:
+    if use_hessian in ['2-point', '3-point']:
         if method is not "TRUST-CONSTR":
             return
         initial_values = {"a": 0.3, "b": 0.8}
 
-    result = tq.optimizer_scipy.minimize(objective=-E, use_hessian=use_hessian, method=method, tol=1.e-4,
+    result = tq.optimizer_scipy.minimize(objective=-E, hessian=use_hessian, method=method, tol=1.e-4,
                                          method_options=method_options, initial_values=initial_values, silent=True)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-3))
