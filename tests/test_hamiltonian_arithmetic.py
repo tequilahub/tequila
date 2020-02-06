@@ -1,7 +1,7 @@
 from tequila.hamiltonian import QubitHamiltonian, PauliString, paulis
 from numpy import random, kron, eye, allclose
-from tequila import BitString
-
+from tequila import BitString, QubitWaveFunction
+import numpy, pytest
 
 def test_paulistring_conversion():
     X1 = QubitHamiltonian.init_from_string("x0")
@@ -99,6 +99,18 @@ def test_transfer_operators():
     assert (paulis.decompose_transfer_operator(ket=1, bra=0, qubits=[1]) == paulis.Sm(1))
     assert (paulis.decompose_transfer_operator(ket=1, bra=1, qubits=[1]) == paulis.Qm(1))
 
+@pytest.mark.parametrize("qubits", [1,2,3,4])
+def test_projectors(qubits):
+    real = numpy.random.uniform(0.0,1.0,2**qubits)
+    imag = numpy.random.uniform(0.0,1.0,2**qubits)
+    array = real + 1.j*imag
+    print("array=", array)
+    wfn = QubitWaveFunction.from_array(arr=array)
+    P = paulis.Projector(wfn=wfn.normalize())
+    assert(P.is_hermitian())
+    assert(wfn.apply_qubitoperator(P) == wfn)
+    PM = P.to_matrix()
+    assert((PM.dot(PM) == PM).all)
 
 def test_conjugation():
     primitives = [paulis.X, paulis.Y, paulis.Z]

@@ -57,9 +57,10 @@ def Projector(wfn, threshold=0.0) -> QubitHamiltonian:
     H = QubitHamiltonian.init_zero()
     for k1, v1 in wfn.items():
         for k2, v2 in wfn.items():
-            c = v1 * v2
+            c = v1.conjugate() * v2
             if not numpy.isclose(c, 0.0, atol=threshold):
                 H += c * decompose_transfer_operator(bra=k1, ket=k2)
+    assert(H.is_hermitian())
     return H
 
 
