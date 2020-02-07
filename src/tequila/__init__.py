@@ -1,7 +1,7 @@
 from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException
 from tequila.circuit import gates, QCircuit
 from tequila.hamiltonian import paulis, QubitHamiltonian, PauliString
-from tequila.objective import Objective, ExpectationValue, Variable, assign_variable
+from tequila.objective import Objective, ExpectationValue, Variable, assign_variable, format_variable_dictionary
 from tequila.optimizers import optimizer_scipy
 from tequila.simulators import pick_backend
 from tequila.wavefunction import QubitWaveFunction
@@ -57,7 +57,7 @@ def simulate(objective: Objective,
             "Don't know how to simulate object of type: {type}, \n{object}".format(type=type(objective),
                                                                                    object=objective))
 
-def draw(objective, backend:str=None):
+def draw(objective, variables=None, backend:str=None):
     if backend is None:
         if "cirq" in simulators.INSTALLED_SIMULATORS:
             backend = "cirq"
@@ -71,7 +71,12 @@ def draw(objective, backend:str=None):
         if backend is None:
             print(objective)
         else:
-            variables = {k:i for i,k in enumerate(objective.extract_variables())}
+            if variables is None:
+                variables = {}
+            for k in objective.extract_variables():
+                if k not in variables:
+                    variables[k] = 0.0
+            variables = format_variable_dictionary(variables)
             compiled=simulators.compile_circuit(abstract_circuit=objective, backend=backend, variables=variables)
             print(compiled.circuit)
 

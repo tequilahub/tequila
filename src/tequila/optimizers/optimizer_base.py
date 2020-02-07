@@ -59,7 +59,7 @@ class OptimizerHistory:
         gradients = {}
         for i, d in enumerate(self.gradients):
             if key in d:
-                gradients[i] = d[key]
+                gradients[i] = d[assign_variable(key)]
         return gradients
 
     def extract_angles(self, key: str) -> typing.Dict[numbers.Integral, numbers.Real]:
@@ -70,7 +70,7 @@ class OptimizerHistory:
         angles = {}
         for i, d in enumerate(self.angles):
             if key in d:
-                angles[i] = d[key]
+                angles[i] = d[assign_variable(key)]
         return angles
 
     def plot(self,
@@ -97,6 +97,19 @@ class OptimizerHistory:
         else:
             properties = property
 
+        labels = None
+        if 'labels' in kwargs:
+            labels = kwargs['labels']
+        elif 'label' in kwargs:
+            labels = kwargs['label']
+
+        if hasattr(labels, "lower"):
+            labels = [labels]*len(properties)
+
+        for k,v in kwargs.items():
+            if hasattr(plt, k):
+                getattr(plt, k)(v)
+
         if key is None:
             keys = [[k for k in self.angles[-1].keys()]] * len(properties)
         elif isinstance(key, typing.Hashable):
@@ -106,16 +119,18 @@ class OptimizerHistory:
             keys = [key] * len(properties)
 
         for i, p in enumerate(properties):
+            try:
+                label = labels[i]
+            except:
+                label = p
+
             if p == "energies":
                 data = getattr(self, "extract_" + p)()
-                plt.plot(list(data.keys()), list(data.values()), label=str(p), marker='o', linestyle='--')
+                plt.plot(list(data.keys()), list(data.values()), label=str(label), marker='o', linestyle='--')
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(list(data.keys()), list(data.values()), label=str(p) + " " + str(k), marker='o', linestyle='--')
-
-        if 'title' in kwargs:
-            plt.title(kwargs['title'])
+                    plt.plot(list(data.keys()), list(data.values()), label=str(label) + " " + str(k), marker='o', linestyle='--')
 
         loc = 'best'
         if 'loc' in kwargs:
