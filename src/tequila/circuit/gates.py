@@ -1,11 +1,12 @@
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
-    ExponentialPauliGateImpl, TrotterizedGateImpl
+    ExponentialPauliGateImpl, TrotterizedGateImpl, PhaseGateImpl
 from tequila import TequilaException
 import typing, numbers
 from dataclasses import dataclass
 from tequila.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
+import numpy as np
 import functools
 
 
@@ -27,6 +28,15 @@ def PowerGate(name, target: typing.Union[list, int], power: bool = None, control
     return PowerGateImpl(name=name, power=power, target=target, control=control)
 
 
+@wrap_gate
+def Phase(phase, target: typing.Union[list, int],  control: typing.Union[list, int] = None):
+    return PhaseGateImpl(phase=phase,target=target,control=control)
+
+def S(target:typing.Union[list,int], control: typing.Union[list,int] =None):
+    return Phase(np.pi/2,target=target,control=control)
+
+def T(target:typing.Union[list,int], control: typing.Union[list,int] =None):
+    return Phase(np.pi/4,target=target,control=control)
 @wrap_gate
 def QGate(name, target: typing.Union[list, int], control: typing.Union[list, int] = None):
     return QGateImpl(name=name, target=target, control=control)
@@ -201,9 +211,12 @@ def enforce_integer(function) -> int:
     return wrapper
 
 
-@enforce_integer
 def CNOT(control: int, target: int) -> QCircuit:
     return X(target=target, control=control)
+
+@enforce_integer
+def Toffoli(first: int, second: int, target: int):
+    return X(target=target, control=[first,second])
 
 
 @enforce_integer

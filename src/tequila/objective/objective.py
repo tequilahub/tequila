@@ -278,7 +278,8 @@ class Objective:
                 else:
                     E.append(Ei(variables=variables))
             # return evaluated result
-            return to_float(self.transformation(*E))
+            out=self.transformation(*E)
+            return to_float(out)
         else:
             # in case that no simulator is actually needed
             evaluated_args = [variables[arg] for arg in self.args]
