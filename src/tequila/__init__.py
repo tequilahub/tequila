@@ -11,10 +11,15 @@ import tequila.quantumchemistry as chemistry
 from typing import Dict, Union, Hashable
 from numbers import Real as RealNumber
 
+# make sure to use the jax/autograd numpy
+from tequila.autograd_imports import numpy, __AUTOGRAD__BACKEND__
 from tequila.circuit.gradient import grad
 
-# make sure to use the jax numpy
-from tequila.objective.objective import numpy
+
+# get rid of the jax GPU/CPU warnings
+import warnings
+warnings.filterwarnings("ignore", module="jax")
+
 
 def simulate(objective: Objective,
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,
@@ -51,6 +56,25 @@ def simulate(objective: Objective,
         raise TequilaException(
             "Don't know how to simulate object of type: {type}, \n{object}".format(type=type(objective),
                                                                                    object=objective))
+
+def draw(objective, backend:str=None):
+    if backend is None:
+        if "cirq" in simulators.INSTALLED_SIMULATORS:
+            backend = "cirq"
+        elif "qiskit" in simulators.INSTALLED_SIMULATORS:
+            backend = "qiskit"
+
+    if isinstance(objective, Objective):
+        #pretty printer not here yet
+        print(objective)
+    else:
+        if backend is None:
+            print(objective)
+        else:
+            variables = {k:i for i,k in enumerate(objective.extract_variables())}
+            compiled=simulators.compile_circuit(abstract_circuit=objective, backend=backend, variables=variables)
+            print(compiled.circuit)
+
 
 
 __version__ = "AndreasDorn"

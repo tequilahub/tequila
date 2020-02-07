@@ -44,7 +44,7 @@ class BackendCircuit:
     def qubits(self) -> typing.Iterable[numbers.Integral]:
         return tuple(self._qubits)
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, *args, **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, optimize_circuit=True, *args, **kwargs):
 
         self.use_mapping = use_mapping
 
@@ -77,6 +77,9 @@ class BackendCircuit:
         self.abstract_circuit = compiled
         # translate into the backend object
         self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
+
+        if optimize_circuit:
+            self.circuit = self.optimize_circuit(circuit=self.circuit)
 
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
@@ -261,6 +264,17 @@ class BackendCircuit:
         assert(len(self.abstract_qubit_map) == len(qubits))
         return self.abstract_qubit_map
 
+    def optimize_circuit(self, circuit, *args, **kwargs):
+        """
+        Can be overwritten if the backend supports its own circuit optimization
+        To be clear: Optimization means optimizing the compiled circuit w.r.t depth not
+        optimizing parameters
+        :return: Optimized circuit, if supported by backend, else no action is taken
+        """
+        return circuit
+
+
+
 class BackendExpectationValue:
     BackendCircuitType = BackendCircuit
 
@@ -284,6 +298,12 @@ class BackendExpectationValue:
         self._U = self.initialize_unitary(E.U, variables)
         self._H = self.initialize_hamiltonian(E.H)
 
+    def __call__(self, variables, samples:int=None, *args, **kwargs):
+        if samples is None:
+            return self.simulate(variables=variables, *args, **kwargs)
+        else:
+            return self.sample(variables=variables, samples=samples, *args, **kwargs)
+
     def initialize_hamiltonian(self, H):
         return H
 
@@ -292,6 +312,12 @@ class BackendExpectationValue:
 
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)
+
+    def sample(self, variables, samples, *args, **kwargs):
+        E = 0.0
+        for ps in self.H.paulistrings:
+            E += self.sample_paulistring(variables=variables, samples=samples, paulistring=ps, *args, **kwargs)
+        return E
 
     def simulate(self, variables, *args, **kwargs):
         # TODO the whole procedure is quite inefficient but at least it works for general backends

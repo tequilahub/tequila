@@ -1,14 +1,15 @@
 from tequila.circuit.compiler import compile_controlled_rotation
 from tequila.circuit._gates_impl import RotationGateImpl,PhaseGateImpl
 from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget,compile_power_gate,compile_controlled_phase,compile_h_power
-from tequila.objective.objective import Objective, ExpectationValueImpl, Variable
+from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable
 from tequila import TequilaException
 
 import numpy as np
 import copy
 import typing
 
-import jax
+# make sure to use the jax/autograd numpy
+from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
 
 
 def grad(objective: Objective, variable: Variable = None, no_compile=False):
@@ -64,7 +65,12 @@ def __grad_objective(objective: Objective, variable: Variable):
     transformation = objective.transformation
     dO = None
     for i, arg in enumerate(args):
-        df = jax.jit(jax.grad(transformation, argnums=i))
+        if __AUTOGRAD__BACKEND__ == "jax":
+            df = jax.grad(transformation, argnums=i)
+        elif __AUTOGRAD__BACKEND__ == "autograd":
+            df = jax.grad(transformation, argnum=i)
+        else:
+            raise TequilaException("Can't differentiate without autograd or jax")
         outer = Objective(args=args, transformation=df)
 
         inner = __grad_inner(arg=arg, variable=variable)

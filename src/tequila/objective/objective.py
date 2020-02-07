@@ -1,9 +1,9 @@
 import typing, copy, numbers
-from jax import numpy as numpy
 
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
 from tequila.hamiltonian import paulis
+from tequila.autograd_imports import numpy
 
 
 class ExpectationValueImpl:
@@ -41,6 +41,7 @@ class ExpectationValueImpl:
             self.U.update_variables(variables)
 
     def __init__(self, U=None, H=None):
+        assert(H.is_hermitian())
         self._unitary = copy.deepcopy(U)
         self._hamiltonian = copy.deepcopy(H)
 
@@ -67,6 +68,20 @@ class Objective:
     def __init__(self, args: typing.Iterable, transformation: typing.Callable = None):
         self._args = tuple(args)
         self._transformation = transformation
+
+    @property
+    def backend(self) -> str:
+        """
+        Checks if the objective is compiled and gives back the name of the backend if so
+        Otherwise returns None
+        If the objective has no expectationvalues it gives back 'free'
+        """
+        if self.has_expectationvalues():
+            for arg in self.args:
+                if hasattr(arg, "U"):
+                    return str(type(arg))
+        else:
+            return "free"
 
     def extract_variables(self):
         """
@@ -182,6 +197,9 @@ class Objective:
     def __radd__(self, other):
         return self.right_helper(numpy.add, other)
 
+    def __rsub__(self, other):
+        return self.right_helper(numpy.subtract, other)
+
     def __rtruediv__(self, other):
         return self.right_helper(numpy.true_divide, other)
 
@@ -243,7 +261,7 @@ class Objective:
         i = 0
         for arg in self.args:
             if hasattr(arg, "U"):
-                i +=1
+                i += 1
         return i
 
     def __repr__(self):
@@ -271,7 +289,7 @@ class Objective:
             E = []
             for Ei in self.args:
                 if hasattr(Ei, "simulate"):
-                    E.append(Ei.simulate(variables=variables, *args, **kwargs))
+                    E.append(Ei(variables=variables, *args, **kwargs))
                 elif hasattr(Ei, "U"):
                     raise TequilaException(
                         "You are trying to evaluate a non-compiled objective.\nTry passing this object to tequila.simulate(...)")
@@ -296,31 +314,6 @@ def ExpectationValue(U, H) -> Objective:
 class TequilaVariableException(TequilaException):
     def __str__(self):
         return "Error in tequila variable:" + self.message
-
-
-class SympyVariable:
-    '''
-    TODO: can we pleaseeeeee get rid of this thing, Jakob? pretty please?
-    '''
-
-    def __init__(self, name=None, value=None):
-        self._value = value
-        self._name = name
-
-    def __call__(self, *args, **kwargs):
-        return self._value
-
-    def __sub__(self, other):
-        return SympyVariable(name=self._name, value=self._value - other)
-
-    def __add__(self, other):
-        return SympyVariable(name=self._name, value=self._value + other)
-
-    def __mul__(self, other):
-        return SympyVariable(name=self._name, value=self._value * other)
-
-    def __neg__(self):
-        return SympyVariable(name=self._name, value=-self._value)
 
 
 class Variable:
@@ -480,6 +473,31 @@ class FixedVariable(float):
         return self
 
 
+def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List[Variable]:
+    """
+    Convenience functions to assign tequila variables
+    :param variables: a list with Hashables as keys
+    :return: a list with tq.Variable types as keys
+    """
+    if variables is None:
+        return variables
+    else:
+        return [assign_variable(k) for k in variables]
+
+
+def format_variable_dictionary(variables: typing.Dict[typing.Hashable, typing.Any]) -> typing.Dict[
+    Variable, typing.Any]:
+    """
+    Convenience functions to assign tequila variables
+    :param variables: a dictionary with Hashables as keys
+    :return: a dictionary with tq.Variable types as keys
+    """
+    if variables is None:
+        return variables
+    else:
+        return {assign_variable(k): v for k, v in variables.items()}
+
+
 def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[
     Variable, FixedVariable]:
     """
@@ -498,9 +516,6 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
         if not isinstance(variable, numbers.Real):
             raise TequilaVariableException("You tried to assign a complex number to a FixedVariable")
         return FixedVariable(variable)
-    elif hasattr(variable,
-                 "evalf"):  # evalf detects sympy types ... not differentiable, hidden in the type hinting since it should not really be used
-        return SympyVariable(value=variable)
     elif isinstance(variable, typing.Hashable):
         return Variable(name=variable)
     else:

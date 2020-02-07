@@ -87,6 +87,19 @@ class ParametersQC:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
         return result
 
+    def get_geometry_string(self) -> str:
+        """
+        returns the geometry as a string
+        :return: geometrystring
+        """
+        if self.geometry.split('.')[-1] == 'xyz':
+            geomstring, comment = self.read_xyz_from_file(self.geometry)
+            if comment is not None:
+                self.description = comment
+            return geomstring
+        else:
+            return self.geometry
+
     def get_geometry(self):
         """
         Returns the geometry
@@ -227,7 +240,10 @@ class Amplitudes:
 
 class QuantumChemistryBase:
 
-    def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None):
+    def __init__(self, parameters: ParametersQC,
+                 transformation: typing.Union[str, typing.Callable] = None,
+                 *args,
+                 **kwargs):
         self.parameters = parameters
         if transformation is None:
             self.transformation = openfermion.jordan_wigner
@@ -241,7 +257,8 @@ class QuantumChemistryBase:
                                                                              "bravykitaevtree", "b-k-t"]:
             self.transformation = openfermion.bravyi_kitaev_tree
         elif hasattr(transformation, "lower"):
-            self.transformation = getattr(openfermion, transformation.lower())
+            trafo = getattr(openfermion, transformation.lower())
+            self.transformation = lambda x: trafo(x, *args, **kwargs)
         else:
             assert (callable(transformation))
             self.transformation = transformation
@@ -252,12 +269,26 @@ class QuantumChemistryBase:
         Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
         And gives it back multiplied with 1j to make it hermitian
         :param indices: List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
+        can also be given as one big list: [a_0, i_0, a_1, i_1 ...]
         :return: 1j*Transformed qubit excitation operator, depends on self.transformation
         """
+        # check indices and convert to list of tuples if necessary
+        if len(indices) == 0:
+            raise TequilaException("make_excitation_operator: no indices given")
+        elif not isinstance(indices[0], typing.Iterable):
+            if len(indices % 2) != 0:
+                raise TequilaException("make_excitation_operator: unexpected input format of infices\n"
+                                       "use list of tuples as [(a_0, i_0),(a_1, i_1) ...]\n"
+                                       "or list as [a_0, i_0, a_1, i_1, ... ]\n"
+                                       "you gave: {}".format(indices))
+            converted = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
+        else:
+            converted = indices
+
         # convert to openfermion input format
         ofi = []
         dag = []
-        for pair in indices:
+        for pair in converted:
             assert (len(pair) == 2)
             ofi += [(pair[0], 1), (pair[1], 0)]
             dag += [(pair[0], 0), (pair[1], 1)]
@@ -356,7 +387,7 @@ class QuantumChemistryBase:
                           trotter_steps: int,
                           initial_amplitudes: typing.Union[str, Amplitudes] = "mp2",
                           include_reference_ansatz=True,
-                          parametrized = True,
+                          parametrized=True,
                           trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
 
         """

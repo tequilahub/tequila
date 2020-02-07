@@ -3,7 +3,7 @@ import copy
 import numbers
 from abc import ABC
 from tequila import TequilaException
-from tequila.objective.objective import SympyVariable, Variable, FixedVariable, assign_variable
+from tequila.objective.objective import Variable, FixedVariable, assign_variable
 from tequila.hamiltonian import PauliString, QubitHamiltonian
 from tequila.tools import number_to_string, list_assignement
 
@@ -244,7 +244,7 @@ class RotationGateImpl(ParametrizedGateImpl):
 
     def dagger(self):
         result = copy.deepcopy(self)
-        result._parameter = -self.angle
+        result._parameter = assign_variable(-self.angle)
         return result
 
     def is_gaussian(self):

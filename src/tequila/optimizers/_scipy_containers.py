@@ -11,22 +11,26 @@ class _EvalContainer:
     This class is used by the SciPy optimizer and should not be used somewhere else
     """
 
-    def __init__(self, objective, param_keys, samples=None, save_history=True, silent: bool = True):
+    def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True,
+                 silent: bool = True):
         self.objective = objective
         self.samples = samples
         self.param_keys = param_keys
         self.N = len(param_keys)
         self.save_history = save_history
         self.silent = silent
+        self.passive_angles = passive_angles
         if save_history:
             self.history = []
             self.history_angles = []
 
     def __call__(self, p, *args, **kwargs):
         angles = dict((self.param_keys[i], p[i]) for i in range(self.N))
+        if self.passive_angles is not None:
+            angles = {**angles, **self.passive_angles}
         E = self.objective(variables=angles, samples=self.samples)
         if not self.silent:
-            print("E=", E, " angles=", angles)
+            print("E=", E, " angles=", angles, " samples=", self.samples)
         if self.save_history:
             self.history.append(E)
             self.history_angles.append(angles)
@@ -44,8 +48,30 @@ class _GradContainer(_EvalContainer):
         dE_vec = numpy.zeros(self.N)
         memory = dict()
         variables = dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys)))
+        if self.passive_angles is not None:
+            variables = {**variables, **self.passive_angles}
         for i in range(self.N):
             dE_vec[i] = dO[self.param_keys[i]](variables=variables, samples=self.samples)
             memory[self.param_keys[i]] = dE_vec[i]
         self.history.append(memory)
         return dE_vec
+
+
+class _HessContainer(_EvalContainer):
+
+    def __call__(self, p, *args, **kwargs):
+        ddO = self.objective
+        ddE_mat = numpy.zeros(shape=[self.N, self.N])
+        memory = dict()
+        variables = dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys)))
+        if self.passive_angles is not None:
+            variables = {**variables, **self.passive_angles}
+        for i in range(self.N):
+            for j in range(i, self.N):
+                key = (self.param_keys[i], self.param_keys[j])
+                value = ddO[key](variables=variables, samples=self.samples)
+                ddE_mat[i, j] = value
+                ddE_mat[j, i] = value
+                memory[key] = value
+        self.history.append(memory)
+        return ddE_mat

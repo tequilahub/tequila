@@ -1,5 +1,5 @@
 import pytest
-from jax import numpy as np
+from tequila import numpy as np
 from tequila.circuit.gradient import grad
 from tequila.objective.objective import Objective, Variable
 import operator
@@ -43,6 +43,7 @@ def test_transform_update():
 
 @pytest.mark.parametrize('gradvar', ['a', 'b', 'c', 'd', 'e', 'f'])
 def test_exotic_gradients(gradvar):
+    # a and b will fail for autograd not with jax
     a = Variable('a')
     b = Variable('b')
     c = Variable('c')
@@ -56,15 +57,14 @@ def test_exotic_gradients(gradvar):
                     f + b) + Objective(args=[e], transformation=np.tanh) + Objective(args=[f], transformation=np.sinc)
     g = grad(t, gradvar)
     if gradvar is 'a':
-        assert g(variables) == c(variables) * b(variables) * (a(variables) ** (b(variables) - 1.)) + np.exp(d(variables)) / (f(variables) + b(variables))
+        assert np.isclose(g(variables) , c(variables) * b(variables) * (a(variables) ** (b(variables) - 1.)) + np.exp(d(variables)) / (f(variables) + b(variables)))
     if gradvar is 'b':
-        assert g(variables) == (c(variables) * a(variables) ** b(variables)) * np.log(a(variables)) + 1. / c(variables) - a(variables) * np.exp(d(variables)) / (f(variables) + b(variables)) ** 2.
+        assert np.isclose(g(variables) , (c(variables) * a(variables) ** b(variables)) * np.log(a(variables)) + 1. / c(variables) - a(variables) * np.exp(d(variables)) / (f(variables) + b(variables)) ** 2.0)
     if gradvar is 'c':
-        assert g(variables) == a(variables) ** b(variables) - b(variables) / c(variables) ** 2. + np.sin(c(variables))
+        assert np.isclose(g(variables) , a(variables) ** b(variables) - b(variables) / c(variables) ** 2. + np.sin(c(variables)))
     if gradvar is 'd':
-        assert g(variables) == -f(variables) / (np.square(d(variables)) * e(variables)) + a(variables) * np.exp(d(variables)) / (f(variables) + b(variables))
+        assert np.isclose(g(variables) , -f(variables) / (np.square(d(variables)) * e(variables)) + a(variables) * np.exp(d(variables)) / (f(variables) + b(variables)))
     if gradvar is 'e':
         assert np.isclose(g(variables), 2. / (1. + np.cosh(2 * e(variables))) - f(variables) / (d(variables) * e(variables) ** 2.))
     if gradvar is 'f':
-        assert g(variables) == 1. / (d(variables) * e(variables)) - a(variables) * np.exp(d(variables)) / (f(variables) + b(variables)) ** 2. + np.cos(np.pi * f(variables)) / f(variables) - np.sin(
-            np.pi * f(variables)) / (np.pi * f(variables) ** 2.)
+        assert np.isclose(g(variables) , 1. / (d(variables) * e(variables)) - a(variables) * np.exp(d(variables)) / (f(variables) + b(variables)) ** 2. + np.cos(np.pi * f(variables)) / f(variables) - np.sin(np.pi * f(variables)) / (np.pi * f(variables) ** 2.))

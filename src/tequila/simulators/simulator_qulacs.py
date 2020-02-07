@@ -4,7 +4,6 @@ from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulatorbase import BackendCircuit, BackendExpectationValue
-from tequila.circuit import QCircuit
 
 """
 todo: overwrite simulate_objective for this simulators, might be faster
@@ -64,7 +63,8 @@ class BackendCircuitQulacs(BackendCircuit):
             circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.angle(variables) * gate.paulistring.coeff)
 
     def add_gate(self, gate, circuit, *args, **kwargs):
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]])
+        targets = tuple([self.qubit_map[t] for t in gate.target])
+        getattr(circuit, "add_" + gate.name.upper() + "_gate")(*targets)
 
     def add_controlled_gate(self, gate, circuit, *args, **kwargs):
         if len(gate.control) == 1 and gate.name.upper() == "X":
@@ -119,7 +119,33 @@ class BackendCircuitQulacs(BackendCircuit):
         raise TequilaQulacsException("no controlled power gates")
 
     def add_measurement(self, gate, circuit, *args, **kwargs):
-        raise TequilaQulacsException("only full wavefunction simulation, no measurements. Did you forget to add the number of samples?")
+        raise TequilaQulacsException(
+            "only full wavefunction simulation, no measurements. Did you forget to add the number of samples?")
+
+    def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
+        """
+        Can be overwritten if the backend supports its own circuit optimization
+        To be clear: Optimization means optimizing the compiled circuit w.r.t depth not
+        optimizing parameters
+        :return: Optimized circuit
+        """
+
+        # as far as I interpret it it makes most sense to set the block_size to the number of
+        # available threads
+        if max_block_size is None:
+            import os
+            omp_threads = os.environ.get('OMP_NUM_THREADS')
+            if omp_threads is None:
+                max_block_size = 1
+            else:
+                max_block_size = int(omp_threads)
+
+        old = circuit.calculate_depth()
+        opt = qulacs.circuit.QuantumCircuitOptimizer()
+        opt.optimize(circuit, max_block_size)
+        if not silent:
+            print("qulacs: optimized circuit depth from {} to {} with max_block_size {}".format(old, circuit.calculate_depth(), max_block_size))
+        return circuit
 
 
 class BackendExpectationValueQulacs(BackendExpectationValue):

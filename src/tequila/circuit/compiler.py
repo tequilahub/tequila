@@ -76,7 +76,7 @@ class Compiler:
                 "Unknown argument type for objectives: {arg} or type {type}".format(arg=arg, type=type(arg)))
 
     def compile_circuit(self, abstract_circuit: QCircuit) -> QCircuit:
-
+        n_qubits = abstract_circuit.n_qubits
         compiled = QCircuit()
         for gate in abstract_circuit.gates:
             cg = gate
@@ -122,6 +122,7 @@ class Compiler:
 
             compiled += cg
 
+        compiled.n_qubits = max(compiled.n_qubits, n_qubits)
         return compiled
 
 

@@ -35,12 +35,13 @@ def test_conventions():
                         l1.axis = axes[numpy.random.randint(0, 2)]
                         assert (l1 == l2)
 
-def strip_sympy_zeros(wfn:QubitWaveFunction):
+
+def strip_sympy_zeros(wfn: QubitWaveFunction):
     result = QubitWaveFunction()
-    for k,v in wfn.items():
-        if v !=0:
-            result[k]=v
-    return  result
+    for k, v in wfn.items():
+        if v != 0:
+            result[k] = v
+    return result
 
 
 def test_basic_gates():
@@ -61,16 +62,16 @@ def test_basic_gates():
         1 / sympy.sqrt(2) * (BS(0) + BS(1))
     ]
     for i, g in enumerate(gates):
-        wfn = simulate(g, backend="symbolic")
+        wfn = simulate(g, backend="symbolic", variables={angle: sympy.pi})
         assert (wfn == strip_sympy_zeros(results[i]))
 
 
 def test_consistency():
-    angle = sympy.pi / 2
+    angle = numpy.pi / 2
     cpairs = [
         (CNOT(target=0, control=1), X(target=0, control=1)),
-        (Ry(target=0, angle=sympy.pi), Rz(target=0, angle=4 * sympy.pi) + X(target=0)),
-        (Rz(target=0, angle=sympy.pi), Rz(target=0, angle=sympy.pi) + Z(target=0)),
+        (Ry(target=0, angle=numpy.pi), Rz(target=0, angle=4 * numpy.pi) + X(target=0)),
+        (Rz(target=0, angle=numpy.pi), Rz(target=0, angle=numpy.pi) + Z(target=0)),
         (Rz(target=0, angle=angle), Rz(target=0, angle=angle / 2) + Rz(target=0, angle=angle / 2)),
         (Rx(target=0, angle=angle), Rx(target=0, angle=angle / 2) + Rx(target=0, angle=angle / 2)),
         (Ry(target=0, angle=angle), Ry(target=0, angle=angle / 2) + Ry(target=0, angle=angle / 2))
@@ -80,6 +81,4 @@ def test_consistency():
         print("circuit=", c[0], "\n", c[1])
         wfn1 = simulate(c[0], backend="symbolic")
         wfn2 = simulate(c[1], backend="symbolic")
-        assert (wfn1 == wfn2)
-
-
+        assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
