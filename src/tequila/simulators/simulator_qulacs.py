@@ -130,16 +130,6 @@ class BackendCircuitQulacs(BackendCircuit):
         :return: Optimized circuit
         """
 
-        # as far as I interpret it it makes most sense to set the block_size to the number of
-        # available threads
-        if max_block_size is None:
-            import os
-            omp_threads = os.environ.get('OMP_NUM_THREADS')
-            if omp_threads is None:
-                max_block_size = 1
-            else:
-                max_block_size = int(omp_threads)
-
         old = circuit.calculate_depth()
         opt = qulacs.circuit.QuantumCircuitOptimizer()
         opt.optimize(circuit, max_block_size)
@@ -200,7 +190,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         else:
             if self.U.n_qubits < H.n_qubits:
                 raise TequilaQulacsException(
-                    "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are not yet implemented")
+                    "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are switched off")
 
             qulacs_H = qulacs.Observable(self.n_qubits)
 
