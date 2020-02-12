@@ -37,14 +37,11 @@ class ParametersQC:
     multiplicity: int = 1
     charge: int = 0
     closed_shell: bool = True
-    datafile: str = None
+    name: str = "molecule"
 
     @property
     def filename(self):
-        if self.datafile is None:
-            return "molecule"
-        else:
-            return self.datafile
+        return "{}_{}".format(self.name, self.basis_set)
 
     @property
     def molecular_data_param(self) -> dict:
@@ -52,7 +49,7 @@ class ParametersQC:
         :return: Give back all parameters for the MolecularData format from openfermion as dictionary
         """
         return {'basis': self.basis_set, 'geometry': self.get_geometry(), 'description': self.description,
-                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.datafile
+                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.filename
                 }
 
     @staticmethod
@@ -114,8 +111,8 @@ class ParametersQC:
             geomstring, comment = self.read_xyz_from_file(self.geometry)
             if self.description == '':
                 self.description = comment
-            if self.datafile is None:
-                self.datafile = self.geometry.split('.')[0]
+            if self.name == "molecule":
+                self.name = self.geometry.split('.')[0]
             return self.convert_to_list(geomstring)
         elif self.geometry is not None:
             return self.convert_to_list(self.geometry)
@@ -238,7 +235,58 @@ class Amplitudes:
         return self.data.__len__()
 
 
+class ClosedShellAmplitudes:
+
+    def __init__(self, nocc, nvirt, amplitudes: numpy.ndarray):
+        self.nocc = nocc
+        self.nvirt = nvirt
+        self.norb = nocc + nvirt
+
+        offsets = [None] * len(amplitudes.shape)
+        for i, dim in enumerate(amplitudes.shape):
+            if dim == nocc:
+                offsets[i] = 0
+            elif dim == nvirt:
+                offsets[i] = nocc
+            elif dim == nocc + nvirt:
+                offsets[i] = 0
+            else:
+                raise TequilaException("Unexpected dimension in amplitudes {}".format(amplitudes.shape))
+        self._offsets = offsets
+        self.amplitudes = amplitudes
+
+    def __call__(self, indices, use_offset=False, *args, **kwargs):
+        if use_offset:
+            idx = [indices[i] + self._offsets[i] for i in range(indices)]
+        else:
+            idx = indices
+        return self.amplitudes[idx]
+
+    def make_ordered_parameter_dict(self, threshold=0.0, use_offset=False):
+        flat = self.amplitudes.flatten()
+
+        if use_offset:
+            offsets = self._offsets
+        else:
+            offsets = [0] * len(self._offsets)
+
+        def idx_map(x):
+            ind = numpy.unravel_index(range(len(flat)), shape=self.amplitudes.shape)
+            return tuple([ind[i][x] + offsets[i] for i in range(len(self.amplitudes.shape))])
+
+        dic = {}
+        for i, v in enumerate(flat):
+            if not numpy.isclose(v, 0.0, atol=threshold):
+                dic[idx_map(i)] = v
+
+        return dict(sorted(dic.items(), key=lambda x: numpy.abs(x[1]), reverse=True))
+
+
 class QuantumChemistryBase:
+
+    def ClosedShellAmplitudes(self, amplitudes):
+        return ClosedShellAmplitudes(amplitudes=amplitudes, nocc=self.n_alpha_electrons,
+                                     nvirt=self.n_orbitals - self.n_alpha_electrons)
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
@@ -290,8 +338,9 @@ class QuantumChemistryBase:
         dag = []
         for pair in converted:
             assert (len(pair) == 2)
-            ofi += [(pair[0], 1), (pair[1], 0)]
-            dag += [(pair[0], 0), (pair[1], 1)]
+            ofi += [(int(pair[0]), 1),
+                    (int(pair[1]), 0)]  # openfermion does not take other types of interges like numpy.int64
+            dag += [(int(pair[0]), 0), (int(pair[1]), 1)]
 
         op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
@@ -340,14 +389,13 @@ class QuantumChemistryBase:
         # try to load
 
         do_compute = True
-        if self.parameters.datafile:
-            try:
-                import os
-                if os.path.exists(self.parameters.datafile):
-                    molecule.load()
-                    do_compute = False
-            except OSError:
-                do_compute = True
+        try:
+            import os
+            if os.path.exists(self.parameters.filename):
+                molecule.load()
+                do_compute = False
+        except OSError:
+            do_compute = True
 
         if do_compute:
             molecule = self.do_make_molecule(molecule)
@@ -454,6 +502,88 @@ class QuantumChemistryBase:
         self.molecule.mp2_energy = E + self.molecule.hf_energy
         return Amplitudes.from_ndarray(array=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'),
                                        closed_shell=True, index_offset=(nocc, 0, nocc, 0))
+
+    def compute_cis_amplitudes(self):
+
+        @dataclass
+        class ResultCIS:
+            omegas: typing.List[numbers.Real]  # excitation energies [omega0, ...]
+            amplitudes: typing.List[numpy.ndarray]  # corresponding amplitudes [x_{ai}_0, ...]
+
+            def __getitem__(self, item):
+                return (self.omegas[item], self.amplitudes[item])
+
+            def __len__(self):
+                return len(self.omegas)
+
+        # Closed Shell CIS Matrix
+        # (e_a - e_i - omega)t_{ai} + (2<ak|g|ib> - <ak|g|bi>)t_{bk} = 0
+        # M_{bk} t_{bk} = omega t_{bk}
+        # M_{bk} = (e_a - e_i) \delta(b,a)\delta(i,k) + (2<ak|g|ib> - <ak|g|bi>)
+
+        g = self.molecule.two_body_integrals
+        fij = self.molecule.orbital_energies
+        nocc = self.n_alpha_electrons
+
+        nocc = self.n_alpha_electrons
+        nvirt = self.n_orbitals - nocc
+
+        pairs = []
+        for i in range(nocc):
+            for a in range(nocc, nocc + nvirt):
+                pairs.append((a, i))
+        M = numpy.ndarray(shape=[len(pairs), len(pairs)])
+
+        for xx, x in enumerate(pairs):
+            eia = fij[x[0]] - fij[x[1]]
+            a, i = x
+            for yy, y in enumerate(pairs):
+                b, j = y
+                delta = float(y == x)
+                gpart = 2.0 * g[a, i, b, j] - g[a, i, j, b]
+                M[xx, yy] = eia * delta + gpart
+
+        omega, xvecs = numpy.linalg.eigh(M)
+
+        # convert amplitudes to ndarray sorted by excitation energy
+        nex = len(omega)
+        amplitudes = []
+        for ex in range(nex):
+            t = numpy.ndarray(shape=[nvirt, nocc])
+            exvec = xvecs[ex]
+            for xx, x in enumerate(pairs):
+                a, i = x
+                t[a - nocc, i] = exvec[xx]
+            amplitudes.append(self.ClosedShellAmplitudes(amplitudes=t))
+
+        return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
+
+    def compute_cispd_amplitudes(self, state=None, xcis=None, omega=None) -> ClosedShellAmplitudes:
+        assert self.parameters.closed_shell
+
+        if xcis is None:
+            assert (state is not None)
+            cis_result = self.compute_cis_amplitudes()
+            xcis = cis_result.amplitudes[state].amplitudes
+            omega = cis_result.omegas[state]
+
+        assert xcis.shape == (self.n_orbitals - self.n_alpha_electrons, self.n_alpha_electrons)
+        assert omega > 0.0
+        g = self.molecule.two_body_integrals
+        fij = self.molecule.orbital_energies
+        nocc = self.n_alpha_electrons
+        ei = fij[:nocc]
+        ai = fij[nocc:]
+        abgic = g[nocc:, nocc:, :nocc, nocc:]
+        abgixj = numpy.einsum('abic,cj -> abij', abgic, xcis, optimize='optimize')
+        abgcj = g[nocc:, nocc:, nocc:, :nocc]
+        abgxij = numpy.einsum('abcj,ci -> abij', abgcj, xcis, optimize='optimize')
+        abgij = abgixj + abgxij
+        amplitudes = abgij * 1.0 / (
+                ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1,
+                                                                                                         1) - omega)
+        return self.ClosedShellAmplitudes(
+            amplitudes=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'))
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"

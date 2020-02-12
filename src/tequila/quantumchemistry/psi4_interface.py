@@ -80,8 +80,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         tmp2 = Amplitudes.from_ndarray(array=doubles, closed_shell=False)
         return Amplitudes(data={**tmp1.data, **tmp2.data}, closed_shell=False)
 
-    def compute_energy(self, method:str = "fci", filename:str=None):
+    def compute_energy(self, method:str = "fci", filename:str=None, return_wfn=False):
         if __HAS_PSI4_PYTHON__:
+            psi4.core.clean()
             if filename is None:
                 filename = "{}_{}.out".format(self.parameters.filename, method)
             psi4.core.set_output_file(filename, False)
@@ -91,6 +92,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                               'scf_type': 'pk',
                               'e_convergence': 1e-8,
                               'd_convergence': 1e-8})
-            return psi4.energy(name=method)
+
+            psi4.activate(mol)
+            if return_wfn:
+                return psi4.energy(name=method, return_wfn=return_wfn)
+            else:
+                return psi4.energy(name=method)
         else:
-            raise TequilaPsi4Exception("Can't find the psi4 python module")
+            raise TequilaPsi4Exception("Can't find the psi4 python module, let your environment know the path to psi4")

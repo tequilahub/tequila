@@ -41,7 +41,6 @@ def Molecule(geometry: str, basis_set: str, transformation: typing.Union[str, ty
     :return:
     """
 
-
     keyvals = {}
     for k,v in kwargs.items():
         if k in ParametersQC.__dict__.keys():

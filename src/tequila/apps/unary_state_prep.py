@@ -137,7 +137,6 @@ class UnaryStatePrep:
             if coeff.imag != 0.0:
                 raise TequilaException("UnaryStatePrep currently only possible for real coefficients")
             subs[ac] = sympy.Float(float(coeff.real))
-
         result = dict()
         if (self._use_symbolic_solver):
             # fails a lot of times
