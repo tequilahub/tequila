@@ -9,12 +9,8 @@ import tequila.quantumchemistry as qc
 import numpy
 from tequila.objective import ExpectationValue
 from tequila import simulate
-from tequila.simulators import INSTALLED_SIMULATORS
+from tequila import simulators
 
-simulators = []
-for k in INSTALLED_SIMULATORS.keys():
-    if k != "symbolic":
-        simulators.append(k)
 
 @pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0, reason="no quantum chemistry backends installed")
 def test_interface():
@@ -54,8 +50,10 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])
-@pytest.mark.parametrize("backend", simulators)
+@pytest.mark.parametrize("backend", [simulators.pick_backend("random"), simulators.pick_backend()])
 def test_ucc_psi4(trafo, backend):
+    if backend == "symbolic":
+        pytest.skip("skipping for symbolic simulator  ... way too slow")
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo, backend=backend)
 

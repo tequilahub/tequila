@@ -13,7 +13,7 @@ PY = paulis.Y
 PZ = paulis.Z
 
 
-@pytest.mark.parametrize('simulator', simulators.INSTALLED_SIMULATORS.keys())
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize('angle', numpy.random.uniform(0, 2 * numpy.pi, 1))
 @pytest.mark.parametrize('axis', ['X', 'Y', 'Z'])
 @pytest.mark.parametrize('control', [None, 1])
@@ -28,7 +28,7 @@ def test_exponential_pauli_wfn(simulator, angle, axis, control):
     assert (isclose(numpy.abs(wfn1.inner(wfn2))**2, 1.0, atol=1.e-4))
     assert (isclose(numpy.abs(wfn2.inner(wfn3))**2, 1.0, atol=1.e-4))
 
-@pytest.mark.parametrize('simulator', simulators.INSTALLED_SIMULATORS.keys())
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 def test_controlled_rotations(simulator):
     angles = uniform(0, 2 * pi, 5)
     gs = [gates.Rx, gates.Ry, gates.Rz]
@@ -42,7 +42,7 @@ def test_controlled_rotations(simulator):
             wfn2 = simulate(RCU, initial_state=0, backend=simulator)
             assert (isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
 
-@pytest.mark.parametrize('simulator', simulators.INSTALLED_SIMULATORS.keys())
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 def test_basis_change(simulator):
     for angle in list(uniform(0, 2 * pi, 5)):
         EX = simulate(ExpectationValue(U=gates.Rx(target=0, angle=angle), H=PX(0)), backend=simulator)

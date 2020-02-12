@@ -4,17 +4,13 @@ from tequila.objective import ExpectationValue
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila import simulate
-from tequila.simulators import INSTALLED_SIMULATORS
+from tequila import simulators
 import numpy
 import pytest
 
-# skip usage of symbolic simulator
-simulators = []
-for k in INSTALLED_SIMULATORS.keys():
-    if k != "symbolic":
-        simulators.append(k)
 
-@pytest.mark.parametrize("simulator", simulators)
+
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 def test_gradient_UY_HX(simulator, angle_value, controlled, silent=True):
@@ -52,7 +48,7 @@ def test_gradient_UY_HX(simulator, angle_value, controlled, silent=True):
         print("cos(angle)=", numpy.cos(angle()))
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 def test_gradient_UX_HY(simulator, angle_value, controlled, silent=False):
@@ -85,7 +81,7 @@ def test_gradient_UX_HY(simulator, angle_value, controlled, silent=False):
         print("-cos(angle)=", -numpy.cos(angle(variables)))
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 def test_gradient_UHZH_HY(simulator, angle_value, controlled, silent=False):
@@ -113,7 +109,7 @@ def test_gradient_UHZH_HY(simulator, angle_value, controlled, silent=False):
         print("-cos(angle)=", -numpy.cos(angle(variables)))
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 def test_gradient_UY_HX_wfnsim(simulator, angle_value, controlled, silent=True):
@@ -154,7 +150,7 @@ def test_gradient_UY_HX_wfnsim(simulator, angle_value, controlled, silent=True):
         print("cos(angle)=", numpy.cos(angle(variables)))
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
@@ -190,7 +186,7 @@ def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
         print("-cos(angle)=", -numpy.cos(angle(variables)))
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0, 1))
 @pytest.mark.parametrize("controlled", [False, True])
 def test_gradient_X(simulator, power,controlled):
@@ -211,7 +207,7 @@ def test_gradient_X(simulator, power,controlled):
     assert (numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
     assert (numpy.isclose(dE, -numpy.pi*numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0, 1))
 @pytest.mark.parametrize("controls",[2,3,4])
 def test_gradient_deep_controlled_X(simulator, power,controls):
@@ -230,10 +226,12 @@ def test_gradient_deep_controlled_X(simulator, power,controls):
     assert (numpy.isclose(dE, -numpy.pi*numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
 
 
-@pytest.mark.parametrize("simulator", simulators)
-@pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0, 1))
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 @pytest.mark.parametrize("controlled", [False, True])
 def test_gradient_Y(simulator, power,controlled):
+    if simulator != "cirq":
+        return
     qubit = 0
     control =1
     angle = Variable(name="angle")
@@ -251,7 +249,7 @@ def test_gradient_Y(simulator, power,controlled):
     assert (numpy.isclose(E, numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
     assert (numpy.isclose(dE, numpy.pi*numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0, 1))
 @pytest.mark.parametrize("controls",[2,3,4])
 def test_gradient_deep_controlled_Y(simulator, power,controls):
@@ -270,7 +268,7 @@ def test_gradient_deep_controlled_Y(simulator, power,controls):
     assert (numpy.isclose(dE, numpy.pi*numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0, 1))
 @pytest.mark.parametrize("controlled", [False, True])
 def test_gradient_Z(simulator, power,controlled):
@@ -291,7 +289,7 @@ def test_gradient_Z(simulator, power,controlled):
     assert (numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
     assert (numpy.isclose(dE, -numpy.pi*numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0, 1))
 @pytest.mark.parametrize("controls",[2,3,4])
 def test_gradient_deep_controlled_Z(simulator, power,controls):
@@ -310,7 +308,7 @@ def test_gradient_deep_controlled_Z(simulator, power,controls):
     assert (numpy.isclose(dE, -numpy.pi*numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
 @pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 @pytest.mark.parametrize("controlled", [False, True])
 def test_gradient_H(simulator, power,controlled):
@@ -333,7 +331,7 @@ def test_gradient_H(simulator, power,controlled):
 
     assert (numpy.isclose(dE, numpy.pi*numpy.sin(angle(variables) * (numpy.pi))/2, atol=1.e-4))
 
-@pytest.mark.parametrize("simulator", ['qulacs'])
+@pytest.mark.parametrize("simulator", [simulators.pick_backend()])
 @pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 @pytest.mark.parametrize("controls", [3])
 def test_gradient_deep_H(simulator, power,controls):

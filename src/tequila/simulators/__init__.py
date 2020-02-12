@@ -89,11 +89,12 @@ def show_available_simulators():
         print(k)
 
 
-def pick_backend(backend: str = None, samples: int = None):
+def pick_backend(backend: str = None, samples: int = None, exclude_symbolic: bool = True) -> str:
     """
     verifies if the backend is installed and picks one automatically if set to None
     :param backend: the demanded backend
     :param samples: if not None the simulator needs to be able to sample wavefunctions
+    :param exclude_symbolic: only for random choice
     :return: An installed backend as string
     """
 
@@ -108,6 +109,22 @@ def pick_backend(backend: str = None, samples: int = None):
             else:
                 if f in INSTALLED_SAMPLERS:
                     return f
+    if hasattr(backend, "lower"):
+        backend = backend.lower()
+
+    if backend == "random":
+        from numpy import random as random
+        import time
+        state = random.RandomState(int(str(time.clock()).split('.')[-1])%2**32)
+        if samples is None:
+            backend= state.choice(list(INSTALLED_SIMULATORS.keys()), 1)[0]
+        else:
+            backend= state.choice(list(INSTALLED_SAMPLERS.keys()), 1)[0]
+
+        if exclude_symbolic:
+            while(backend == "symbolic"):
+                backend = state.choice(list(INSTALLED_SIMULATORS.keys()), 1)[0]
+        return backend
 
     if backend not in SUPPORTED_BACKENDS:
         raise TequilaException("Backend {backend} not supported ".format(backend=backend))

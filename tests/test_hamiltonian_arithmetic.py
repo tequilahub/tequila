@@ -4,7 +4,7 @@ from tequila import BitString, QubitWaveFunction
 import numpy, pytest
 
 def test_paulistring_conversion():
-    X1 = QubitHamiltonian.init_from_string("x0")
+    X1 = QubitHamiltonian.init_from_string("X0")
     X2 = paulis.X(0)
     keys = [i for i in X2.keys()]
     pwx = PauliString.from_openfermion(key=keys[0], coeff=X2[keys[0]])

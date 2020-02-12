@@ -5,6 +5,7 @@ from tequila.utils import JoinedTransformation, to_float
 from tequila.hamiltonian import paulis
 from tequila.autograd_imports import numpy
 
+import collections
 
 class ExpectationValueImpl:
     """
@@ -41,7 +42,7 @@ class ExpectationValueImpl:
             self.U.update_variables(variables)
 
     def __init__(self, U=None, H=None):
-        assert(H.is_hermitian())
+        assert (H.is_hermitian())
         self._unitary = copy.deepcopy(U)
         self._hamiltonian = copy.deepcopy(H)
 
@@ -498,7 +499,7 @@ def format_variable_dictionary(variables: typing.Dict[typing.Hashable, typing.An
     if variables is None:
         return variables
     else:
-        return {assign_variable(k): v for k, v in variables.items()}
+        return Variables(variables)
 
 
 def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[
@@ -525,3 +526,48 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
         raise TequilaVariableException(
             "Only hashable types can be assigned to Variables. You passed down " + str(variable) + " type=" + str(
                 type(variable)))
+
+
+class Variables(collections.MutableMapping):
+    """
+    Dictionary for tequila variables
+    Allows hashable types and variable types as keys
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.store = dict()
+        self.update(dict(*args, **kwargs))
+
+    def __getitem__(self, key):
+        return self.store[assign_variable(key)]
+
+    def __setitem__(self, key, value):
+        self.store[assign_variable(key)] = value
+
+    def __delitem__(self, key):
+        del self.store[assign_variable(key)]
+
+    def __iter__(self):
+        return iter(self.store)
+
+    def __len__(self):
+        return len(self.store)
+
+if __name__ == "__main__":
+
+    a = Variables()
+    a["a"] = 1.0
+    a[(1,)] = 2.0
+    a["hallo"] = 3.0
+
+    print(a)
+    print((1,) in a)
+    print("a" in a)
+    print(assign_variable("a") in a)
+    print("b" in a)
+
+
+
+
+
+

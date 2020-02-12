@@ -227,8 +227,11 @@ class OptimizerSciPy(Optimizer):
                 # can currently only save gradients if explicitly evaluated
                 # and will fail for hessian based approaches
                 # need better callback functions
-                if self.method not in self.hessian_based_methods:
-                    self.history.gradients = [dE.history[i] for i in real_iterations]
+                try:
+                    if self.method not in self.hessian_based_methods:
+                        self.history.gradients = [dE.history[i] for i in real_iterations]
+                except:
+                    print("WARNING: History could assign the stored gradients")
                 self.history.gradients_evaluations = dE.history
             if ddE is not None and not isinstance(ddE, str):
                 # hessians are not evaluated in the same frequencies as energies
@@ -239,7 +242,7 @@ class OptimizerSciPy(Optimizer):
         angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
         angles_final = {**angles_final, **passive_angles}
 
-        return SciPyReturnType(energy=E_final, angles=angles_final, history=self.history, scipy_output=res)
+        return SciPyReturnType(energy=E_final, angles=format_variable_dictionary(angles_final), history=self.history, scipy_output=res)
 
 
 def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[str]:
