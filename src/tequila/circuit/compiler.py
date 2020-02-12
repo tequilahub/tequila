@@ -10,10 +10,13 @@ from tequila.utils import to_float
 from tequila import Variable
 from tequila import Objective
 from tequila.objective.objective import ExpectationValueImpl
-from jax import numpy as jnp
+from tequila.autograd_imports import jax
+from tequila.autograd_imports import numpy as jnp
+from tequila.autograd_imports import numpy
+#from jax import numpy as jnp
 from jax.numpy import pi as pi
 
-import numpy, copy, typing
+import copy, typing
 
 
 class TequilaCompilerException(TequilaException):
@@ -340,8 +343,6 @@ def power_recursor(gate,cut=False) -> QCircuit:
         return QCircuit.wrap_gate(gate)
 
     else:
-        ### TODO: the decomposition that is comented out works in the cl=3 case, but not in any higher cases \
-
         v = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[-1])
         result += get_axbxc_decomp(v)
         result += CNOT(target=gate.control[cl-1], control=gate.control[0:cl-1])
@@ -351,8 +352,10 @@ def power_recursor(gate,cut=False) -> QCircuit:
         rebuild= type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[:cl-1])
         result += power_recursor(gate=rebuild,cut=cut)
 
-        #result +=RotationGateImpl(axis=gate.name,angle=numpy.pi*gate.power,control=gate.control,target=gate.target)
-        #result +=Phase(phase=numpy.pi *gate.power/2,target=gate.control[cl-1],control=gate.control[:cl-1])
+        # the thing below works, actually, and may in fact be the better decomposition some portion of the time.
+        # we probably should do numerics about it.
+        # result +=RotationGateImpl(axis=gate.name,angle=numpy.pi*gate.power,control=gate.control,target=gate.target)
+        # result +=Phase(phase=numpy.pi *gate.power/2,target=gate.control[cl-1],control=gate.control[:cl-1])
 
     return result
 
@@ -366,6 +369,7 @@ def compile_power_base(gate):
     if gate.name is 'X':
         ### off by global phase of Exp[ pi power /2]
         '''
+        if we wanted to do it formally we would use the following
         a=-numpy.pi/2
         b=numpy.pi/2
         theta = power*numpy.pi

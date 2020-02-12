@@ -113,7 +113,7 @@ class BackendCircuit:
                 if hasattr(g, 'angle') and not hasattr(g,'paulistring'):
                     self.add_controlled_rotation_gate(gate=g, variables=variables, circuit=result)
                 elif hasattr(g, 'power'):
-                    self.add_controlled_power_gate(gate=g, variables=variables,qubit_map=self.qubit_map, circuit=result)
+                    self.add_controlled_power_gate(gate=g, variables=variables, circuit=result)
                 elif hasattr(g,'phase'):
                     self.add_controlled_phase_gate(gate=g,variables=variables, circuit=result)
                 elif hasattr(g, 'paulistring'):
