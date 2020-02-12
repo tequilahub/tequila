@@ -119,19 +119,18 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     dO = None
     for i, g in enumerate(unitary.gates):
         if g.is_parametrized():
+            if g.is_controlled():
+                raise TequilaException("controlled gate in gradient: Compiler was not called")
             if variable in g.extract_variables():
                 if g.is_gaussian():
-                    if g.is_controlled():
-                        raise TequilaException("controlled gate in gradient: Compiler was not called")
+                    dOinc = __grad_gaussian(unitary, g, i, variable, hamiltonian)
+                    if dO is None:
+                        dO = dOinc
                     else:
-                        dOinc = __grad_gaussian(unitary, g, i, variable, hamiltonian)
-                        if dO is None:
-                            dO = dOinc
-                        else:
-                            dO = dO + dOinc
+                        dO = dO + dOinc
                 else:
                     print(g,type(g))
-                    raise TequilaException('currently, only the gradients of Gaussian gates can be calculated. If you have set compile to False, try setting it to to True.')
+                    raise TequilaException('only the gradients of Gaussian gates can be calculated')
     return dO
 
 

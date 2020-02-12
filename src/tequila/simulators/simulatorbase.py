@@ -36,6 +36,8 @@ class BackendCircuit:
     recompile_controlled_phase=True
     recompile_toffoli=False
     recompile_phase_to_z=False
+    cc_max=False
+
     @property
     def n_qubits(self) -> numbers.Integral:
         return len(self.qubit_map)
@@ -62,6 +64,7 @@ class BackendCircuit:
                               phase_to_z=self.recompile_phase_to_z,
                               toffoli=self.recompile_toffoli,
                               controlled_rotation=self.recompile_controlled_rotation,
+                              cc_max=self.cc_max,
                               swap=self.recompile_swap)
 
         if self.use_mapping:
@@ -110,7 +113,7 @@ class BackendCircuit:
                 if hasattr(g, 'angle') and not hasattr(g,'paulistring'):
                     self.add_controlled_rotation_gate(gate=g, variables=variables, circuit=result)
                 elif hasattr(g, 'power'):
-                    self.add_controlled_power_gate(gate=g, variables=variables,qubit_map=qubit_map,circuit=result)
+                    self.add_controlled_power_gate(gate=g, variables=variables,qubit_map=self.qubit_map, circuit=result)
                 elif hasattr(g,'phase'):
                     self.add_controlled_phase_gate(gate=g,variables=variables, circuit=result)
                 elif hasattr(g, 'paulistring'):

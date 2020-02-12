@@ -31,10 +31,10 @@ def PowerGate(name, target: typing.Union[list, int], power: bool = None, control
 @wrap_gate
 def Phase(phase, target: typing.Union[list, int],  control: typing.Union[list, int] = None):
     return PhaseGateImpl(phase=phase,target=target,control=control)
-
+@wrap_gate
 def S(target:typing.Union[list,int], control: typing.Union[list,int] =None):
     return Phase(np.pi/2,target=target,control=control)
-
+@wrap_gate
 def T(target:typing.Union[list,int], control: typing.Union[list,int] =None):
     return Phase(np.pi/4,target=target,control=control)
 @wrap_gate

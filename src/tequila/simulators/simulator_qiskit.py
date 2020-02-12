@@ -14,7 +14,10 @@ class BackendCircuitQiskit(BackendCircuit):
     recompile_swap = True
     recompile_multitarget = True
     recompile_controlled_rotation = True
-
+    recompile_controlled_power = True
+    recompile_power = True
+    recompile_hadamard_power = True
+    cc_max=True
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, *args, **kwargs):

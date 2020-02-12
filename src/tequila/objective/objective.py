@@ -463,6 +463,9 @@ class Variable:
         assert (callable(other))
         return Objective(args=[self], transformation=other)
 
+    def wrap(self,other):
+        return self.apply(other)
+
     def __repr__(self):
         return str(self.name)
 
