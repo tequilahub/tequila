@@ -12,7 +12,7 @@ for k in tq.simulators.INSTALLED_SAMPLERS.keys():
         samplers.append(k)
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
 def test_execution(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -30,7 +30,7 @@ def test_execution(simulator):
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, silent=True)
 
 
-@pytest.mark.parametrize("simulator", samplers)
+@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -47,7 +47,7 @@ def test_execution_shot(simulator):
     assert (len(result.history.energies) <= 3)
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
 def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
@@ -65,11 +65,10 @@ def test_one_qubit_shot(simulator):
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", ["random", tq.simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_free_methods)
 def test_gradient_free_methods(simulator, method):
-    if simulator == "random":
-        simulator = numpy.random.choice(simulators,1)[0]
+
     wfn = tq.QubitWaveFunction.from_string(string="1.0*|00> + 1.0*|11>")
     H = tq.paulis.Projector(wfn=wfn.normalize())
     U = tq.gates.Ry(angle="a", target=0)
@@ -83,12 +82,11 @@ def test_gradient_free_methods(simulator, method):
     result = tq.optimizer_scipy.minimize(objective=-E, method=method, tol=1.e-4, initial_values=initial_values, silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
 
-@pytest.mark.parametrize("simulator", ["random-backend", tq.simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
 @pytest.mark.parametrize("use_gradient", [None, '2-point'])
 def test_gradient_based_methods(simulator, method, use_gradient):
-    if simulator == "random-backend":
-        simulator = numpy.random.choice(simulators,1)[0]
+
     wfn = tq.QubitWaveFunction.from_string(string="1.0*|00> + 1.0*|11>")
     H = tq.paulis.Projector(wfn=wfn.normalize())
     U = tq.gates.Ry(angle=tq.assign_variable("a")*numpy.pi, target=0)
@@ -106,12 +104,10 @@ def test_gradient_based_methods(simulator, method, use_gradient):
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
 
 
-@pytest.mark.parametrize("simulator", ["random-backend"])
+@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
 @pytest.mark.parametrize("use_hessian", [None, '2-point', '3-point'])
 def test_hessian_based_methods(simulator, method, use_hessian):
-    if simulator == "random":
-        simulator = numpy.random.choice(simulators,1)[0]
 
     wfn = tq.QubitWaveFunction.from_string(string="1.0*|00> + 1.0*|11>")
     H = tq.paulis.Projector(wfn=wfn.normalize())

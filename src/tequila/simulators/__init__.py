@@ -89,7 +89,7 @@ def show_available_simulators():
         print(k)
 
 
-def pick_backend(backend: str = None, samples: int = None):
+def pick_backend(backend: str = None, samples: int = None) -> str:
     """
     verifies if the backend is installed and picks one automatically if set to None
     :param backend: the demanded backend
@@ -108,6 +108,17 @@ def pick_backend(backend: str = None, samples: int = None):
             else:
                 if f in INSTALLED_SAMPLERS:
                     return f
+    if hasattr(backend, "lower"):
+        backend = backend.lower()
+
+    if backend == "random":
+        from numpy import random as random
+        state = random.RandomState()
+        if samples is None:
+            return state.choice(list(INSTALLED_SIMULATORS.keys()), 1)[0]
+        else:
+            return state.choice(list(INSTALLED_SAMPLERS.keys()), 1)[0]
+
 
     if backend not in SUPPORTED_BACKENDS:
         raise TequilaException("Backend {backend} not supported ".format(backend=backend))
