@@ -1,9 +1,10 @@
 from tequila.circuit.compiler import compile_controlled_rotation
-from tequila.circuit._gates_impl import RotationGateImpl
-from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget
+from tequila.circuit._gates_impl import RotationGateImpl,PhaseGateImpl
+from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget,compile_power_gate,compile_controlled_phase,compile_h_power
 from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable
 from tequila import TequilaException
 
+import numpy as np
 import copy
 import typing
 
@@ -24,6 +25,9 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
         compiled = compile_multitarget(gate=objective)
         compiled = compile_trotterized_gate(gate=compiled)
         compiled = compile_exponential_pauli_gate(gate=compiled)
+        compiled = compile_h_power(gate=compiled)
+        compiled = compile_power_gate(gate=compiled)
+        compiled = compile_controlled_phase(gate=compiled)
         compiled = compile_controlled_rotation(gate=compiled)
     else:
         compiled = objective
@@ -115,41 +119,26 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     dO = None
     for i, g in enumerate(unitary.gates):
         if g.is_parametrized():
+            if g.is_controlled():
+                raise TequilaException("controlled gate in gradient: Compiler was not called")
             if variable in g.extract_variables():
-                if hasattr(g, 'angle'):
-                    if g.is_controlled():
-                        raise TequilaException("controlled rotation in gradient: Compiler was not called")
+                if g.is_gaussian():
+                    dOinc = __grad_gaussian(unitary, g, i, variable, hamiltonian)
+                    if dO is None:
+                        dO = dOinc
                     else:
-                        dOinc = __grad_rotation(unitary, g, i, variable, hamiltonian)
-                        if dO is None:
-                            dO = dOinc
-                        else:
-                            dO = dO + dOinc
-
-                elif hasattr(g, 'power'):
-                    if g.is_controlled():
-                        raise NotImplementedError("Gradient for controlled PowerGate not here yet")
-                    else:
-                        if g.name in ['H', 'Hadamard']:
-                            raise TequilaException('sorry, cannot figure out hadamard gradients yet')
-                        else:
-                            dOinc = __grad_power(unitary, g, i, variable, hamiltonian)
-                            if dO is None:
-                                dO = dOinc
-                            else:
-                                dO = dO + dOinc
-
+                        dO = dO + dOinc
                 else:
-                    print(type(g))
-                    raise TequilaException("Automatic differentiation is implemented only for Rotational Gates")
+                    print(g,type(g))
+                    raise TequilaException('only the gradients of Gaussian gates can be calculated')
     return dO
 
 
-def __grad_rotation(unitary, g, i, variable, hamiltonian):
+def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     '''
-    function for getting the gradients of UNCONTROLLED rotation gates.
+    function for getting the gradients of gaussian gates. NOTE: you had better compile first.
     :param unitary: QCircuit: the QCircuit object containing the gate to be differentiated
-    :param g: ParametrizedGateImpl: the gate being differentiated
+    :param g: a parametrized: the gate being differentiated
     :param i: Int: the position in unitary at which g appears
     :param variable: Variable or String: the variable with respect to which gate g is being differentiated
     :param hamiltonian: the hamiltonian with respect to which unitary is to be measured, in the case that unitary
@@ -157,18 +146,24 @@ def __grad_rotation(unitary, g, i, variable, hamiltonian):
     :return: an Objective, whose calculation yields the gradient of g w.r.t variable
     '''
 
-    shift_a = g._parameter + numpy.pi / 2
-    neo_a = RotationGateImpl(axis=g.axis,target=g.target, control=g.control, angle=shift_a)
+    if not g.is_gaussian():
+        raise TequilaException('Only parametrized gaussian gates are differentiable; recieved gate of type ' + str(type(g)))
+    shift_a = g._parameter + np.pi /(4*g.shift)
+    shift_b = g._parameter - np.pi / (4 * g.shift)
+    if hasattr(g,'angle'):
+        neo_a = RotationGateImpl(axis=g.axis,target=g.target, control=g.control, angle=shift_a)
+        neo_b = RotationGateImpl(axis=g.axis, target=g.target, control=g.control, angle=shift_b)
+    elif hasattr(g,'phase'):
+        neo_a = PhaseGateImpl(phase=shift_a,target=g.target,control=g.control)
+        neo_b = PhaseGateImpl(phase=shift_b, target=g.target, control=g.control)
 
-    neo_a._parameter = g._parameter + numpy.pi / 2
     U1 = unitary.replace_gate(position=i, gates=[neo_a])
-    w1 = 0.5 * __grad_inner(g.parameter, variable)
+    w1 = g.shift * __grad_inner(g.parameter, variable)
 
-    shift_b = g._parameter - numpy.pi / 2
-    neo_b = RotationGateImpl(axis=g.axis, target=g.target, control=g.control, angle=shift_b)
+
 
     U2 = unitary.replace_gate(position=i, gates=[neo_b])
-    w2 = -0.5 * __grad_inner(g.parameter, variable)
+    w2 = -g.shift * __grad_inner(g.parameter, variable)
 
     Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
@@ -176,39 +171,3 @@ def __grad_rotation(unitary, g, i, variable, hamiltonian):
     return dOinc
 
 
-def __grad_power(unitary, g, i, variable, hamiltonian):
-    '''
-    function for getting the gradient of Power gates. note: doesn't yet work on Hadamard
-    :param unitary: QCircuit: the QCircuit object containing the gate to be differentiated
-    :param g: ParametrizedGateImpl: the gate being differentiated
-    :param i: Int: the position in unitary at which g appears
-    :param variable: Variable or String: the variable with respect to which gate g is being differentiated
-    :param hamiltonian: the hamiltonian with respect to which unitary is to be measured, in the case that unitary
-        is contained within an ExpectationValue
-    :return: an Objective, whose calculation yields the gradient of g w.r.t variable
-    '''
-    target = g.target
-    if g.name in ['H', 'Hadamard']:
-        raise TequilaException('sorry, cannot figure out hadamard gradients yet')
-    else:
-        n_pow = g.parameter * numpy.pi
-        if g.name in ['X', 'x']:
-            axis = 0
-        elif g.name in ['Y', 'y']:
-            axis = 1
-        elif g.name in ['Z', 'z']:
-            axis = 2
-        else:
-            raise NotImplementedError(
-                'sorry, I have no idea what this gate is and cannot build the gradient.')
-        U1 = unitary.replace_gate(position=i, gates=[
-            RotationGateImpl(axis=axis, target=target, angle=(n_pow + numpy.pi / 2))])
-        U2 = unitary.replace_gate(position=i, gates=[
-            RotationGateImpl(axis=axis, target=target, angle=(n_pow - numpy.pi / 2))])
-
-        w1 = 0.5 * __grad_inner(g.parameter, variable)
-        w2 = -0.5 * __grad_inner(g.parameter, variable)
-        Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
-        Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
-        dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
-        return dOinc

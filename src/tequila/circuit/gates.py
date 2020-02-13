@@ -1,11 +1,12 @@
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
-    ExponentialPauliGateImpl, TrotterizedGateImpl
+    ExponentialPauliGateImpl, TrotterizedGateImpl, PhaseGateImpl
 from tequila import TequilaException
 import typing, numbers
 from dataclasses import dataclass
 from tequila.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
+import numpy as np
 import functools
 
 
@@ -25,6 +26,21 @@ def RotationGate(axis, angle, target: typing.Union[list, int], control: typing.U
 @wrap_gate
 def PowerGate(name, target: typing.Union[list, int], power: bool = None, control: typing.Union[list, int] = None):
     return PowerGateImpl(name=name, power=power, target=target, control=control)
+
+
+@wrap_gate
+def Phase(phase, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    return PhaseGateImpl(phase=phase, target=target, control=control)
+
+
+@wrap_gate
+def S(target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    return Phase(np.pi / 2, target=target, control=control)
+
+
+@wrap_gate
+def T(target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    return Phase(np.pi / 4, target=target, control=control)
 
 
 @wrap_gate
@@ -66,11 +82,14 @@ def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
 def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None):
     return initialize_power_gate(name="Z", power=power, target=target, control=control)
 
-def initialize_power_gate(name: str, target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None):
+
+def initialize_power_gate(name: str, target: typing.Union[list, int], control: typing.Union[list, int] = None,
+                          power=None):
     if power is None or power in [1, 1.0]:
         return QGateImpl(name=name, target=target, control=control)
     else:
         return PowerGateImpl(name=name, power=power, target=target, control=control)
+
 
 @wrap_gate
 def Measurement(target, name=None):
@@ -110,7 +129,7 @@ def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing
     # it is better to initialize a rotational gate due to strange conventions in some simulators
     if len(ps.items()) == 1:
         target, axis = tuple(ps.items())[0]
-        return RotationGateImpl(axis=axis, target=target, angle=ps.coeff*assign_variable(angle), control=control)
+        return RotationGateImpl(axis=axis, target=target, angle=ps.coeff * assign_variable(angle), control=control)
     else:
         return ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control)
 
@@ -136,7 +155,8 @@ class TrotterParameters:
 @wrap_gate
 def Trotterized(generators: typing.List[QubitHamiltonian],
                 steps: int,
-                angles: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real], typing.List[Variable]] = None,
+                angles: typing.Union[
+                    typing.List[typing.Hashable], typing.List[numbers.Real], typing.List[Variable]] = None,
                 control: typing.Union[list, int] = None,
                 parameters: TrotterParameters = None):
     """
@@ -201,9 +221,13 @@ def enforce_integer(function) -> int:
     return wrapper
 
 
-@enforce_integer
 def CNOT(control: int, target: int) -> QCircuit:
     return X(target=target, control=control)
+
+
+@enforce_integer
+def Toffoli(first: int, second: int, target: int):
+    return X(target=target, control=[first, second])
 
 
 @enforce_integer

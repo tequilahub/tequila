@@ -297,7 +297,8 @@ class Objective:
                 else:
                     E.append(Ei(variables=variables))
             # return evaluated result
-            return to_float(self.transformation(*E))
+            out=self.transformation(*E)
+            return to_float(out)
         else:
             # in case that no simulator is actually needed
             evaluated_args = [variables[arg] for arg in self.args]
@@ -462,6 +463,9 @@ class Variable:
     def apply(self, other):
         assert (callable(other))
         return Objective(args=[self], transformation=other)
+
+    def wrap(self,other):
+        return self.apply(other)
 
     def __repr__(self):
         return str(self.name)

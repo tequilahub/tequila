@@ -1,5 +1,5 @@
 from tequila.circuit import gates
-from tequila.circuit.compiler import compile_controlled_rotation, change_basis
+from tequila.circuit.compiler import compile_controlled_rotation, change_basis, compile_phase
 from numpy.random import uniform, randint
 from numpy import pi, isclose
 from tequila.hamiltonian import paulis
