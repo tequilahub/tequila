@@ -5,7 +5,9 @@ from abc import ABC
 from tequila import TequilaException
 from tequila.objective.objective import Variable, FixedVariable, assign_variable
 from tequila.hamiltonian import PauliString, QubitHamiltonian
-from tequila.tools import number_to_string, list_assignement
+from tequila.tools import list_assignement
+
+from dataclasses import dataclass
 
 # typing convenience shortcuts
 UnionList = typing.Union[typing.Iterable[numbers.Integral], numbers.Integral]
@@ -328,6 +330,12 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         result += ")"
         return result
 
+@dataclass
+class TrotterParameters:
+    threshold: float = 0.0
+    join_components: bool = True
+    randomize_component_order: bool = False
+    randomize: bool = False
 
 class TrotterizedGateImpl(QGateImpl):
 

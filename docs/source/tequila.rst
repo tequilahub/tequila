@@ -3,19 +3,37 @@
 Code Documentation
 ==================
 
+Abstract Gates
+------------------------
+.. automodule:: tequila.circuit.gates
+    :members:
+    :inherited-members:
+    :special-members:
+
+
+Hamiltonian Operators
+------------------------
+.. automodule:: tequila.hamiltonian.paulis
+    :members:
+
+
 Optimizers
 ------------------------
 .. automodule:: tequila.optimizers.optimizer_scipy
-    :members:
-    :inherited-members:
-    :special-members: __init__
+    :members: minimize
+    :no-inherited-members:
+    :no-special-members:
+    
 
 
 Quantum chemistry
 ------------------------
-.. automodule:: tequila.quantumchemistry.psi4_interface
-    :members: QuantumChemistryPsi4, ParametersPsi4
-    :inherited-members:
-    :special-members: __init__
+.. automodule:: tequila.quantumchemistry.__init__
+    :members: Molecule
+.. automodule:: tequila.quantumchemistry.qc_base
+    :members: QuantumChemistryBase
+    :no-special-members: compute_cispd_amplitudes
+    
+
 
 

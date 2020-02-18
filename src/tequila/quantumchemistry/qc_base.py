@@ -13,10 +13,20 @@ from openfermion.hamiltonians import MolecularData
 
 
 def prepare_product_state(state: BitString) -> QCircuit:
-    """
-    Small convenience function
-    :param state: product state encoded into a bitstring
-    :return: unitary circuit which prepares the product state
+    """Small convenience function
+
+    Parameters
+    ----------
+    state :
+        product state encoded into a bitstring
+    state: BitString :
+        
+
+    Returns
+    -------
+    type
+        unitary circuit which prepares the product state
+
     """
     result = QCircuit()
     for i, v in enumerate(state.array):
@@ -27,10 +37,7 @@ def prepare_product_state(state: BitString) -> QCircuit:
 
 @dataclass
 class ParametersQC:
-    """
-    Specialization of ParametersHamiltonian
-    Parameters for the HamiltonianQC class
-    """
+    """Specialization of ParametersHamiltonian"""
     basis_set: str = ''  # Quantum chemistry basis set
     geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!), this can be a filename leading to an .xyz file or the geometry given as a string
     description: str = ''
@@ -41,24 +48,31 @@ class ParametersQC:
 
     @property
     def filename(self):
+        """ """
         return "{}_{}".format(self.name, self.basis_set)
 
     @property
     def molecular_data_param(self) -> dict:
-        """
-        :return: Give back all parameters for the MolecularData format from openfermion as dictionary
-        """
+        """:return: Give back all parameters for the MolecularData format from openfermion as dictionary"""
         return {'basis': self.basis_set, 'geometry': self.get_geometry(), 'description': self.description,
                 'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.filename
                 }
 
     @staticmethod
     def format_element_name(string):
-        """
-        OpenFermion uses case sensitive hash tables for chemical elements
+        """OpenFermion uses case sensitive hash tables for chemical elements
         I.e. you need to name Lithium: 'Li' and 'li' or 'LI' will not work
         this conenience function does the naming
         :return: first letter converted to upper rest to lower
+
+        Parameters
+        ----------
+        string :
+            
+
+        Returns
+        -------
+
         """
         assert (len(string) > 0)
         assert (isinstance(string, str))
@@ -67,10 +81,18 @@ class ParametersQC:
 
     @staticmethod
     def convert_to_list(geometry):
-        """
-        Convert a molecular structure given as a string into a list suitable for openfermion
-        :param geometry: a string specifing a mol. structure. E.g. geometry="h 0.0 0.0 0.0\n h 0.0 0.0 1.0"
-        :return: A list with the correct format for openferion E.g return [ ['h',[0.0,0.0,0.0], [..]]
+        """Convert a molecular structure given as a string into a list suitable for openfermion
+
+        Parameters
+        ----------
+        geometry :
+            a string specifing a mol. structure. E.g. geometry="h 0.0 0.0 0.0\n h 0.0 0.0 1.0"
+
+        Returns
+        -------
+        type
+            A list with the correct format for openferion E.g return [ ['h',[0.0,0.0,0.0], [..]]
+
         """
         result = []
         for line in geometry.split('\n'):
@@ -85,9 +107,15 @@ class ParametersQC:
         return result
 
     def get_geometry_string(self) -> str:
-        """
-        returns the geometry as a string
+        """returns the geometry as a string
         :return: geometrystring
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
         if self.geometry.split('.')[-1] == 'xyz':
             geomstring, comment = self.read_xyz_from_file(self.geometry)
@@ -98,14 +126,20 @@ class ParametersQC:
             return self.geometry
 
     def get_geometry(self):
-        """
-        Returns the geometry
+        """Returns the geometry
         If a xyz filename was given the file is read out
         otherwise it is assumed that the geometry was given as string
         which is then reformated as a list usable as input for openfermion
         :return: geometry as list
         e.g. [(h,(0.0,0.0,0.35)),(h,(0.0,0.0,-0.35))]
         Units: Angstrom!
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
         if self.geometry.split('.')[-1] == 'xyz':
             geomstring, comment = self.read_xyz_from_file(self.geometry)
@@ -121,12 +155,18 @@ class ParametersQC:
 
     @staticmethod
     def read_xyz_from_file(filename):
-        """
-        Read XYZ filetype for molecular structures
+        """Read XYZ filetype for molecular structures
         https://en.wikipedia.org/wiki/XYZ_file_format
         Units: Angstrom!
-        :param filename:
-        :return:
+
+        Parameters
+        ----------
+        filename :
+            return:
+
+        Returns
+        -------
+
         """
         with open(filename, 'r') as file:
             content = file.readlines()
@@ -140,10 +180,22 @@ class ParametersQC:
 
 @dataclass
 class ClosedShellAmplitudes:
+    """ """
     tIjAb: numpy.ndarray = None
     tIA: numpy.ndarray = None
 
     def make_parameter_dictionary(self, threshold=1.e-8):
+        """
+
+        Parameters
+        ----------
+        threshold :
+             (Default value = 1.e-8)
+
+        Returns
+        -------
+
+        """
         variables = {}
         if self.tIjAb is not None:
             nvirt = self.tIjAb.shape[2]
@@ -163,15 +215,33 @@ class ClosedShellAmplitudes:
 
 @dataclass
 class Amplitudes:
-    """
-    Coupled-Cluster Amplitudes
+    """Coupled-Cluster Amplitudes
     We adopt the Psi4 notation for consistency
     I,A for alpha
     i,a for beta
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
 
     @classmethod
     def from_closed_shell(cls, cs: ClosedShellAmplitudes):
+        """
+        Initialize from closed-shell Amplitude structure
+
+        Parameters
+        ----------
+        cs: ClosedShellAmplitudes :
+            
+
+        Returns
+        -------
+
+        """
         tijab = cs.tIjAb - numpy.einsum("ijab -> ijba", cs.tIjAb, optimize='optimize')
         return cls(tIjAb=cs.tIjAb, tIA=cs.tIA, tiJaB=cs.tIjAb, tia=cs.tIA, tijab=tijab, tIJAB=tijab)
 
@@ -183,6 +253,19 @@ class Amplitudes:
     tia: numpy.ndarray = None
 
     def make_parameter_dictionary(self, threshold=1.e-8):
+        """
+
+        Parameters
+        ----------
+        threshold :
+             (Default value = 1.e-8)
+             Neglect amplitudes below the threshold
+
+        Returns
+        -------
+        Dictionary of tequila variables (hash is in the style of (a,i,b,j))
+
+        """
         variables = {}
         if self.tIjAb is not None:
             nvirt = self.tIjAb.shape[2]
@@ -216,6 +299,7 @@ class Amplitudes:
 
 
 class QuantumChemistryBase:
+    """ """
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
@@ -242,12 +326,24 @@ class QuantumChemistryBase:
         self.molecule = self.make_molecule()
 
     def make_excitation_operator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
-        """
-        Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
+        """Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
         And gives it back multiplied with 1j to make it hermitian
-        :param indices: List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
-        can also be given as one big list: [a_0, i_0, a_1, i_1 ...]
-        :return: 1j*Transformed qubit excitation operator, depends on self.transformation
+
+        Parameters
+        ----------
+        indices :
+            List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
+            can also be given as one big list: [a_0, i_0, a_1, i_1 ...]
+        indices: typing.Iterable[typing.Tuple[int :
+            
+        int]] :
+            
+
+        Returns
+        -------
+        type
+            1j*Transformed qubit excitation operator, depends on self.transformation
+
         """
         # check indices and convert to list of tuples if necessary
         if len(indices) == 0:
@@ -283,9 +379,15 @@ class QuantumChemistryBase:
         return qop
 
     def reference_state(self) -> BitString:
-        """
-        Does a really lazy workaround ... but it works
+        """Does a really lazy workaround ... but it works
         :return: Hartree-Fock Reference as binary-number
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         string = ""
@@ -306,12 +408,21 @@ class QuantumChemistryBase:
         return keys[-1]
 
     def make_molecule(self) -> MolecularData:
-        """
-        Creates a molecule in openfermion format by running psi4 and extracting the data
+        """Creates a molecule in openfermion format by running psi4 and extracting the data
         Will check for previous outputfiles before running
-        :param parameters: An instance of ParametersQC, which also holds an instance of ParametersPsi4 via parameters.psi4
-        The molecule will be saved in parameters.filename, if this file exists before the call the molecule will be imported from the file
-        :return: the molecule in openfermion.MolecularData format
+        Will not recompute if a file was found
+
+        Parameters
+        ----------
+        parameters :
+            An instance of ParametersQC, which also holds an instance of ParametersPsi4 via parameters.psi4
+            The molecule will be saved in parameters.filename, if this file exists before the call the molecule will be imported from the file
+
+        Returns
+        -------
+        type
+            the molecule in openfermion.MolecularData format
+
         """
         molecule = MolecularData(**self.parameters.molecular_data_param)
         # try to load
@@ -332,37 +443,52 @@ class QuantumChemistryBase:
         return molecule
 
     def do_make_molecule(self):
-        raise TequilaException("Needs to be overwritten by inherited backend class")
+        """ """
+        raise TequilaException("Needs to be overwridden by inherited backend class")
 
     @property
     def n_orbitals(self) -> int:
+        """ """
         return self.molecule.n_orbitals
 
     @property
     def n_electrons(self) -> int:
+        """ """
         return self.molecule.n_electrons
 
     @property
     def n_alpha_electrons(self) -> int:
+        """ """
         return self.molecule.get_n_alpha_electrons()
 
     @property
     def n_beta_electrons(self) -> int:
+        """ """
         return self.molecule.get_n_beta_electrons()
 
     def make_hamiltonian(self) -> HamiltonianQC:
+        """ """
         return HamiltonianQC(molecule=self.molecule, transformation=self.transformation)
 
     def compute_one_body_integrals(self):
+        """ """
         pass
 
     def compute_two_body_integrals(self):
+        """ """
         pass
 
     def compute_ccsd_amplitudes(self) -> ClosedShellAmplitudes:
+        """ """
         raise Exception("BaseClass Method")
 
     def prepare_reference(self):
+        """
+
+        Returns
+        -------
+        A tequila circuit object which prepares the reference of this molecule in the chosen transformation
+        """
         return prepare_product_state(self.reference_state())
 
     def make_uccsd_ansatz(self,
@@ -373,11 +499,32 @@ class QuantumChemistryBase:
                           trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
 
         """
-        :param initial_amplitudes: initial amplitudes given as ManyBodyAmplitudes structure or as string
-        where 'mp2' 'ccsd' or 'zero' are possible initializations
-        :param include_reference_ansatz: Also do the reference ansatz (prepare closed-shell Hartree-Fock)
-        :param parametrized: Initialize with variables, otherwise with static numbers
-        :return: Parametrized QCircuit
+
+        Parameters
+        ----------
+        initial_amplitudes :
+            initial amplitudes given as ManyBodyAmplitudes structure or as string
+            where 'mp2' 'ccsd' or 'zero' are possible initializations
+        include_reference_ansatz :
+            Also do the reference ansatz (prepare closed-shell Hartree-Fock) (Default value = True)
+        parametrized :
+            Initialize with variables, otherwise with static numbers (Default value = True)
+        trotter_steps: int :
+            
+        initial_amplitudes: typing.Union[str :
+            
+        Amplitudes :
+            
+        ClosedShellAmplitudes] :
+             (Default value = "mp2")
+        trotter_parameters: gates.TrotterParameters :
+             (Default value = None)
+
+        Returns
+        -------
+        type
+            Parametrized QCircuit
+
         """
 
         nocc = self.molecule.n_electrons // 2
@@ -451,16 +598,43 @@ class QuantumChemistryBase:
         return Uref + gates.Trotterized(generators=generators, angles=variables, steps=trotter_steps,
                                         parameters=trotter_parameters)
 
-    def compute_amplitudes(self, method, *args, **kwargs):
+    def compute_amplitudes(self, method: str, *args, **kwargs):
+        """
+        Compute closed-shell CC amplitudes
+
+        Parameters
+        ----------
+        method :
+            coupled-cluster methods like cc2, ccsd, cc3, ccsd(t)
+            Success might depend on backend
+            got an extra function for MP2
+        *args :
+
+        **kwargs :
+
+
+        Returns
+        -------
+
+        """
         raise TequilaException("compute amplitudes: Needs to be overwridden by backend")
 
     def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
         """
-        Compute closed-shell mp2 amplitudes (open-shell comming at some point)
 
-        t(a,i,b,j) = 0.25 * g(a,i,b,j)/(e(i) + e(j) -a(i) - b(j) )
-
+        Compute closed-shell mp2 amplitudes
+        
+        .. math::
+            t(a,i,b,j) = 0.25 * g(a,i,b,j)/(e(i) + e(j) -a(i) - b(j) )
+        
         :return:
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
         assert self.parameters.closed_shell
         g = self.molecule.two_body_integrals
@@ -478,8 +652,12 @@ class QuantumChemistryBase:
         return ClosedShellAmplitudes(tIjAb=0.5 * numpy.einsum('abij -> ijab', amplitudes, optimize='optimize'))
 
     def compute_cis_amplitudes(self):
+        """
+        Compute the CIS amplitudes of the molecule
+        """
         @dataclass
         class ResultCIS:
+            """ """
             omegas: typing.List[numbers.Real]  # excitation energies [omega0, ...]
             amplitudes: typing.List[numpy.ndarray]  # corresponding amplitudes [x_{ai}_0, ...]
 
