@@ -15,3 +15,5 @@ qulacs # default simulator, by fast the fastest
 #networkx==2.3 # It is required for cirq
 #pyquil # not really a requirement
 #qiskit # not really a requirement
+sphinx # for documentation
+m2r # for documentation
