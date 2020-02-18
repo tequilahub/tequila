@@ -4,7 +4,7 @@ import typing
 SUPPORTED_QCHEMISTRY_BACKENDS = ["psi4", "pyscf"]
 INSTALLED_QCHEMISTRY_BACKENDS = {}
 
-from .qc_base import ParametersQC, Amplitudes
+from .qc_base import ParametersQC
 
 has_psi4 = which("psi4") is not None
 if has_psi4:

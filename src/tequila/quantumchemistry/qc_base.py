@@ -138,155 +138,84 @@ class ParametersQC:
             return coord, comment
 
 
+@dataclass
+class ClosedShellAmplitudes:
+    tIjAb: numpy.ndarray = None
+    tIA: numpy.ndarray = None
+
+    def make_parameter_dictionary(self, threshold=1.e-8):
+        variables = {}
+        if self.tIjAb is not None:
+            nvirt = self.tIjAb.shape[2]
+            nocc = self.tIjAb.shape[0]
+            assert (self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt)
+            for (I, J, A, B), value in numpy.ndenumerate(self.tIjAb):
+                if not numpy.isclose(value, 0.0, atol=threshold):
+                    variables[(nocc + A, I, nocc + B, J)] = value
+        if self.tIA is not None:
+            nocc = self.tIA.shape[0]
+            for (I, A), value, in numpy.ndenumerate(self.tIA):
+                if not numpy.isclose(value, 0.0, atol=threshold):
+                    variables[(A + nocc, I)] = value
+
+        return variables
+
+
+@dataclass
 class Amplitudes:
     """
-    Many Body amplitudes
-    stored as dictionaries with keys corresponding to indices of the operators
-    key = (i,a,j,b) --> a^\dagger_a a_i a^\dagger_b a_j - h.c.
-    accordingly
-    key = (i,a) --> a^\dagger_a a_i
+    Coupled-Cluster Amplitudes
+    We adopt the Psi4 notation for consistency
+    I,A for alpha
+    i,a for beta
     """
 
-    def __init__(self, closed_shell: bool = None, data: typing.Dict[typing.Tuple, numbers.Number] = None):
-        self.data = dict()
-        if data is not None:
-            if closed_shell:
-                self.data = self.transform_closed_shell_indices(data)
-            else:
-                self.data = data
-
-    def __repr__(self):
-        return self.data.__repr__()
-
-    def __str__(self):
-        return self.data.__str__()
-
-    def export_parameter_dictionary(self, atol=1.e-8, rtol=1.e-8, only_singles: bool = False,
-                                    only_doubles: bool = False):
-        result = dict()
-        assert not (only_doubles and only_singles)
-        for k, v in self.items():
-            if only_doubles and len(k) != 4:
-                continue
-            if only_singles and len(k) != 2:
-                continue
-            if not numpy.isclose(numpy.abs(v), 0.0, atol=atol, rtol=rtol):
-                result[Variable(k)] = v
-        return result
-
-    def transform_closed_shell_indices(self, data: typing.Dict[typing.Tuple, numbers.Number]) -> typing.Dict[
-        typing.Tuple, numbers.Number]:
-        transformed = dict()
-        for key, value in data.items():
-            if len(key) == 2:
-                transformed[(2 * key[0], 2 * key[1])] = value
-                transformed[(2 * key[0] + 1, 2 * key[1] + 1)] = value
-            if len(key) == 4:
-                same_spin = data[key[0], key[1], key[2], key[3]] - data[key[2], key[1], key[0], key[3]]  # abij - baij
-                transformed[(2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3])] = same_spin  # aa aa
-                transformed[(2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3])] = same_spin  # bb bb
-                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value  # aa bb
-                transformed[(2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1)] = value  # aa bb
-                transformed[(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])] = value  # bb aa
-            else:
-                raise Exception("???")
-        return transformed
-
     @classmethod
-    def from_ndarray(cls, array: numpy.ndarray, closed_shell=None,
-                     index_offset: typing.Tuple[int, int, int, int] = None):
-        """
-        :param array: The array to convert
-        :param closed_shell: amplitudes are given as closed-shell array (i.e alpha-alpha, beta-beta)
-        :param index_offsets: indices will start from 0 but are supposed to start from index_offset
-        :return:
-        """
-        data = dict(numpy.ndenumerate(array))
-        if index_offset is not None:
-            offset_data = dict()
-            for key, value in data.items():
-                keyx = tuple(a + b for a, b in zip(key, index_offset))
-                offset_data[keyx] = value
-            data = offset_data
-        return cls(data=data, closed_shell=closed_shell)
+    def from_closed_shell(cls, cs: ClosedShellAmplitudes):
+        tijab = cs.tIjAb - numpy.einsum("ijab -> ijba", cs.tIjAb, optimize='optimize')
+        return cls(tIjAb=cs.tIjAb, tIA=cs.tIA, tiJaB=cs.tIjAb, tia=cs.tIA, tijab=tijab, tIJAB=tijab)
 
-    def __rmul__(self, other):
-        data = dict()
-        for k, v in self.data.items():
-            data[k] = v * other
-        return Amplitudes(data=data)
+    tIjAb: numpy.ndarray = None
+    tIA: numpy.ndarray = None
+    tiJaB: numpy.ndarray = None
+    tijab: numpy.ndarray = None
+    tIJAB: numpy.ndarray = None
+    tia: numpy.ndarray = None
 
-    def __neg__(self):
-        data = dict()
-        for k, v in self.data.items():
-            data[k] = -v
-        return Amplitudes(data=data)
+    def make_parameter_dictionary(self, threshold=1.e-8):
+        variables = {}
+        if self.tIjAb is not None:
+            nvirt = self.tIjAb.shape[2]
+            nocc = self.tIjAb.shape[0]
+            assert (self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt)
 
-    def items(self):
-        return self.data.items()
+            for (I, j, A, b), value in numpy.ndenumerate(self.tIjAb):
+                if not numpy.isclose(value, 0.0, atol=threshold):
+                    variables[(2 * (nocc + A), 2 * I, 2 * (nocc + b) + 1, j + 1)] = value
+            for (i, J, a, B), value in numpy.ndenumerate(self.tiJaB):
+                if not numpy.isclose(value, 0.0, atol=threshold):
+                    variables[(2 * (nocc + a) + 1, 2 * i + 1, 2 * (nocc + B), J)] = value
+            for (i, j, a, b), value in numpy.ndenumerate(self.tijab):
+                if not numpy.isclose(value, 0.0, atol=threshold):
+                    variables[(2 * (nocc + a) + 1, 2 * i + 1, 2 * (nocc + b) + 1, j + 1)] = value
+            for (I, J, A, B), value in numpy.ndenumerate(self.tijab):
+                if not numpy.isclose(value, 0.0, atol=threshold):
+                    variables[(2 * (nocc + A), 2 * I, 2 * (nocc + B), J)] = value
 
-    def keys(self):
-        return self.data.keys()
+        if self.tIA is not None:
+            nocc = self.tIjAb.shape[0]
+            assert (self.tia.shape[0] == nocc)
+            for (I, A), value, in numpy.ndenumerate(self.tIA):
+                if not numpy.isclose(value, 0.0, atol=threshold):
+                    variables[(2 * (A + nocc), 2 * I)] = value
+            for (i, a), value, in numpy.ndenumerate(self.tIA):
+                if not numpy.isclose(value, 0.0, atol=threshold):
+                    variables[(2 * (a + nocc) + 1, 2 * i + 1)] = value
 
-    def values(self):
-        return self.data.values()
-
-    def __len__(self):
-        return self.data.__len__()
-
-
-class ClosedShellAmplitudes:
-
-    def __init__(self, nocc, nvirt, amplitudes: numpy.ndarray):
-        self.nocc = nocc
-        self.nvirt = nvirt
-        self.norb = nocc + nvirt
-
-        offsets = [None] * len(amplitudes.shape)
-        for i, dim in enumerate(amplitudes.shape):
-            if dim == nocc:
-                offsets[i] = 0
-            elif dim == nvirt:
-                offsets[i] = nocc
-            elif dim == nocc + nvirt:
-                offsets[i] = 0
-            else:
-                raise TequilaException("Unexpected dimension in amplitudes {}".format(amplitudes.shape))
-        self._offsets = offsets
-        self.amplitudes = amplitudes
-
-    def __call__(self, indices, use_offset=False, *args, **kwargs):
-        if use_offset:
-            idx = [indices[i] + self._offsets[i] for i in range(indices)]
-        else:
-            idx = indices
-        return self.amplitudes[idx]
-
-    def make_ordered_parameter_dict(self, threshold=0.0, use_offset=False):
-        flat = self.amplitudes.flatten()
-
-        if use_offset:
-            offsets = self._offsets
-        else:
-            offsets = [0] * len(self._offsets)
-
-        def idx_map(x):
-            ind = numpy.unravel_index(range(len(flat)), shape=self.amplitudes.shape)
-            return tuple([ind[i][x] + offsets[i] for i in range(len(self.amplitudes.shape))])
-
-        dic = {}
-        for i, v in enumerate(flat):
-            if not numpy.isclose(v, 0.0, atol=threshold):
-                dic[idx_map(i)] = v
-
-        return dict(sorted(dic.items(), key=lambda x: numpy.abs(x[1]), reverse=True))
+        return variables
 
 
 class QuantumChemistryBase:
-
-    def ClosedShellAmplitudes(self, amplitudes):
-        return ClosedShellAmplitudes(amplitudes=amplitudes, nocc=self.n_alpha_electrons,
-                                     nvirt=self.n_orbitals - self.n_alpha_electrons)
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
@@ -324,7 +253,7 @@ class QuantumChemistryBase:
         if len(indices) == 0:
             raise TequilaException("make_excitation_operator: no indices given")
         elif not isinstance(indices[0], typing.Iterable):
-            if len(indices % 2) != 0:
+            if len(indices) % 2 != 0:
                 raise TequilaException("make_excitation_operator: unexpected input format of infices\n"
                                        "use list of tuples as [(a_0, i_0),(a_1, i_1) ...]\n"
                                        "or list as [a_0, i_0, a_1, i_1, ... ]\n"
@@ -332,7 +261,6 @@ class QuantumChemistryBase:
             converted = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
         else:
             converted = indices
-
         # convert to openfermion input format
         ofi = []
         dag = []
@@ -398,7 +326,7 @@ class QuantumChemistryBase:
             do_compute = True
 
         if do_compute:
-            molecule = self.do_make_molecule(molecule)
+            molecule = self.do_make_molecule()
 
         molecule.save()
         return molecule
@@ -425,7 +353,13 @@ class QuantumChemistryBase:
     def make_hamiltonian(self) -> HamiltonianQC:
         return HamiltonianQC(molecule=self.molecule, transformation=self.transformation)
 
-    def compute_ccsd_amplitudes(self) -> Amplitudes:
+    def compute_one_body_integrals(self):
+        pass
+
+    def compute_two_body_integrals(self):
+        pass
+
+    def compute_ccsd_amplitudes(self) -> ClosedShellAmplitudes:
         raise Exception("BaseClass Method")
 
     def prepare_reference(self):
@@ -433,7 +367,7 @@ class QuantumChemistryBase:
 
     def make_uccsd_ansatz(self,
                           trotter_steps: int,
-                          initial_amplitudes: typing.Union[str, Amplitudes] = "mp2",
+                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
                           include_reference_ansatz=True,
                           parametrized=True,
                           trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
@@ -446,6 +380,9 @@ class QuantumChemistryBase:
         :return: Parametrized QCircuit
         """
 
+        nocc = self.molecule.n_electrons // 2
+        nvirt = self.molecule.n_orbitals / 2 - nocc
+
         Uref = QCircuit()
         if include_reference_ansatz:
             Uref = self.prepare_reference()
@@ -454,33 +391,70 @@ class QuantumChemistryBase:
         if hasattr(initial_amplitudes, "lower"):
             if initial_amplitudes.lower() == "mp2":
                 amplitudes = self.compute_mp2_amplitudes()
+                amplitudes.tIA = numpy.zeros(shape=[nocc, nvirt])
             elif initial_amplitudes.lower() == "ccsd":
                 amplitudes = self.compute_ccsd_amplitudes()
-            elif initial_amplitudes.lower() == "zero":
-                amplitudes = self.initialize_zero_amplitudes()
             else:
-                raise TequilaException("Don't know how to initialize \'{}\' amplitudes".format(initial_amplitudes))
+                try:
+                    amplitudes = self.compute_amplitudes(method=initial_amplitudes.lower())
+                except Exception as exc:
+                    raise TequilaException(
+                        "{}\nDon't know how to initialize \'{}\' amplitudes".format(exc, initial_amplitudes))
 
+        if amplitudes is None:
+            amplitudes = ClosedShellAmplitudes(
+                tIjAb=numpy.zeros(shape=[nocc, nocc, nvirt, nvirt]),
+                tIA=numpy.zeros(shape=[nocc, nvirt]))
+
+        closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
         generators = []
         variables = []
+        amplitudes = amplitudes.make_parameter_dictionary()
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0):
-                if parametrized:
-                    variables.append(2.0 * Variable(name=key))  # 2.0 for convention angle/2 in ExpPauli Gates
+
+                if closed_shell:
+                    spin_indices = []
+                    if len(key) == 2:
+                        spin_indices = [[2 * key[0], 2 * key[1]], [2 * key[0] + 1, 2 * key[1] + 1]]
+                    else:
+                        spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
+                        spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
+                        if key[0] != key[1] and key[2] != key[3]:
+                            spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
+                            spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
+                    for idx in spin_indices:
+                        idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
+                        generators.append(self.make_excitation_operator(indices=idx))
+                    partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
+
+                    if parametrized:
+                        variables.append(Variable(name=key))  # abab
+                        variables.append(Variable(name=key))  # baba
+                        if key[0] != key[1] and key[2] != key[3]:
+                            variables.append(Variable(name=key) - Variable(partner))  # aaaa
+                            variables.append(Variable(name=key) - Variable(partner))  # bbbb
+                    else:
+                        variables.append(t)
+                        variables.append(t)
+                        if key[0] != key[1] and key[2] != key[3]:
+                            variables.append(t - amplitudes[Variable(partner)])
+                            variables.append(t - amplitudes[Variable(partner)])
                 else:
-                    variables.append(2.0 * t)
-                indices = [(key[2 * i], key[2 * i + 1]) for i in range(len(key) // 2)]
-                generators.append(self.make_excitation_operator(indices=indices))
+                    generators.append(self.make_excitation_operator(indices=indices))
+                    if parametrized:
+                        variables.append(Variable(name=key))
+                    else:
+                        variables.append(t)
 
         return Uref + gates.Trotterized(generators=generators, angles=variables, steps=trotter_steps,
                                         parameters=trotter_parameters)
 
-    def initialize_zero_amplitudes(self) -> Amplitudes:
-        # function not needed anymore
-        return Amplitudes()
+    def compute_amplitudes(self, method, *args, **kwargs):
+        raise TequilaException("compute amplitudes: Needs to be overwridden by backend")
 
-    def compute_mp2_amplitudes(self) -> Amplitudes:
+    def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
         """
         Compute closed-shell mp2 amplitudes (open-shell comming at some point)
 
@@ -499,12 +473,11 @@ class QuantumChemistryBase:
                 ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
         E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
                                                                                 optimize='optimize')
+        print("EMP2=", E)
         self.molecule.mp2_energy = E + self.molecule.hf_energy
-        return Amplitudes.from_ndarray(array=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'),
-                                       closed_shell=True, index_offset=(nocc, 0, nocc, 0))
+        return ClosedShellAmplitudes(tIjAb=0.5 * numpy.einsum('abij -> ijab', amplitudes, optimize='optimize'))
 
     def compute_cis_amplitudes(self):
-
         @dataclass
         class ResultCIS:
             omegas: typing.List[numbers.Real]  # excitation energies [omega0, ...]
@@ -516,14 +489,8 @@ class QuantumChemistryBase:
             def __len__(self):
                 return len(self.omegas)
 
-        # Closed Shell CIS Matrix
-        # (e_a - e_i - omega)t_{ai} + (2<ak|g|ib> - <ak|g|bi>)t_{bk} = 0
-        # M_{bk} t_{bk} = omega t_{bk}
-        # M_{bk} = (e_a - e_i) \delta(b,a)\delta(i,k) + (2<ak|g|ib> - <ak|g|bi>)
-
         g = self.molecule.two_body_integrals
         fij = self.molecule.orbital_energies
-        nocc = self.n_alpha_electrons
 
         nocc = self.n_alpha_electrons
         nvirt = self.n_orbitals - nocc
@@ -575,13 +542,26 @@ class QuantumChemistryBase:
         ei = fij[:nocc]
         ai = fij[nocc:]
         abgic = g[nocc:, nocc:, :nocc, nocc:]
-        abgixj = numpy.einsum('abic,cj -> abij', abgic, xcis, optimize='optimize')
         abgcj = g[nocc:, nocc:, nocc:, :nocc]
-        abgxij = numpy.einsum('abcj,ci -> abij', abgcj, xcis, optimize='optimize')
-        abgij = abgixj + abgxij
-        amplitudes = abgij * 1.0 / (
+        kbgij = g[:nocc, nocc:, :nocc, :nocc]
+        akgij = g[nocc:, :nocc, :nocc, :nocc]
+        abgix = numpy.einsum('abic,cj -> abij', abgic, xcis, optimize='optimize')
+        abgxj = numpy.einsum('abcj,ci -> abij', abgcj, xcis, optimize='optimize')
+        xbgij = numpy.einsum('kbij,ak -> abij', kbgij, xcis, optimize='optimize')
+        axgij = numpy.einsum('akij,bk -> abij', akgij, xcis, optimize='optimize')
+
+        abgij = abgix + abgxj - xbgij - axgij
+        amplitudes = abgij * -1.0 / (
                 ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1,
                                                                                                          1) - omega)
+
+        # # energy
+        # s2b = 2.0 * numpy.einsum('abij, abij -> ', abgxj, amplitudes, optimize='optimize') - numpy.einsum(
+        #     'baij, abij -> ', abgxj, amplitudes, optimize='optimize')
+        # s2c = 2.0 * numpy.einsum('abij, abij -> ', xbgij, amplitudes, optimize='optimize') - numpy.einsum(
+        #     'baij, abij -> ', xbgij, amplitudes, optimize='optimize')
+        # print("2e corr energy = ", s2b - s2c)
+
         return self.ClosedShellAmplitudes(
             amplitudes=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'))
 
