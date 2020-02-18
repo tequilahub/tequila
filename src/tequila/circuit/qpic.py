@@ -18,6 +18,8 @@ system_has_pdflatex = which("pdflatex") is not None
 def assign_name(parameter):
     if isinstance(parameter, tuple):
         return "\\theta"
+    if hasattr(parameter, "extract_variables"):
+        return str(parameter.extract_variables()).lstrip('[').rstrip(']')
     return str(parameter)
 
 
@@ -43,7 +45,7 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
                 result += " G $" + g.name + "(" + g.parameter.name + ")$ width=" + str(
                     25 + 5*len(assign_name(g.parameter))) + " "
             elif g.name.lower() == "x":
-                result += "+"
+                result += " C "
             else:
                 result += g.name + " "
 

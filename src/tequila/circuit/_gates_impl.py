@@ -3,25 +3,36 @@ import copy
 import numbers
 from abc import ABC
 from tequila import TequilaException
-from tequila.circuit.variable import Variable, SympyVariable
+from tequila.objective.objective import Variable, FixedVariable, assign_variable
 from tequila.hamiltonian import PauliString, QubitHamiltonian
 from tequila.tools import number_to_string, list_assignement
-from tequila.circuit.variable import has_variable
 
+# typing convenience shortcuts
+UnionList = typing.Union[typing.Iterable[numbers.Integral], numbers.Integral]
+UnionParam = typing.Union[Variable, FixedVariable]
 
 class QGateImpl:
-    def __init__(self, name, target: list, control: list = None):
-        self.name = name
-        self.target = tuple(list_assignement(target))
-        self.control = tuple(list_assignement(control))
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def control(self):
+        return self._control
+
+    def __init__(self, name, target: UnionList, control: UnionList = None):
+        self._name = name
+        self._target = tuple(list_assignement(target))
+        self._control = tuple(list_assignement(control))
         self.finalize()
 
     def copy(self):
         return copy.deepcopy(self)
-
-    def is_frozen(self):
-        raise Exception(
-            'unparametrized gates cannot be frozen because there is nothing to freeze. \n If you want to iterate over all your gates, use is_differentiable as a criterion before or in addition to is_frozen')
 
     def dagger(self):
         """
@@ -40,6 +51,12 @@ class QGateImpl:
         else:
             return False
 
+    def is_gaussian(self) -> bool:
+        '''
+
+        :return: True if the gate can be expressed as the complex exponential of a hermitian generator, AND has been compiled into said form.
+        '''
+        return False
     def is_parametrized(self) -> bool:
         """
         :return: True if the gate is parametrized
@@ -55,7 +72,7 @@ class QGateImpl:
 
     def is_differentiable(self) -> bool:
         '''
-        defaults to False, overwridden by ParametrizedGate
+        defaults to False, overwritten by ParametrizedGate
         '''
         return False
 
@@ -110,10 +127,7 @@ class QGateImpl:
 class MeasurementImpl(QGateImpl):
 
     def __init__(self, name, target):
-        self.name = name
-        self.target = tuple(sorted(list_assignement(target)))
-        self.control = tuple()
-        self.finalize()
+        super().__init__(name=name, target=tuple(sorted(list_assignement(target))))
 
 
 class ParametrizedGateImpl(QGateImpl, ABC):
@@ -122,63 +136,33 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     Has su
     '''
 
+    def extract_variables(self):
+        if hasattr(self.parameter, "extract_variables"):
+            return self.parameter.extract_variables()
+        else:
+            return []
+
     def dagger(self):
         raise TequilaException("should not be called from ABC")
-
-    def update_variables(self, variables: typing.Dict[str, numbers.Real]):
-        for k, v in variables.items():
-            if has_variable(self.parameter, k):
-                self.parameter.update({k: v})
-
-    def extract_variables(self):
-        if hasattr(self.parameter, "variables"):
-            return self.parameter.variables
 
     @property
     def parameter(self):
         return self._parameter
 
+
     @parameter.setter
     def parameter(self, other):
-        if isinstance(other, numbers.Number):
-            self._parameter = Variable(value=other)
-        elif isinstance(other, str):
-            self._parameter = Variable(name=other, value=0.0)
-        elif hasattr(other, "evalf"):
-            self._parameter = SympyVariable(value=other)
-        else:
-            self._parameter = other
+        self.parameter = assign_variable(variable=other)
 
-    def __init__(self, name, parameter: Variable, target: list, control: list = None, frozen: bool = None):
-        super().__init__(name, target, control)
+    def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None):
+        super().__init__(name=name, target=target, control=control)
+        self._parameter = assign_variable(variable=parameter)
 
-        # failsafe:
-        if frozen is not None and not frozen and isinstance(parameter, numbers.Number):
-            raise TequilaException(
-                "\nYou explicitly demanded a parametrized gate with frozen=False\n"
-                "but have not passed down a Variable object but a simple number.\n"
-                "initialize the gate with a Variable object like Variable(name=\'pick_a_name\', value=number)")
-        elif frozen is None and isinstance(parameter, numbers.Number):
-            self.frozen = True
-        else:
-            self.frozen = frozen
-
-        self.parameter = parameter
-
-    def is_frozen(self):
-        '''
-        :return: return wether this gate is frozen or not.
-        '''
-        return self.frozen
+    def is_gaussian(self):
+        return False
 
     def is_parametrized(self) -> bool:
-        """
-        :return: True if the gate is parametrized
-        """
-        if self._parameter is None:
-            return False
-        else:
-            return True
+        return True
 
     def is_differentiable(self) -> bool:
         """
@@ -227,8 +211,12 @@ class RotationGateImpl(ParametrizedGateImpl):
         return self.parameter
 
     @angle.setter
-    def angle(self, angle):
-        self.parameter = angle
+    def angle(self, other):
+        self.parameter = other
+
+    @property
+    def shift(self):
+        return 0.5
 
     def __ipow__(self, power, modulo=None):
         self.angle *= power
@@ -239,24 +227,9 @@ class RotationGateImpl(ParametrizedGateImpl):
         result.angle *= power
         return result
 
-    def __mul__(self, other) -> list:
-        """
-        Helper function for QCircuit, should not be used on its own
-        As every class in _gates_impl.py
-        Tries to optimize if two rotation gates are combined
-        """
-        if hasattr(other,
-                   "angle") and other.axis == self._axis and other.target == self.target and other.control == self.control:
-            result = copy.deepcopy(self)
-            result.angle = self.angle + other.angle
-            result.frozen = self.frozen or other.frozen
-            return [result]
-        else:
-            return [self, other]
-
-    def __init__(self, axis, angle, target: list, control: list = None, frozen: bool = None):
+    def __init__(self, axis, angle, target: list, control: list = None):
         assert (angle is not None)
-        super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control, frozen=frozen)
+        super().__init__(name=self.get_name(axis=axis), parameter=angle, target=target, control=control)
         self._axis = self.assign_axis(axis)
 
     @staticmethod
@@ -271,52 +244,54 @@ class RotationGateImpl(ParametrizedGateImpl):
 
     def dagger(self):
         result = copy.deepcopy(self)
-        result.angle = -self.angle
+        result._parameter = assign_variable(-self.angle)
         return result
 
+    def is_gaussian(self):
+        return True
 
+class PhaseGateImpl(ParametrizedGateImpl):
+
+    def __init__(self,phase,target: list, control, list= None):
+        assert (phase is not None)
+        super().__init__(name='Phase',parameter=phase,target=target,control=control)
+
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result._parameter = -self.angle
+        return result
+
+    @property
+    def phase(self):
+        return self.parameter
+
+    @phase.setter
+    def phase(self, other):
+        self.parameter = other
+
+    def __pow__(self, power, modulo=None):
+        result = copy.deepcopy(self)
+        result.phase *= power
+        return result
+
+    def is_gaussian(self):
+        return True
+
+    @property
+    def shift(self):
+        return 1.
 class PowerGateImpl(ParametrizedGateImpl):
 
     @property
     def power(self):
-        if self.parameter is None:
-            return 1
-        else:
             return self.parameter
 
     @power.setter
-    def power(self, power):
-        self.parameter = power
+    def power(self, other):
+        self.parameter = other
 
-    def __ipow__(self, other):
-        if self.parameter is None:
-            self.power = other
-        else:
-            self.power = self.power * other
-        return self
-
-    def __pow__(self, power, modulo=None):
-        result = copy.deepcopy(self)
-        result.power *= power
-        return result
-
-    def __mul__(self, other) -> list:
-        """
-        Helper function for QCircuit, should not be used on its own
-        As every class in _gates_impl.py
-        Tries to optimize if two rotation gates are combined
-        """
-        if hasattr(other,
-                   "power") and other.name == self.name and other.target == self.target and other.control == self.control:
-            result = copy.deepcopy(self)
-            result.power = self.power + other.power
-            result.frozen = self.frozen or other.frozen
-            return [result]
-        else:
-            return [self, other]
-
-    def __init__(self, name, target: list, power=None, control: list = None, frozen: bool = None):
-        super().__init__(name=name, parameter=power, target=target, control=control, frozen=frozen)
+    def __init__(self, name, target: list, power=None, control: list = None):
+        super().__init__(name=name, parameter=power, target=target, control=control)
 
     def dagger(self):
         result = copy.deepcopy(self)
@@ -333,20 +308,14 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
     def angle(self):
         return self.parameter
 
-    @angle.setter
-    def angle(self, angle):
-        self.parameter = angle
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result._parameter = -self.angle
+        return result
 
-    @property
-    def name(self):
-        return "Exp(" + number_to_string(self.angle() * 1j) + "/2 PS)"
-
-    def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None, frozen: bool = False):
-        self.paulistring = paulistring.naked()
-        self.parameter = angle
-        self.target = tuple(t for t in paulistring.keys())
-        self.control = tuple(list_assignement(control))
-        self.frozen = frozen
+    def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None):
+        super().__init__(name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control, parameter=angle)
+        self.paulistring = paulistring
         self.finalize()
 
     def __str__(self):
@@ -360,30 +329,17 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         return result
 
 
-class TrotterizedGateImpl(ParametrizedGateImpl):
+class TrotterizedGateImpl(QGateImpl):
 
-    def update_variables(self, variables: typing.Dict[str, numbers.Real]):
-        for k, v in variables.items():
-            for angle in self.angles:
-                if has_variable(angle, k):
-                    angle.update({k: v})
+    def is_parametrized(self) -> bool:
+        return True
 
     def extract_variables(self) -> typing.Dict[str, numbers.Number]:
-        tmp = dict()
+        tmp = []
         for angle in self.angles:
-            if hasattr(angle, "variables"):
-                for k, v in angle.variables.items():
-                    tmp[k] = v
-        return tmp
-
-    @property
-    def parameter(self):
-        return self.angles
-
-    @parameter.setter
-    def parameter(self, other):
-        assert (len(other) == len(self.generators))
-        self._parameter = other
+            if hasattr(angle, "extract_variables"):
+                tmp += angle.extract_variables()
+        return list(set(tmp))
 
     @property
     def angles(self):
@@ -391,22 +347,12 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
 
     @angles.setter
     def angles(self, other):
-        if other is None:
-            self._parameter = tuple([1] * len(self.generators))
-        elif hasattr(other, "__len__"):
-            if len(other) == 1:
-                self._parameter = tuple([other[0]] * len(self.generators))
-            else:
-                assert (len(other) == len(self.generators))
-                self._parameter = tuple(other)
-        else:
-            self._parameter = tuple([other] * len(self.generators))
+        self._parameter = other
 
     def __init__(self, generators: typing.Union[QubitHamiltonian, typing.List[QubitHamiltonian]],
                  steps: int = 1,
                  angles: typing.Union[list, numbers.Real, Variable] = None,
                  control: typing.Union[list, int] = None,
-                 frozen: bool = None,
                  threshold: numbers.Real = 0.0,
                  join_components: bool = True,
                  randomize_component_order: bool = True,
@@ -416,38 +362,20 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         :param angles: coefficients for each generator
         :param steps: Trotter Steps
         :param control: control qubits
-        :param frozen: freeze the gate (optimizers ingnore it)
         :param threshold: neglect terms in the given Hamiltonians if their coefficients are below this threshold
         :param join_components: The generators are trotterized together. If False the first generator is trotterized, then the second etc
         Note that for steps==1 as well as len(generators)==1 this has no effect
         :param randomize_component_order: randomize the order in the generators order before trotterizing
         :param randomize: randomize the trotter decomposition of each generator
         """
+        super().__init__(name="Trotterized", target=self.extract_targets(generators), control=control)
         self.generators = list_assignement(generators)
-        self.target = self.extract_targets()
         self.angles = angles
-        self.control = tuple(list_assignement(control))
-
-        # failsafe for now
-        all_variable = True
-        all_number = True
-        for a in self.angles:
-            if isinstance(a, numbers.Number):
-                all_variable = False
-            if hasattr(a, "name"):
-                all_number = False
-        assert (all_variable != all_number)
-        if all_number:
-            self.frozen = True
-        else:
-            self.frozen = frozen
-
         self.steps = steps
         self.threshold = threshold
         self.join_components = join_components
         self.randomize_component_order = randomize_component_order
         self.randomize = randomize
-        self.name = "Trotterized"
         self.finalize()
 
     def __str__(self):
@@ -460,9 +388,18 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         result += ")"
         return result
 
-    def extract_targets(self):
+    @staticmethod
+    def extract_targets(generators):
         targets = []
-        for g in self.generators:
+        for g in generators:
             for ps in g.paulistrings:
                 targets += [k for k in ps.keys()]
         return tuple(set(targets))
+
+    def dagger(self):
+        result = copy.deepcopy(self)
+        angles = []
+        for angle in self.angles:
+            angles.append(-angle)
+        result.angles=angles
+        return result

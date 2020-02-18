@@ -3,6 +3,7 @@ import typing
 import numpy
 
 from tequila.tools import number_to_string
+from tequila.utils import to_float
 from tequila import TequilaException
 
 from openfermion import QubitOperator
@@ -129,7 +130,7 @@ class PauliString:
         :return: The coefficient of this paulistring
         """
         if self._coeff is None:
-            return 1
+            return 1.0
         else:
             return self._coeff
 
@@ -159,8 +160,10 @@ class PauliString:
         if n_qubits is None:
             n_qubits = maxq
 
-        if n_qubits<maxq:
-            raise TequilaException("PauliString acts on qubit number larger than n_qubits given\n PauliString="+self.__repr__()+", n_qubits="+ str(n_qubits))
+        if n_qubits < maxq:
+            raise TequilaException(
+                "PauliString acts on qubit number larger than n_qubits given\n PauliString=" + self.__repr__() + ", n_qubits=" + str(
+                    n_qubits))
 
         binary = numpy.zeros(2 * n_qubits)
         for k, v in self._data.items():
@@ -266,8 +269,18 @@ class QubitHamiltonian:
         return QubitHamiltonian(hamiltonian=QubitOperator.identity())
 
     @classmethod
-    def init_from_string(cls, string):
-        return QubitHamiltonian(hamiltonian=QubitOperator(string.upper(), 1.0))
+    def init_from_string(cls, string, openfermion_format=True):
+        """
+        stringify your hamiltonian as str(H.hamiltonian) to get the openfermion stringification
+        :param string: Hamiltonian as string
+        :param openfermion_format: use the openfermion string format
+        :return: QubitHamiltonian
+        """
+
+        if openfermion_format:
+            return QubitHamiltonian(hamiltonian=QubitOperator(string, 1.0))
+        else:
+            raise TequilaException("Not there yet")
 
     @classmethod
     def init_from_paulistring(cls, ps: PauliString):
@@ -304,10 +317,38 @@ class QubitHamiltonian:
         return self._hamiltonian == other._hamiltonian
 
     def is_hermitian(self):
-        for v in self.values():
-            if v.imag != 0.0:
-                return False
-        return True
+        try:
+            for k, v in self.hamiltonian.terms.items():
+                self.hamiltonian.terms[k] = to_float(v)
+            return True
+        except TypeError:
+            return False
+
+    def simplify(self, threshold=0.0):
+        simplified = {}
+        for k, v in self.hamiltonian.terms.items():
+            if not numpy.isclose(v, 0.0, atol=threshold):
+                simplified[k] = v
+        self._hamiltonian.terms = simplified
+        return self
+
+    def split(self, hermitian: bool = None, anti_hermitian: bool = None):
+        """
+        :return: Hermitian and anti-Hermitian part
+        """
+        hermitian = QubitHamiltonian.init_zero()
+        anti_hermitian = QubitHamiltonian.init_zero()
+        for k, v in self.hamiltonian.terms.items():
+            hermitian.hamiltonian.terms[k] = numpy.float(v.real)
+            anti_hermitian.hamiltonian.terms[k] = 1.j * v.imag
+        if hermitian is True and anti_hermitian is True:
+            return hermitian, anti_hermitian
+        elif hermitian is True:
+            return hermitian
+        elif anti_hermitian is True:
+            return anti_hermitian
+        else:
+            return hermitian, anti_hermitian
 
     def is_antihermitian(self):
         for v in self.values():

@@ -1,7 +1,7 @@
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.simulators.simulator_symbolic import SimulatorSymbolic
 from tequila.circuit import gates
 from tequila.hamiltonian import paulis
+from tequila import simulate
 
 import numpy
 import pytest
@@ -11,7 +11,7 @@ import pytest
 @pytest.mark.parametrize("init", [0,1])
 def test_pauli_gates(paulis, qubit, init):
     iwfn = QubitWaveFunction.from_int(i=init, n_qubits=qubit+1)
-    wfn = SimulatorSymbolic().convert_to_numpy(True).simulate_wavefunction(abstract_circuit=paulis[0](qubit), initial_state=init).wavefunction
+    wfn = simulate(paulis[0](qubit), initial_state=init)
     iwfn=iwfn.apply_qubitoperator(paulis[1](qubit))
     assert(iwfn==wfn)
 
@@ -23,7 +23,7 @@ def test_rotations(rot, qubit, angle, init):
     pauli = rot[1](qubit)
     gate = rot[0](target=qubit, angle=angle)
     iwfn = QubitWaveFunction.from_int(i=init, n_qubits=qubit+1)
-    wfn = SimulatorSymbolic().convert_to_numpy(True).simulate_wavefunction(abstract_circuit=gate, initial_state=init).wavefunction
+    wfn = simulate(gate, initial_state=init)
     test= numpy.cos(-angle/2.0)*iwfn + 1.0j*numpy.sin(-angle/2.0)* iwfn.apply_qubitoperator(pauli)
     assert(wfn==test)
 
@@ -32,7 +32,7 @@ def test_rotations(rot, qubit, angle, init):
 def test_hadamard(qubit, init):
     gate = gates.H(target=qubit)
     iwfn = QubitWaveFunction.from_int(i=init, n_qubits=qubit+1)
-    wfn = SimulatorSymbolic().convert_to_numpy(True).simulate_wavefunction(abstract_circuit=gate, initial_state=init).wavefunction
+    wfn = simulate(gate, initial_state=init)
     test= 1.0/numpy.sqrt(2)*(iwfn.apply_qubitoperator(paulis.Z(qubit)) + iwfn.apply_qubitoperator(paulis.X(qubit)))
     assert(wfn==test)
 
@@ -42,14 +42,14 @@ def test_hadamard(qubit, init):
 def test_controls(target, control, gate):
     c0 = gates.X(target=control) + gate(target=target, control=None)
     c1 = gates.X(target=control) + gate(target=target, control=control)
-    wfn0 = SimulatorSymbolic().convert_to_numpy(True).simulate_wavefunction(abstract_circuit=c0, initial_state=0).wavefunction
-    wfn1 = SimulatorSymbolic().convert_to_numpy(True).simulate_wavefunction(abstract_circuit=c1, initial_state=0).wavefunction
+    wfn0 = simulate(c0, initial_state=0, backend="symbolic")
+    wfn1 = simulate(c1, initial_state=0, backend="symbolic")
     assert(wfn0 == wfn1)
 
     c0 = gates.QCircuit()
     c1 = gate(target=target, control=control)
-    wfn0 = SimulatorSymbolic().convert_to_numpy(True).simulate_wavefunction(abstract_circuit=c0, initial_state=0).wavefunction
-    wfn1 = SimulatorSymbolic().convert_to_numpy(True).simulate_wavefunction(abstract_circuit=c1, initial_state=0).wavefunction
+    wfn0 = simulate(c0, initial_state=0)
+    wfn1 = simulate(c1, initial_state=0)
     assert(wfn0 == wfn1)
 
 

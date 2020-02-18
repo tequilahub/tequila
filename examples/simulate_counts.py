@@ -4,7 +4,7 @@ Small example on how to construct a circuit and simulate its measurements in the
 
 from tequila.circuit import gates
 from numpy import pi
-from tequila.simulators import pick_simulator
+from tequila.simulators import pick_backend
 from tequila.tools import plotters
 """
 Same example as 'simulate_wavefunctions' but here we simulate counts
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # choose a backend
     # 'symbolic' can only simulate wavefunctions, counts are not supported here. Could be implemented quickly
     # 'pyquil' has currently no support for individual measurements ... on the todo list
-    Simulator = pick_simulator(samples=10000, demand_full_wfn=False)
+    Simulator = pick_backend(samples=10000, demand_full_wfn=False)
     simulator = Simulator()
     simulator_results = simulator.run(abstract_circuit=ac, samples=10000)
     counts = simulator_results.counts
