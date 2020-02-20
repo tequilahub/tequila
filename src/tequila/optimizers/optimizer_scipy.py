@@ -81,7 +81,7 @@ class OptimizerSciPy(Optimizer):
                  backend: str = None,
                  reset_history: bool = True) -> SciPyReturnType:
         """
-        Optimizes with scipi and gives back the optimized angles
+        Optimizes with scipy and gives back the optimized angles
         Get the optimized energies over the history
         :param objective: The tequila Objective to minimize
         :param initial_valuesxx: initial values for the objective
