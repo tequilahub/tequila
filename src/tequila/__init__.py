@@ -27,14 +27,30 @@ def simulate(objective: Objective,
              backend: str = None,
              *args,
              **kwargs) -> Union[RealNumber, QubitWaveFunction]:
-    """
-    Simulate a tequila objective or circuit
-    :param objective: tequila objective or circuit
-    :param variables: The variables of the objective given as dictionary
-    with keys as tequila Variables and values the corresponding real numbers
-    :param samples: if None a full wavefunction simulation is performed, otherwise a fixed number of samples is simulated
-    :param backend: specify the backend or give None for automatic assignment
-    :return: simulated/sampled objective or simulated/sampled wavefunction
+    """Simulate a tequila objective or circuit
+
+    Parameters
+    ----------
+    objective :
+        tequila objective or circuit
+    variables :
+        The variables of the objective given as dictionary
+        with keys as tequila Variables/hashable types and values the corresponding real numbers
+    samples : int : (Default value = None)
+        if None a full wavefunction simulation is performed, otherwise a fixed number of samples is simulated
+    backend : str : (Default value = None)
+        specify the backend or give None for automatic assignment
+
+    *args :
+        
+    **kwargs :
+        
+
+    Returns
+    -------
+    type
+        simulated/sampled objective or simulated/sampled wavefunction
+
     """
     if variables is None and not (len(objective.extract_variables()) == 0):
         raise TequilaException("You called simulate for a parametrized type but forgot to pass down the variables: {}".format(objective.extract_variables()))
@@ -58,6 +74,25 @@ def simulate(objective: Objective,
                                                                                    object=objective))
 
 def draw(objective, variables=None, backend:str=None):
+    """
+    Pretty output (depends on installed backends)
+
+    Parameters
+    ----------
+    objective :
+        the tequila objective to print out
+    variables :
+         (Default value = None)
+         Give variables if the objective is parametrized
+    backend:str :
+         (Default value = None)
+         chose backend (of None it will be automatically picked)
+
+    Returns
+    -------
+    None
+
+    """
     if backend is None:
         if "cirq" in simulators.INSTALLED_SIMULATORS:
             backend = "cirq"

@@ -42,16 +42,19 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
 
-    def do_make_molecule(self) -> MolecularData:
-        molecule = MolecularData(**self.parameters.molecular_data_param)
-        energy = self.compute_energy(method="hf")
+    def do_make_molecule(self, read_from_file:str=None, *args, **kwargs) -> MolecularData:
+
+        energy = self.compute_energy(method="hf", *args, **kwargs)
         wfn = self.logs['hf'].wfn
+
+        molecule = MolecularData(**self.parameters.molecular_data_param)
         if wfn.nirrep() != 1:
             wfn = wfn.c1_deep_copy(wfn.basisset())
-        molecule.one_body_integrals = self.compute_one_body_integrals(wfn)
-        molecule.two_body_integrals = self.compute_two_body_integrals(wfn)
-        molecule.hf_energy = self.logs['hf'].variables['HF TOTAL ENERGY']
-        molecule.nuclear_repulsion = self.logs['hf'].variables['NUCLEAR REPULSION ENERGY']
+
+        molecule.one_body_integrals = self.compute_one_body_integrals(ref_wfn=wfn)
+        molecule.two_body_integrals = self.compute_two_body_integrals(ref_wfn=wfn)
+        molecule.hf_energy = energy
+        molecule.nuclear_repulsion = wfn.variables()['NUCLEAR REPULSION ENERGY']
         molecule.canonical_orbitals = numpy.asarray(wfn.Ca())
         molecule.overlap_integrals = numpy.asarray(wfn.S())
         molecule.n_orbitals = molecule.canonical_orbitals.shape[0]
@@ -101,32 +104,54 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
     def compute_ccsd_amplitudes(self):
         return self.compute_amplitudes(method='ccsd')
 
-    def _run_psi4(self, options: dict = None, method=None, return_wfn=True, point_group=None, filename: str = None):
-
+    def _run_psi4(self, options: dict = None, method=None, return_wfn=True, point_group=None, filename: str = None, guess_wfn=None, *args, **kwargs):
         psi4.core.clean()
-        defaults = {'basis': self.parameters.basis_set,
-                    'e_convergence': 1e-8,
-                    'd_convergence': 1e-8}
-        if options is None:
-            options = {}
-        options = {**defaults, **options}
-        psi4.set_options(options)
+
+        if "threads" in kwargs:
+            psi4.set_num_threads(nthread=kwargs["threads"])
 
         if filename is None:
             filename = "{}_{}.out".format(self.parameters.filename, method)
 
         psi4.core.set_output_file(filename)
 
+        defaults = {'basis': self.parameters.basis_set,
+                    'e_convergence': 1e-8,
+                    'd_convergence': 1e-8}
+        if options is None:
+            options = {}
+        options = {**defaults, **options}
+
+        # easier guess read in
+        if guess_wfn is not None:
+            if isinstance(guess_wfn, QuantumChemistryPsi4):
+                guess_wfn = guess_wfn.logs["hf"].wfn
+            if isinstance(guess_wfn, str):
+                guess_wfn = psi4.core.Wavefunction.from_file(guess_wfn)
+            guess_wfn.to_file(guess_wfn.get_scratch_filename(180)) # this is necessary
+            options["guess"] = "read"
+
+        # prevent known flaws
+        if "guess" in options and options["guess"].lower() == "read":
+            options["basis_guess"] = False
+            # additionally the outputfile needs to be the same
+            # as in the previous guess
+            # this can not be determined here
+            # better pass down a guess_wfn
+
+        psi4.set_options(options)
+
         mol = psi4.geometry(self.parameters.get_geometry_string())
 
         if point_group is not None:
             mol.reset_point_group(point_group.lower())
 
-        energy, wfn = psi4.energy(name=method.lower(), return_wfn=return_wfn, molecule=mol)
-
+        energy, wfn = psi4.energy(name=method.lower(), return_wfn=return_wfn, molecule=mol, guess_wfn=guess_wfn)
         self.energies[method.lower()] = energy
         self.logs[method.lower()] = Psi4Results(filename=filename, variables=copy.deepcopy(psi4.core.variables()),
                                                 wfn=wfn)
+
+        print(wfn.alpha_orbital_space())
 
         return energy, wfn
 

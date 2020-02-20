@@ -78,6 +78,7 @@ HAS_SYMBOLIC = True
 
 
 def show_available_simulators():
+    """ """
     print("Supported Backends:\n")
     for k in SUPPORTED_BACKENDS:
         print(k)
