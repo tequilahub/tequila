@@ -7,13 +7,13 @@ def to_float(number) -> float:
     """
 
     if hasattr(number, "imag"):
-        if isclose(number.imag, 0.0):
+        if isclose(number.imag, 0.0,atol=1.e-6):
             return float(number.real)
         else:
             raise TypeError("imaginary part detected {number}".format(number=number))
     elif hasattr(number, "evalf"):
         tmp = complex(number.evalf())
-        if hasattr(tmp, "imag") and isclose(tmp.imag, 0.0):
+        if hasattr(tmp, "imag") and isclose(tmp.imag, 0.0,atol=1.e-6):
             return float(tmp.real)
         else:
             raise TypeError("casting number {number} of type {type} fo float failed".format(number=number, type=type(number)))

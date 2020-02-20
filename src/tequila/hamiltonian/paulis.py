@@ -1,6 +1,7 @@
 """
 Convenience initialization
-Of Pauli Operators
+of Pauli Operators. Resulting structures can be added and multiplied together.
+Currently uses OpenFermion as backend (QubitOperators)
 """
 import typing
 from tequila.hamiltonian import QubitHamiltonian
@@ -8,7 +9,19 @@ from tequila import BitString
 import numpy
 
 
-def pauli(qubit, type):
+def pauli(qubit, type) -> QubitHamiltonian:
+    """
+    Parameters
+    ----------
+    qubit: int
+
+    type: str or int:
+        define if X, Y or Z (0,1,2)
+
+    Returns
+    -------
+    QubitHamiltonian
+    """
     if type in QubitHamiltonian.axis_to_string:
         type = QubitHamiltonian.axis_to_string(type)
     else:
@@ -16,43 +29,186 @@ def pauli(qubit, type):
     return QubitHamiltonian(type + str(qubit))
 
 
-def X(qubit):
+def X(qubit) -> QubitHamiltonian:
+    """
+    Initialize a single Pauli X Operator
+
+    Parameters
+    ----------
+    qubit: int
+        qubit on which the operator should act
+
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
     return QubitHamiltonian.init_from_string("X" + str(qubit))
 
 
-def Y(qubit):
+def Y(qubit) -> QubitHamiltonian:
+    """
+    Initialize a single Pauli Y Operator
+
+    Parameters
+    ----------
+    qubit: int
+        qubit on which the operator should act
+
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
     return QubitHamiltonian.init_from_string("Y" + str(qubit))
 
 
-def Z(qubit):
+def Z(qubit) -> QubitHamiltonian:
+    """
+    Initialize a single Pauli Z Operator
+
+    Parameters
+    ----------
+    qubit: int
+        qubit on which the operator should act
+
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
     return QubitHamiltonian.init_from_string("Z" + str(qubit))
 
 
-def I(*args, **kwargs):
+def I(*args, **kwargs) -> QubitHamiltonian:
+    """
+    Initialize unit Operator
+
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
     return QubitHamiltonian.init_unit()
 
+def Zero(*args, **kwargs) -> QubitHamiltonian:
+    """
+    Initialize 0 Operator
 
-def Qp(qubit):
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
+    return QubitHamiltonian.init_zero()
+
+def Qp(qubit) -> QubitHamiltonian:
+    """
+    Notes
+    ----------
+    Initialize
+
+    .. math::
+        \\frac{1}{2} \\left( 1 - \\sigma_z \\right)
+
+    Parameters
+    ----------
+    qubit: int
+        qubit on which the operator should act
+
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
     return 0.5 * (I(qubit=qubit) + Z(qubit=qubit))
 
 
-def Qm(qubit):
+def Qm(qubit) -> QubitHamiltonian:
+    """
+    Notes
+    ----------
+    Initialize
+
+    .. math::
+        \\frac{1}{2} \\left( 1 + \\sigma_z \\right)
+
+    Parameters
+    ----------
+    qubit: int
+        qubit on which the operator should act
+
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
     return 0.5 * (I(qubit=qubit) - Z(qubit=qubit))
 
 
-def Sp(qubit):
+def Sp(qubit) -> QubitHamiltonian:
+    """
+    Notes
+    ----------
+    Initialize
+
+    .. math::
+        \\frac{1}{2} \\left( \\sigma_x + i\\sigma_y \\right)
+
+    Parameters
+    ----------
+    qubit: int
+        qubit on which the operator should act
+
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
     return 0.5 * (X(qubit=qubit) + 1.j * Y(qubit=qubit))
 
 
-def Sm(qubit):
+def Sm(qubit) -> QubitHamiltonian:
+    """
+    Notes
+    ----------
+    Initialize
+
+    .. math::
+        \\frac{1}{2} \\left( \\sigma_x + i \\sigma_y \\right)
+
+    Parameters
+    ----------
+    qubit: int
+        qubit on which the operator should act
+
+    Returns
+    -------
+    QubitHamiltonian
+
+    """
     return 0.5 * (X(qubit=qubit) - 1.j * Y(qubit=qubit))
 
 
 def Projector(wfn, threshold=0.0) -> QubitHamiltonian:
     """
-    :param wfn: a QubitWaveFunction
-    :param threshold: neglect all close to zero with given threshold
-    :return: The projector |wfn><wfn|
+    Notes
+    ----------
+    Initialize a projector given by
+
+    .. math::
+        H = \\lvert \\Psi \\rangle \\langle \\Psi \\rvert
+
+    Parameters
+    ----------
+    wfn: QubitWaveFunction
+
+    threshold: float: (Default value = 0.0)
+        neglect small parts of the operator
+
+    Returns
+    -------
+
     """
     H = QubitHamiltonian.init_zero()
     for k1, v1 in wfn.items():
@@ -60,7 +216,7 @@ def Projector(wfn, threshold=0.0) -> QubitHamiltonian:
             c = v1.conjugate() * v2
             if not numpy.isclose(c, 0.0, atol=threshold):
                 H += c * decompose_transfer_operator(bra=k1, ket=k2)
-    assert(H.is_hermitian())
+    assert (H.is_hermitian())
     return H
 
 

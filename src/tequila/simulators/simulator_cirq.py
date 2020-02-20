@@ -17,6 +17,12 @@ class BackendCircuitCirq(BackendCircuit):
     recompile_swap = False
     recompile_multitarget = True
     recompile_controlled_rotation = False
+    recompile_hadamard_power= False
+    recompile_controlled_power = False
+    recompile_power = False
+    recompile_phase_to_z=True
+    recompile_toffoli=False
+    recompile_trotter = True
 
     numbering: BitNumbering = BitNumbering.MSB
 

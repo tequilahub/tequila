@@ -115,7 +115,7 @@ class BackendCircuitQulacs(BackendCircuit):
         else:
             raise TequilaQulacsException("Only sqrt gates supported as power gates")
 
-    def add_controlled_power_gate(self, gate, qubit_map, circuit, *args, **kwargs):
+    def add_controlled_power_gate(self, gate, circuit, *args, **kwargs):
         raise TequilaQulacsException("no controlled power gates")
 
     def add_measurement(self, gate, circuit, *args, **kwargs):

@@ -11,6 +11,7 @@ import copy
 
 
 class TequilaScipyException(TequilaException):
+    """ """
     pass
 
 
@@ -18,15 +19,14 @@ SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_out
 
 
 class OptimizerSciPy(Optimizer):
+    """ """
     gradient_free_methods = ['NELDER-MEAD', 'COBYLA', 'POWELL', 'SLSQP']
     gradient_based_methods = ['L-BFGS-B', 'BFGS', 'CG', 'TNC']
     hessian_based_methods = ["TRUST-KRYLOV", "NEWTON-CG", "DOGLEG", "TRUST-NCG", "TRUST-EXACT", "TRUST-CONSTR"]
 
     @classmethod
     def available_methods(cls):
-        """
-        :return: All tested available methods
-        """
+        """:return: All tested available methods"""
         return cls.gradient_free_methods + cls.gradient_based_methods + cls.hessian_based_methods
 
     def __init__(self, method: str = "L-BFGS-B",
@@ -227,8 +227,11 @@ class OptimizerSciPy(Optimizer):
                 # can currently only save gradients if explicitly evaluated
                 # and will fail for hessian based approaches
                 # need better callback functions
-                if self.method not in self.hessian_based_methods:
-                    self.history.gradients = [dE.history[i] for i in real_iterations]
+                try:
+                    if self.method not in self.hessian_based_methods:
+                        self.history.gradients = [dE.history[i] for i in real_iterations]
+                except:
+                    print("WARNING: History could assign the stored gradients")
                 self.history.gradients_evaluations = dE.history
             if ddE is not None and not isinstance(ddE, str):
                 # hessians are not evaluated in the same frequencies as energies
@@ -239,13 +242,26 @@ class OptimizerSciPy(Optimizer):
         angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
         angles_final = {**angles_final, **passive_angles}
 
-        return SciPyReturnType(energy=E_final, angles=angles_final, history=self.history, scipy_output=res)
+        return SciPyReturnType(energy=E_final, angles=format_variable_dictionary(angles_final), history=self.history, scipy_output=res)
 
 
 def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[str]:
-    """
-    Convenience
+    """Convenience
     :return: Available methods of the scipy optimizer
+
+    Parameters
+    ----------
+    energy :
+        (Default value = True)
+    gradient :
+        (Default value = True)
+    hessian :
+        (Default value = True)
+
+    Returns
+    -------
+
+    
     """
     methods = []
     if energy:
@@ -270,37 +286,63 @@ def minimize(objective: Objective,
              method_options: dict = None,
              method_bounds: typing.Dict[typing.Hashable, numbers.Real] = None,
              method_constraints=None,
-             save_history: bool = True,
-             silent: bool = False) -> SciPyReturnType:
+             silent: bool = False,
+             save_history: bool = True) -> SciPyReturnType:
     """
-    Call this if you don't like objects
-    :param objective: The tequila Objective to minimize
-    :param gradient: The gradient of the Objective as other Objective,
-    if None it will be created automatically;
-    Only pass the gradient manually if there is a more efficient way
-    pass a string '2-point', '3-point', 'cs' for numerical evaluation
-    (check scipy documentation which methods support that)
-    :param hessian: The hessian of the Objective as other Objective,
-    if None it will be created automatically;
-    Only pass the hessian manually if there is a more efficient way
-    pass a string '2-point', '3-point', 'cs' for numerical evaluation
-    (check scipy documentation which methods support that)
-    :param initial_values: initial values for the objective
-    :param variables: list of variables to optimize, None means all will be optimized
-    :param samples: Number of samples to measure in each simulators run (None means full wavefunction simulation)
-    :param maxiter: maximum number of iterations (can also be set over method_options)
-    Note that some SciPy optimizers also accept 'maxfun' which is the maximum number of function evaluation
-    You might consider massing down that keyword in the method_options dictionary
-    :param backend: The quantum simulator you want to use (None -> automatically assigned)
-    :param method: The scipy method passed as string
-    :param tol: See scipy documentation for the method you picked
-    :param method_options: See scipy documentation for the method you picked
-    :param method_bounds: See scipy documentation for the method you picked
-    Give in the same format as parameters/initial_values: Dict[hashable_type, float]
-    :param return_dictionary: return results as dictionary instead of tuples
-    :param method_constraints: See scipy documentation for the method you picked
-    :return: Named Tuple with: Optimized Energy, optimized angles, history (if return_history is True, scipy_output (if return_scipy_output is True)
+
+    Parameters
+    ----------
+    objective: Objective :
+        The tequila objective to optimize
+    gradient: typing.Union[str, typing.Dict[Variable, Objective], None] : (Default value = None) :
+        '2-point', 'cs' or '3-point' for numerical gradient evaluation (does not work in combination with all optimizers),
+        dictionary of variables and tequila objective to define own gradient,
+        None for automatic construction (default)
+    hessian: typing.Union[str, typing.Dict[Variable, Objective], None] : (Default value = None) :
+        '2-point', 'cs' or '3-point' for numerical gradient evaluation (does not work in combination with all optimizers),
+        dictionary (keys:tuple of variables, values:tequila objective) to define own gradient,
+        None for automatic construction (default)
+    initial_values: typing.Dict[typing.Hashable, numbers.Real]: (Default value = None):
+        Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero
+    variables: typing.List[typing.Hashable] :
+         (Default value = None)
+         List of Variables to optimize
+    samples: int :
+         (Default value = None)
+         samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)
+    maxiter: int :
+         (Default value = 100)
+    backend: str :
+         (Default value = None)
+         Simulator backend, will be automatically chosen if set to None
+    method: str :
+         (Default value = "BFGS")
+         Optimization method (see scipy documentation, or 'available methods')
+    tol: float :
+         (Default value = 1.e-3)
+         Convergence tolerance for optimization (see scipy documentation)
+    method_options: dict :
+         (Default value = None)
+         Dictionary of options
+         (see scipy documentation)
+    method_bounds: typing.Dict[typing.Hashable, typing.Tuple[float, float]]:
+        (Default value = None)
+        bounds for the variables (see scipy documentation)
+    method_constraints :
+         (Default value = None)
+         (see scipy documentation
+    silent: bool :
+         (Default value = False)
+         No printout if True
+    save_history: bool:
+        (Default value = True)
+        Save the history throughout the optimization
+
+    Returns
+    -------
+
     """
+
 
     # bring into right format
     variables = format_variable_list(variables)

@@ -3,7 +3,7 @@ from tequila import dataclass
 from openfermion import MolecularData
 
 from openfermionpyscf import run_pyscf
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, Amplitudes
+from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, OldAmplitudes
 
 
 class OpenVQEEPySCFException(TequilaException):
@@ -44,11 +44,11 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
         return self.parse_ccsd_amplitudes(molecule)
 
-    def parse_ccsd_amplitudes(self, molecule) -> Amplitudes:
+    def parse_ccsd_amplitudes(self, molecule) -> OldAmplitudes:
 
         singles = molecule._ccsd_single_amps
         doubles = molecule._ccsd_double_amps
 
-        tmp1 = Amplitudes.from_ndarray(array=singles, closed_shell=False)
-        tmp2 = Amplitudes.from_ndarray(array=doubles, closed_shell=False)
-        return Amplitudes(data={**tmp1.data, **tmp2.data}, closed_shell=False)
+        tmp1 = OldAmplitudes.from_ndarray(array=singles, closed_shell=False)
+        tmp2 = OldAmplitudes.from_ndarray(array=doubles, closed_shell=False)
+        return OldAmplitudes(data={**tmp1.data, **tmp2.data}, closed_shell=False)

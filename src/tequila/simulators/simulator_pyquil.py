@@ -18,6 +18,7 @@ class BackendCircuitPyquil(BackendCircuit):
     recompile_controlled_rotation = False
     recompile_exponential_pauli = True
     recompile_trotter = True
+    recompile_phase = False
 
     numbering = BitNumbering.LSB
 
@@ -78,7 +79,6 @@ class BackendCircuitPyquil(BackendCircuit):
         ro = circuit.declare('ro', 'BIT', bits)
         for i, t in enumerate(gate.target):
             circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
-
 
 
 class BackendExpectationValuePyquil(BackendExpectationValue):

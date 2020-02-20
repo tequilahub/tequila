@@ -5,7 +5,9 @@ from abc import ABC
 from tequila import TequilaException
 from tequila.objective.objective import Variable, FixedVariable, assign_variable
 from tequila.hamiltonian import PauliString, QubitHamiltonian
-from tequila.tools import number_to_string, list_assignement
+from tequila.tools import list_assignement
+
+from dataclasses import dataclass
 
 # typing convenience shortcuts
 UnionList = typing.Union[typing.Iterable[numbers.Integral], numbers.Integral]
@@ -51,6 +53,12 @@ class QGateImpl:
         else:
             return False
 
+    def is_gaussian(self) -> bool:
+        '''
+
+        :return: True if the gate can be expressed as the complex exponential of a hermitian generator, AND has been compiled into said form.
+        '''
+        return False
     def is_parametrized(self) -> bool:
         """
         :return: True if the gate is parametrized
@@ -143,6 +151,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def parameter(self):
         return self._parameter
 
+
     @parameter.setter
     def parameter(self, other):
         self.parameter = assign_variable(variable=other)
@@ -150,6 +159,9 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None):
         super().__init__(name=name, target=target, control=control)
         self._parameter = assign_variable(variable=parameter)
+
+    def is_gaussian(self):
+        return False
 
     def is_parametrized(self) -> bool:
         return True
@@ -204,6 +216,10 @@ class RotationGateImpl(ParametrizedGateImpl):
     def angle(self, other):
         self.parameter = other
 
+    @property
+    def shift(self):
+        return 0.5
+
     def __ipow__(self, power, modulo=None):
         self.angle *= power
         return self
@@ -233,7 +249,39 @@ class RotationGateImpl(ParametrizedGateImpl):
         result._parameter = assign_variable(-self.angle)
         return result
 
+    def is_gaussian(self):
+        return True
 
+class PhaseGateImpl(ParametrizedGateImpl):
+
+    def __init__(self,phase,target: list, control, list= None):
+        assert (phase is not None)
+        super().__init__(name='Phase',parameter=phase,target=target,control=control)
+
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result._parameter = -self.angle
+        return result
+
+    @property
+    def phase(self):
+        return self.parameter
+
+    @phase.setter
+    def phase(self, other):
+        self.parameter = other
+
+    def __pow__(self, power, modulo=None):
+        result = copy.deepcopy(self)
+        result.phase *= power
+        return result
+
+    def is_gaussian(self):
+        return True
+
+    @property
+    def shift(self):
+        return 1.
 class PowerGateImpl(ParametrizedGateImpl):
 
     @property
@@ -282,6 +330,12 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         result += ")"
         return result
 
+@dataclass
+class TrotterParameters:
+    threshold: float = 0.0
+    join_components: bool = True
+    randomize_component_order: bool = False
+    randomize: bool = False
 
 class TrotterizedGateImpl(QGateImpl):
 

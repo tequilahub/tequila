@@ -7,14 +7,16 @@ Todo: write real test class with tear_down procedure to get rid of psi4 output f
 import pytest
 import tequila.quantumchemistry as qc
 import numpy
+import os, glob
 from tequila.objective import ExpectationValue
 from tequila import simulate
-from tequila.simulators import INSTALLED_SIMULATORS
+from tequila import simulators
 
-simulators = []
-for k in INSTALLED_SIMULATORS.keys():
-    if k != "symbolic":
-        simulators.append(k)
+def teardown_function(function):
+    [os.remove(x) for x in glob.glob("data/*.pickle")]
+    [os.remove(x) for x in glob.glob("data/*.out")]
+    [os.remove(x) for x in glob.glob("data/*.hdf5")]
+
 
 @pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0, reason="no quantum chemistry backends installed")
 def test_interface():
@@ -54,8 +56,10 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])
-@pytest.mark.parametrize("backend", simulators)
+@pytest.mark.parametrize("backend", [simulators.pick_backend("random"), simulators.pick_backend()])
 def test_ucc_psi4(trafo, backend):
+    if backend == "symbolic":
+        pytest.skip("skipping for symbolic simulator  ... way too slow")
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo, backend=backend)
 
@@ -72,16 +76,9 @@ def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     psi4_interface = qc_interface(parameters=parameters, transformation=trafo)
 
     hqc = psi4_interface.make_hamiltonian()
-
-    # called twice on purpose (see if reloading works)
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
-
-    variables = amplitudes.export_parameter_dictionary()
-    print("variables=", variables)
-
-    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="ccsd",
-                                         include_reference_ansatz=True)
-    print("variables=", U.extract_variables())
+    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes=amplitudes, include_reference_ansatz=True)
+    variables = amplitudes.make_parameter_dictionary()
     H = psi4_interface.make_hamiltonian()
     ex=ExpectationValue(U=U, H=H)
     energy = simulate(ex, variables=variables, backend=backend)
@@ -108,15 +105,48 @@ def do_test_mp2(qc_interface, parameters, result):
     psi4_interface = qc_interface(parameters=parameters)
     hqc = psi4_interface.make_hamiltonian()
 
-    # called twice on purpose (see if reloading works)
     amplitudes = psi4_interface.compute_mp2_amplitudes()
-    amplitudes = psi4_interface.compute_mp2_amplitudes()
-    variables = amplitudes.export_parameter_dictionary()
+    variables = amplitudes.make_parameter_dictionary()
 
-    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes="mp2",
+    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes=amplitudes,
                                          include_reference_ansatz=True)
     H = psi4_interface.make_hamiltonian()
     O = ExpectationValue(U=U, H=H)
 
     energy = simulate(objective=O, variables=variables)
     assert (numpy.isclose(energy, result))
+
+@pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
+@pytest.mark.parametrize("method", ["cc2", "ccsd", "cc3"])
+def test_amplitudes_psi4(method):
+    results = {"mp2":-1.1279946983462537, "cc2":-1.1344484090805054, "ccsd":None, "cc3":None}
+    # the number might be wrong ... its definetely not what psi4 produces
+    # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
+    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
+    do_test_amplitudes(method=method, qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=results[method])
+
+
+def do_test_amplitudes(method, qc_interface, parameters, result):
+    # check examples for comments
+    psi4_interface = qc_interface(parameters=parameters)
+    hqc = psi4_interface.make_hamiltonian()
+    if result is None:
+        result = psi4_interface.compute_energy(method=method)
+    amplitudes = psi4_interface.compute_amplitudes(method=method)
+    variables = amplitudes.make_parameter_dictionary()
+
+    U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes=amplitudes,
+                                         include_reference_ansatz=True)
+    H = psi4_interface.make_hamiltonian()
+    O = ExpectationValue(U=U, H=H)
+
+    energy = simulate(objective=O, variables=variables)
+    assert (numpy.isclose(energy, result))
+
+@pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
+@pytest.mark.parametrize("method", ["mp2", "mp3", "mp4", "cc2", "cc3", "ccsd", "ccsd(t)", "omp2", "cisd", "cisdt"])
+def test_energies_psi4(method):
+    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31g")
+    psi4_interface = qc.QuantumChemistryPsi4(parameters=parameters_qc)
+    result = psi4_interface.compute_energy(method=method)
+    assert result is not None

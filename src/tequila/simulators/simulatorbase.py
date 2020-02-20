@@ -5,11 +5,12 @@ from tequila.utils.misc import to_float
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
-from tequila.circuit.gates import RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl
+from tequila.circuit.gates import RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl,PhaseGateImpl
 from tequila import BitString
 from tequila.objective.objective import Variable
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
+
 
 import numpy, numbers, typing
 
@@ -28,6 +29,14 @@ class BackendCircuit:
     recompile_multitarget = True
     recompile_controlled_rotation = False
     recompile_exponential_pauli = True
+    recompile_phase =True
+    recompile_power = True
+    recompile_hadamard_power =True
+    recompile_controlled_power=True
+    recompile_controlled_phase=True
+    recompile_toffoli=False
+    recompile_phase_to_z=False
+    cc_max=False
 
     @property
     def n_qubits(self) -> numbers.Integral:
@@ -47,7 +56,15 @@ class BackendCircuit:
                               trotterized=self.recompile_trotter,
                               exponential_pauli=self.recompile_exponential_pauli,
                               controlled_exponential_pauli=True,
+                              hadamard_power=self.recompile_hadamard_power,
+                              controlled_power=self.recompile_controlled_power,
+                              power=self.recompile_power,
+                              controlled_phase=self.recompile_controlled_phase,
+                              phase=self.recompile_phase,
+                              phase_to_z=self.recompile_phase_to_z,
+                              toffoli=self.recompile_toffoli,
                               controlled_rotation=self.recompile_controlled_rotation,
+                              cc_max=self.cc_max,
                               swap=self.recompile_swap)
 
         if self.use_mapping:
@@ -83,7 +100,7 @@ class BackendCircuit:
         :param abstract_circuit: Abstract circuit to be translated
         :return: translated circuit
         """
-
+        ## TODO: Type checking currently is actually failing. resorting to attribute checking in its place.
         if self.fast_return(abstract_circuit):
             return abstract_circuit
 
@@ -93,18 +110,24 @@ class BackendCircuit:
             if isinstance(g, MeasurementImpl):
                 self.add_measurement(gate=g, circuit=result)
             elif g.is_controlled():
-                if isinstance(g, RotationGateImpl):
+                if hasattr(g, 'angle') and not hasattr(g,'paulistring'):
                     self.add_controlled_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PowerGateImpl) and g.power != 1:
-                    self.add_controlled_power_gate(gate=g, variables=variables, qubit_map=qubit_map, circuit=result)
+                elif hasattr(g, 'power'):
+                    self.add_controlled_power_gate(gate=g, variables=variables, circuit=result)
+                elif hasattr(g,'phase'):
+                    self.add_controlled_phase_gate(gate=g,variables=variables, circuit=result)
+                elif hasattr(g, 'paulistring'):
+                    self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
                 else:
                     self.add_controlled_gate(gate=g, circuit=result)
             else:
-                if isinstance(g, RotationGateImpl):
+                if hasattr(g, 'angle') and not hasattr(g,'paulistring'):
                     self.add_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PowerGateImpl) and g.power != 1:
+                elif hasattr(g, 'power'):
                     self.add_power_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, ExponentialPauliGateImpl):
+                elif hasattr(g, 'phase'):
+                    self.add_phase_gate(gate=g,variables=variables,circuit=result)
+                elif hasattr(g, 'paulistring'):
                     self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
                 else:
                     self.add_gate(gate=g, circuit=result)
@@ -216,7 +239,13 @@ class BackendCircuit:
     def add_rotation_gate(self, gate, circuit, variables, *args, **kwargs):
         return self.add_gate(gate, circuit, args, kwargs)
 
+    def add_phase_gate(self, gate, circuit, variables, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
     def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
+        return self.add_gate(gate, circuit, args, kwargs)
+
+    def add_controlled_phase_gate(self, gate, variables, circuit, *args, **kwargs):
         return self.add_gate(gate, circuit, args, kwargs)
 
     def add_power_gate(self, gate, variables, circuit, *args, **kwargs):

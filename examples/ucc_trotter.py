@@ -49,7 +49,7 @@ if __name__ == "__main__":
     print("CCSD Parameters:\n", U.extract_variables())
 
     # overwrite the initial amplitudes to be zero
-    initial_amplitudes = qc.Amplitudes(data={(2, 0, 3, 1): 0.0, (3, 1, 2, 0): 0.0 })
+    initial_amplitudes = qc.OldAmplitudes(data={(2, 0, 3, 1): 0.0, (3, 1, 2, 0): 0.0})
     # overwrite the initial amplitudes to be MP2
     #initial_amplitudes = psi4_interface.compute_mp2_amplitudes()
 
