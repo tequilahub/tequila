@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 warnings.filterwarnings('ignore', category=FutureWarning)
-PhoenicsReturnType = namedtuple('PhoenicsReturnType', 'energy angles history')
+PhoenicsReturnType = namedtuple('PhoenicsReturnType', 'energy angles history observations')
 
 import sys
 
@@ -189,18 +189,27 @@ class PhoenicsOptimizer(Optimizer):
         if save_to_file is True:
             with open(file_name,'wb') as file:
                 pickle.dump(obs,file)
-        return PhoenicsReturnType(energy=best, angles=best_angles, history=self.history)
+        return PhoenicsReturnType(energy=best, angles=best_angles, history=self.history, observations=obs)
 
 def minimize(objective: Objective,
              maxiter: int,
              samples: int = None,
-             passives=None,
+             variables: typing.List=None,
+             initial_values: typing.Dict=None,
              backend: str = None,
              previous=None,
              phoenics_config=None,
              save_to_file=False,
              file_name=None):
-        optimizer=PhoenicsOptimizer(samples=samples,backend=backend,maxiter=maxiter)
-        return optimizer(objective=objective,passives=passives,previous=previous,maxiter=maxiter,
+    if variables is None:
+        passives=None
+    else:
+        all_vars = Objective.extract_variables()
+        passives = {}
+        for k,v in initial_values.items():
+            if k not in variables and k in all_vars:
+                passives[k]=v
+    optimizer=PhoenicsOptimizer(samples=samples,backend=backend,maxiter=maxiter)
+    return optimizer(objective=objective,passives=passives,previous=previous,maxiter=maxiter,
                          phoenics_config=phoenics_config,save_to_file=save_to_file,file_name=file_name)
 
