@@ -20,9 +20,11 @@ import warnings
 def test_interface(backend):
     H = tq.paulis.X(0)
     U = tq.gates.X(target=0)
+    CU = tq.compile(objective=U, backend=backend)
     a = tq.simulate(objective=U, backend=backend)
     assert (isinstance(a, tq.QubitWaveFunction))
     E = tq.ExpectationValue(H=H, U=U)
+    CE = tq.compile(objective=E, backend=backend)
     a = tq.simulate(objective=E, backend=backend)
     assert (isinstance(a, numbers.Number))
 

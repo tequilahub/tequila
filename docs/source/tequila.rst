@@ -24,7 +24,10 @@ Optimizers
     :no-inherited-members:
     :no-special-members:
     
-
+Simulators
+------------------------
+.. automodule:: tequila
+    :members: simulate, compile, draw
 
 Quantum chemistry
 ------------------------
