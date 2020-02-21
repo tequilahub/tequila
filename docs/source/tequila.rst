@@ -23,14 +23,13 @@ Optimizers
     :members: minimize, available_methods
     :no-inherited-members:
     :no-special-members:
-
+    
 Simulators
------------------------
+------------------------
+.. automodule:: tequila
+    :members: simulate, compile, draw
 .. automodule:: tequila.simulators.__init__
     :members: show_available_simulators
-.. automodule:: tequila.__init__
-    :members: simulate, draw
-
 
 Quantum chemistry
 ------------------------
