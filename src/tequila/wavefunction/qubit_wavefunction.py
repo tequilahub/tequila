@@ -268,3 +268,9 @@ class QubitWaveFunction:
                     raise TequilaException("unknown pauli: " + str(p))
             result[BitString.from_array(array=arr)] = c
         return paulistring.coeff * result
+
+    def to_array(self):
+        result = numpy.zeros(shape=2**self.n_qubits)
+        for k,v in self.items():
+            result[int(k)] = v
+        return result

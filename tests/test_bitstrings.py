@@ -17,6 +17,7 @@ def test_bitstrings():
         bitb = BitString.from_int(integer=integers[i], nbits=nbits)
         assert (bita == bitb)
         assert (bita.integer == integers[i])
+        assert (int(bita) == bita.integer)
         assert (bita.array == arr)
         assert (bitb.integer == integers[i])
         assert (bitb.array == arr)
