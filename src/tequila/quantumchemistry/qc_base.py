@@ -495,9 +495,10 @@ class QuantumChemistryBase:
         """ """
         return self.molecule.get_n_beta_electrons()
 
-    def make_hamiltonian(self) -> HamiltonianQC:
+    def make_hamiltonian(self, occupied_indices, active_indices) -> HamiltonianQC:
         """ """
-        return HamiltonianQC(molecule=self.molecule, transformation=self.transformation)
+        fop = openfermion.transforms.get_fermion_operator(self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
+        return self.transformation(fop)
 
     def compute_one_body_integrals(self):
         """ """

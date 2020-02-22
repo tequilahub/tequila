@@ -19,6 +19,7 @@ def generate_h2o_xyz_files(start=0.75, inc=0.05, steps=30):
     files = []
     Rvals = [start + inc*i for i in range(steps)]
     for i,R in enumerate(Rvals):
+        print(water_geometry.format(R))
         mol = psi4.geometry(water_geometry.format(R))
         mol.set_name("R = {}".format(R))
         name = "data/h2o_{}.xyz".format(i)
@@ -41,7 +42,6 @@ if __name__ == "__main__":
     transformation = "jordan-wigner"
     guess_wfn = None
     hf_energies = []
-    hf_energies_from_scratch = []
     options = {
         'reference': 'rhf',
         'df_scf_guess': 'False',
@@ -52,7 +52,17 @@ if __name__ == "__main__":
     for i,file in enumerate(files):
         mol = tq.chemistry.Molecule(geometry=file, basis_set=basis_set, transformation=transformation, threads=threads, guess_wfn=guess_wfn, options=options)
         hf_energies.append(mol.energies["hf"])
+        print(mol)
         guess_wfn = mol
+
+        opi = mol.orbitals
+        for i in opi:
+            print(i)
+
+        occ = {"A1":[0]}
+        virt = {"A1":[3]}
+        H = mol.make_active_space_hamiltonian(occ=occ, virt=virt)
+        break
 
     plt.plot(hf_energies, label="guess=read", marker = "o", linestyle="--")
     plt.legend()
