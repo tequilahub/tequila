@@ -323,7 +323,36 @@ class QuantumChemistryBase:
         else:
             assert (callable(transformation))
             self.transformation = transformation
-        self.molecule = self.make_molecule()
+
+        if "molecule" in kwargs:
+            self.molecule = kwargs["molecule"]
+        else:
+            self.molecule = self.make_molecule(*args, **kwargs)
+
+        assert (parameters.basis_set.lower() == self.molecule.basis.lower())
+        assert (parameters.multiplicity == self.molecule.multiplicity)
+        assert (parameters.charge == self.molecule.charge)
+
+    @classmethod
+    def from_openfermion(cls, molecule: openfermion.MolecularData,
+                         transformation: typing.Union[str, typing.Callable] = None,
+                         *args,
+                         **kwargs):
+        """
+        Initialize direclty from openfermion MolecularData object
+
+        Parameters
+        ----------
+        molecule
+            The openfermion molecule
+        Returns
+        -------
+            The Tequila molecule
+        """
+        parameters = ParametersQC(basis_set=molecule.basis, geometry=molecule.geometry,
+                                  description=molecule.description, multiplicity=molecule.multiplicity,
+                                  charge=molecule.charge)
+        return cls(parameters=parameters, transformation=transformation, molecule=molecule, *args, **kwargs)
 
     def make_excitation_operator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
         """Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
@@ -335,9 +364,9 @@ class QuantumChemistryBase:
             List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
             can also be given as one big list: [a_0, i_0, a_1, i_1 ...]
         indices: typing.Iterable[typing.Tuple[int :
-            
+
         int]] :
-            
+
 
         Returns
         -------
@@ -407,7 +436,7 @@ class QuantumChemistryBase:
         keys = [k for k in wfn.keys()]
         return keys[-1]
 
-    def make_molecule(self) -> MolecularData:
+    def make_molecule(self, *args, **kwargs) -> MolecularData:
         """Creates a molecule in openfermion format by running psi4 and extracting the data
         Will check for previous outputfiles before running
         Will not recompute if a file was found
@@ -437,12 +466,12 @@ class QuantumChemistryBase:
             do_compute = True
 
         if do_compute:
-            molecule = self.do_make_molecule()
+            molecule = self.do_make_molecule(*args, **kwargs)
 
         molecule.save()
         return molecule
 
-    def do_make_molecule(self):
+    def do_make_molecule(self, *args, **kwargs):
         """ """
         raise TequilaException("Needs to be overwridden by inherited backend class")
 
@@ -510,11 +539,11 @@ class QuantumChemistryBase:
         parametrized :
             Initialize with variables, otherwise with static numbers (Default value = True)
         trotter_steps: int :
-            
+
         initial_amplitudes: typing.Union[str :
-            
+
         Amplitudes :
-            
+
         ClosedShellAmplitudes] :
              (Default value = "mp2")
         trotter_parameters: gates.TrotterParameters :
@@ -623,10 +652,10 @@ class QuantumChemistryBase:
         """
 
         Compute closed-shell mp2 amplitudes
-        
+
         .. math::
             t(a,i,b,j) = 0.25 * g(a,i,b,j)/(e(i) + e(j) -a(i) - b(j) )
-        
+
         :return:
 
         Parameters
@@ -655,6 +684,7 @@ class QuantumChemistryBase:
         """
         Compute the CIS amplitudes of the molecule
         """
+
         @dataclass
         class ResultCIS:
             """ """

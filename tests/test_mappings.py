@@ -6,7 +6,7 @@ from tequila import simulate, ExpectationValue, Objective
 from tequila.simulators import INSTALLED_SAMPLERS
 from tequila.hamiltonian import QubitHamiltonian, PauliString
 
-import pytest
+import pytest, numpy
 from numpy import isclose
 
 
@@ -95,3 +95,10 @@ def test_paulistring_sampling_2(backend, case):
     E = ExpectationValue(H=H, U=U)
     result = simulate(E, samples=1)
     assert (isclose(result, case[1], 1.e-4))
+
+@pytest.mark.parametrize("array", [numpy.random.uniform(0.0,1.0,i) for i in [2,4,8,16]])
+def test_qubitwavefunction_array(array):
+    print(array)
+    wfn = QubitWaveFunction.from_array(arr=array)
+    array2 = wfn.to_array()
+    assert (array == array2).all()

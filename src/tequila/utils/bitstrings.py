@@ -166,6 +166,9 @@ class BitString:
             return self.integer < other
         return self.integer < other.integer
 
+    def __int__(self) -> int:
+        return self.integer
+
 
 class BitStringLSB(BitString):
 

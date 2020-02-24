@@ -12,6 +12,8 @@ from tequila.objective import ExpectationValue
 from tequila import simulate
 from tequila import simulators
 
+import tequila as tq
+
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
     [os.remove(x) for x in glob.glob("data/*.out")]
@@ -20,7 +22,6 @@ def teardown_function(function):
 
 @pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0, reason="no quantum chemistry backends installed")
 def test_interface():
-    import tequila as tq
     molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JW")
 
 @pytest.mark.skipif(condition=not (qc.has_pyscf and qc.has_psi4),
@@ -150,3 +151,26 @@ def test_energies_psi4(method):
     psi4_interface = qc.QuantumChemistryPsi4(parameters=parameters_qc)
     result = psi4_interface.compute_energy(method=method)
     assert result is not None
+
+def test_restart_psi4():
+    h2 = tq.chemistry.Molecule(geometry="data/h2.xyz", basis_set="6-31g")
+    wfn = h2.logs['hf'].wfn
+    h2x = tq.chemistry.Molecule(geometry="data/h2x.xyz", basis_set="6-31g", guess_wfn=wfn)
+    wfnx = h2x.logs['hf'].wfn
+    with open(h2x.logs['hf'].filename, "r") as f:
+        found = False
+        for line in f:
+            if "Reading orbitals from file 180" in line:
+                found = True
+                break
+        assert found
+
+    wfnx.to_file("data/test_wfn.npy")
+    h2 = tq.chemistry.Molecule(geometry="data/h2.xyz", basis_set="6-31g", name="data/andreasdorn", guess_wfn="data/test_wfn.npy")
+    with open(h2.logs['hf'].filename, "r") as f:
+        found = False
+        for line in f:
+            if "Reading orbitals from file 180" in line:
+                found = True
+                break
+        assert found
