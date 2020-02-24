@@ -14,15 +14,18 @@ from tequila import simulators
 
 import tequila as tq
 
+
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
-    [os.remove(x) for x in glob.glob("data/*.out")]
+    # [os.remove(x) for x in glob.glob("data/*.out")]
     [os.remove(x) for x in glob.glob("data/*.hdf5")]
 
 
-@pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0, reason="no quantum chemistry backends installed")
+@pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0,
+                    reason="no quantum chemistry backends installed")
 def test_interface():
     molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JW")
+
 
 @pytest.mark.skipif(condition=not (qc.has_pyscf and qc.has_psi4),
                     reason="you don't have a quantum chemistry backend installed")
@@ -55,6 +58,7 @@ def do_test_h2_hamiltonian(qc_interface):
     assert (numpy.isclose(vals[2], -0.52718972, atol=1.e-4))
     assert (numpy.isclose(vals[-1], 0.9871391, atol=1.e-4))
 
+
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])
 @pytest.mark.parametrize("backend", [simulators.pick_backend("random"), simulators.pick_backend()])
@@ -62,14 +66,16 @@ def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
         pytest.skip("skipping for symbolic simulator  ... way too slow")
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo, backend=backend)
+    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo,
+                backend=backend)
 
 
 @pytest.mark.skipif(condition=not qc.has_pyscf, reason="you don't have pyscf")
 @pytest.mark.parametrize("trafo", ["JW", "BK"])
 def test_ucc_pyscf(trafo):
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_ucc(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo)
+    do_test_ucc(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1368354639104123,
+                trafo=trafo)
 
 
 def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
@@ -81,7 +87,7 @@ def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes=amplitudes, include_reference_ansatz=True)
     variables = amplitudes.make_parameter_dictionary()
     H = psi4_interface.make_hamiltonian()
-    ex=ExpectationValue(U=U, H=H)
+    ex = ExpectationValue(U=U, H=H)
     energy = simulate(ex, variables=variables, backend=backend)
     assert (numpy.isclose(energy, result))
 
@@ -92,6 +98,7 @@ def test_mp2_psi4():
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1279946983462537)
+
 
 @pytest.mark.skipif(condition=not qc.has_pyscf, reason="you don't have pyscf")
 def test_mp2_pyscf():
@@ -117,14 +124,16 @@ def do_test_mp2(qc_interface, parameters, result):
     energy = simulate(objective=O, variables=variables)
     assert (numpy.isclose(energy, result))
 
+
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 @pytest.mark.parametrize("method", ["cc2", "ccsd", "cc3"])
 def test_amplitudes_psi4(method):
-    results = {"mp2":-1.1279946983462537, "cc2":-1.1344484090805054, "ccsd":None, "cc3":None}
+    results = {"mp2": -1.1279946983462537, "cc2": -1.1344484090805054, "ccsd": None, "cc3": None}
     # the number might be wrong ... its definetely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_amplitudes(method=method, qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=results[method])
+    do_test_amplitudes(method=method, qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc,
+                       result=results[method])
 
 
 def do_test_amplitudes(method, qc_interface, parameters, result):
@@ -144,13 +153,15 @@ def do_test_amplitudes(method, qc_interface, parameters, result):
     energy = simulate(objective=O, variables=variables)
     assert (numpy.isclose(energy, result))
 
+
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
-@pytest.mark.parametrize("method", ["mp2", "mp3", "mp4", "cc2", "cc3", "ccsd", "ccsd(t)", "omp2", "cisd", "cisdt"])
+@pytest.mark.parametrize("method", ["mp2", "mp3", "mp4", "cc2", "cc3", "ccsd", "ccsd(t)", "cisd", "cisdt"])
 def test_energies_psi4(method):
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31g")
     psi4_interface = qc.QuantumChemistryPsi4(parameters=parameters_qc)
     result = psi4_interface.compute_energy(method=method)
     assert result is not None
+
 
 def test_restart_psi4():
     h2 = tq.chemistry.Molecule(geometry="data/h2.xyz", basis_set="6-31g")
@@ -166,7 +177,8 @@ def test_restart_psi4():
         assert found
 
     wfnx.to_file("data/test_wfn.npy")
-    h2 = tq.chemistry.Molecule(geometry="data/h2.xyz", basis_set="6-31g", name="data/andreasdorn", guess_wfn="data/test_wfn.npy")
+    h2 = tq.chemistry.Molecule(geometry="data/h2.xyz", basis_set="6-31g", name="data/andreasdorn",
+                               guess_wfn="data/test_wfn.npy")
     with open(h2.logs['hf'].filename, "r") as f:
         found = False
         for line in f:
@@ -174,3 +186,12 @@ def test_restart_psi4():
                 found = True
                 break
         assert found
+
+
+@pytest.mark.parametrize("active", [{"A1": [2, 3]}, {"B2": [0], "B1": [0]}, {"A1":[0,1,2,3]}, {"B1":[0]}])
+def test_active_spaces(active):
+    mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g")
+    H = mol.make_active_space_hamiltonian(active_orbitals=active)
+    Uhf = mol.prepare_reference(active_orbitals=active)
+    hf = tq.simulate(tq.ExpectationValue(U=Uhf, H=H))
+    assert (tq.numpy.isclose(hf, mol.energies["hf"], atol=1.e-4))

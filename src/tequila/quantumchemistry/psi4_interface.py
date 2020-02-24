@@ -46,7 +46,63 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         def __str__(self):
             return "{} : {}{} energy = {:+2.6f} ".format(self.idx_total, self.idx_irrep, self.irrep, self.energy)
 
-    def __init__(self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None, *args,
+    def _make_active_space_data(self, active_orbitals, reference=None):
+        """
+        Small helper function
+        Internal use only
+        Parameters
+        ----------
+        active_orbitals: dictionary :
+            dictionary with irreps as keys and a list of integers as values
+            i.e. occ = {"A1":[0,1], "A2":[0]}
+            means the occupied active space is made up of spatial orbitals
+            0A1, 1A1 and 0A2
+            as list: Give a list of spatial orbital indices
+            i.e. occ = [0,1,3] means that spatial orbital 0, 1 and 3 are used
+        reference: (Default value=None)
+            List of orbitals which form the reference
+            Can be given in the same format as active_orbitals
+            If given as None then the first N_electron/2 orbitals are taken
+            and the corresponding active orbitals are removed
+
+        Returns
+        -------
+        Dataclass with active indices and reference indices (in spatial notation)
+
+        """
+
+        @dataclass
+        class ActiveSpaceData:
+            active_indices: list  # active orbitals (spatial)
+            reference_indices: list  # reference orbitals (spatial)
+
+            @property
+            def frozen_reference_orbitals(self):
+                return [i for i in self.reference_indices if i not in self.active_indices]
+
+        # transform irrep notation to absolute ints
+        active_idx = active_orbitals
+        ref_idx = reference
+        if isinstance(active_orbitals, dict):
+            active_idx = []
+            for key, value in active_orbitals.items():
+                active_idx += [self.orbitals_by_irrep[key.upper()][i].idx_total for i in value]
+        elif active_orbitals is None:
+            active_idx = [i for i in range(self.n_orbitals)]
+
+        if isinstance(reference, dict):
+            ref_idx = []
+            for key, value in reference.items():
+                ref_idx += [self.orbitals_by_irrep[key.lower()][i].idx_total for i in value]
+        elif reference is None:
+            assert (self.n_electrons % 2 == 0)
+            ref_idx = [i for i in range(self.n_electrons // 2)]
+
+        return ActiveSpaceData(active_indices=sorted(active_idx), reference_indices=sorted(ref_idx))
+
+    def __init__(self, parameters: ParametersQC,
+                 transformation: typing.Union[str, typing.Callable] = None,
+                 *args,
                  **kwargs):
 
         self.energies = {}  # history to avoid recomputation
@@ -56,7 +112,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         self.ref_energy = self.molecule.hf_energy
         self.ref_wfn = self.logs['hf'].wfn
         self.psi4_mol = self.logs['hf'].mol
-        self.irreps = [self.psi4_mol.point_group().char_table().gamma(i).symbol() for i in range(self.nirrep)]
+        self.irreps = [self.psi4_mol.point_group().char_table().gamma(i).symbol().upper() for i in range(self.nirrep)]
         oenergies = []
         for i in self.irreps:
             oenergies += [(i, j, x) for j, x in enumerate(self.orbital_energies(irrep=i))]
@@ -116,43 +172,32 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             return tmp[irrep]
 
     def make_active_space_hamiltonian(self,
-                                      occ: typing.Union[dict, list],
-                                      virt: typing.Union[dict, list]):
+                                      active_orbitals: typing.Union[dict, list],
+                                      reference: typing.Union[dict, list] = None):
         """
         Make an active space hamiltonian
 
         Parameters
         ----------
-        occ: dictionary :
+        active_orbitals: dictionary :
             dictionary with irreps as keys and a list of integers as values
             i.e. occ = {"A1":[0,1], "A2":[0]}
             means the occupied active space is made up of spatial orbitals
             0A1, 1A1 and 0A2
             as list: Give a list of spatial orbital indices
             i.e. occ = [0,1,3] means that spatial orbital 0, 1 and 3 are used
-        virt
-            same format as occ
+        reference: (Default value=None)
+            List of orbitals which form the reference
+            Can be given in the same format as active_orbitals
+            If given as None then the first N_electron/2 orbitals are taken
+            and the corresponding active orbitals are removed
         Returns
         -------
         Hamiltonian defined in the active space given here
 
         """
-        # transform irrep notation to absolute ints
-        occ_idx = occ
-        vir_idx = virt
-        if isinstance(occ, dict):
-            for key, value in occ.items():
-                occ_idx = []
-                occ_idx += [self.orbitals_by_irrep[key.upper()][i].idx_total for i in value]
-        if isinstance(virt, dict):
-            for key, value in virt.items():
-                vir_idx = []
-                vir_idx += [self.orbitals_by_irrep[key.upper()][i].idx_total for i in value]
-
-        print("occ_idx=", occ_idx)
-        print("occ_idx=", vir_idx)
-
-        return self.make_hamiltonian(occupied_indices=occ_idx, active_indices=vir_idx)
+        active_space_data = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
+        return self.make_hamiltonian(occupied_indices=active_space_data.frozen_reference_orbitals, active_indices=active_space_data.active_indices)
 
     def do_make_molecule(self, *args, **kwargs) -> MolecularData:
 
@@ -217,7 +262,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         return self.compute_amplitudes(method='ccsd')
 
     def _run_psi4(self, options: dict = None, method=None, return_wfn=True, point_group=None, filename: str = None,
-                  guess_wfn=None, *args, **kwargs):
+                  guess_wfn=None, ref_wfn=None, *args, **kwargs):
         psi4.core.clean()
 
         if "threads" in kwargs:
@@ -259,7 +304,20 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if point_group is not None:
             mol.reset_point_group(point_group.lower())
 
-        energy, wfn = psi4.energy(name=method.lower(), return_wfn=return_wfn, molecule=mol, guess_wfn=guess_wfn)
+        if ref_wfn is None and hasattr(self, "ref_wfn"):
+            ref_wfn = self.ref_wfn
+
+        if point_group is not None and point_group.lower() == "c1":
+            ref_wfn = None # CC will not converge otherwise
+            if guess_wfn is not None:
+                guess_wfn = guess_wfn.c1_deep_copy(guess_wfn.basisset())
+
+        psi4.activate(mol)
+        if ref_wfn is None or method.lower() == "hf":
+            energy, wfn = psi4.energy(name=method.lower(), return_wfn=return_wfn, molecule=mol, guess_wfn=guess_wfn)
+        else:
+            energy, wfn = psi4.energy(name=method.lower(), ref_wfn=ref_wfn, return_wfn=return_wfn, molecule=mol,
+                                      guess_wfn=guess_wfn)
         self.energies[method.lower()] = energy
         self.logs[method.lower()] = Psi4Results(filename=filename, variables=copy.deepcopy(psi4.core.variables()),
                                                 wfn=wfn, mol=mol)
@@ -299,3 +357,18 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         result += "{key:15} : {value:15} \n".format(key="mos per irrep", value=str(
             [len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)]))
         return result
+
+    def prepare_reference(self, active_orbitals = None, reference_orbitals = None, n_qubits:int=None):
+
+        active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference_orbitals)
+        if active_orbitals is None:
+            return super().prepare_reference(reference_orbitals=active_space.reference_indices, n_qubits=n_qubits)
+        else:
+            if n_qubits is not None:
+                assert(n_qubits == 2*len(active_space.active_indices))
+            n_qubits = 2*len(active_space.active_indices)
+            active_reference_orbitals = [i for i in active_space.reference_indices if i in active_space.active_indices]
+            return super().prepare_reference(reference_orbitals=[i for i in range(len(active_reference_orbitals))], n_qubits=n_qubits)
+
+
+

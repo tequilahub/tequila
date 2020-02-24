@@ -8,6 +8,7 @@ import psi4
 import tequila as tq
 import matplotlib.pyplot as plt
 
+
 def generate_h2o_xyz_files(start=0.75, inc=0.05, steps=30):
     water_geometry = """
      0 1
@@ -17,27 +18,26 @@ def generate_h2o_xyz_files(start=0.75, inc=0.05, steps=30):
     """
 
     files = []
-    Rvals = [start + inc*i for i in range(steps)]
-    for i,R in enumerate(Rvals):
-        print(water_geometry.format(R))
+    Rvals = [start + inc * i for i in range(steps)]
+    for i, R in enumerate(Rvals):
         mol = psi4.geometry(water_geometry.format(R))
         mol.set_name("R = {}".format(R))
         name = "data/h2o_{}.xyz".format(i)
         files.append(name)
-        print(i, " ", R)
         with open(name, "w") as f:
             f.write(mol.save_string_xyz_file())
 
     return files
+
 
 if __name__ == "__main__":
 
     # generate files/get list of all generated files
     files = generate_h2o_xyz_files()
 
-    # create tequila objects
-    # use previous result as guess
-    threads = 1
+    # define parameters
+    threads = 4
+    active = {"A1": [2, 3], "B1": [0], "B2": [1]}
     basis_set = "sto-3g"
     transformation = "jordan-wigner"
     guess_wfn = None
@@ -46,28 +46,36 @@ if __name__ == "__main__":
         'reference': 'rhf',
         'df_scf_guess': 'False',
         'scf_type': 'direct',
-        'e_convergence': '8',
-        'guess': 'read'
+        'e_convergence': '6',
+        'guess': 'read',
+        'maxiter': 200
     }
-    for i,file in enumerate(files):
-        mol = tq.chemistry.Molecule(geometry=file, basis_set=basis_set, transformation=transformation, threads=threads, guess_wfn=guess_wfn, options=options)
+    ref_methods = ["hf", "mp2", "mp3", "fci"]
+    ref_energies = {m: [] for m in ref_methods}
+    energies = []
+
+    # compute stuff
+    for i, file in enumerate(files):
+        print("computing point {}".format(i))
+        mol = tq.chemistry.Molecule(geometry=file, basis_set=basis_set, transformation=transformation, threads=threads,
+                                    guess_wfn=guess_wfn, options=options)
         hf_energies.append(mol.energies["hf"])
-        print(mol)
         guess_wfn = mol
 
-        opi = mol.orbitals
-        for i in opi:
-            print(i)
+        for m in ref_methods:
+            ref_energies[m] += [mol.compute_energy(method=m, guess_wfn=mol.ref_wfn, options=options)]
 
-        occ = {"A1":[0]}
-        virt = {"A1":[3]}
-        H = mol.make_active_space_hamiltonian(occ=occ, virt=virt)
-        break
+        H = mol.make_active_space_hamiltonian(active_orbitals=active)
 
-    plt.plot(hf_energies, label="guess=read", marker = "o", linestyle="--")
+        Uhf = mol.prepare_reference(active_orbitals=active)
+
+        U = Uhf
+        hf = tq.simulate(tq.ExpectationValue(U=U, H=H))
+        energies += [hf]
+
+    plt.plot(energies, label="hf-test", marker="o", linestyle="--")
+    for m in ref_methods:
+        values = ref_energies[m]
+        plt.plot(values, label=str(m), linestyle="--")
     plt.legend()
     plt.show()
-
-
-
-
