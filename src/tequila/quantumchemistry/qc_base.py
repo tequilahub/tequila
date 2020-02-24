@@ -407,25 +407,35 @@ class QuantumChemistryBase:
 
         return qop
 
-    def reference_state(self) -> BitString:
+    def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
         """Does a really lazy workaround ... but it works
         :return: Hartree-Fock Reference as binary-number
 
         Parameters
         ----------
+        reference_orbitals: list:
+            give list of doubly occupied orbitals
+            default is None which leads to automatic list of the
+            first n_electron/2 orbitals
 
         Returns
         -------
 
         """
 
+        if reference_orbitals is None:
+            reference_orbitals = [i for i in range(self.n_electrons // 2)]
+
+        spin_orbitals = sorted([2 * i for i in reference_orbitals] + [2 * i + 1 for i in reference_orbitals])
+
+        if n_qubits is None:
+            n_qubits = 2 * self.n_orbitals
+
         string = ""
 
-        n_qubits = 2 * self.n_orbitals
-        l = [0] * n_qubits
-        for i in range(self.n_electrons):
+        for i in spin_orbitals:
             string += str(i) + "^ "
-            l[i] = 1
+
         fop = openfermion.FermionOperator(string, 1.0)
 
         op = QubitHamiltonian(hamiltonian=self.transformation(fop))
@@ -495,9 +505,11 @@ class QuantumChemistryBase:
         """ """
         return self.molecule.get_n_beta_electrons()
 
-    def make_hamiltonian(self) -> HamiltonianQC:
+    def make_hamiltonian(self, occupied_indices = None, active_indices = None) -> QubitHamiltonian:
         """ """
-        return HamiltonianQC(molecule=self.molecule, transformation=self.transformation)
+        fop = openfermion.transforms.get_fermion_operator(
+            self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
+        return QubitHamiltonian(hamiltonian=self.transformation(fop))
 
     def compute_one_body_integrals(self):
         """ """
@@ -511,14 +523,14 @@ class QuantumChemistryBase:
         """ """
         raise Exception("BaseClass Method")
 
-    def prepare_reference(self):
+    def prepare_reference(self, *args, **kwargs):
         """
 
         Returns
         -------
         A tequila circuit object which prepares the reference of this molecule in the chosen transformation
         """
-        return prepare_product_state(self.reference_state())
+        return prepare_product_state(self.reference_state(*args, **kwargs))
 
     def make_uccsd_ansatz(self,
                           trotter_steps: int,
