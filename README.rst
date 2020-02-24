@@ -1,5 +1,5 @@
-# OpenVQE
-Code for OpenVQE: a Python framework for variational quantum eigensolvers
+# Tequila
+Code for Tequila: a Python framework for variational quantum algorithms
 
 # Simulators
 Currently supported
@@ -9,7 +9,7 @@ Currently supported
 - Pyquil
 
 # QuantumChemistry:
-If you are intenting to use psi4:
+If you are intending to use psi4:
 psi4 has no default pip installer, so it is not part of requirements.txt
 if you are using conda you can install it with
 conda install psi4 -c psi4

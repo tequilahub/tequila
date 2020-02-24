@@ -9,10 +9,18 @@ import warnings
 import pickle
 from tequila import TequilaException
 warnings.simplefilter("ignore")
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore",category=DeprecationWarning)
-    warnings.filterwarnings("ignore")
-    import phoenics
+
+__HAS_PHOENICS__ = False
+try:
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        warnings.filterwarnings("ignore")
+        import phoenics
+    __HAS_PHOENICS__ = True
+except:
+    __HAS_PHOENICS__ = False
+
+
 from tequila.autograd_imports import jax
 import numpy as np
 from numpy import pi as pi
@@ -197,10 +205,50 @@ def minimize(objective: Objective,
              variables: typing.List=None,
              initial_values: typing.Dict=None,
              backend: str = None,
-             previous=None,
-             phoenics_config=None,
-             save_to_file=False,
-             file_name=None):
+             previous: typing.Union[str,list]=None,
+             phoenics_config: typing.Union[str,typing.Dict]=None,
+             save_to_file: bool=False,
+             file_name: str=None):
+
+    """
+
+    Parameters
+    ----------
+    objective: Objective :
+        The tequila objective to optimize
+    initial_values: typing.Dict[typing.Hashable, numbers.Real]: (Default value = None):
+        Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero
+    variables: typing.List[typing.Hashable] :
+         (Default value = None)
+         List of Variables to optimize
+    samples: int :
+         (Default value = None)
+         samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)
+    maxiter: int :
+         how many iterations of phoenics to run. Note that this is NOT identical to the number of times the circuit will run.
+    backend: str :
+         (Default value = None)
+         Simulator backend, will be automatically chosen if set to None
+    previous:
+        (Default value = None)
+        Previous phoenics observations. If string, the name of a file from which to load them. Else, a list.
+    phoenics_config:
+        (Default value = None)
+        a pre-made phoenics configuration. if str, the name of a file from which to load it; Else, a dictionary.
+    save_to_file: bool:
+        (Default value = False)
+        whether or not to save the output of the optimization to an external file
+    file_name: str:
+        (Default value = None)
+        where to save output to, if save_to_file is True.
+
+    Returns
+    -------
+
+    """
+
+
+
     if variables is None:
         passives=None
     else:
