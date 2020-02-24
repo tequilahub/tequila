@@ -91,7 +91,6 @@ class QCircuit():
             accumulate += list(g.qubits)
         return sorted(list(set(accumulate)))
 
-    d
 
     @property
     def n_qubits(self):
@@ -200,7 +199,9 @@ class QCircuit():
                     return False
         return True
 
-    
+    def is_mixed(self):
+        return not (self.is_fully_parametrized() or self.is_fully_unparametrized())
+
 
     def __iadd__(self, other):
         if isinstance(other, QGateImpl):
@@ -416,16 +417,28 @@ class Moment(QCircuit):
             result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
             if result.depth == 1:
                 result=Moment(gates=result.gates)
+                result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
         elif isinstance(other,QCircuit) and not isinstance(other,Moment):
-            gates = [g.copy() for g in (self.gates + other.gates)]
-            result = QCircuit(gates=gates)
-            result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
+            if not other.is_primitive():
+                gates = [g.copy() for g in (self.gates + other.gates)]
+                result = QCircuit(gates=gates)
+                result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
+            else:
+                try:
+                    result=self.add_gate(other.gates[0])
+                    result._min_n_qubits += len(other.qubits)
+                except:
+                    result=self.as_circuit()+QCircuit.wrap_gate(other)
+                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
+
         else:
             if isinstance(other,QGateImpl):
                 try:
                     result=self.add_gate(other)
+                    result._min_n_qubits += len(other.qubits)
                 except:
                     result=self.as_circuit()+QCircuit.wrap_gate(other)
+                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
             else:
                 raise TequilaException('cannot add moments to types other than QCircuit,Moment,or Gate; recieved summand of type {}'.format(str(type(other))))
         return result
@@ -443,4 +456,4 @@ class Moment(QCircuit):
 
     @staticmethod
     def from_moments(moments: typing.List):
-        raise TequilaException('this method should never be called from Moment.')
+        raise TequilaException('this method should never be called from Moment. Call from the QCircuit class itself instead.')

@@ -70,7 +70,7 @@ def test_one_qubit_shot(simulator):
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
     result = tq.optimizers.optimizer_phoenics.minimize(objective=O, maxiter=3, backend=simulator, samples=10000)
-    assert (numpy.isclose(result.energy, -1.0, atol=1.e-2))
+    assert (numpy.isclose(result.energy, -1.0, atol=3.e-2))
 
 
 
