@@ -3,19 +3,6 @@ from tequila import TequilaException
 from tequila import BitNumbering
 import numpy, typing, numbers,copy
 
-
-def new_moment(qubits):
-    mom = {i: None for i in qubits}
-    return mom
-
-def moment_pair(qubits):
-    return (new_moment(qubits),new_moment(qubits))
-
-
-
-
-
-
 class QCircuit():
 
     @property
@@ -34,6 +21,8 @@ class QCircuit():
                 moms[max(spots)].add_gate(g)
             for q in qus:
                 table[q] =max(spots)+1
+        for mom in moms:
+            mom.sort_gates()
         return moms
 
     @property
@@ -68,143 +57,13 @@ class QCircuit():
                     moms[max(spots)][1].add_gate(g)
                 for q in qus:
                     table_u[q] = table_p[q]= max(spots)+1
+        noms=[]
+        for m in moms:
+            noms.extend([m[0],m[1]])
 
-        return moms
-
-    @property
-    def old_moments(self):
-        all_m = []
-        qubits = self.qubits
-        all_m.append(new_moment())
-        for g in self.gates:
-            qus = g.qubits
-            found = None
-            for i, m in enumerate(all_m[::-1]):
-                if any([(m[q] is not None) for q in qus]):
-                    found = i
-                if found is not None:
-                    break
-            if found is None:
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        all_m[0][q] = g
-                    elif i != 0 and q in g.target:
-                        all_m[0][q] = 'target'
-                    elif q in g.control:
-                        all_m[0][q] = 'control'
-            elif found is 0:
-                new = new_moment(qubits)
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        new[q] = g
-                    elif i != 0 and q in g.target:
-                        new[q] = 'target'
-                    elif q in g.control:
-                        new[q] = 'control'
-                all_m.append(new)
-            else:
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        all_m[::-1][found - 1][q] = g
-                    elif i != 0 and q in g.target:
-                        all_m[::-1][found - 1][q] = 'target'
-                    elif q in g.control:
-                        all_m[::-1][found - 1][q] = 'control'
-        return all_m
-    @property
-    def old_canonical_moments(self):
-        all_m = []
-        qubits = self.qubits
-        all_m.append(moment_pair(qubits))
-
-
-        for g in self.gates:
-
-            qus = g.qubits
-            found_p=None
-            found_u=None
-            p=0
-            if g.is_parametrized():
-                if hasattr(g.parameter,'wrap'):
-                    p=1
-            for i, m in enumerate(all_m[::-1]):
-                if any([(m[0][q] is not None) for q in qus]):
-                    found_u=i
-                if any([(m[1][q] is not None) for q in qus]):
-                    found_p = i
-
-                if found_u is not None or found_p is not None:
-                    break
-
-            if found_u is None and found_p is None:
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        all_m[0][p][q] = g
-                    elif i != 0 and q in g.target:
-                        all_m[0][p][q] = 'target'
-                    elif q in g.control:
-                        all_m[0][p][q] = 'control'
-
-            elif (found_u is 0 or found_p is 0) and p is 0:
-                new = moment_pair(qubits)
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        new[p][q] = g
-                    elif i != 0 and q in g.target:
-                        new[p][q] = 'target'
-                    elif q in g.control:
-                        new[p][q] = 'control'
-                all_m.append(new)
-
-            elif found_p is 0 and p is 1:
-                new = moment_pair(qubits)
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        new[p][q] = g
-                    elif i != 0 and q in g.target:
-                        new[p][q] = 'target'
-                    elif q in g.control:
-                        new[p][q] = 'control'
-                all_m.append(new)
-
-            elif p is 1 and found_p is None:
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        all_m[::-1][found_u][p][q] = g
-                    elif i != 0 and q in g.target:
-                        all_m[::-1][found_u][p][q] = 'target'
-                    elif q in g.control:
-                        all_m[::-1][found_u][p][q] = 'control'
-
-            elif p is 1 and found_p is not None:
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        all_m[::-1][found_p-1][p][q] = g
-                    elif i != 0 and q in g.target:
-                        all_m[::-1][found_p-1][p][q] = 'target'
-                    elif q in g.control:
-                        all_m[::-1][found_p-1][p][q] = 'control'
-
-            elif p is 0 and found_p is None:
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        all_m[::-1][found_u-1][p][q] = g
-                    elif i != 0 and q in g.target:
-                        all_m[::-1][found_u-1][p][q] = 'target'
-                    elif q in g.control:
-                        all_m[::-1][found_u-1][p][q] = 'control'
-
-            elif p is 0 and found_p is not None:
-                for i, q in enumerate(qus):
-                    if i == 0 and q in g.target:
-                        all_m[::-1][found_p-1][p][q] = g
-                    elif i != 0 and q in g.target:
-                        all_m[::-1][found_p-1][p][q] = 'target'
-                    elif q in g.control:
-                        all_m[::-1][found_p-1][p][q] = 'control'
-
-
-        return all_m
+        for nom in noms:
+            nom.sort_gates()
+        return noms
 
     @property
     def depth(self):
@@ -212,7 +71,7 @@ class QCircuit():
 
     @property
     def canonical_depth(self):
-        return 2*len(self.canonical_moments)
+        return len(self.canonical_moments)
 
     @property
     def gates(self):
@@ -231,6 +90,8 @@ class QCircuit():
         for g in self.gates:
             accumulate += list(g.qubits)
         return sorted(list(set(accumulate)))
+
+    d
 
     @property
     def n_qubits(self):
@@ -260,6 +121,16 @@ class QCircuit():
         :return: True if the circuit is just a single gate
         """
         return len(self.gates) == 1
+
+    def sort_gates(self):
+        sl=[]
+        for m in self.moments:
+            sd={}
+            for gate in m.gates:
+                q=min(gate.qubits)
+                sd[q]=gate
+            sl.extend([sd[k] for k in sorted(sd.keys())])
+        self._gates=sl
 
     def replace_gate(self, position, gates):
         if hasattr(gates, '__iter__'):
@@ -301,6 +172,36 @@ class QCircuit():
             qmax = max(qmax, g.max_qubit)
         return qmax
 
+    def is_fully_parametrized(self):
+        for gate in self.gates:
+            if not gate.is_parametrized():
+                return False
+            else:
+                if hasattr(gate,'parameter'):
+                    if not hasattr(gate.parameter,'wrap'):
+                        return False
+                    else:
+                        continue
+                else:
+                    continue
+        return True
+
+    def is_fully_unparametrized(self):
+        for gate in self.gates:
+            if not gate.is_parametrized():
+                continue
+            else:
+                if hasattr(gate,'parameter'):
+                    if not hasattr(gate.parameter,'wrap'):
+                        continue
+                    else:
+                        return False
+                else:
+                    return False
+        return True
+
+    
+
     def __iadd__(self, other):
         if isinstance(other, QGateImpl):
             other = self.wrap_gate(other)
@@ -327,6 +228,8 @@ class QCircuit():
     def __eq__(self, other):
         if len(self.gates) != len(other.gates):
             return False
+        self.sort_gates()
+        other.sort_gates()
         for i, g in enumerate(self.gates):
             if g != other.gates[i]:
                 return False
@@ -352,28 +255,47 @@ class QCircuit():
             c+=m.as_circuit()
         return c
 
-class Moment():
+
+
+class Moment(QCircuit):
     '''
     the class which represents all operations to be applied at once in a circuit.
     wraps a list of gates with a list of occupied qubits.
     Can be converted directly to a circuit.
     '''
-    @property
-    def occupations(self):
-        occ = []
-        for g in self.gates:
-            for q in g.qubits:
-                if q in occ:
-                    raise TequilaException('cannot have doubly occupied qubits, which occurred at qubit {}'.format(q))
-                else:
-                    occ.append(q)
-        return occ
 
     @property
-    def gates(self):
-        return self._gates
+    def moments(self):
+        return [self]
+
+    @property
+    def canonical_moments(self):
+        mu=[]
+        mp=[]
+        for gate in self.gates:
+            if not gate.is_parametrized():
+                mu.append(gate)
+            else:
+                if hasattr(gate,'parameter'):
+                    if not hasattr(gate.parameter,'wrap'):
+                        mu.append(gate)
+                    else:
+                        mp.append(gate)
+                else:
+                    mp.append(gate)
+        return[Moment(mu),Moment(mp)]
+
+
+    @property
+    def depth(self):
+        return 1
+
+    @property
+    def canonical_depth(self):
+        return 2
 
     def __init__(self, gates: typing.List[QGateImpl] = None,sort=False):
+        super().__init__(gates=gates)
         occ = []
         if gates is not None:
             for g in list(gates):
@@ -382,13 +304,10 @@ class Moment():
                         raise TequilaException('cannot have doubly occupied qubits, which occurred at qubit {}'.format(str(q)))
                     else:
                         occ.append(q)
-            self._gates = gates
-        else:
-            self._gates=[]
         if sort:
             self.sort_gates()
     def with_gate(self, gate: typing.Union[QCircuit, QGateImpl]):
-        prev = self.occupations
+        prev = self.qubits
         newq=gate.qubits
         overlap = []
         for n in newq:
@@ -424,7 +343,7 @@ class Moment():
         return new
 
     def add_gate(self,gate: typing.Union[QCircuit,QGateImpl]):
-        prev = self.occupations
+        prev = self.qubits
         newq=gate.qubits
         for n in newq:
             if n in prev:
@@ -433,67 +352,95 @@ class Moment():
         self._gates.append(gate)
         self.sort_gates()
         return self
+
+    def replace_gate(self, position, gates):
+        if hasattr(gates, '__iter__'):
+            gs = gates
+        else:
+            gs = [gates]
+
+        new = self.gates[:position]
+        new.extend(gs)
+        new.extend(self.gates[(position + 1):])
+        try:
+            return Moment(gates=new)
+        except:
+            return QCircuit(gates=new)
+
     def as_circuit(self):
-        c=QCircuit()
-        for g in self.gates:
-            c+=g
-        return c
+        return QCircuit(gates=self.gates)
 
-    def extract_variables(self) -> list:
-        """
-        return a list containing all the variable objects contained in any of the gates within the unitary
-        including those nested within transforms.
-        """
-        variables = []
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized():
-                variables += g.extract_variables()
-        return list(set(variables))
 
-    def sort_gates(self):
-        sd={}
+    def fully_parametrized(self):
         for gate in self.gates:
-            q=min(gate.qubits)
-            sd[q]=gate
-        sl=[sd[k] for k in sorted(sd.keys())]
-        self._gates=sl
-
-    def __str__(self):
-        result = "Moment: \n"
-        for g in self.gates:
-            result += str(g) + "\n"
-        return result
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __eq__(self, other):
-        if not hasattr(other,'gates'):
-            return False
-        if len(self.gates) != len(other.gates):
-            return False
-        for i, g in enumerate(self.gates):
-            if g != other.gates[i]:
+            if not gate.is_parametrized():
                 return False
+            else:
+                if hasattr(gate,'parameter'):
+                    if not hasattr(gate.parameter,'wrap'):
+                        return False
+                    else:
+                        continue
+                else:
+                    continue
         return True
 
-    def max_qubit(self):
-        """
-        :return: Maximum index this moment touches
-        """
-        qmax = 0
+    def __str__(self):
+        result = "Moment: "
         for g in self.gates:
-            qmax = max(qmax, g.max_qubit)
-        return qmax
+            result += str(g) + ", "
+        return result
+
+    def __iadd__(self, other):
+        new=self.as_circuit()
+        if isinstance(other, QGateImpl):
+            other = new.wrap_gate(other)
+
+        if isinstance(other, list) and isinstance(other[0], QGateImpl):
+            new._gates += other
+
+        if isinstance(other,list) and isinstance(other[0],QCircuit):
+            for o in other:
+                new._gates += o.gates
+        else:
+            new._gates += other.gates
+        new._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
+        if new.depth is 1:
+            new=Moment(new.gates)
+        return new
 
     def __add__(self, other):
-        if hasattr(other,'gates'):
+        if isinstance(other,Moment):
+            gates = [g.copy() for g in (self.gates + other.gates)]
+            result = QCircuit(gates=gates)
+            result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
+            if result.depth == 1:
+                result=Moment(gates=result.gates)
+        elif isinstance(other,QCircuit) and not isinstance(other,Moment):
             gates = [g.copy() for g in (self.gates + other.gates)]
             result = QCircuit(gates=gates)
             result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
         else:
             if isinstance(other,QGateImpl):
-                self.add_gate(other)
+                try:
+                    result=self.add_gate(other)
+                except:
+                    result=self.as_circuit()+QCircuit.wrap_gate(other)
             else:
                 raise TequilaException('cannot add moments to types other than QCircuit,Moment,or Gate; recieved summand of type {}'.format(str(type(other))))
         return result
+
+    @staticmethod
+    def wrap_gate(gate: QGateImpl):
+        """
+        :param gate: Abstract Gate
+        :return: wrap gate in QCircuit structure (enable arithmetic operators)
+        """
+        if isinstance(gate, QCircuit):
+            return gate
+        else:
+            return Moment(gates=[gate])
+
+    @staticmethod
+    def from_moments(moments: typing.List):
+        raise TequilaException('this method should never be called from Moment.')

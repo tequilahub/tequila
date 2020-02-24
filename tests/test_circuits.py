@@ -94,6 +94,9 @@ def test_moments():
     assert len(moms) is 3
     assert hasattr(moms[0].gates[1],'phase')
 
+
+
+
 def test_canonical_moments():
     c=QCircuit()
     c+=CNOT(target=0,control=(1,2,3))
@@ -104,10 +107,10 @@ def test_canonical_moments():
     c+=Z(target=1)
     c+=Phase(phi=numpy.pi,target=4)
     moms=c.canonical_moments
-    assert len(moms) is 3
-    assert hasattr(moms[0][0].gates[1],'phase')
-    assert hasattr(moms[1][1].gates[0], 'angle')
-    assert len(moms[0][0].occupations) is 5
+    assert len(moms) is 6
+    assert hasattr(moms[0].gates[1],'phase')
+    assert hasattr(moms[3].gates[0], 'angle')
+    assert len(moms[0].qubits) is 5
 
 def test_circuit_from_moments():
     c=QCircuit()
