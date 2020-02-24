@@ -287,7 +287,9 @@ def minimize(objective: Objective,
              method_bounds: typing.Dict[typing.Hashable, numbers.Real] = None,
              method_constraints=None,
              silent: bool = False,
-             save_history: bool = True) -> SciPyReturnType:
+             save_history: bool = True,
+             *args,
+             **kwargs) -> SciPyReturnType:
     """
 
     Parameters
