@@ -14,12 +14,14 @@ from tequila import simulators
 
 import tequila as tq
 
-
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
     # [os.remove(x) for x in glob.glob("data/*.out")]
     [os.remove(x) for x in glob.glob("data/*.hdf5")]
 
+@pytest.mark.dependencies
+def test_dependencies():
+    assert(tq.chemistry.has_psi4)
 
 @pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0,
                     reason="no quantum chemistry backends installed")
@@ -154,7 +156,7 @@ def do_test_amplitudes(method, qc_interface, parameters, result):
     assert (numpy.isclose(energy, result))
 
 
-@pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
+@pytest.mark.skipif(condition=not tq.chemistry.has_psi4, reason="psi4 not found")
 @pytest.mark.parametrize("method", ["mp2", "mp3", "mp4", "cc2", "cc3", "ccsd", "ccsd(t)", "cisd", "cisdt"])
 def test_energies_psi4(method):
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31g")
@@ -163,6 +165,7 @@ def test_energies_psi4(method):
     assert result is not None
 
 
+@pytest.mark.skipif(condition=not tq.chemistry.has_psi4, reason="psi4 not found")
 def test_restart_psi4():
     h2 = tq.chemistry.Molecule(geometry="data/h2.xyz", basis_set="6-31g")
     wfn = h2.logs['hf'].wfn
@@ -187,7 +190,7 @@ def test_restart_psi4():
                 break
         assert found
 
-
+@pytest.mark.skipif(condition=not tq.chemistry.has_psi4, reason="psi4 not found")
 @pytest.mark.parametrize("active", [{"A1": [2, 3]}, {"B2": [0], "B1": [0]}, {"A1":[0,1,2,3]}, {"B1":[0]}])
 def test_active_spaces(active):
     mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g")

@@ -13,6 +13,10 @@ Warn if Simulators are not installed
 """
 import warnings
 
+@pytest.mark.dependencies
+def test_dependencies():
+    for package in tq.simulators.SUPPORTED_BACKENDS:
+        assert(package in tq.simulators.INSTALLED_BACKENDS)
 
 @pytest.mark.parametrize("backend", list(set(
     [None] + [k for k in tq.simulators.INSTALLED_SIMULATORS.keys()] + [k for k in

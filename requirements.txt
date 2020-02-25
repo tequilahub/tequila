@@ -4,7 +4,6 @@ sympy
 jax
 jaxlib
 #autograd # use if jaxlib gives you trouble
-dataclasses # only for python<3.7
 setuptools 
 pytest
 openfermion

@@ -46,7 +46,7 @@ def test_endianness():
         assert (i1 == BitString.from_bitstring(i22))
         assert (i2 == BitString.from_bitstring(i11))
 
-
+@pytest.mark.skipif(condition="cirq" not in INSTALLED_SAMPLERS or "qiskit" not in INSTALLED_SAMPLERS, reason="need cirq and qiskit for cross validation")
 def test_endianness_simulators():
     tests = ["000111",
              "111000",
