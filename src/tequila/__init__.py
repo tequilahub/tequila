@@ -3,6 +3,11 @@ from tequila.circuit import gates, QCircuit
 from tequila.hamiltonian import paulis, QubitHamiltonian, PauliString
 from tequila.objective import Objective, ExpectationValue, Variable, assign_variable, format_variable_dictionary
 from tequila.optimizers import optimizer_scipy
+
+from tequila.optimizers import has_phoenics
+if has_phoenics:
+    from tequila.optimizers import optimizer_phoenics
+
 from tequila.simulators.simulator_api import simulate, compile, draw, pick_backend, INSTALLED_SAMPLERS, \
     INSTALLED_SIMULATORS, SUPPORTED_BACKENDS, INSTALLED_BACKENDS, show_available_simulators
 from tequila.wavefunction import QubitWaveFunction

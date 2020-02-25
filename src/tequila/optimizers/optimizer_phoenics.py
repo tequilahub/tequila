@@ -1,5 +1,5 @@
 import tequila.simulators.simulator_api
-from tequila.objective import Objective
+from tequila.objective.objective import Objective
 from tequila.optimizers.optimizer_base import Optimizer
 import typing
 import numbers
@@ -25,7 +25,7 @@ except:
 from tequila.autograd_imports import jax
 import numpy as np
 from numpy import pi as pi
-from tequila.simulators import compile_objective, simulate_objective,sample_objective
+from tequila.simulators.simulator_api import compile_objective, simulate_objective,sample_objective
 import os
 from collections import namedtuple
 warnings.filterwarnings('ignore', category=DeprecationWarning)

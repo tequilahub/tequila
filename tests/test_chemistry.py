@@ -18,7 +18,7 @@ import tequila as tq
 
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
-    # [os.remove(x) for x in glob.glob("data/*.out")]
+    [os.remove(x) for x in glob.glob("data/*.out")]
     [os.remove(x) for x in glob.glob("data/*.hdf5")]
 
 @pytest.mark.dependencies
