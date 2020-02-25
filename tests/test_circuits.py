@@ -2,7 +2,7 @@ from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, Rotati
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.objective.objective import Variable
-from tequila import simulate
+from tequila.simulators.simulator_api import simulate
 import numpy, sympy
 
 

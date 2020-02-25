@@ -4,7 +4,7 @@ Small example on how to construct a circuit and simulate its measurements in the
 
 from tequila.circuit import gates
 from numpy import pi
-from tequila.simulators import pick_backend
+from tequila import pick_backend
 from tequila.tools import plotters
 """
 Same example as 'simulate_wavefunctions' but here we simulate counts

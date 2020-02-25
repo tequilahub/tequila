@@ -1,4 +1,4 @@
-from tequila.simulators.simulatorbase import QCircuit, TequilaException, BackendCircuit, BackendExpectationValue
+from tequila.simulators.simulator_base import QCircuit, TequilaException, BackendCircuit, BackendExpectationValue
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import BitString, BitNumbering
 import subprocess

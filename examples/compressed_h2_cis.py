@@ -11,7 +11,7 @@ does it
 
 If you want pretty printout: Use Qiskit for printing out the circuit
 """
-
+import tequila.simulators.simulator_api
 from tequila.apps import UnaryStatePrep
 from tequila.simulators.simulator_cirq import SimulatorCirq
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # add the encoder
     circuit += make_encoder()
 
-    wfn = simulator.simulate_wavefunction(abstract_circuit=circuit).wavefunction
+    wfn = tequila.simulators.simulator_api.simulate_wavefunction(abstract_circuit=circuit).wavefunction
 
     # this should be the compressed CIS wavefunction where the last 4 Qubits are all 0 and can be re-used for other tasks
     print("compressed wavefunction:", wfn)

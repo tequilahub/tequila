@@ -1,3 +1,4 @@
+import tequila.simulators.simulator_api
 from tequila.objective import Objective
 from tequila.optimizers.optimizer_base import Optimizer
 import typing

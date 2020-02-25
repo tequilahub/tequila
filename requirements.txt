@@ -1,10 +1,9 @@
 numpy
 scipy
 sympy
-#jax
-#jaxlib
-autograd
-dataclasses # only for python<3.7
+jax
+jaxlib
+#autograd # use if jaxlib gives you trouble
 setuptools 
 pytest
 openfermion

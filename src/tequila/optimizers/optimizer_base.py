@@ -4,10 +4,10 @@ Suggestion, feel free to propose new things/changes
 """
 import typing, numbers
 
-from tequila import TequilaException
+from tequila.utils.exceptions import TequilaException
+from tequila.simulators.simulator_api import pick_backend
 from tequila.objective.objective import assign_variable
 from tequila.objective import Objective
-from tequila.simulators import pick_backend
 from dataclasses import dataclass, field
 
 
