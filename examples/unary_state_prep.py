@@ -7,7 +7,7 @@ In this example we are constructing CIS excitation states for a 2-electron syste
 
 Note: The UnaryStatePrep code is currently unstable and needs improvement
 """
-
+import tequila.simulators.simulator_api
 from tequila.apps import UnaryStatePrep
 from tequila.simulators.simulator_cirq import SimulatorCirq
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     circuit = USP(wfn=target_wfn)
 
-    result = simulator.simulate_wavefunction(abstract_circuit=circuit)
+    result = tequila.simulators.simulator_api.simulate_wavefunction(abstract_circuit=circuit)
 
     wfn = result.wavefunction
     print("crated circuit:\n", result.circuit)

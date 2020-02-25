@@ -1,3 +1,4 @@
+import tequila.simulators.simulator_api
 from tequila.objective import Objective
 from tequila.optimizers.optimizer_base import Optimizer
 import multiprocessing as mp
@@ -123,7 +124,7 @@ class PhoenicsOptimizer(Optimizer):
                 O=O.update_variables(rec)
                 if self.samples is None:
                     #En=pool.apply_async(simulator.simulate_objective,[running])
-                     En = simulator.simulate_objective(objective=O)
+                     En = tequila.simulators.simulator_api.simulate_objective(objective=O)
                 else:
                     #En = pool.apply_async(simulator.measure_objective, [running, self.samples])
                     En = simulator.measure_objective(objective=O, samples=self.samples)

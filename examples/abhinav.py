@@ -3,6 +3,9 @@ import tequila as tq
 
 # get rid of the jax GPU/CPU warnings
 import warnings
+
+import tequila.simulators.simulator_api
+
 warnings.filterwarnings("ignore", module="jax")
 
 # if you want to transform them, you need to explicitly declare variables
@@ -34,12 +37,12 @@ E = tq.ExpectationValue(U=U, H=H)
 #
 # lets run it
 values = {"z":1.0, "theta_1":1.0, "theta_2": 1.0, "theta_3": 1.0}
-result = tq.simulate(E, samples=100, variables=values)
+result = tequila.simulators.simulator_api.simulate(E, samples=100, variables=values)
 
 print(result)
 
 # if you don't like expectationvalues (can't optimize then though)
-distribution = tq.simulate(U+tq.gates.Measurement(0), samples=100, variables=values)
+distribution = tequila.simulators.simulator_api.simulate(U + tq.gates.Measurement(0), samples=100, variables=values)
 # prints out like wavefunction (same module actually)
 print(distribution)
 # access result like dictionaries
@@ -50,19 +53,19 @@ dE_z = tq.grad(E, "z")
 print(dE_z)
 # evaluate
 # should give nan, since we set the value for z to 1 where sin^-1 is not differentiable
-result = tq.simulate(dE_z, samples=100, variables=values)
+result = tequila.simulators.simulator_api.simulate(dE_z, samples=100, variables=values)
 print(result)
 
 # lets use a sane value
 values["z"] = 0.5
-result = tq.simulate(dE_z, samples=100, variables=values)
+result = tequila.simulators.simulator_api.simulate(dE_z, samples=100, variables=values)
 print(result)
 
 # lets do something else in the end
 objective = (E**2-1).apply(tq.numpy.exp)
-result = tq.simulate(objective, samples=100, variables=values)
+result = tequila.simulators.simulator_api.simulate(objective, samples=100, variables=values)
 print(result)
-result = tq.simulate(objective, samples=None, variables=values)
+result = tequila.simulators.simulator_api.simulate(objective, samples=None, variables=values)
 print(result)
 
 # just to show how the optimizer works (guess this is not what you actually want to optimize)

@@ -2,8 +2,9 @@ from tequila.wavefunction import QubitWaveFunction
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila import BitString, BitStringLSB
 from tequila.circuit import QCircuit, gates
-from tequila import simulate, ExpectationValue, Objective
-from tequila.simulators import INSTALLED_SAMPLERS
+from tequila import ExpectationValue, Objective
+from tequila.simulators.simulator_api import simulate
+from tequila import INSTALLED_SAMPLERS
 from tequila.hamiltonian import QubitHamiltonian, PauliString
 
 import pytest, numpy

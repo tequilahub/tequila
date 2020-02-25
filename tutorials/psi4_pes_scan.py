@@ -7,6 +7,7 @@ Psi4 Outputs will also be in data/
 import psi4
 import tequila as tq
 import matplotlib.pyplot as plt
+import tequila.simulators.simulator_api
 
 
 def generate_h2o_xyz_files(start=0.75, inc=0.05, steps=30):
@@ -70,7 +71,7 @@ if __name__ == "__main__":
         Uhf = mol.prepare_reference(active_orbitals=active)
 
         U = Uhf
-        hf = tq.simulate(tq.ExpectationValue(U=U, H=H))
+        hf = tequila.simulators.simulator_api.simulate(tq.ExpectationValue(U=U, H=H))
         energies += [hf]
 
     plt.plot(energies, label="hf-test", marker="o", linestyle="--")

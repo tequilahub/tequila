@@ -8,8 +8,10 @@ import pytest
 import tequila.quantumchemistry as qc
 import numpy
 import os, glob
+
+import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
-from tequila import simulate
+from tequila.simulators.simulator_api import simulate
 from tequila import simulators
 
 import tequila as tq
@@ -63,7 +65,7 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])
-@pytest.mark.parametrize("backend", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
         pytest.skip("skipping for symbolic simulator  ... way too slow")
@@ -196,5 +198,5 @@ def test_active_spaces(active):
     mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g")
     H = mol.make_active_space_hamiltonian(active_orbitals=active)
     Uhf = mol.prepare_reference(active_orbitals=active)
-    hf = tq.simulate(tq.ExpectationValue(U=Uhf, H=H))
+    hf = tequila.simulators.simulator_api.simulate(tq.ExpectationValue(U=Uhf, H=H))
     assert (tq.numpy.isclose(hf, mol.energies["hf"], atol=1.e-4))

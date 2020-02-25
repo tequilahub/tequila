@@ -1,3 +1,4 @@
+import tequila.simulators.simulator_api
 from tequila.circuit import gates
 from tequila.objective import Objective, ExpectationValue
 from tequila.objective.objective import Variable
@@ -6,14 +7,14 @@ from tequila.circuit.gradient import grad
 from tequila import numpy as np
 import numpy
 import pytest
-from tequila.simulators import INSTALLED_SIMULATORS
-from tequila import simulate
+from tequila import INSTALLED_SIMULATORS
+from tequila.simulators.simulator_api import simulate
 from tequila import simulators
 
 
 ### these 8 tests test add,mult,div, and power, with the expectationvalue on the left and right.
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_l_addition(simulator, value=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
@@ -30,7 +31,7 @@ def test_l_addition(simulator, value=(numpy.random.randint(0, 1000) / 1000.0 * (
     assert bool(np.isclose(val, an1)) is True
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_r_addition(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
@@ -47,7 +48,7 @@ def test_r_addition(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
     assert bool(np.isclose(val, an1)) is True
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_l_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
@@ -64,7 +65,7 @@ def test_l_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.p
     assert bool(np.isclose(val, an1)) is True
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_r_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
@@ -81,7 +82,7 @@ def test_r_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.p
     assert np.isclose(val, an1, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_l_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
@@ -98,7 +99,7 @@ def test_l_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
     assert np.isclose(val, an1, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_r_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
@@ -115,7 +116,7 @@ def test_r_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
     assert np.isclose(val, an1, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_l_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
@@ -132,7 +133,7 @@ def test_l_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0])
     assert np.isclose(val, an1, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_r_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
@@ -151,7 +152,7 @@ def test_r_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0])
 
 ### these four tests test mutual operations. We skip minus cuz it's not needed.
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_ex_addition(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                      value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -175,7 +176,7 @@ def test_ex_addition(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
     assert np.isclose(val, an1 + an2, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_ex_multiplication(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                            value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -199,7 +200,7 @@ def test_ex_multiplication(simulator, value1=(numpy.random.randint(0, 1000) / 10
     assert np.isclose(val, an1 * an2, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_ex_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                      value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -223,7 +224,7 @@ def test_ex_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
     assert np.isclose(val, an1 / an2, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_ex_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                   value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -249,7 +250,7 @@ def test_ex_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (n
 
 ### these four tests test the mixed Objective,ExpectationValue operations to ensure propriety
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_mixed_addition(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                         value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -273,7 +274,7 @@ def test_mixed_addition(simulator, value1=(numpy.random.randint(0, 1000) / 1000.
     assert np.isclose(val, float(an1 + an2), atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_mixed_multiplication(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                               value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -296,7 +297,7 @@ def test_mixed_multiplication(simulator, value1=(numpy.random.randint(0, 1000) /
     assert np.isclose(val, en1 * en2, atol=1.e-4)
     assert np.isclose(val, an1 * an2, atol=1.e-4)
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_mixed_division(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
                         value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -320,7 +321,7 @@ def test_mixed_division(simulator, value1=(numpy.random.randint(10, 1000) / 1000
     assert np.isclose(val, an1 / an2, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_mixed_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                      value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -344,7 +345,7 @@ def test_mixed_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
     assert np.isclose(val, an1 ** an2, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize('op', [np.add, np.subtract, np.float_power, np.true_divide, np.multiply])
 def test_heterogeneous_operations_l(simulator, op, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                                     value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
@@ -365,7 +366,7 @@ def test_heterogeneous_operations_l(simulator, op, value1=(numpy.random.randint(
     assert np.isclose(en2, an2, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize('op', [np.add, np.subtract, np.true_divide, np.multiply])
 def test_heterogeneous_operations_r(simulator, op, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                                     value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
@@ -386,7 +387,7 @@ def test_heterogeneous_operations_r(simulator, op, value1=(numpy.random.randint(
     assert np.isclose(en1, an1, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_heterogeneous_gradient_r_add(simulator):
     ### the reason we don't test float power here is that it keeps coming up NAN, because the argument is too small
     angle1 = Variable(name="angle1")
@@ -412,7 +413,7 @@ def test_heterogeneous_gradient_r_add(simulator):
     assert np.isclose(doval, dtrue, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_heterogeneous_gradient_r_mul(simulator):
     ### the reason we don't test float power here is that it keeps coming up NAN, because the argument is too small
     angle1 = Variable(name="angle1")
@@ -438,7 +439,7 @@ def test_heterogeneous_gradient_r_mul(simulator):
     assert np.isclose(doval, dtrue, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_heterogeneous_gradient_r_div(simulator):
     ### the reason we don't test float power here is that it keeps coming up NAN, because the argument is too small
     angle1 = Variable(name="angle1")
@@ -464,7 +465,7 @@ def test_heterogeneous_gradient_r_div(simulator):
     assert np.isclose(doval, dtrue, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_inside(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                 value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -493,7 +494,7 @@ def test_inside(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (num
     assert np.isclose(deval, dtrue, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_akward_expression(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                            value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
@@ -525,7 +526,7 @@ def test_akward_expression(simulator, value1=(numpy.random.randint(0, 1000) / 10
     assert np.isclose(doval, dtrue, atol=1.e-4)
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_really_awfull_thing(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
                              value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")

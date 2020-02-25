@@ -1,8 +1,9 @@
+import tequila.simulators.simulator_api
 from tequila.apps import UnaryStatePrep
 from tequila.apps.unary_state_prep import TequilaUnaryStateException
 import numpy
 from tequila import BitString
-from tequila.simulators import BackendCircuitSymbolic
+from tequila.simulators.simulator_api import BackendCircuitSymbolic
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 import pytest
 
@@ -53,7 +54,7 @@ def test_random_instances(target_space):
 
     # can happen that a tests fails, just start again ... if all tests fail: start to worry
     # it happens from time to time that UPS can not disentangle
-    # it will throw the error
+    # it will throw the error/
     # OpenVQEException: Could not disentangle the given state after 100 restarts
     qubits = len(target_space)
     coeffs = numpy.random.uniform(0, 1, qubits)
@@ -72,7 +73,7 @@ def test_random_instances(target_space):
         for i, c in enumerate(coeffs):
             bf2c[target_space[i]] = coeffs[i]
 
-        wfn2 = BackendCircuitSymbolic(abstract_circuit=U, variables=None).simulate(initial_state=0, variables=None)
+        wfn2 = tequila.simulators.simulator_api.simulate(U, initial_state=0, variables=None)
 
         for k, v in wfn.items():
             assert (numpy.isclose(wfn2[k], v))
