@@ -17,7 +17,7 @@ import warnings
 @pytest.mark.dependencies
 def test_dependencies():
     for package in tequila.simulators.simulator_api.SUPPORTED_BACKENDS:
-        assert(package in tq.simulators.INSTALLED_BACKENDS)
+        assert(package in tq.simulators.simulator_api.INSTALLED_BACKENDS)
 
 @pytest.mark.parametrize("backend", list(set(
     [None] + [k for k in tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys()] + [k for k in
