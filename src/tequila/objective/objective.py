@@ -553,6 +553,12 @@ class Variables(collections.MutableMapping):
     def __len__(self):
         return len(self.store)
 
+    def __str__(self):
+        result = ""
+        for k,v in self.items():
+            result += "{} : {:2.8f}\n".format(k, v)
+        return result
+
 if __name__ == "__main__":
 
     a = Variables()

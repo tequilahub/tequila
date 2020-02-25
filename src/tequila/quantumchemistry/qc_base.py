@@ -210,7 +210,7 @@ class ClosedShellAmplitudes:
                 if not numpy.isclose(value, 0.0, atol=threshold):
                     variables[(A + nocc, I)] = value
 
-        return variables
+        return dict(sorted(variables.items(), key=lambda x: numpy.abs(x[1]), reverse=True))
 
 
 @dataclass
@@ -532,11 +532,11 @@ class QuantumChemistryBase:
         """
         return prepare_product_state(self.reference_state(*args, **kwargs))
 
-    def make_uccsd_ansatz(self,
-                          trotter_steps: int,
+    def make_uccsd_ansatz(self, trotter_steps: int,
                           initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
                           include_reference_ansatz=True,
                           parametrized=True,
+                          threshold = 1.e-8,
                           trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
 
         """
@@ -597,36 +597,39 @@ class QuantumChemistryBase:
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
         generators = []
         variables = []
-        amplitudes = amplitudes.make_parameter_dictionary()
+        amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
-            if not numpy.isclose(t, 0.0):
+            if not numpy.isclose(t, 0.0, atol=threshold):
 
                 if closed_shell:
                     spin_indices = []
                     if len(key) == 2:
                         spin_indices = [[2 * key[0], 2 * key[1]], [2 * key[0] + 1, 2 * key[1] + 1]]
+                        partner = None
                     else:
                         spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
                         spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
                         if key[0] != key[1] and key[2] != key[3]:
                             spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
                             spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
+                        partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
+
                     for idx in spin_indices:
                         idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
                         generators.append(self.make_excitation_operator(indices=idx))
-                    partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
+
 
                     if parametrized:
                         variables.append(Variable(name=key))  # abab
                         variables.append(Variable(name=key))  # baba
-                        if key[0] != key[1] and key[2] != key[3]:
+                        if partner is not None and key[0] != key[1] and key[2] != key[3]:
                             variables.append(Variable(name=key) - Variable(partner))  # aaaa
                             variables.append(Variable(name=key) - Variable(partner))  # bbbb
                     else:
                         variables.append(t)
                         variables.append(t)
-                        if key[0] != key[1] and key[2] != key[3]:
+                        if partner is not None and key[0] != key[1] and key[2] != key[3]:
                             variables.append(t - amplitudes[Variable(partner)])
                             variables.append(t - amplitudes[Variable(partner)])
                 else:
@@ -688,9 +691,9 @@ class QuantumChemistryBase:
                 ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
         E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
                                                                                 optimize='optimize')
-        print("EMP2=", E)
+
         self.molecule.mp2_energy = E + self.molecule.hf_energy
-        return ClosedShellAmplitudes(tIjAb=0.5 * numpy.einsum('abij -> ijab', amplitudes, optimize='optimize'))
+        return ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='optimize'))
 
     def compute_cis_amplitudes(self):
         """

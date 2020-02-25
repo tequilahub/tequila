@@ -8,6 +8,7 @@ import psi4
 import tequila as tq
 import matplotlib.pyplot as plt
 
+import numpy
 
 def generate_h2o_xyz_files(start=0.75, inc=0.05, steps=30):
     water_geometry = """
@@ -29,6 +30,14 @@ def generate_h2o_xyz_files(start=0.75, inc=0.05, steps=30):
 
     return files
 
+def make_ucc_ansatz(mp2_amplitudes):
+    amplitudes = mol.compute_amplitudes(method="mp2", active_orbitals=active)
+    amplitudes.tIA = numpy.zeros((3, 2))
+    amplitudes.tIA[0, 0] = 1.e-4
+    amplitudes.tIA[2, 1] = 1.e-4
+    UCC = mol.make_uccsd_ansatz(initial_amplitudes=mp2_amplitudes, threshold=1.e-4, trotter_steps=1,
+                                include_reference_ansatz=False)
+    return UCC
 
 if __name__ == "__main__":
 
@@ -36,46 +45,63 @@ if __name__ == "__main__":
     files = generate_h2o_xyz_files()
 
     # define parameters
-    threads = 4
-    active = {"A1": [2, 3], "B1": [0], "B2": [1]}
-    basis_set = "sto-3g"
-    transformation = "jordan-wigner"
-    guess_wfn = None
-    hf_energies = []
+    threads = 4 # psi4 threads
+    optimizer_method = "cobyla"
+    active = {"A1": [2, 3], "B1": [0], "B2": [0, 1]} # active space for VQE
+    basis_set = "sto-3g" # basis set
+    transformation = "jordan-wigner" # qubit transformation
+    guess_wfn = None # guess_wfn to ensure convergence along the dissociation curve
     options = {
         'reference': 'rhf',
         'df_scf_guess': 'False',
         'scf_type': 'direct',
         'e_convergence': '6',
         'guess': 'read',
-        'maxiter': 200
-    }
-    ref_methods = ["hf", "mp2", "mp3", "fci"]
+        "frozen_docc": [2, 0, 0, 0]
+    } # psi4 options
+
+    ref_methods = ["hf", "mp2", "mp3", "ccsd", "fci"] # compute reference values with psi4
+
     ref_energies = {m: [] for m in ref_methods}
     energies = []
 
     # compute stuff
     for i, file in enumerate(files):
+        if i == 29:
+            continue
+        if i not in [0,4,8,12,16,20,24]:
+            continue
         print("computing point {}".format(i))
         mol = tq.chemistry.Molecule(geometry=file, basis_set=basis_set, transformation=transformation, threads=threads,
                                     guess_wfn=guess_wfn, options=options)
-        hf_energies.append(mol.energies["hf"])
-        guess_wfn = mol
+        guess_wfn = mol.ref_wfn
 
         for m in ref_methods:
-            ref_energies[m] += [mol.compute_energy(method=m, guess_wfn=mol.ref_wfn, options=options)]
+            print("computing ", m)
+            try:
+                ref_energies[m] += [mol.compute_energy(method=m, guess_wfn=mol.ref_wfn)]
+            except:
+                ref_energies[m] += [None]
 
         H = mol.make_active_space_hamiltonian(active_orbitals=active)
-
         Uhf = mol.prepare_reference(active_orbitals=active)
 
-        U = Uhf
-        hf = tq.simulate(tq.ExpectationValue(U=U, H=H))
-        energies += [hf]
+        mp2_amplitudes = mol.compute_amplitudes(method="mp2", active_orbitals=active)
+        UCC = make_ucc_ansatz(mp2_amplitudes)
 
-    plt.plot(energies, label="hf-test", marker="o", linestyle="--")
+        E = tq.ExpectationValue(U=Uhf + UCC, H=H)
+        mp2_vars = mp2_amplitudes.make_parameter_dictionary(threshold=1.e-4)
+        result = tq.optimizer_scipy.minimize(objective=E, tol=1.e-4,
+                                             initial_values=mp2_vars,
+                                             method=optimizer_method,
+                                             silent=True)
+
+        energies += [result.energy]
+
+
+    plt.plot(energies, label="UCCSD", marker="o", linestyle="--")
     for m in ref_methods:
         values = ref_energies[m]
-        plt.plot(values, label=str(m), linestyle="--")
+        plt.plot(values, label=str(m))
     plt.legend()
     plt.show()
