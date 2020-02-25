@@ -7,6 +7,7 @@ Psi4 Outputs will also be in data/
 import psi4
 import tequila as tq
 import matplotlib.pyplot as plt
+import tequila.simulators.simulator_api
 
 import numpy
 
@@ -86,18 +87,9 @@ if __name__ == "__main__":
         H = mol.make_active_space_hamiltonian(active_orbitals=active)
         Uhf = mol.prepare_reference(active_orbitals=active)
 
-        mp2_amplitudes = mol.compute_amplitudes(method="mp2", active_orbitals=active)
-        UCC = make_ucc_ansatz(mp2_amplitudes)
-
-        E = tq.ExpectationValue(U=Uhf + UCC, H=H)
-        mp2_vars = mp2_amplitudes.make_parameter_dictionary(threshold=1.e-4)
-        result = tq.optimizer_scipy.minimize(objective=E, tol=1.e-4,
-                                             initial_values=mp2_vars,
-                                             method=optimizer_method,
-                                             silent=True)
-
-        energies += [result.energy]
-
+        U = Uhf
+        hf = tequila.simulators.simulator_api.simulate(tq.ExpectationValue(U=U, H=H))
+        energies += [hf]
 
     plt.plot(energies, label="UCCSD", marker="o", linestyle="--")
     for m in ref_methods:

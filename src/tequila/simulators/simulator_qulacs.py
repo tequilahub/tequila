@@ -3,7 +3,7 @@ import typing, numbers
 from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.simulators.simulatorbase import BackendCircuit, BackendExpectationValue
+from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 
 """
 todo: overwrite simulate_objective for this simulators, might be faster

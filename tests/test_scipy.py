@@ -2,17 +2,19 @@ import pytest, numpy
 import tequila as tq
 
 # skip usage of symbolic simulator
+import tequila.simulators.simulator_api
+
 simulators = []
-for k in tq.simulators.INSTALLED_SIMULATORS.keys():
+for k in tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys():
     if k != "symbolic":
         simulators.append(k)
 samplers = []
-for k in tq.simulators.INSTALLED_SAMPLERS.keys():
+for k in tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys():
     if k != "symbolic":
         samplers.append(k)
 
 
-@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_execution(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -30,7 +32,7 @@ def test_execution(simulator):
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, silent=True)
 
 
-@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -47,7 +49,7 @@ def test_execution_shot(simulator):
     assert (len(result.history.energies) <= 3)
 
 
-@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
@@ -65,7 +67,7 @@ def test_one_qubit_shot(simulator):
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_free_methods)
 def test_gradient_free_methods(simulator, method):
 
@@ -82,7 +84,7 @@ def test_gradient_free_methods(simulator, method):
     result = tq.optimizer_scipy.minimize(objective=-E, method=method, tol=1.e-4, initial_values=initial_values, silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
 
-@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
 @pytest.mark.parametrize("use_gradient", [None, '2-point'])
 def test_gradient_based_methods(simulator, method, use_gradient):
@@ -104,7 +106,7 @@ def test_gradient_based_methods(simulator, method, use_gradient):
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
 
 
-@pytest.mark.parametrize("simulator", [tq.simulators.pick_backend("random"), tq.simulators.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
 @pytest.mark.parametrize("use_hessian", [None, '2-point', '3-point'])
 def test_hessian_based_methods(simulator, method, use_hessian):

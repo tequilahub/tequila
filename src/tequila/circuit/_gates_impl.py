@@ -135,7 +135,6 @@ class MeasurementImpl(QGateImpl):
 class ParametrizedGateImpl(QGateImpl, ABC):
     '''
     the base class from which all parametrized gates inherit. User defined gates, when implemented, are liable to be members of this class directly.
-    Has su
     '''
 
     def extract_variables(self):

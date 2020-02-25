@@ -1,7 +1,7 @@
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit import gates
 from tequila.hamiltonian import paulis
-from tequila import simulate
+from tequila.simulators.simulator_api import simulate
 
 import numpy
 import pytest

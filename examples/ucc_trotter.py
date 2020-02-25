@@ -2,8 +2,8 @@
 Play around with UCC
 This is far from optimal and needs major improvements
 """
-
-from tequila.simulators import pick_backend
+import tequila.simulators.simulator_api
+from tequila import pick_backend
 from tequila.objective import Objective
 from tequila.optimizers.optimizer_scipy import minimize
 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     print(angles)
 
     # compute full energy
-    E = pick_backend(demand_full_wfn=True)().simulate_objective(O)
+    E = tequila.simulators.simulator_api.simulate_objective(O)
 
     print("Energy = ", E)
     print("CCSD Parameters:\n", U.extract_variables())

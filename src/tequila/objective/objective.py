@@ -528,7 +528,7 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
                 type(variable)))
 
 
-class Variables(collections.MutableMapping):
+class Variables(collections.abc.MutableMapping):
     """
     Dictionary for tequila variables
     Allows hashable types and variable types as keys

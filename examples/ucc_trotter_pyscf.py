@@ -2,8 +2,8 @@
 Play around with UCC
 This is far from optimal and needs major improvements
 """
-
-from tequila.simulators import pick_backend
+import tequila.simulators.simulator_api
+from tequila import pick_backend
 from tequila.objective import Objective
 from tequila.circuit.exponential_gate import DecompositionFirstOrderTrotter
 from tequila.optimizers import  GradientDescent
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     angles = O.extract_variables()
 
     # compute energy
-    E = simulator().simulate_objective(O)
+    E = tequila.simulators.simulator_api.simulate_objective(O)
 
     print("Energy = ", E)
 

@@ -1,10 +1,10 @@
 """
 Simple example of how to construct a small circuit and simulate the full wavefunction it creates
 """
-
+import tequila.simulators.simulator_api
 from tequila.circuit import gates
 from numpy import pi
-from tequila.simulators import pick_backend
+from tequila import pick_backend
 
 """
 From the current backends only Pyquil and Cirq support full wavefunction
@@ -16,7 +16,8 @@ If you use Pyquil, make sure you have installed the QVM
  -> open terminal, type 'qvm -S'
 """
 
-from tequila.simulators import show_available_simulators
+from tequila.simulators.simulator_api import show_available_simulators
+
 print(show_available_simulators())
 
 if __name__ == "__main__":
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     # Qiskit can not do it for example --> error will be thrown when you try it later
     Simulator = pick_backend(demand_full_wfn=True)
     simulator = Simulator()
-    simulator_results = simulator.simulate_wavefunction(abstract_circuit=ac, initial_state=0)
+    simulator_results = tequila.simulators.simulator_api.simulate_wavefunction(abstract_circuit=ac, initial_state=0)
     wfn = simulator_results.wavefunction
 
     print("backend translated circuit:\n", simulator_results.circuit, "\n")
