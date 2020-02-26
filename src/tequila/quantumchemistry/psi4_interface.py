@@ -73,37 +73,110 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         @dataclass
         class ActiveSpaceData:
-            active_indices: list  # active orbitals (spatial)
-            reference_indices: list  # reference orbitals (spatial)
+            active_orbitals: list  # active orbitals (spatial, c1)
+            reference_orbitals: list  # reference orbitals (spatial, c1)
+            frozen_docc: list = None  # frozen reference orbitals grouped by irrep (psi4 option, if None then the active space can not be represented by psi4)
+            frozen_uocc: list = None  # frozen virtual orbtials grouped by irrep (psi4 option, if None then the active space can not be represented by psi4)
 
             @property
             def frozen_reference_orbitals(self):
-                return [i for i in self.reference_indices if i not in self.active_indices]
+                return [i for i in self.reference_orbitals if i not in self.active_orbitals]
+
+            @property
+            def psi4_representable(self):
+                return self.frozen_docc is not None and self.frozen_uocc is not None
 
         # transform irrep notation to absolute ints
         active_idx = active_orbitals
         ref_idx = reference
         if isinstance(active_orbitals, dict):
             active_idx = []
+            frozen_uocc = {}
             for key, value in active_orbitals.items():
                 active_idx += [self.orbitals_by_irrep[key.upper()][i].idx_total for i in value]
         elif active_orbitals is None:
             active_idx = [i for i in range(self.n_orbitals)]
 
+        standard_ref = sorted([i for i in range(self.n_electrons // 2)])
         if isinstance(reference, dict):
             ref_idx = []
             for key, value in reference.items():
-                ref_idx += [self.orbitals_by_irrep[key.lower()][i].idx_total for i in value]
+                orbitals = [self.orbitals_by_irrep[key.upper()][i] for i in value]
+                ref_idx += [x.idx_total for x in orbitals]
         elif reference is None:
             assert (self.n_electrons % 2 == 0)
-            ref_idx = [i for i in range(self.n_electrons // 2)]
+            ref_idx = standard_ref
 
-        return ActiveSpaceData(active_indices=sorted(active_idx), reference_indices=sorted(ref_idx))
+        # determine if the active space can be represented by psi4
+        # reference needs to be the scf reference
+        # all frozen orbitals need to be without gaps since we can not freeze individual orbitals
+        frozen_docc = None
+        if ref_idx == standard_ref:
+            frozen_docc = [0] * self.nirrep
+            frozen_docc_all = [self.orbitals[i] for i in standard_ref if self.orbitals[i].idx_total not in active_idx]
+            for i, irrep in enumerate(self.irreps):
+                sorted_array = sorted([x.idx_irrep for x in frozen_docc_all if x.irrep.upper() == irrep.upper()])
+                frozen_docc[i] = len(sorted_array)
+                if len(sorted_array) > 0 and (sorted_array[0] != 0 and sorted_array[-1] != len(sorted_array) - 1):
+                    frozen_docc = None
+                    print("active space not CAS type: frozen_docc of {} ".format(irrep), sorted_array)
+                    break
+
+        # and the same for the unoccupied ones
+        frozen_uocc = None
+        if frozen_docc is not None:
+            frozen_uocc = [0] * self.nirrep
+            frozen_uocc_all = [o for o in self.orbitals if o.idx_total not in active_idx + ref_idx]
+            for i, irrep in enumerate(self.irreps):
+                if irrep not in self.orbitals_by_irrep:
+                    continue
+                sorted_array = sorted([x.idx_irrep for x in frozen_uocc_all if x.irrep.upper() == irrep.upper()])
+                frozen_uocc[i] = len(sorted_array)
+                last = self.orbitals_by_irrep[irrep][-1]
+                if len(sorted_array) > 0 and (
+                        sorted_array[-1] != last or sorted_array[-1] != sorted_array[0] + len(sorted_array) - 1):
+                    frozen_uocc = None
+                    print("active space not CAS type: frozen_uocc of {} ".format(irrep), sorted_array)
+                    break
+
+        return ActiveSpaceData(active_orbitals=sorted(active_idx),
+                               reference_orbitals=sorted(ref_idx),
+                               frozen_docc=frozen_docc,
+                               frozen_uocc=frozen_uocc)
+
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
+                 active_orbitals=None,
+                 reference=None,
                  *args,
                  **kwargs):
+        """
+
+        Parameters
+        ----------
+        parameters
+        transformation
+        active_orbitals: dictionary :
+            dictionary with irreps as keys and a list of integers as values
+            i.e. occ = {"A1":[0,1], "A2":[0]}
+            means the occupied active space is made up of spatial orbitals
+            0A1, 1A1 and 0A2
+            as list: Give a list of spatial orbital indices
+            i.e. occ = [0,1,3] means that spatial orbital 0, 1 and 3 are used
+        reference: (Default value=None)
+            List of orbitals which form the reference
+            Can be given in the same format as active_orbitals
+            If given as None then the first N_electron/2 orbitals are taken
+            and the corresponding active orbitals are removed
+        args
+        kwargs
+        """
+
+        self.psi4_mol = psi4.geometry(parameters.get_geometry_string())
+        psi4.activate(self.psi4_mol)
+
+        self.active_space = None
 
         self.energies = {}  # history to avoid recomputation
         self.logs = {}  # store full psi4 output
@@ -111,7 +184,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
         self.ref_energy = self.molecule.hf_energy
         self.ref_wfn = self.logs['hf'].wfn
-        self.psi4_mol = self.logs['hf'].mol
         self.irreps = [self.psi4_mol.point_group().char_table().gamma(i).symbol().upper() for i in range(self.nirrep)]
         oenergies = []
         for i in self.irreps:
@@ -125,6 +197,13 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             orbitals_by_irrep[o.irrep] += [o]
 
         self.orbitals_by_irrep = orbitals_by_irrep
+        if active_orbitals is not None or reference is not None:
+            self.active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
+            # need to recompute and the reference wavefunction
+            # (won't take over active space information otherwise)
+            self.compute_energy(method="hf", recompute=True)
+            self.ref_wfn = self.logs["hf"].wfn
+
 
     @property
     def point_group(self):
@@ -134,7 +213,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
     def nirrep(self):
         return self.ref_wfn.nirrep()
 
-    def orbital_energies(self, irrep: typing.Union[int, str] = None, beta: bool = False):
+    def orbital_energies(self, irrep: typing.Union[int, str] = None, beta: bool = False, wfn=None):
         """
         Returns orbital energies of a given irrep
         or all orbital energies of all irreps (default)
@@ -154,6 +233,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         -------
         list or orbital energies
         """
+        if wfn is None:
+            wfn = self.ref_wfn
 
         if hasattr(irrep, "upper"):
             irrep = self.irreps.index(irrep.upper())
@@ -171,34 +252,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         else:
             return tmp[irrep]
 
-    def make_active_space_hamiltonian(self,
-                                      active_orbitals: typing.Union[dict, list],
-                                      reference: typing.Union[dict, list] = None):
-        """
-        Make an active space hamiltonian
-
-        Parameters
-        ----------
-        active_orbitals: dictionary :
-            dictionary with irreps as keys and a list of integers as values
-            i.e. occ = {"A1":[0,1], "A2":[0]}
-            means the occupied active space is made up of spatial orbitals
-            0A1, 1A1 and 0A2
-            as list: Give a list of spatial orbital indices
-            i.e. occ = [0,1,3] means that spatial orbital 0, 1 and 3 are used
-        reference: (Default value=None)
-            List of orbitals which form the reference
-            Can be given in the same format as active_orbitals
-            If given as None then the first N_electron/2 orbitals are taken
-            and the corresponding active orbitals are removed
-        Returns
-        -------
-        Hamiltonian defined in the active space given here
-
-        """
-        active_space_data = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
-        return self.make_hamiltonian(occupied_indices=active_space_data.frozen_reference_orbitals,
-                                     active_indices=active_space_data.active_indices)
+    def make_hamiltonian(self):
+        if self.active_space:
+            return super().make_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals, active_indices=self.active_space.active_orbitals)
+        else:
+            return super().make_hamiltonian()
 
     def do_make_molecule(self, *args, **kwargs) -> MolecularData:
 
@@ -262,9 +320,12 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
     def compute_ccsd_amplitudes(self):
         return self.compute_amplitudes(method='ccsd')
 
-    def _run_psi4(self, options: dict = None, method=None, return_wfn=True, point_group=None, filename: str = None,
+    def _run_psi4(self, options: dict, method=None, return_wfn=True, point_group=None, filename: str = None,
                   guess_wfn=None, ref_wfn=None, *args, **kwargs):
         psi4.core.clean()
+
+        if self.active_space and not self.active_space.psi4_representable:
+            print("Warning: Active space is not Psi4 representable")
 
         if "threads" in kwargs:
             psi4.set_num_threads(nthread=kwargs["threads"])
@@ -273,14 +334,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             filename = "{}_{}.out".format(self.parameters.filename, method)
 
         psi4.core.set_output_file(filename)
-
-        defaults = {'basis': self.parameters.basis_set,
-                    'e_convergence': 1e-8,
-                    'd_convergence': 1e-8,
-                    'guess': "core"}
-        if options is None:
-            options = {}
-        options = {**defaults, **options}
 
         # easier guess read in
         if guess_wfn is not None:
@@ -308,13 +361,12 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             ref_wfn = self.ref_wfn
 
         if point_group is not None and point_group.lower() == "c1":
-            ref_wfn = None # ref_wfn.c1_deep_copy(ref_wfn.basisset())  # CC will not converge otherwise
+            ref_wfn = None  # ref_wfn.c1_deep_copy(ref_wfn.basisset())  # CC will not converge otherwise
             guess_wfn = None
 
         psi4.activate(mol)
 
         psi4.set_options(options)
-
         if ref_wfn is None or method.lower() == "hf":
             energy, wfn = psi4.energy(name=method.lower(), return_wfn=return_wfn, molecule=mol)
         else:
@@ -327,20 +379,20 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         return energy, wfn
 
     def _extract_active_space(self, arr, active_orbitals=None):
-        if active_orbitals is None:
+        if self.active_space is None:
             return arr
 
         if isinstance(arr, ClosedShellAmplitudes):
             result = {}
             for k, v in arr.__dict__.items():
                 if v is not None:
-                    result[k] = self._extract_active_space(arr=v, active_orbitals=active_orbitals)
+                    result[k] = self._extract_active_space(arr=v)
 
             return ClosedShellAmplitudes(**result)
 
-        asd = self._make_active_space_data(active_orbitals=active_orbitals)
-        aocc = [i for i in asd.active_indices if i in asd.reference_indices]
-        avir = [i for i in asd.active_indices if i not in asd.reference_indices]
+        asd = self.active_space
+        aocc = [i for i in asd.active_orbitals if i in asd.reference_orbitals]
+        avir = [i for i in asd.active_orbitals if i not in asd.reference_orbitals]
         nocc = self.n_electrons // 2
         nvirt = self.n_orbitals - nocc
         avir = [x - nocc for x in avir]
@@ -359,7 +411,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 active_sets.append(avir)
             else:
                 assert i == nocc + nvirt
-                final_shape.append(nao+nav)
+                final_shape.append(nao + nav)
                 active_sets.append(aocc + avir)
 
         final_shape = tuple(final_shape)
@@ -376,40 +428,61 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         return numpy.extract(condition=c, arr=arr).reshape(final_shape)
 
     def compute_mp2_amplitudes(self, active_orbitals=None) -> ClosedShellAmplitudes:
-        return self._extract_active_space(arr=super().compute_mp2_amplitudes(), active_orbitals=active_orbitals)
+        return self._extract_active_space(super().compute_mp2_amplitudes())
 
     def compute_amplitudes(self, method: str,
                            options: dict = None,
                            filename: str = None,
-                           active_orbitals=None,
                            *args,
                            **kwargs) -> typing.Union[
         Amplitudes, ClosedShellAmplitudes]:
+
+        if options is None:
+            options = {}
+
+        options['basis'] = self.parameters.basis_set
+
         if method.lower() == "mp2":
-            return self.compute_mp2_amplitudes(active_orbitals=active_orbitals)
+            return self.compute_mp2_amplitudes()
         if __HAS_PSI4_PYTHON__:
             try:
-                energy, wfn = self._run_psi4(method=method, options=options, point_group='c1', filename=filename, *args, **kwargs)
+                psi4.core.clean_options()
+                psi4.core.clean_variables()
+                energy, wfn = self._run_psi4(method=method,
+                                             options=options,
+                                             point_group='c1',
+                                             ref_wfn=self.ref_wfn.c1_deep_copy(self.ref_wfn.basisset()),
+                                             filename=filename,
+                                             *args,
+                                             **kwargs)
                 all_amplitudes = wfn.get_amplitudes()
                 closed_shell = isinstance(wfn.reference_wavefunction(), psi4.core.RHF)
                 if closed_shell:
-                    return self._extract_active_space(
-                        arr=ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()}),
-                        active_orbitals=active_orbitals)
+                    return self._extract_active_space(ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()}))
                 else:
-                    assert (active_orbitals is None)  # only for closed-shell currently
+                    assert (self.active_space is None)  # only for closed-shell currently
                     return Amplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
             except Exception as err:
                 raise TequilaPsi4Exception("Failed to compute {} amplitudes."
-                                           "Make sure you have no orbitals frozen and don't read in previous wavefunctions".format(method))
+                                           "Make sure you have no orbitals frozen in the psi4 options "
+                                           "and that you don't read in previous wavefunctions".format(method))
 
         else:
             raise TequilaPsi4Exception("Can't find the psi4 python module, let your environment know the path to psi4")
 
-    def compute_energy(self, method: str = "fci", options=None, recompute:bool=False, *args, **kwargs):
+    def compute_energy(self, method: str = "fci", options=None, recompute: bool = False, *args, **kwargs):
         if not recompute and method.lower() in self.energies:
             return self.energies[method.lower()]
         if __HAS_PSI4_PYTHON__:
+
+            if options is None:
+                options = {}
+
+            options['basis'] = self.parameters.basis_set
+            if self.active_space is not None and self.active_space.psi4_representable:
+                options['frozen_docc'] = self.active_space.frozen_docc
+                #options['frozen_uocc'] = self.active_space.frozen_uocc
+
             return self._run_psi4(method=method, options=options, *args, **kwargs)[0]
         else:
             raise TequilaPsi4Exception("Can't find the psi4 python module, let your environment know the path to psi4")
@@ -426,15 +499,13 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             [len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)]))
         return result
 
-    def prepare_reference(self, active_orbitals=None, reference_orbitals=None, n_qubits: int = None):
+    def prepare_reference(self, *args, **kwargs):
 
-        active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference_orbitals)
-        if active_orbitals is None:
-            return super().prepare_reference(reference_orbitals=active_space.reference_indices, n_qubits=n_qubits)
+        if self.active_space is None:
+            return super().prepare_reference(*args, **kwargs)
         else:
-            if n_qubits is not None:
-                assert (n_qubits == 2 * len(active_space.active_indices))
-            n_qubits = 2 * len(active_space.active_indices)
-            active_reference_orbitals = [i for i in active_space.reference_indices if i in active_space.active_indices]
+            n_qubits = len(self.active_space.active_orbitals)*2
+            active_reference_orbitals = [i for i in self.active_space.reference_orbitals if
+                                         i in self.active_space.active_orbitals]
             return super().prepare_reference(reference_orbitals=[i for i in range(len(active_reference_orbitals))],
-                                             n_qubits=n_qubits)
+                                             n_qubits=n_qubits, *args, **kwargs)

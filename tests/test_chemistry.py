@@ -101,7 +101,7 @@ def test_mp2_psi4():
     # the number might be wrong ... its definetely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1279946983462537)
+    do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1344497203826904)
 
 
 @pytest.mark.skipif(condition=not qc.has_pyscf, reason="you don't have pyscf")
@@ -109,7 +109,7 @@ def test_mp2_pyscf():
     # the number might be wrong ... its definetely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_mp2(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1279946983462537)
+    do_test_mp2(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1344497203826904)
 
 
 def do_test_mp2(qc_interface, parameters, result):
@@ -195,8 +195,10 @@ def test_restart_psi4():
 @pytest.mark.skipif(condition=not tq.chemistry.has_psi4, reason="psi4 not found")
 @pytest.mark.parametrize("active", [{"A1": [2, 3]}, {"B2": [0], "B1": [0]}, {"A1":[0,1,2,3]}, {"B1":[0]}])
 def test_active_spaces(active):
-    mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g")
-    H = mol.make_active_space_hamiltonian(active_orbitals=active)
-    Uhf = mol.prepare_reference(active_orbitals=active)
+    mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g", active_orbitals=active)
+    H = mol.make_hamiltonian()
+    Uhf = mol.prepare_reference()
     hf = tequila.simulators.simulator_api.simulate(tq.ExpectationValue(U=Uhf, H=H))
     assert (tq.numpy.isclose(hf, mol.energies["hf"], atol=1.e-4))
+    qubits = 2*sum([len(v) for v in active.values()])
+    assert (H.n_qubits == qubits)
