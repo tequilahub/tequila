@@ -31,15 +31,6 @@ def generate_h2o_xyz_files(start=0.75, inc=0.05, steps=30):
 
     return files
 
-def make_ucc_ansatz(mp2_amplitudes):
-    amplitudes = mol.compute_amplitudes(method="mp2", active_orbitals=active)
-    amplitudes.tIA = numpy.zeros((3, 2))
-    amplitudes.tIA[0, 0] = 1.e-4
-    amplitudes.tIA[2, 1] = 1.e-4
-    UCC = mol.make_uccsd_ansatz(initial_amplitudes=mp2_amplitudes, threshold=1.e-4, trotter_steps=1,
-                                include_reference_ansatz=False)
-    return UCC
-
 if __name__ == "__main__":
 
     # generate files/get list of all generated files
@@ -68,13 +59,10 @@ if __name__ == "__main__":
 
     # compute stuff
     for i, file in enumerate(files):
-        if i == 29:
-            continue
-        if i not in [0,4,8,12,16,20,24]:
-            continue
+        if i < 10: break
         print("computing point {}".format(i))
         mol = tq.chemistry.Molecule(geometry=file, basis_set=basis_set, transformation=transformation, threads=threads,
-                                    guess_wfn=guess_wfn, options=options)
+                                    guess_wfn=guess_wfn, options=options, active_orbitals=active)
         guess_wfn = mol.ref_wfn
 
         for m in ref_methods:
@@ -84,14 +72,16 @@ if __name__ == "__main__":
             except:
                 ref_energies[m] += [None]
 
-        H = mol.make_active_space_hamiltonian(active_orbitals=active)
-        Uhf = mol.prepare_reference(active_orbitals=active)
+        H = mol.make_hamiltonian()
+        Uhf = mol.prepare_reference()
 
+        # stupid excuse for an vqe, but it tests consistency
+        # just evaluates the hartree fock energy
         U = Uhf
-        hf = tequila.simulators.simulator_api.simulate(tq.ExpectationValue(U=U, H=H))
+        hf = tq.simulate(tq.ExpectationValue(U=U, H=H))
         energies += [hf]
 
-    plt.plot(energies, label="UCCSD", marker="o", linestyle="--")
+    plt.plot(energies, label="QHF", marker="o", linestyle="--")
     for m in ref_methods:
         values = ref_energies[m]
         plt.plot(values, label=str(m))
