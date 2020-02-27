@@ -15,7 +15,7 @@ from tequila.circuit._gates_impl import MeasurementImpl
 import numpy, numbers, typing
 
 
-class BackendCircuit:
+class BackendCircuit():
     """
     Functions in the end need to be overwritten by specific backend implementation
     Other functions can be overwritten to improve performance
@@ -46,7 +46,8 @@ class BackendCircuit:
     def qubits(self) -> typing.Iterable[numbers.Integral]:
         return tuple(self._qubits)
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, optimize_circuit=True, *args, **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables, noise_model=None,
+                 use_mapping=True, optimize_circuit=True, *args, **kwargs):
 
         self.use_mapping = use_mapping
 
@@ -84,15 +85,17 @@ class BackendCircuit:
         if optimize_circuit:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
+        self.noise_model=noise_model
+
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
                  samples: int = None,
                  *args,
                  **kwargs):
         if samples is None:
-            return self.simulate(variables=variables, *args, **kwargs)
+            return self.simulate(variables=variables,noise_model=self.noise_model, *args, **kwargs)
         else:
-            return self.sample(variables=variables, samples=samples, *args, **kwargs)
+            return self.sample(variables=variables, samples=samples,noise_model=self.noise_model *args, **kwargs)
 
     def create_circuit(self, abstract_circuit: QCircuit, variables: typing.Dict[Variable, numbers.Real] = None):
         """
@@ -165,11 +168,11 @@ class BackendCircuit:
         else:
             keymap = KeyMapSubregisterToRegister(subregister=all_qubits, register=all_qubits)
 
-        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer)
+        result = self.do_simulate(variables=variables,initial_state=keymap.inverted(initial_state).integer)
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
-    def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int, paulistring, *args,
+    def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int, paulistring,  *args,
                            **kwargs) -> numbers.Real:
         # make basis change and translate to backend
 
@@ -212,11 +215,11 @@ class BackendCircuit:
             E = E / samples * paulistring.coeff
             return E
 
-    def sample(self, variables, samples, *args, **kwargs):
+    def sample(self, variables, samples,noise_model=None, *args, **kwargs):
         self.update_variables(variables=variables)
         return self.do_sample(samples=samples, circuit=self.circuit)
 
-    def do_sample(self, variables, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
+    def do_sample(self, variables, samples, circuit,*args, **kwargs) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     # Those functions need to be overwritten:
@@ -297,21 +300,21 @@ class BackendExpectationValue:
     def U(self):
         return self._U
 
-    def __init__(self, E, variables):
-        self._U = self.initialize_unitary(E.U, variables)
+    def __init__(self, E, variables,noise_model):
+        self._U = self.initialize_unitary(E.U, variables,noise_model)
         self._H = self.initialize_hamiltonian(E.H)
 
     def __call__(self, variables, samples:int=None, *args, **kwargs):
         if samples is None:
             return self.simulate(variables=variables, *args, **kwargs)
         else:
-            return self.sample(variables=variables, samples=samples, *args, **kwargs)
+            return self.sample(variables=variables, samples=samples,*args, **kwargs)
 
     def initialize_hamiltonian(self, H):
         return H
 
-    def initialize_unitary(self, U, variables):
-        return self.BackendCircuitType(abstract_circuit=U, variables=variables, use_mapping=self.use_mapping)
+    def initialize_unitary(self, U, variables,noise_model):
+        return self.BackendCircuitType(abstract_circuit=U, variables=variables, use_mapping=self.use_mapping,noise_model=noise_model)
 
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)

@@ -3,7 +3,21 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering, BitStringLSB
 import qiskit
+import qiskit.providers.aer.noise as qiskitnoise
 
+
+def get_bit_flip(p):
+    return qiskitnoise.pauli_error(noise_ops=[('X',p),('I',1-p)])
+
+def get_phase_flip(p):
+    return qiskitnoise.pauli_error(noise_ops=[('Y',p),('I',1-p)])
+
+noise_lookup={
+    'phase damp':qiskitnoise.phase_damping_error,
+    'amplitude damp':qiskitnoise.amplitude_damping_error,
+    'bit flip':get_bit_flip,
+    'phase flip':get_phase_flip
+}
 
 class TequilaQiskitException(TequilaException):
     def __str__(self):
@@ -20,33 +34,38 @@ class BackendCircuitQiskit(BackendCircuit):
     cc_max=True
     numbering = BitNumbering.LSB
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, *args, **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
         if use_mapping:
             qubits = abstract_circuit.qubits
         else:
             qubits = range(abstract_circuit.n_qubits)
 
+        nm=self.noise_model_converter(noise_model)
+        self.noise_model=nm
         n_qubits = len(qubits)
         self.q = qiskit.QuantumRegister(n_qubits, "q")
         self.c = qiskit.ClassicalRegister(n_qubits, "c")
         self.classical_map = {i: self.c[j] for j, i in enumerate(qubits)}
         self.qubit_map = {i: self.q[j] for j, i in enumerate(qubits)}
-
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables, use_mapping=use_mapping, *args, **kwargs)
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=self.noise_model, use_mapping=use_mapping, *args, **kwargs)
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
-        simulator = qiskit.Aer.get_backend("statevector_simulator")
+        if self.noise_model is None:
+            simulator = qiskit.Aer.get_backend("statevector_simulator")
+        else:
+            raise TequilaQiskitException("wave function simulation with noise cannot be performed presently")
         if initial_state != 0:
             # need something like this
             # there is a keyword for the backend for tolerance on norm
             # circuit.initialize(normed_array)
             raise TequilaQiskitException("initial state for Qiskit not yet supported here")
-        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator).result()
+        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator,noise_model=self.noise_model).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
         simulator = qiskit.Aer.get_backend("qasm_simulator")
-        return self.convert_measurements(qiskit.execute(experiments=circuit, backend=simulator, shots=samples))
+        return self.convert_measurements(qiskit.execute(experiments=circuit, backend=simulator, shots=samples,
+                                                        noise_model=self.noise_model))
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
         """
@@ -119,6 +138,34 @@ class BackendCircuitQiskit(BackendCircuit):
         assert(len(self.qubit_map) == len(qubits))
         assert(len(self.abstract_qubit_map) == len(qubits))
         return self.qubit_map
+
+    def noise_model_converter(self,nm):
+        if nm is None:
+            return None
+        qnoise=qiskitnoise.NoiseModel()
+        for noise in nm.noises:
+            op=noise_lookup[noise.name]
+            active=op(*noise.probs)
+            if noise.gate is 'Control':
+                targets=['cx','ccx',
+                         'cy',
+                         'cz',
+                         'crx',
+                         'cry',
+                         'crz',
+                         'ch']
+            elif noise.gate is 'Single':
+                targets=['x',
+                         'y',
+                         'z',
+                         'rx',
+                         'ry',
+                         'rz',
+                         'h']
+            else:
+                targets=[noise.gate.lower()]
+            qnoise.add_all_qubit_quantum_error(active,targets)
+        return qnoise
 
 
 class BackendExpectationValueQiskit(BackendExpectationValue):

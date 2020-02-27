@@ -91,7 +91,10 @@ class Objective:
         """
         variables = []
         for arg in self.args:
-            variables += arg.extract_variables()
+            if hasattr(arg,'extract_variables'):
+                variables += arg.extract_variables()
+            else:
+                variables += []
 
         return list(set(variables))
 
