@@ -704,7 +704,7 @@ class QuantumChemistryBase:
         class ResultCIS:
             """ """
             omegas: typing.List[numbers.Real]  # excitation energies [omega0, ...]
-            amplitudes: typing.List[numpy.ndarray]  # corresponding amplitudes [x_{ai}_0, ...]
+            amplitudes: typing.List[ClosedShellAmplitudes]  # corresponding amplitudes [x_{ai}_0, ...]
 
             def __getitem__(self, item):
                 return (self.omegas[item], self.amplitudes[item])
@@ -744,7 +744,7 @@ class QuantumChemistryBase:
             for xx, x in enumerate(pairs):
                 a, i = x
                 t[a - nocc, i] = exvec[xx]
-            amplitudes.append(self.ClosedShellAmplitudes(amplitudes=t))
+            amplitudes.append(ClosedShellAmplitudes(tIA=t))
 
         return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
 
@@ -785,8 +785,8 @@ class QuantumChemistryBase:
         #     'baij, abij -> ', xbgij, amplitudes, optimize='optimize')
         # print("2e corr energy = ", s2b - s2c)
 
-        return self.ClosedShellAmplitudes(
-            amplitudes=0.25 * numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'))
+        return ClosedShellAmplitudes(
+            tIjAb=numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'))
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
