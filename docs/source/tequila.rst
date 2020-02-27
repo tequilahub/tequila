@@ -26,10 +26,8 @@ Optimizers
     
 Simulators
 ------------------------
-.. automodule:: tequila
-    :members: simulate, compile, draw
-.. automodule:: tequila.simulators.__init__
-    :members: show_available_simulators
+.. automodule:: tequila.simulators.simulator_api
+    :members: simulate, compile, draw, show_available_simulators
 
 Quantum chemistry
 ------------------------

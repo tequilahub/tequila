@@ -531,7 +531,7 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
                 type(variable)))
 
 
-class Variables(collections.MutableMapping):
+class Variables(collections.abc.MutableMapping):
     """
     Dictionary for tequila variables
     Allows hashable types and variable types as keys
@@ -555,6 +555,12 @@ class Variables(collections.MutableMapping):
 
     def __len__(self):
         return len(self.store)
+
+    def __str__(self):
+        result = ""
+        for k,v in self.items():
+            result += "{} : {:2.8f}\n".format(k, v)
+        return result
 
 if __name__ == "__main__":
 

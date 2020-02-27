@@ -5,9 +5,8 @@ from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer
 from collections import namedtuple
-from tequila.simulators import compile_objective, simulate_objective
+from tequila.simulators.simulator_api import compile_objective
 from tequila.utils.exceptions import TequilaException
-import copy
 
 
 class TequilaScipyException(TequilaException):

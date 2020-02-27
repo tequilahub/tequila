@@ -1,18 +1,17 @@
-from tequila import TequilaException, BitNumbering
+from tequila.utils import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila.utils.misc import to_float
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit.compiler import change_basis
 from tequila.circuit.gates import Measurement
-from tequila.circuit.gates import RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl,PhaseGateImpl
 from tequila import BitString
 from tequila.objective.objective import Variable
 from tequila.circuit import compiler
 from tequila.circuit._gates_impl import MeasurementImpl
 
 
-import numpy, numbers, typing
+import numbers, typing
 
 
 class BackendCircuit():

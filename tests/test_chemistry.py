@@ -8,18 +8,22 @@ import pytest
 import tequila.quantumchemistry as qc
 import numpy
 import os, glob
+
+import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
-from tequila import simulate
+from tequila.simulators.simulator_api import simulate
 from tequila import simulators
 
 import tequila as tq
 
-
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
-    # [os.remove(x) for x in glob.glob("data/*.out")]
+    [os.remove(x) for x in glob.glob("data/*.out")]
     [os.remove(x) for x in glob.glob("data/*.hdf5")]
 
+@pytest.mark.dependencies
+def test_dependencies():
+    assert(tq.chemistry.has_psi4)
 
 @pytest.mark.skipif(condition=len(qc.INSTALLED_QCHEMISTRY_BACKENDS) == 0,
                     reason="no quantum chemistry backends installed")
@@ -61,7 +65,7 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])
-@pytest.mark.parametrize("backend", [simulators.pick_backend("random"), simulators.pick_backend()])
+@pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
         pytest.skip("skipping for symbolic simulator  ... way too slow")
@@ -97,7 +101,7 @@ def test_mp2_psi4():
     # the number might be wrong ... its definetely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1279946983462537)
+    do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1344497203826904)
 
 
 @pytest.mark.skipif(condition=not qc.has_pyscf, reason="you don't have pyscf")
@@ -105,7 +109,7 @@ def test_mp2_pyscf():
     # the number might be wrong ... its definetely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_mp2(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1279946983462537)
+    do_test_mp2(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1344497203826904)
 
 
 def do_test_mp2(qc_interface, parameters, result):
@@ -154,7 +158,7 @@ def do_test_amplitudes(method, qc_interface, parameters, result):
     assert (numpy.isclose(energy, result))
 
 
-@pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")
+@pytest.mark.skipif(condition=not tq.chemistry.has_psi4, reason="psi4 not found")
 @pytest.mark.parametrize("method", ["mp2", "mp3", "mp4", "cc2", "cc3", "ccsd", "ccsd(t)", "cisd", "cisdt"])
 def test_energies_psi4(method):
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31g")
@@ -163,6 +167,7 @@ def test_energies_psi4(method):
     assert result is not None
 
 
+@pytest.mark.skipif(condition=not tq.chemistry.has_psi4, reason="psi4 not found")
 def test_restart_psi4():
     h2 = tq.chemistry.Molecule(geometry="data/h2.xyz", basis_set="6-31g")
     wfn = h2.logs['hf'].wfn
@@ -187,11 +192,13 @@ def test_restart_psi4():
                 break
         assert found
 
-
+@pytest.mark.skipif(condition=not tq.chemistry.has_psi4, reason="psi4 not found")
 @pytest.mark.parametrize("active", [{"A1": [2, 3]}, {"B2": [0], "B1": [0]}, {"A1":[0,1,2,3]}, {"B1":[0]}])
 def test_active_spaces(active):
-    mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g")
-    H = mol.make_active_space_hamiltonian(active_orbitals=active)
-    Uhf = mol.prepare_reference(active_orbitals=active)
-    hf = tq.simulate(tq.ExpectationValue(U=Uhf, H=H))
+    mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g", active_orbitals=active)
+    H = mol.make_hamiltonian()
+    Uhf = mol.prepare_reference()
+    hf = tequila.simulators.simulator_api.simulate(tq.ExpectationValue(U=Uhf, H=H))
     assert (tq.numpy.isclose(hf, mol.energies["hf"], atol=1.e-4))
+    qubits = 2*sum([len(v) for v in active.values()])
+    assert (H.n_qubits == qubits)

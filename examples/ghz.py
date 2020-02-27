@@ -1,3 +1,4 @@
+import tequila.simulators.simulator_api
 from tequila.circuit import gates
 from tequila.simulators.simulator_qiskit import SimulatorQiskit # full wavefunction simulation currently not supported
 from tequila.simulators.simulator_cirq import SimulatorCirq
@@ -19,7 +20,7 @@ if __name__ == "__main__":
 
     # Simulate the full wavefunction (use cirq or pyquil)
     simulator = SimulatorCirq()
-    result = simulator.simulate_wavefunction(abstract_circuit=U)
+    result = tequila.simulators.simulator_api.simulate_wavefunction(abstract_circuit=U)
 
     # the simulators gives back a lot of information, we only need the computed wavefunction
     wfn = result.wavefunction
