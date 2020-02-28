@@ -8,6 +8,10 @@ def read_requirements(fname):
         requirements = [line.strip() for line in lines]
     return requirements
 
+extras_3_6 = ['dataclasses']
+extras_3_7 = []
+additional = []
+
 setup(
     name='tequila',
     version="XXXX",
