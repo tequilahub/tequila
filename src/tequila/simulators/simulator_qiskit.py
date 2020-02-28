@@ -16,7 +16,8 @@ noise_lookup={
     'phase damp':qiskitnoise.phase_damping_error,
     'amplitude damp':qiskitnoise.amplitude_damping_error,
     'bit flip':get_bit_flip,
-    'phase flip':get_phase_flip
+    'phase flip':get_phase_flip,
+    'phase-amplitude damp':qiskitnoise.phase_amplitude_damping_error
 }
 
 class TequilaQiskitException(TequilaException):

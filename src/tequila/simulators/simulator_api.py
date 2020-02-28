@@ -175,7 +175,6 @@ def compile_objective(objective: 'Objective',
     backend = pick_backend(backend=backend, samples=samples,noise=noise_model is not None)
 
     ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
-    print('when compile objective was called, recieved an ' + str(type(noise_model)))
     if hasattr(objective, "simulate"):
         for arg in objective.args:
             if hasattr(arg, "U") and not isinstance(arg, ExpValueType):
