@@ -1,5 +1,5 @@
 from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException
-from tequila.circuit import gates, QCircuit
+from tequila.circuit import gates, QCircuit,NoiseModel
 from tequila.hamiltonian import paulis, QubitHamiltonian, PauliString
 from tequila.objective import Objective, ExpectationValue, Variable, assign_variable, format_variable_dictionary
 from tequila.optimizers import optimizer_scipy

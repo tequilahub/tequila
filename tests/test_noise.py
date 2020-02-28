@@ -3,12 +3,13 @@ from tequila.objective import ExpectationValue
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila import simulate
-from tequila import simulators
-from tequila.circuit.noise import NoiseModel,BitFlip,PhaseDamp,PhaseFlip,AmplitudeDamp
+import tequila
+from tequila.circuit.noise import BitFlip,PhaseDamp,PhaseFlip,AmplitudeDamp
 import numpy
 import pytest
+import tequila.simulators.simulator_api
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend('qiskit')])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit')])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_bit_flip(simulator, p):
 
@@ -23,7 +24,7 @@ def test_bit_flip(simulator, p):
 
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend('qiskit')])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit')])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_flip(simulator, p):
 
@@ -37,7 +38,7 @@ def test_phase_flip(simulator, p):
     assert (numpy.isclose(E, 1.0-p, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend('qiskit')])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit')])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_damp(simulator, p):
 
@@ -51,7 +52,7 @@ def test_phase_damp(simulator, p):
     assert (numpy.isclose(E, 0.5, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", [simulators.pick_backend('qiskit')])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit')])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_amp_damp(simulator, p):
 
