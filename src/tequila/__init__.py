@@ -22,4 +22,4 @@ import warnings
 
 warnings.filterwarnings("ignore", module="jax")
 
-__version__ = "AndreasDorn"
+__version__ = "BorisYeltsin"

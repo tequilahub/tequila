@@ -17,11 +17,13 @@ class Noise():
     @property
     def gate(self):
         return self._gate
-    def __init__(self,name:str,probs:typing.List[float],gate:str):
+
+    def __init__(self,name:str,probs:typing.List[float],gate:str,kraus:bool=True):
         self._name=name
         self._gate=gate
         assert len(probs) is self.prob_length[name]
-        assert all([0<=p<=1 for p in probs])
+        if kraus:
+            assert all([0<=p<=1 for p in probs])
         self.probs=list_assignement(probs)
 
     def __str__(self):

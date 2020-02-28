@@ -168,7 +168,7 @@ def compile_objective(objective: 'Objective',
     :param variables: The variables of the objective given as dictionary
     with keys as tequila Variables and values the corresponding real numbers
     :param backend: specify the backend or give None for automatic assignment
-    :param noise: whether or not noisy simulation is to be performed.
+    :param noise_model: the NoiseModel to apply to the objective.
     :return: Compiled Objective
     """
 
@@ -315,6 +315,7 @@ def sample_wavefunction(abstract_circuit: 'QCircuit',
     with keys as tequila Variables and values the corresponding real numbers
     :param samples: Number of samples/measurements
     :param backend: specify the backend or give None for automatic assignment
+    :param noise_model: NoiseModel to apply to simulation.
     :return:
     """
 
@@ -445,6 +446,8 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
         if None a full wavefunction simulation is performed, otherwise a fixed number of samples is simulated
     backend : str : (Default value = None) :
         specify the backend or give None for automatic assignment
+    noise_model: NoiseModel : (Default value =None) :
+        the noise model to apply to the objective or QCircuit.
 
     Returns
     -------
