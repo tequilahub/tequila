@@ -17,7 +17,29 @@ noise_lookup={
     'amplitude damp':qiskitnoise.amplitude_damping_error,
     'bit flip':get_bit_flip,
     'phase flip':get_phase_flip,
-    'phase-amplitude damp':qiskitnoise.phase_amplitude_damping_error
+    'phase-amplitude damp':qiskitnoise.phase_amplitude_damping_error,
+    'depolarizing':qiskitnoise.depolarizing_error
+}
+
+gate_qubit_lookup={
+    'x':1,
+    'y':1,
+    'z':1,
+    'h':1,
+    'rx': 1,
+    'ry': 1,
+    'rz': 1,
+    'cx': 2,
+    'cy': 2,
+    'cz': 2,
+    'ch':2,
+    'crx': 2,
+    'cry': 2,
+    'crz': 2,
+    'Control':2,
+    'Single':1,
+    'doublecontrol':3,
+    'ccx':3
 }
 
 class TequilaQiskitException(TequilaException):
@@ -146,9 +168,12 @@ class BackendCircuitQiskit(BackendCircuit):
         qnoise=qiskitnoise.NoiseModel()
         for noise in nm.noises:
             op=noise_lookup[noise.name]
-            active=op(*noise.probs)
+            if op is qiskitnoise.depolarizing_error:
+                active=op(noise.probs[0],gate_qubit_lookup[noise.gate.lower()])
+            else:
+                active=op(*noise.probs)
             if noise.gate is 'Control':
-                targets=['cx','ccx',
+                targets=['cx',
                          'cy',
                          'cz',
                          'crx',
@@ -163,6 +188,8 @@ class BackendCircuitQiskit(BackendCircuit):
                          'ry',
                          'rz',
                          'h']
+            elif noise.gate is 'multicontrol':
+                targets=['ccx']
             else:
                 targets=[noise.gate.lower()]
             qnoise.add_all_qubit_quantum_error(active,targets)
