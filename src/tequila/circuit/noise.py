@@ -9,6 +9,8 @@ class Noise():
         'phase flip':1,
         'phase damp':1,
         'amplitude damp':1,
+        'phase-amplitude damp':2,
+        'depolarizing':1
     }
     @property
     def name(self):
@@ -18,12 +20,15 @@ class Noise():
     def gate(self):
         return self._gate
 
-    def __init__(self,name:str,probs:typing.List[float],gate:str,kraus:bool=True):
+    def __init__(self,name:str,probs:typing.List[float],gate:str,form: str='kraus'):
+        probs=list_assignement(probs)
         self._name=name
         self._gate=gate
         assert len(probs) is self.prob_length[name]
-        if kraus:
-            assert all([0<=p<=1 for p in probs])
+        if form is 'kraus':
+            assert sum(probs)<=1.
+        if form is 'depolarizing':
+            assert sum(probs)<=1.
         self.probs=list_assignement(probs)
 
     def __str__(self):
@@ -110,4 +115,16 @@ def AmplitudeDamp(p:float,gates:typing.List[str]):
     new=NoiseModel()
     for gate in gates:
         new+=NoiseModel.wrap_noise(Noise(name='amplitude damp',probs=list_assignement(p),gate=gate))
+    return new
+
+def PhaseAmplitudeDamp(p1:float,p2:float,gates:typing.List[str]):
+    new=NoiseModel()
+    for gate in gates:
+        new+=NoiseModel.wrap_noise(Noise(name='phase-amplitude damp',probs=list_assignement([p1,p2]),gate=gate))
+    return new
+
+def DepolarizingError(p,gates:typing.List[str]):
+    new=NoiseModel()
+    for gate in gates:
+        new += NoiseModel.wrap_noise(Noise(name='depolarizing', probs=list_assignement(p), gate=gate,form='depolarizing'))
     return new
