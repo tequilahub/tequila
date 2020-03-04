@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 import pyquil
-
+from pyquil import get_qc
 
 class TequilaPyquilException(TequilaException):
     def __str__(self):
@@ -21,6 +21,12 @@ class BackendCircuitPyquil(BackendCircuit):
     recompile_phase = False
 
     numbering = BitNumbering.LSB
+
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
+
+        #nm=self.noise_model_converter(noise_model)
+        self.noise_model=None
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=self.noise_model, use_mapping=use_mapping, *args, **kwargs)
 
     def do_simulate(self, variables, initial_state, *args, **kwargs):
         simulator = pyquil.api.WavefunctionSimulator()
@@ -43,6 +49,33 @@ class BackendCircuitPyquil(BackendCircuit):
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__
         return QubitWaveFunction.from_array(arr=backend_result.amplitudes, numbering=self.numbering)
+
+    def do_sample(self, variables, samples, circuit,*args, **kwargs) -> QubitWaveFunction:
+        n_qubits = self.n_qubits
+        qc=get_qc('{}q-qvm'.format(str(n_qubits)))
+        p=self.abstract_circuit
+        p.wrap_in_numshots_loop(samples)
+        exec= qc.compile(p)
+        bitstrings=qc.run(exec)
+        return self.convert_measurements(bitstrings)
+
+    def convert_measurements(self, backend_result) -> QubitWaveFunction:
+        """0.
+        :param backend_result: array from pyquil as list of lists of integers.
+        :return: backend_result in Tequila format.
+        """
+        result = QubitWaveFunction()
+        bit_dict={}
+        for b in backend_result:
+            try:
+                bit_dict[b]+=1
+            except:
+                bit_dict[b]=1
+
+        for k,v in bit_dict.items():
+            result._state[BitString.from_array(k)]=v
+        return result
+
 
     def fast_return(self, abstract_circuit):
         return isinstance(abstract_circuit, pyquil.Program)

@@ -90,9 +90,11 @@ def test_depolarizing_error(simulator, p,controlled):
     H = paulis.Z(0)
     if controlled:
         U = gates.X(target=cq)+gates.X(target=qubit,control=cq)
+        NM = DepolarizingError(p, ['cx'])
     else:
         U= gates.X(target=qubit)
+        NM = DepolarizingError(p, ['x'])
     O = ExpectationValue(U=U, H=H)
-    NM=DepolarizingError(p,['x'])
+
     E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
     assert (numpy.isclose(E, -1+p, atol=1.e-2))

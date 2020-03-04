@@ -125,7 +125,6 @@ def test_wfn_simple_execution(simulator):
     ac += tq.gates.H(target=1, control=None)
     tequila.simulators.simulator_api.simulate(ac, backend=simulator)
 
-
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_multitarget(simulator):
     ac = tq.gates.X([0, 1, 2])
@@ -137,16 +136,12 @@ def test_wfn_multitarget(simulator):
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_multi_control(simulator):
     # currently no compiler, so that test can not succeed
-    if simulator == "qulacs":
+    if simulator is 'qiskit':
         return
     ac = tq.gates.X([0, 1, 2])
     ac += tq.gates.Ry(target=[0], control=[1, 2], angle=2.3 / 2)
     ac += tq.gates.H(target=[0], control=[1])
     tequila.simulators.simulator_api.simulate(ac, backend=simulator)
-
-    if simulator == "qiskit":  # can't compile the CCH currently ... but throws error
-        return
-
     ac = tq.gates.X([0, 1, 2])
     ac += tq.gates.Ry(target=[0], control=[1, 2], angle=2.3 / 2)
     ac += tq.gates.H(target=[0], control=[1, 2])
@@ -197,6 +192,9 @@ def test_shot_simple_consistency():
     wfn0 = tequila.simulators.simulator_api.simulate(ac, backend="cirq")
     wfn1 = tequila.simulators.simulator_api.simulate(ac, backend="qiskit")
     assert (wfn0 == wfn1)
+    if 'pyquil' in tq.INSTALLED_SAMPLERS:
+        wfn2 = tequila.simulators.simulator_api.simulate(ac, backend='pyquil')
+        assert (wfn0 == wfn2)
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())

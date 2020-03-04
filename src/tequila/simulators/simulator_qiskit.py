@@ -91,7 +91,7 @@ class BackendCircuitQiskit(BackendCircuit):
                                                         noise_model=self.noise_model))
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
-        """
+        """0.
         :param qiskit_counts: qiskit counts as dictionary, states are binary in little endian (LSB)
         :return: Counts in OpenVQE format, states are big endian (MSB)
         """

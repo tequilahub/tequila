@@ -339,7 +339,7 @@ class BackendExpectationValue:
             if self.H.qubits != self.U.qubits:
                 raise TequilaException(
                     "Can not compute expectation value without using qubit mappings."
-                    " Your Hamiltonian and your Unitary act not on the same set of qubits. "
+                    " Your Hamiltonian and your Unitary do not act on the same set of qubits. "
                     "Hamiltonian acts on {}, Unitary acts on {}".format(
                         self.H.qubits, self.U.qubits))
             keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)

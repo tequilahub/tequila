@@ -47,7 +47,7 @@ if HAS_QVM:
 
         HAS_PYQUIL = True
         INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-        # INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+        INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
     except ImportError:
         HAS_PYQUIL = False
 else:
