@@ -22,8 +22,11 @@ name_dict={
     'Cz':'CZ',
     'Swap':'SWAP',
     'Cx':'CNOT',
+    'cx':'CNOT',
+    'ccx':'CCNOT',
     'CCx':'CCNOT',
     'H':'H',
+    'h':'H',
     'Phase':'PHASE'
 }
 
@@ -89,10 +92,10 @@ def phase_amp_damp_map(a,b):
     A0 = [[1, 0], [0, np.sqrt(1 - a - b)]]
     A1 = [[0, np.sqrt(a)], [0, 0]]
     A2 = [[0, 0], [0, np.sqrt(b)]]
-    B0 = [[np.sqrt(1 - a - b), 0], [0, 1]]
-    B1 = [[0, 0], [np.sqrt(a), 0]]
-    B2 = [[np.sqrt(b), 0], [0, 0]]
-    return [np.array(k) for k in [A0,A1,A2,B0,B1,B2]]
+    #B0 = [[np.sqrt(1 - a - b), 0], [0, 1]]
+    #B1 = [[0, 0], [np.sqrt(a), 0]]
+    #B2 = [[np.sqrt(b), 0], [0, 0]]
+    return [np.array(k) for k in [A0,A1,A2]]
 
 def depolarizing_map(p):
     mat1 = np.array([[np.sqrt(1 - p), 0], [0, np.sqrt(1 - p)]])
@@ -192,9 +195,7 @@ class BackendCircuitPyquil(BackendCircuit):
         n_qubits = self.n_qubits
         qc=get_qc('{}q-qvm'.format(str(n_qubits)))
         p=self.circuit
-        p.wrap_in_numshots_loop(samples)
-        exec= qc.compile(p)
-        bitstrings=qc.run(exec)
+        bitstrings=qc.run_and_measure(p,trials=samples)
         return self.convert_measurements(bitstrings)
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
@@ -202,16 +203,24 @@ class BackendCircuitPyquil(BackendCircuit):
         :param backend_result: array from pyquil as list of lists of integers.
         :return: backend_result in Tequila format.
         """
+        def string_to_array(s):
+            listing=[]
+            for letter in s:
+                if letter not in [',',' ','[',']']:
+                    listing.append(int(s))
+            return listing
+
+
         result = QubitWaveFunction()
         bit_dict={}
-        for b in backend_result:
+        for b in backend_result.values():
             try:
-                bit_dict[b]+=1
+                bit_dict[str(b)]+=1
             except:
-                bit_dict[b]=1
+                bit_dict[str(b)]=1
 
         for k,v in bit_dict.items():
-            result._state[BitString.from_array(k)]=v
+            result._state[BitString.from_array(string_to_array(k))]=v
         return result
 
 
