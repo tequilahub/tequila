@@ -49,7 +49,11 @@ class BackendCircuit():
                  use_mapping=True, optimize_circuit=True, *args, **kwargs):
 
         self.use_mapping = use_mapping
-
+        if noise_model is not None:
+            self.cc_max=True
+            self.recompile_controlled_phase=True
+            self.recompile_controlled_rotation=True
+            self.recompile_hadamard_power=True
         # compile the abstract_circuit
         c = compiler.Compiler(multitarget=self.recompile_multitarget,
                               multicontrol=False,

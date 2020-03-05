@@ -6,6 +6,7 @@ import qiskit
 import qiskit.providers.aer.noise as qiskitnoise
 
 
+
 def get_bit_flip(p):
     return qiskitnoise.pauli_error(noise_ops=[('X',p),('I',1-p)])
 

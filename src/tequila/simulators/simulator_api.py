@@ -9,7 +9,7 @@ from tequila.utils import to_float
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit"]
+SUPPORTED_NOISE_BACKENDS = ["qiskit",'pyquil']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -48,6 +48,7 @@ if HAS_QVM:
         HAS_PYQUIL = True
         INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
         INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+        INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
     except ImportError:
         HAS_PYQUIL = False
 else:

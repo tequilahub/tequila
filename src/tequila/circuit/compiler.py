@@ -340,7 +340,18 @@ def power_recursor(gate,cut=False) -> QCircuit:
         result += get_axbxc_decomp(again)
 
     elif cl is 2 and cut:
-        return QCircuit.wrap_gate(gate)
+        if gate.name in ['CCx','CCNOT','CCX','X']:
+            return QCircuit.wrap_gate(gate)
+        else:
+            v = type(gate)(name=gate.name, power=gate.power / 2, target=gate.target, control=gate.control[1])
+            result += get_axbxc_decomp(v)
+            result += CNOT(gate.control[0], gate.control[1])
+            vdag = type(gate)(name=gate.name, power=gate.power / 2, target=gate.target,
+                              control=gate.control[1]).dagger()
+            result += get_axbxc_decomp(vdag)
+            result += CNOT(gate.control[0], gate.control[1])
+            again = type(gate)(name=gate.name, power=gate.power / 2, target=gate.target, control=gate.control[0])
+            result += get_axbxc_decomp(again)
 
     else:
         v = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[-1])
@@ -351,11 +362,6 @@ def power_recursor(gate,cut=False) -> QCircuit:
         result += CNOT(target=gate.control[cl-1], control=gate.control[0:cl-1])
         rebuild= type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[:cl-1])
         result += power_recursor(gate=rebuild,cut=cut)
-
-        # the thing below works, actually, and may in fact be the better decomposition some portion of the time.
-        # we probably should do numerics about it.
-        # result +=RotationGateImpl(axis=gate.name,angle=numpy.pi*gate.power,control=gate.control,target=gate.target)
-        # result +=Phase(phase=numpy.pi *gate.power/2,target=gate.control[cl-1],control=gate.control[:cl-1])
 
     return result
 
