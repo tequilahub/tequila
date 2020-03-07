@@ -86,7 +86,6 @@ def test_phase_amp_damp(simulator, p):
 def test_depolarizing_error(simulator, p,controlled):
 
     cq=1
-
     qubit = 0
     H = paulis.Z(0)
     if controlled:

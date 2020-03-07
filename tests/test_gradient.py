@@ -49,6 +49,44 @@ def test_gradient_UY_HX(simulator, angle_value, controlled, silent=True):
         print("cos(angle)=", numpy.cos(angle()))
 
 
+@pytest.mark.parametrize("simulator", ['cirq','qiskit','pyquil'])
+@pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
+def test_gradient_UY_HX_sample(simulator, angle_value, controlled, silent=True):
+    # case X Y
+    # U = cos(angle/2) + sin(-angle/2)*i*Y
+    # <0|Ud H U |0> = cos^2(angle/2)*<0|X|0>
+    # + sin^2(-angle/2) <0|YXY|0>
+    # + cos(angle/2)*sin(angle/2)*i<0|XY|0>
+    # + sin(-angle/2)*cos(angle/2)*(-i) <0|YX|0>
+    # = cos^2*0 + sin^2*0 + cos*sin*i(<0|[XY,YX]|0>)
+    # = 0.5*sin(-angle)*i <0|[XY,YX]|0> = -0.5*sin(angle)*i * 2 i <0|Z|0>
+    # = sin(angle)
+
+    angle = Variable(name="angle")
+    variables = {angle: angle_value}
+
+    qubit = 0
+    H = paulis.X(qubit=qubit)
+    if controlled:
+        control = 1
+        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, angle=angle)
+    else:
+        U = gates.X(target=qubit) + gates.X(target=qubit)  + gates.Ry(target=qubit, angle=angle)
+    O = ExpectationValue(U=U, H=H)
+    E = simulate(O, variables=variables, backend=simulator,samples=10000)
+    print("O={type}".format(type=type(O)))
+    dO = grad(objective=O, variable=angle)
+    dE = simulate(dO, variables=variables, backend=simulator,samples=10000)
+    assert (numpy.isclose(E, numpy.sin(angle(variables)), atol=1.e-2))
+    assert (numpy.isclose(dE, numpy.cos(angle(variables)), atol=1.e-2))
+    if not silent:
+        print("E         =", E)
+        print("sin(angle)=", numpy.sin(angle()))
+        print("dE        =", dE)
+        print("cos(angle)=", numpy.cos(angle()))
+
+
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
