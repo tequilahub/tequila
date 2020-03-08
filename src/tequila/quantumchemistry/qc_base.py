@@ -354,6 +354,35 @@ class QuantumChemistryBase:
                                   charge=molecule.charge)
         return cls(parameters=parameters, transformation=transformation, molecule=molecule, *args, **kwargs)
 
+    def make_singlet_excitation_operator(self, p: int, q: int):
+        """
+        Parameters
+        -------
+        p : int :
+            spatial index
+        q : int :
+            spatial index
+        Returns
+        -------
+        Singlet excitation generator is:
+        Epq = a^\dagger_p(\alpha) a_q(\alpha) + a^\dagger_p(\beta) a_q(\beta)
+        this function returns then the hermitian version of the anti-hermitian generator of singlet excitations
+        1j*(E_{pq} - E^\dagger_{pq})
+        """
+        op = openfermion.FermionOperator(((2 * p, 1), (2 * q, 0)), 1.j)  # alpha
+        op += openfermion.FermionOperator(((2 * p + 1, 1), (2 * q + 1, 0)), 1.j)  # beta
+        op += openfermion.FermionOperator(((2 * q, 1), (2 * p, 0)), 1.j)  # dagger alpha
+        op += openfermion.FermionOperator(((2 * q + 1, 1), (2 * p + 1, 0)), 1.j)  # dagger beta
+
+        qop = QubitHamiltonian(hamiltonian=self.transformation(op))
+
+        # check if the operator is hermitian and cast coefficients to floats
+        assert qop.is_hermitian()
+        for k, v in qop.hamiltonian.terms.items():
+            qop.hamiltonian.terms[k] = to_float(v)
+
+        return qop
+
     def make_excitation_operator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
         """Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
         And gives it back multiplied with 1j to make it hermitian
@@ -505,7 +534,7 @@ class QuantumChemistryBase:
         """ """
         return self.molecule.get_n_beta_electrons()
 
-    def make_hamiltonian(self, occupied_indices = None, active_indices = None) -> QubitHamiltonian:
+    def make_hamiltonian(self, occupied_indices=None, active_indices=None) -> QubitHamiltonian:
         """ """
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
@@ -536,7 +565,7 @@ class QuantumChemistryBase:
                           initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
                           include_reference_ansatz=True,
                           parametrized=True,
-                          threshold = 1.e-8,
+                          threshold=1.e-8,
                           trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
 
         """
@@ -618,7 +647,6 @@ class QuantumChemistryBase:
                     for idx in spin_indices:
                         idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
                         generators.append(self.make_excitation_operator(indices=idx))
-
 
                     if parametrized:
                         variables.append(Variable(name=key))  # abab
