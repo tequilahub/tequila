@@ -68,10 +68,10 @@ except ImportError:
 HAS_CIRQ = True
 try:
     from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq
-
     HAS_CIRQ = True
     INSTALLED_SIMULATORS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
     INSTALLED_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
+    INSTALLED_NOISE_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
 except ImportError:
     HAS_CIRQ = False
 

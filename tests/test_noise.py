@@ -9,8 +9,8 @@ import numpy
 import pytest
 import tequila.simulators.simulator_api
 
-#@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit')])
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit'),tequila.simulators.simulator_api.pick_backend('pyquil')])
+
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_bit_flip(simulator, p):
 
@@ -25,21 +25,21 @@ def test_bit_flip(simulator, p):
 
 
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit'),tequila.simulators.simulator_api.pick_backend('pyquil')])
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_flip(simulator, p):
 
 
     qubit = 0
     H = paulis.Qm(qubit)
-    U = gates.Y(target=qubit)
+    U = gates.H(target=qubit)+gates.Z(target=qubit)+gates.H(target=qubit)
     O = ExpectationValue(U=U, H=H)
-    NM=PhaseFlip(p,['y'])
+    NM=PhaseFlip(p,['Z'])
     E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
     assert (numpy.isclose(E, 1.0-p, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit'),tequila.simulators.simulator_api.pick_backend('pyquil')])
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_damp(simulator, p):
 
@@ -53,7 +53,7 @@ def test_phase_damp(simulator, p):
     assert (numpy.isclose(E, 0.5, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit'),tequila.simulators.simulator_api.pick_backend('pyquil')])
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_amp_damp(simulator, p):
 
@@ -67,7 +67,7 @@ def test_amp_damp(simulator, p):
     assert (numpy.isclose(E, 1-p, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit'),tequila.simulators.simulator_api.pick_backend('pyquil')])
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_amp_damp(simulator, p):
 
@@ -80,7 +80,23 @@ def test_phase_amp_damp(simulator, p):
     E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
     assert (numpy.isclose(E, -1+2*p, atol=1.e-2))
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend('qiskit'),tequila.simulators.simulator_api.pick_backend('pyquil')])
+
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
+def test_phase_amp_damp_is_both(simulator, p):
+
+
+    qubit = 0
+    H = paulis.Z(0)
+    U = gates.X(target=qubit)
+    O = ExpectationValue(U=U, H=H)
+    NM1=PhaseDamp(1-p,['x'])+AmplitudeDamp(p,['x'])
+    E1 = simulate(O,backend=simulator,samples=100000,noise_model=NM1)
+    NM2 = PhaseAmplitudeDamp(p,1-p, ['x'])
+    E2 =simulate(O,backend=simulator,samples=100000,noise_model=NM2)
+    assert (numpy.isclose(E1,E2, atol=1.e-2))
+
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 @pytest.mark.parametrize('controlled',[False,True])
 def test_depolarizing_error(simulator, p,controlled):
@@ -98,3 +114,14 @@ def test_depolarizing_error(simulator, p,controlled):
 
     E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
     assert (numpy.isclose(E, -1+p, atol=1.e-2))
+
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
+def test_repetition_works(simulator, p):
+    qubit = 0
+    H = paulis.Qm(qubit)
+    U = gates.X(target=qubit)+gates.X(target=qubit)
+    O = ExpectationValue(U=U, H=H)
+    NM=BitFlip(p,['x'])
+    E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
+    assert (numpy.isclose(E, 2*(p-p*p), atol=1.e-2))

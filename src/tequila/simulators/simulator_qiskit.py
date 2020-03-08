@@ -11,7 +11,7 @@ def get_bit_flip(p):
     return qiskitnoise.pauli_error(noise_ops=[('X',p),('I',1-p)])
 
 def get_phase_flip(p):
-    return qiskitnoise.pauli_error(noise_ops=[('Y',p),('I',1-p)])
+    return qiskitnoise.pauli_error(noise_ops=[('Z',p),('I',1-p)])
 
 noise_lookup={
     'phase damp':qiskitnoise.phase_damping_error,

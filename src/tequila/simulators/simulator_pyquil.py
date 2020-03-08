@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import pyquil
 from pyquil import get_qc
-
+from pyquil.noise import combine_kraus_maps
 
 name_dict={
     'I':'I',
@@ -108,7 +108,7 @@ def bit_flip_map(p):
 
 def phase_flip_map(p):
     mat1 = np.array([[np.sqrt(1 - p), 0], [0, np.sqrt(1 - p)]])
-    mat2 = np.array([[0, -1.j*np.sqrt(p)], [1.j*np.sqrt(p), 0]])
+    mat2 = np.array([[np.sqrt(p), 0], [0, -np.sqrt(p)]])
     return [mat1, mat2]
 
 def phase_amp_damp_map(a,b):
@@ -231,7 +231,6 @@ class BackendCircuitPyquil(BackendCircuit):
         p=circuit
         p.wrap_in_numshots_loop(samples)
         stacked=qc.run(p)
-        #stacked=np.stack([v for v in result],axis=0)
         return self.convert_measurements(stacked)
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
@@ -307,16 +306,27 @@ class BackendCircuitPyquil(BackendCircuit):
 
     def get_noisy_prog(self,py_prog, noise_model):
         prog = py_prog
-
+        collected={}
+        for noise in noise_model.noises:
+            try:
+                collected[name_dict[noise.gate]]=combine_kraus_maps(noise_lookup[noise.name](*noise.probs),collected[name_dict[noise.gate]])
+                #raise TequilaPyquilException('Hi, sorry, cannot add multiple noises on the same gate at this time.')
+            except:
+                collected[name_dict[noise.gate]] = noise_lookup[noise.name](*noise.probs)
+        seen_already=[]
         for gate in prog:
-            for noise in noise_model.noises:
-                if name_dict[noise.gate] is not gate.name:
-                    pass
-                else:
-                    prog.define_noisy_gate(name_dict[noise.gate],
+                k=unitary_maker(gate)
+                if gate.name in collected.keys():
+                    if k not in seen_already:
+                        prog.define_noisy_gate(gate.name,
                                         gate.qubits,
-                        append_kraus_to_gate(noise_lookup[noise.name](*noise.probs),
-                                        unitary_maker(gate)))
+                        append_kraus_to_gate(collected[gate.name],
+                                        k))
+                        seen_already.append(k)
+                else:
+                    print(gate.name,' not in ',collected.keys())
+
+
         return prog
 
 

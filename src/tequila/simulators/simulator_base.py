@@ -205,7 +205,7 @@ class BackendCircuit():
             measure += Measurement(name=str(paulistring), target=qubits)
             circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
-            counts = self.do_sample(samples=samples, circuit=circuit)
+            counts = self.do_sample(samples=samples,circuit=circuit)
 
             # compute energy
             E = 0.0
@@ -220,7 +220,7 @@ class BackendCircuit():
 
     def sample(self, variables, samples,noise_model=None, *args, **kwargs):
         self.update_variables(variables=variables)
-        return self.do_sample(samples=samples, circuit=self.circuit)
+        return self.do_sample(samples=samples,circuit=self.circuit)
 
     def do_sample(self, variables, samples, circuit,*args, **kwargs) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
