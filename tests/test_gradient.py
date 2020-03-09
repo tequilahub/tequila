@@ -78,8 +78,8 @@ def test_gradient_UY_HX_sample(simulator, angle_value, controlled, silent=True):
     print("O={type}".format(type=type(O)))
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator,samples=10000)
-    assert (numpy.isclose(E, numpy.sin(angle(variables)), atol=1.e-2))
-    assert (numpy.isclose(dE, numpy.cos(angle(variables)), atol=1.e-2))
+    assert (numpy.isclose(E, numpy.sin(angle(variables)), atol=3.e-2))
+    assert (numpy.isclose(dE, numpy.cos(angle(variables)), atol=3.e-2))
     if not silent:
         print("E         =", E)
         print("sin(angle)=", numpy.sin(angle()))

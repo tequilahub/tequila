@@ -68,25 +68,6 @@ def test_one_qubit_wfn_really_works(simulator):
     assert (numpy.isclose(result.energy, -1.0,atol=1.e-2))
     assert (numpy.isclose(result.energy,simulate(objective=O,variables=result.angles)))
 
-
-@pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random",samples=1)])
-@pytest.mark.parametrize('method',['lbfgs'])
-def test_if_sampling_broken(simulator,method):
-    U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
-    H = tq.paulis.X(0)
-    O = tq.ExpectationValue(U=U, H=H)
-    result_1 = minimize(objective=O, maxiter=8, backend=simulator,acquisition=method)
-    check_e=result_1.history.energies
-    comparison=[]
-    for params in result_1.history.angles:
-        comparison.append(simulate(O,backend=simulator,samples=100000,variables=params))
-    for i in range(len(comparison)):
-        assert numpy.isclose(comparison[i],check_e[i],atol=0.1)
-
-
-
-@pytest.mark.skip("skipped for now")
 @pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
 def test_one_qubit_shot(simulator):

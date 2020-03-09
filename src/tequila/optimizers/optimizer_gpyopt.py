@@ -86,7 +86,7 @@ class GPyOptOptimizer(Optimizer):
         else:
             pass
         dom=self.get_domain(objective,passives)
-        init={v:np.pi for v in objective.extract_variables()}
+        init={v:np.random.uniform(0,2*np.pi) for v in objective.extract_variables()}
 
         O= compile_objective(objective=objective,variables=init, backend=backend,
                                                samples=samples)

@@ -359,16 +359,16 @@ def minimize(objective: Objective,
     if variables is None:
         variables = all_variables
     if initial_values is None:
-        initial_values = {k: 0.0 for k in all_variables}
+        initial_values = {k: numpy.random.uniform(0,2*numpy.pi) for k in all_variables}
     else:
         # autocomplete initial values, warn if you did
         detected = False
         for k in all_variables:
             if k not in initial_values:
-                initial_values[k] = 0.0
+                initial_values[k] = numpy.random.uniform(0,2*numpy.pi)
                 detected = True
         if detected and not silent:
-            print("WARNING: initial_variables given but not complete: Autocomplete with zeros")
+            print("WARNING: initial_variables given but not complete: Autocomplete with random number")
 
     optimizer = OptimizerSciPy(save_history=save_history,
                                maxiter=maxiter,

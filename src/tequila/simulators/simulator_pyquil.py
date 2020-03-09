@@ -329,8 +329,13 @@ class BackendCircuitPyquil(BackendCircuit):
 
         return prog
 
-
-
+    def update_variables(self, variables):
+        """
+        overwriting the underlying code so that noise gets added when present
+        """
+        self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
+        if self.noise_model is not None:
+            self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
 
 class BackendExpectationValuePyquil(BackendExpectationValue):
     BackendCircuitType = BackendCircuitPyquil

@@ -55,7 +55,6 @@ def test_one_qubit_wfn(simulator):
     result = tq.optimizers.optimizer_phoenics.minimize(objective=O, maxiter=8, backend=simulator)
     assert (numpy.isclose(result.energy, -1.0,atol=1.e-2))
 
-@pytest.mark.skip("skipped for now")
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
 def test_one_qubit_shot(simulator):

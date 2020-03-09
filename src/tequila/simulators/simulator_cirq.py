@@ -122,7 +122,7 @@ class BackendCircuitCirq(BackendCircuit):
                     counter._state[binary] = 1
             return counter
 
-    def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
+    def do_sample(self, samples,circuit, *args, **kwargs) -> QubitWaveFunction:
         return self.convert_measurements(cirq.sample(program=circuit, repetitions=samples))
 
     def fast_return(self, abstract_circuit):
@@ -193,7 +193,13 @@ class BackendCircuitCirq(BackendCircuit):
                         new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
         return cirq.Circuit.from_ops(new_ops)
 
-
+    def update_variables(self, variables):
+        """
+        overriding the underlying base to make sure this stuff remains noisy
+        """
+        self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
+        if self.noise_model is not None:
+            self.circuit=self.build_noise_model(self.noise_model)
 
 class BackendExpectationValueCirq(BackendExpectationValue):
     BackendCircuitType = BackendCircuitCirq

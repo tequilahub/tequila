@@ -244,9 +244,7 @@ def sample_objective(objective: 'Objective',
     evaluated = []
     for arg in compiled.args:
         if hasattr(arg, "H"):
-            E = 0.0
-            for ps in arg.H.paulistrings:
-                E += arg.sample_paulistring(variables=variables, samples=samples, paulistring=ps, *args, **kwargs)
+            E = arg.sample(variables=variables, samples=samples, *args, **kwargs)
             evaluated.append(E)
         else:
             evaluated.append(arg(variables))
