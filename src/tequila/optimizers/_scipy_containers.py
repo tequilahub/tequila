@@ -11,7 +11,7 @@ class _EvalContainer:
     This class is used by the SciPy optimizer and should not be used somewhere else
     """
 
-    def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True,
+    def __init__(self, objective, param_keys,passive_angles=None, samples=None, save_history=True,
                  silent: bool = True):
         self.objective = objective
         self.samples = samples
@@ -28,6 +28,7 @@ class _EvalContainer:
         angles = dict((self.param_keys[i], p[i]) for i in range(self.N))
         if self.passive_angles is not None:
             angles = {**angles, **self.passive_angles}
+
         E = self.objective(variables=angles, samples=self.samples)
         if not self.silent:
             print("E=", E, " angles=", angles, " samples=", self.samples)

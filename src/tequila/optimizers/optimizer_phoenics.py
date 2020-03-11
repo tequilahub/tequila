@@ -110,6 +110,7 @@ class PhoenicsOptimizer(Optimizer):
                  passives: typing.Dict[Variable,numbers.Real] = None,
                  samples: int = None,
                  backend: str = None,
+                 noise = None,
                  previous=None,
                  phoenics_config=None,
                  save_to_file=False,
@@ -144,7 +145,7 @@ class PhoenicsOptimizer(Optimizer):
         ### this line below just gets the damn compiler to run, since that argument is necessary
         init = {key:np.pi for key in objective.extract_variables()}
 
-        O= compile_objective(objective=objective,variables=init, backend=backend,
+        O= compile_objective(objective=objective,variables=init, backend=backend,noise_model=noise,
                                                samples=samples)
 
         best=None
@@ -206,6 +207,7 @@ def minimize(objective: Objective,
              variables: typing.List=None,
              initial_values: typing.Dict=None,
              backend: str = None,
+             noise = None,
              previous: typing.Union[str,list]=None,
              phoenics_config: typing.Union[str,typing.Dict]=None,
              save_to_file: bool=False,
@@ -230,6 +232,9 @@ def minimize(objective: Objective,
     backend: str :
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
+    noise: NoiseModel :
+         (Default value = None)
+         a noise model to apply to the circuits of Objective.
     previous:
         (Default value = None)
         Previous phoenics observations. If string, the name of a file from which to load them. Else, a list.
@@ -259,6 +264,6 @@ def minimize(objective: Objective,
             if k not in variables and k in all_vars:
                 passives[k]=v
     optimizer=PhoenicsOptimizer(samples=samples,backend=backend,maxiter=maxiter)
-    return optimizer(objective=objective,passives=passives,previous=previous,maxiter=maxiter,
+    return optimizer(objective=objective,passives=passives,previous=previous,maxiter=maxiter,noise=noise,
                          phoenics_config=phoenics_config,save_to_file=save_to_file,file_name=file_name)
 

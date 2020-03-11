@@ -11,9 +11,16 @@ from pyquil.noise import combine_kraus_maps
 
 name_dict={
     'I':'I',
-    'Rx':'RX',
+
+    'ry':'RY',
+    'rx':'RX',
+    'rz':'RZ',
     'Rz':'RZ',
     'Ry':'RY',
+    'Rx': 'RX',
+    'RZ': 'RZ',
+    'RY': 'RY',
+    'RX': 'RX',
     'X':'X',
     'x':'X',
     'Y': 'Y',
@@ -336,6 +343,7 @@ class BackendCircuitPyquil(BackendCircuit):
         self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
         if self.noise_model is not None:
             self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
-
+        print('letting you know, pyquil just built a circuit like')
+        print(self.circuit)
 class BackendExpectationValuePyquil(BackendExpectationValue):
     BackendCircuitType = BackendCircuitPyquil

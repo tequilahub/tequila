@@ -500,10 +500,14 @@ def hadamard_base(gate) ->QCircuit:
     if not hasattr(gate,'power') or gate.name not in ['H','h','hadamard']:
         return QCircuit.wrap_gate(gate)
     power=gate.power
-    a=power.wrap(a_calc)
-    b=power.wrap(b_calc)
-    theta=power.wrap(theta_calc)
-
+    if hasattr(power,'wrap'):
+        a=power.wrap(a_calc)
+        b=power.wrap(b_calc)
+        theta=power.wrap(theta_calc)
+    else:
+        a=a_calc(power)
+        b=b_calc(power)
+        theta=theta_calc(power)
     result = QCircuit()
 
     result += Rz(angle=b, target=gate.target)
@@ -518,10 +522,14 @@ def hadamard_axbxc(gate) -> QCircuit:
         return QCircuit.wrap_gate(gate)
     power=gate.power
     target=gate.target
-    a=power.wrap(a_calc)
-    b=power.wrap(b_calc)
-    theta=power.wrap(theta_calc)
-    phase=power*jnp.pi/2
+    if hasattr(power,'wrap'):
+        a=power.wrap(a_calc)
+        b=power.wrap(b_calc)
+        theta=power.wrap(theta_calc)
+    else:
+        a=a_calc(power)
+        b=b_calc(power)
+        theta=theta_calc(power)
 
     result = QCircuit()
 

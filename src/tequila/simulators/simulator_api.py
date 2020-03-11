@@ -174,7 +174,7 @@ def compile_objective(objective: 'Objective',
     """
 
     backend = pick_backend(backend=backend, samples=samples,noise=noise_model is not None)
-
+    print(backend)
     ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
     if hasattr(objective, "simulate"):
         for arg in objective.args:
@@ -244,7 +244,7 @@ def sample_objective(objective: 'Objective',
     evaluated = []
     for arg in compiled.args:
         if hasattr(arg, "H"):
-            E = arg.sample(variables=variables, samples=samples, *args, **kwargs)
+            E = arg.sample(variables=variables, samples=samples,*args, **kwargs)
             evaluated.append(E)
         else:
             evaluated.append(arg(variables))
@@ -461,7 +461,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
         # allow hashable types as keys without casting it to variables
         variables = {assign_variable(k): v for k, v in variables.items()}
 
-    backend = pick_backend(backend=backend, samples=samples)
+    backend = pick_backend(backend=backend,noise=noise_model is not None, samples=samples)
 
     if isinstance(objective, Objective) or hasattr(objective, "args"):
         return compile_objective(objective=objective, variables=variables, backend=backend,noise_model=noise_model)

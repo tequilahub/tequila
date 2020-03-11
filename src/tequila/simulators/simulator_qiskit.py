@@ -22,24 +22,24 @@ noise_lookup={
     'depolarizing':qiskitnoise.depolarizing_error
 }
 
+def translator(name):
+    if name not in ['rx','ry','rz','cry','crx','crz']:
+        return name
+    elif name in ['rx','ry','rz']:
+        return 'u3'
+    else:
+        return 'cu3'
 gate_qubit_lookup={
     'x':1,
     'y':1,
     'z':1,
     'h':1,
-    'rx': 1,
-    'ry': 1,
-    'rz': 1,
+    'u3':1,
     'cx': 2,
     'cy': 2,
     'cz': 2,
     'ch':2,
-    'crx': 2,
-    'cry': 2,
-    'crz': 2,
-    'Control':2,
-    'Single':1,
-    'doublecontrol':3,
+    'cu3':2,
     'ccx':3
 }
 
@@ -72,7 +72,10 @@ class BackendCircuitQiskit(BackendCircuit):
         self.classical_map = {i: self.c[j] for j, i in enumerate(qubits)}
         self.qubit_map = {i: self.q[j] for j, i in enumerate(qubits)}
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=self.noise_model, use_mapping=use_mapping, *args, **kwargs)
-
+        if self.noise_model is None:
+            self.ol=1
+        else:
+            self.ol=0
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         if self.noise_model is None:
             simulator = qiskit.Aer.get_backend("statevector_simulator")
@@ -87,8 +90,13 @@ class BackendCircuitQiskit(BackendCircuit):
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
-        simulator = qiskit.Aer.get_backend("qasm_simulator")
-        return self.convert_measurements(qiskit.execute(experiments=circuit, backend=simulator, shots=samples,
+        simulator = qiskit.providers.aer.QasmSimulator()
+        print('qiskit in here telling you its noise model')
+        print(self.noise_model)
+        print(circuit)
+
+        return self.convert_measurements(qiskit.execute(circuit, simulator, shots=samples,
+                                                        optimization_level=self.ol,
                                                         noise_model=self.noise_model))
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
@@ -126,7 +134,7 @@ class BackendCircuitQiskit(BackendCircuit):
             try:
                 gfunc = getattr(circuit, "cc" + gate.name.lower())
             except AttributeError:
-                raise TequilaQiskitException("Double controls are currenty only supported for CCX in quiskit")
+                raise TequilaQiskitException("Double controls are currenty only supported for CCX in Qiskit")
             gfunc(self.qubit_map[gate.control[0]], self.qubit_map[gate.control[1]], self.qubit_map[gate.target[0]])
         else:
             raise TequilaQiskitException("More than two control gates currently not supported")
@@ -166,13 +174,22 @@ class BackendCircuitQiskit(BackendCircuit):
     def noise_model_converter(self,nm):
         if nm is None:
             return None
-        qnoise=qiskitnoise.NoiseModel()
+        basis_gates = [k for k in gate_qubit_lookup.keys()]
+        basis_gates.extend(['id'])
+        qnoise=qiskitnoise.NoiseModel(basis_gates)
         for noise in nm.noises:
             op=noise_lookup[noise.name]
             if op is qiskitnoise.depolarizing_error:
-                active=op(noise.probs[0],gate_qubit_lookup[noise.gate.lower()])
+                active=op(noise.probs[0],gate_qubit_lookup[translator(noise.gate.lower())])
             else:
-                active=op(*noise.probs)
+                if gate_qubit_lookup[translator(noise.gate.lower())] ==1:
+                    active=op(*noise.probs)
+                else:
+                    active=op(*noise.probs)
+                    action=op(*noise.probs)
+                    for i in range(gate_qubit_lookup[translator(noise.gate.lower())]-1):
+                        active=active.tensor(action)
+
             if noise.gate is 'Control':
                 targets=['cx',
                          'cy',
@@ -181,19 +198,21 @@ class BackendCircuitQiskit(BackendCircuit):
                          'cry',
                          'crz',
                          'ch']
+
             elif noise.gate is 'Single':
                 targets=['x',
                          'y',
                          'z',
-                         'rx',
-                         'ry',
-                         'rz',
+                         'u3',
                          'h']
             elif noise.gate is 'multicontrol':
                 targets=['ccx']
             else:
-                targets=[noise.gate.lower()]
+                targets=[translator(noise.gate.lower())]
             qnoise.add_all_qubit_quantum_error(active,targets)
+            for t in targets:
+                qnoise.add_basis_gates(t)
+
         return qnoise
 
 

@@ -77,6 +77,7 @@ class GPyOptOptimizer(Optimizer):
                  passives: typing.Dict[Variable,numbers.Real] = None,
                  samples: int = None,
                  backend: str = None,
+                 noise = None,
                  acquisition: str = 'lbfgs') -> GPyOptReturnType :
         if self.samples is not None:
             if samples is None:
@@ -88,7 +89,7 @@ class GPyOptOptimizer(Optimizer):
         dom=self.get_domain(objective,passives)
         init={v:np.random.uniform(0,2*np.pi) for v in objective.extract_variables()}
 
-        O= compile_objective(objective=objective,variables=init, backend=backend,
+        O= compile_objective(objective=objective,variables=init, backend=backend,noise_model=noise,
                                                samples=samples)
 
         f = self.construct_function(O,objective,passives,samples)
@@ -97,7 +98,8 @@ class GPyOptOptimizer(Optimizer):
         if self.save_history:
             self.history.energies=opt.get_evaluations()[1].flatten()
             self.history.angles=[self.redictify(v,objective,passives) for v in opt.get_evaluations()[0]]
-        return GPyOptReturnType(energy=opt.fx_opt, angles=self.redictify(opt.x_opt,objective,passives),history=self.history, opt=opt)
+        return GPyOptReturnType(energy=opt.fx_opt, angles=self.redictify(opt.x_opt,objective,passives),
+                                history=self.history, opt=opt)
 
 def minimize(objective: Objective,
              maxiter: int,
@@ -105,6 +107,7 @@ def minimize(objective: Objective,
              variables: typing.List=None,
              initial_values: typing.Dict=None,
              backend: str = None,
+             noise =None,
              acquisition: str= 'lbfgs'
              ) -> GPyOptReturnType :
 
@@ -128,6 +131,9 @@ def minimize(objective: Objective,
     backend: str :
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
+    noise: NoiseModel :
+         (Default value = None)
+        a noise model to apply to the circuits of Objective.
     acquisition: str:
          (Default value = 'lbfgs')
          method of acquisition. Allowed arguments are 'lbfgs', 'DIRECT', and 'CMA'
@@ -148,6 +154,7 @@ def minimize(objective: Objective,
             if k not in variables and k in all_vars:
                 passives[k]=v
     optimizer=GPyOptOptimizer(samples=samples,backend=backend,maxiter=maxiter)
-    return optimizer(objective=objective,samples=samples,passives=passives,maxiter=maxiter,acquisition=acquisition
+    return optimizer(objective=objective,samples=samples,passives=passives,maxiter=maxiter,noise=noise,
+                     acquisition=acquisition
                          )
 

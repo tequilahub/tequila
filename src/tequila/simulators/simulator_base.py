@@ -98,7 +98,7 @@ class BackendCircuit():
         if samples is None:
             return self.simulate(variables=variables,noise_model=self.noise_model, *args, **kwargs)
         else:
-            return self.sample(variables=variables, samples=samples,noise_model=self.noise_model *args, **kwargs)
+            return self.sample(variables=variables, samples=samples,noise_model=self.noise_model, *args, **kwargs)
 
     def create_circuit(self, abstract_circuit: QCircuit, variables: typing.Dict[Variable, numbers.Real] = None):
         """

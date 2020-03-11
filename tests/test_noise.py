@@ -12,14 +12,20 @@ import tequila.simulators.simulator_api
 
 @pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
-def test_bit_flip(simulator, p):
+@pytest.mark.parametrize('controlled',[False,True])
+def test_bit_flip(simulator, p,controlled):
 
 
     qubit = 0
     H = paulis.Qm(qubit)
-    U = gates.X(target=qubit)
+    if controlled:
+        U = gates.X(target=1)+gates.CX(1,0)
+        NM = BitFlip(p, ['cx'])
+    else:
+        U = gates.X(target=0)
+        NM = BitFlip(p, ['x'])
     O = ExpectationValue(U=U, H=H)
-    NM=BitFlip(p,['x'])
+
     E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
     assert (numpy.isclose(E, 1.0-p, atol=1.e-2))
 
