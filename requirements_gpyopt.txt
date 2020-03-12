@@ -1,0 +1,17 @@
+### requirements for gpyopt optimizer
+
+cycler>=0.10.0
+decorator>=4.0.10
+numpy>=1.11.2
+six>=1.10.0
+python-dateutil>=2.6.0
+paramz>=0.7.0
+GPy>=1.8
+matplotlib>=1.5.3
+pyparsing==2.1.10
+pytz==2016.7
+scipy>=0.18.1
+mock>=2.0.0
+PyDOE >= 0.3.0
+sobol_seq >=0.1
+emcee==2.2.1
