@@ -6,11 +6,12 @@ import qiskit
 import qiskit.providers.aer.noise as qiskitnoise
 
 
+
 def get_bit_flip(p):
     return qiskitnoise.pauli_error(noise_ops=[('X',p),('I',1-p)])
 
 def get_phase_flip(p):
-    return qiskitnoise.pauli_error(noise_ops=[('Y',p),('I',1-p)])
+    return qiskitnoise.pauli_error(noise_ops=[('Z',p),('I',1-p)])
 
 noise_lookup={
     'phase damp':qiskitnoise.phase_damping_error,
@@ -91,7 +92,7 @@ class BackendCircuitQiskit(BackendCircuit):
                                                         noise_model=self.noise_model))
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
-        """
+        """0.
         :param qiskit_counts: qiskit counts as dictionary, states are binary in little endian (LSB)
         :return: Counts in OpenVQE format, states are big endian (MSB)
         """

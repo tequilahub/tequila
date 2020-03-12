@@ -9,7 +9,7 @@ from tequila.utils import to_float
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit"]
+SUPPORTED_NOISE_BACKENDS = ["qiskit",'pyquil']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -47,7 +47,8 @@ if HAS_QVM:
 
         HAS_PYQUIL = True
         INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-        # INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+        INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+        INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
     except ImportError:
         HAS_PYQUIL = False
 else:
@@ -67,10 +68,10 @@ except ImportError:
 HAS_CIRQ = True
 try:
     from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq
-
     HAS_CIRQ = True
     INSTALLED_SIMULATORS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
     INSTALLED_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
+    INSTALLED_NOISE_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
 except ImportError:
     HAS_CIRQ = False
 
@@ -243,9 +244,7 @@ def sample_objective(objective: 'Objective',
     evaluated = []
     for arg in compiled.args:
         if hasattr(arg, "H"):
-            E = 0.0
-            for ps in arg.H.paulistrings:
-                E += arg.sample_paulistring(variables=variables, samples=samples, paulistring=ps, *args, **kwargs)
+            E = arg.sample(variables=variables, samples=samples, *args, **kwargs)
             evaluated.append(E)
         else:
             evaluated.append(arg(variables))

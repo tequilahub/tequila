@@ -49,7 +49,11 @@ class BackendCircuit():
                  use_mapping=True, optimize_circuit=True, *args, **kwargs):
 
         self.use_mapping = use_mapping
-
+        if noise_model is not None:
+            self.cc_max=True
+            self.recompile_controlled_phase=True
+            self.recompile_controlled_rotation=True
+            self.recompile_hadamard_power=True
         # compile the abstract_circuit
         c = compiler.Compiler(multitarget=self.recompile_multitarget,
                               multicontrol=False,
@@ -171,10 +175,9 @@ class BackendCircuit():
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
-    def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int, paulistring,  *args,
+    def sample_paulistring(self, samples: int, paulistring,  *args,
                            **kwargs) -> numbers.Real:
         # make basis change and translate to backend
-
         basis_change = QCircuit()
         not_in_u = [] # all indices of the paulistring which are not part of the circuit i.e. will always have the same outcome
         qubits = []
@@ -201,8 +204,7 @@ class BackendCircuit():
             measure += Measurement(name=str(paulistring), target=qubits)
             circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
-            counts = self.do_sample(samples=samples, circuit=circuit)
-
+            counts = self.do_sample(samples=samples,circuit=circuit)
             # compute energy
             E = 0.0
             n_samples = 0
@@ -214,11 +216,17 @@ class BackendCircuit():
             E = E / samples * paulistring.coeff
             return E
 
-    def sample(self, variables, samples,noise_model=None, *args, **kwargs):
-        self.update_variables(variables=variables)
-        return self.do_sample(samples=samples, circuit=self.circuit)
+    def sample(self, variables, samples,*args, **kwargs):
+        self.update_variables(variables)
+        E = 0.0
+        if hasattr(self,'H'):
+            for ps in self.H.paulistrings:
+                E += self.sample_paulistring(samples=samples, paulistring=ps,*args, **kwargs)
+            return E
+        else:
+            return self.do_sample(samples=samples,circuit=self.circuit)
 
-    def do_sample(self, variables, samples, circuit,*args, **kwargs) -> QubitWaveFunction:
+    def do_sample(self, samples, circuit,noise_model,*args, **kwargs) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     # Those functions need to be overwritten:
@@ -318,10 +326,11 @@ class BackendExpectationValue:
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)
 
-    def sample(self, variables, samples, *args, **kwargs):
+    def sample(self, variables, samples,*args, **kwargs):
+        self.update_variables(variables)
         E = 0.0
         for ps in self.H.paulistrings:
-            E += self.sample_paulistring(variables=variables, samples=samples, paulistring=ps, *args, **kwargs)
+            E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
         return E
 
     def simulate(self, variables, *args, **kwargs):
@@ -339,7 +348,7 @@ class BackendExpectationValue:
             if self.H.qubits != self.U.qubits:
                 raise TequilaException(
                     "Can not compute expectation value without using qubit mappings."
-                    " Your Hamiltonian and your Unitary act not on the same set of qubits. "
+                    " Your Hamiltonian and your Unitary do not act on the same set of qubits. "
                     "Hamiltonian acts on {}, Unitary acts on {}".format(
                         self.H.qubits, self.U.qubits))
             keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
@@ -350,6 +359,6 @@ class BackendExpectationValue:
 
         return to_float(final_E)
 
-    def sample_paulistring(self, variables: typing.Dict[Variable, numbers.Real], samples: int,
+    def sample_paulistring(self, samples: int,
                            paulistring) -> numbers.Real:
-        return self.U.sample_paulistring(variables=variables, samples=samples, paulistring=paulistring)
+        return self.U.sample_paulistring(samples=samples, paulistring=paulistring)

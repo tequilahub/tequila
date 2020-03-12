@@ -57,7 +57,6 @@ def test_one_qubit_wfn(simulator):
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, backend=simulator, silent=True)
     assert (numpy.isclose(result.energy, -1.0))
 
-@pytest.mark.skip("shot based optimization is too bad to be tested")
 @pytest.mark.parametrize("simulator", samplers)
 def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])

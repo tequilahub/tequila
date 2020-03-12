@@ -93,7 +93,7 @@ class PhoenicsOptimizer(Optimizer):
         if passives is not None:
             for i, thing in enumerate(op):
                 if thing in passives.keys():
-                    del op[i]
+                    op.remove(thing)
 
         config={"general": {"auto_desc_gen": "False","batches":int(np.log2(mp.cpu_count())),"boosted":"False","parallel":"True"}}
         config['parameters']=[{'name':k, 'periodic':'True','type':'continuous','size':1,'low':0,'high':2*pi} for k in op]

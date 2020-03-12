@@ -1,19 +1,19 @@
 import pytest, numpy
 import tequila as tq
 import multiprocessing as mp
+from tequila.simulators.simulator_api import simulate
 try:
-    from tequila.optimizers.optimizer_phoenics import minimize as minimize
-    has_phoenics=True
+    from tequila.optimizers.optimizer_gpyopt import minimize as minimize
+    has_gpyopt=True
 except:
-    has_phoenics=False
+    has_gpyopt=False
 
 @pytest.mark.dependencies
 def test_dependencies():
-    import scipy
-    assert(tq.has_phoenics)
+    assert(tq.has_gpyopt)
 
 
-@pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
+@pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
 def test_execution(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
@@ -29,7 +29,7 @@ def test_execution(simulator):
     O = tq.ExpectationValue(U=U, H=H)
     result = minimize(objective=O, maxiter=1, backend=simulator)
 
-@pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
+@pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
@@ -44,25 +44,35 @@ def test_execution_shot(simulator):
     O = tq.ExpectationValue(U=U, H=H)
     mi=2
     result = minimize(objective=O, maxiter=mi, backend=simulator)
+    print(result.history.energies)
     assert (len(result.history.energies) <= mi*mp.cpu_count())
 
-@pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
+@pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
-def test_one_qubit_wfn(simulator):
+@pytest.mark.parametrize('method',['lbfgs','DIRECT','CMA'])
+def test_one_qubit_wfn(simulator,method):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = tq.optimizers.optimizer_phoenics.minimize(objective=O, maxiter=8, backend=simulator)
+    result = minimize(objective=O, maxiter=8, backend=simulator,acquisition=method)
     assert (numpy.isclose(result.energy, -1.0,atol=1.e-2))
 
-@pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
+
+@pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
+@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+def test_one_qubit_wfn_really_works(simulator):
+    U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
+    H = tq.paulis.X(0)
+    O = tq.ExpectationValue(U=U, H=H)
+    result = minimize(objective=O, maxiter=8, backend=simulator)
+    assert (numpy.isclose(result.energy, -1.0,atol=1.e-2))
+    assert (numpy.isclose(result.energy,simulate(objective=O,variables=result.angles)))
+
+@pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
 def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = minimize(objective=O, maxiter=3, backend=simulator, samples=10000)
+    result = minimize(objective=O, maxiter=20, backend=simulator, samples=10000)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-2))
-
-
-
