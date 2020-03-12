@@ -131,3 +131,4 @@ def test_repetition_works(simulator, p):
     NM=BitFlip(p,['x'])
     E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
     assert (numpy.isclose(E, 2*(p-p*p), atol=1.e-2))
+

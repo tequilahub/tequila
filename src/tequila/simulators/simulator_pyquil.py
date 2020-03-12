@@ -8,23 +8,24 @@ import numpy as np
 import pyquil
 from pyquil import get_qc
 from pyquil.noise import combine_kraus_maps
+import warnings
 
 name_dict={
     'I':'I',
 
-    'ry':'RY',
-    'rx':'RX',
-    'rz':'RZ',
-    'Rz':'RZ',
-    'Ry':'RY',
-    'Rx': 'RX',
-    'RZ': 'RZ',
-    'RY': 'RY',
-    'RX': 'RX',
+    'ry':'parametrized',
+    'rx':'parametrized',
+    'rz':'parametrized',
+    'Rz':'parametrized',
+    'Ry':'parametrized',
+    'Rx': 'parametrized',
+    'RZ': 'parametrized',
+    'RY': 'parametrized',
+    'RX': 'parametrized',
     'X':'X',
     'x':'X',
-    'Y': 'Y',
-    'y': 'Y',
+    'Y':'Y',
+    'y':'Y',
     'Z': 'Z',
     'z': 'Z',
     'Cz':'CZ',
@@ -37,7 +38,8 @@ name_dict={
     'CCx':'CCNOT',
     'H':'H',
     'h':'H',
-    'Phase':'PHASE'
+    'Phase':'parametrized',
+    'PHASE':'parametrized'
 }
 
 gate_qubit_lookup={
@@ -313,6 +315,7 @@ class BackendCircuitPyquil(BackendCircuit):
 
     def get_noisy_prog(self,py_prog, noise_model):
         prog = py_prog
+        new= pyquil.Program()
         collected={}
         for noise in noise_model.noises:
             try:
@@ -320,21 +323,28 @@ class BackendCircuitPyquil(BackendCircuit):
                 #raise TequilaPyquilException('Hi, sorry, cannot add multiple noises on the same gate at this time.')
             except:
                 collected[name_dict[noise.gate]] = noise_lookup[noise.name](*noise.probs)
-        seen_already=[]
+        done=[]
         for gate in prog:
-                k=unitary_maker(gate)
-                if gate.name in collected.keys():
-                    if k not in seen_already:
-                        prog.define_noisy_gate(gate.name,
-                                        gate.qubits,
-                        append_kraus_to_gate(collected[gate.name],
-                                        k))
-                        seen_already.append(k)
+                new.inst(gate)
+                if name_dict[gate.name] in collected.keys():
+                    if name_dict[gate.name] is 'parametrized':
+                        new.inst([pyquil.gates.I(q) for q in gate.qubits])
+                        if 'parametrized' not in done:
+                            new.define_noisy_gate('I',
+                                                  prog.get_qubits(),
+                                                  append_kraus_to_gate(collected[name_dict[gate.name]],np.eye(2)))
+                            done.append(name_dict[gate.name])
+                    else:
+                        k = unitary_maker(gate)
+                        if name_dict[gate.name] not in done:
+                            prog.define_noisy_gate(gate.name,
+                                                   prog.get_qubits(),
+                                                   append_kraus_to_gate(collected[name_dict[gate.name]],k))
+                            done.append(name_dict[gate.name])
+
                 else:
-                    print(gate.name,' not in ',collected.keys())
-
-
-        return prog
+                    pass
+        return new
 
     def update_variables(self, variables):
         """
@@ -343,7 +353,6 @@ class BackendCircuitPyquil(BackendCircuit):
         self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
         if self.noise_model is not None:
             self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
-        print('letting you know, pyquil just built a circuit like')
-        print(self.circuit)
+
 class BackendExpectationValuePyquil(BackendExpectationValue):
     BackendCircuitType = BackendCircuitPyquil

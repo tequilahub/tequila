@@ -26,7 +26,7 @@ type_lookup={
     'z': [cirq.ops.pauli_gates._PauliZ,cirq.ops.common_gates.ZPowGate],
     'rz': [cirq.ops.common_gates.ZPowGate],
     'h': [cirq.ops.common_gates.HPowGate],
-    'crx':[cirq.ops.common_gates.XPowGate],
+    'crx':[cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate],
     'cry': [cirq.ops.common_gates.YPowGate],
     'crz': [cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.CZPowGate],
     'cx': [cirq.ops.pauli_gates._PauliX, cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate],

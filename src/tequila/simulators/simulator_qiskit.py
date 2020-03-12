@@ -86,14 +86,11 @@ class BackendCircuitQiskit(BackendCircuit):
             # there is a keyword for the backend for tolerance on norm
             # circuit.initialize(normed_array)
             raise TequilaQiskitException("initial state for Qiskit not yet supported here")
-        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator,noise_model=self.noise_model).result()
+        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
         simulator = qiskit.providers.aer.QasmSimulator()
-        print('qiskit in here telling you its noise model')
-        print(self.noise_model)
-        print(circuit)
 
         return self.convert_measurements(qiskit.execute(circuit, simulator, shots=samples,
                                                         optimization_level=self.ol,

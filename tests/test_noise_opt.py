@@ -1,12 +1,10 @@
 from tequila.circuit import gates
 from tequila.objective import ExpectationValue
-from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
-from tequila import simulate
-import tequila
 from tequila.circuit.noise import BitFlip,PhaseDamp,PhaseFlip,AmplitudeDamp,PhaseAmplitudeDamp,DepolarizingError
 import numpy
 import pytest
+from tequila.simulators.simulator_api import INSTALLED_SAMPLERS
 import tequila.simulators.simulator_api
 import tequila as tq
 
