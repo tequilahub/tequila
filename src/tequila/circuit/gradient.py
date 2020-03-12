@@ -1,5 +1,5 @@
 from tequila.circuit.compiler import compile_controlled_rotation
-from tequila.circuit._gates_impl import RotationGateImpl,PhaseGateImpl
+from tequila.circuit._gates_impl import RotationGateImpl,PhaseGateImpl,GaussianGateImpl
 from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget,compile_power_gate,compile_controlled_phase,compile_h_power
 from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable
 from tequila import TequilaException
@@ -168,6 +168,11 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     elif hasattr(g,'phase'):
         neo_a = PhaseGateImpl(phase=shift_a,target=g.target,control=g.control)
         neo_b = PhaseGateImpl(phase=shift_b, target=g.target, control=g.control)
+    elif hasattr(g,'generator'):
+        neo_a = GaussianGateImpl(angle=shift_a, generator=g.generator, control=g.control, shift=g.shift, steps=g.steps)
+        neo_b = GaussianGateImpl(angle=shift_b, generator=g.generator, control=g.control, shift=g.shift, steps=g.steps)
+    else:
+        raise TequilaException("Unknown gate type for shift rule {}".format(g))
 
     U1 = unitary.replace_gate(position=i, gates=[neo_a])
     w1 = g.shift * __grad_inner(g.parameter, variable)

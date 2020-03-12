@@ -13,6 +13,7 @@ from dataclasses import dataclass
 UnionList = typing.Union[typing.Iterable[numbers.Integral], numbers.Integral]
 UnionParam = typing.Union[Variable, FixedVariable]
 
+
 class QGateImpl:
 
     @property
@@ -59,6 +60,7 @@ class QGateImpl:
         :return: True if the gate can be expressed as the complex exponential of a hermitian generator, AND has been compiled into said form.
         '''
         return False
+
     def is_parametrized(self) -> bool:
         """
         :return: True if the gate is parametrized
@@ -149,7 +151,6 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     @property
     def parameter(self):
         return self._parameter
-
 
     @parameter.setter
     def parameter(self, other):
@@ -251,11 +252,12 @@ class RotationGateImpl(ParametrizedGateImpl):
     def is_gaussian(self):
         return True
 
+
 class PhaseGateImpl(ParametrizedGateImpl):
 
-    def __init__(self,phase,target: list, control, list= None):
+    def __init__(self, phase, target: list, control, list=None):
         assert (phase is not None)
-        super().__init__(name='Phase',parameter=phase,target=target,control=control)
+        super().__init__(name='Phase', parameter=phase, target=target, control=control)
 
     def dagger(self):
         result = copy.deepcopy(self)
@@ -281,11 +283,13 @@ class PhaseGateImpl(ParametrizedGateImpl):
     @property
     def shift(self):
         return 1.
+
+
 class PowerGateImpl(ParametrizedGateImpl):
 
     @property
     def power(self):
-            return self.parameter
+        return self.parameter
 
     @power.setter
     def power(self, other):
@@ -296,6 +300,45 @@ class PowerGateImpl(ParametrizedGateImpl):
 
     def dagger(self):
         result = copy.deepcopy(self)
+        return result
+
+
+class GaussianGateImpl(ParametrizedGateImpl):
+    """
+    A gate which behaves 'gaussian'
+     - its generator only has two distinguishable eigenvalues
+     - it is then differentiable by the shift rule
+     - shift needs to be given upon initialization (otherwise its default is 1/2)
+     - the generator will not be verified to fullfill the properties
+     Compiling will be done in analogy to a trotterized gate with steps=1 as default
+
+    The gate will act in the same way as rotations and exppauli gates
+    exp(-i angle/2 generator)
+    """
+
+    def is_gaussian(self):
+        return True
+
+    @staticmethod
+    def extract_targets(generator):
+        targets = []
+        for ps in generator.paulistrings:
+            targets += [k for k in ps.keys()]
+        return tuple(set(targets))
+
+    @property
+    def shift(self):
+        return self._shift
+
+    def __init__(self, angle, generator, control, shift, steps):
+        super().__init__(name="GaussianGate", parameter=angle, target=self.extract_targets(generator), control=control)
+        self._shift = shift
+        self.steps = steps
+        self.generator = generator
+
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result._parameter = assign_variable(-self.parameter)
         return result
 
 
@@ -315,7 +358,8 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         return result
 
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None):
-        super().__init__(name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control, parameter=angle)
+        super().__init__(name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control,
+                         parameter=angle)
         self.paulistring = paulistring
         self.finalize()
 
@@ -329,12 +373,14 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         result += ")"
         return result
 
+
 @dataclass
 class TrotterParameters:
     threshold: float = 0.0
     join_components: bool = True
     randomize_component_order: bool = False
     randomize: bool = False
+
 
 class TrotterizedGateImpl(QGateImpl):
 
@@ -408,5 +454,5 @@ class TrotterizedGateImpl(QGateImpl):
         angles = []
         for angle in self.angles:
             angles.append(-angle)
-        result.angles=angles
+        result.angles = angles
         return result

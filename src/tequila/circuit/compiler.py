@@ -29,6 +29,7 @@ class Compiler:
                  multitarget=True,
                  multicontrol=False,
                  trotterized=True,
+                 gaussian=True,
                  exponential_pauli=True,
                  controlled_exponential_pauli=True,
                  hadamard_power=True,
@@ -44,6 +45,7 @@ class Compiler:
                  ):
         self.multitarget = multitarget
         self.multicontrol = multicontrol
+        self.gaussian = gaussian
         self.trotterized = trotterized
         self.exponential_pauli = exponential_pauli
         self.controlled_exponential_pauli = controlled_exponential_pauli
@@ -91,6 +93,8 @@ class Compiler:
             # first the real multi-target gates
             if controlled or self.trotterized:
                 cg = compile_trotterized_gate(gate=cg)
+            if controlled or self.gaussian:
+                cg = compile_gaussian_gate(gate=cg)
             if controlled or self.exponential_pauli:
                 cg = compile_exponential_pauli_gate(gate=cg)
             if self.swap:
@@ -774,6 +778,14 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
 
     return circuit
 
+@compiler
+def compile_gaussian_gate(gate, compile_exponential_pauli:bool = False):
+    if not hasattr(gate, "generator"):
+        return QCircuit.wrap_gate(gate)
+    if not hasattr(gate, "shift"):
+        return QCircuit.wrap_gate(gate)
+
+    return do_compile_trotterized_gate(generator=gate.generator, steps=gate.steps, randomize=False, factor=gate.parameter, control=gate.control)
 
 @compiler
 def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
