@@ -54,13 +54,6 @@ class QGateImpl:
         else:
             return False
 
-    def is_gaussian(self) -> bool:
-        '''
-
-        :return: True if the gate can be expressed as the complex exponential of a hermitian generator, AND has been compiled into said form.
-        '''
-        return False
-
     def is_parametrized(self) -> bool:
         """
         :return: True if the gate is parametrized
@@ -160,9 +153,6 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         super().__init__(name=name, target=target, control=control)
         self._parameter = assign_variable(variable=parameter)
 
-    def is_gaussian(self):
-        return False
-
     def is_parametrized(self) -> bool:
         return True
 
@@ -249,9 +239,6 @@ class RotationGateImpl(ParametrizedGateImpl):
         result._parameter = assign_variable(-self.angle)
         return result
 
-    def is_gaussian(self):
-        return True
-
 
 class PhaseGateImpl(ParametrizedGateImpl):
 
@@ -277,8 +264,6 @@ class PhaseGateImpl(ParametrizedGateImpl):
         result.phase *= power
         return result
 
-    def is_gaussian(self):
-        return True
 
     @property
     def shift(self):
@@ -315,9 +300,6 @@ class GaussianGateImpl(ParametrizedGateImpl):
     The gate will act in the same way as rotations and exppauli gates
     exp(-i angle/2 generator)
     """
-
-    def is_gaussian(self):
-        return True
 
     @staticmethod
     def extract_targets(generator):
@@ -372,9 +354,6 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         result += ", paulistring=" + str(self.paulistring)
         result += ")"
         return result
-
-    def is_gaussian(self):
-        return True
 
     @property
     def shift(self):

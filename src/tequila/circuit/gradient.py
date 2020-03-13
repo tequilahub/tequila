@@ -1,6 +1,7 @@
 from tequila.circuit.compiler import compile_controlled_rotation
-from tequila.circuit._gates_impl import RotationGateImpl,PhaseGateImpl,GaussianGateImpl
-from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget,compile_power_gate,compile_controlled_phase,compile_h_power
+from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, GaussianGateImpl
+from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget, \
+    compile_power_gate, compile_controlled_phase, compile_h_power
 from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable
 from tequila import TequilaException
 
@@ -131,15 +132,15 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
             if g.is_controlled():
                 raise TequilaException("controlled gate in gradient: Compiler was not called")
             if variable in g.extract_variables():
-                if g.is_gaussian():
+                if hasattr(g, "shift"):
                     dOinc = __grad_gaussian(unitary, g, i, variable, hamiltonian)
                     if dO is None:
                         dO = dOinc
                     else:
                         dO = dO + dOinc
                 else:
-                    print(g,type(g))
-                    raise TequilaException('only the gradients of Gaussian gates can be calculated. Got gate {}'.format(g))
+                    print(g, type(g))
+                    raise TequilaException('No shift found for gate {}'.format(g))
     if dO is None:
         raise TequilaException("caught None type in gradient")
     return dO
@@ -157,28 +158,18 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     :return: an Objective, whose calculation yields the gradient of g w.r.t variable
     '''
 
-    if not g.is_gaussian():
-        raise TequilaException('Only parametrized gaussian gates are differentiable; recieved gate of type ' + str(type(g)))
-    shift_a = g._parameter + np.pi /(4*g.shift)
+    if not hasattr(g, "shift"):
+        raise TequilaException("No shift found for gate {}".format(g))
+
+    shift_a = g._parameter + np.pi / (4 * g.shift)
     shift_b = g._parameter - np.pi / (4 * g.shift)
-    if hasattr(g,'angle'):
-        neo_a = copy.deepcopy(g)
-        neo_a._parameter = shift_a
-        neo_b = copy.deepcopy(g)
-        neo_b._parameter = shift_b
-    elif hasattr(g,'phase'):
-        neo_a = PhaseGateImpl(phase=shift_a,target=g.target,control=g.control)
-        neo_b = PhaseGateImpl(phase=shift_b, target=g.target, control=g.control)
-    elif hasattr(g,'generator'):
-        neo_a = GaussianGateImpl(angle=shift_a, generator=g.generator, control=g.control, shift=g.shift, steps=g.steps)
-        neo_b = GaussianGateImpl(angle=shift_b, generator=g.generator, control=g.control, shift=g.shift, steps=g.steps)
-    else:
-        raise TequilaException("Unknown gate type for shift rule {}".format(g))
+    neo_a = copy.deepcopy(g)
+    neo_a._parameter = shift_a
+    neo_b = copy.deepcopy(g)
+    neo_b._parameter = shift_b
 
     U1 = unitary.replace_gate(position=i, gates=[neo_a])
     w1 = g.shift * __grad_inner(g.parameter, variable)
-
-
 
     U2 = unitary.replace_gate(position=i, gates=[neo_b])
     w2 = -g.shift * __grad_inner(g.parameter, variable)
@@ -187,5 +178,3 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
     dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
     return dOinc
-
-
