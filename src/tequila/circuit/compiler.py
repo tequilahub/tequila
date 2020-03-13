@@ -5,15 +5,13 @@ Replace with fancier external packages at some point
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx,Ry, H, X, Rz, ExpPauli,CNOT,Phase,T,Z,Y
-from tequila.circuit._gates_impl import RotationGateImpl, QGateImpl, MeasurementImpl, ExponentialPauliGateImpl, TrotterizedGateImpl,PowerGateImpl
+from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, MeasurementImpl, ExponentialPauliGateImpl, TrotterizedGateImpl,PowerGateImpl
 from tequila.utils import to_float
 from tequila import Variable
 from tequila import Objective
 from tequila.objective.objective import ExpectationValueImpl
-from tequila.autograd_imports import jax
 from tequila.autograd_imports import numpy as jnp
 from tequila.autograd_imports import numpy
-#from jax import numpy as jnp
 from jax.numpy import pi as pi
 
 import copy, typing
@@ -233,11 +231,11 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
     if not gate.is_controlled():
         return QCircuit.wrap_gate(gate)
 
-    if not hasattr(gate, "angle"):
+    if not isinstance(gate, RotationGateImpl):
         return QCircuit.wrap_gate(gate)
 
     if angles is None:
-        angles = [gate.angle / 2, -gate.angle / 2]
+        angles = [gate.parameter / 2, -gate.parameter / 2]
 
     if len(gate.target) > 1:
         return compile_controlled_rotation(gate=compile_multitarget(gate=gate), angles=angles)
@@ -267,16 +265,16 @@ def compile_to_cc(gate) -> QCircuit:
     name=gate.name
     back=QCircuit()
     if name in ['X','x','Y','y','Z','z','H','h']:
-        if hasattr(gate,'power'):
-            power=gate.power
+        if isinstance(gate, PowerGateImpl):
+            power=gate.parameter
         else:
             power=1.0
         new=PowerGateImpl(name=name,power=power,target=target,control=control)
         back += compile_power_gate(gate=new,cut=True)
-    elif hasattr(gate,'angle'):
+    elif isinstance(gate, RotationGateImpl):
         partial=compile_controlled_rotation(gate=gate)
         back += compile_to_cc(gate=partial)
-    elif hasattr(gate,'phase'):
+    elif isinstance(g, PhaseGateImpl):
         partial=compile_controlled_phase(gate=gate)
         back += compile_to_cc(gate=partial)
     else:
@@ -312,7 +310,7 @@ def compile_toffoli(gate) -> QCircuit:
 
 @compiler
 def compile_power_gate(gate,cut=False) -> QCircuit:
-    if not hasattr(gate,'power'):
+    if not isinstance(gate, PowerGateImpl):
         return QCircuit.wrap_gate(gate)
     if gate.name.lower() in ['h','hadamard']:
         return QCircuit.wrap_gate(gate=gate)
@@ -337,46 +335,46 @@ def power_recursor(gate,cut=False) -> QCircuit:
         return get_axbxc_decomp(gate=gate)
 
     elif cl is 2 and not cut:
-        v = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[1])
+        v = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[1])
         result += get_axbxc_decomp(v)
         result += CNOT(gate.control[0], gate.control[1])
-        vdag = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[1]).dagger()
+        vdag = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[1]).dagger()
         result += get_axbxc_decomp(vdag)
         result += CNOT(gate.control[0], gate.control[1])
-        again= type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[0])
+        again= type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[0])
         result += get_axbxc_decomp(again)
 
     elif cl is 2 and cut:
         if gate.name in ['CCx','CCNOT','CCX','X']:
             return QCircuit.wrap_gate(gate)
         else:
-            v = type(gate)(name=gate.name, power=gate.power / 2, target=gate.target, control=gate.control[1])
+            v = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[1])
             result += get_axbxc_decomp(v)
             result += CNOT(gate.control[0], gate.control[1])
-            vdag = type(gate)(name=gate.name, power=gate.power / 2, target=gate.target,
+            vdag = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target,
                               control=gate.control[1]).dagger()
             result += get_axbxc_decomp(vdag)
             result += CNOT(gate.control[0], gate.control[1])
-            again = type(gate)(name=gate.name, power=gate.power / 2, target=gate.target, control=gate.control[0])
+            again = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[0])
             result += get_axbxc_decomp(again)
 
     else:
-        v = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[-1])
+        v = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[-1])
         result += get_axbxc_decomp(v)
         result += CNOT(target=gate.control[cl-1], control=gate.control[0:cl-1])
-        vdag = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[-1]).dagger()
+        vdag = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[-1]).dagger()
         result += get_axbxc_decomp(vdag)
         result += CNOT(target=gate.control[cl-1], control=gate.control[0:cl-1])
-        rebuild= type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[:cl-1])
+        rebuild= type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[:cl - 1])
         result += power_recursor(gate=rebuild,cut=cut)
 
     return result
 
 @compiler
 def compile_power_base(gate):
-    if not hasattr(gate,'power'):
+    if not isinstance(gate, PowerGateImpl):
         return QCircuit.wrap_gate(gate)
-    power=gate.power
+    power=gate.parameter
     if gate.name in['H','h','Hadamard','hadamard']:
         return compile_h_power(gate=gate)
     if gate.name is 'X':
@@ -412,9 +410,9 @@ def compile_power_base(gate):
 
 @compiler
 def get_axbxc_decomp(gate):
-    if not hasattr(gate,'power') or gate.name not in ['X','Y','Z']:
+    if not isinstance(gate, PowerGateImpl) or gate.name not in ['X','Y','Z']:
         return QCircuit.wrap_gate(gate)
-    power=gate.power
+    power=gate.parameter
     target=gate.target
     result=QCircuit()
     if gate.name is 'X':
@@ -495,7 +493,7 @@ def get_axbxc_decomp(gate):
 
 @compiler
 def compile_h_power(gate) -> QCircuit:
-    if not hasattr(gate,'power') or gate.name not in ['H','h','hadamard']:
+    if not isinstance(gate, PowerGateImpl) or gate.name not in ['H','h','hadamard']:
         return QCircuit.wrap_gate(gate)
 
     if not gate.is_controlled():
@@ -504,9 +502,9 @@ def compile_h_power(gate) -> QCircuit:
 
 @compiler
 def hadamard_base(gate) ->QCircuit:
-    if not hasattr(gate,'power') or gate.name not in ['H','h','hadamard']:
+    if not isinstance(gate, PowerGateImpl) or gate.name not in ['H','h','hadamard']:
         return QCircuit.wrap_gate(gate)
-    power=gate.power
+    power=gate.parameter
     a=power.wrap(a_calc)
     b=power.wrap(b_calc)
     theta=power.wrap(theta_calc)
@@ -521,9 +519,9 @@ def hadamard_base(gate) ->QCircuit:
 
 @compiler
 def hadamard_axbxc(gate) -> QCircuit:
-    if not hasattr(gate,'power') or gate.name not in ['H','h','hadamard']:
+    if not isinstance(gate, PowerGateImpl) or gate.name not in ['H','h','hadamard']:
         return QCircuit.wrap_gate(gate)
-    power=gate.power
+    power=gate.parameter
     target=gate.target
     a=power.wrap(a_calc)
     b=power.wrap(b_calc)
@@ -545,7 +543,7 @@ def hadamard_axbxc(gate) -> QCircuit:
 
 @compiler
 def hadamard_recursor(gate) -> QCircuit:
-    if not hasattr(gate,'power') or gate.name not in ['H','h','hadamard']:
+    if not isinstance(gate, PowerGateImpl) or gate.name not in ['H','h','hadamard']:
         return QCircuit.wrap_gate(gate)
     result = QCircuit()
     cl=0
@@ -557,23 +555,23 @@ def hadamard_recursor(gate) -> QCircuit:
         return hadamard_axbxc(gate)
 
     if cl is 2:
-        v = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[1])
+        v = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[1])
         result += hadamard_axbxc(v)
         result += CNOT(gate.control[0], gate.control[1])
-        vdag = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[1]).dagger()
+        vdag = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[1]).dagger()
         result +=hadamard_axbxc(vdag)
         result += CNOT(gate.control[0], gate.control[1])
-        again= type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[0])
+        again= type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[0])
         result += hadamard_axbxc(again)
 
     else:
-        v = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[-1])
+        v = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[-1])
         result += hadamard_axbxc(v)
         result += CNOT(target=gate.control[cl-1], control=gate.control[0:cl-1])
-        vdag = type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[-1]).dagger()
+        vdag = type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[-1]).dagger()
         result += hadamard_axbxc(vdag)
         result += CNOT(target=gate.control[cl-1], control=gate.control[0:cl-1])
-        rebuild= type(gate)(name=gate.name,power=gate.power / 2, target=gate.target, control=gate.control[:cl-1])
+        rebuild= type(gate)(name=gate.name, power=gate.parameter / 2, target=gate.target, control=gate.control[:cl - 1])
         result += hadamard_recursor(rebuild)
     return result
 
@@ -637,9 +635,9 @@ def theta_calc(x):
 
 @compiler
 def compile_phase(gate) -> QCircuit:
-    if not hasattr(gate,'phase'):
+    if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
-    phase=gate.phase
+    phase=gate.parameter
     result =QCircuit()
     if gate.control is None:
         return Rz(angle=phase,target=gate.target)
@@ -653,28 +651,28 @@ def compile_phase(gate) -> QCircuit:
 
 @compiler
 def compile_phase_to_z(gate) -> QCircuit:
-    if not hasattr(gate,'phase'):
+    if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
-    phase=gate.phase
+    phase=gate.parameter
     return Z(power=numpy.pi*phase,target=gate.target,control=gate.control)
 
 
 @compiler
 def compile_controlled_phase(gate)->QCircuit:
-    if not hasattr(gate,'phase'):
+    if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
 
     if gate.control is None:
         return QCircuit.wrap_gate(gate)
     count=len(gate.control)
     result =QCircuit()
-    phase=gate.phase
+    phase=gate.parameter
 
     if count is 1:
         result+=H(target=gate.target)
         result+=CNOT(gate.control,gate.target)
         result+=H(target=gate.target)
-        result+=Phase(gate.phase+numpy.pi,target=gate.target)
+        result+=Phase(gate.parameter + numpy.pi, target=gate.target)
     elif count == 2:
         result += Rz(angle=phase/(2**2),target=gate.control[0])
         result += Rz(angle=phase/(2**(1)),target=gate.control[1],control=gate.control[0])
@@ -691,7 +689,7 @@ def compile_swap(gate) -> QCircuit:
     if gate.name.lower() == "swap":
         if len(gate.target) != 2:
             raise TequilaCompilerException("SWAP gates needs two targets")
-        if hasattr(gate, "power") and gate.power != 1:
+        if hasattr(gate, "power") and gate.parameter != 1:
             raise TequilaCompilerException("SWAP gate with power can not be compiled into CNOTS")
 
         c = []
@@ -716,9 +714,9 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
     :returns: the above mentioned circuit as abstract structure
     """
 
-    if hasattr(gate, "angle") and hasattr(gate, "paulistring"):
+    if hasattr(gate, "paulistring"):
 
-        angle = gate.paulistring.coeff * gate.angle
+        angle = gate.paulistring.coeff * gate.parameter
 
         circuit = QCircuit()
 

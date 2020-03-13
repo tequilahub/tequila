@@ -67,12 +67,6 @@ class QGateImpl:
         """
         return ((not self.control) and (len(self.target) == 1))
 
-    def is_differentiable(self) -> bool:
-        '''
-        defaults to False, overwritten by ParametrizedGate
-        '''
-        return False
-
     def finalize(self):
         if not self.target:
             raise Exception('Received no targets upon initialization')
@@ -156,12 +150,6 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def is_parametrized(self) -> bool:
         return True
 
-    def is_differentiable(self) -> bool:
-        """
-        :return: True if the gate is differentiable
-        """
-        return True
-
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
         if not self.is_single_qubit_gate():
@@ -199,24 +187,16 @@ class RotationGateImpl(ParametrizedGateImpl):
         self._axis = self.assign_axis(value)
 
     @property
-    def angle(self):
-        return self.parameter
-
-    @angle.setter
-    def angle(self, other):
-        self.parameter = other
-
-    @property
     def shift(self):
         return 0.5
 
     def __ipow__(self, power, modulo=None):
-        self.angle *= power
+        self.parameter *= power
         return self
 
     def __pow__(self, power, modulo=None):
         result = copy.deepcopy(self)
-        result.angle *= power
+        result.parameter *= power
         return result
 
     def __init__(self, axis, angle, target: list, control: list = None):
@@ -236,7 +216,7 @@ class RotationGateImpl(ParametrizedGateImpl):
 
     def dagger(self):
         result = copy.deepcopy(self)
-        result._parameter = assign_variable(-self.angle)
+        result._parameter = assign_variable(-self.parameter)
         return result
 
 
@@ -251,17 +231,9 @@ class PhaseGateImpl(ParametrizedGateImpl):
         result._parameter = -self.angle
         return result
 
-    @property
-    def phase(self):
-        return self.parameter
-
-    @phase.setter
-    def phase(self, other):
-        self.parameter = other
-
     def __pow__(self, power, modulo=None):
         result = copy.deepcopy(self)
-        result.phase *= power
+        result.parameter *= power
         return result
 
 
@@ -271,14 +243,6 @@ class PhaseGateImpl(ParametrizedGateImpl):
 
 
 class PowerGateImpl(ParametrizedGateImpl):
-
-    @property
-    def power(self):
-        return self.parameter
-
-    @power.setter
-    def power(self, other):
-        self.parameter = other
 
     def __init__(self, name, target: list, power=None, control: list = None):
         super().__init__(name=name, parameter=power, target=target, control=control)
@@ -330,13 +294,9 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
     Exp(-i angle/2 * paulistring)
     """
 
-    @property
-    def angle(self):
-        return self.parameter
-
     def dagger(self):
         result = copy.deepcopy(self)
-        result._parameter = -self.angle
+        result._parameter = -self.parameter
         return result
 
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None):

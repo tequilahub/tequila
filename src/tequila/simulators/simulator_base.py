@@ -8,7 +8,8 @@ from tequila.circuit.gates import Measurement
 from tequila import BitString
 from tequila.objective.objective import Variable
 from tequila.circuit import compiler
-from tequila.circuit._gates_impl import MeasurementImpl
+from tequila.circuit._gates_impl import MeasurementImpl,\
+    RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl, PhaseGateImpl
 
 
 import numbers, typing
@@ -116,24 +117,24 @@ class BackendCircuit():
             if isinstance(g, MeasurementImpl):
                 self.add_measurement(gate=g, circuit=result)
             elif g.is_controlled():
-                if hasattr(g, 'angle') and not hasattr(g,'paulistring'):
+                if isinstance(g, RotationGateImpl):
                     self.add_controlled_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif hasattr(g, 'power'):
+                elif isinstance(g, PowerGateImpl):
                     self.add_controlled_power_gate(gate=g, variables=variables, circuit=result)
-                elif hasattr(g,'phase'):
+                elif isinstance(g, PhaseGateImpl):
                     self.add_controlled_phase_gate(gate=g,variables=variables, circuit=result)
-                elif hasattr(g, 'paulistring'):
+                elif isinstance(g, ExponentialPauliGateImpl):
                     self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
                 else:
                     self.add_controlled_gate(gate=g, circuit=result)
             else:
-                if hasattr(g, 'angle') and not hasattr(g,'paulistring'):
+                if isinstance(g, RotationGateImpl):
                     self.add_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif hasattr(g, 'power'):
+                elif isinstance(g, PowerGateImpl):
                     self.add_power_gate(gate=g, variables=variables, circuit=result)
-                elif hasattr(g, 'phase'):
+                elif isinstance(g, PhaseGateImpl):
                     self.add_phase_gate(gate=g,variables=variables,circuit=result)
-                elif hasattr(g, 'paulistring'):
+                elif isinstance(g, ExponentialPauliGateImpl):
                     self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
                 else:
                     self.add_gate(gate=g, circuit=result)

@@ -56,11 +56,11 @@ class BackendCircuitQulacs(BackendCircuit):
         pind = [convert[x.lower()] for x in gate.paulistring.values()]
         qind = [self.qubit_map[x] for x in gate.paulistring.keys()]
         if len(gate.extract_variables()) > 0:
-            self.variables.append(-gate.angle * gate.paulistring.coeff)
+            self.variables.append(-gate.parameter * gate.paulistring.coeff)
             circuit.add_parametric_multi_Pauli_rotation_gate(qind, pind,
-                                                             -gate.angle(variables) * gate.paulistring.coeff)
+                                                             -gate.parameter(variables) * gate.paulistring.coeff)
         else:
-            circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.angle(variables) * gate.paulistring.coeff)
+            circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.parameter(variables) * gate.paulistring.coeff)
 
     def add_gate(self, gate, circuit, *args, **kwargs):
         targets = tuple([self.qubit_map[t] for t in gate.target])
@@ -84,29 +84,29 @@ class BackendCircuitQulacs(BackendCircuit):
     def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
         # minus sign due to different conventions in qulacs
         if len(gate.extract_variables()) > 0:
-            self.variables.append(-gate.angle)
+            self.variables.append(-gate.parameter)
             getattr(circuit, "add_parametric_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]],
-                                                                              -gate.angle(variables=variables))
+                                                                              -gate.parameter(variables=variables))
         else:
             getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]],
-                                                                   -gate.angle(variables=variables))
+                                                                   -gate.parameter(variables=variables))
 
     def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        angle = -gate.angle(variables=variables)
+        angle = -gate.parameter(variables=variables)
         qulacs_gate = getattr(qulacs.gate, gate.name.upper())(self.qubit_map[gate.target[0]], angle)
         qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
         for c in gate.control:
             qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
 
         if len(gate.extract_variables()) > 0:
-            self.variables.append(-gate.angle)
+            self.variables.append(-gate.parameter)
             raise TequilaQulacsException("Parametric controlled-rotations are currently not possible")
 
         circuit.add_gate(qulacs_gate)
 
     def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
         assert (len(gate.extract_variables()) == 0)
-        power = gate.power(variables=variables)
+        power = gate.parameter(variables=variables)
 
         if power == 1:
             return self.add_gate(gate=gate, qubit_map=self.qubit_map, circuit=circuit)
