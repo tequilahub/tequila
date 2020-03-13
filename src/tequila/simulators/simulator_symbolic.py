@@ -74,15 +74,15 @@ class BackendCircuitSymbolic(BackendCircuit):
             elif gate.name.upper() == "Z":
                 fac1 = sympy.Integer(-1) ** (qt)
             elif gate.name.upper() == "RX":
-                angle = sympy.Rational(1 / 2) * gate.angle(variables)
+                angle = sympy.Rational(1 / 2) * gate.parameter(variables)
                 fac1 = sympy.cos(angle)
                 fac2 = -sympy.sin(angle) * sympy.I
             elif gate.name.upper() == "RY":
-                angle = -sympy.Rational(1 / 2) * gate.angle(variables)
+                angle = -sympy.Rational(1 / 2) * gate.parameter(variables)
                 fac1 = sympy.cos(angle)
                 fac2 = +sympy.sin(angle) * sympy.Integer(-1) ** (qt + 1)
             elif gate.name.upper() == "RZ":
-                angle = sympy.Rational(1 / 2) * gate.angle(variables)
+                angle = sympy.Rational(1 / 2) * gate.parameter(variables)
                 fac1 = sympy.exp(-angle * sympy.I * sympy.Integer(-1) ** (qt))
             else:
                 raise Exception("Gate is not known to simulators, " + str(gate))

@@ -192,8 +192,8 @@ class UnaryStatePrep:
         result = QCircuit()
         for g in self._abstract_circuit.gates:
             g2 = copy.deepcopy(g)
-            if hasattr(g, "angle"):
-                symbol = g.angle
+            if hasattr(g, "parameter"):
+                symbol = g.parameter
                 # the module needs repairing ....
                 g2._parameter = assign_variable(-angles[-symbol()])  # the minus follows mahas convention since the circuits are daggered in the end
             result += g2
@@ -207,8 +207,8 @@ class UnaryStatePrep:
         result = QCircuit()
         for g in self._abstract_circuit.gates:
             g2 = copy.deepcopy(g)
-            if hasattr(g, "angle"):
-                symbol = g.angle
+            if hasattr(g, "parameter"):
+                symbol = g.parameter
                 name = str(-symbol) # kill the minus from the dagger
                 g2._parameter = assign_variable(name)
             result += g2
