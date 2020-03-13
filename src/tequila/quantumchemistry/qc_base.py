@@ -354,36 +354,6 @@ class QuantumChemistryBase:
                                   charge=molecule.charge)
         return cls(parameters=parameters, transformation=transformation, molecule=molecule, *args, **kwargs)
 
-    def make_gaussian_excitation_operator(self, indices):
-        # experimental function, use with care
-        # works only for JW right now
-        # give indices as in make_excitation_operator
-        # doubles: [(i,a),(j,b)], singles: [(i,a)]
-        assert(self.transformation == openfermion.jordan_wigner)
-        assert(len(indices)==2 or len(indices)==1)
-        xstring = "1100"
-        ystring = "0011"
-        if len(indices)==1:
-            xstring = "01"
-            ystring = "10"
-            qubit_map = {0: indices[0][0], 1: indices[0][1]}
-        else:
-            qubit_map = {0: indices[0][0], 1:indices[1][0], 2: indices[0][1], 3: indices[1][1]}
-
-        x = tq.BitString.from_binary(xstring)
-        y = tq.BitString.from_binary(ystring)
-        Gij = 1.j * tq.paulis.decompose_transfer_operator(ket=x, bra=y)
-        Gij -= 1.j * tq.paulis.decompose_transfer_operator(ket=y, bra=x)
-
-        G2ij = Gij + tq.QubitHamiltonian.init_unit()
-        G2ij -= tq.paulis.decompose_transfer_operator(ket=x, bra=x)
-        G2ij -= tq.paulis.decompose_transfer_operator(ket=y, bra=y)
-        G2ij -= 0.875 * tq.QubitHamiltonian.init_unit()
-
-        G3ij = G2ij.map_qubits(qubit_map=qubit_map)
-        G3ij.normalize()
-        return G3ij
-
     def make_singlet_excitation_operator(self, p: int, q: int):
         """
         Parameters
