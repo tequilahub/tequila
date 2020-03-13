@@ -44,6 +44,7 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
             assert (k is not None)
             result[k] = grad(compiled, k)
         return result
+
     elif not isinstance(variable, Variable) and hasattr(variable, "__hash__"):
         variable = Variable(name=variable)
 
@@ -63,6 +64,7 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
 def __grad_objective(objective: Objective, variable: Variable):
     args = objective.args
     transformation = objective.transformation
+
     dO = None
     for i, arg in enumerate(args):
         if __AUTOGRAD__BACKEND__ == "jax":
@@ -83,6 +85,9 @@ def __grad_objective(objective: Objective, variable: Variable):
             dO = outer * inner
         else:
             dO = dO + outer * inner
+
+    if dO is None:
+        raise TequilaException("caught None in __grad_objective")
     return dO
 
 
@@ -116,6 +121,11 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     '''
     hamiltonian = E.H
     unitary = E.U
+
+    # fast return if possible
+    if variable not in unitary.extract_variables():
+        return 0.0
+
     dO = None
     for i, g in enumerate(unitary.gates):
         if g.is_parametrized():
@@ -131,6 +141,8 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
                 else:
                     print(g,type(g))
                     raise TequilaException('only the gradients of Gaussian gates can be calculated')
+    if dO is None:
+        raise TequilaException("caught None type in gradient")
     return dO
 
 

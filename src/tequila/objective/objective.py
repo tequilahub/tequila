@@ -330,6 +330,8 @@ class Variable:
         return hash(self.name)
 
     def __init__(self, name: typing.Union[str, typing.Hashable]):
+        if name is None:
+            raise TequilaVariableException("Tried to initialize a variable with None")
         if not isinstance(name, typing.Hashable) or not hasattr(name, "__hash__"):
             raise TequilaVariableException("Name of variable has to ba a hashable type")
         self._name = name

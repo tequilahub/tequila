@@ -4,8 +4,6 @@ import typing
 import numbers
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 import warnings
-import pickle
-from tequila import TequilaException
 warnings.simplefilter("ignore")
 
 __HAS_GPYOPT__ = False
@@ -40,7 +38,7 @@ def array_to_objective_dict(objective,array,passives=None) -> typing.Dict[Variab
 
 class GPyOptOptimizer(Optimizer):
 
-    def __init__(self, maxiter,backend=None, save_history=True,minimize=True,samples=None):
+    def __init__(self, maxiter=100,backend=None, save_history=True,minimize=True,samples=None):
         self._minimize = minimize
         super().__init__(simulator=backend,maxiter=maxiter, samples=samples, save_history=save_history)
 
@@ -55,10 +53,11 @@ class GPyOptOptimizer(Optimizer):
     def get_object(self,func,domain,acquisition) -> GPyOpt.methods.BayesianOptimization:
         return BayesianOptimization(f=func,domain=domain,acquisition=acquisition)
 
-    def construct_function(self,objective,original,passives=None,samples=None) -> typing.Callable:
-        return lambda arr: simulate(objective=objective,
-                                                        variables=array_to_objective_dict(original,arr,passives),
-                                                        samples=samples)
+    def construct_function(self,objective,backend,passives=None,samples=None,noise_model=None) -> typing.Callable:
+        return lambda arr: simulate(objective=objective,backend=backend,
+                                                        variables=array_to_objective_dict(objective,arr,passives),
+                                                        samples=samples,
+                                                        noise_model=noise_model)
 
     def redictify(self,arr,objective,passives=None) -> typing.Dict:
         op=objective.extract_variables()
@@ -87,12 +86,11 @@ class GPyOptOptimizer(Optimizer):
         else:
             pass
         dom=self.get_domain(objective,passives)
-        init={v:np.random.uniform(0,2*np.pi) for v in objective.extract_variables()}
+        #init={v:np.random.uniform(0,2*np.pi) for v in objective.extract_variables()}
+        ### O is broken, not using it right now
+        #O= compile_objective(objective=objective,variables=init, backend=backend,noise_model=noise, samples=samples)
 
-        O= compile_objective(objective=objective,variables=init, backend=backend,noise_model=noise,
-                                               samples=samples)
-
-        f = self.construct_function(O,objective,passives,samples)
+        f = self.construct_function(objective,backend,passives,samples,noise_model=noise)
         opt=self.get_object(f,dom,acquisition)
         opt.run_optimization(maxiter)
         if self.save_history:
@@ -153,8 +151,8 @@ def minimize(objective: Objective,
         for k,v in initial_values.items():
             if k not in variables and k in all_vars:
                 passives[k]=v
-    optimizer=GPyOptOptimizer(samples=samples,backend=backend,maxiter=maxiter)
-    return optimizer(objective=objective,samples=samples,passives=passives,maxiter=maxiter,noise=noise,
+    optimizer=GPyOptOptimizer()
+    return optimizer(objective=objective,samples=samples,backend=backend,passives=passives,maxiter=maxiter,noise=noise,
                      acquisition=acquisition
                          )
 

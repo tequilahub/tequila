@@ -1,4 +1,4 @@
-import tequila.simulators.simulator_api
+from tequila.simulators.simulator_api import simulate
 from tequila.objective.objective import Objective
 from tequila.optimizers.optimizer_base import Optimizer
 import typing
@@ -145,12 +145,13 @@ class PhoenicsOptimizer(Optimizer):
         ### this line below just gets the damn compiler to run, since that argument is necessary
         init = {key:np.pi for key in objective.extract_variables()}
 
-        O= compile_objective(objective=objective,variables=init, backend=backend,noise_model=noise,
-                                               samples=samples)
-
         best=None
         best_angles=None
 
+        print('phoenics has recieved')
+        print(backend)
+        print(noise)
+        print('now lets begin')
         for i in range(0,maxiter):
             with warnings.catch_warnings():
                 np.testing.suppress_warnings()
@@ -166,10 +167,14 @@ class PhoenicsOptimizer(Optimizer):
             runs=[]
             recs=self._process_for_sim(precs,passives=passives)
             for i,rec in enumerate(recs):
+
+                En=simulate(objective=objective,backend=backend,variables=rec,samples=samples,noise_model=noise)
+                '''
                 if samples is None:
-                    En = simulate_objective(objective=O,variables=rec)
+                    En = simulate_objective(objective=objective,backend=backend,variables=rec)
                 else:
-                    En = sample_objective(objective=O,variables=rec, samples=samples)
+                    En = sample_objective(objective=objective,variables=rec,backend=backend, samples=samples,noise=noise)
+                '''
                 runs.append((rec, En))
             for run in runs:
                 angles=run[0]
@@ -264,6 +269,7 @@ def minimize(objective: Objective,
             if k not in variables and k in all_vars:
                 passives[k]=v
     optimizer=PhoenicsOptimizer(samples=samples,backend=backend,maxiter=maxiter)
-    return optimizer(objective=objective,passives=passives,previous=previous,maxiter=maxiter,noise=noise,
-                         phoenics_config=phoenics_config,save_to_file=save_to_file,file_name=file_name)
+    return optimizer(objective=objective,backend=backend,passives=passives,previous=previous,
+                     maxiter=maxiter,noise=noise,samples=samples,
+                     phoenics_config=phoenics_config,save_to_file=save_to_file,file_name=file_name)
 

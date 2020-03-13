@@ -174,7 +174,6 @@ def compile_objective(objective: 'Objective',
     """
 
     backend = pick_backend(backend=backend, samples=samples,noise=noise_model is not None)
-    print(backend)
     ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
     if hasattr(objective, "simulate"):
         for arg in objective.args:
@@ -241,6 +240,7 @@ def sample_objective(objective: 'Objective',
 
     # break the objective apart into its individual pauli components in every expectationvalue
     # then sample all of those
+    print(noise_model)
     evaluated = []
     for arg in compiled.args:
         if hasattr(arg, "H"):
@@ -357,6 +357,11 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
         simulated/sampled objective or simulated/sampled wavefunction
 
     """
+    print('simulator got')
+    print(backend)
+    print(noise_model)
+    print(samples)
+    print('lets blow this pop stand')
     if variables is None and not (len(objective.extract_variables()) == 0):
         raise TequilaException(
             "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
@@ -369,6 +374,9 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
         if samples is None:
             return simulate_objective(objective=objective, variables=variables, backend=backend)
         else:
+            print('sampling ')
+            print('noise is')
+            print(noise_model)
             return sample_objective(objective=objective, variables=variables, samples=samples, backend=backend,
                                     noise_model=noise_model)
     elif hasattr(objective, "gates"):
