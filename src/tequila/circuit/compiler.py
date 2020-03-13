@@ -197,6 +197,9 @@ def change_basis(target, axis, daggered=False):
 def compile_multitarget(gate) -> QCircuit:
     targets = gate.target
 
+    if hasattr(gate, "generator") or hasattr(gate, "generators") or hasattr(gate, "paulistring"):
+        return QCircuit.wrap_gate(gate)
+
     if isinstance(gate, ExponentialPauliGateImpl) or isinstance(gate, TrotterizedGateImpl):
         return QCircuit.wrap_gate(gate)
 
@@ -773,6 +776,9 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
         if randomize:
             numpy.random.shuffle(paulistrings)
         for ps in paulistrings:
+            if len(ps._data) ==0:
+                print("ignoring constant term in trotterized gate")
+                continue
             coeff = to_float(ps.coeff)
             circuit += ExpPauli(paulistring=ps.naked(), angle=factor * coeff, control=control)
 
