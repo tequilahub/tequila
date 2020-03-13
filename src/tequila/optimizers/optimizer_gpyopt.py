@@ -50,8 +50,8 @@ class GPyOptOptimizer(Optimizer):
                     op.remove(thing)
         return [{'name':v,'type':'continuous','domain':(0,2*np.pi)} for v in op]
 
-    def get_object(self,func,domain,acquisition) -> GPyOpt.methods.BayesianOptimization:
-        return BayesianOptimization(f=func,domain=domain,acquisition=acquisition)
+    def get_object(self,func,domain,method) -> GPyOpt.methods.BayesianOptimization:
+        return BayesianOptimization(f=func,domain=domain,acquisition=method)
 
     def construct_function(self,objective,backend,passives=None,samples=None,noise_model=None) -> typing.Callable:
         return lambda arr: simulate(objective=objective,backend=backend,
@@ -77,7 +77,7 @@ class GPyOptOptimizer(Optimizer):
                  samples: int = None,
                  backend: str = None,
                  noise = None,
-                 acquisition: str = 'lbfgs') -> GPyOptReturnType :
+                 method: str = 'lbfgs') -> GPyOptReturnType :
         if self.samples is not None:
             if samples is None:
                 samples=self.samples
@@ -91,7 +91,7 @@ class GPyOptOptimizer(Optimizer):
         #O= compile_objective(objective=objective,variables=init, backend=backend,noise_model=noise, samples=samples)
 
         f = self.construct_function(objective,backend,passives,samples,noise_model=noise)
-        opt=self.get_object(f,dom,acquisition)
+        opt=self.get_object(f,dom,method)
         opt.run_optimization(maxiter)
         if self.save_history:
             self.history.energies=opt.get_evaluations()[1].flatten()
@@ -106,7 +106,7 @@ def minimize(objective: Objective,
              initial_values: typing.Dict=None,
              backend: str = None,
              noise =None,
-             acquisition: str= 'lbfgs'
+             method: str= 'lbfgs'
              ) -> GPyOptReturnType :
 
     """
@@ -132,7 +132,7 @@ def minimize(objective: Objective,
     noise: NoiseModel :
          (Default value = None)
         a noise model to apply to the circuits of Objective.
-    acquisition: str:
+    method: str:
          (Default value = 'lbfgs')
          method of acquisition. Allowed arguments are 'lbfgs', 'DIRECT', and 'CMA'
 
@@ -153,6 +153,6 @@ def minimize(objective: Objective,
                 passives[k]=v
     optimizer=GPyOptOptimizer()
     return optimizer(objective=objective,samples=samples,backend=backend,passives=passives,maxiter=maxiter,noise=noise,
-                     acquisition=acquisition
+                     method=method
                          )
 

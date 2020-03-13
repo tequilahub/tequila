@@ -71,5 +71,5 @@ def test_bit_flip_gpyopt(simulator, p,method):
     U = gates.Rx(target=qubit,angle=tq.Variable('a'))
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,['rx'])
-    result = tq.optimizer_gpyopt.minimize(objective=O,maxiter=10,samples=10000,backend=simulator, acquisition=method,noise=NM)
+    result = tq.optimizer_gpyopt.minimize(objective=O,maxiter=10,samples=10000,backend=simulator, method=method,noise=NM)
     assert(numpy.isclose(result.energy, p, atol=1.e-2))
