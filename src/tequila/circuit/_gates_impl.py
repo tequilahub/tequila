@@ -373,6 +373,13 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         result += ")"
         return result
 
+    def is_gaussian(self):
+        return True
+
+    @property
+    def shift(self):
+        return 0.5
+
 
 @dataclass
 class TrotterParameters:

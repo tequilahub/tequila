@@ -24,7 +24,6 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
     if not no_compile:
         compiled = compile_multitarget(gate=objective)
         compiled = compile_trotterized_gate(gate=compiled)
-        compiled = compile_exponential_pauli_gate(gate=compiled)
         compiled = compile_h_power(gate=compiled)
         compiled = compile_power_gate(gate=compiled)
         compiled = compile_controlled_phase(gate=compiled)
@@ -140,7 +139,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
                         dO = dO + dOinc
                 else:
                     print(g,type(g))
-                    raise TequilaException('only the gradients of Gaussian gates can be calculated')
+                    raise TequilaException('only the gradients of Gaussian gates can be calculated. Got gate {}'.format(g))
     if dO is None:
         raise TequilaException("caught None type in gradient")
     return dO
@@ -163,8 +162,10 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     shift_a = g._parameter + np.pi /(4*g.shift)
     shift_b = g._parameter - np.pi / (4 * g.shift)
     if hasattr(g,'angle'):
-        neo_a = RotationGateImpl(axis=g.axis,target=g.target, control=g.control, angle=shift_a)
-        neo_b = RotationGateImpl(axis=g.axis, target=g.target, control=g.control, angle=shift_b)
+        neo_a = copy.deepcopy(g)
+        neo_a._parameter = shift_a
+        neo_b = copy.deepcopy(g)
+        neo_b._parameter = shift_b
     elif hasattr(g,'phase'):
         neo_a = PhaseGateImpl(phase=shift_a,target=g.target,control=g.control)
         neo_b = PhaseGateImpl(phase=shift_b, target=g.target, control=g.control)
