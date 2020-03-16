@@ -1,8 +1,9 @@
-from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate,Phase
+from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
+from tequila import assign_variable
 import numpy, sympy
 
 
@@ -83,47 +84,47 @@ def test_consistency():
         wfn2 = simulate(c[1], backend="symbolic")
         assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
 
+
 def test_moments():
-    c=QCircuit()
-    c+=CNOT(target=0,control=(1,2,3))
-    c+=H(target=[0,1])
-    c+=Rx(angle=numpy.pi,target=[0,3])
-    c+=Z(target=1)
-    c+=Phase(phi=numpy.pi,target=4)
-    moms=c.moments
+    c = QCircuit()
+    c += CNOT(target=0, control=(1, 2, 3))
+    c += H(target=[0, 1])
+    c += Rx(angle=numpy.pi, target=[0, 3])
+    c += Z(target=1)
+    c += Phase(phi=numpy.pi, target=4)
+    moms = c.moments
     assert len(moms) is 3
-    assert hasattr(moms[0].gates[1],'phase')
-
-
+    assert (moms[0].gates[1].parameter == assign_variable(numpy.pi))
+    assert (moms[0].gates[1].target == (4,))
 
 
 def test_canonical_moments():
-    c=QCircuit()
-    c+=CNOT(target=0,control=(1,2,3))
+    c = QCircuit()
+    c += CNOT(target=0, control=(1, 2, 3))
     c += Rx(angle=Variable('a'), target=[0, 3])
-    c+=H(target=[0,1])
-    c+= Rx(angle=Variable('a'), target=[2, 3])
-    c+=Rx(angle=Variable('a'),target=[0,3])
-    c+=Z(target=1)
-    c+=Phase(phi=numpy.pi,target=4)
-    moms=c.canonical_moments
+    c += H(target=[0, 1])
+    c += Rx(angle=Variable('a'), target=[2, 3])
+    c += Rx(angle=Variable('a'), target=[0, 3])
+    c += Z(target=1)
+    c += Phase(phi=numpy.pi, target=4)
+    moms = c.canonical_moments
     assert len(moms) is 6
-    assert hasattr(moms[0].gates[1],'phase')
-    assert hasattr(moms[3].gates[0], 'angle')
+    assert (moms[0].gates[1].parameter == assign_variable(numpy.pi))
+    assert (moms[0].gates[1].target == (4,))
+    assert hasattr(moms[3].gates[0], 'axis')
     assert len(moms[0].qubits) is 5
 
+
 def test_circuit_from_moments():
-    c=QCircuit()
-    c+=CNOT(target=0,control=(1,2,3))
+    c = QCircuit()
+    c += CNOT(target=0, control=(1, 2, 3))
     c += Phase(phi=numpy.pi, target=4)
     c += Rx(angle=Variable('a'), target=[0, 3])
-    c+=H(target=[0,1])
-    c+= Rx(angle=Variable('a'), target=[2, 3])
+    c += H(target=[0, 1])
+    c += Rx(angle=Variable('a'), target=[2, 3])
     ## table[1] should equal 1 at this point, len(moments should be 3)
     c += Z(target=1)
-    c+=Rx(angle=Variable('a'),target=[0,3])
-    moms=c.moments
-    c2=QCircuit.from_moments(moms)
-    assert c==c2
-
-
+    c += Rx(angle=Variable('a'), target=[0, 3])
+    moms = c.moments
+    c2 = QCircuit.from_moments(moms)
+    assert c == c2

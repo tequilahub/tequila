@@ -135,17 +135,17 @@ class BackendCircuitQiskit(BackendCircuit):
         if len(gate.target) > 1:
             raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
         gfunc = getattr(circuit, gate.name.lower())
-        gfunc(gate.angle(variables), self.qubit_map[gate.target[0]])
+        gfunc(gate.parameter(variables), self.qubit_map[gate.target[0]])
 
     def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
         if len(gate.target) > 1:
             raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
         if len(gate.control) == 1:
             gfunc = getattr(circuit, "c" + gate.name.lower())
-            gfunc(gate.angle(variables), self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
+            gfunc(gate.parameter(variables), self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
         elif len(gate.control) == 2:
             gfunc = getattr(circuit, "cc" + gate.name.lower())
-            gfunc(gate.angle(variables), self.qubit_map[gate.control[0]], self.qubit_map[gate.control[1]],
+            gfunc(gate.parameter(variables), self.qubit_map[gate.control[0]], self.qubit_map[gate.control[1]],
                   self.qubit_map[gate.target[0]])
         else:
             raise TequilaQiskitException("More than two control gates currently not supported")

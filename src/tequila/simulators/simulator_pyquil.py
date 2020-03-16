@@ -284,10 +284,10 @@ class BackendCircuitPyquil(BackendCircuit):
         circuit += pyquil_gate
 
     def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        circuit += getattr(pyquil.gates, gate.name.upper())(gate.angle(variables), self.qubit_map[gate.target[0]])
+        circuit += getattr(pyquil.gates, gate.name.upper())(gate.parameter(variables), self.qubit_map[gate.target[0]])
 
     def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(gate.angle(variables), self.qubit_map[gate.target[0]])
+        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(gate.parameter(variables), self.qubit_map[gate.target[0]])
         for c in gate.control:
             pyquil_gate = pyquil_gate.controlled(self.qubit_map[c])
         circuit += pyquil_gate

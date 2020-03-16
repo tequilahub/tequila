@@ -389,6 +389,7 @@ class QubitHamiltonian:
 
     def normalize(self):
         self._hamiltonian.renormalize()
+        return self
 
     def to_matrix(self):
         """
@@ -441,3 +442,29 @@ class QubitHamiltonian:
             new_hamiltonian += tmp
         self._hamiltonian = new_hamiltonian
         return self
+
+    def map_qubits(self, qubit_map:dict):
+        """
+
+        E.G.  X(1)Y(2) --> X(3)Y(1) with qubit_map = {1:3, 2:1}
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        the Hamiltonian with mapped qubits
+
+        """
+
+        mapped_terms = {}
+
+        for k,v in self.hamiltonian.terms.items():
+            mk = tuple([ (qubit_map[x[0]], x[1]) for x in k ])
+            mapped_terms[k] = v
+
+        mapped = QubitOperator.zero()
+        mapped.terms=mapped_terms
+        return QubitHamiltonian(hamiltonian=mapped)

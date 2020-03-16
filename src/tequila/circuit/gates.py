@@ -1,7 +1,7 @@
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
-    ExponentialPauliGateImpl, TrotterizedGateImpl, PhaseGateImpl, TrotterParameters
+    ExponentialPauliGateImpl, TrotterizedGateImpl, GaussianGateImpl, PhaseGateImpl, TrotterParameters
 import typing, numbers
 from tequila.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
 import numpy as np
@@ -67,7 +67,8 @@ def PowerGate(name: str, target: typing.Union[list, int], power: bool = None, co
     return QCircuit.wrap_gate(PowerGateImpl(name=name, power=power, target=target, control=control))
 
 
-def Phase(phi:typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
+def Phase(phi: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
+          control: typing.Union[list, int] = None) -> QCircuit:
     """
     Notes
     ----------
@@ -379,10 +380,47 @@ def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing
     # it is better to initialize a rotational gate due to strange conventions in some simulators
     if len(ps.items()) == 1:
         target, axis = tuple(ps.items())[0]
-        return QCircuit.wrap_gate(RotationGateImpl(axis=axis, target=target, angle=ps.coeff * assign_variable(angle), control=control))
+        return QCircuit.wrap_gate(
+            RotationGateImpl(axis=axis, target=target, angle=ps.coeff * assign_variable(angle), control=control))
     else:
         return QCircuit.wrap_gate(ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control))
 
+
+def GaussianGate(angle: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real]],
+                 generator: QubitHamiltonian,
+                 control: typing.Union[list, int] = None,
+                 shift: float = 0.5,
+                 steps: int = 1) -> QCircuit:
+    """
+
+    Notes
+    --------
+    
+    A gate which behaves 'gaussian'
+     - its generator only has two distinguishable eigenvalues
+     - it is then differentiable by the shift rule
+     - shift needs to be given upon initialization (otherwise its default is 1/2)
+     - the generator will not be verified to fullfill the properties
+     Compiling will be done in analogy to a trotterized gate with steps=1 as default
+
+    The gate will act in the same way as rotations and exppauli gates
+
+    .. math::
+        U_{G}(\\text{angle}) = e^{-i\\frac{\\text{angle}}{2} G}
+    
+    Parameters
+    ----------
+    angle
+    generator
+    control
+    shift
+    steps
+
+    Returns
+    -------
+    The gate wrapped in a circuit
+    """
+    return QCircuit.wrap_gate(GaussianGateImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
 
 def Trotterized(generators: typing.List[QubitHamiltonian],
                 steps: int,
@@ -432,8 +470,9 @@ def Trotterized(generators: typing.List[QubitHamiltonian],
 
     assigned_angles = [assign_variable(angle) for angle in angles]
 
-    return QCircuit.wrap_gate(TrotterizedGateImpl(generators=generators, angles=assigned_angles, steps=steps, control=control,
-                               **parameters.__dict__))
+    return QCircuit.wrap_gate(
+        TrotterizedGateImpl(generators=generators, angles=assigned_angles, steps=steps, control=control,
+                            **parameters.__dict__))
 
 
 """
@@ -443,7 +482,7 @@ iSWAP will only work with cirq, the others will be recompiled
 
 
 @wrap_gate
-def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None)-> QCircuit:
+def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None) -> QCircuit:
     """
     Notes
     ----------
@@ -478,6 +517,7 @@ Convenience Initialization Routines for controlled gates
 All following the patern: Gate(control_qubit, target_qubit, possible_parameter)
 """
 
+
 def CNOT(control: int, target: int) -> QCircuit:
     """
     Convenience CNOT initialization
@@ -496,7 +536,7 @@ def CNOT(control: int, target: int) -> QCircuit:
     return X(target=target, control=control)
 
 
-def Toffoli(first: int, second: int, target: int) ->QCircuit:
+def Toffoli(first: int, second: int, target: int) -> QCircuit:
     """
     Convenience Toffoli initialization
 
@@ -534,6 +574,7 @@ def CX(control: int, target: int) -> QCircuit:
     """
     return X(target=target, control=control)
 
+
 def CY(control: int, target: int) -> QCircuit:
     """
     Convenience initialization CY (controlled Pauli Y)
@@ -568,6 +609,7 @@ def CZ(control: int, target: int) -> QCircuit:
     QCircuit object
     """
     return Z(target=target, control=control)
+
 
 def CRx(control: int, target: int, angle: float) -> QCircuit:
     """

@@ -143,26 +143,26 @@ class BackendCircuitCirq(BackendCircuit):
         circuit.append(cirq_gate)
 
     def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        angle = gate.angle(variables)
+        angle = gate.parameter(variables)
         cirq_gate = getattr(cirq, gate.name)(rads=angle)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
     def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        angle = gate.angle(variables)
+        angle = gate.parameter(variables)
         cirq_gate = getattr(cirq, gate.name)(rads=angle)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
 
     def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        power = gate.power(variables)
+        power = gate.parameter(variables)
         cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
     def add_controlled_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        power = gate.power(variables)
+        power = gate.parameter(variables)
         cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])

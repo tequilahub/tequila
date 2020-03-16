@@ -13,6 +13,7 @@ from dataclasses import dataclass
 UnionList = typing.Union[typing.Iterable[numbers.Integral], numbers.Integral]
 UnionParam = typing.Union[Variable, FixedVariable]
 
+
 class QGateImpl:
 
     @property
@@ -53,12 +54,6 @@ class QGateImpl:
         else:
             return False
 
-    def is_gaussian(self) -> bool:
-        '''
-
-        :return: True if the gate can be expressed as the complex exponential of a hermitian generator, AND has been compiled into said form.
-        '''
-        return False
     def is_parametrized(self) -> bool:
         """
         :return: True if the gate is parametrized
@@ -71,12 +66,6 @@ class QGateImpl:
         :return: True if the Gate only acts on one qubit (not controlled)
         """
         return ((not self.control) and (len(self.target) == 1))
-
-    def is_differentiable(self) -> bool:
-        '''
-        defaults to False, overwritten by ParametrizedGate
-        '''
-        return False
 
     def finalize(self):
         if not self.target:
@@ -150,7 +139,6 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def parameter(self):
         return self._parameter
 
-
     @parameter.setter
     def parameter(self, other):
         self.parameter = assign_variable(variable=other)
@@ -159,16 +147,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         super().__init__(name=name, target=target, control=control)
         self._parameter = assign_variable(variable=parameter)
 
-    def is_gaussian(self):
-        return False
-
     def is_parametrized(self) -> bool:
-        return True
-
-    def is_differentiable(self) -> bool:
-        """
-        :return: True if the gate is differentiable
-        """
         return True
 
     def __str__(self):
@@ -208,24 +187,16 @@ class RotationGateImpl(ParametrizedGateImpl):
         self._axis = self.assign_axis(value)
 
     @property
-    def angle(self):
-        return self.parameter
-
-    @angle.setter
-    def angle(self, other):
-        self.parameter = other
-
-    @property
     def shift(self):
         return 0.5
 
     def __ipow__(self, power, modulo=None):
-        self.angle *= power
+        self.parameter *= power
         return self
 
     def __pow__(self, power, modulo=None):
         result = copy.deepcopy(self)
-        result.angle *= power
+        result.parameter *= power
         return result
 
     def __init__(self, axis, angle, target: list, control: list = None):
@@ -245,51 +216,33 @@ class RotationGateImpl(ParametrizedGateImpl):
 
     def dagger(self):
         result = copy.deepcopy(self)
-        result._parameter = assign_variable(-self.angle)
+        result._parameter = assign_variable(-self.parameter)
         return result
 
-    def is_gaussian(self):
-        return True
 
 class PhaseGateImpl(ParametrizedGateImpl):
 
-    def __init__(self,phase,target: list, control, list= None):
+    def __init__(self, phase, target: list, control, list=None):
         assert (phase is not None)
-        super().__init__(name='Phase',parameter=phase,target=target,control=control)
+        super().__init__(name='Phase', parameter=phase, target=target, control=control)
 
     def dagger(self):
         result = copy.deepcopy(self)
         result._parameter = -self.angle
         return result
 
-    @property
-    def phase(self):
-        return self.parameter
-
-    @phase.setter
-    def phase(self, other):
-        self.parameter = other
-
     def __pow__(self, power, modulo=None):
         result = copy.deepcopy(self)
-        result.phase *= power
+        result.parameter *= power
         return result
 
-    def is_gaussian(self):
-        return True
 
     @property
     def shift(self):
         return 1.
+
+
 class PowerGateImpl(ParametrizedGateImpl):
-
-    @property
-    def power(self):
-            return self.parameter
-
-    @power.setter
-    def power(self, other):
-        self.parameter = other
 
     def __init__(self, name, target: list, power=None, control: list = None):
         super().__init__(name=name, parameter=power, target=target, control=control)
@@ -299,23 +252,56 @@ class PowerGateImpl(ParametrizedGateImpl):
         return result
 
 
+class GaussianGateImpl(ParametrizedGateImpl):
+    """
+    A gate which behaves 'gaussian'
+     - its generator only has two distinguishable eigenvalues
+     - it is then differentiable by the shift rule
+     - shift needs to be given upon initialization (otherwise its default is 1/2)
+     - the generator will not be verified to fullfill the properties
+     Compiling will be done in analogy to a trotterized gate with steps=1 as default
+
+    The gate will act in the same way as rotations and exppauli gates
+    exp(-i angle/2 generator)
+    """
+
+    @staticmethod
+    def extract_targets(generator):
+        targets = []
+        for ps in generator.paulistrings:
+            targets += [k for k in ps.keys()]
+        return tuple(set(targets))
+
+    @property
+    def shift(self):
+        return self._shift
+
+    def __init__(self, angle, generator, control, shift, steps):
+        super().__init__(name="GaussianGate", parameter=angle, target=self.extract_targets(generator), control=control)
+        self._shift = shift
+        self.steps = steps
+        self.generator = generator
+
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result._parameter = assign_variable(-self.parameter)
+        return result
+
+
 class ExponentialPauliGateImpl(ParametrizedGateImpl):
     """
     Same convention as for rotation gates:
     Exp(-i angle/2 * paulistring)
     """
 
-    @property
-    def angle(self):
-        return self.parameter
-
     def dagger(self):
         result = copy.deepcopy(self)
-        result._parameter = -self.angle
+        result._parameter = -self.parameter
         return result
 
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None):
-        super().__init__(name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control, parameter=angle)
+        super().__init__(name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control,
+                         parameter=angle)
         self.paulistring = paulistring
         self.finalize()
 
@@ -329,12 +315,18 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         result += ")"
         return result
 
+    @property
+    def shift(self):
+        return 0.5
+
+
 @dataclass
 class TrotterParameters:
     threshold: float = 0.0
     join_components: bool = True
     randomize_component_order: bool = False
     randomize: bool = False
+
 
 class TrotterizedGateImpl(QGateImpl):
 
@@ -408,5 +400,5 @@ class TrotterizedGateImpl(QGateImpl):
         angles = []
         for angle in self.angles:
             angles.append(-angle)
-        result.angles=angles
+        result.angles = angles
         return result
