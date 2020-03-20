@@ -12,7 +12,6 @@ import warnings
 
 name_dict={
     'I':'I',
-
     'ry':'parametrized',
     'rx':'parametrized',
     'rz':'parametrized',
@@ -22,20 +21,24 @@ name_dict={
     'RZ': 'parametrized',
     'RY': 'parametrized',
     'RX': 'parametrized',
+    'r':'parametrized',
     'X':'X',
     'x':'X',
     'Y':'Y',
     'y':'Y',
     'Z': 'Z',
     'z': 'Z',
-    'Cz':'CZ',
-    'CZ':'CZ',
-    'cz':'CZ',
-    'Swap':'SWAP',
-    'Cx':'CNOT',
-    'cx':'CNOT',
-    'ccx':'CCNOT',
-    'CCx':'CCNOT',
+    'Cz':'control',
+    'CZ':'control',
+    'cz':'control',
+    'SWAP':'control',
+    'CX':'control',
+    'Cx':'control',
+    'cx':'control',
+    'CNOT':'control',
+    'ccx':'multicontrol',
+    'CCx':'multicontrol',
+    'CSWAP':'multicontrol',
     'H':'H',
     'h':'H',
     'Phase':'parametrized',
@@ -124,9 +127,6 @@ def phase_amp_damp_map(a,b):
     A0 = [[1, 0], [0, np.sqrt(1 - a - b)]]
     A1 = [[0, np.sqrt(a)], [0, 0]]
     A2 = [[0, 0], [0, np.sqrt(b)]]
-    #B0 = [[np.sqrt(1 - a - b), 0], [0, 1]]
-    #B1 = [[0, 0], [np.sqrt(a), 0]]
-    #B2 = [[np.sqrt(b), 0], [0, 0]]
     return [np.array(k) for k in [A0,A1,A2]]
 
 def depolarizing_map(p):
@@ -171,27 +171,7 @@ def unitary_maker(gate):
     try:
         return name_unitary_dict[gate.name]
     except:
-        if gate.name is 'RX':
-            return np.array([
-                [np.cos(gate.params[0]/2),-1.j*np.sin(gate.params[0]/2)],
-                [-1.j*np.sin(gate.params[0]/2),np.cos(gate.params[0]/2)]])
-        if gate.name is 'RY':
-            return np.array([
-                [np.cos(gate.params[0]/2),-np.sin(gate.params[0]/2)],
-                [np.sin(gate.params[0]/2),np.cos(gate.params[0]/2)]])
-
-        if gate.name is 'RZ':
-            return np.array([
-                [np.exp(-1.j*gate.params[0] / 2), 0.],
-                [0., np.exp(1.j*gate.params[0] / 2)]])
-
-
-        if gate.name is 'PHASE':
-            return np.array([
-                [1, 0.],
-                [0., np.exp(1.j*gate.params[0])]])
-        else:
-            raise TequilaPyquilException(' I do not know how to make the unitary for gate named {} '.format(gate.name))
+        raise TequilaPyquilException(' I do not know how to make the unitary for gate named {} '.format(gate.name))
 class TequilaPyquilException(TequilaException):
     def __str__(self):
         return "simulator_pyquil: " + self.message
@@ -200,7 +180,7 @@ class TequilaPyquilException(TequilaException):
 class BackendCircuitPyquil(BackendCircuit):
     recompile_swap = True
     recompile_multitarget = True
-    recompile_controlled_rotation = False
+    recompile_controlled_rotation = True
     recompile_exponential_pauli = True
     recompile_trotter = True
     recompile_phase = False
@@ -238,6 +218,8 @@ class BackendCircuitPyquil(BackendCircuit):
         n_qubits = self.n_qubits
         qc=get_qc('{}q-qvm'.format(str(n_qubits)))
         p=circuit
+        print('printing from pyquil')
+        print(circuit)
         p.wrap_in_numshots_loop(samples)
         stacked=qc.run(p)
         return self.convert_measurements(stacked)
@@ -319,29 +301,41 @@ class BackendCircuitPyquil(BackendCircuit):
         collected={}
         for noise in noise_model.noises:
             try:
-                collected[name_dict[noise.gate]]=combine_kraus_maps(noise_lookup[noise.name](*noise.probs),collected[name_dict[noise.gate]])
-                #raise TequilaPyquilException('Hi, sorry, cannot add multiple noises on the same gate at this time.')
+                collected[name_dict[noise.gate]]=combine_kraus_maps(noise_lookup[noise.name](*noise.probs),
+                                                                    collected[name_dict[noise.gate]])
+                print('more noise added on this gate')
             except:
-                collected[name_dict[noise.gate]] = noise_lookup[noise.name](*noise.probs)
+                if noise.gate is 'single':
+                    for name in ['X','Y','Z','H','parametrized']:
+                        collected[name] = noise_lookup[noise.name](*noise.probs)
+                elif noise.gate is 'r':
+                        collected['parametrized'] = noise_lookup[noise.name](*noise.probs)
+                elif noise.gate is 'control':
+                    collected['control'] = noise_lookup[noise.name](*noise.probs)
+                elif noise.gate is 'multicontrol':
+                    collected['multicontrol'] = noise_lookup[noise.name](*noise.probs)
+                else:
+                    collected[name_dict[noise.gate]]= noise_lookup[noise.name](*noise.probs)
+
         done=[]
         for gate in prog:
                 new.inst(gate)
                 if name_dict[gate.name] in collected.keys():
                     if name_dict[gate.name] is 'parametrized':
                         new.inst([pyquil.gates.I(q) for q in gate.qubits])
-                        if 'parametrized' not in done:
+                        if [gate.name,gate.qubits] not in done:
                             new.define_noisy_gate('I',
-                                                  prog.get_qubits(),
+                                                  gate.qubits,
                                                   append_kraus_to_gate(collected[name_dict[gate.name]],np.eye(2)))
-                            done.append(name_dict[gate.name])
-                    else:
-                        k = unitary_maker(gate)
-                        if name_dict[gate.name] not in done:
-                            prog.define_noisy_gate(gate.name,
-                                                   prog.get_qubits(),
-                                                   append_kraus_to_gate(collected[name_dict[gate.name]],k))
-                            done.append(name_dict[gate.name])
+                            done.append(['parametrized',gate.qubits])
 
+                    else:
+                        if [gate.name,gate.qubits] not in done:
+                            k = unitary_maker(gate)
+                            new.define_noisy_gate(gate.name,
+                                                  gate.qubits,
+                                                  append_kraus_to_gate(collected[name_dict[gate.name]],k))
+                            done.append([gate.name,gate.qubits])
                 else:
                     pass
         return new

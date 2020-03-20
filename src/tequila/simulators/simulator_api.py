@@ -374,9 +374,6 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
         if samples is None:
             return simulate_objective(objective=objective, variables=variables, backend=backend)
         else:
-            print('sampling ')
-            print('noise is')
-            print(noise_model)
             return sample_objective(objective=objective, variables=variables, samples=samples, backend=backend,
                                     noise_model=noise_model)
     elif hasattr(objective, "gates"):

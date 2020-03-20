@@ -24,6 +24,36 @@ type_lookup={
     'y': [cirq.ops.pauli_gates._PauliY,cirq.ops.common_gates.YPowGate],
     'ry': [cirq.ops.common_gates.YPowGate],
     'z': [cirq.ops.pauli_gates._PauliZ,cirq.ops.common_gates.ZPowGate],
+    'r':[cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.XPowGate,
+         cirq.ops.common_gates.YPowGate],
+    'single':[cirq.ops.pauli_gates._PauliX,cirq.ops.pauli_gates._PauliY,
+                cirq.ops.pauli_gates._PauliZ,
+              cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.XPowGate,
+         cirq.ops.common_gates.YPowGate,cirq.ops.common_gates.HPowGate],
+    'control':[cirq.ops.pauli_gates._PauliX,
+               cirq.ops.pauli_gates._PauliY,
+               cirq.ops.pauli_gates._PauliZ,
+               cirq.ops.common_gates.ZPowGate,
+               cirq.ops.common_gates.XPowGate,
+               cirq.ops.common_gates.YPowGate,
+               cirq.ops.common_gates.HPowGate,
+               cirq.ops.common_gates.CNotPowGate,
+               cirq.ops.common_gates.CZPowGate,
+               cirq.ops.SwapPowGate],
+    'multicontrol':[cirq.ops.pauli_gates._PauliX,
+               cirq.ops.pauli_gates._PauliY,
+               cirq.ops.pauli_gates._PauliZ,
+               cirq.ops.common_gates.ZPowGate,
+               cirq.ops.common_gates.XPowGate,
+               cirq.ops.common_gates.YPowGate,
+               cirq.ops.common_gates.HPowGate,
+               cirq.ops.common_gates.CNotPowGate,
+               cirq.ops.common_gates.CZPowGate,
+               cirq.ops.SwapPowGate,
+               cirq.ops.three_qubit_gates.CCXPowGate,
+               cirq.ops.three_qubit_gates.CCZPowGate,
+               cirq.ops.three_qubit_gates.CSwapGate
+                ],
     'rz': [cirq.ops.common_gates.ZPowGate],
     'h': [cirq.ops.common_gates.HPowGate],
     'crx':[cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate],
@@ -55,6 +85,10 @@ qubit_lookup ={
     'z': 1,
     'rz': 1,
     'h': 1,
+    'r':1,
+    'single':1,
+    'control':2,
+    'multicontrol':3,
     'crx':2,
     'cry': 2,
     'crz': 2,
@@ -123,6 +157,8 @@ class BackendCircuitCirq(BackendCircuit):
             return counter
 
     def do_sample(self, samples,circuit, *args, **kwargs) -> QubitWaveFunction:
+        print('printing from cirq')
+        print(circuit)
         return self.convert_measurements(cirq.sample(program=circuit, repetitions=samples))
 
     def fast_return(self, abstract_circuit):
@@ -188,7 +224,6 @@ class BackendCircuitCirq(BackendCircuit):
                        for i,channel in enumerate(noise_lookup[noise.name]):
                            new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
                 elif type(op.gate) in type_lookup[noise.gate.lower()] and qubit_satisfier(op,noise.gate.lower()) is True:
-                    #new_ops.append(noise_lookup[noise.name](*noise.probs).on(*[q for q in op.qubits]))
                     for i, channel in enumerate(noise_lookup[noise.name]):
                         new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
         return cirq.Circuit.from_ops(new_ops)

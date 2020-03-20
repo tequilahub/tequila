@@ -54,7 +54,7 @@ def test_one_qubit_wfn(simulator,method):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = minimize(objective=O, maxiter=8, backend=simulator,acquisition=method)
+    result = minimize(objective=O, maxiter=8, backend=simulator,method=method)
     assert (numpy.isclose(result.energy, -1.0,atol=1.e-2))
 
 
