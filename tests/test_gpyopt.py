@@ -43,7 +43,7 @@ def test_execution_shot(simulator):
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
     mi=2
-    result = minimize(objective=O, maxiter=mi, backend=simulator)
+    result = minimize(objective=O, maxiter=mi, backend=simulator,samples=1024)
     print(result.history.energies)
     assert (len(result.history.energies) <= mi*mp.cpu_count())
 

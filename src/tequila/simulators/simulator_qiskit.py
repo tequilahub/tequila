@@ -92,9 +92,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
         simulator = qiskit.providers.aer.QasmSimulator()
-        print('hello from qiskit')
-        print(self.noise_model)
-        return self.convert_measurements(qiskit.execute(circuit, simulator,basis_gates=self.noise_model.basis_gates, shots=samples,
+        return self.convert_measurements(qiskit.execute(circuit,backend=simulator, shots=samples,
                                                         optimization_level=0,
                                                         noise_model=self.noise_model))
 
@@ -178,17 +176,17 @@ class BackendCircuitQiskit(BackendCircuit):
         for noise in nm.noises:
             op=noise_lookup[noise.name]
             if op is qiskitnoise.depolarizing_error:
-                active=op(noise.probs[0],gate_qubit_lookup[noise.gate.lower()])
+                active=op(noise.probs[0],noise.level)
             else:
-                if gate_qubit_lookup[noise.gate.lower()] ==1:
+                if noise.level==1:
                     active=op(*noise.probs)
                 else:
                     active=op(*noise.probs)
                     action=op(*noise.probs)
-                    for i in range(gate_qubit_lookup[noise.gate.lower()]-1):
+                    for i in range(noise.level-1):
                         active=active.tensor(action)
 
-            if noise.gate is 'control':
+            if noise.level is 2:
                 targets=['cx',
                          'cy',
                          'cz',
@@ -198,7 +196,7 @@ class BackendCircuitQiskit(BackendCircuit):
                          'cu3',
                          'ch']
 
-            elif noise.gate is 'single':
+            elif noise.level is 1:
                 targets=['x',
                          'y',
                          'z',
@@ -206,12 +204,9 @@ class BackendCircuitQiskit(BackendCircuit):
                          'u1',
                          'u2',
                          'h']
-            elif noise.gate is 'r':
-                targets=['u3']
-            elif noise.gate is 'multicontrol':
+
+            elif noise.level is 3:
                 targets=['ccx']
-            else:
-                targets=[noise.gate.lower()]
             qnoise.add_all_qubit_quantum_error(active,targets)
 
         return qnoise

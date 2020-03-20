@@ -357,11 +357,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
         simulated/sampled objective or simulated/sampled wavefunction
 
     """
-    print('simulator got')
-    print(backend)
-    print(noise_model)
-    print(samples)
-    print('lets blow this pop stand')
+
     if variables is None and not (len(objective.extract_variables()) == 0):
         raise TequilaException(
             "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(

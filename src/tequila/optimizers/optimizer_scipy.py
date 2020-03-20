@@ -235,7 +235,7 @@ class OptimizerSciPy(Optimizer):
                     if self.method not in self.hessian_based_methods:
                         self.history.gradients = [dE.history[i] for i in real_iterations]
                 except:
-                    print("WARNING: History could assign the stored gradients")
+                    print("WARNING: History could not assign the stored gradients")
                 self.history.gradients_evaluations = dE.history
             if ddE is not None and not isinstance(ddE, str):
                 # hessians are not evaluated in the same frequencies as energies

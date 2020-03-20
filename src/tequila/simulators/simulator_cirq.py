@@ -109,13 +109,12 @@ qubit_lookup ={
 }
 
 
-def qubit_satisfier(op,gate_name):
+def qubit_satisfier(op,level):
     oplen=len(op.qubits)
-    gateq=qubit_lookup[gate_name]
-    if gateq <3:
-        return oplen ==gateq
+    if level <3:
+        return oplen ==level
     else:
-        return oplen >=gateq
+        return oplen >=level
 class TequilaCirqException(TequilaException):
     def __str__(self):
         return "Error in cirq backend:" + self.message
@@ -157,8 +156,6 @@ class BackendCircuitCirq(BackendCircuit):
             return counter
 
     def do_sample(self, samples,circuit, *args, **kwargs) -> QubitWaveFunction:
-        print('printing from cirq')
-        print(circuit)
         return self.convert_measurements(cirq.sample(program=circuit, repetitions=samples))
 
     def fast_return(self, abstract_circuit):
@@ -219,12 +216,8 @@ class BackendCircuitCirq(BackendCircuit):
         for op in c.all_operations():
             new_ops.append(op)
             for noise in n.noises:
-                if type(op.gate) is cirq.ops.controlled_gate.ControlledGate:
-                   if type(op.gate.sub_gate) in type_lookup[noise.gate.lower()] and qubit_satisfier(op,noise.gate.lower()) is True:
-                       for i,channel in enumerate(noise_lookup[noise.name]):
-                           new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
-                elif type(op.gate) in type_lookup[noise.gate.lower()] and qubit_satisfier(op,noise.gate.lower()) is True:
-                    for i, channel in enumerate(noise_lookup[noise.name]):
+                if qubit_satisfier(op,noise.level):
+                    for i,channel in enumerate(noise_lookup[noise.name]):
                         new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
         return cirq.Circuit.from_ops(new_ops)
 

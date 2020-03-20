@@ -218,8 +218,6 @@ class BackendCircuitPyquil(BackendCircuit):
         n_qubits = self.n_qubits
         qc=get_qc('{}q-qvm'.format(str(n_qubits)))
         p=circuit
-        print('printing from pyquil')
-        print(circuit)
         p.wrap_in_numshots_loop(samples)
         stacked=qc.run(p)
         return self.convert_measurements(stacked)
@@ -301,32 +299,21 @@ class BackendCircuitPyquil(BackendCircuit):
         collected={}
         for noise in noise_model.noises:
             try:
-                collected[name_dict[noise.gate]]=combine_kraus_maps(noise_lookup[noise.name](*noise.probs),
-                                                                    collected[name_dict[noise.gate]])
-                print('more noise added on this gate')
+                collected[str(noise.level)]=combine_kraus_maps(noise_lookup[noise.name](*noise.probs),
+                                                                    collected[str(noise.level)])
             except:
-                if noise.gate is 'single':
-                    for name in ['X','Y','Z','H','parametrized']:
-                        collected[name] = noise_lookup[noise.name](*noise.probs)
-                elif noise.gate is 'r':
-                        collected['parametrized'] = noise_lookup[noise.name](*noise.probs)
-                elif noise.gate is 'control':
-                    collected['control'] = noise_lookup[noise.name](*noise.probs)
-                elif noise.gate is 'multicontrol':
-                    collected['multicontrol'] = noise_lookup[noise.name](*noise.probs)
-                else:
-                    collected[name_dict[noise.gate]]= noise_lookup[noise.name](*noise.probs)
-
+                collected[str(noise.level)] = noise_lookup[noise.name](*noise.probs)
         done=[]
         for gate in prog:
                 new.inst(gate)
-                if name_dict[gate.name] in collected.keys():
+                level=str(len(gate.qubits))
+                if level in collected.keys():
                     if name_dict[gate.name] is 'parametrized':
                         new.inst([pyquil.gates.I(q) for q in gate.qubits])
-                        if [gate.name,gate.qubits] not in done:
+                        if ['parametrized',gate.qubits] not in done:
                             new.define_noisy_gate('I',
                                                   gate.qubits,
-                                                  append_kraus_to_gate(collected[name_dict[gate.name]],np.eye(2)))
+                                                  append_kraus_to_gate(collected[level],np.eye(2)))
                             done.append(['parametrized',gate.qubits])
 
                     else:
@@ -334,7 +321,7 @@ class BackendCircuitPyquil(BackendCircuit):
                             k = unitary_maker(gate)
                             new.define_noisy_gate(gate.name,
                                                   gate.qubits,
-                                                  append_kraus_to_gate(collected[name_dict[gate.name]],k))
+                                                  append_kraus_to_gate(collected[level],k))
                             done.append([gate.name,gate.qubits])
                 else:
                     pass

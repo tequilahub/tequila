@@ -161,6 +161,7 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     if not hasattr(g, "shift"):
         raise TequilaException("No shift found for gate {}".format(g))
 
+    # neo_a and neo_b are the shifted versions of gate g needed to evaluate its gradient
     shift_a = g._parameter + np.pi / (4 * g.shift)
     shift_b = g._parameter - np.pi / (4 * g.shift)
     neo_a = copy.deepcopy(g)
