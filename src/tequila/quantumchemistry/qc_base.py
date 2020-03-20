@@ -597,8 +597,11 @@ class QuantumChemistryBase:
 
         """
 
+        if self.molecule.n_electrons % 2 != 0:
+            raise TequilaException("make_uccsd_ansatz currently only for closed shell systems")
+
         nocc = self.molecule.n_electrons // 2
-        nvirt = self.molecule.n_orbitals / 2 - nocc
+        nvirt = self.molecule.n_orbitals // 2 - nocc
 
         Uref = QCircuit()
         if include_reference_ansatz:
