@@ -18,6 +18,9 @@ noise_lookup={
     'depolarizing': [lambda x: cirq.depolarize(p=(3/4)*x)]
 }
 
+
+'''
+potentially useful in hash table merge, leaving in
 type_lookup={
     'x':[cirq.ops.pauli_gates._PauliX,cirq.ops.common_gates.XPowGate],
     'rx':[cirq.ops.common_gates.XPowGate],
@@ -73,10 +76,12 @@ type_lookup={
     'ccz': [cirq.ops.pauli_gates._PauliZ, cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.CZPowGate,cirq.ops.three_qubit_gates.CCZPowGate],
     'cch': [cirq.ops.common_gates.HPowGate],
     'swap':[cirq.ops.SwapPowGate],
-
-
 }
+'''
 
+
+'''
+potentially useful in hash table merge, leaving in
 qubit_lookup ={
     'x':1,
     'rx':1,
@@ -107,7 +112,7 @@ qubit_lookup ={
     'cch':3,
     'swap':2
 }
-
+'''
 
 def qubit_satisfier(op,level):
     oplen=len(op.qubits)
@@ -115,6 +120,7 @@ def qubit_satisfier(op,level):
         return oplen ==level
     else:
         return oplen >=level
+
 class TequilaCirqException(TequilaException):
     def __str__(self):
         return "Error in cirq backend:" + self.message

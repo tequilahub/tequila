@@ -20,7 +20,7 @@ def test_bit_flip_scipy_gradient_free(simulator, p,method):
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
     assert (numpy.isclose(result.energy, p, atol=1.e-2) or (result.energy<p and not numpy.isclose(result.energy,0)))
 
-@pytest.mark.parametrize("simulator", ['qiskit','cirq'])
+@pytest.mark.parametrize("simulator", ['qiskit','pyquil'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 @pytest.mark.parametrize('method',tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
 def test_bit_flip_scipy_gradient(simulator, p,method):
@@ -33,7 +33,7 @@ def test_bit_flip_scipy_gradient(simulator, p,method):
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
     assert (numpy.isclose(result.energy, p, atol=1.e-2) or (result.energy<p and not numpy.isclose(result.energy,0)))
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.parametrize("simulator", ['qiskit','cirq'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 @pytest.mark.parametrize('method',tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
 def test_bit_flip_scipy_hessian(simulator, p,method):
