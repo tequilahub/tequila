@@ -2,9 +2,10 @@ from tequila.circuit.compiler import compile_controlled_rotation
 from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, GaussianGateImpl
 from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget, \
     compile_power_gate, compile_controlled_phase, compile_h_power
-from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable
+from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, ExpectationValue
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
+from tequila.hamiltonian import paulis
 import numpy as np
 import copy
 import typing
@@ -179,6 +180,7 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
     dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
     return dOinc
+
 
 
 

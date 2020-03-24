@@ -427,38 +427,6 @@ class Variable:
         new = Objective(args=[self])
         return new ** -1
 
-    def __iadd__(self, other):
-        self._value += other
-        return self
-
-    def __isub__(self, other):
-        self._value -= other
-        return self
-
-    def __imul__(self, other):
-        self._value *= other
-        return self
-
-    def __idiv__(self, other):
-        self._value /= other
-        return self
-
-    def __ipow__(self, other):
-        self._value **= other
-        return self
-
-    def __lt__(self, other):
-        return self.value < other
-
-    def __gt__(self, other):
-        return self.value > other
-
-    def __ge__(self, other):
-        return self.value >= other
-
-    def __le__(self, other):
-        return self.value <= other
-
     def __ne__(self, other):
         if self.__eq__(other):
             return False
@@ -564,6 +532,12 @@ class Variables(collections.abc.MutableMapping):
             result += "{} : {:2.8f}\n".format(k, v)
         return result
 
+
+
+
+
+
+
 if __name__ == "__main__":
 
     a = Variables()
@@ -576,9 +550,5 @@ if __name__ == "__main__":
     print("a" in a)
     print(assign_variable("a") in a)
     print("b" in a)
-
-
-
-
 
 
