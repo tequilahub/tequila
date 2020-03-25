@@ -34,7 +34,7 @@ class _EvalContainer:
         if self.save_history:
             self.history.append(E)
             self.history_angles.append(angles)
-        return E
+        return numpy.float64(E) # jax types confuses optimizers
 
 
 class _GradContainer(_EvalContainer):
@@ -54,7 +54,7 @@ class _GradContainer(_EvalContainer):
             dE_vec[i] = dO[self.param_keys[i]](variables=variables, samples=self.samples)
             memory[self.param_keys[i]] = dE_vec[i]
         self.history.append(memory)
-        return dE_vec
+        return numpy.asarray(dE_vec, dtype=numpy.float64) # jax types confuse optimizers
 
 
 class _HessContainer(_EvalContainer):
@@ -74,4 +74,4 @@ class _HessContainer(_EvalContainer):
                 ddE_mat[j, i] = value
                 memory[key] = value
         self.history.append(memory)
-        return ddE_mat
+        return numpy.asarray(ddE_mat, dtype=numpy.float64) # jax types confuse optimizers

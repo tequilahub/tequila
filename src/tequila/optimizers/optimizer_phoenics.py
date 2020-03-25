@@ -25,7 +25,7 @@ except:
 from tequila.autograd_imports import jax
 import numpy as np
 from numpy import pi as pi
-from tequila.simulators.simulator_api import compile_objective, simulate_objective,sample_objective
+from tequila.simulators.simulator_api import compile_objective
 import os
 from collections import namedtuple
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -115,6 +115,7 @@ class PhoenicsOptimizer(Optimizer):
                  save_to_file=False,
                  file_name=None):
 
+
         bird = self._make_phoenics_object(objective,passives,phoenics_config)
         if previous is not None:
             if type(previous) is str:
@@ -141,11 +142,7 @@ class PhoenicsOptimizer(Optimizer):
             else:
                 raise TequilaException('file_name must be a string!')
 
-        ### this line below just gets the damn compiler to run, since that argument is necessary
-        init = {key:np.pi for key in objective.extract_variables()}
-
-        O= compile_objective(objective=objective,variables=init, backend=backend,
-                                               samples=samples)
+        O= compile_objective(objective=objective, backend=backend, samples=samples)
 
         best=None
         best_angles=None
@@ -165,10 +162,7 @@ class PhoenicsOptimizer(Optimizer):
             runs=[]
             recs=self._process_for_sim(precs,passives=passives)
             for i,rec in enumerate(recs):
-                if samples is None:
-                    En = simulate_objective(objective=O,variables=rec)
-                else:
-                    En = sample_objective(objective=O,variables=rec, samples=samples)
+                En = O(variables=rec, samples=samples)
                 runs.append((rec, En))
             for run in runs:
                 angles=run[0]
