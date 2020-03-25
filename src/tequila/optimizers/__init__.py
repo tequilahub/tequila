@@ -20,3 +20,9 @@ if has_phoenics:
 
 if has_gpyopt:
     from tequila.optimizers.optimizer_gpyopt import GPyOptOptimizer
+
+has_knitro = False
+try:
+    from tequila.optimizers.optimizer_knitro import minimize as minimize_knitro
+except ImportError:
+    has_knitro = False

@@ -11,7 +11,7 @@ from tequila.optimizers import has_gpyopt
 if has_gpyopt:
     from tequila.optimizers import optimizer_gpyopt
 
-from tequila.simulators.simulator_api import simulate, compile, draw, pick_backend, INSTALLED_SAMPLERS, \
+from tequila.simulators.simulator_api import simulate, compile, compile_to_function, draw, pick_backend, INSTALLED_SAMPLERS, \
     INSTALLED_SIMULATORS, SUPPORTED_BACKENDS, INSTALLED_BACKENDS, show_available_simulators
 from tequila.wavefunction import QubitWaveFunction
 import tequila.quantumchemistry as chemistry

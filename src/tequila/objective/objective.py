@@ -46,6 +46,9 @@ class ExpectationValueImpl:
         self._unitary = copy.deepcopy(U)
         self._hamiltonian = copy.deepcopy(H)
 
+    def __call__(self, *args, **kwargs):
+        raise TequilaException("Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")
+
     def info(self, short=True, *args, **kwargs):
         if short:
             print("Expectation Value with {qubits} active qubits and {paulis} paulistrings".format(
@@ -287,25 +290,8 @@ class Objective:
                "Objective = f({})\n" \
                "variables = {}".format(len(ev), argstring.strip().rstrip(','), variables)
 
-    def __call__(self, variables, *args, **kwargs):
-
-        if self.has_expectationvalues():
-            E = []
-            for Ei in self.args:
-                if hasattr(Ei, "simulate"):
-                    E.append(Ei(variables=variables, *args, **kwargs))
-                elif hasattr(Ei, "U"):
-                    raise TequilaException(
-                        "You are trying to evaluate a non-compiled objective.\nTry passing this object to tequila.simulate(...)")
-                else:
-                    E.append(Ei(variables=variables))
-            # return evaluated result
-            out=self.transformation(*E)
-            return to_float(out)
-        else:
-            # in case that no simulator is actually needed
-            evaluated_args = [variables[arg] for arg in self.args]
-            return to_float(self.transformation(*evaluated_args))
+    def __call__(self, variables = None, *args, **kwargs):
+        return to_float(self.transformation(*[Ei(variables=variables, *args, **kwargs) for Ei in self.args]))
 
 
 def ExpectationValue(U, H) -> Objective:
@@ -336,7 +322,7 @@ class Variable:
             raise TequilaVariableException("Name of variable has to ba a hashable type")
         self._name = name
 
-    def __call__(self, variables):
+    def __call__(self, variables, *args, **kwargs):
         """
         Convenience function for easy usage
         :param variables: dictionary which carries all variable values
