@@ -9,7 +9,7 @@ from tequila.utils import to_float
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit",'pyquil']
+SUPPORTED_NOISE_BACKENDS = ["qiskit",'cirq', 'pyquil']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -68,10 +68,12 @@ except ImportError:
 HAS_CIRQ = True
 try:
     from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq
+
     HAS_CIRQ = True
     INSTALLED_SIMULATORS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
     INSTALLED_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
-    INSTALLED_NOISE_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
+    INSTALLED_NOISE_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq,
+                                                    ExpValueType=BackendExpectationValueCirq)
 except ImportError:
     HAS_CIRQ = False
 
@@ -95,7 +97,7 @@ def show_available_simulators():
         print(k)
 
 
-def pick_backend(backend: str = None, samples: int = None, noise: bool=False, exclude_symbolic: bool = True) -> str:
+def pick_backend(backend: str = None, samples: int = None, noise: bool = False, exclude_symbolic: bool = True) -> str:
     """
     verifies if the backend is installed and picks one automatically if set to None
     :param backend: the demanded backend
@@ -120,7 +122,8 @@ def pick_backend(backend: str = None, samples: int = None, noise: bool=False, ex
         else:
             for f in SUPPORTED_NOISE_BACKENDS:
                 if samples is None:
-                    raise TequilaException("Noise requires sampling; please provide a positive, integer value for samples")
+                    raise TequilaException(
+                        "Noise requires sampling; please provide a positive, integer value for samples")
                 else:
                     if f in INSTALLED_NOISE_SAMPLERS:
                         return f
@@ -149,18 +152,19 @@ def pick_backend(backend: str = None, samples: int = None, noise: bool=False, ex
     elif noise is False and samples is not None and backend not in INSTALLED_SAMPLERS:
         raise TequilaException("Backend {backend} not installed ".format(backend=backend))
     elif noise is not False and samples is not None and backend not in INSTALLED_NOISE_SAMPLERS:
-        raise TequilaException("Backend {backend} not installed or else Noise has not been implemented".format(backend=backend))
+        raise TequilaException(
+            "Backend {backend} not installed or else Noise has not been implemented".format(backend=backend))
 
     return backend
 
 
 def compile_objective(objective: 'Objective',
-                      variables: typing.Dict['Variable', 'RealNumber'],
+                      variables: typing.Dict['Variable', 'RealNumber'] = None,
                       backend: str = None,
                       samples: int = None,
                       noise_model=None,
                       *args,
-                      **kwargs):
+                      **kwargs) -> Objective:
     """
     Compiles an objective to a chosen backend
     The abstract circuits are replaced by the circuit objects of the backend
@@ -173,89 +177,34 @@ def compile_objective(objective: 'Objective',
     :return: Compiled Objective
     """
 
-    backend = pick_backend(backend=backend, samples=samples,noise=noise_model is not None)
+    backend = pick_backend(backend=backend, samples=samples, noise=noise_model is not None)
+
+    # dummy variables
+    if variables is None:
+        variables = {k: 0.0 for k in objective.extract_variables()}
+
     ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
     if hasattr(objective, "simulate"):
         for arg in objective.args:
             if hasattr(arg, "U") and not isinstance(arg, ExpValueType):
                 raise TequilaException(
-                    "Looks like the objective was already compiled for another backend. You gave {} and tried to compile to {}".format(
-                        type(objective), ExpValueType))
+                    "Looks like the objective was already compiled for another backend. Found ExpectationValue of type {} and tried to compile to {}".format(
+                        type(arg), ExpValueType))
         return objective
 
     compiled_args = []
     for arg in objective.args:
         if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, ExpValueType):
-            compiled_args.append(ExpValueType(arg, variables,noise_model))
+            compiled_args.append(ExpValueType(arg, variables, noise_model))
         else:
             compiled_args.append(arg)
     return type(objective)(args=compiled_args, transformation=objective._transformation)
 
 
-def simulate_objective(objective: 'Objective',
-                       variables: typing.Dict['Variable', 'RealNumber'],
-                       backend: str = None,
-                       *args,
-                       **kwargs):
-    """
-    Simulate a tequila Objective
-    The Objective will be compiled and then simulated
-    :param objective: abstract or compiled objective
-    :param variables: The variables of the objective given as dictionary
-    :param backend: specify the backend or give None for automatic assignment
-    :return: The evaluated objective
-    """
-    compiled = compile_objective(objective, variables, backend)
-
-    E = []
-    for Ei in compiled.args:
-        if hasattr(Ei, "simulate"):
-            E.append(Ei.simulate(variables=variables,*args, **kwargs))
-        else:
-            E.append(Ei(variables=variables))
-    # return evaluated result
-    return to_float(objective.transformation(*E))
-
-
-def sample_objective(objective: 'Objective',
-                     variables: typing.Dict['Variable', 'RealNumber'],
-                     samples: int,
-                     backend: str = None,
-                     noise_model = None,
-                     *args,
-                     **kwargs):
-    """
-    Sample a tequila Objective
-    The Objective will be compiled and then simulated
-    :param objective: abstract or compiled objective
-    :param variables: The variables of the objective given as dictionary
-    :param samples: The number of samples/measurements to take for each expectationvalue
-    :param backend: specify the backend or give None for automatic assignment
-    :param noise_model: a noise model to use in simulation.
-    :return: The sampled objective
-    """
-
-    backend = pick_backend(backend=backend, samples=samples,noise=noise_model is not None)
-    compiled = compile_objective(objective, variables, backend,noise_model=noise_model)
-
-    # break the objective apart into its individual pauli components in every expectationvalue
-    # then sample all of those
-    print(noise_model)
-    evaluated = []
-    for arg in compiled.args:
-        if hasattr(arg, "H"):
-            E = arg.sample(variables=variables, samples=samples,*args, **kwargs)
-            evaluated.append(E)
-        else:
-            evaluated.append(arg(variables))
-
-    return to_float(compiled.transformation(*evaluated))
-
-
 def compile_circuit(abstract_circuit: 'QCircuit',
-                    variables: typing.Dict['Variable', 'RealNumber'],
+                    variables: typing.Dict['Variable', 'RealNumber'] = None,
                     backend: str = None,
-                    noise_model= None,
+                    noise_model=None,
                     *args,
                     **kwargs) -> BackendCircuit:
     """
@@ -269,7 +218,11 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     :return: The compiled circuit object
     """
 
-    CircType = INSTALLED_SIMULATORS[pick_backend(backend=backend,noise=noise_model is not None)].CircType
+    CircType = INSTALLED_SIMULATORS[pick_backend(backend=backend, noise=noise_model is not None)].CircType
+
+    # dummy variables
+    if variables is None:
+        variables = {k: 0.0 for k in abstract_circuit.extract_variables()}
 
     if hasattr(abstract_circuit, "simulate"):
         if not isinstance(abstract_circuit, CircType):
@@ -279,48 +232,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
         else:
             return abstract_circuit
 
-    return CircType(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model)
-
-
-def simulate_wavefunction(abstract_circuit: 'QCircuit',
-                          variables: typing.Dict['Variable', 'RealNumber'],
-                          backend: str = None,
-                          *args,
-                          **kwargs):
-    """
-    Simulate an abstract tequila circuit
-    :param abstract_circuit: abstract or compiled circuit
-    :param variables: The variables of the objective given as dictionary
-    with keys as tequila Variables and values the corresponding real numbers
-    :param backend: specify the backend or give None for automatic assignment
-    :return:
-    """
-
-    compiled = compile_circuit(abstract_circuit=abstract_circuit, variables=variables, backend=backend, *args, **kwargs)
-    return compiled.simulate(variables=variables, *args, **kwargs)
-
-
-def sample_wavefunction(abstract_circuit: 'QCircuit',
-                        variables: typing.Dict['Variable', 'RealNumber'],
-                        samples: int,
-                        backend: str = None,
-                        noise_model = None,
-                        *args, **kwargs):
-    """
-    Sample an abstract tequila circuit
-    :param abstract_circuit: abstract or compiled circuit
-    :param variables: The variables of the objective given as dictionary
-    with keys as tequila Variables and values the corresponding real numbers
-    :param samples: Number of samples/measurements
-    :param backend: specify the backend or give None for automatic assignment
-    :param noise_model: NoiseModel to apply to simulation.
-    :return:
-    """
-
-    backend = pick_backend(backend, samples=samples,noise=noise_model is not None)
-    compiled = compile_circuit(abstract_circuit=abstract_circuit, variables=variables, backend=backend,
-                               noise_model=noise_model, *args, **kwargs)
-    return compiled.sample(variables=variables, samples=samples, *args, **kwargs)
+    return CircType(abstract_circuit=abstract_circuit, variables=variables, noise_model=noise_model)
 
 
 def simulate(objective: typing.Union['Objective', 'QCircuit'],
@@ -358,31 +270,17 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
 
     """
 
+    variables = format_variable_dictionary(variables)
+
     if variables is None and not (len(objective.extract_variables()) == 0):
         raise TequilaException(
             "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
                 objective.extract_variables()))
-    elif variables is not None:
-        # allow hashable types as keys without casting it to variables
-        variables = {assign_variable(k): v for k, v in variables.items()}
 
-    if isinstance(objective, Objective) or hasattr(objective, "args"):
-        if samples is None:
-            return simulate_objective(objective=objective, variables=variables, backend=backend)
-        else:
-            return sample_objective(objective=objective, variables=variables, samples=samples, backend=backend,
-                                    noise_model=noise_model)
-    elif hasattr(objective, "gates"):
-        if samples is None:
-            return simulate_wavefunction(abstract_circuit=objective, variables=variables, backend=backend, *args,
-                                         **kwargs)
-        else:
-            return sample_wavefunction(abstract_circuit=objective, variables=variables, samples=samples,
-                                       backend=backend,noise_model=noise_model, *args, **kwargs)
-    else:
-        raise TequilaException(
-            "Don't know how to simulate object of type: {type}, \n{object}".format(type=type(objective),
-                                                                                   object=objective))
+    compiled_objective = compile(objective=objective, samples=samples, variables=variables, backend=backend,
+                                 noise_model=noise_model, *args, **kwargs)
+
+    return compiled_objective(variables=variables, samples=samples, *args, **kwargs)
 
 
 def draw(objective, variables=None, backend: str = None):
@@ -421,7 +319,7 @@ def draw(objective, variables=None, backend: str = None):
                     variables[k] = 0.0
             variables = format_variable_dictionary(variables)
             compiled = compile_circuit(abstract_circuit=objective, backend=backend,
-                                                                        variables=variables)
+                                       variables=variables)
             print(compiled.circuit)
 
 
@@ -429,9 +327,9 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
             variables: Dict[Union['Variable', Hashable], RealNumber] = None,
             samples: int = None,
             backend: str = None,
-            noise_model= None,
+            noise_model=None,
             *args,
-            **kwargs) -> typing.Union['BackendCircuit', 'BackendExpectationValue']:
+            **kwargs) -> typing.Union['BackendCircuit', 'Objective']:
     """Compile a tequila objective or circuit to a backend
 
     Parameters
@@ -455,9 +353,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
 
     """
     if variables is None and not (len(objective.extract_variables()) == 0):
-        raise TequilaException(
-            "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
-                objective.extract_variables()))
+        variables = {key: 0.0 for key in objective.extract_variables()}
     elif variables is not None:
         # allow hashable types as keys without casting it to variables
         variables = {assign_variable(k): v for k, v in variables.items()}
@@ -465,12 +361,49 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
     backend = pick_backend(backend=backend,noise=noise_model is not None, samples=samples)
 
     if isinstance(objective, Objective) or hasattr(objective, "args"):
-        return compile_objective(objective=objective, variables=variables, backend=backend,noise_model=noise_model)
+        return compile_objective(objective=objective, variables=variables, backend=backend, noise_model=noise_model)
     elif hasattr(objective, "gates"):
-        return compile_circuit(abstract_circuit=objective, variables=variables, backend=backend,noise_model=noise_model, *args, **kwargs)
+        return compile_circuit(abstract_circuit=objective, variables=variables, backend=backend,
+                               noise_model=noise_model, *args, **kwargs)
     else:
         raise TequilaException(
             "Don't know how to compile object of type: {type}, \n{object}".format(type=type(objective),
                                                                                   object=objective))
+
+
+def compile_to_function(objective: typing.Union['Objective', 'QCircuit'], *args,
+                        **kwargs) -> typing.Union['BackendCircuit', 'Objective']:
+    """
+    Notes
+    ----------
+    Same as compile but gives back callable wrapper
+    where parameters are passed down as arguments instead of dictionaries
+    the order of those arguments is the order of the parameter dictionary
+    given here. If not given it is the order returned by objective.extract_variables()
+
+    See compile for more information on the parameters of this function
+
+    Returns
+    -------
+    wrapper over a compiled objective/circuit
+    can be called like: function(0.0,1.0,...,samples=None)
+    """
+
+    compiled_objective = compile(objective, *args, **kwargs)
+    if 'variables' in kwargs:
+        varnames = list(kwargs['variables'].keys())
+    else:
+        varnames = objective.extract_variables()
+
+    def objective_function(*fargs, **fkwargs):
+        if len(fargs) != len(varnames):
+            raise Exception("Compiled function takes {} variables. You passed down {} arguments."
+                            "Use keywords for samples and other instructions\n"
+                            "like function(a,b,c, samples=10)".format(len(varnames), len(fargs)))
+        vars = {varnames[i]: fargs[i] for i, v in enumerate(fargs)}
+        return compiled_objective(variables=vars, **fkwargs)
+
+    return objective_function
+
 
 INSTALLED_BACKENDS = {**INSTALLED_SIMULATORS, **INSTALLED_SAMPLERS}

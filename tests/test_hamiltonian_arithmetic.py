@@ -1,7 +1,22 @@
 from tequila.hamiltonian import QubitHamiltonian, PauliString, paulis
 from numpy import random, kron, eye, allclose
 from tequila import BitString, QubitWaveFunction
+from tequila import paulis
 import numpy, pytest
+
+def test_ketbra():
+    ket = QubitWaveFunction.from_string("1.0*|00> + 1.0*|11>").normalize()
+    operator = paulis.KetBra(ket=ket, bra="|00>")
+    result = operator*QubitWaveFunction.from_int(0, n_qubits=2)
+    assert(result == ket)
+
+@pytest.mark.parametrize("n_qubits", [1,2,3,5])
+def test_ketbra_random(n_qubits):
+    ket = numpy.random.uniform(0.0, 1.0, 2**n_qubits)
+    bra = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
+    operator = paulis.KetBra(ket=ket, bra=bra)
+    result = operator * bra
+    assert result == QubitWaveFunction.from_array(ket)
 
 def test_paulistring_conversion():
     X1 = QubitHamiltonian.init_from_string("X0")
@@ -104,7 +119,6 @@ def test_projectors(qubits):
     real = numpy.random.uniform(0.0,1.0,2**qubits)
     imag = numpy.random.uniform(0.0,1.0,2**qubits)
     array = real + 1.j*imag
-    print("array=", array)
     wfn = QubitWaveFunction.from_array(arr=array)
     P = paulis.Projector(wfn=wfn.normalize())
     assert(P.is_hermitian())

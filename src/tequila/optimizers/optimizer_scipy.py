@@ -49,7 +49,10 @@ class OptimizerSciPy(Optimizer):
         :param use_gradient: select if gradients shall be used. Can be done automatically for most methods
         """
         super().__init__(**kwargs)
-        self.method = method.upper()
+        if hasattr(method, "upper"):
+            self.method = method.upper()
+        else:
+            self.method = method
         self.tol = tol
         self.method_options = method_options
 
@@ -225,7 +228,7 @@ class OptimizerSciPy(Optimizer):
 
         Es = []
         callback = lambda x, *args: real_iterations.append(len(E.history) - 1)
-        res = scipy.optimize.minimize(E, param_values, jac=dE, hess=ddE,
+        res = scipy.optimize.minimize(E, x0=param_values, jac=dE, hess=ddE,
                                       args=(Es,),
                                       method=self.method, tol=self.tol,
                                       bounds=bounds,

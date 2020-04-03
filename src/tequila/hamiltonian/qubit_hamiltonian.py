@@ -301,7 +301,11 @@ class QubitHamiltonian:
         return self
 
     def __mul__(self, other):
-        return QubitHamiltonian(hamiltonian=self.hamiltonian * other.hamiltonian)
+        if hasattr(other, "apply_qubitoperator"):
+            # actually an apply operation
+            return other.apply_qubitoperator(operator=self)
+        else:
+            return QubitHamiltonian(hamiltonian=self.hamiltonian * other.hamiltonian)
 
     def __imul__(self, other):
         self.hamiltonian *= other.hamiltonian
@@ -332,23 +336,19 @@ class QubitHamiltonian:
         self._hamiltonian.terms = simplified
         return self
 
-    def split(self, hermitian: bool = None, anti_hermitian: bool = None):
+    def split(self, *args, **kwargs) -> tuple:
         """
-        :return: Hermitian and anti-Hermitian part
+        Returns
+        -------
+            Hermitian and anti-Hermitian part as tuple
         """
         hermitian = QubitHamiltonian.init_zero()
         anti_hermitian = QubitHamiltonian.init_zero()
         for k, v in self.hamiltonian.terms.items():
             hermitian.hamiltonian.terms[k] = numpy.float(v.real)
             anti_hermitian.hamiltonian.terms[k] = 1.j * v.imag
-        if hermitian is True and anti_hermitian is True:
-            return hermitian, anti_hermitian
-        elif hermitian is True:
-            return hermitian
-        elif anti_hermitian is True:
-            return anti_hermitian
-        else:
-            return hermitian, anti_hermitian
+
+        return hermitian, anti_hermitian
 
     def is_antihermitian(self):
         for v in self.values():
