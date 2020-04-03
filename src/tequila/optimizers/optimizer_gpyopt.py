@@ -16,7 +16,7 @@ except:
 
 
 import numpy as np
-from tequila.simulators.simulator_api import compile_objective, simulate_objective,sample_objective,simulate
+from tequila.simulators.simulator_api import compile_objective, simulate
 from collections import namedtuple
 GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history opt')
 
