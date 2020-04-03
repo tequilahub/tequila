@@ -1,28 +1,28 @@
 from tequila.circuit import gates
 from tequila.objective import ExpectationValue
 from tequila.hamiltonian import paulis
-from tequila.circuit.noise import BitFlip,PhaseDamp,PhaseFlip,AmplitudeDamp,PhaseAmplitudeDamp,DepolarizingError
+from tequila.circuit.noise import BitFlip
 import numpy
 import pytest
 import tequila as tq
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','cirq'])
+@pytest.mark.parametrize("simulator", [['qiskit','cirq'][numpy.random.randint(0,1,1)]])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
-@pytest.mark.parametrize('method',tq.optimizer_scipy.OptimizerSciPy.gradient_free_methods)
+@pytest.mark.parametrize('method',tq.optimizer_scipy.OptimizerSciPy.gradient_free_methods[numpy.random.randint(0,1,1)])
 def test_bit_flip_scipy_gradient_free(simulator, p,method):
 
     qubit = 0
     H = paulis.Qm(qubit)
-    U = gates.Rx(target=qubit,angle=tq.Variable('a')+tq.Variable('b'))
+    U = gates.Rx(target=qubit,angle=tq.Variable('a'))
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
-    assert (numpy.isclose(result.energy, p, atol=1.e-2) or (result.energy<p and not numpy.isclose(result.energy,0)))
+    assert(numpy.isclose(result.energy, p, atol=3.e-2))
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil'])
+@pytest.mark.parametrize("simulator", [['qiskit','cirq','pyquil'][numpy.random.randint(0,2,1)]])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
-@pytest.mark.parametrize('method',tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
+@pytest.mark.parametrize('method',[tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods[numpy.random.randint(0,3,1)]])
 def test_bit_flip_scipy_gradient(simulator, p,method):
 
     qubit = 0
@@ -31,11 +31,11 @@ def test_bit_flip_scipy_gradient(simulator, p,method):
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
-    assert (numpy.isclose(result.energy, p, atol=1.e-2) or (result.energy<p and not numpy.isclose(result.energy,0)))
+    assert(numpy.isclose(result.energy, p, atol=1.e-2))
 
-@pytest.mark.parametrize("simulator", ['qiskit','cirq'])
+@pytest.mark.parametrize("simulator", ['qiskit'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
-@pytest.mark.parametrize('method',tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
+@pytest.mark.parametrize('method',[["TRUST-KRYLOV", "NEWTON-CG", "TRUST-NCG", "TRUST-CONSTR"][numpy.random.randint(0,3,1)]])
 def test_bit_flip_scipy_hessian(simulator, p,method):
 
     qubit = 0
@@ -44,7 +44,7 @@ def test_bit_flip_scipy_hessian(simulator, p,method):
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
-    assert (numpy.isclose(result.energy, p, atol=1.e-2) or (result.energy<p and not numpy.isclose(result.energy,0)))
+    assert(numpy.isclose(result.energy, p, atol=3.e-2))
 
 @pytest.mark.parametrize("simulator", ['qiskit'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
@@ -56,7 +56,7 @@ def test_bit_flip_phoenics(simulator, p):
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_phoenics.minimize(objective=O,maxiter=3,samples=1000,backend=simulator,noise=NM)
-    assert (numpy.isclose(result.energy, p, atol=1.e-2) or (result.energy<p and not numpy.isclose(result.energy,0)))
+    assert(numpy.isclose(result.energy, p, atol=3.e-2))
 
 
 @pytest.mark.parametrize("simulator", ['cirq'])
@@ -69,6 +69,5 @@ def test_bit_flip_gpyopt(simulator, p,method):
     U = gates.Rx(target=qubit,angle=tq.Variable('a'))
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
-    result = tq.optimizer_gpyopt.minimize(objective=O,maxiter=10,samples=10000,
-                                          backend=simulator, method=method,noise=NM)
-    assert (numpy.isclose(result.energy, p, atol=1.e-2) or (result.energy<p and not numpy.isclose(result.energy,0)))
+    result = tq.optimizer_gpyopt.minimize(objective=O,maxiter=10,samples=10000,backend=simulator, method=method,noise=NM)
+    assert(numpy.isclose(result.energy, p, atol=3.e-2))
