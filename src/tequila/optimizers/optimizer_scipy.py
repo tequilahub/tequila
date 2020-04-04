@@ -3,12 +3,12 @@ from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
-from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer, _QngContainer
+from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer  #_QngContainer
 from collections import namedtuple
 from tequila.simulators.simulator_api import compile_objective
 from tequila.utils.exceptions import TequilaException
 from tequila.circuit.noise import NoiseModel
-from tequila.tools.qng import qng_metric_tensor_blocks
+#from tequila.tools.qng import qng_metric_tensor_blocks
 
 class TequilaScipyException(TequilaException):
     """ """
@@ -79,7 +79,7 @@ class OptimizerSciPy(Optimizer):
                  initial_values: typing.Dict[Variable, numbers.Real],
                  variables: typing.List[Variable],
                  gradient: typing.Dict[Variable, Objective] = None,
-                 qng: bool = False,
+                 #qng: bool = False,
                  hessian: typing.Dict[typing.Tuple[Variable, Variable], Objective] = None,
                  samples: int = None,
                  backend: str = None,
@@ -152,7 +152,8 @@ class OptimizerSciPy(Optimizer):
                     raise Exception("No gradient for variable {}".format(k))
                 grad_exval.append(gradient[k].count_expectationvalues())
                 compiled_grad_objectives[k] = compile_objective(objective=gradient[k], variables=initial_values,
-                                                                samples=samples,noise_model=noise, backend=backend)
+                                                           samples=samples,noise_model=noise, backend=backend)
+            '''
             if qng:
                 metric_tensor_blocks=qng_metric_tensor_blocks(objective,initial_values,samples=samples,noise_model=noise,
                                                 backend=backend)
@@ -164,8 +165,8 @@ class OptimizerSciPy(Optimizer):
                                 save_history=self.save_history,
                                 silent=self.silent)
             else:
-
-                dE = _GradContainer(objective=compiled_grad_objectives,
+            '''
+            dE = _GradContainer(objective=compiled_grad_objectives,
                                 param_keys=param_keys,
                                 samples=samples,
                                 passive_angles=passive_angles,
@@ -185,8 +186,8 @@ class OptimizerSciPy(Optimizer):
 
             if isinstance(gradient, str):
                 raise TequilaScipyException("Can not use numerical gradients for Hessian based methods")
-            if qng is True:
-                raise TequilaScipyException('Quantum Natural Hessian not yet well-defined, sorry!')
+            #if qng is True:
+                #raise TequilaScipyException('Quantum Natural Hessian not yet well-defined, sorry!')
             compiled_hess_objectives = dict()
             hess_exval = []
             for i, k in enumerate(active_angles.keys()):
@@ -299,7 +300,7 @@ def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[s
 def minimize(objective: Objective,
              gradient: typing.Union[str, typing.Dict[Variable, Objective]] = None,
              hessian: typing.Union[str, typing.Dict[typing.Tuple[Variable, Variable], Objective]] = None,
-             qng: bool =None,
+             #qng: bool =None,
              initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
              variables: typing.List[typing.Hashable] = None,
              samples: int = None,
@@ -413,6 +414,6 @@ def minimize(objective: Objective,
                                tol=tol)
     if initial_values is not None:
         initial_values = {assign_variable(k): v for k, v in initial_values.items()}
-    return optimizer(objective=objective,backend=backend, gradient=gradient,qng=qng, hessian=hessian, initial_values=initial_values,
+    return optimizer(objective=objective,backend=backend, gradient=gradient,hessian=hessian, initial_values=initial_values,
                      variables=variables,noise=noise,
                      samples=samples)
