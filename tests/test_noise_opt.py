@@ -7,9 +7,9 @@ import pytest
 import tequila as tq
 
 
-@pytest.mark.parametrize("simulator", [['qiskit','cirq'][numpy.random.randint(0,1,1)]])
+@pytest.mark.parametrize("simulator", [['qiskit','cirq'][numpy.random.randint(0,2,1)[0]]])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
-@pytest.mark.parametrize('method',tq.optimizer_scipy.OptimizerSciPy.gradient_free_methods[numpy.random.randint(0,1,1)])
+@pytest.mark.parametrize('method',[['NELDER-MEAD', 'COBYLA'][numpy.random.randint(0,2)]])
 def test_bit_flip_scipy_gradient_free(simulator, p,method):
 
     qubit = 0
@@ -20,9 +20,9 @@ def test_bit_flip_scipy_gradient_free(simulator, p,method):
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
     assert(numpy.isclose(result.energy, p, atol=3.e-2))
 
-@pytest.mark.parametrize("simulator", [['qiskit','cirq','pyquil'][numpy.random.randint(0,2,1)]])
+@pytest.mark.parametrize("simulator", [['qiskit','cirq','pyquil'][numpy.random.randint(0,3,1)[0]]])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
-@pytest.mark.parametrize('method',[tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods[numpy.random.randint(0,3,1)]])
+@pytest.mark.parametrize('method',[tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods[numpy.random.randint(0,4,1)[0]]])
 def test_bit_flip_scipy_gradient(simulator, p,method):
 
     qubit = 0
@@ -35,7 +35,7 @@ def test_bit_flip_scipy_gradient(simulator, p,method):
 
 @pytest.mark.parametrize("simulator", ['qiskit'])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
-@pytest.mark.parametrize('method',[["TRUST-KRYLOV", "NEWTON-CG", "TRUST-NCG", "TRUST-CONSTR"][numpy.random.randint(0,3,1)]])
+@pytest.mark.parametrize('method',[["TRUST-KRYLOV", "NEWTON-CG", "TRUST-NCG", "TRUST-CONSTR"][numpy.random.randint(0,4,1)[0]]])
 def test_bit_flip_scipy_hessian(simulator, p,method):
 
     qubit = 0
