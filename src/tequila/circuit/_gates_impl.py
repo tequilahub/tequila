@@ -222,13 +222,13 @@ class RotationGateImpl(ParametrizedGateImpl):
 
 class PhaseGateImpl(ParametrizedGateImpl):
 
-    def __init__(self, phase, target: list, control, list=None):
+    def __init__(self, phase, target: list, control: list=None):
         assert (phase is not None)
         super().__init__(name='Phase', parameter=phase, target=target, control=control)
 
     def dagger(self):
         result = copy.deepcopy(self)
-        result._parameter = -self.angle
+        result._parameter = -self.parameter
         return result
 
     def __pow__(self, power, modulo=None):

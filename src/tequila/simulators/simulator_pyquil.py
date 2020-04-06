@@ -188,10 +188,17 @@ class BackendCircuitPyquil(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
+        self.match_par_to_string={}
+        self.counter=0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model, use_mapping=use_mapping, *args, **kwargs)
         if self.noise_model is not None:
             self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
-
+        if len(self.match_par_to_string.keys()) is None:
+            self.match_string_to_value = None
+            self.resolver=None
+        else:
+            self.match_string_to_value = {v: k for k, v in self.match_par_to_string.items()}
+            self.resolver = {k: [v(variables)] for k,v in self.match_string_to_value.items()}
     def do_simulate(self, variables, initial_state, *args, **kwargs):
         simulator = pyquil.api.WavefunctionSimulator()
         n_qubits = self.n_qubits
@@ -207,7 +214,7 @@ class BackendCircuitPyquil(BackendCircuit):
             outfile.write("\nSTART SIMULATION: \n")
             outfile.write(str(self.abstract_circuit))
             process = subprocess.Popen(["qvm", "-S"], stdout=outfile, stderr=outfile)
-            backend_result = simulator.wavefunction(iprep + self.circuit)
+            backend_result = simulator.wavefunction(iprep + self.circuit,memory_map=self.resolver)
             outfile.write("END SIMULATION: \n")
             process.terminate()
             sys.stdout = sys.__stdout__
@@ -219,7 +226,7 @@ class BackendCircuitPyquil(BackendCircuit):
         qc=get_qc('{}q-qvm'.format(str(n_qubits)))
         p=circuit
         p.wrap_in_numshots_loop(samples)
-        stacked=qc.run(p)
+        stacked=qc.run(p,memory_map=self.resolver)
         return self.convert_measurements(stacked)
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
@@ -273,10 +280,22 @@ class BackendCircuitPyquil(BackendCircuit):
         circuit += pyquil_gate
 
     def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        circuit += getattr(pyquil.gates, gate.name.upper())(gate.parameter(variables), self.qubit_map[gate.target[0]])
+        try:
+            par= self.match_par_to_string[gate.parameter]
+        except:
+            par = circuit.declare('theta_{}'.format(str(self.counter)),'REAL')
+            self.match_par_to_string[gate.parameter] = 'theta_{}'.format(str(self.counter))
+            self.counter += 1
+        circuit += getattr(pyquil.gates, gate.name.upper())(par, self.qubit_map[gate.target[0]])
 
     def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(gate.parameter(variables), self.qubit_map[gate.target[0]])
+        try:
+            par= self.match_par_to_string[gate.parameter]
+        except:
+            par = circuit.declare('theta_{}'.format(str(self.counter)),'REAL')
+            self.match_par_to_string[gate.parameter] = 'theta_{}'.format(str(self.counter))
+            self.counter += 1
+        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(par, self.qubit_map[gate.target[0]])
         for c in gate.control:
             pyquil_gate = pyquil_gate.controlled(self.qubit_map[c])
         circuit += pyquil_gate
@@ -306,23 +325,26 @@ class BackendCircuitPyquil(BackendCircuit):
         done=[]
         for gate in prog:
                 new.inst(gate)
-                level=str(len(gate.qubits))
-                if level in collected.keys():
-                    if name_dict[gate.name] is 'parametrized':
-                        new.inst([pyquil.gates.I(q) for q in gate.qubits])
-                        if ['parametrized',gate.qubits] not in done:
-                            new.define_noisy_gate('I',
-                                                  gate.qubits,
-                                                  append_kraus_to_gate(collected[level],np.eye(2)))
-                            done.append(['parametrized',gate.qubits])
+                if hasattr(gate,'qubits'):
+                    level=str(len(gate.qubits))
+                    if level in collected.keys():
+                        if name_dict[gate.name] is 'parametrized':
+                            new.inst([pyquil.gates.I(q) for q in gate.qubits])
+                            if ['parametrized',gate.qubits] not in done:
+                                new.define_noisy_gate('I',
+                                                      gate.qubits,
+                                                      append_kraus_to_gate(collected[level],np.eye(2)))
+                                done.append(['parametrized',gate.qubits])
 
+                        else:
+                            if [gate.name,gate.qubits] not in done:
+                                k = unitary_maker(gate)
+                                new.define_noisy_gate(gate.name,
+                                                      gate.qubits,
+                                                      append_kraus_to_gate(collected[level],k))
+                                done.append([gate.name,gate.qubits])
                     else:
-                        if [gate.name,gate.qubits] not in done:
-                            k = unitary_maker(gate)
-                            new.define_noisy_gate(gate.name,
-                                                  gate.qubits,
-                                                  append_kraus_to_gate(collected[level],k))
-                            done.append([gate.name,gate.qubits])
+                        pass
                 else:
                     pass
         return new
@@ -331,9 +353,13 @@ class BackendCircuitPyquil(BackendCircuit):
         """
         overwriting the underlying code so that noise gets added when present
         """
-        self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
-        if self.noise_model is not None:
-            self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
+        if self.match_string_to_value is not None:
+            self.resolver={k:[v(variables)]for k,v in self.match_string_to_value.items()}
+        else:
+            self.resolver=None
+        #self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
+        #if self.noise_model is not None:
+        #    self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
 
 class BackendExpectationValuePyquil(BackendExpectationValue):
     BackendCircuitType = BackendCircuitPyquil

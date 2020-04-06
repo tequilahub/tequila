@@ -162,6 +162,16 @@ class QCircuit():
                 variables += g.extract_variables()
         return list(set(variables))
 
+    def extract_parameter_arguments(self) -> list:
+        '''
+        Returns a list containing the parameter arguments of all parametrized gates in the circuit.
+        '''
+        parameters = []
+        for i, g in enumerate(self.gates):
+            if g.is_parametrized():
+                parameters.append(g._parameter)
+        return list(set(parameters))
+
     def max_qubit(self):
         """
         :return: Maximum index this circuit touches

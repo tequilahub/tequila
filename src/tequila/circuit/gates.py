@@ -329,7 +329,7 @@ def _initialize_power_gate(name: str, target: typing.Union[list, int], control: 
 @wrap_gate
 def Measurement(target, name=None):
     if name is None:
-        return MeasurementImpl(name="", target=target)
+        return MeasurementImpl(name='Measure', target=target)
     else:
         return MeasurementImpl(name=name, target=target)
 

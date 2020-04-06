@@ -2,6 +2,7 @@ from tequila.simulators.simulator_base import QCircuit, BackendCircuit, BackendE
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering
+import sympy
 
 import numpy as np
 import typing, numbers
@@ -17,6 +18,23 @@ noise_lookup={
     'phase-amplitude damp': [cirq.amplitude_damp,cirq.phase_damp],
     'depolarizing': [lambda x: cirq.depolarize(p=(3/4)*x)]
 }
+
+
+map_1 = lambda x: {'Exponent':x}
+
+op_lookup={
+    'I':(cirq.ops.IdentityGate,None),
+    'X':(cirq.ops.common_gates.XPowGate),
+    'Y':cirq.ops.common_gates.YPowGate,
+    'Z':cirq.ops.common_gates.ZPowGate,
+    'H':cirq.ops.common_gates.HPowGate,
+    'Rx': cirq.ops.common_gates.XPowGate,
+    'Ry': cirq.ops.common_gates.YPowGate,
+    'Rz': cirq.ops.common_gates.ZPowGate,
+    'SWAP': cirq.ops.SwapPowGate,
+    'Measure':cirq.measure
+}
+
 
 
 '''
@@ -140,13 +158,21 @@ class BackendCircuitCirq(BackendCircuit):
     numbering: BitNumbering = BitNumbering.MSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
+        self.match_par_to_sympy={}
+        self.counter=0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model, use_mapping=use_mapping, *args, **kwargs)
+        if len(self.match_par_to_sympy.keys()) is None:
+            self.match_sympy_to_value = None
+            self.resolver=None
+        else:
+            self.match_sympy_to_value = {v: k for k, v in self.match_par_to_sympy.items()}
+            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.match_sympy_to_value.items()})
         if self.noise_model is not None:
             self.circuit=self.build_noise_model(self.noise_model)
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         simulator = cirq.Simulator()
-        backend_result = simulator.simulate(program=self.circuit, initial_state=initial_state)
+        backend_result = simulator.simulate(program=self.circuit,param_resolver=self.resolver, initial_state=initial_state)
         return QubitWaveFunction.from_array(arr=backend_result.final_state, numbering=self.numbering)
 
     def convert_measurements(self, backend_result: cirq.TrialResult) -> QubitWaveFunction:
@@ -162,7 +188,7 @@ class BackendCircuitCirq(BackendCircuit):
             return counter
 
     def do_sample(self, samples,circuit, *args, **kwargs) -> QubitWaveFunction:
-        return self.convert_measurements(cirq.sample(program=circuit, repetitions=samples))
+        return self.convert_measurements(cirq.sample(program=circuit,param_resolver=self.resolver, repetitions=samples))
 
     def fast_return(self, abstract_circuit):
         return isinstance(abstract_circuit, cirq.Circuit)
@@ -182,26 +208,46 @@ class BackendCircuitCirq(BackendCircuit):
         circuit.append(cirq_gate)
 
     def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        angle = gate.parameter(variables)
+        try:
+            angle=self.match_par_to_sympy[gate.parameter]
+        except:
+            angle = sympy.Symbol('p_{}'.format(str(self.counter)))
+            self.match_par_to_sympy[gate.parameter]=angle
+            self.counter+=1
         cirq_gate = getattr(cirq, gate.name)(rads=angle)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
     def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        angle = gate.parameter(variables)
+        try:
+            angle = self.match_par_to_sympy[gate.parameter]
+        except:
+            angle = sympy.Symbol('p_{}'.format(str(self.counter)))
+            self.match_par_to_sympy[gate.parameter] = angle
+            self.counter += 1
         cirq_gate = getattr(cirq, gate.name)(rads=angle)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
         circuit.append(cirq_gate)
 
     def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        power = gate.parameter(variables)
+        try:
+            power = self.match_par_to_sympy[gate.parameter]
+        except:
+            power = sympy.Symbol('p_{}'.format(str(self.counter)))
+            self.match_par_to_sympy[gate.parameter] = power
+            self.counter += 1
         cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
     def add_controlled_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        power = gate.parameter(variables)
+        try:
+            power = self.match_par_to_sympy[gate.parameter]
+        except:
+            power = sympy.Symbol('p_{}'.format(str(self.counter)))
+            self.match_par_to_sympy[gate.parameter] = power
+            self.counter += 1
         cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
         cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
@@ -231,9 +277,13 @@ class BackendCircuitCirq(BackendCircuit):
         """
         overriding the underlying base to make sure this stuff remains noisy
         """
-        self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
-        if self.noise_model is not None:
-            self.circuit=self.build_noise_model(self.noise_model)
+        if self.match_sympy_to_value is not None:
+            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.match_sympy_to_value.items()})
+        else:
+            self.resolver=None
+        #self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
+        #if self.noise_model is not None:
+            #self.circuit=self.build_noise_model(self.noise_model)
 
 class BackendExpectationValueCirq(BackendExpectationValue):
     BackendCircuitType = BackendCircuitCirq
