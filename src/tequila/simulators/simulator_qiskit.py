@@ -27,22 +27,23 @@ gate_qubit_lookup={
     'y':1,
     'z':1,
     'h':1,
-    'rx': 1,
-    'ry': 1,
-    'rz': 1,
+    'u1':1,
+    'u2':1,
+    'u3':1,
     'cx': 2,
     'cy': 2,
     'cz': 2,
     'ch':2,
-    'crx': 2,
-    'cry': 2,
-    'crz': 2,
-    'Control':2,
-    'Single':1,
-    'doublecontrol':3,
-    'ccx':3
+    'cu3':2,
+    'ccx':3,
+    'r':1,
+    'single':1,
+    'control':2,
+    'multicontrol':3
 }
 
+basis=['x','y','z','id','u1','u2','u3','h',
+       'cx','cy','cz','cu3','ccx']
 class TequilaQiskitException(TequilaException):
     def __str__(self):
         return "Error in qiskit backend:" + self.message
@@ -72,7 +73,10 @@ class BackendCircuitQiskit(BackendCircuit):
         self.classical_map = {i: self.c[j] for j, i in enumerate(qubits)}
         self.qubit_map = {i: self.q[j] for j, i in enumerate(qubits)}
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=self.noise_model, use_mapping=use_mapping, *args, **kwargs)
-
+        if self.noise_model is None:
+            self.ol=1
+        else:
+            self.ol=0
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         if self.noise_model is None:
             simulator = qiskit.Aer.get_backend("statevector_simulator")
@@ -83,12 +87,13 @@ class BackendCircuitQiskit(BackendCircuit):
             # there is a keyword for the backend for tolerance on norm
             # circuit.initialize(normed_array)
             raise TequilaQiskitException("initial state for Qiskit not yet supported here")
-        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator,noise_model=self.noise_model).result()
+        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
-        simulator = qiskit.Aer.get_backend("qasm_simulator")
-        return self.convert_measurements(qiskit.execute(experiments=circuit, backend=simulator, shots=samples,
+        simulator = qiskit.providers.aer.QasmSimulator()
+        return self.convert_measurements(qiskit.execute(circuit,backend=simulator, shots=samples,
+                                                        optimization_level=0,
                                                         noise_model=self.noise_model))
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
@@ -126,7 +131,7 @@ class BackendCircuitQiskit(BackendCircuit):
             try:
                 gfunc = getattr(circuit, "cc" + gate.name.lower())
             except AttributeError:
-                raise TequilaQiskitException("Double controls are currenty only supported for CCX in quiskit")
+                raise TequilaQiskitException("Double controls are currenty only supported for CCX in Qiskit")
             gfunc(self.qubit_map[gate.control[0]], self.qubit_map[gate.control[1]], self.qubit_map[gate.target[0]])
         else:
             raise TequilaQiskitException("More than two control gates currently not supported")
@@ -166,34 +171,44 @@ class BackendCircuitQiskit(BackendCircuit):
     def noise_model_converter(self,nm):
         if nm is None:
             return None
-        qnoise=qiskitnoise.NoiseModel()
+        basis_gates = basis
+        qnoise=qiskitnoise.NoiseModel(basis_gates)
         for noise in nm.noises:
             op=noise_lookup[noise.name]
             if op is qiskitnoise.depolarizing_error:
-                active=op(noise.probs[0],gate_qubit_lookup[noise.gate.lower()])
+                active=op(noise.probs[0],noise.level)
             else:
-                active=op(*noise.probs)
-            if noise.gate is 'Control':
+                if noise.level==1:
+                    active=op(*noise.probs)
+                else:
+                    active=op(*noise.probs)
+                    action=op(*noise.probs)
+                    for i in range(noise.level-1):
+                        active=active.tensor(action)
+
+            if noise.level is 2:
                 targets=['cx',
                          'cy',
                          'cz',
+                         'crz',
                          'crx',
                          'cry',
-                         'crz',
+                         'cu3',
                          'ch']
-            elif noise.gate is 'Single':
+
+            elif noise.level is 1:
                 targets=['x',
                          'y',
                          'z',
-                         'rx',
-                         'ry',
-                         'rz',
+                         'u3',
+                         'u1',
+                         'u2',
                          'h']
-            elif noise.gate is 'multicontrol':
+
+            elif noise.level is 3:
                 targets=['ccx']
-            else:
-                targets=[noise.gate.lower()]
             qnoise.add_all_qubit_quantum_error(active,targets)
+
         return qnoise
 
 

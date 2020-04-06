@@ -373,5 +373,5 @@ class BackendExpectationValue:
         return to_float(final_E)
 
     def sample_paulistring(self, samples: int,
-                           paulistring) -> numbers.Real:
-        return self.U.sample_paulistring(samples=samples, paulistring=paulistring)
+                           paulistring, *args, **kwargs) -> numbers.Real:
+        return self.U.sample_paulistring(samples=samples, paulistring=paulistring, *args, **kwargs)

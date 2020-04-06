@@ -3,11 +3,12 @@ from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
-from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer
+from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer  #_QngContainer
 from collections import namedtuple
 from tequila.simulators.simulator_api import compile_objective
 from tequila.utils.exceptions import TequilaException
-
+from tequila.circuit.noise import NoiseModel
+#from tequila.tools.qng import qng_metric_tensor_blocks
 
 class TequilaScipyException(TequilaException):
     """ """
@@ -78,9 +79,11 @@ class OptimizerSciPy(Optimizer):
                  initial_values: typing.Dict[Variable, numbers.Real],
                  variables: typing.List[Variable],
                  gradient: typing.Dict[Variable, Objective] = None,
+                 #qng: bool = False,
                  hessian: typing.Dict[typing.Tuple[Variable, Variable], Objective] = None,
                  samples: int = None,
                  backend: str = None,
+                 noise: NoiseModel=None,
                  reset_history: bool = True) -> SciPyReturnType:
         """
         Optimizes with scipy and gives back the optimized angles
@@ -123,6 +126,7 @@ class OptimizerSciPy(Optimizer):
 
         # do the compilation here to avoid costly recompilation during the optimization
         compiled_objective = compile_objective(objective=objective, variables=initial_values, backend=backend,
+                                               noise_model=noise,
                                                samples=samples)
 
         E = _EvalContainer(objective=compiled_objective,
@@ -131,6 +135,8 @@ class OptimizerSciPy(Optimizer):
                            passive_angles=passive_angles,
                            save_history=self.save_history,
                            silent=self.silent)
+
+
 
         # compile gradients
         if self.method in self.gradient_based_methods + self.hessian_based_methods and not isinstance(gradient, str):
@@ -146,8 +152,20 @@ class OptimizerSciPy(Optimizer):
                     raise Exception("No gradient for variable {}".format(k))
                 grad_exval.append(gradient[k].count_expectationvalues())
                 compiled_grad_objectives[k] = compile_objective(objective=gradient[k], variables=initial_values,
-                                                                samples=samples, backend=backend)
-
+                                                           samples=samples,noise_model=noise, backend=backend)
+            '''
+            if qng:
+                metric_tensor_blocks=qng_metric_tensor_blocks(objective,initial_values,samples=samples,noise_model=noise,
+                                                backend=backend)
+                dE = _QngContainer(objective=compiled_grad_objectives,
+                                   metric_tensor_blocks=metric_tensor_blocks,
+                                param_keys=param_keys,
+                                samples=samples,
+                                passive_angles=passive_angles,
+                                save_history=self.save_history,
+                                silent=self.silent)
+            else:
+            '''
             dE = _GradContainer(objective=compiled_grad_objectives,
                                 param_keys=param_keys,
                                 samples=samples,
@@ -165,8 +183,11 @@ class OptimizerSciPy(Optimizer):
         # compile hessian
 
         if self.method in self.hessian_based_methods and not isinstance(hessian, str):
+
             if isinstance(gradient, str):
                 raise TequilaScipyException("Can not use numerical gradients for Hessian based methods")
+            #if qng is True:
+                #raise TequilaScipyException('Quantum Natural Hessian not yet well-defined, sorry!')
             compiled_hess_objectives = dict()
             hess_exval = []
             for i, k in enumerate(active_angles.keys()):
@@ -174,6 +195,7 @@ class OptimizerSciPy(Optimizer):
                     if j > i: continue
                     hess = grad(gradient[k], l)
                     compiled_hess = compile_objective(objective=hess, variables=initial_values, samples=samples,
+                                                      noise_model=noise,
                                                       backend=backend)
                     compiled_hess_objectives[(k, l)] = compiled_hess
                     compiled_hess_objectives[(l, k)] = compiled_hess
@@ -233,7 +255,7 @@ class OptimizerSciPy(Optimizer):
                     if self.method not in self.hessian_based_methods:
                         self.history.gradients = [dE.history[i] for i in real_iterations]
                 except:
-                    print("WARNING: History could assign the stored gradients")
+                    print("WARNING: History could not assign the stored gradients")
                 self.history.gradients_evaluations = dE.history
             if ddE is not None and not isinstance(ddE, str):
                 # hessians are not evaluated in the same frequencies as energies
@@ -278,11 +300,13 @@ def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[s
 def minimize(objective: Objective,
              gradient: typing.Union[str, typing.Dict[Variable, Objective]] = None,
              hessian: typing.Union[str, typing.Dict[typing.Tuple[Variable, Variable], Objective]] = None,
+             #qng: bool =None,
              initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
              variables: typing.List[typing.Hashable] = None,
              samples: int = None,
              maxiter: int = 100,
              backend: str = None,
+             noise: NoiseModel =None,
              method: str = "BFGS",
              tol: float = 1.e-3,
              method_options: dict = None,
@@ -306,6 +330,9 @@ def minimize(objective: Objective,
         '2-point', 'cs' or '3-point' for numerical gradient evaluation (does not work in combination with all optimizers),
         dictionary (keys:tuple of variables, values:tequila objective) to define own gradient,
         None for automatic construction (default)
+    qng: bool : (Default value = False) :
+        whether or not, in the event that a gradient-based method is to be used, the qng, rather than the standard gradient,
+        should be employed. NOTE: throws an error for anything but a single expectationvalue with no passive angles.
     initial_values: typing.Dict[typing.Hashable, numbers.Real]: (Default value = None):
         Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero
     variables: typing.List[typing.Hashable] :
@@ -319,6 +346,9 @@ def minimize(objective: Objective,
     backend: str :
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
+    noise: NoiseModel:
+         (Default value =None)
+         a NoiseModel to apply to all expectation values in the objective.
     method: str :
          (Default value = "BFGS")
          Optimization method (see scipy documentation, or 'available methods')
@@ -384,6 +414,6 @@ def minimize(objective: Objective,
                                tol=tol)
     if initial_values is not None:
         initial_values = {assign_variable(k): v for k, v in initial_values.items()}
-    return optimizer(objective=objective, gradient=gradient, hessian=hessian, initial_values=initial_values,
-                     variables=variables,
+    return optimizer(objective=objective,backend=backend, gradient=gradient,hessian=hessian, initial_values=initial_values,
+                     variables=variables,noise=noise,
                      samples=samples)

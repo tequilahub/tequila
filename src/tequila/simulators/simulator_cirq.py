@@ -18,15 +18,48 @@ noise_lookup={
     'depolarizing': [lambda x: cirq.depolarize(p=(3/4)*x)]
 }
 
+
+'''
+potentially useful in hash table merge, leaving in
 type_lookup={
     'x':[cirq.ops.pauli_gates._PauliX,cirq.ops.common_gates.XPowGate],
     'rx':[cirq.ops.common_gates.XPowGate],
     'y': [cirq.ops.pauli_gates._PauliY,cirq.ops.common_gates.YPowGate],
     'ry': [cirq.ops.common_gates.YPowGate],
     'z': [cirq.ops.pauli_gates._PauliZ,cirq.ops.common_gates.ZPowGate],
+    'r':[cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.XPowGate,
+         cirq.ops.common_gates.YPowGate],
+    'single':[cirq.ops.pauli_gates._PauliX,cirq.ops.pauli_gates._PauliY,
+                cirq.ops.pauli_gates._PauliZ,
+              cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.XPowGate,
+         cirq.ops.common_gates.YPowGate,cirq.ops.common_gates.HPowGate],
+    'control':[cirq.ops.pauli_gates._PauliX,
+               cirq.ops.pauli_gates._PauliY,
+               cirq.ops.pauli_gates._PauliZ,
+               cirq.ops.common_gates.ZPowGate,
+               cirq.ops.common_gates.XPowGate,
+               cirq.ops.common_gates.YPowGate,
+               cirq.ops.common_gates.HPowGate,
+               cirq.ops.common_gates.CNotPowGate,
+               cirq.ops.common_gates.CZPowGate,
+               cirq.ops.SwapPowGate],
+    'multicontrol':[cirq.ops.pauli_gates._PauliX,
+               cirq.ops.pauli_gates._PauliY,
+               cirq.ops.pauli_gates._PauliZ,
+               cirq.ops.common_gates.ZPowGate,
+               cirq.ops.common_gates.XPowGate,
+               cirq.ops.common_gates.YPowGate,
+               cirq.ops.common_gates.HPowGate,
+               cirq.ops.common_gates.CNotPowGate,
+               cirq.ops.common_gates.CZPowGate,
+               cirq.ops.SwapPowGate,
+               cirq.ops.three_qubit_gates.CCXPowGate,
+               cirq.ops.three_qubit_gates.CCZPowGate,
+               cirq.ops.three_qubit_gates.CSwapGate
+                ],
     'rz': [cirq.ops.common_gates.ZPowGate],
     'h': [cirq.ops.common_gates.HPowGate],
-    'crx':[cirq.ops.common_gates.XPowGate],
+    'crx':[cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate],
     'cry': [cirq.ops.common_gates.YPowGate],
     'crz': [cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.CZPowGate],
     'cx': [cirq.ops.pauli_gates._PauliX, cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate],
@@ -43,10 +76,12 @@ type_lookup={
     'ccz': [cirq.ops.pauli_gates._PauliZ, cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.CZPowGate,cirq.ops.three_qubit_gates.CCZPowGate],
     'cch': [cirq.ops.common_gates.HPowGate],
     'swap':[cirq.ops.SwapPowGate],
-
-
 }
+'''
 
+
+'''
+potentially useful in hash table merge, leaving in
 qubit_lookup ={
     'x':1,
     'rx':1,
@@ -55,6 +90,10 @@ qubit_lookup ={
     'z': 1,
     'rz': 1,
     'h': 1,
+    'r':1,
+    'single':1,
+    'control':2,
+    'multicontrol':3,
     'crx':2,
     'cry': 2,
     'crz': 2,
@@ -73,15 +112,15 @@ qubit_lookup ={
     'cch':3,
     'swap':2
 }
+'''
 
-
-def qubit_satisfier(op,gate_name):
+def qubit_satisfier(op,level):
     oplen=len(op.qubits)
-    gateq=qubit_lookup[gate_name]
-    if gateq <3:
-        return oplen ==gateq
+    if level <3:
+        return oplen ==level
     else:
-        return oplen >=gateq
+        return oplen >=level
+
 class TequilaCirqException(TequilaException):
     def __str__(self):
         return "Error in cirq backend:" + self.message
@@ -183,13 +222,8 @@ class BackendCircuitCirq(BackendCircuit):
         for op in c.all_operations():
             new_ops.append(op)
             for noise in n.noises:
-                if type(op.gate) is cirq.ops.controlled_gate.ControlledGate:
-                   if type(op.gate.sub_gate) in type_lookup[noise.gate.lower()] and qubit_satisfier(op,noise.gate.lower()) is True:
-                       for i,channel in enumerate(noise_lookup[noise.name]):
-                           new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
-                elif type(op.gate) in type_lookup[noise.gate.lower()] and qubit_satisfier(op,noise.gate.lower()) is True:
-                    #new_ops.append(noise_lookup[noise.name](*noise.probs).on(*[q for q in op.qubits]))
-                    for i, channel in enumerate(noise_lookup[noise.name]):
+                if qubit_satisfier(op,noise.level):
+                    for i,channel in enumerate(noise_lookup[noise.name]):
                         new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
         return cirq.Circuit.from_ops(new_ops)
 

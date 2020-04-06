@@ -8,29 +8,41 @@ import numpy as np
 import pyquil
 from pyquil import get_qc
 from pyquil.noise import combine_kraus_maps
+import warnings
 
 name_dict={
     'I':'I',
-    'Rx':'RX',
-    'Rz':'RZ',
-    'Ry':'RY',
+    'ry':'parametrized',
+    'rx':'parametrized',
+    'rz':'parametrized',
+    'Rz':'parametrized',
+    'Ry':'parametrized',
+    'Rx': 'parametrized',
+    'RZ': 'parametrized',
+    'RY': 'parametrized',
+    'RX': 'parametrized',
+    'r':'parametrized',
     'X':'X',
     'x':'X',
-    'Y': 'Y',
-    'y': 'Y',
+    'Y':'Y',
+    'y':'Y',
     'Z': 'Z',
     'z': 'Z',
-    'Cz':'CZ',
-    'CZ':'CZ',
-    'cz':'CZ',
-    'Swap':'SWAP',
-    'Cx':'CNOT',
-    'cx':'CNOT',
-    'ccx':'CCNOT',
-    'CCx':'CCNOT',
+    'Cz':'control',
+    'CZ':'control',
+    'cz':'control',
+    'SWAP':'control',
+    'CX':'control',
+    'Cx':'control',
+    'cx':'control',
+    'CNOT':'control',
+    'ccx':'multicontrol',
+    'CCx':'multicontrol',
+    'CSWAP':'multicontrol',
     'H':'H',
     'h':'H',
-    'Phase':'PHASE'
+    'Phase':'parametrized',
+    'PHASE':'parametrized'
 }
 
 gate_qubit_lookup={
@@ -115,9 +127,6 @@ def phase_amp_damp_map(a,b):
     A0 = [[1, 0], [0, np.sqrt(1 - a - b)]]
     A1 = [[0, np.sqrt(a)], [0, 0]]
     A2 = [[0, 0], [0, np.sqrt(b)]]
-    #B0 = [[np.sqrt(1 - a - b), 0], [0, 1]]
-    #B1 = [[0, 0], [np.sqrt(a), 0]]
-    #B2 = [[np.sqrt(b), 0], [0, 0]]
     return [np.array(k) for k in [A0,A1,A2]]
 
 def depolarizing_map(p):
@@ -162,27 +171,7 @@ def unitary_maker(gate):
     try:
         return name_unitary_dict[gate.name]
     except:
-        if gate.name is 'RX':
-            return np.array([
-                [np.cos(gate.params[0]/2),-1.j*np.sin(gate.params[0]/2)],
-                [-1.j*np.sin(gate.params[0]/2),np.cos(gate.params[0]/2)]])
-        if gate.name is 'RY':
-            return np.array([
-                [np.cos(gate.params[0]/2),-np.sin(gate.params[0]/2)],
-                [np.sin(gate.params[0]/2),np.cos(gate.params[0]/2)]])
-
-        if gate.name is 'RZ':
-            return np.array([
-                [np.exp(-1.j*gate.params[0] / 2), 0.],
-                [0., np.exp(1.j*gate.params[0] / 2)]])
-
-
-        if gate.name is 'PHASE':
-            return np.array([
-                [1, 0.],
-                [0., np.exp(1.j*gate.params[0])]])
-        else:
-            raise TequilaPyquilException(' I do not know how to make the unitary for gate named {} '.format(gate.name))
+        raise TequilaPyquilException(' I do not know how to make the unitary for gate named {} '.format(gate.name))
 class TequilaPyquilException(TequilaException):
     def __str__(self):
         return "simulator_pyquil: " + self.message
@@ -191,7 +180,7 @@ class TequilaPyquilException(TequilaException):
 class BackendCircuitPyquil(BackendCircuit):
     recompile_swap = True
     recompile_multitarget = True
-    recompile_controlled_rotation = False
+    recompile_controlled_rotation = True
     recompile_exponential_pauli = True
     recompile_trotter = True
     recompile_phase = False
@@ -306,28 +295,37 @@ class BackendCircuitPyquil(BackendCircuit):
 
     def get_noisy_prog(self,py_prog, noise_model):
         prog = py_prog
+        new= pyquil.Program()
         collected={}
         for noise in noise_model.noises:
             try:
-                collected[name_dict[noise.gate]]=combine_kraus_maps(noise_lookup[noise.name](*noise.probs),collected[name_dict[noise.gate]])
-                #raise TequilaPyquilException('Hi, sorry, cannot add multiple noises on the same gate at this time.')
+                collected[str(noise.level)]=combine_kraus_maps(noise_lookup[noise.name](*noise.probs),
+                                                                    collected[str(noise.level)])
             except:
-                collected[name_dict[noise.gate]] = noise_lookup[noise.name](*noise.probs)
-        seen_already=[]
+                collected[str(noise.level)] = noise_lookup[noise.name](*noise.probs)
+        done=[]
         for gate in prog:
-                k=unitary_maker(gate)
-                if gate.name in collected.keys():
-                    if k not in seen_already:
-                        prog.define_noisy_gate(gate.name,
-                                        gate.qubits,
-                        append_kraus_to_gate(collected[gate.name],
-                                        k))
-                        seen_already.append(k)
+                new.inst(gate)
+                level=str(len(gate.qubits))
+                if level in collected.keys():
+                    if name_dict[gate.name] is 'parametrized':
+                        new.inst([pyquil.gates.I(q) for q in gate.qubits])
+                        if ['parametrized',gate.qubits] not in done:
+                            new.define_noisy_gate('I',
+                                                  gate.qubits,
+                                                  append_kraus_to_gate(collected[level],np.eye(2)))
+                            done.append(['parametrized',gate.qubits])
+
+                    else:
+                        if [gate.name,gate.qubits] not in done:
+                            k = unitary_maker(gate)
+                            new.define_noisy_gate(gate.name,
+                                                  gate.qubits,
+                                                  append_kraus_to_gate(collected[level],k))
+                            done.append([gate.name,gate.qubits])
                 else:
-                    print(gate.name,' not in ',collected.keys())
-
-
-        return prog
+                    pass
+        return new
 
     def update_variables(self, variables):
         """

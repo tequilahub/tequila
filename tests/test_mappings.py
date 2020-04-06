@@ -84,7 +84,7 @@ def test_paulistring_sampling(backend, case):
     H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
     U = gates.X(target=1) + gates.X(target=3) + gates.X(target=5)
     E = ExpectationValue(H=H, U=U)
-    result = simulate(E, samples=1)
+    result = simulate(E,backend=backend, samples=1)
     assert (isclose(result, case[1], 1.e-4))
 
 
@@ -94,7 +94,7 @@ def test_paulistring_sampling_2(backend, case):
     H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
     U = gates.H(target=1) + gates.H(target=3) + gates.X(target=5) + gates.H(target=5)
     E = ExpectationValue(H=H, U=U)
-    result = simulate(E, samples=1)
+    result = simulate(E,backend=backend, samples=1)
     assert (isclose(result, case[1], 1.e-4))
 
 @pytest.mark.parametrize("array", [numpy.random.uniform(0.0,1.0,i) for i in [2,4,8,16]])

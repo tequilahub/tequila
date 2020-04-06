@@ -9,7 +9,7 @@ from tequila.utils import to_float
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit", 'pyquil']
+SUPPORTED_NOISE_BACKENDS = ["qiskit",'cirq', 'pyquil']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -358,7 +358,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
         # allow hashable types as keys without casting it to variables
         variables = {assign_variable(k): v for k, v in variables.items()}
 
-    backend = pick_backend(backend=backend, samples=samples)
+    backend = pick_backend(backend=backend,noise=noise_model is not None, samples=samples)
 
     if isinstance(objective, Objective) or hasattr(objective, "args"):
         return compile_objective(objective=objective, variables=variables, backend=backend, noise_model=noise_model)

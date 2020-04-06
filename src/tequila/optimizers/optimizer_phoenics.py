@@ -1,4 +1,4 @@
-import tequila.simulators.simulator_api
+from tequila.simulators.simulator_api import simulate
 from tequila.objective.objective import Objective
 from tequila.optimizers.optimizer_base import Optimizer
 import typing
@@ -25,7 +25,7 @@ except:
 from tequila.autograd_imports import jax
 import numpy as np
 from numpy import pi as pi
-from tequila.simulators.simulator_api import compile_objective
+from tequila.simulators.simulator_api import compile_objective, simulate
 import os
 from collections import namedtuple
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -110,11 +110,11 @@ class PhoenicsOptimizer(Optimizer):
                  passives: typing.Dict[Variable,numbers.Real] = None,
                  samples: int = None,
                  backend: str = None,
+                 noise = None,
                  previous=None,
                  phoenics_config=None,
                  save_to_file=False,
                  file_name=None):
-
 
         bird = self._make_phoenics_object(objective,passives,phoenics_config)
         if previous is not None:
@@ -142,11 +142,16 @@ class PhoenicsOptimizer(Optimizer):
             else:
                 raise TequilaException('file_name must be a string!')
 
-        O= compile_objective(objective=objective, backend=backend, samples=samples)
+        ### this line below just gets the damn compiler to run, since that argument is necessary
+        init = {key:np.pi for key in objective.extract_variables()}
 
         best=None
         best_angles=None
 
+        print('phoenics has recieved')
+        print(backend)
+        print(noise)
+        print('now lets begin')
         for i in range(0,maxiter):
             with warnings.catch_warnings():
                 np.testing.suppress_warnings()
@@ -162,7 +167,14 @@ class PhoenicsOptimizer(Optimizer):
             runs=[]
             recs=self._process_for_sim(precs,passives=passives)
             for i,rec in enumerate(recs):
-                En = O(variables=rec, samples=samples)
+
+                En=simulate(objective=objective,backend=backend,variables=rec,samples=samples,noise_model=noise)
+                '''
+                if samples is None:
+                    En = simulate_objective(objective=objective,backend=backend,variables=rec)
+                else:
+                    En = sample_objective(objective=objective,variables=rec,backend=backend, samples=samples,noise=noise)
+                '''
                 runs.append((rec, En))
             for run in runs:
                 angles=run[0]
@@ -200,6 +212,7 @@ def minimize(objective: Objective,
              variables: typing.List=None,
              initial_values: typing.Dict=None,
              backend: str = None,
+             noise = None,
              previous: typing.Union[str,list]=None,
              phoenics_config: typing.Union[str,typing.Dict]=None,
              save_to_file: bool=False,
@@ -224,6 +237,9 @@ def minimize(objective: Objective,
     backend: str :
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
+    noise: NoiseModel :
+         (Default value = None)
+         a noise model to apply to the circuits of Objective.
     previous:
         (Default value = None)
         Previous phoenics observations. If string, the name of a file from which to load them. Else, a list.
@@ -253,6 +269,7 @@ def minimize(objective: Objective,
             if k not in variables and k in all_vars:
                 passives[k]=v
     optimizer=PhoenicsOptimizer(samples=samples,backend=backend,maxiter=maxiter)
-    return optimizer(objective=objective,passives=passives,previous=previous,maxiter=maxiter,
-                         phoenics_config=phoenics_config,save_to_file=save_to_file,file_name=file_name)
+    return optimizer(objective=objective,backend=backend,passives=passives,previous=previous,
+                     maxiter=maxiter,noise=noise,samples=samples,
+                     phoenics_config=phoenics_config,save_to_file=save_to_file,file_name=file_name)
 

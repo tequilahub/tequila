@@ -3,6 +3,31 @@ from tequila.tools import list_assignement
 from tequila.utils import TequilaException
 import copy
 
+
+names_dict={
+    'x':'x',
+    'y':'y',
+    'z':'z',
+    'h':'h',
+    'rx':'r',
+    'ry':'r',
+    'rz':'r',
+    'r':'r',
+    'phase':'r',
+    'single':'single',
+    'swap':'control',
+    'cx':'control',
+    'cy':'control',
+    'cz':'control',
+    'crx':'control',
+    'cry':'control',
+    'crz':'control',
+    'control':'control',
+    'cnot':'control',
+    'ccnot':'multicontrol',
+    'multicontrol':'multicontrol'
+}
+
 class Noise():
     prob_length={
         'bit flip':1,
@@ -17,13 +42,13 @@ class Noise():
         return self._name
 
     @property
-    def gate(self):
-        return self._gate
+    def level(self):
+        return self._level
 
-    def __init__(self,name:str,probs:typing.List[float],gate:str,form: str='kraus'):
+    def __init__(self,name:str,probs:typing.List[float],level:int, form: str='kraus'):
         probs=list_assignement(probs)
         self._name=name
-        self._gate=gate
+        self._level=int(level)
         assert len(probs) is self.prob_length[name]
         if form is 'kraus':
             assert sum(probs)<=1.
@@ -33,7 +58,7 @@ class Noise():
 
     def __str__(self):
         back=self.name
-        back+=' on ' + self.gate
+        back+=' on ' + str(self._level) + 'qubit gates'
         back+=', probs = ' +str(self.probs)
         return back
 
@@ -78,10 +103,19 @@ class NoiseModel():
             self.noises.extend(copy.copy(other.noises))
         return self
 
-    def without_noise_on(self,gate: str):
+    def without_noise_on_level(self,level):
         new=NoiseModel()
         for noise in self.noises:
-            if noise.gate==gate:
+            if noise.level==level:
+                pass
+            else:
+                new.noises.append(noise)
+        return new
+
+    def without_noise_op(self,name):
+        new=NoiseModel()
+        for noise in self.noises:
+            if noise.name==name:
                 pass
             else:
                 new.noises.append(noise)
@@ -91,40 +125,29 @@ class NoiseModel():
     def wrap_noise(other):
         return NoiseModel(noises=other)
 
-def BitFlip(p:float,gates:typing.List[str]):
-    new=NoiseModel()
-    for gate in gates:
-        new+=NoiseModel.wrap_noise(Noise(name='bit flip',probs=list_assignement(p),gate=gate))
+def BitFlip(p:float,level:int):
+
+    new=NoiseModel.wrap_noise(Noise(name='bit flip',probs=list_assignement(p),level=level))
     return new
 
-def PhaseFlip(p:float,gates:typing.List[str]):
-    new=NoiseModel()
-    for gate in gates:
-        new+=NoiseModel.wrap_noise(Noise(name='phase flip',probs=list_assignement(p),gate=gate))
+def PhaseFlip(p:float,level:int):
+    new=NoiseModel.wrap_noise(Noise(name='phase flip',probs=list_assignement(p),level=level))
     return new
 
 
-def PhaseDamp(p:float,gates:typing.List[str]):
-    new=NoiseModel()
-    for gate in gates:
-        new+=NoiseModel.wrap_noise(Noise(name='phase damp',probs=list_assignement(p),gate=gate))
+def PhaseDamp(p:float,level:int):
+    new=NoiseModel.wrap_noise(Noise(name='phase damp',probs=list_assignement(p),level=level))
     return new
 
 
-def AmplitudeDamp(p:float,gates:typing.List[str]):
-    new=NoiseModel()
-    for gate in gates:
-        new+=NoiseModel.wrap_noise(Noise(name='amplitude damp',probs=list_assignement(p),gate=gate))
+def AmplitudeDamp(p:float,level:int):
+    new=NoiseModel.wrap_noise(Noise(name='amplitude damp',probs=list_assignement(p),level=level))
     return new
 
-def PhaseAmplitudeDamp(p1:float,p2:float,gates:typing.List[str]):
-    new=NoiseModel()
-    for gate in gates:
-        new+=NoiseModel.wrap_noise(Noise(name='phase-amplitude damp',probs=list_assignement([p1,p2]),gate=gate))
+def PhaseAmplitudeDamp(p1:float,p2:float,level:int):
+    new=NoiseModel.wrap_noise(Noise(name='phase-amplitude damp',probs=list_assignement([p1,p2]),level=level))
     return new
 
-def DepolarizingError(p,gates:typing.List[str]):
-    new=NoiseModel()
-    for gate in gates:
-        new += NoiseModel.wrap_noise(Noise(name='depolarizing', probs=list_assignement(p), gate=gate,form='depolarizing'))
+def DepolarizingError(p:float,level:int):
+    new = NoiseModel.wrap_noise(Noise(name='depolarizing', probs=list_assignement(p), level=level,form='depolarizing'))
     return new
