@@ -15,6 +15,8 @@ BinaryPauli = namedtuple("BinaryPauli", "coeff, binary")
 
 """
 Explicit matrix forms for the Pauli operators for the tomatrix method
+For sparse matrices use the openfermion tool
+get the openfermion object with hamiltonian.hamiltonian
 """
 import numpy as np
 
@@ -287,35 +289,62 @@ class QubitHamiltonian:
         return QubitHamiltonian(hamiltonian=QubitOperator(term=ps.key_openfermion(), coefficient=ps.coeff))
 
     def __add__(self, other):
-        return QubitHamiltonian(hamiltonian=self.hamiltonian + other.hamiltonian)
+        if isinstance(other, numbers.Number):
+            return QubitHamiltonian(hamiltonian=self.hamiltonian + other*self.init_unit().hamiltonian)
+        else:
+            return QubitHamiltonian(hamiltonian=self.hamiltonian + other.hamiltonian)
 
     def __sub__(self, other):
-        return QubitHamiltonian(hamiltonian=self.hamiltonian - other.hamiltonian)
+        if isinstance(other, numbers.Number):
+            return QubitHamiltonian(hamiltonian=self.hamiltonian - other*self.init_unit().hamiltonian)
+        else:
+            return QubitHamiltonian(hamiltonian=self.hamiltonian - other.hamiltonian)
 
     def __iadd__(self, other):
-        self.hamiltonian += other.hamiltonian
+        if isinstance(other, numbers.Number):
+            self.hamiltonian += other*self.init_unit().hamiltonian
+        else:
+            self.hamiltonian += other.hamiltonian
         return self
 
     def __isub__(self, other):
-        self.hamiltonian -= other.hamiltonian
+        if isinstance(other, numbers.Number):
+            self.hamiltonian -= other*self.init_unit().hamiltonian
+        else:
+            self.hamiltonian -= other.hamiltonian
         return self
 
     def __mul__(self, other):
         if hasattr(other, "apply_qubitoperator"):
             # actually an apply operation
             return other.apply_qubitoperator(operator=self)
+        elif isinstance(other, numbers.Number):
+            return QubitHamiltonian(hamiltonian=self.hamiltonian * other)
         else:
             return QubitHamiltonian(hamiltonian=self.hamiltonian * other.hamiltonian)
 
     def __imul__(self, other):
-        self.hamiltonian *= other.hamiltonian
+        if isinstance(other, numbers.Number):
+            self.hamiltonian *= other
+        else:
+            self.hamiltonian *= other.hamiltonian
         return self
 
     def __rmul__(self, other):
+        assert isinstance(other, numbers.Number)
         return QubitHamiltonian(hamiltonian=self.hamiltonian * other)
+
+    def __radd__(self, other):
+        return self.__add__(other=other)
+
+    def __rsub__(self, other):
+        return self.__neg__().__add__(other=other)
 
     def __pow__(self, power):
         return QubitHamiltonian(hamiltonian=self.hamiltonian ** power)
+
+    def __neg__(self):
+        return self.__mul__(other=-1.0)
 
     def __eq__(self, other):
         return self._hamiltonian == other._hamiltonian
