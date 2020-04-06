@@ -202,7 +202,7 @@ def test_shot_simple_execution(simulator):
     ac += tq.gates.Ry(target=1, control=0, angle=1.2 / 2)
     ac += tq.gates.H(target=1, control=None)
     ac += tq.gates.Measurement([0, 1])
-    tequila.simulators.simulator_api.simulate(ac,simulator=simulator, samples=1)
+    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1)
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
@@ -211,7 +211,7 @@ def test_shot_multitarget(simulator):
     ac += tq.gates.Ry(target=[1, 2], control=0, angle=2.3 / 2)
     ac += tq.gates.H(target=[1], control=None)
     ac += tq.gates.Measurement([0, 1])
-    tequila.simulators.simulator_api.simulate(ac,simulator=simulator, samples=1)
+    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1)
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
@@ -222,7 +222,7 @@ def test_shot_multi_control(simulator):
     ac += tq.gates.Rz(target=[0], control=[1, 2], angle=2.3 / 2)
     ac += tq.gates.Rx(target=[0], control=[1, 2], angle=2.3 / 2)
     ac += tq.gates.Measurement([0, 1])
-    tequila.simulators.simulator_api.simulate(ac,simulator=simulator, samples=1)
+    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1)
 
 
 @pytest.mark.skipif(condition='cirq' not in tq.INSTALLED_SAMPLERS or 'qiskit' not in tq.INSTALLED_SAMPLERS,

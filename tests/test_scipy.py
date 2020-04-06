@@ -32,7 +32,7 @@ def test_execution(simulator):
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, silent=True)
 
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend(backend="random", samples=1), tequila.simulators.simulator_api.pick_backend(samples=1)])
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
