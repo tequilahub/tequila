@@ -20,19 +20,21 @@ noise_lookup={
 }
 
 
-map_1 = lambda x: {'Exponent':x}
+map_1 = lambda x: {'exponent':x}
+map_2 = lambda x: {'exponent':x/np.pi,'global_shift':-0.5}
+
 
 op_lookup={
     'I':(cirq.ops.IdentityGate,None),
-    'X':(cirq.ops.common_gates.XPowGate),
-    'Y':cirq.ops.common_gates.YPowGate,
-    'Z':cirq.ops.common_gates.ZPowGate,
-    'H':cirq.ops.common_gates.HPowGate,
-    'Rx': cirq.ops.common_gates.XPowGate,
-    'Ry': cirq.ops.common_gates.YPowGate,
-    'Rz': cirq.ops.common_gates.ZPowGate,
-    'SWAP': cirq.ops.SwapPowGate,
-    'Measure':cirq.measure
+    'X':(cirq.ops.common_gates.XPowGate,map_1),
+    'Y':(cirq.ops.common_gates.YPowGate,map_1),
+    'Z':(cirq.ops.common_gates.ZPowGate,map_1),
+    'H':(cirq.ops.common_gates.HPowGate,map_1),
+    'Rx': (cirq.ops.common_gates.XPowGate,map_2),
+    'Ry': (cirq.ops.common_gates.YPowGate,map_2),
+    'Rz': (cirq.ops.common_gates.ZPowGate,map_2),
+    'SWAP': (cirq.ops.SwapPowGate,None),
+    'Measure':(cirq.measure,None)
 }
 
 
@@ -197,10 +199,48 @@ class BackendCircuitCirq(BackendCircuit):
         return cirq.Circuit()
 
     def add_gate(self, gate, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name)
-        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
+
+        #cirq_gate = getattr(cirq, gate.name)
+        #cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
+        #circuit.append(cirq_gate)
+        op,mapping=op_lookup[gate.name]
+        if gate.is_parametrized():
+            if isinstance(gate.parameter,float):
+                par=gate.parameter
+            else:
+                try:
+                    par = self.match_par_to_sympy[gate.parameter]
+                except:
+                    par = sympy.Symbol('p_{}'.format(str(self.counter)))
+                    self.match_par_to_sympy[gate.parameter] = par
+                    self.counter += 1
+            cirq_gate=op(**mapping(par)).on(*[self.qubit_map[t] for t in gate.target])
+        else:
+            if gate.name is 'Measure':
+                cirq_gate = op(*[self.qubit_map[t] for t in gate.target])
+            else:
+                cirq_gate = op().on(*[self.qubit_map[t] for t in gate.target])
+        if gate.is_controlled():
+            cirq_gate=cirq_gate.controlled_by(*[self.qubit_map[c] for c in gate.control])
         circuit.append(cirq_gate)
 
+    def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
+        """
+        Translates abstract circuits into the specific backend type
+        :param abstract_circuit: Abstract circuit to be translated
+        :return: translated circuit
+        """
+
+        if self.fast_return(abstract_circuit):
+            return abstract_circuit
+
+        result = self.initialize_circuit()
+
+        for g in abstract_circuit.gates:
+            self.add_gate(g, result)
+        return result
+
+    '''
     def add_controlled_gate(self, gate, circuit, *args, **kwargs):
         cirq_gate = getattr(cirq, gate.name)
         cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
@@ -257,6 +297,8 @@ class BackendCircuitCirq(BackendCircuit):
         qubits = [self.qubit_map[i] for i in gate.target]
         m = cirq.measure(*qubits, key=gate.name)
         circuit.append(m)
+    
+    '''
 
     def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
         return {q: cirq.LineQubit(i) for i,q in enumerate(qubits)}
@@ -281,9 +323,6 @@ class BackendCircuitCirq(BackendCircuit):
             self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.match_sympy_to_value.items()})
         else:
             self.resolver=None
-        #self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
-        #if self.noise_model is not None:
-            #self.circuit=self.build_noise_model(self.noise_model)
 
 class BackendExpectationValueCirq(BackendExpectationValue):
     BackendCircuitType = BackendCircuitCirq

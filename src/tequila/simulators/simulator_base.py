@@ -110,13 +110,14 @@ class BackendCircuit():
         :param abstract_circuit: Abstract circuit to be translated
         :return: translated circuit
         """
-        ## TODO: Type checking currently is actually failing. resorting to attribute checking in its place.
+
         if self.fast_return(abstract_circuit):
             return abstract_circuit
 
         result = self.initialize_circuit()
 
         for g in abstract_circuit.gates:
+
             if isinstance(g, MeasurementImpl):
                 self.add_measurement(gate=g, circuit=result)
             elif g.is_controlled():
@@ -205,7 +206,8 @@ class BackendCircuit():
             # no measurement instructions for a constant term as paulistring
             return paulistring.coeff
         else:
-            measure += Measurement(name=str(paulistring), target=qubits)
+            measure += Measurement(target=qubits)
+            #measure += Measurement(name=str(paulistring), target=qubits)
             circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
             counts = self.do_sample(samples=samples, circuit=circuit)

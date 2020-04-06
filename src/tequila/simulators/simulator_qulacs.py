@@ -19,6 +19,20 @@ class TequilaQulacsException(TequilaException):
         return "Error in qulacs backend:" + self.message
 
 
+op_lookup={
+    'I': qulacs.gate.Identity,
+    'X': qulacs.gate.X,
+    'Y': qulacs.gate.Y,
+    'Z': qulacs.gate.Z,
+    'H': qulacs.gate.H,
+    'Rx': (qulacs.gate.ParametricRX,qulacs.gate.RX),
+    'Ry': (qulacs.gate.ParametricRY,qulacs.gate.RY),
+    'Rz': (qulacs.gate.ParametricRZ,qulacs.gate.RZ),
+    'SWAP': qulacs.gate.SWAP,
+    'Measure': qulacs.gate.Measurement,
+}
+
+
 class BackendCircuitQulacs(BackendCircuit):
     recompile_swap = False
     recompile_multitarget = True

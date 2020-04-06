@@ -49,6 +49,20 @@ class TequilaQiskitException(TequilaException):
         return "Error in qiskit backend:" + self.message
 
 
+op_lookup={
+    'I': (lambda c: c.iden),
+    'X': (lambda c: c.x,lambda c: c.cx, lambda c: c.ccx),
+    'Y': (lambda c: c.y,lambda c: c.cy, lambda c: c.ccy),
+    'Z': (lambda c: c.z,lambda c: c.cz, lambda c: c.ccz),
+    'H': (lambda c: c.h,lambda c: c.ch, lambda c: c.cch),
+    'Rx': (lambda c: c.rx,lambda c: c.mcrx),
+    'Ry': (lambda c: c.ry,lambda c: c.mcry),
+    'Rz': (lambda c: c.rz,lambda c: c.mcrz),
+    'SWAP': (lambda c: c.swap,lambda c: c.cswap),
+    'Measure': (lambda c: c.measure)
+}
+
+
 class BackendCircuitQiskit(BackendCircuit):
     recompile_swap = True
     recompile_multitarget = True
@@ -124,7 +138,53 @@ class BackendCircuitQiskit(BackendCircuit):
     def initialize_circuit(self, *args, **kwargs):
         return qiskit.QuantumCircuit(self.q, self.c)
 
+
     def add_gate(self, gate, circuit, *args, **kwargs):
+        try:
+            ops=op_lookup[gate.name]
+        except:
+            raise TequilaQiskitException('Due to conventions around controls,we cannot look up gates not in the list of allowed gates. SORRY!')
+        if gate.is_parametrized():
+            try:
+                par = self.match_par_to_sympy[gate.parameter]
+            except:
+                par = qiskit.circuit.parameter.Parameter('p_{}'.format(str(self.counter)))
+                self.match_par_to_sympy[gate.parameter] = par
+                self.counter += 1
+            if gate.is_controlled():
+                ops[1](circuit)(par,[self.qubit_map[c] for c in gate.control],self.qubit_map[gate.target[0]])
+            else:
+                ops[0](circuit)(par,self.qubit_map[gate.target[0]])
+        else:
+            if gate.name is 'Measure':
+                tq = [self.qubit_map[t] for t in gate.target]
+                tc = [self.classical_map[t] for t in gate.target]
+                circuit.measure(tq, tc)
+            else:
+                if gate.is_controlled():
+                    ops[len(gate.control)](circuit)(*[self.qubit_map[q] for q in gate.control+gate.target])
+                else:
+                    ops[0](circuit)(*[self.qubit_map[q] for q in gate.target])
+
+
+
+    def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
+        """
+        Translates abstract circuits into the specific backend type
+        :param abstract_circuit: Abstract circuit to be translated
+        :return: translated circuit
+        """
+
+        if self.fast_return(abstract_circuit):
+            return abstract_circuit
+
+        result = self.initialize_circuit()
+
+        for g in abstract_circuit.gates:
+            self.add_gate(g, result)
+        return result
+
+    '''def add_gate(self, gate, circuit, *args, **kwargs):
         if len(gate.target) > 1:
             raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
         gfunc = getattr(circuit, gate.name.lower())
@@ -187,7 +247,7 @@ class BackendCircuitQiskit(BackendCircuit):
         tq = [self.qubit_map[t] for t in gate.target]
         tc = [self.classical_map[t] for t in gate.target]
         circuit.measure(tq, tc)
-
+    '''
     def make_map(self, qubits):
         # for qiskit this is done in init
         assert(self.q is not None)

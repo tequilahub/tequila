@@ -176,6 +176,18 @@ class TequilaPyquilException(TequilaException):
     def __str__(self):
         return "simulator_pyquil: " + self.message
 
+op_lookup={
+    'I': pyquil.gates.I,
+    'X': pyquil.gates.X,
+    'Y': pyquil.gates.Y,
+    'Z': pyquil.gates.Z,
+    'H': pyquil.gates.H,
+    'Rx': pyquil.gates.RX,
+    'Ry': pyquil.gates.RY,
+    'Rz': pyquil.gates.RZ,
+    'SWAP': pyquil.gates.SWAP,
+    'Measure': pyquil.gates.MEASURE
+}
 
 class BackendCircuitPyquil(BackendCircuit):
     recompile_swap = True
@@ -188,17 +200,18 @@ class BackendCircuitPyquil(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
-        self.match_par_to_string={}
+        self.match_par_to_dummy={}
         self.counter=0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model, use_mapping=use_mapping, *args, **kwargs)
         if self.noise_model is not None:
             self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
-        if len(self.match_par_to_string.keys()) is None:
-            self.match_string_to_value = None
+        if len(self.match_par_to_dummy.keys()) is None:
+            self.match_dummy_to_value = None
             self.resolver=None
         else:
-            self.match_string_to_value = {v: k for k, v in self.match_par_to_string.items()}
-            self.resolver = {k: [v(variables)] for k,v in self.match_string_to_value.items()}
+            self.match_dummy_to_value = {'theta_{}'.format(str(i)): k for i,k in enumerate(self.match_par_to_dummy.keys())}
+            self.resolver = {k: [v(variables)] for k,v in self.match_dummy_to_value.items()}
+
     def do_simulate(self, variables, initial_state, *args, **kwargs):
         simulator = pyquil.api.WavefunctionSimulator()
         n_qubits = self.n_qubits
@@ -264,8 +277,53 @@ class BackendCircuitPyquil(BackendCircuit):
         return pyquil.Program()
 
     def add_gate(self, gate, circuit, *args, **kwargs):
-        circuit += getattr(pyquil.gates, gate.name.upper())(self.qubit_map[gate.target[0]])
+        try:
+            op = op_lookup[gate.name]
+        except:
+            op = getattr(pyquil.gates, gate.name.upper())
+        if gate.is_parametrized():
+            if isinstance(gate.parameter,float):
+                par=gate.parameter
+            else:
+                try:
+                    par = self.match_par_to_dummy[gate.parameter]
+                except:
+                    par = circuit.declare('theta_{}'.format(str(self.counter)),'REAL')
+                    self.match_par_to_dummy[gate.parameter] = par
+                    self.counter += 1
+            pyquil_gate=op(angle=par,qubit=self.qubit_map[gate.target[0]])
+        else:
+            if op is pyquil.gates.MEASURE:
+                bits = len(gate.target)
+                ro = circuit.declare('ro', 'BIT', bits)
+                for i, t in enumerate(gate.target):
+                    circuit += op(self.qubit_map[t], ro[i])
+                return
+            else:
+                pyquil_gate=op(*[self.qubit_map[t] for t in gate.target])
+        if gate.is_controlled():
+            for c in gate.control:
+                pyquil_gate = pyquil_gate.controlled(self.qubit_map[c])
+        circuit += pyquil_gate
+        #circuit += getattr(pyquil.gates, gate.name.upper())(self.qubit_map[gate.target[0]])
 
+    def create_circuit(self, abstract_circuit: QCircuit,*args,**kwargs):
+        """
+        Translates abstract circuits into the specific backend type
+        :param abstract_circuit: Abstract circuit to be translated
+        :return: translated circuit
+        """
+
+        if self.fast_return(abstract_circuit):
+            return abstract_circuit
+
+        result = self.initialize_circuit()
+
+        for g in abstract_circuit.gates:
+            self.add_gate(g,result)
+        return result
+
+    '''
     def add_controlled_gate(self, gate, circuit, *args, **kwargs):
         pyquil_gate = getattr(pyquil.gates, gate.name.upper())(self.qubit_map[gate.target[0]])
         if pyquil_gate.name is 'X':
@@ -311,7 +369,7 @@ class BackendCircuitPyquil(BackendCircuit):
         ro = circuit.declare('ro', 'BIT', bits)
         for i, t in enumerate(gate.target):
             circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
-
+    '''
     def get_noisy_prog(self,py_prog, noise_model):
         prog = py_prog
         new= pyquil.Program()
@@ -353,8 +411,8 @@ class BackendCircuitPyquil(BackendCircuit):
         """
         overwriting the underlying code so that noise gets added when present
         """
-        if self.match_string_to_value is not None:
-            self.resolver={k:[v(variables)]for k,v in self.match_string_to_value.items()}
+        if self.match_dummy_to_value is not None:
+            self.resolver={k:[v(variables)]for k,v in self.match_dummy_to_value.items()}
         else:
             self.resolver=None
         #self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
