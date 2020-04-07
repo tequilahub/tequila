@@ -13,7 +13,13 @@ import tequila.simulators.simulator_api
 Warn if Simulators are not installed
 """
 import warnings
+import os, glob
 
+
+def teardown_function(function):
+    [os.remove(x) for x in glob.glob("*.npy")]
+    [os.remove(x) for x in glob.glob("qvm.log")]
+    [os.remove(x) for x in glob.glob("*.dat")]
 
 @pytest.mark.dependencies
 def test_dependencies():

@@ -275,6 +275,7 @@ class BackendExpectationValue:
         self._variables = E.extract_variables()
 
     def __call__(self, variables, samples: int = None, *args, **kwargs):
+
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
             if variables is None or (not set(self._variables) <= set(variables.keys())):
@@ -283,11 +284,9 @@ class BackendExpectationValue:
                         self._variables, variables))
 
         if samples is None:
-            back=self.simulate(variables=variables, *args, **kwargs)
-            return to_float(back)
+            return to_float(self.simulate(variables=variables, *args, **kwargs))
         else:
-            back=self.sample(variables=variables, samples=samples, *args, **kwargs)
-            return to_float(back)
+            return to_float(self.sample(variables=variables, samples=samples, *args, **kwargs))
 
     def initialize_hamiltonian(self, H):
         return H
@@ -299,12 +298,11 @@ class BackendExpectationValue:
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)
 
-
     def sample(self, variables, samples, *args, **kwargs):
         self.update_variables(variables)
         E = 0.0
         for ps in self.H.paulistrings:
-            E += self.sample_paulistring(samples=samples,paulistring=ps, *args, **kwargs)
+            E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
         return E
 
     def simulate(self, variables, *args, **kwargs):
@@ -326,7 +324,6 @@ class BackendExpectationValue:
             keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
         # TODO inefficient, let the backend do it if possible or interface some library
         simresult = self.U.simulate(variables=variables, *args, **kwargs)
-        print('simresult',simresult)
         wfn = simresult.apply_keymap(keymap=keymap)
         final_E += wfn.compute_expectationvalue(operator=self.H)
 

@@ -31,7 +31,7 @@ def test_execution(simulator):
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, silent=True)
 
 
-@pytest.mark.parametrize("simulator", samplers)
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -75,7 +75,7 @@ def test_gradient_free_methods(simulator, method):
     U += tq.gates.Ry(angle="b", target=1, control=0)
     E = tq.ExpectationValue(H=H, U=U)
 
-    initial_values = {"a": 1.234, "b": 0.015}
+    initial_values = {"a": 0.1, "b": 0.01}
     if method == "SLSQP": # method is not good
         return True
 
@@ -83,7 +83,7 @@ def test_gradient_free_methods(simulator, method):
                                          initial_values=initial_values,silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
 
-@pytest.mark.parametrize("simulator", ['cirq', tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
 @pytest.mark.parametrize("use_gradient", [None, '2-point'])
 def test_gradient_based_methods(simulator, method, use_gradient):

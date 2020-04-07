@@ -1,9 +1,3 @@
-"""
-Will replace test_psi4.py
-
-Todo: write real test class with tear_down procedure to get rid of psi4 output files
-"""
-
 import pytest
 import tequila.quantumchemistry as qc
 import numpy
@@ -12,7 +6,6 @@ import os, glob
 import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
 from tequila.simulators.simulator_api import simulate
-from tequila import simulators
 
 import tequila as tq
 
@@ -20,6 +13,11 @@ def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
     [os.remove(x) for x in glob.glob("data/*.out")]
     [os.remove(x) for x in glob.glob("data/*.hdf5")]
+    [os.remove(x) for x in glob.glob("*.clean")]
+    [os.remove(x) for x in glob.glob("data/*.npy")]
+    [os.remove(x) for x in glob.glob("*.npy")]
+    [os.remove(x) for x in glob.glob("qvm.log")]
+    [os.remove(x) for x in glob.glob("*.dat")]
 
 @pytest.mark.dependencies
 def test_dependencies():

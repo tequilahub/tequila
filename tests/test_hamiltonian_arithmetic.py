@@ -4,6 +4,45 @@ from tequila import BitString, QubitWaveFunction
 from tequila import paulis
 import numpy, pytest
 
+def test_convenience():
+
+    i = numpy.random.randint(0,10,1)[0]
+    assert paulis.X(i) + paulis.I(i) == paulis.X(i) + 1.0
+
+    assert paulis.Qp(i) == 0.5*(1.0 + paulis.Z(i))
+    assert paulis.Qm(i) == 0.5*(1.0 - paulis.Z(i))
+    assert paulis.Sp(i) == 0.5*(paulis.X(i) + 1.j*paulis.Y(i))
+    assert paulis.Sm(i) == 0.5*(paulis.X(i) - 1.j*paulis.Y(i))
+
+    i = numpy.random.randint(0, 10, 1)[0]
+    assert paulis.Qp(i) == (0.5 + 0.5*paulis.Z(i))
+    assert paulis.Qm(i) == (0.5 - 0.5*paulis.Z(i))
+    assert paulis.Sp(i) == (0.5*paulis.X(i) + 0.5j*paulis.Y(i))
+    assert paulis.Sm(i) == (0.5*paulis.X(i) - 0.5j*paulis.Y(i))
+
+    assert -1.0*paulis.Y(i) == -paulis.Y(i)
+
+    test = paulis.Z(i)
+    test *= -1.0
+    assert test == -paulis.Z(i)
+
+    test = paulis.Z(i)
+    test += 1.0
+    assert test == paulis.Z(i) + 1.0
+
+    test= paulis.X(i)
+    test += paulis.Y(i+1)
+    assert test == paulis.X(i) + paulis.Y(i+1)
+
+    test = paulis.X(i)
+    test -= paulis.Y(i)
+    test += 3.0
+    test = -test
+    assert test == -1.0*(paulis.X(i) - paulis.Y(i) + 3.0)
+
+
+
+
 def test_ketbra():
     ket = QubitWaveFunction.from_string("1.0*|00> + 1.0*|11>").normalize()
     operator = paulis.KetBra(ket=ket, bra="|00>")

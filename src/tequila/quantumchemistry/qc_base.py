@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from tequila import TequilaException, BitString
-from tequila.hamiltonian import HamiltonianQC, QubitHamiltonian
+from tequila.hamiltonian import QubitHamiltonian
 
 from tequila.circuit import QCircuit, gates
 from tequila.objective.objective import Variable
