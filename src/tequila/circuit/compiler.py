@@ -12,7 +12,7 @@ from tequila import Objective
 from tequila.objective.objective import ExpectationValueImpl
 from tequila.autograd_imports import numpy as jnp
 from tequila.autograd_imports import numpy
-from jax.numpy import pi as pi
+from numpy import pi as pi
 
 import copy, typing
 
