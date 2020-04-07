@@ -3,7 +3,7 @@ scipy
 sympy
 jax
 jaxlib
-#autograd # use if jaxlib gives you trouble
+#autograd # use if jaxlib gives you trouble, make sure jax is uninstalled then
 setuptools 
 pytest
 openfermion

@@ -17,12 +17,10 @@ setup(
     version="XXXX",
     author='Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo-Mendoza, Cyrille Lavigne, Abhinav Anand, Maha Kesebi',
     author_email='jakob.kottmann@gmail.com',
-    install_requires=[
+    install_requires=[ # also requires jax+jaxlib or autograd
         'numpy',
         'scipy',
         'sympy',
-        'jax',
-        'jaxlib',
         'setuptools',
         'pytest',
         'openfermion',
