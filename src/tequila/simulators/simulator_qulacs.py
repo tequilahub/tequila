@@ -25,11 +25,12 @@ op_lookup={
     'Y': qulacs.gate.Y,
     'Z': qulacs.gate.Z,
     'H': qulacs.gate.H,
-    'Rx': (qulacs.gate.ParametricRX,qulacs.gate.RX),
-    'Ry': (qulacs.gate.ParametricRY,qulacs.gate.RY),
-    'Rz': (qulacs.gate.ParametricRZ,qulacs.gate.RZ),
+    'Rx': (lambda c: c.add_parametric_RX_gate, qulacs.gate.RX),
+    'Ry': (lambda c: c.add_parametric_RY_gate, qulacs.gate.RY),
+    'Rz': (lambda c: c.add_parametric_RZ_gate, qulacs.gate.RZ),
     'SWAP': qulacs.gate.SWAP,
     'Measure': qulacs.gate.Measurement,
+    'Exp-Pauli': None
 }
 
 
@@ -42,7 +43,7 @@ class BackendCircuitQulacs(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, *args, **kwargs):
-        self.variables = []  # the order of this list will be the order of variables in the qulacs circuit
+        self.variables = []
         super().__init__(*args, **kwargs)
 
     def update_variables(self, variables):
@@ -76,65 +77,36 @@ class BackendCircuitQulacs(BackendCircuit):
         else:
             circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.parameter(variables) * gate.paulistring.coeff)
 
-    def add_gate(self, gate, circuit, *args, **kwargs):
+    def add_gate(self, gate, circuit,variables, *args, **kwargs):
         targets = tuple([self.qubit_map[t] for t in gate.target])
-        getattr(circuit, "add_" + gate.name.upper() + "_gate")(*targets)
-
-    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
-        if len(gate.control) == 1 and gate.name.upper() == "X":
-            getattr(circuit, "add_CNOT_gate")(self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
-        elif len(gate.control) == 1 and gate.name.upper() == "Z":
-            getattr(circuit, "add_CZ_gate")(self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
+        try:
+            op=op_lookup[gate.name]
+        except:
+            op=getattr(qulacs.gate, gate.name.upper())
+        if gate.is_parametrized():
+            if gate.name == 'Exp-Pauli':
+                self.add_exponential_pauli_gate(gate,circuit,variables)
+                return
+            else:
+                if len(gate.extract_variables()) > 0:
+                    op = op[0]
+                    self.variables.append(-gate.parameter)
+                    op(circuit)(self.qubit_map[gate.target[0]],-gate.parameter(variables=variables))
+                    #this is the only way the circuit will register.
+                    return
+                else:
+                    op = op[1]
+                    qulacs_gate = op(self.qubit_map[gate.target[0]],-gate.parameter(variables=variables))
         else:
+            qulacs_gate=op(*targets)
+        if gate.is_controlled():
             try:
-                qulacs_gate = getattr(qulacs.gate, gate.name.upper())(self.qubit_map[gate.target[0]])
                 qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
                 for c in gate.control:
                     qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
-                circuit.add_gate(qulacs_gate)
             except:
                 raise TequilaQulacsException("Qulacs does not know the controlled gate: " + str(gate))
-
-    def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        # minus sign due to different conventions in qulacs
-        if len(gate.extract_variables()) > 0:
-            self.variables.append(-gate.parameter)
-            getattr(circuit, "add_parametric_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]],
-                                                                              -gate.parameter(variables=variables))
-        else:
-            getattr(circuit, "add_" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]],
-                                                                   -gate.parameter(variables=variables))
-
-    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        angle = -gate.parameter(variables=variables)
-        qulacs_gate = getattr(qulacs.gate, gate.name.upper())(self.qubit_map[gate.target[0]], angle)
-        qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
-        for c in gate.control:
-            qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
-
-        if len(gate.extract_variables()) > 0:
-            self.variables.append(-gate.parameter)
-            raise TequilaQulacsException("Parametric controlled-rotations are currently not possible")
-
         circuit.add_gate(qulacs_gate)
-
-    def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        assert (len(gate.extract_variables()) == 0)
-        power = gate.parameter(variables=variables)
-
-        if power == 1:
-            return self.add_gate(gate=gate, qubit_map=self.qubit_map, circuit=circuit)
-        elif power == 0.5:
-            getattr(circuit, "add_sqrt" + gate.name.upper() + "_gate")(self.qubit_map[gate.target[0]])
-        else:
-            raise TequilaQulacsException("Only sqrt gates supported as power gates")
-
-    def add_controlled_power_gate(self, gate, circuit, *args, **kwargs):
-        raise TequilaQulacsException("no controlled power gates")
-
-    def add_measurement(self, gate, circuit, *args, **kwargs):
-        raise TequilaQulacsException(
-            "only full wavefunction simulation, no measurements. Did you forget to add the number of samples?")
 
     def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
         """
@@ -157,14 +129,13 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
     use_mapping = True
 
     def simulate(self, variables, *args, **kwargs):
-
         # fast return if possible
         if self.H is None:
             return 0.0
         elif isinstance(self.H, numbers.Number):
             return self.H
 
-        self.update_variables(variables)
+        self.U.update_variables(variables)
         state = qulacs.QuantumState(self.U.n_qubits)
         self.U.circuit.update_quantum_state(state)
         return self.H.get_expectation_value(state)

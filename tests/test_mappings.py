@@ -64,7 +64,7 @@ def test_endianness_simulators():
             if v == 1:
                 c += gates.X(target=i)
 
-        c += gates.Measurement(name="", target=[x for x in range(len(string))])
+        c += gates.Measurement(target=[x for x in range(len(string))])
 
         wfn_cirq = simulate(c, initial_state=0, backend="cirq")
         counts_cirq = simulate(c, samples=1, backend="cirq")
@@ -84,7 +84,7 @@ def test_paulistring_sampling(backend, case):
     H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
     U = gates.X(target=1) + gates.X(target=3) + gates.X(target=5)
     E = ExpectationValue(H=H, U=U)
-    result = simulate(E,simulator=backend, samples=1)
+    result = simulate(E,backend=backend, samples=1)
     assert (isclose(result, case[1], 1.e-4))
 
 
@@ -94,7 +94,7 @@ def test_paulistring_sampling_2(backend, case):
     H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
     U = gates.H(target=1) + gates.H(target=3) + gates.X(target=5) + gates.H(target=5)
     E = ExpectationValue(H=H, U=U)
-    result = simulate(E,simulator=backend, samples=1)
+    result = simulate(E,backend=backend, samples=1)
     assert (isclose(result, case[1], 1.e-4))
 
 @pytest.mark.parametrize("array", [numpy.random.uniform(0.0,1.0,i) for i in [2,4,8,16]])

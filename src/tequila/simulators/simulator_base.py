@@ -104,7 +104,7 @@ class BackendCircuit():
         else:
             return self.sample(variables=variables, samples=samples, noise_model=self.noise_model, *args, **kwargs)
 
-    def create_circuit(self, abstract_circuit: QCircuit, variables: typing.Dict[Variable, numbers.Real] = None):
+    def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
         """
         Translates abstract circuits into the specific backend type
         :param abstract_circuit: Abstract circuit to be translated
@@ -117,32 +117,7 @@ class BackendCircuit():
         result = self.initialize_circuit()
 
         for g in abstract_circuit.gates:
-
-            if isinstance(g, MeasurementImpl):
-                self.add_measurement(gate=g, circuit=result)
-            elif g.is_controlled():
-                if isinstance(g, RotationGateImpl):
-                    self.add_controlled_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PowerGateImpl):
-                    self.add_controlled_power_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PhaseGateImpl):
-                    self.add_controlled_phase_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, ExponentialPauliGateImpl):
-                    self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
-                else:
-                    self.add_controlled_gate(gate=g, circuit=result)
-            else:
-                if isinstance(g, RotationGateImpl):
-                    self.add_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PowerGateImpl):
-                    self.add_power_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PhaseGateImpl):
-                    self.add_phase_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, ExponentialPauliGateImpl):
-                    self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
-                else:
-                    self.add_gate(gate=g, circuit=result)
-
+            self.add_gate(g, result, *args,**kwargs)
         return result
 
     def update_variables(self, variables):
@@ -246,37 +221,10 @@ class BackendCircuit():
     def fast_return(self, abstract_circuit):
         return True
 
-    def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
-    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_rotation_gate(self, gate, circuit, variables, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_phase_gate(self, gate, circuit, variables, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_controlled_phase_gate(self, gate, variables, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_controlled_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def initialize_circuit(self, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
     def add_gate(self, gate, circuit, *args, **kwargs):
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
-    def add_measurement(self, gate, circuit, *args, **kwargs):
+    def initialize_circuit(self, *args, **kwargs):
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def make_qubit_map(self, qubits):
@@ -292,6 +240,9 @@ class BackendCircuit():
         """
         return circuit
 
+    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+        result = self.abstract_circuit.extract_variables()
+        return result
 
 class BackendExpectationValue:
     BackendCircuitType = BackendCircuit
@@ -312,13 +263,18 @@ class BackendExpectationValue:
     def U(self):
         return self._U
 
+    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+        result = []
+        if self.U is not None:
+            result = self.U.extract_variables()
+        return result
+
     def __init__(self, E, variables, noise_model):
         self._U = self.initialize_unitary(E.U, variables, noise_model)
         self._H = self.initialize_hamiltonian(E.H)
         self._variables = E.extract_variables()
 
     def __call__(self, variables, samples: int = None, *args, **kwargs):
-
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
             if variables is None or (not set(self._variables) <= set(variables.keys())):
@@ -327,9 +283,11 @@ class BackendExpectationValue:
                         self._variables, variables))
 
         if samples is None:
-            return to_float(self.simulate(variables=variables, *args, **kwargs))
+            back=self.simulate(variables=variables, *args, **kwargs)
+            return to_float(back)
         else:
-            return to_float(self.sample(variables=variables, samples=samples, *args, **kwargs))
+            back=self.sample(variables=variables, samples=samples, *args, **kwargs)
+            return to_float(back)
 
     def initialize_hamiltonian(self, H):
         return H
@@ -341,16 +299,15 @@ class BackendExpectationValue:
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)
 
+
     def sample(self, variables, samples, *args, **kwargs):
         self.update_variables(variables)
         E = 0.0
         for ps in self.H.paulistrings:
-            E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
+            E += self.sample_paulistring(samples=samples,paulistring=ps, *args, **kwargs)
         return E
 
     def simulate(self, variables, *args, **kwargs):
-        # TODO the whole procedure is quite inefficient but at least it works for general backends
-        # overwrite on specific the backend implementation for better performance (see qulacs)
         self.update_variables(variables)
         final_E = 0.0
         if self.use_mapping:
@@ -369,11 +326,12 @@ class BackendExpectationValue:
             keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
         # TODO inefficient, let the backend do it if possible or interface some library
         simresult = self.U.simulate(variables=variables, *args, **kwargs)
+        print('simresult',simresult)
         wfn = simresult.apply_keymap(keymap=keymap)
         final_E += wfn.compute_expectationvalue(operator=self.H)
 
         return to_float(final_E)
 
     def sample_paulistring(self, samples: int,
-                           paulistring) -> numbers.Real:
-        return self.U.sample_paulistring(samples=samples, paulistring=paulistring)
+                           paulistring,*args,**kwargs) -> numbers.Real:
+        return self.U.sample_paulistring(samples=samples, paulistring=paulistring,*args,**kwargs)

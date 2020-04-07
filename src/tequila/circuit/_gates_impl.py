@@ -49,10 +49,10 @@ class QGateImpl:
         """
         :return: True if the gate is controlled
         """
-        if self.control:
-            return True
-        else:
+        if len(self.control) == 0:
             return False
+        else:
+            return True
 
     def is_parametrized(self) -> bool:
         """

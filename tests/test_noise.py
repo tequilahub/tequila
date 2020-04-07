@@ -15,7 +15,6 @@ import tequila.simulators.simulator_api
 @pytest.mark.parametrize('controlled',[False,True])
 def test_bit_flip(simulator, p,controlled):
 
-
     qubit = 0
 
     if controlled:
@@ -99,7 +98,6 @@ def test_phase_flip(simulator, p):
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.,2*numpy.pi,1))
 def test_rz_phase_flip_0(simulator, p,angle):
-
 
     qubit = 0
     H = paulis.Y(qubit)

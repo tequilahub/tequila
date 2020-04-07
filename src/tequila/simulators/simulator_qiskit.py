@@ -4,7 +4,7 @@ from tequila import TequilaException
 from tequila import BitString, BitNumbering, BitStringLSB
 import qiskit
 import qiskit.providers.aer.noise as qiskitnoise
-
+from tequila.utils import to_float
 
 
 def get_bit_flip(p):
@@ -58,6 +58,7 @@ op_lookup={
     'Rx': (lambda c: c.rx,lambda c: c.mcrx),
     'Ry': (lambda c: c.ry,lambda c: c.mcry),
     'Rz': (lambda c: c.rz,lambda c: c.mcrz),
+    'Phase': (lambda c: c.u1,lambda c: c.cu1),
     'SWAP': (lambda c: c.swap,lambda c: c.cswap),
     'Measure': (lambda c: c.measure)
 }
@@ -92,14 +93,15 @@ class BackendCircuitQiskit(BackendCircuit):
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=self.noise_model, use_mapping=use_mapping, *args, **kwargs)
         if len(self.match_par_to_sympy.keys()) is None:
             self.match_sympy_to_value = None
-            self.resolver=None
+            self.resolver = None
         else:
             self.match_sympy_to_value = {v: k for k, v in self.match_par_to_sympy.items()}
-            self.resolver={k:v(variables) for k,v in self.match_sympy_to_value.items()}
+            self.resolver = {k: to_float(v(variables)) for k, v in self.match_sympy_to_value.items()}
         if self.noise_model is None:
-            self.ol=1
+            self.ol = 1
         else:
-            self.ol=0
+            self.ol = 0
+
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         if self.noise_model is None:
             simulator = qiskit.Aer.get_backend("statevector_simulator")
@@ -145,14 +147,17 @@ class BackendCircuitQiskit(BackendCircuit):
         except:
             raise TequilaQiskitException('Due to conventions around controls,we cannot look up gates not in the list of allowed gates. SORRY!')
         if gate.is_parametrized():
-            try:
-                par = self.match_par_to_sympy[gate.parameter]
-            except:
-                par = qiskit.circuit.parameter.Parameter('p_{}'.format(str(self.counter)))
-                self.match_par_to_sympy[gate.parameter] = par
-                self.counter += 1
+            if len(gate.extract_variables()) >0:
+                try:
+                    par = self.match_par_to_sympy[gate.parameter]
+                except:
+                    par = qiskit.circuit.parameter.Parameter('param_{}'.format(str(self.counter)))
+                    self.match_par_to_sympy[gate.parameter] = par
+                    self.counter += 1
+            else:
+                par=float(gate.parameter)
             if gate.is_controlled():
-                ops[1](circuit)(par,[self.qubit_map[c] for c in gate.control],self.qubit_map[gate.target[0]])
+                ops[1](circuit)(par,q_controls=[self.qubit_map[c] for c in gate.control],q_target=self.qubit_map[gate.target[0]],q_ancillae=None,mode='noancilla')
             else:
                 ops[0](circuit)(par,self.qubit_map[gate.target[0]])
         else:
@@ -166,88 +171,6 @@ class BackendCircuitQiskit(BackendCircuit):
                 else:
                     ops[0](circuit)(*[self.qubit_map[q] for q in gate.target])
 
-
-
-    def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
-        """
-        Translates abstract circuits into the specific backend type
-        :param abstract_circuit: Abstract circuit to be translated
-        :return: translated circuit
-        """
-
-        if self.fast_return(abstract_circuit):
-            return abstract_circuit
-
-        result = self.initialize_circuit()
-
-        for g in abstract_circuit.gates:
-            self.add_gate(g, result)
-        return result
-
-    '''def add_gate(self, gate, circuit, *args, **kwargs):
-        if len(gate.target) > 1:
-            raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
-        gfunc = getattr(circuit, gate.name.lower())
-        gfunc(self.qubit_map[gate.target[0]])
-
-    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
-        if len(gate.target) > 1:
-            raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
-        if len(gate.control) == 1:
-            gfunc = getattr(circuit, "c" + gate.name.lower())
-            gfunc(self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
-        elif len(gate.control) == 2:
-            try:
-                gfunc = getattr(circuit, "cc" + gate.name.lower())
-            except AttributeError:
-                raise TequilaQiskitException("Double controls are currenty only supported for CCX in Qiskit")
-            gfunc(self.qubit_map[gate.control[0]], self.qubit_map[gate.control[1]], self.qubit_map[gate.target[0]])
-        else:
-            raise TequilaQiskitException("More than two control gates currently not supported")
-
-    def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        if len(gate.target) > 1:
-            raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
-        gfunc = getattr(circuit, gate.name.lower())
-        try:
-            par= self.match_par_to_sympy[gate.parameter]
-        except:
-            par = qiskit.circuit.parameter.Parameter('p_{}'.format(str(self.counter)))
-            self.match_par_to_sympy[gate.parameter] = par
-            self.counter += 1
-        gfunc(par, self.qubit_map[gate.target[0]])
-
-    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        if len(gate.target) > 1:
-            raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
-        if len(gate.control) == 1:
-            try:
-                par = self.match_par_to_sympy[gate.parameter]
-            except:
-                par = qiskit.circuit.parameter.Parameter('p_{}'.format(str(self.counter)))
-                self.match_par_to_sympy[gate.parameter] = par
-                self.counter += 1
-            gfunc = getattr(circuit, "c" + gate.name.lower())
-
-            gfunc(par, self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
-        elif len(gate.control) == 2:
-            gfunc = getattr(circuit, "cc" + gate.name.lower())
-            try:
-                par = self.match_par_to_sympy[gate.parameter]
-            except:
-                par = qiskit.circuit.parameter.Parameter('p_{}'.format(str(self.counter)))
-                self.match_par_to_sympy[gate.parameter] = par
-                self.counter += 1
-            gfunc(par, self.qubit_map[gate.control[0]], self.qubit_map[gate.control[1]],
-                  self.qubit_map[gate.target[0]])
-        else:
-            raise TequilaQiskitException("More than two control gates currently not supported")
-
-    def add_measurement(self, gate, circuit, *args, **kwargs):
-        tq = [self.qubit_map[t] for t in gate.target]
-        tc = [self.classical_map[t] for t in gate.target]
-        circuit.measure(tq, tc)
-    '''
     def make_map(self, qubits):
         # for qiskit this is done in init
         assert(self.q is not None)
@@ -304,8 +227,9 @@ class BackendCircuitQiskit(BackendCircuit):
         overriding the underlying base to make sure this stuff remains noisy
         """
         if self.match_sympy_to_value is not None:
-            self.resolver={k:v(variables) for k,v in self.match_sympy_to_value.items()}
+            self.resolver={k : to_float(v(variables)) for k,v in self.match_sympy_to_value.items()}
         else:
             self.resolver=None
+
 class BackendExpectationValueQiskit(BackendExpectationValue):
     BackendCircuitType = BackendCircuitQiskit

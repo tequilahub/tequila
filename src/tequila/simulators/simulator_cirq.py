@@ -200,9 +200,6 @@ class BackendCircuitCirq(BackendCircuit):
 
     def add_gate(self, gate, circuit, *args, **kwargs):
 
-        #cirq_gate = getattr(cirq, gate.name)
-        #cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
-        #circuit.append(cirq_gate)
         op,mapping=op_lookup[gate.name]
         if gate.is_parametrized():
             if isinstance(gate.parameter,float):
@@ -223,82 +220,6 @@ class BackendCircuitCirq(BackendCircuit):
         if gate.is_controlled():
             cirq_gate=cirq_gate.controlled_by(*[self.qubit_map[c] for c in gate.control])
         circuit.append(cirq_gate)
-
-    def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
-        """
-        Translates abstract circuits into the specific backend type
-        :param abstract_circuit: Abstract circuit to be translated
-        :return: translated circuit
-        """
-
-        if self.fast_return(abstract_circuit):
-            return abstract_circuit
-
-        result = self.initialize_circuit()
-
-        for g in abstract_circuit.gates:
-            self.add_gate(g, result)
-        return result
-
-    '''
-    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
-        cirq_gate = getattr(cirq, gate.name)
-        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
-        cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
-        circuit.append(cirq_gate)
-
-    def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        try:
-            angle=self.match_par_to_sympy[gate.parameter]
-        except:
-            angle = sympy.Symbol('p_{}'.format(str(self.counter)))
-            self.match_par_to_sympy[gate.parameter]=angle
-            self.counter+=1
-        cirq_gate = getattr(cirq, gate.name)(rads=angle)
-        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
-        circuit.append(cirq_gate)
-
-    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        try:
-            angle = self.match_par_to_sympy[gate.parameter]
-        except:
-            angle = sympy.Symbol('p_{}'.format(str(self.counter)))
-            self.match_par_to_sympy[gate.parameter] = angle
-            self.counter += 1
-        cirq_gate = getattr(cirq, gate.name)(rads=angle)
-        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
-        cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
-        circuit.append(cirq_gate)
-
-    def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        try:
-            power = self.match_par_to_sympy[gate.parameter]
-        except:
-            power = sympy.Symbol('p_{}'.format(str(self.counter)))
-            self.match_par_to_sympy[gate.parameter] = power
-            self.counter += 1
-        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
-        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
-        circuit.append(cirq_gate)
-
-    def add_controlled_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        try:
-            power = self.match_par_to_sympy[gate.parameter]
-        except:
-            power = sympy.Symbol('p_{}'.format(str(self.counter)))
-            self.match_par_to_sympy[gate.parameter] = power
-            self.counter += 1
-        cirq_gate = getattr(cirq, gate.name + "PowGate")(exponent=power)
-        cirq_gate = cirq_gate.on(*[self.qubit_map[t] for t in gate.target])
-        cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[t] for t in gate.control])
-        circuit.append(cirq_gate)
-
-    def add_measurement(self, gate, circuit, *args, **kwargs):
-        qubits = [self.qubit_map[i] for i in gate.target]
-        m = cirq.measure(*qubits, key=gate.name)
-        circuit.append(m)
-    
-    '''
 
     def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
         return {q: cirq.LineQubit(i) for i,q in enumerate(qubits)}

@@ -16,7 +16,7 @@ except:
 
 
 import numpy as np
-from tequila.simulators.simulator_api import compile_objective, simulate
+from tequila.simulators.simulator_api import compile, simulate
 from collections import namedtuple
 GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history opt')
 
@@ -54,10 +54,10 @@ class GPyOptOptimizer(Optimizer):
         return BayesianOptimization(f=func,domain=domain,acquisition=method)
 
     def construct_function(self,objective,backend,passives=None,samples=None,noise_model=None) -> typing.Callable:
-        return lambda arr: simulate(objective=objective,backend=backend,
-                                                        variables=array_to_objective_dict(objective,arr,passives),
-                                                        samples=samples,
-                                                        noise_model=noise_model)
+        return lambda arr: objective(backend=backend,
+                                    variables=array_to_objective_dict(objective,arr,passives),
+                                    samples=samples,
+                                    noise_model=noise_model)
 
     def redictify(self,arr,objective,passives=None) -> typing.Dict:
         op=objective.extract_variables()
@@ -86,11 +86,10 @@ class GPyOptOptimizer(Optimizer):
         else:
             pass
         dom=self.get_domain(objective,passives)
-        #init={v:np.random.uniform(0,2*np.pi) for v in objective.extract_variables()}
+        init={v:np.random.uniform(0,2*np.pi) for v in objective.extract_variables()}
         ### O is broken, not using it right now
-        #O= compile_objective(objective=objective,variables=init, backend=backend,noise_model=noise, samples=samples)
-
-        f = self.construct_function(objective,backend,passives,samples,noise_model=noise)
+        O= compile(objective=objective,variables=init, backend=backend,noise_model=noise, samples=samples)
+        f = self.construct_function(O,backend,passives,samples,noise_model=noise)
         opt=self.get_object(f,dom,method)
         opt.run_optimization(maxiter)
         if self.save_history:

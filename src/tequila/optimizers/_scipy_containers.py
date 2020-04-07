@@ -3,6 +3,7 @@ from tequila import TequilaException
 """
 Define Containers for SciPy usage
 """
+from tequila.objective import format_variable_dictionary
 
 
 class _EvalContainer:
@@ -28,8 +29,8 @@ class _EvalContainer:
         angles = dict((self.param_keys[i], p[i]) for i in range(self.N))
         if self.passive_angles is not None:
             angles = {**angles, **self.passive_angles}
-
-        E = self.objective(variables=angles, samples=self.samples)
+        vars=format_variable_dictionary(angles)
+        E = self.objective(variables=vars, samples=self.samples)
         if not self.silent:
             print("E=", E, " angles=", angles, " samples=", self.samples)
         if self.save_history:
