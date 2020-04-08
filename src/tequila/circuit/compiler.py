@@ -84,7 +84,9 @@ class Compiler:
         n_qubits = abstract_circuit.n_qubits
         compiled = QCircuit()
         for gate in abstract_circuit.gates:
+
             cg = gate
+            #print('into compile comes ', cg)
             controlled = gate.is_controlled()
 
             # order matters
@@ -131,7 +133,7 @@ class Compiler:
                 if self.cc_max:
                     cg = compile_to_cc(gate=cg)
             compiled += cg
-
+            #print('out of compile comes ', cg)
         compiled.n_qubits = max(compiled.n_qubits, n_qubits)
         return compiled
 
@@ -639,7 +641,7 @@ def compile_phase(gate) -> QCircuit:
         return QCircuit.wrap_gate(gate)
     phase=gate.parameter
     result =QCircuit()
-    if gate.control is None:
+    if len(gate.control) is 0:
         return Rz(angle=phase,target=gate.target)
 
     if len(gate.control) is 1:
@@ -654,15 +656,14 @@ def compile_phase_to_z(gate) -> QCircuit:
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     phase=gate.parameter
-    return Z(power=numpy.pi*phase,target=gate.target,control=gate.control)
+    return Z(power=phase/pi,target=gate.target,control=gate.control)
 
 
 @compiler
 def compile_controlled_phase(gate)->QCircuit:
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
-
-    if gate.control is None:
+    if len(gate.control) == 0:
         return QCircuit.wrap_gate(gate)
     count=len(gate.control)
     result =QCircuit()

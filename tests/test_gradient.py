@@ -147,6 +147,35 @@ def test_gradient_UHZH_HY(simulator, angle_value, controlled, silent=False):
         print("dE        =", dE)
         print("-cos(angle)=", -numpy.cos(angle(variables)))
 
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
+def test_gradient_PHASE_HY(simulator, angle_value, controlled, silent=False):
+
+    angle = Variable(name="angle")
+    variables = {angle: angle_value}
+
+    qubit = 0
+    H = paulis.Y(qubit=qubit)
+    if controlled:
+        control = 1
+        U = gates.X(target=control) + gates.H(target=qubit)+ gates.Phase(target=qubit, control=control, phi=angle) + gates.H(target=qubit)
+    else:
+        U = gates.H(target=qubit)+ gates.Phase(target=qubit, phi=angle) + gates.H(target=qubit)
+
+    O = ExpectationValue(U=U, H=H)
+    E = simulate(O, variables=variables, backend=simulator)
+    dO = grad(objective=O, variable='angle')
+    dE = simulate(dO,variables=variables)
+    assert (numpy.isclose(E, -numpy.sin(angle(variables)), atol=1.e-4))
+    assert (numpy.isclose(dE, -numpy.cos(angle(variables)), atol=1.e-4))
+    if not silent:
+        print("E         =", E)
+        print("-sin(angle)=", -numpy.sin(angle(variables)))
+        print("dE        =", dE)
+        print("-cos(angle)=", -numpy.cos(angle(variables)))
+
+
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("controlled", [False, True])

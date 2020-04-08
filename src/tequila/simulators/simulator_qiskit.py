@@ -70,6 +70,7 @@ class BackendCircuitQiskit(BackendCircuit):
     recompile_controlled_power = True
     recompile_power = True
     recompile_hadamard_power = True
+    recompile_phase = False
     cc_max=True
     numbering = BitNumbering.LSB
 

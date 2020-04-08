@@ -239,7 +239,7 @@ class PhaseGateImpl(ParametrizedGateImpl):
 
     @property
     def shift(self):
-        return 1.
+        return 0.5
 
 
 class PowerGateImpl(ParametrizedGateImpl):

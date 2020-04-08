@@ -143,6 +143,9 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         self.U.circuit.update_quantum_state(state)
         return self.H.get_expectation_value(state)
 
+
+
+
     def initialize_hamiltonian(self, H):
         if self.use_mapping:
             # initialize only the active parts of the Hamiltonian and pre-evaluate the passive ones
