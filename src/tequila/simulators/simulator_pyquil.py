@@ -194,12 +194,11 @@ op_lookup={
     'Y': (pyquil.gates.Y,),
     'Z': (pyquil.gates.Z,pyquil.gates.CZ),
     'H': (pyquil.gates.H,),
-    'Rx': (pyquil.gates.RX,),
-    'Ry': (pyquil.gates.RY,),
-    'Rz': (pyquil.gates.RZ,),
-    'Phase':(pyquil.gates.PHASE,pyquil.gates.CPHASE),
+    'Rx': pyquil.gates.RX,
+    'Ry': pyquil.gates.RY,
+    'Rz': pyquil.gates.RZ,
+    'Phase':pyquil.gates.PHASE,
     'SWAP': (pyquil.gates.SWAP,pyquil.gates.CSWAP),
-    'Measure': (pyquil.gates.MEASURE,)
 }
 
 class BackendCircuitPyquil(BackendCircuit):
@@ -287,47 +286,43 @@ class BackendCircuitPyquil(BackendCircuit):
     def initialize_circuit(self, *args, **kwargs):
         return pyquil.Program()
 
-    def add_gate(self, gate, circuit, *args, **kwargs):
-        try:
-            op = op_lookup[gate.name]
-        except:
-            op = getattr(pyquil.gates, gate.name.upper())
-        if gate.is_parametrized():
-            if isinstance(gate.parameter,float):
-                par=gate.parameter
-            else:
-                try:
-                    par = self.match_par_to_dummy[gate.parameter]
-                except:
-                    par = circuit.declare('theta_{}'.format(str(self.counter)),'REAL')
-                    self.match_par_to_dummy[gate.parameter] = par
-                    self.counter += 1
-            pyquil_gate=op[0](angle=par,qubit=self.qubit_map[gate.target[0]])
-            if gate.is_controlled():
-                for c in gate.controls:
-                    pyquil_gate=pyquil_gate.controlled(self.qubit_map[c])
-
+    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        op = op_lookup[gate.name]
+        if isinstance(gate.parameter,float):
+            par=gate.parameter
         else:
-            if gate.name == 'Measure':
-                bits = len(gate.target)
-                ro = circuit.declare('ro', 'BIT', bits)
-                for i, t in enumerate(gate.target):
-                    circuit += op[0](self.qubit_map[t], ro[i])
-                return
-            else:
-                try:
-                    g=op[len(gate.control)]
-                    if gate.is_controlled():
-                        pyquil_gate = g(*[self.qubit_map[q] for q in gate.control + gate.target])
-                    else:
-                        pyquil_gate = g(*[self.qubit_map[t] for t in gate.target])
-                except:
-                    g=op[0]
-                    for c in gate.control:
-                        pyquil_gate = g(*[self.qubit_map[t] for t in gate.target]).controlled(self.qubit_map[c])
-
+            try:
+                par = self.match_par_to_dummy[gate.parameter]
+            except:
+                par = circuit.declare('theta_{}'.format(str(self.counter)),'REAL')
+                self.match_par_to_dummy[gate.parameter] = par
+                self.counter += 1
+        pyquil_gate=op(angle=par,qubit=self.qubit_map[gate.target[0]])
+        if gate.is_controlled():
+            for c in gate.controls:
+                pyquil_gate=pyquil_gate.controlled(self.qubit_map[c])
         circuit += pyquil_gate
 
+    def add_measurement(self,gate, circuit, *args, **kwargs):
+        bits = len(gate.target)
+        ro = circuit.declare('ro', 'BIT', bits)
+        for i, t in enumerate(gate.target):
+            circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
+
+    def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        op = op_lookup[gate.name]
+        try:
+            g=op[len(gate.control)]
+            if gate.is_controlled():
+                pyquil_gate = g(*[self.qubit_map[q] for q in gate.control + gate.target])
+            else:
+                pyquil_gate = g(*[self.qubit_map[t] for t in gate.target])
+        except:
+            g=op[0]
+            for c in gate.control:
+                pyquil_gate = g(*[self.qubit_map[t] for t in gate.target]).controlled(self.qubit_map[c])
+
+        circuit += pyquil_gate
 
     def get_noisy_prog(self,py_prog, noise_model):
         prog = py_prog

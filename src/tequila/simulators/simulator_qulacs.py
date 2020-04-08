@@ -77,36 +77,39 @@ class BackendCircuitQulacs(BackendCircuit):
         else:
             circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.parameter(variables) * gate.paulistring.coeff)
 
-    def add_gate(self, gate, circuit,variables, *args, **kwargs):
-        targets = tuple([self.qubit_map[t] for t in gate.target])
-        try:
-            op=op_lookup[gate.name]
-        except:
-            op=getattr(qulacs.gate, gate.name.upper())
-        if gate.is_parametrized():
-            if gate.name == 'Exp-Pauli':
-                self.add_exponential_pauli_gate(gate,circuit,variables)
+
+    def add_parametrized_gate(self, gate,circuit,variables, *args, **kwargs):
+        op=op_lookup[gate.name]
+        if gate.name == 'Exp-Pauli':
+            self.add_exponential_pauli_gate(gate,circuit,variables)
+            return
+        else:
+            if len(gate.extract_variables()) > 0:
+                op = op[0]
+                self.variables.append(-gate.parameter)
+                op(circuit)(self.qubit_map[gate.target[0]],-gate.parameter(variables=variables))
                 return
             else:
-                if len(gate.extract_variables()) > 0:
-                    op = op[0]
-                    self.variables.append(-gate.parameter)
-                    op(circuit)(self.qubit_map[gate.target[0]],-gate.parameter(variables=variables))
-                    #this is the only way the circuit will register.
-                    return
-                else:
-                    op = op[1]
-                    qulacs_gate = op(self.qubit_map[gate.target[0]],-gate.parameter(variables=variables))
-        else:
-            qulacs_gate=op(*targets)
+                op = op[1]
+                qulacs_gate = op(self.qubit_map[gate.target[0]],-gate.parameter(variables=variables))
         if gate.is_controlled():
-            try:
-                qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
-                for c in gate.control:
-                    qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
-            except:
-                raise TequilaQulacsException("Qulacs does not know the controlled gate: " + str(gate))
+            qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
+            for c in gate.control:
+                qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
         circuit.add_gate(qulacs_gate)
+
+    def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        op=op_lookup[gate.name]
+        qulacs_gate=op(*[self.qubit_map[t] for t in gate.target])
+        if gate.is_controlled():
+            qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
+            for c in gate.control:
+                qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
+
+        circuit.add_gate(qulacs_gate)
+
+    def add_measurement(self,gate, circuit, *args, **kwargs):
+        return self.add_basic_gate(gate,circuit,*args,*kwargs)
 
     def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
         """

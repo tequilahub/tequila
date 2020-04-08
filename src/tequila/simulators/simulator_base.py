@@ -114,11 +114,29 @@ class BackendCircuit():
         if self.fast_return(abstract_circuit):
             return abstract_circuit
 
-        result = self.initialize_circuit()
+        result = self.initialize_circuit(*args,**kwargs)
 
         for g in abstract_circuit.gates:
-            self.add_gate(g, result, *args,**kwargs)
+            if g.is_parametrized():
+                self.add_parametrized_gate(g, result, *args,**kwargs)
+            else:
+                if not g.name == 'Measure':
+                    self.add_basic_gate(g, result, *args, **kwargs)
+                else:
+                    self.add_measurement(g, result, *args, **kwargs)
         return result
+
+    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_measurement(self,gate, circuit, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def initialize_circuit(self, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def update_variables(self, variables):
         """
@@ -220,12 +238,6 @@ class BackendCircuit():
 
     def fast_return(self, abstract_circuit):
         return True
-
-    def add_gate(self, gate, circuit, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
-    def initialize_circuit(self, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def make_qubit_map(self, qubits):
         assert (len(self.abstract_qubit_map) == len(qubits))

@@ -60,7 +60,6 @@ op_lookup={
     'Rz': (lambda c: c.rz,lambda c: c.mcrz),
     'Phase': (lambda c: c.u1,lambda c: c.cu1),
     'SWAP': (lambda c: c.swap,lambda c: c.cswap),
-    'Measure': (lambda c: c.measure)
 }
 
 
@@ -140,36 +139,34 @@ class BackendCircuitQiskit(BackendCircuit):
     def initialize_circuit(self, *args, **kwargs):
         return qiskit.QuantumCircuit(self.q, self.c)
 
-
-    def add_gate(self, gate, circuit, *args, **kwargs):
-        try:
-            ops=op_lookup[gate.name]
-        except:
-            raise TequilaQiskitException('Due to conventions around controls,we cannot look up gates not in the list of allowed gates. SORRY!')
-        if gate.is_parametrized():
-            if len(gate.extract_variables()) >0:
-                try:
-                    par = self.match_par_to_sympy[gate.parameter]
-                except:
-                    par = qiskit.circuit.parameter.Parameter('param_{}'.format(str(self.counter)))
-                    self.match_par_to_sympy[gate.parameter] = par
-                    self.counter += 1
-            else:
-                par=float(gate.parameter)
-            if gate.is_controlled():
-                ops[1](circuit)(par,q_controls=[self.qubit_map[c] for c in gate.control],q_target=self.qubit_map[gate.target[0]],q_ancillae=None,mode='noancilla')
-            else:
-                ops[0](circuit)(par,self.qubit_map[gate.target[0]])
+    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        ops = op_lookup[gate.name]
+        if len(gate.extract_variables()) > 0:
+            try:
+                par = self.match_par_to_sympy[gate.parameter]
+            except:
+                par = qiskit.circuit.parameter.Parameter('param_{}'.format(str(self.counter)))
+                self.match_par_to_sympy[gate.parameter] = par
+                self.counter += 1
         else:
-            if gate.name is 'Measure':
-                tq = [self.qubit_map[t] for t in gate.target]
-                tc = [self.classical_map[t] for t in gate.target]
-                circuit.measure(tq, tc)
-            else:
-                if gate.is_controlled():
-                    ops[len(gate.control)](circuit)(*[self.qubit_map[q] for q in gate.control+gate.target])
-                else:
-                    ops[0](circuit)(*[self.qubit_map[q] for q in gate.target])
+            par = float(gate.parameter)
+        if gate.is_controlled():
+            ops[1](circuit)(par, q_controls=[self.qubit_map[c] for c in gate.control],
+                            q_target=self.qubit_map[gate.target[0]], q_ancillae=None, mode='noancilla')
+        else:
+            ops[0](circuit)(par, self.qubit_map[gate.target[0]])
+
+    def add_measurement(self,gate, circuit, *args, **kwargs):
+        tq = [self.qubit_map[t] for t in gate.target]
+        tc = [self.classical_map[t] for t in gate.target]
+        circuit.measure(tq, tc)
+
+    def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        ops = op_lookup[gate.name]
+        if gate.is_controlled():
+            ops[len(gate.control)](circuit)(*[self.qubit_map[q] for q in gate.control+gate.target])
+        else:
+            ops[0](circuit)(*[self.qubit_map[q] for q in gate.target])
 
     def make_map(self, qubits):
         # for qiskit this is done in init

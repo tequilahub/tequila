@@ -34,7 +34,6 @@ op_lookup={
     'Ry': (cirq.ops.common_gates.YPowGate,map_2),
     'Rz': (cirq.ops.common_gates.ZPowGate,map_2),
     'SWAP': (cirq.ops.SwapPowGate,None),
-    'Measure':(cirq.measure,None)
 }
 
 
@@ -198,27 +197,31 @@ class BackendCircuitCirq(BackendCircuit):
     def initialize_circuit(self, *args, **kwargs):
         return cirq.Circuit()
 
-    def add_gate(self, gate, circuit, *args, **kwargs):
-
-        op,mapping=op_lookup[gate.name]
-        if gate.is_parametrized():
-            if isinstance(gate.parameter,float):
-                par=gate.parameter
-            else:
-                try:
-                    par = self.match_par_to_sympy[gate.parameter]
-                except:
-                    par = sympy.Symbol('p_{}'.format(str(self.counter)))
-                    self.match_par_to_sympy[gate.parameter] = par
-                    self.counter += 1
-            cirq_gate=op(**mapping(par)).on(*[self.qubit_map[t] for t in gate.target])
+    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        op, mapping = op_lookup[gate.name]
+        if isinstance(gate.parameter, float):
+            par = gate.parameter
         else:
-            if gate.name is 'Measure':
-                cirq_gate = op(*[self.qubit_map[t] for t in gate.target])
-            else:
-                cirq_gate = op().on(*[self.qubit_map[t] for t in gate.target])
+            try:
+                par = self.match_par_to_sympy[gate.parameter]
+            except:
+                par = sympy.Symbol('p_{}'.format(str(self.counter)))
+                self.match_par_to_sympy[gate.parameter] = par
+                self.counter += 1
+        cirq_gate = op(**mapping(par)).on(*[self.qubit_map[t] for t in gate.target])
         if gate.is_controlled():
-            cirq_gate=cirq_gate.controlled_by(*[self.qubit_map[c] for c in gate.control])
+            cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[c] for c in gate.control])
+        circuit.append(cirq_gate)
+
+    def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        op, mapping = op_lookup[gate.name]
+        cirq_gate = op().on(*[self.qubit_map[t] for t in gate.target])
+        if gate.is_controlled():
+            cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[c] for c in gate.control])
+        circuit.append(cirq_gate)
+
+    def add_measurement(self, gate, circuit, *args, **kwargs):
+        cirq_gate = cirq.MeasurementGate(len(gate.target)).on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
     def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
