@@ -1,4 +1,4 @@
-from tequila import TequilaException
+#from tequila import TequilaException
 import numpy as np
 
 
@@ -232,3 +232,74 @@ def gen_single_qubit_term(dim, qub, term):
     elif term == 2:
         word[qub + dim] = 1
     return word
+
+
+def largest_first(terms, n, cg):
+            """
+            Color the graph using "largest first" heuristics with the given adjacency matrix
+            Returns a dictionary with keys as colors (just numbers),
+            and values as BinaryHamiltonian's
+            Faster than RLF but not as good
+            """
+            rows = cg.sum(axis=0)
+            ind = np.argsort(rows)[::-1]
+            m = cg[ind,:][:,ind]
+            colors = dict()
+            c = np.zeros(n, dtype=int)
+            k = 0 #color
+            for i in range(n):
+                neighbors = np.argwhere(m[i,:])
+                colors_available = set(np.arange(1, k+1)) - set(c[[x[0] for x in neighbors]])
+                term = terms[ind[i]]
+                if not colors_available:
+                    k += 1
+                    c[i] = k
+                    colors[c[i]] = [term]
+                else:
+                    c[i] = min(list(colors_available))
+                    colors[c[i]].append(term)
+            return colors
+
+def recursive_largest_first(terms, n, cg):
+    """
+    Color the graph using "recursive largest first" heuristics with the given adjacency matrix
+    Returns a dictionary with keys as colors (just numbers),
+    and values as BinaryHamiltonian's
+    Produces better results than LF but is slower
+    """
+    def n_0(m, colored):
+        m_colored = m[list(colored)]
+        l = m_colored[-1]
+        for i in range(len(m_colored)-1):
+            l += m_colored[i]
+        white_neighbors = np.argwhere(np.logical_not(l))
+        return set([x[0] for x in white_neighbors]) - colored
+
+    colors = dict()
+    c = np.zeros(n, dtype=int)
+    # so, the preliminary work is done
+    uncolored = set(np.arange(n))
+    colored = set()
+    k = 0
+    while uncolored:
+        decode = np.array(list(uncolored))
+        k += 1
+        m = cg[:, decode][decode, :]
+        v = np.argmax(m.sum(axis=1))
+        colored_sub = {v}
+        uncolored_sub = set(np.arange(len(decode))) - {v}
+        n0 = n_0(m, colored_sub)#vertices that are not adjacent to any colored vertices
+        n1 = uncolored_sub - n0
+        while n0:
+            m_uncolored = m[:,list(n1)][list(n0),:]
+            v = list(n0)[np.argmax(m_uncolored.sum(axis=1))]
+            colored_sub.add(v) #stable
+            uncolored_sub -= {v} #stable
+            n0 = n_0(m, colored_sub)
+            n1 = uncolored_sub - n0 #stable
+        indices = decode[list(colored_sub)]
+        c[indices] = k  # stable
+        colors[k] = [terms[i] for i in indices] # stable
+        colored |= set(indices)
+        uncolored = set(np.arange(n)) - colored
+    return colors

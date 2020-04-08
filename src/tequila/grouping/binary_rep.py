@@ -1,6 +1,6 @@
 from tequila import TequilaException
 from tequila.hamiltonian import QubitHamiltonian, PauliString
-from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term
+from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first
 import numpy as np
 import numbers
 
@@ -118,6 +118,33 @@ class BinaryHamiltonian:
             qub_ham += QubitHamiltonian.init_from_paulistring(
                 p.to_pauli_strings())
         return qub_ham
+
+    def anti_commutativity_matrix(self):
+        """
+        Return an adjacency matrix. If term[i] and term[j] anticommute,
+        the entry [i][j] is 1, else the entry is 0
+        """
+        n = self.n_qubit
+        matrix = np.array(self.get_binary())
+        gram = np.block([[np.zeros((n,n)), np.eye(n)], [np.eye(n), np.zeros((n,n))]])
+        return matrix @ gram @ matrix.T % 2
+
+    def commuting_groups(self, method='better'):
+        """
+        Return the partitioning of the hamiltonian into commuting groups.
+        List of BinaryHamiltonian's
+        """
+        terms = self.binary_terms
+        n = self.n_term
+        cg = self.anti_commutativity_matrix()
+
+        if method == 'better':
+            colors = largest_first(terms, n, cg)
+        elif method == 'faster':
+            colors = recursive_largest_first(terms, n, cg)
+        else:
+            raise TequilaException(f"There is no algorithm {method}")
+        return [BinaryHamiltonian(value) for key, value in colors.items()]
 
 
 class BinaryPauliString:
