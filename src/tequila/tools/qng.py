@@ -1,0 +1,238 @@
+from tequila import TequilaException
+from tequila.hamiltonian import paulis
+from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, ExpectationValue
+from tequila.circuit.circuit import QCircuit
+from tequila.simulators.simulator_api import compile_objective
+from tequila.circuit.gradient import __grad_inner
+from tequila.autograd_imports import jax
+
+import numpy
+import copy
+
+class QngMatrix:
+
+    @property
+    def dim(self):
+        return (len(self._matrix),len(self._matrix[0]))
+
+    def __init__(self,matrix):
+        self._matrix = matrix
+        if len(self._matrix) is not len(self._matrix[0]):
+            raise TequilaException('Matrix was not square!')
+
+    def __call__(self, variables):
+        output = numpy.empty(self.dim)
+        for i,row in enumerate(self._matrix):
+            for j, entry in enumerate(row):
+                print(entry,type(entry))
+                if hasattr(entry,'__call__'):
+                    output[i][j] = entry(variables)
+                else:
+                    output[i][j] = entry
+
+        numpy.linalg.pinv(output)
+        return output
+
+class QngVector:
+    @property
+    def dim(self):
+        return (len(self._vector))
+
+    def __init__(self,vector):
+        self._vector=vector
+
+
+    def __call__(self, variables):
+        output = numpy.empty(self.dim)
+        for i,entry in enumerate(self._vector):
+            if hasattr(entry, '__call__'):
+                output[i] = entry(variables)
+            else:
+                output[i] = entry
+
+        return output
+
+def get_generator(gate):
+    if gate.name.lower() == 'rx':
+        gen=paulis.X(gate.target[0])
+    elif gate.name.lower() == 'ry':
+        gen=paulis.Y(gate.target[0])
+    elif gate.name.lower()  == 'rz':
+        gen=paulis.Z(gate.target[0])
+    elif gate.name.lower() == 'phase':
+        gen=paulis.Qm(gate.target[0])
+    else:
+        print(gate.name.lower())
+        raise TequilaException('cant get the generator of a non Gaussian gate, you fool!')
+    return gen
+
+
+def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,backend=None,noise_model=None):
+
+    U=expectation.U
+    moments=U.canonical_moments
+    sub=[QCircuit.from_moments(moments[:i]) for i in range(1,len(moments),2)]
+    parametric_moms=[moments[i] for i in range(1,len(moments)+1,2)]
+    generators =[]
+    for pm in parametric_moms:
+        set=[]
+        if len(pm.gates) is not 0:
+            for gate in pm.gates:
+                gen=get_generator(gate)
+                set.append(gen)
+        if len(set) is not 0:
+            generators.append(set)
+        else:
+            generators.append(None)
+    blocks=[]
+    for i,set in enumerate(generators):
+        if set is None:
+            pass
+        else:
+            block=[[0 for _ in range(len(set))] for _ in range(len(set))]
+            for k,gen1 in enumerate(set):
+                for q,gen2 in enumerate(set):
+                    if k == q:
+                        arg= (ExpectationValue(U=sub[i], H=gen1 * gen1) - ExpectationValue(U=sub[i],H=gen1)**2)/4
+                    else:
+                        arg = (ExpectationValue(U=sub[i], H=gen1 * gen2) - ExpectationValue(U=sub[i], H=gen1)*ExpectationValue(U=sub[i],H=gen2) ) / 4
+                    block[k][q] = compile_objective(arg, variables=initial_values, samples=samples, backend=backend,noise_model=noise_model)
+            blocks.append(block)
+    return blocks
+
+
+def qng_circuit_grad(E: ExpectationValueImpl):
+    '''
+    implements the analytic partial derivatives of a unitary as it would appear in an expectation value, taking
+    all parameters as final (only useful for qng, invalid method otherwise!)
+    :param E: the Excpectation whose gradient should be obtained
+    :return: vector (as dict) of dU/dpi as Objectives.
+    '''
+    hamiltonian = E.H
+    unitary = E.U
+
+    # fast return if possible
+    out=[]
+    for i, g in enumerate(unitary.gates):
+        if g.is_parametrized():
+            if g.is_controlled():
+                raise TequilaException("controlled gate in qng circuit gradient: Compiler was not called")
+            if hasattr(g, "shift"):
+                shifter = qng_grad_gaussian(unitary, g, i, hamiltonian)
+                out.append(shifter)
+            else:
+                print(g, type(g))
+                raise TequilaException('No shift found for gate {}'.format(g))
+    if out is None:
+        raise TequilaException("caught a dead circuit in qng gradient")
+    return out
+
+
+def qng_grad_gaussian(unitary, g, i, hamiltonian):
+    '''
+    function for getting the gradients of gaussian gates. NOTE: you had better compile first.
+    :param unitary: QCircuit: the QCircuit object containing the gate to be differentiated
+    :param g: a parametrized: the gate being differentiated
+    :param i: Int: the position in unitary at which g appears
+    :param variable: Variable or String: the variable with respect to which gate g is being differentiated
+    :param hamiltonian: the hamiltonian with respect to which unitary is to be measured, in the case that unitary
+        is contained within an ExpectationValue
+    :return: a list of objectives; the gradient of the Exp. with respect to each of its (internal) parameters
+    '''
+
+    if not hasattr(g, "shift"):
+        raise TequilaException("No shift found for gate {}".format(g))
+
+    # neo_a and neo_b are the shifted versions of gate g needed to evaluate its gradient
+    shift_a = g._parameter + numpy.pi / (4 * g.shift)
+    shift_b = g._parameter - numpy.pi / (4 * g.shift)
+    neo_a = copy.deepcopy(g)
+    neo_a._parameter = shift_a
+    neo_b = copy.deepcopy(g)
+    neo_b._parameter = shift_b
+
+    U1 = unitary.replace_gate(position=i, gates=[neo_a])
+    w1 = g.shift
+
+    U2 = unitary.replace_gate(position=i, gates=[neo_b])
+    w2 = -g.shift
+
+    Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
+    Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
+    dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
+    return dOinc
+
+
+
+def subvector_procedure(eval,initial_values=None,samples=None,backend=None,noise_model=None):
+    vect=qng_circuit_grad(eval)
+    out=[]
+    for entry in vect:
+        out.append(compile_objective(entry,variables=initial_values,samples=samples,
+                                     backend=backend,noise_model=noise_model))
+    return QngVector(out)
+
+def get_self_pars(U):
+    out=[]
+    for g in U.gates:
+        if g.is_parametrized():
+            if hasattr(g._parameter,'extract_variables'):
+                out.append(g._parameter)
+    return out
+
+def qng_dict(argument,matrix,subvector,mapping,positional):
+    return {'arg':argument,'matrix':matrix,'vector':subvector,'mapping':mapping,'positional':positional}
+
+def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise_model=None):
+    combos=[]
+    vars=objective.extract_variables()
+    for i,arg in enumerate(objective.args):
+        if not isinstance(arg,ExpectationValueImpl):
+            ### this is a variable, no QNG involved
+            mat=QngMatrix([[1]])
+            vec=QngVector([__grad_inner(arg,arg)])
+            mapping={0:{v:__grad_inner(arg,v) for v in vars}}
+        else:
+            ### if the arg is an expectationvalue, we need to build some qngs and mappings!
+            blocks=qng_metric(arg,initial_values=initial_values,samples=samples,
+                                            backend=backend,noise_model=noise_model)
+            mat=QngMatrix(blocks)
+
+            vec=subvector_procedure(arg,initial_values=initial_values,samples=samples,
+                                    backend=backend,noise_model=noise_model)
+
+            mapping={}
+            self_pars=get_self_pars(arg.U)
+            for i,p in enumerate(self_pars):
+                indict={}
+                for v in vars:
+                    gi=__grad_inner(p,v)
+                    if isinstance(gi,Objective):
+                        g=compile_objective(gi,variables=initial_values,samples=samples,
+                                            backend=backend,noise_model=noise_model)
+                    else:
+                        g=gi
+                    indict[v]=g
+                mapping[i]=indict
+
+        posarg = jax.grad(objective.transformation, argnums=i)
+        p = Objective(objective.args, transformation=posarg)
+        pos = compile_objective(p,variables=initial_values,samples=samples,
+                          backend=backend,noise_model=noise_model)
+        combos.append(qng_dict(arg, mat, vec, mapping, pos))
+    return combos
+
+def evaluate_qng(combos,variables):
+    gd={v:0 for v in variables.keys()}
+    for c in combos:
+        qgt=c['matrix']
+        vec=c['vector']
+        m=c['mapping']
+        pos=c['positional']
+        ev=numpy.dot(qgt(variables),vec(variables))
+        for i,val in enumerate(ev):
+            maps=m[i]
+            for k in variables.keys():
+                gd[k] += val*maps[k]*pos(variables)
+    out=[v for v in gd.values()]
+    return out
