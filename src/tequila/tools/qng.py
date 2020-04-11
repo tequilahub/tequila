@@ -5,6 +5,8 @@ from tequila.circuit.circuit import QCircuit
 from tequila.simulators.simulator_api import compile_objective
 from tequila.circuit.gradient import __grad_inner
 from tequila.autograd_imports import jax
+from tequila.circuit.compiler import compile_controlled_rotation,compile_h_power,compile_power_gate, \
+    compile_trotterized_gate,compile_controlled_phase, compile_multitarget
 
 import numpy
 import copy
@@ -13,22 +15,27 @@ class QngMatrix:
 
     @property
     def dim(self):
-        return (len(self._matrix),len(self._matrix[0]))
+        d=0
+        for block in self.blocks:
+            d+=len(block)
+        return (d,d)
 
-    def __init__(self,matrix):
-        self._matrix = matrix
-        if len(self._matrix) is not len(self._matrix[0]):
-            raise TequilaException('Matrix was not square!')
+    def __init__(self,blocks):
+        self.blocks= blocks
 
     def __call__(self, variables):
-        output = numpy.empty(self.dim)
-        for i,row in enumerate(self._matrix):
-            for j, entry in enumerate(row):
-                print(entry,type(entry))
-                if hasattr(entry,'__call__'):
-                    output[i][j] = entry(variables)
-                else:
-                    output[i][j] = entry
+        output= numpy.zeros(self.dim)
+        d_v = 0
+        for block in self.blocks:
+            d_v_temp = 0
+            for i, row in enumerate(block):
+                for j, term in enumerate(row):
+                    if i <= j:
+                        output[i + d_v][j + d_v] = term(variables=variables)
+                    else:
+                        output[i + d_v][j + d_v] = output[j + d_v][i + d_v]
+                d_v_temp += 1
+            d_v += d_v_temp
 
         numpy.linalg.pinv(output)
         return output
@@ -118,8 +125,9 @@ def qng_circuit_grad(E: ExpectationValueImpl):
             if g.is_controlled():
                 raise TequilaException("controlled gate in qng circuit gradient: Compiler was not called")
             if hasattr(g, "shift"):
-                shifter = qng_grad_gaussian(unitary, g, i, hamiltonian)
-                out.append(shifter)
+                if hasattr(g._parameter,'extract_variables'):
+                    shifter = qng_grad_gaussian(unitary, g, i, hamiltonian)
+                    out.append(shifter)
             else:
                 print(g, type(g))
                 raise TequilaException('No shift found for gate {}'.format(g))
@@ -186,6 +194,12 @@ def qng_dict(argument,matrix,subvector,mapping,positional):
 def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise_model=None):
     combos=[]
     vars=objective.extract_variables()
+    compiled = compile_multitarget(gate=objective)
+    compiled = compile_trotterized_gate(gate=compiled)
+    compiled = compile_h_power(gate=compiled)
+    compiled = compile_power_gate(gate=compiled)
+    compiled = compile_controlled_phase(gate=compiled)
+    compiled = compile_controlled_rotation(gate=compiled)
     for i,arg in enumerate(objective.args):
         if not isinstance(arg,ExpectationValueImpl):
             ### this is a variable, no QNG involved
@@ -194,7 +208,7 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
             mapping={0:{v:__grad_inner(arg,v) for v in vars}}
         else:
             ### if the arg is an expectationvalue, we need to build some qngs and mappings!
-            blocks=qng_metric(arg,initial_values=initial_values,samples=samples,
+            blocks=qng_metric_tensor_blocks(arg,initial_values=initial_values,samples=samples,
                                             backend=backend,noise_model=noise_model)
             mat=QngMatrix(blocks)
 
@@ -203,7 +217,7 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
 
             mapping={}
             self_pars=get_self_pars(arg.U)
-            for i,p in enumerate(self_pars):
+            for j,p in enumerate(self_pars):
                 indict={}
                 for v in vars:
                     gi=__grad_inner(p,v)
@@ -213,10 +227,11 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
                     else:
                         g=gi
                     indict[v]=g
-                mapping[i]=indict
+                mapping[j]=indict
 
         posarg = jax.grad(objective.transformation, argnums=i)
         p = Objective(objective.args, transformation=posarg)
+
         pos = compile_objective(p,variables=initial_values,samples=samples,
                           backend=backend,noise_model=noise_model)
         combos.append(qng_dict(arg, mat, vec, mapping, pos))
@@ -234,5 +249,6 @@ def evaluate_qng(combos,variables):
             maps=m[i]
             for k in variables.keys():
                 gd[k] += val*maps[k]*pos(variables)
+
     out=[v for v in gd.values()]
     return out

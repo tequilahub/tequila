@@ -292,7 +292,7 @@ class Objective:
                "variables = {}".format(len(ev), argstring.strip().rstrip(','), variables)
 
     def __call__(self, variables = None, *args, **kwargs):
-        return to_float(self.transformation(*[Ei(variables=variables, *args, **kwargs) for Ei in self.args]))
+        return to_float(self.transformation(*[Ei(variables) for Ei in self.args]))
 
 
 def ExpectationValue(U, H) -> Objective:

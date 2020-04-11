@@ -1,6 +1,6 @@
 import pytest, numpy
 import tequila as tq
-
+import copy
 # skip usage of symbolic simulator
 import tequila.simulators.simulator_api
 
@@ -117,13 +117,14 @@ def test_gradient_based_methods_qng(simulator, method):
     U += tq.gates.Ry('c',1) +tq.gates.Rx('d',2)
     U += tq.gates.CNOT(control=0,target=1)+tq.gates.CNOT(control=1,target=2)
     E = tq.ExpectationValue(H=H, U=U)
-
+    # just equal to the original circuit, but i'm checking that all the sub-division works
+    O=(4/8)*E+(3/8)*copy.deepcopy(E)+(1/8)*copy.deepcopy(E)
     # need to improve starting points for some of the optimizations
     initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
 
-    result = tq.optimizer_scipy.minimize(objective=-E,qng=True,backend=simulator,
+    result = tq.optimizer_scipy.minimize(objective=-O,qng=True,backend=simulator,
                                          method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4},
-                                         initial_values=initial_values, silent=True)
+                                         initial_values=initial_values, silent=False)
     assert(numpy.isclose(result.energy, -0.612, atol=1.e-3))
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
