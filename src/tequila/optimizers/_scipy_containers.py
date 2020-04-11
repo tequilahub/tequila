@@ -4,7 +4,7 @@ from tequila import TequilaException
 Define Containers for SciPy usage
 """
 from tequila.objective import format_variable_dictionary
-
+from tequila.tools.qng import evaluate_qng
 
 class _EvalContainer:
     """
@@ -59,7 +59,29 @@ class _GradContainer(_EvalContainer):
         return numpy.asarray(dE_vec, dtype=numpy.float64) # jax types confuse optimizers
 
 
+class _QngContainer(_EvalContainer):
 
+    def __init__(self, combos, param_keys, passive_angles=None, samples=None, save_history=True,
+                 silent: bool = True):
+
+        super().__init__(objective=None, param_keys=param_keys, passive_angles=passive_angles,
+                         samples=samples, save_history=save_history, silent=silent)
+
+        self.combos = combos
+
+    def evaluate_qng(self, variables):
+        return evaluate_qng(self.combos,variables)
+
+    def __call__(self, p, *args, **kwargs):
+        memory = dict()
+        variables = dict((self.param_keys[i], p[i]) for i in range(len(self.param_keys)))
+        if self.passive_angles is not None:
+            variables = {**variables, **self.passive_angles}
+        out =self.evaluate_qng(variables=variables)
+        for i in range(self.N):
+            memory[self.param_keys[i]] = out[i]
+        self.history.append(memory)
+        return numpy.asarray(out,dtype=numpy.float64)
 
 class _HessContainer(_EvalContainer):
 
