@@ -655,16 +655,17 @@ class QuantumChemistryBase:
                         variables.append(Variable(name=key))  # abab
                         variables.append(Variable(name=key))  # baba
                         if partner is not None and key[0] != key[1] and key[2] != key[3]:
+
                             variables.append(Variable(name=key) - Variable(partner))  # aaaa
                             variables.append(Variable(name=key) - Variable(partner))  # bbbb
                     else:
                         variables.append(t)
                         variables.append(t)
                         if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(t - amplitudes[Variable(partner)])
-                            variables.append(t - amplitudes[Variable(partner)])
+                            variables.append(t - amplitudes[partner])
+                            variables.append(t - amplitudes[partner])
                 else:
-                    generators.append(self.make_excitation_operator(indices=indices))
+                    generators.append(self.make_excitation_operator(indices=spin_indices))
                     if parametrized:
                         variables.append(Variable(name=key))
                     else:

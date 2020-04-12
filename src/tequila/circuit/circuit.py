@@ -36,7 +36,7 @@ class QCircuit():
             p=0
             qus = g.qubits
             if g.is_parametrized():
-                if hasattr(g.parameter,'extract_variables'):
+                if hasattr(g._parameter,'extract_variables'):
                     p=1
 
             if p == 0:

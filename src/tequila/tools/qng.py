@@ -31,7 +31,10 @@ class QngMatrix:
             for i, row in enumerate(block):
                 for j, term in enumerate(row):
                     if i <= j:
-                        output[i + d_v][j + d_v] = term(variables=variables)
+                        try:
+                            output[i + d_v][j + d_v] = term(variables=variables)
+                        except:
+                            output[i + d_v][j + d_v] = term
                     else:
                         output[i + d_v][j + d_v] = output[j + d_v][i + d_v]
                 d_v_temp += 1
@@ -200,10 +203,10 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
     compiled = compile_power_gate(gate=compiled)
     compiled = compile_controlled_phase(gate=compiled)
     compiled = compile_controlled_rotation(gate=compiled)
-    for i,arg in enumerate(objective.args):
+    for i,arg in enumerate(compiled.args):
         if not isinstance(arg,ExpectationValueImpl):
             ### this is a variable, no QNG involved
-            mat=QngMatrix([[1]])
+            mat=QngMatrix([[[1]]])
             vec=QngVector([__grad_inner(arg,arg)])
             mapping={0:{v:__grad_inner(arg,v) for v in vars}}
         else:
@@ -219,7 +222,7 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
             self_pars=get_self_pars(arg.U)
             for j,p in enumerate(self_pars):
                 indict={}
-                for v in vars:
+                for v in p.extract_variables():
                     gi=__grad_inner(p,v)
                     if isinstance(gi,Objective):
                         g=compile_objective(gi,variables=initial_values,samples=samples,
@@ -229,8 +232,8 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
                     indict[v]=g
                 mapping[j]=indict
 
-        posarg = jax.grad(objective.transformation, argnums=i)
-        p = Objective(objective.args, transformation=posarg)
+        posarg = jax.grad(compiled.transformation, argnums=i)
+        p = Objective(compiled.args, transformation=posarg)
 
         pos = compile_objective(p,variables=initial_values,samples=samples,
                           backend=backend,noise_model=noise_model)
@@ -247,7 +250,7 @@ def evaluate_qng(combos,variables):
         ev=numpy.dot(qgt(variables),vec(variables))
         for i,val in enumerate(ev):
             maps=m[i]
-            for k in variables.keys():
+            for k in maps.keys():
                 gd[k] += val*maps[k]*pos(variables)
 
     out=[v for v in gd.values()]

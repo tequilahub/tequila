@@ -118,7 +118,7 @@ def test_gradient_based_methods_qng(simulator, method):
     U += tq.gates.CNOT(control=0,target=1)+tq.gates.CNOT(control=1,target=2)
     E = tq.ExpectationValue(H=H, U=U)
     # just equal to the original circuit, but i'm checking that all the sub-division works
-    O=(4/8)*E+(3/8)*copy.deepcopy(E)+(1/8)*copy.deepcopy(E)
+    O=(4/8)*E+(3/8)*copy.deepcopy(E)+(1/8)*copy.deepcopy(E)+tq.Variable('a')-tq.Variable('a')
     # need to improve starting points for some of the optimizations
     initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
 
