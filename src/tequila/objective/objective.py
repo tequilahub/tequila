@@ -517,7 +517,9 @@ class Variables(collections.abc.MutableMapping):
         for k,v in self.items():
             result += "{} : {:2.8f}\n".format(k, v)
         return result
-
+    
+    def __repr__(self):
+        return self.__str__()
 
 
 
