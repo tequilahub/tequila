@@ -256,6 +256,22 @@ class BackendCircuit():
         result = self.abstract_circuit.extract_variables()
         return result
 
+    @staticmethod
+    def _name_variable_objective(objective):
+        """
+        Name variables in backend consistently for easier readout
+        """
+        variables = objective.extract_variables()
+        if len(variables) == 0:
+            if hasattr(variables[0], "transformation"):
+                return str("f({})".format(variables[0]))
+            else:
+                return str(variables[0])
+        else:
+            variables = tuple(variables)
+            return "f({})".format(variables)
+
+
 class BackendExpectationValue:
     BackendCircuitType = BackendCircuit
 

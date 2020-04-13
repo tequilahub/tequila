@@ -159,15 +159,15 @@ class BackendCircuitCirq(BackendCircuit):
     numbering: BitNumbering = BitNumbering.MSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
-        self.match_par_to_sympy={}
+        self.tq_to_sympy={}
         self.counter=0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model, use_mapping=use_mapping, *args, **kwargs)
-        if len(self.match_par_to_sympy.keys()) is None:
-            self.match_sympy_to_value = None
+        if len(self.tq_to_sympy.keys()) is None:
+            self.sympy_to_tq = None
             self.resolver=None
         else:
-            self.match_sympy_to_value = {v: k for k, v in self.match_par_to_sympy.items()}
-            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.match_sympy_to_value.items()})
+            self.sympy_to_tq = {v: k for k, v in self.tq_to_sympy.items()}
+            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
         if self.noise_model is not None:
             self.circuit=self.build_noise_model(self.noise_model)
 
@@ -203,10 +203,10 @@ class BackendCircuitCirq(BackendCircuit):
             par = gate.parameter
         else:
             try:
-                par = self.match_par_to_sympy[gate.parameter]
+                par = self.tq_to_sympy[gate.parameter]
             except:
-                par = sympy.Symbol('p_{}'.format(str(self.counter)))
-                self.match_par_to_sympy[gate.parameter] = par
+                par = sympy.Symbol('{}_{}'.format(self._name_variable_objective(gate.parameter),str(self.counter)))
+                self.tq_to_sympy[gate.parameter] = par
                 self.counter += 1
         cirq_gate = op(**mapping(par)).on(*[self.qubit_map[t] for t in gate.target])
         if gate.is_controlled():
@@ -243,8 +243,8 @@ class BackendCircuitCirq(BackendCircuit):
         """
         overriding the underlying base to make sure this stuff remains noisy
         """
-        if self.match_sympy_to_value is not None:
-            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.match_sympy_to_value.items()})
+        if self.sympy_to_tq is not None:
+            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
         else:
             self.resolver=None
 

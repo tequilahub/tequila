@@ -87,16 +87,16 @@ class BackendCircuitQiskit(BackendCircuit):
         self.c = qiskit.ClassicalRegister(n_qubits, "c")
         self.classical_map = {i: self.c[j] for j, i in enumerate(qubits)}
         self.qubit_map = {i: self.q[j] for j, i in enumerate(qubits)}
-
-        self.match_par_to_sympy={}
+        self.resolver = {}
+        self.tq_to_sympy={}
         self.counter = 0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=self.noise_model, use_mapping=use_mapping, *args, **kwargs)
-        if len(self.match_par_to_sympy.keys()) is None:
-            self.match_sympy_to_value = None
+        if len(self.tq_to_sympy.keys()) is None:
+            self.sympy_to_tq = None
             self.resolver = None
         else:
-            self.match_sympy_to_value = {v: k for k, v in self.match_par_to_sympy.items()}
-            self.resolver = {k: to_float(v(variables)) for k, v in self.match_sympy_to_value.items()}
+            self.sympy_to_tq = {v: k for k, v in self.tq_to_sympy.items()}
+            self.resolver = {k: to_float(v(variables)) for k, v in self.sympy_to_tq.items()}
         if self.noise_model is None:
             self.ol = 1
         else:
@@ -144,10 +144,10 @@ class BackendCircuitQiskit(BackendCircuit):
         ops = op_lookup[gate.name]
         if len(gate.extract_variables()) > 0:
             try:
-                par = self.match_par_to_sympy[gate.parameter]
+                par = self.tq_to_sympy[gate.parameter]
             except:
-                par = qiskit.circuit.parameter.Parameter('param_{}'.format(str(self.counter)))
-                self.match_par_to_sympy[gate.parameter] = par
+                par = qiskit.circuit.parameter.Parameter('{}_{}'.format(self._name_variable_objective(gate.parameter),str(self.counter)))
+                self.tq_to_sympy[gate.parameter] = par
                 self.counter += 1
         else:
             par = float(gate.parameter)
@@ -224,8 +224,8 @@ class BackendCircuitQiskit(BackendCircuit):
         """
         overriding the underlying base to make sure this stuff remains noisy
         """
-        if self.match_sympy_to_value is not None:
-            self.resolver={k : to_float(v(variables)) for k,v in self.match_sympy_to_value.items()}
+        if self.sympy_to_tq is not None:
+            self.resolver={k : to_float(v(variables)) for k,v in self.sympy_to_tq.items()}
         else:
             self.resolver=None
 
