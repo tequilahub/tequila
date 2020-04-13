@@ -8,10 +8,8 @@ from tequila.circuit.gates import Measurement
 from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
-from tequila.circuit._gates_impl import MeasurementImpl, \
-    RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl, PhaseGateImpl
 
-import numbers, typing
+import numbers, typing, numpy
 
 
 class BackendCircuit():
@@ -301,6 +299,8 @@ class BackendExpectationValue:
         self._U = self.initialize_unitary(E.U, variables, noise_model)
         self._H = self.initialize_hamiltonian(E.H)
         self._variables = E.extract_variables()
+        self._contraction = E._contraction
+        self._shape = E._shape
 
     def __call__(self, variables, samples: int = None, *args, **kwargs):
 
@@ -312,12 +312,23 @@ class BackendExpectationValue:
                         self._variables, variables))
 
         if samples is None:
-            return to_float(self.simulate(variables=variables, *args, **kwargs))
+            data = self.simulate(variables=variables, *args, **kwargs)
         else:
-            return to_float(self.sample(variables=variables, samples=samples, *args, **kwargs))
+            data = self.sample(variables=variables, samples=samples, *args, **kwargs)
+
+        if self._shape is None and self._contraction is None:
+            # this is the default
+            return numpy.sum(data)
+
+        if self._shape is not None:
+            data = data.reshape(self._shape)
+        if self._contraction is None:
+            return data
+        else:
+            return self._contraction(data)
 
     def initialize_hamiltonian(self, H):
-        return H
+        return tuple(H)
 
     def initialize_unitary(self, U, variables, noise_model):
         return self.BackendCircuitType(abstract_circuit=U, variables=variables, use_mapping=self.use_mapping,
@@ -326,36 +337,43 @@ class BackendExpectationValue:
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)
 
-    def sample(self, variables, samples, *args, **kwargs):
+    def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
         self.update_variables(variables)
-        E = 0.0
-        for ps in self.H.paulistrings:
-            E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
-        return E
+
+        result = []
+        for H in self.H:
+            E = 0.0
+            for ps in self.H.paulistrings:
+                E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
+            result.append(to_float(E))
+        return numpy.asarray(result)
 
     def simulate(self, variables, *args, **kwargs):
         self.update_variables(variables)
-        final_E = 0.0
-        if self.use_mapping:
-            # The hamiltonian can be defined on more qubits as the unitaries
-            qubits_h = self.H.qubits
-            qubits_u = self.U.qubits
-            all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit() + 1)))
-            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
-        else:
-            if self.H.qubits != self.U.qubits:
-                raise TequilaException(
-                    "Can not compute expectation value without using qubit mappings."
-                    " Your Hamiltonian and your Unitary do not act on the same set of qubits. "
-                    "Hamiltonian acts on {}, Unitary acts on {}".format(
-                        self.H.qubits, self.U.qubits))
-            keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
-        # TODO inefficient, let the backend do it if possible or interface some library
-        simresult = self.U.simulate(variables=variables, *args, **kwargs)
-        wfn = simresult.apply_keymap(keymap=keymap)
-        final_E += wfn.compute_expectationvalue(operator=self.H)
+        result = []
+        for H in self.H:
+            final_E = 0.0
+            if self.use_mapping:
+                # The hamiltonian can be defined on more qubits as the unitaries
+                qubits_h = H.qubits
+                qubits_u = self.U.qubits
+                all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit() + 1)))
+                keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
+            else:
+                if H.qubits != self.U.qubits:
+                    raise TequilaException(
+                        "Can not compute expectation value without using qubit mappings."
+                        " Your Hamiltonian and your Unitary do not act on the same set of qubits. "
+                        "Hamiltonian acts on {}, Unitary acts on {}".format(
+                            H.qubits, self.U.qubits))
+                keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
+            # TODO inefficient, let the backend do it if possible or interface some library
+            simresult = self.U.simulate(variables=variables, *args, **kwargs)
+            wfn = simresult.apply_keymap(keymap=keymap)
+            final_E += wfn.compute_expectationvalue(operator=H)
 
-        return to_float(final_E)
+            result.append(to_float(final_E))
+        return numpy.asarray(result)
 
     def sample_paulistring(self, samples: int,
                            paulistring,*args,**kwargs) -> numbers.Real:

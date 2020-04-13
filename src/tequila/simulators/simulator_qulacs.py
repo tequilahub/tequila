@@ -1,5 +1,5 @@
 import qulacs
-import typing, numbers
+import typing, numbers, numpy
 from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
@@ -131,22 +131,25 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
     BackendCircuitType = BackendCircuitQulacs
     use_mapping = True
 
-    def simulate(self, variables, *args, **kwargs):
+    def simulate(self, variables, *args, **kwargs) -> numpy.array:
         # fast return if possible
         if self.H is None:
-            return 0.0
+            return numpy.asarray([0.0])
+        elif len(self.H) == 0:
+            return numpy.asarray([0.0])
         elif isinstance(self.H, numbers.Number):
-            return self.H
+            return numpy.asarray[self.H]
 
         self.U.update_variables(variables)
         state = qulacs.QuantumState(self.U.n_qubits)
         self.U.circuit.update_quantum_state(state)
-        return self.H.get_expectation_value(state)
+        result = [H.get_expectation_value(state) for H in self.H]
+        return numpy.asarray(result)
 
 
 
-
-    def initialize_hamiltonian(self, H):
+    def initialize_hamiltonian(self, hamiltonians):
+        result = []
         if self.use_mapping:
             # initialize only the active parts of the Hamiltonian and pre-evaluate the passive ones
             # passive parts are the components of each individual pauli string which act on qubits where the circuit does not act on
@@ -154,40 +157,43 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             # since those qubits are always in state |0>
             non_zero_strings = []
             unit_strings = 0
-            for ps in H.paulistrings:
-                string = ""
-                for k, v in ps.items():
-                    if k in self.U.qubit_map:
-                        string += v.upper() + " " + str(self.U.qubit_map[k]) + " "
-                    elif v.upper() != "Z":
-                        string = "ZERO"
-                        break
-                string = string.strip()
-                if string != "ZERO":
-                    non_zero_strings.append((ps.coeff, string))
-                elif string == "":
-                    unit_strings += 1
+            for H in hamiltonians:
+                for ps in H.paulistrings:
+                    string = ""
+                    for k, v in ps.items():
+                        if k in self.U.qubit_map:
+                            string += v.upper() + " " + str(self.U.qubit_map[k]) + " "
+                        elif v.upper() != "Z":
+                            string = "ZERO"
+                            break
+                    string = string.strip()
+                    if string != "ZERO":
+                        non_zero_strings.append((ps.coeff, string))
+                    elif string == "":
+                        unit_strings += 1
 
-            if len(non_zero_strings) == 0:
-                return unit_strings
-            else:
-                assert unit_strings == 0
+                if len(non_zero_strings) == 0:
+                    return unit_strings
+                else:
+                    assert unit_strings == 0
 
-            qulacs_H = qulacs.Observable(self.n_qubits)
-            for coeff, string in non_zero_strings:
-                qulacs_H.add_operator(coeff, string)
+                qulacs_H = qulacs.Observable(self.n_qubits)
+                for coeff, string in non_zero_strings:
+                    qulacs_H.add_operator(coeff, string)
 
-            return qulacs_H
+                result.append(qulacs_H)
         else:
             if self.U.n_qubits < H.n_qubits:
                 raise TequilaQulacsException(
                     "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are switched off")
 
             qulacs_H = qulacs.Observable(self.n_qubits)
+            for H in hamiltonians:
+                for ps in H.paulistrings:
+                    string = ""
+                    for k, v in ps.items():
+                        string += v.upper() + " " + str(k)
+                    qulacs_H.add_operator(ps.coeff, string)
+                result.append(qulacs_H)
 
-            for ps in H.paulistrings:
-                string = ""
-                for k, v in ps.items():
-                    string += v.upper() + " " + str(k)
-                qulacs_H.add_operator(ps.coeff, string)
-            return qulacs_H
+        return result

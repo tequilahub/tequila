@@ -42,10 +42,14 @@ class ExpectationValueImpl:
             self.U.update_variables(variables)
 
 
-    def __init__(self, U=None, H=None):
-        assert (H.is_hermitian())
+    def __init__(self, U=None, H=None, contraction=None, shape=None):
         self._unitary = copy.deepcopy(U)
-        self._hamiltonian = copy.deepcopy(H)
+        if hasattr(H, "paulistrings"):
+            self._hamiltonian = tuple([copy.deepcopy(H)])
+        else:
+            self._hamiltonian = tuple(H)
+        self._contraction = None
+        self._shape = shape
 
     def __call__(self, *args, **kwargs):
         raise TequilaException("Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")

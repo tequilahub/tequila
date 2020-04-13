@@ -2,13 +2,11 @@ from tequila.simulators.simulator_base import QCircuit, TequilaException, Backen
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import BitString, BitNumbering
 import subprocess
-import copy
 import sys
 import numpy as np
 import pyquil
 from pyquil import get_qc
 from pyquil.noise import combine_kraus_maps
-import warnings
 from tequila.utils import to_float
 
 name_dict={
