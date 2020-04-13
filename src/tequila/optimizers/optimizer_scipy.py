@@ -5,7 +5,7 @@ from .optimizer_base import Optimizer
 from tequila.circuit.gradient import grad
 from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer  #_QngContainer
 from collections import namedtuple
-from tequila.simulators.simulator_api import compile_objective
+from tequila.simulators.simulator_api import compile
 from tequila.utils.exceptions import TequilaException
 from tequila.circuit.noise import NoiseModel
 #from tequila.tools.qng import qng_metric_tensor_blocks
@@ -125,7 +125,7 @@ class OptimizerSciPy(Optimizer):
             assert (names == param_keys) # make sure the bounds are not shuffled
 
         # do the compilation here to avoid costly recompilation during the optimization
-        compiled_objective = compile_objective(objective=objective, variables=initial_values, backend=backend,
+        compiled_objective = compile(objective=objective, variables=initial_values, backend=backend,
                                                noise_model=noise,
                                                samples=samples)
 
@@ -151,7 +151,7 @@ class OptimizerSciPy(Optimizer):
                 if k not in gradient:
                     raise Exception("No gradient for variable {}".format(k))
                 grad_exval.append(gradient[k].count_expectationvalues())
-                compiled_grad_objectives[k] = compile_objective(objective=gradient[k], variables=initial_values,
+                compiled_grad_objectives[k] = compile(objective=gradient[k], variables=initial_values,
                                                            samples=samples,noise_model=noise, backend=backend)
             '''
             if qng:
@@ -194,7 +194,7 @@ class OptimizerSciPy(Optimizer):
                 for j, l in enumerate(active_angles.keys()):
                     if j > i: continue
                     hess = grad(gradient[k], l)
-                    compiled_hess = compile_objective(objective=hess, variables=initial_values, samples=samples,
+                    compiled_hess = compile(objective=hess, variables=initial_values, samples=samples,
                                                       noise_model=noise,
                                                       backend=backend)
                     compiled_hess_objectives[(k, l)] = compiled_hess

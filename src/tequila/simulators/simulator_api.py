@@ -33,7 +33,6 @@ try:
     HAS_QULACS = True
     INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
                                                   ExpValueType=BackendExpectationValueQulacs)
-
 except ImportError:
     HAS_QULACS = False
 
@@ -177,6 +176,7 @@ def compile_objective(objective: 'Objective',
     :return: Compiled Objective
     """
 
+
     backend = pick_backend(backend=backend, samples=samples, noise=noise_model is not None)
 
     # dummy variables
@@ -204,6 +204,7 @@ def compile_objective(objective: 'Objective',
 def compile_circuit(abstract_circuit: 'QCircuit',
                     variables: typing.Dict['Variable', 'RealNumber'] = None,
                     backend: str = None,
+                    samples: int =None,
                     noise_model=None,
                     *args,
                     **kwargs) -> BackendCircuit:
@@ -218,7 +219,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     :return: The compiled circuit object
     """
 
-    CircType = INSTALLED_SIMULATORS[pick_backend(backend=backend, noise=noise_model is not None)].CircType
+    CircType = INSTALLED_SIMULATORS[pick_backend(backend=backend,samples=samples, noise=noise_model is not None)].CircType
 
     # dummy variables
     if variables is None:
@@ -352,13 +353,16 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
         simulated/sampled objective or simulated/sampled wavefunction
 
     """
+
+    backend = pick_backend(backend=backend,noise=noise_model is not None, samples=samples)
+
+
     if variables is None and not (len(objective.extract_variables()) == 0):
         variables = {key: 0.0 for key in objective.extract_variables()}
     elif variables is not None:
         # allow hashable types as keys without casting it to variables
         variables = {assign_variable(k): v for k, v in variables.items()}
 
-    backend = pick_backend(backend=backend,noise=noise_model is not None, samples=samples)
 
     if isinstance(objective, Objective) or hasattr(objective, "args"):
         return compile_objective(objective=objective, variables=variables, backend=backend, noise_model=noise_model)

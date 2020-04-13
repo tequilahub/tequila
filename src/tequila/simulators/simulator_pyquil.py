@@ -9,6 +9,7 @@ import pyquil
 from pyquil import get_qc
 from pyquil.noise import combine_kraus_maps
 import warnings
+from tequila.utils import to_float
 
 name_dict={
     'I':'I',
@@ -92,6 +93,9 @@ name_unitary_dict={
                      ]),
 }
 
+
+
+
 def amp_damp_map(p):
     """
     Generate the Kraus operators corresponding to an amplitude damping
@@ -157,7 +161,7 @@ def kraus_tensor(klist,n):
 
 
 
-def append_kraus_to_gate(kraus_ops, g):
+def append_kraus_to_gate(kraus_ops, g,level):
     """
     Follow a gate `g` by a Kraus map described by `kraus_ops`.
 
@@ -165,17 +169,37 @@ def append_kraus_to_gate(kraus_ops, g):
     :param numpy.ndarray g: The unitary gate.
     :return: A list of transformed Kraus operators.
     """
-    return [kj.dot(g) for kj in kraus_tensor(kraus_ops,int(np.log2(g.shape[0])))]
+
+    return [kj.dot(g) for kj in kraus_tensor(kraus_ops,level)]
+
+def add_controls(matrix,count):
+    gc = np.log2(matrix.shape[0])
+    controls= count - gc
+    if int(controls) is 0:
+        return matrix
+    new=np.eye(2**count)
+    new[-matrix.shape[0]:,-matrix.shape[0]:] = matrix
+    return new
 
 def unitary_maker(gate):
-    try:
-        return name_unitary_dict[gate.name]
-    except:
-        raise TequilaPyquilException(' I do not know how to make the unitary for gate named {} '.format(gate.name))
+    return add_controls(name_unitary_dict[gate.name],len(gate.qubits))
+
 class TequilaPyquilException(TequilaException):
     def __str__(self):
         return "simulator_pyquil: " + self.message
 
+op_lookup={
+    'I': (pyquil.gates.I),
+    'X': (pyquil.gates.X,pyquil.gates.CNOT,pyquil.gates.CCNOT),
+    'Y': (pyquil.gates.Y,),
+    'Z': (pyquil.gates.Z,pyquil.gates.CZ),
+    'H': (pyquil.gates.H,),
+    'Rx': pyquil.gates.RX,
+    'Ry': pyquil.gates.RY,
+    'Rz': pyquil.gates.RZ,
+    'Phase':pyquil.gates.PHASE,
+    'SWAP': (pyquil.gates.SWAP,pyquil.gates.CSWAP),
+}
 
 class BackendCircuitPyquil(BackendCircuit):
     recompile_swap = True
@@ -188,11 +212,20 @@ class BackendCircuitPyquil(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
+        self.match_par_to_dummy={}
+        self.counter=0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model, use_mapping=use_mapping, *args, **kwargs)
         if self.noise_model is not None:
             self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
+        if len(self.match_par_to_dummy.keys()) is None:
+            self.match_dummy_to_value = None
+            self.resolver=None
+        else:
+            self.match_dummy_to_value = {'theta_{}'.format(str(i)): k for i,k in enumerate(self.match_par_to_dummy.keys())}
+            self.resolver = {k: [to_float(v(variables))] for k,v in self.match_dummy_to_value.items()}
 
     def do_simulate(self, variables, initial_state, *args, **kwargs):
+
         simulator = pyquil.api.WavefunctionSimulator()
         n_qubits = self.n_qubits
         msb = BitString.from_int(initial_state, nbits=n_qubits)
@@ -200,14 +233,13 @@ class BackendCircuitPyquil(BackendCircuit):
         for i, val in enumerate(msb.array):
             if val > 0:
                 iprep += pyquil.gates.X(i)
-
         with open('qvm.log', "a+") as outfile:
             sys.stdout = outfile
             sys.stderr = outfile
             outfile.write("\nSTART SIMULATION: \n")
             outfile.write(str(self.abstract_circuit))
             process = subprocess.Popen(["qvm", "-S"], stdout=outfile, stderr=outfile)
-            backend_result = simulator.wavefunction(iprep + self.circuit)
+            backend_result = simulator.wavefunction(iprep + self.circuit,memory_map=self.resolver)
             outfile.write("END SIMULATION: \n")
             process.terminate()
             sys.stdout = sys.__stdout__
@@ -219,7 +251,7 @@ class BackendCircuitPyquil(BackendCircuit):
         qc=get_qc('{}q-qvm'.format(str(n_qubits)))
         p=circuit
         p.wrap_in_numshots_loop(samples)
-        stacked=qc.run(p)
+        stacked=qc.run(p,memory_map=self.resolver)
         return self.convert_measurements(stacked)
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
@@ -234,7 +266,6 @@ class BackendCircuitPyquil(BackendCircuit):
                     listing.append(int(letter))
             return listing
 
-
         result = QubitWaveFunction()
         bit_dict={}
         for b in backend_result:
@@ -246,7 +277,6 @@ class BackendCircuitPyquil(BackendCircuit):
         for k,v in bit_dict.items():
             arr=string_to_array(k)
             result._state[BitString.from_array(arr)]=v
-            #result.numbering=self.numbering
         return result
 
 
@@ -256,42 +286,43 @@ class BackendCircuitPyquil(BackendCircuit):
     def initialize_circuit(self, *args, **kwargs):
         return pyquil.Program()
 
-    def add_gate(self, gate, circuit, *args, **kwargs):
-        circuit += getattr(pyquil.gates, gate.name.upper())(self.qubit_map[gate.target[0]])
-
-    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
-        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(self.qubit_map[gate.target[0]])
-        if pyquil_gate.name is 'X':
-            if len(gate.control) is 1:
-                pyquil_gate = pyquil.gates.CNOT(self.qubit_map[gate.control[0]],self.qubit_map[gate.target[0]])
-            elif len(gate.control) is 2:
-                pyquil_gate = pyquil.gates.CCNOT(self.qubit_map[gate.control[0]],self.qubit_map[gate.control[1]],
-                                                 self.qubit_map[gate.target[0]])
+    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        op = op_lookup[gate.name]
+        if isinstance(gate.parameter,float):
+            par=gate.parameter
         else:
-            for c in gate.control:
-                pyquil_gate = pyquil_gate.controlled(self.qubit_map[c])
+            try:
+                par = self.match_par_to_dummy[gate.parameter]
+            except:
+                par = circuit.declare('theta_{}'.format(str(self.counter)),'REAL')
+                self.match_par_to_dummy[gate.parameter] = par
+                self.counter += 1
+        pyquil_gate=op(angle=par,qubit=self.qubit_map[gate.target[0]])
+        if gate.is_controlled():
+            for c in gate.controls:
+                pyquil_gate=pyquil_gate.controlled(self.qubit_map[c])
         circuit += pyquil_gate
 
-    def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        circuit += getattr(pyquil.gates, gate.name.upper())(gate.parameter(variables), self.qubit_map[gate.target[0]])
-
-    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        pyquil_gate = getattr(pyquil.gates, gate.name.upper())(gate.parameter(variables), self.qubit_map[gate.target[0]])
-        for c in gate.control:
-            pyquil_gate = pyquil_gate.controlled(self.qubit_map[c])
-        circuit += pyquil_gate
-
-    def add_power_gate(self, gate, circuit, *args, **kwargs):
-        raise TequilaPyquilException("PowerGates are not supported")
-
-    def add_controlled_power_gate(self, gate, circuit, *args, **kwargs):
-        raise TequilaPyquilException("controlled PowerGates are not supported")
-
-    def add_measurement(self, gate, circuit, *args, **kwargs):
+    def add_measurement(self,gate, circuit, *args, **kwargs):
         bits = len(gate.target)
         ro = circuit.declare('ro', 'BIT', bits)
         for i, t in enumerate(gate.target):
             circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
+
+    def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        op = op_lookup[gate.name]
+        try:
+            g=op[len(gate.control)]
+            if gate.is_controlled():
+                pyquil_gate = g(*[self.qubit_map[q] for q in gate.control + gate.target])
+            else:
+                pyquil_gate = g(*[self.qubit_map[t] for t in gate.target])
+        except:
+            g=op[0]
+            for c in gate.control:
+                pyquil_gate = g(*[self.qubit_map[t] for t in gate.target]).controlled(self.qubit_map[c])
+
+        circuit += pyquil_gate
 
     def get_noisy_prog(self,py_prog, noise_model):
         prog = py_prog
@@ -306,23 +337,27 @@ class BackendCircuitPyquil(BackendCircuit):
         done=[]
         for gate in prog:
                 new.inst(gate)
-                level=str(len(gate.qubits))
-                if level in collected.keys():
-                    if name_dict[gate.name] is 'parametrized':
-                        new.inst([pyquil.gates.I(q) for q in gate.qubits])
-                        if ['parametrized',gate.qubits] not in done:
-                            new.define_noisy_gate('I',
-                                                  gate.qubits,
-                                                  append_kraus_to_gate(collected[level],np.eye(2)))
-                            done.append(['parametrized',gate.qubits])
+                if hasattr(gate,'qubits'):
+                    level=str(len(gate.qubits))
+                    if level in collected.keys():
+                        if name_dict[gate.name] is 'parametrized':
+                            new.inst([pyquil.gates.I(q) for q in gate.qubits])
+                            if ['parametrized',gate.qubits] not in done:
+                                new.define_noisy_gate('I',
+                                                      gate.qubits,
+                                                      append_kraus_to_gate(collected[level],np.eye(2),int(level)))
+                                done.append(['parametrized',1,gate.qubits])
+
+                        else:
+                            if [gate.name,len(gate.qubits),gate.qubits] not in done:
+                                k = unitary_maker(gate)
+                                new.define_noisy_gate(gate.name,
+                                                      gate.qubits,
+                                                      append_kraus_to_gate(collected[level],k,int(level)))
+                                done.append([gate.name,len(gate.qubits),gate.qubits])
 
                     else:
-                        if [gate.name,gate.qubits] not in done:
-                            k = unitary_maker(gate)
-                            new.define_noisy_gate(gate.name,
-                                                  gate.qubits,
-                                                  append_kraus_to_gate(collected[level],k))
-                            done.append([gate.name,gate.qubits])
+                        pass
                 else:
                     pass
         return new
@@ -331,9 +366,12 @@ class BackendCircuitPyquil(BackendCircuit):
         """
         overwriting the underlying code so that noise gets added when present
         """
-        self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
-        if self.noise_model is not None:
-            self.circuit=self.get_noisy_prog(self.circuit,self.noise_model)
+
+        if self.match_dummy_to_value is not None:
+            self.resolver = {k: [to_float(v(variables))] for k, v in self.match_dummy_to_value.items()}
+        else:
+            self.resolver=None
+
 
 class BackendExpectationValuePyquil(BackendExpectationValue):
     BackendCircuitType = BackendCircuitPyquil

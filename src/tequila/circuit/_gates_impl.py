@@ -49,10 +49,10 @@ class QGateImpl:
         """
         :return: True if the gate is controlled
         """
-        if self.control:
-            return True
-        else:
+        if len(self.control) == 0:
             return False
+        else:
+            return True
 
     def is_parametrized(self) -> bool:
         """
@@ -222,13 +222,13 @@ class RotationGateImpl(ParametrizedGateImpl):
 
 class PhaseGateImpl(ParametrizedGateImpl):
 
-    def __init__(self, phase, target: list, control, list=None):
+    def __init__(self, phase, target: list, control: list=None):
         assert (phase is not None)
         super().__init__(name='Phase', parameter=phase, target=target, control=control)
 
     def dagger(self):
         result = copy.deepcopy(self)
-        result._parameter = -self.angle
+        result._parameter = -self.parameter
         return result
 
     def __pow__(self, power, modulo=None):
@@ -239,7 +239,7 @@ class PhaseGateImpl(ParametrizedGateImpl):
 
     @property
     def shift(self):
-        return 1.
+        return 0.5
 
 
 class PowerGateImpl(ParametrizedGateImpl):

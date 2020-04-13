@@ -104,45 +104,39 @@ class BackendCircuit():
         else:
             return self.sample(variables=variables, samples=samples, noise_model=self.noise_model, *args, **kwargs)
 
-    def create_circuit(self, abstract_circuit: QCircuit, variables: typing.Dict[Variable, numbers.Real] = None):
+    def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
         """
         Translates abstract circuits into the specific backend type
         :param abstract_circuit: Abstract circuit to be translated
         :return: translated circuit
         """
-        ## TODO: Type checking currently is actually failing. resorting to attribute checking in its place.
+
         if self.fast_return(abstract_circuit):
             return abstract_circuit
 
-        result = self.initialize_circuit()
+        result = self.initialize_circuit(*args,**kwargs)
 
         for g in abstract_circuit.gates:
-            if isinstance(g, MeasurementImpl):
-                self.add_measurement(gate=g, circuit=result)
-            elif g.is_controlled():
-                if isinstance(g, RotationGateImpl):
-                    self.add_controlled_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PowerGateImpl):
-                    self.add_controlled_power_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PhaseGateImpl):
-                    self.add_controlled_phase_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, ExponentialPauliGateImpl):
-                    self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
-                else:
-                    self.add_controlled_gate(gate=g, circuit=result)
+            if g.is_parametrized():
+                self.add_parametrized_gate(g, result, *args,**kwargs)
             else:
-                if isinstance(g, RotationGateImpl):
-                    self.add_rotation_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PowerGateImpl):
-                    self.add_power_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, PhaseGateImpl):
-                    self.add_phase_gate(gate=g, variables=variables, circuit=result)
-                elif isinstance(g, ExponentialPauliGateImpl):
-                    self.add_exponential_pauli_gate(gate=g, variables=variables, circuit=result)
+                if not g.name == 'Measure':
+                    self.add_basic_gate(g, result, *args, **kwargs)
                 else:
-                    self.add_gate(gate=g, circuit=result)
-
+                    self.add_measurement(g, result, *args, **kwargs)
         return result
+
+    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def add_measurement(self,gate, circuit, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def initialize_circuit(self, *args, **kwargs):
+        TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def update_variables(self, variables):
         """
@@ -205,7 +199,8 @@ class BackendCircuit():
             # no measurement instructions for a constant term as paulistring
             return paulistring.coeff
         else:
-            measure += Measurement(name=str(paulistring), target=qubits)
+            measure += Measurement(target=qubits)
+            #measure += Measurement(name=str(paulistring), target=qubits)
             circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
             counts = self.do_sample(samples=samples, circuit=circuit)
@@ -244,39 +239,6 @@ class BackendCircuit():
     def fast_return(self, abstract_circuit):
         return True
 
-    def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
-    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_rotation_gate(self, gate, circuit, variables, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_phase_gate(self, gate, circuit, variables, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_controlled_phase_gate(self, gate, variables, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def add_controlled_power_gate(self, gate, variables, circuit, *args, **kwargs):
-        return self.add_gate(gate, circuit, args, kwargs)
-
-    def initialize_circuit(self, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
-    def add_gate(self, gate, circuit, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
-    def add_measurement(self, gate, circuit, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
     def make_qubit_map(self, qubits):
         assert (len(self.abstract_qubit_map) == len(qubits))
         return self.abstract_qubit_map
@@ -290,6 +252,9 @@ class BackendCircuit():
         """
         return circuit
 
+    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+        result = self.abstract_circuit.extract_variables()
+        return result
 
 class BackendExpectationValue:
     BackendCircuitType = BackendCircuit
@@ -309,6 +274,12 @@ class BackendExpectationValue:
     @property
     def U(self):
         return self._U
+
+    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+        result = []
+        if self.U is not None:
+            result = self.U.extract_variables()
+        return result
 
     def __init__(self, E, variables, noise_model):
         self._U = self.initialize_unitary(E.U, variables, noise_model)
@@ -347,8 +318,6 @@ class BackendExpectationValue:
         return E
 
     def simulate(self, variables, *args, **kwargs):
-        # TODO the whole procedure is quite inefficient but at least it works for general backends
-        # overwrite on specific the backend implementation for better performance (see qulacs)
         self.update_variables(variables)
         final_E = 0.0
         if self.use_mapping:
@@ -373,5 +342,5 @@ class BackendExpectationValue:
         return to_float(final_E)
 
     def sample_paulistring(self, samples: int,
-                           paulistring, *args, **kwargs) -> numbers.Real:
-        return self.U.sample_paulistring(samples=samples, paulistring=paulistring, *args, **kwargs)
+                           paulistring,*args,**kwargs) -> numbers.Real:
+        return self.U.sample_paulistring(samples=samples, paulistring=paulistring,*args,**kwargs)

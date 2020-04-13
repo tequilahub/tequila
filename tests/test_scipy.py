@@ -25,14 +25,13 @@ def test_execution(simulator):
                                generators=[-0.25 * tq.paulis.Z(1), tq.paulis.X(0) + tq.paulis.Y(1)], steps=2) \
         + tq.gates.ExpPauli(angle="a", paulistring="X(0)Y(1)Z(2)")
 
-    print(U.extract_variables())
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
 
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, silent=True)
 
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend(backend="random", samples=1), tequila.simulators.simulator_api.pick_backend(samples=1)])
+@pytest.mark.parametrize("simulator", samplers)
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -80,7 +79,8 @@ def test_gradient_free_methods(simulator, method):
     if method == "SLSQP": # method is not good
         return True
 
-    result = tq.optimizer_scipy.minimize(objective=-E, method=method, tol=1.e-4, initial_values=initial_values, silent=True)
+    result = tq.optimizer_scipy.minimize(objective=-E, method=method, tol=1.e-4,backend=simulator,
+                                         initial_values=initial_values,silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
@@ -101,7 +101,9 @@ def test_gradient_based_methods(simulator, method, use_gradient):
     if use_gradient is False:
         initial_values = {"a": 0.3, "b": 0.8}
 
-    result = tq.optimizer_scipy.minimize(objective=-E, gradient=use_gradient, method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4}, initial_values=initial_values, silent=True)
+    result = tq.optimizer_scipy.minimize(objective=-E, backend=simulator,gradient=use_gradient, method=method, tol=1.e-4,
+                                         method_options={"gtol":1.e-4, "eps":1.e-4},
+                                         initial_values=initial_values,silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
 
 
@@ -131,6 +133,6 @@ def test_hessian_based_methods(simulator, method, use_hessian):
             return
         initial_values = {"a": 0.3, "b": 0.8}
 
-    result = tq.optimizer_scipy.minimize(objective=-E, hessian=use_hessian, method=method, tol=1.e-4,
+    result = tq.optimizer_scipy.minimize(objective=-E,backend=simulator, hessian=use_hessian, method=method, tol=1.e-4,
                                          method_options=method_options, initial_values=initial_values, silent=True)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-3))

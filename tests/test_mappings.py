@@ -64,7 +64,7 @@ def test_endianness_simulators():
             if v == 1:
                 c += gates.X(target=i)
 
-        c += gates.Measurement(name="", target=[x for x in range(len(string))])
+        c += gates.Measurement(target=[x for x in range(len(string))])
 
         wfn_cirq = simulate(c, initial_state=0, backend="cirq")
         counts_cirq = simulate(c, samples=1, backend="cirq")

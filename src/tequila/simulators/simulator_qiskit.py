@@ -4,7 +4,7 @@ from tequila import TequilaException
 from tequila import BitString, BitNumbering, BitStringLSB
 import qiskit
 import qiskit.providers.aer.noise as qiskitnoise
-
+from tequila.utils import to_float
 
 
 def get_bit_flip(p):
@@ -49,6 +49,20 @@ class TequilaQiskitException(TequilaException):
         return "Error in qiskit backend:" + self.message
 
 
+op_lookup={
+    'I': (lambda c: c.iden),
+    'X': (lambda c: c.x,lambda c: c.cx, lambda c: c.ccx),
+    'Y': (lambda c: c.y,lambda c: c.cy, lambda c: c.ccy),
+    'Z': (lambda c: c.z,lambda c: c.cz, lambda c: c.ccz),
+    'H': (lambda c: c.h,lambda c: c.ch, lambda c: c.cch),
+    'Rx': (lambda c: c.rx,lambda c: c.mcrx),
+    'Ry': (lambda c: c.ry,lambda c: c.mcry),
+    'Rz': (lambda c: c.rz,lambda c: c.mcrz),
+    'Phase': (lambda c: c.u1,lambda c: c.cu1),
+    'SWAP': (lambda c: c.swap,lambda c: c.cswap),
+}
+
+
 class BackendCircuitQiskit(BackendCircuit):
     recompile_swap = True
     recompile_multitarget = True
@@ -56,6 +70,7 @@ class BackendCircuitQiskit(BackendCircuit):
     recompile_controlled_power = True
     recompile_power = True
     recompile_hadamard_power = True
+    recompile_phase = False
     cc_max=True
     numbering = BitNumbering.LSB
 
@@ -72,11 +87,21 @@ class BackendCircuitQiskit(BackendCircuit):
         self.c = qiskit.ClassicalRegister(n_qubits, "c")
         self.classical_map = {i: self.c[j] for j, i in enumerate(qubits)}
         self.qubit_map = {i: self.q[j] for j, i in enumerate(qubits)}
+
+        self.match_par_to_sympy={}
+        self.counter = 0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=self.noise_model, use_mapping=use_mapping, *args, **kwargs)
-        if self.noise_model is None:
-            self.ol=1
+        if len(self.match_par_to_sympy.keys()) is None:
+            self.match_sympy_to_value = None
+            self.resolver = None
         else:
-            self.ol=0
+            self.match_sympy_to_value = {v: k for k, v in self.match_par_to_sympy.items()}
+            self.resolver = {k: to_float(v(variables)) for k, v in self.match_sympy_to_value.items()}
+        if self.noise_model is None:
+            self.ol = 1
+        else:
+            self.ol = 0
+
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         if self.noise_model is None:
             simulator = qiskit.Aer.get_backend("statevector_simulator")
@@ -87,14 +112,14 @@ class BackendCircuitQiskit(BackendCircuit):
             # there is a keyword for the backend for tolerance on norm
             # circuit.initialize(normed_array)
             raise TequilaQiskitException("initial state for Qiskit not yet supported here")
-        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator).result()
+        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator,parameter_binds=[self.resolver]).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
         simulator = qiskit.providers.aer.QasmSimulator()
         return self.convert_measurements(qiskit.execute(circuit,backend=simulator, shots=samples,
                                                         optimization_level=0,
-                                                        noise_model=self.noise_model))
+                                                        noise_model=self.noise_model,parameter_binds=[self.resolver]))
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
         """0.
@@ -115,50 +140,34 @@ class BackendCircuitQiskit(BackendCircuit):
     def initialize_circuit(self, *args, **kwargs):
         return qiskit.QuantumCircuit(self.q, self.c)
 
-    def add_gate(self, gate, circuit, *args, **kwargs):
-        if len(gate.target) > 1:
-            raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
-        gfunc = getattr(circuit, gate.name.lower())
-        gfunc(self.qubit_map[gate.target[0]])
-
-    def add_controlled_gate(self, gate, circuit, *args, **kwargs):
-        if len(gate.target) > 1:
-            raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
-        if len(gate.control) == 1:
-            gfunc = getattr(circuit, "c" + gate.name.lower())
-            gfunc(self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
-        elif len(gate.control) == 2:
+    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        ops = op_lookup[gate.name]
+        if len(gate.extract_variables()) > 0:
             try:
-                gfunc = getattr(circuit, "cc" + gate.name.lower())
-            except AttributeError:
-                raise TequilaQiskitException("Double controls are currenty only supported for CCX in Qiskit")
-            gfunc(self.qubit_map[gate.control[0]], self.qubit_map[gate.control[1]], self.qubit_map[gate.target[0]])
+                par = self.match_par_to_sympy[gate.parameter]
+            except:
+                par = qiskit.circuit.parameter.Parameter('param_{}'.format(str(self.counter)))
+                self.match_par_to_sympy[gate.parameter] = par
+                self.counter += 1
         else:
-            raise TequilaQiskitException("More than two control gates currently not supported")
-
-    def add_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        if len(gate.target) > 1:
-            raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
-        gfunc = getattr(circuit, gate.name.lower())
-        gfunc(gate.parameter(variables), self.qubit_map[gate.target[0]])
-
-    def add_controlled_rotation_gate(self, gate, variables, circuit, *args, **kwargs):
-        if len(gate.target) > 1:
-            raise TequilaQiskitException("multi targets need to be explicitly recompiled for Qiskit")
-        if len(gate.control) == 1:
-            gfunc = getattr(circuit, "c" + gate.name.lower())
-            gfunc(gate.parameter(variables), self.qubit_map[gate.control[0]], self.qubit_map[gate.target[0]])
-        elif len(gate.control) == 2:
-            gfunc = getattr(circuit, "cc" + gate.name.lower())
-            gfunc(gate.parameter(variables), self.qubit_map[gate.control[0]], self.qubit_map[gate.control[1]],
-                  self.qubit_map[gate.target[0]])
+            par = float(gate.parameter)
+        if gate.is_controlled():
+            ops[1](circuit)(par, q_controls=[self.qubit_map[c] for c in gate.control],
+                            q_target=self.qubit_map[gate.target[0]], q_ancillae=None, mode='noancilla')
         else:
-            raise TequilaQiskitException("More than two control gates currently not supported")
+            ops[0](circuit)(par, self.qubit_map[gate.target[0]])
 
-    def add_measurement(self, gate, circuit, *args, **kwargs):
+    def add_measurement(self,gate, circuit, *args, **kwargs):
         tq = [self.qubit_map[t] for t in gate.target]
         tc = [self.classical_map[t] for t in gate.target]
         circuit.measure(tq, tc)
+
+    def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        ops = op_lookup[gate.name]
+        if gate.is_controlled():
+            ops[len(gate.control)](circuit)(*[self.qubit_map[q] for q in gate.control+gate.target])
+        else:
+            ops[0](circuit)(*[self.qubit_map[q] for q in gate.target])
 
     def make_map(self, qubits):
         # for qiskit this is done in init
@@ -211,6 +220,14 @@ class BackendCircuitQiskit(BackendCircuit):
 
         return qnoise
 
+    def update_variables(self, variables):
+        """
+        overriding the underlying base to make sure this stuff remains noisy
+        """
+        if self.match_sympy_to_value is not None:
+            self.resolver={k : to_float(v(variables)) for k,v in self.match_sympy_to_value.items()}
+        else:
+            self.resolver=None
 
 class BackendExpectationValueQiskit(BackendExpectationValue):
     BackendCircuitType = BackendCircuitQiskit

@@ -327,11 +327,9 @@ def _initialize_power_gate(name: str, target: typing.Union[list, int], control: 
 
 
 @wrap_gate
-def Measurement(target, name=None):
-    if name is None:
-        return MeasurementImpl(name="", target=target)
-    else:
-        return MeasurementImpl(name=name, target=target)
+def Measurement(target):
+    return MeasurementImpl(name='Measure', target=target)
+
 
 
 def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None,

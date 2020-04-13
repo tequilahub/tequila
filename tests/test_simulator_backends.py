@@ -196,9 +196,15 @@ def test_wfn_multi_control(simulator):
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_simple_consistency(simulator):
-    ac = create_random_circuit()
+    ac= tequila.circuit.QCircuit()
+    for x in range(1,5):
+        ac += tq.gates.X(x)
+    ac += create_random_circuit()
+    print(ac)
     wfn0 = tequila.simulators.simulator_api.simulate(ac, backend=simulator)
     wfn1 = tequila.simulators.simulator_api.simulate(ac, backend=None)
+    print(wfn0)
+    print(wfn1)
     assert (wfn0 == wfn1)
 
 
@@ -236,11 +242,15 @@ def test_shot_multi_control(simulator):
 def test_shot_simple_consistency():
     ac = create_random_circuit()
     ac += tq.gates.Measurement([0, 1, 2, 3, 4, 5])
-    wfn0 = tequila.simulators.simulator_api.simulate(ac, backend="cirq")
-    wfn1 = tequila.simulators.simulator_api.simulate(ac, backend="qiskit")
+    print(ac)
+    wfn0 = tequila.simulators.simulator_api.simulate(ac, backend="cirq",samples=1000)
+    wfn1 = tequila.simulators.simulator_api.simulate(ac, backend="qiskit",samples=1000)
     assert (wfn0 == wfn1)
     if 'pyquil' in tq.INSTALLED_SAMPLERS:
-        wfn2 = tequila.simulators.simulator_api.simulate(ac, backend='pyquil')
+        wfn2 = tequila.simulators.simulator_api.simulate(ac, backend='pyquil',samples=1000)
+        print(wfn0)
+        print(wfn1)
+        print(wfn2)
         assert (wfn0 == wfn2)
 
 

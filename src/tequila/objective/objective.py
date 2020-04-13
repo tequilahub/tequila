@@ -41,6 +41,7 @@ class ExpectationValueImpl:
         if self.U is not None:
             self.U.update_variables(variables)
 
+
     def __init__(self, U=None, H=None):
         assert (H.is_hermitian())
         self._unitary = copy.deepcopy(U)
@@ -515,28 +516,13 @@ class Variables(collections.abc.MutableMapping):
     def __str__(self):
         result = ""
         for k,v in self.items():
-            result += "{} : {:2.8f}\n".format(k, v)
+            result += "{} : {}\n".format(str(k), str(v))
         return result
-    
+
     def __repr__(self):
         return self.__str__()
 
 
 
-
-
-
-if __name__ == "__main__":
-
-    a = Variables()
-    a["a"] = 1.0
-    a[(1,)] = 2.0
-    a["hallo"] = 3.0
-
-    print(a)
-    print((1,) in a)
-    print("a" in a)
-    print(assign_variable("a") in a)
-    print("b" in a)
 
 
