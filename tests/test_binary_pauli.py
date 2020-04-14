@@ -134,3 +134,16 @@ def equal_qubit_hamiltonian(a, b):
             if not (abs(value) < tiny):
                 return False
     return True
+
+def test_commuting_groups():
+    '''
+    Testing whether the partitioning gives commuting parts
+    '''
+    H, _, _, _ = prepare_test_hamiltonian() 
+    H = H + paulis.X(0) + paulis.Y(0)
+    H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+
+    commuting_parts = H.commuting_groups()
+
+    for part in commuting_parts:
+        assert part.is_commuting()

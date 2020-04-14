@@ -129,7 +129,7 @@ class BinaryHamiltonian:
         gram = np.block([[np.zeros((n,n)), np.eye(n)], [np.eye(n), np.zeros((n,n))]])
         return matrix @ gram @ matrix.T % 2
 
-    def commuting_groups(self, method='better'):
+    def commuting_groups(self, method='rlf'):
         """
         Return the partitioning of the hamiltonian into commuting groups.
         List of BinaryHamiltonian's
@@ -138,9 +138,9 @@ class BinaryHamiltonian:
         n = self.n_term
         cg = self.anti_commutativity_matrix()
 
-        if method == 'better':
+        if method == 'lf':
             colors = largest_first(terms, n, cg)
-        elif method == 'faster':
+        elif method == 'rlf':
             colors = recursive_largest_first(terms, n, cg)
         else:
             raise TequilaException(f"There is no algorithm {method}")

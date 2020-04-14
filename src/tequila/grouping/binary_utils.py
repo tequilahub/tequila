@@ -235,30 +235,30 @@ def gen_single_qubit_term(dim, qub, term):
 
 
 def largest_first(terms, n, cg):
-            """
-            Color the graph using "largest first" heuristics with the given adjacency matrix
-            Returns a dictionary with keys as colors (just numbers),
-            and values as BinaryHamiltonian's
-            Faster than RLF but not as good
-            """
-            rows = cg.sum(axis=0)
-            ind = np.argsort(rows)[::-1]
-            m = cg[ind,:][:,ind]
-            colors = dict()
-            c = np.zeros(n, dtype=int)
-            k = 0 #color
-            for i in range(n):
-                neighbors = np.argwhere(m[i,:])
-                colors_available = set(np.arange(1, k+1)) - set(c[[x[0] for x in neighbors]])
-                term = terms[ind[i]]
-                if not colors_available:
-                    k += 1
-                    c[i] = k
-                    colors[c[i]] = [term]
-                else:
-                    c[i] = min(list(colors_available))
-                    colors[c[i]].append(term)
-            return colors
+    """
+    Color the graph using "largest first" heuristics with the given adjacency matrix
+    Returns a dictionary with keys as colors (just numbers),
+    and values as BinaryHamiltonian's
+    Faster than RLF but not as good
+    """
+    rows = cg.sum(axis=0)
+    ind = np.argsort(rows)[::-1]
+    m = cg[ind,:][:,ind]
+    colors = dict()
+    c = np.zeros(n, dtype=int)
+    k = 0 #color
+    for i in range(n):
+        neighbors = np.argwhere(m[i,:])
+        colors_available = set(np.arange(1, k+1)) - set(c[[x[0] for x in neighbors]])
+        term = terms[ind[i]]
+        if not colors_available:
+            k += 1
+            c[i] = k
+            colors[c[i]] = [term]
+        else:
+            c[i] = min(list(colors_available))
+            colors[c[i]].append(term)
+    return colors
 
 def recursive_largest_first(terms, n, cg):
     """
