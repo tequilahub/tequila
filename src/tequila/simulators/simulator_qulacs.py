@@ -1,16 +1,15 @@
 import qulacs
-import typing, numbers, numpy
+import numbers, numpy
 from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
+from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, QCircuit, change_basis
 
 """
-todo: overwrite simulate_objective for this simulators, might be faster
-
-Qulacs uses different Rotational Gate conventions: Rx(angle) = exp(i angle/2 X) instead of exp(-i angle/2 X)
-And the same for MultiPauli rotational gates
-The angles are scaled with -1.0 to keep things consistent
+Developer Note:
+    Qulacs uses different Rotational Gate conventions: Rx(angle) = exp(i angle/2 X) instead of exp(-i angle/2 X)
+    And the same for MultiPauli rotational gates
+    The angles are scaled with -1.0 to keep things consistent with the rest of tequila
 """
 
 
@@ -58,6 +57,44 @@ class BackendCircuitQulacs(BackendCircuit):
 
         wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
         return wfn
+
+    def convert_measurements(self, backend_result) -> QubitWaveFunction:
+        result = QubitWaveFunction()
+        # todo there are faster ways
+        for k in backend_result:
+            converted_key = BitString.from_binary(BitStringLSB.from_int(integer=k, nbits=self.n_qubits).binary)
+            if converted_key in result._state:
+                result._state[converted_key] += 1
+            else:
+                result._state[converted_key] = 1
+        return result
+
+    def do_sample(self, samples, circuit, noise_model=None, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
+        assert (noise_model is None)
+        state = qulacs.QuantumState(self.n_qubits)
+        lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
+        state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
+        self.circuit.update_quantum_state(state)
+        if hasattr(self, "measurements"):
+            result = {}
+            for sample in range(samples):
+                sample_result = {}
+                for t, m in self.measurements.items():
+                    m.update_quantum_state(state)
+                    sample_result[t] = state.get_classical_value(t)
+
+                sample_result = dict(sorted(sample_result.items(), key=lambda x: x[0]))
+                binary = BitString.from_array(sample_result.values())
+                if binary in result:
+                    result[binary] += 1
+                else:
+                    result[binary] = 1
+
+            return QubitWaveFunction(state=result)
+        else:
+            # sample from the whole wavefunction (all-Z measurement)
+            result = state.sampling(samples)
+        return self.convert_measurements(backend_result=result)
 
     def fast_return(self, abstract_circuit):
         return False
@@ -108,7 +145,14 @@ class BackendCircuitQulacs(BackendCircuit):
         circuit.add_gate(qulacs_gate)
 
     def add_measurement(self, gate, circuit, *args, **kwargs):
-        return self.add_basic_gate(gate, circuit, *args, *kwargs)
+        measurements = {t: qulacs.gate.Measurement(t, t) for t in gate.target}
+        if hasattr(self, "measurements"):
+            for key in measurements:
+                if key in self.measurements:
+                    raise TequilaQulacsException("Measurement on qubit {} was given twice".format(key))
+            self.measurements = {**self.measurements, **measurements}
+        else:
+            self.measurements = measurements
 
     def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
         """
@@ -117,7 +161,6 @@ class BackendCircuitQulacs(BackendCircuit):
         optimizing parameters
         :return: Optimized circuit
         """
-
         old = circuit.calculate_depth()
         opt = qulacs.circuit.QuantumCircuitOptimizer()
         opt.optimize(circuit, max_block_size)
@@ -195,3 +238,51 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                 result.append(qulacs_H)
 
         return result
+
+    def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
+        # todo: generalize in baseclass. Do Hamiltonian mapping on initialization
+        self.update_variables(variables)
+        state = qulacs.QuantumState(self.U.n_qubits)
+        self.U.circuit.update_quantum_state(state)
+
+        result = []
+        for H in self._abstract_hamiltonians:
+            E = 0.0
+            for ps in H.paulistrings:
+                # change basis, measurement is destructive so copy the state
+                # to avoid recomputation
+                bc = QCircuit()
+                zero_string = False
+                for idx, p in ps.items():
+                    if idx not in self.U.qubit_map:
+                        # circuit does not act on the qubit
+                        # case1: paulimatrix is 'Z' -> unit factor: ignore that part
+                        # case2: zero factor -> continue with next ps
+                        if p.upper() != "Z":
+                            zero_string = True
+                    else:
+                        bc += change_basis(target=idx, axis=p)
+
+                if zero_string:
+                    continue
+
+                qbc = self.U.create_circuit(abstract_circuit=bc, variables=None)
+                Esamples = []
+                for sample in range(samples):
+                    state_tmp = state.copy()
+                    if len(bc.gates) > 0:  # otherwise there is no basis change (empty qulacs circuit does not work out)
+                        qbc.update_quantum_state(state_tmp)
+                    ps_measure = 1.0
+                    for idx in ps.keys():
+                        if idx not in self.U.qubit_map:
+                            continue  # means its 1 or Z and <0|Z|0> = 1 anyway
+                        else:
+                            M = qulacs.gate.Measurement(self.U.qubit_map[idx], self.U.qubit_map[idx])
+                            M.update_quantum_state(state_tmp)
+                            measured = state_tmp.get_classical_value(self.U.qubit_map[idx])
+                            ps_measure *= (-2.0 * measured + 1.0)  # 0 becomes 1 and 1 becomes -1
+                    Esamples.append(ps_measure)
+                E += ps.coeff * sum(Esamples) / len(Esamples)
+
+            result.append(E)
+        return numpy.asarray(result)

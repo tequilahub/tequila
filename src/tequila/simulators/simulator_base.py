@@ -11,6 +11,12 @@ from tequila.circuit import compiler
 
 import numbers, typing, numpy
 
+"""
+TODO: Classes are now immutable: 
+       - Map the hamiltonian in the very beginning
+       - Add additional features from Skylars project
+       - Maybe only keep paulistrings and not full hamiltonian types
+"""
 
 class BackendCircuit():
     """
@@ -298,6 +304,7 @@ class BackendExpectationValue:
     def __init__(self, E, variables, noise_model):
         self._U = self.initialize_unitary(E.U, variables, noise_model)
         self._H = self.initialize_hamiltonian(E.H)
+        self._abstract_hamiltonians = E.H
         self._variables = E.extract_variables()
         self._contraction = E._contraction
         self._shape = E._shape
@@ -343,7 +350,7 @@ class BackendExpectationValue:
         result = []
         for H in self.H:
             E = 0.0
-            for ps in self.H.paulistrings:
+            for ps in H.paulistrings:
                 E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
             result.append(to_float(E))
         return numpy.asarray(result)

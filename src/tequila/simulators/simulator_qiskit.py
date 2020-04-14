@@ -2,7 +2,7 @@ from tequila.simulators.simulator_base import BackendCircuit, QCircuit, BackendE
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering, BitStringLSB
-import qiskit
+import qiskit, numpy
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
 
@@ -107,12 +107,17 @@ class BackendCircuitQiskit(BackendCircuit):
             simulator = qiskit.Aer.get_backend("statevector_simulator")
         else:
             raise TequilaQiskitException("wave function simulation with noise cannot be performed presently")
+
+        opts = None
         if initial_state != 0:
-            # need something like this
-            # there is a keyword for the backend for tolerance on norm
-            # circuit.initialize(normed_array)
-            raise TequilaQiskitException("initial state for Qiskit not yet supported here")
-        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator,parameter_binds=[self.resolver]).result()
+            array = numpy.zeros(shape=[2**self.n_qubits])
+            i = BitStringLSB.from_binary(BitString.from_int(integer=initial_state, nbits=self.n_qubits).binary)
+            print(initial_state, " -> ", i)
+            array[i.integer] = 1.0
+            opts = {"initial_statevector": array}
+            print(opts)
+
+        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator,parameter_binds=[self.resolver], backend_options=opts).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:

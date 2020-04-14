@@ -31,8 +31,8 @@ try:
     from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
 
     HAS_QULACS = True
-    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
-                                                  ExpValueType=BackendExpectationValueQulacs)
+    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
+    INSTALLED_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
 except ImportError:
     HAS_QULACS = False
 
@@ -126,6 +126,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: bool = False, 
                 else:
                     if f in INSTALLED_NOISE_SAMPLERS:
                         return f
+
     if hasattr(backend, "lower"):
         backend = backend.lower()
 
