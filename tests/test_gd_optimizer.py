@@ -44,7 +44,7 @@ def test_method_convergence(simulator,method):
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
     samples=None
-    angles={'a':numpy.pi}
+    angles={'a':numpy.pi/2}
     result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,stop_count=10, maxiter=100, backend=simulator)
     assert (numpy.isclose(result.energy, -1.0,atol=3.e-2))
 
