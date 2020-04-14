@@ -19,7 +19,7 @@ class TequilaQulacsException(TequilaException):
         return "Error in qulacs backend:" + self.message
 
 
-op_lookup={
+op_lookup = {
     'I': qulacs.gate.Identity,
     'X': qulacs.gate.X,
     'Y': qulacs.gate.Y,
@@ -77,21 +77,20 @@ class BackendCircuitQulacs(BackendCircuit):
         else:
             circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.parameter(variables) * gate.paulistring.coeff)
 
-
-    def add_parametrized_gate(self, gate,circuit,variables, *args, **kwargs):
-        op=op_lookup[gate.name]
+    def add_parametrized_gate(self, gate, circuit, variables, *args, **kwargs):
+        op = op_lookup[gate.name]
         if gate.name == 'Exp-Pauli':
-            self.add_exponential_pauli_gate(gate,circuit,variables)
+            self.add_exponential_pauli_gate(gate, circuit, variables)
             return
         else:
             if len(gate.extract_variables()) > 0:
                 op = op[0]
                 self.variables.append(-gate.parameter)
-                op(circuit)(self.qubit_map[gate.target[0]],-gate.parameter(variables=variables))
+                op(circuit)(self.qubit_map[gate.target[0]], -gate.parameter(variables=variables))
                 return
             else:
                 op = op[1]
-                qulacs_gate = op(self.qubit_map[gate.target[0]],-gate.parameter(variables=variables))
+                qulacs_gate = op(self.qubit_map[gate.target[0]], -gate.parameter(variables=variables))
         if gate.is_controlled():
             qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
             for c in gate.control:
@@ -99,8 +98,8 @@ class BackendCircuitQulacs(BackendCircuit):
         circuit.add_gate(qulacs_gate)
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
-        op=op_lookup[gate.name]
-        qulacs_gate=op(*[self.qubit_map[t] for t in gate.target])
+        op = op_lookup[gate.name]
+        qulacs_gate = op(*[self.qubit_map[t] for t in gate.target])
         if gate.is_controlled():
             qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
             for c in gate.control:
@@ -108,8 +107,8 @@ class BackendCircuitQulacs(BackendCircuit):
 
         circuit.add_gate(qulacs_gate)
 
-    def add_measurement(self,gate, circuit, *args, **kwargs):
-        return self.add_basic_gate(gate,circuit,*args,*kwargs)
+    def add_measurement(self, gate, circuit, *args, **kwargs):
+        return self.add_basic_gate(gate, circuit, *args, *kwargs)
 
     def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
         """
@@ -123,7 +122,9 @@ class BackendCircuitQulacs(BackendCircuit):
         opt = qulacs.circuit.QuantumCircuitOptimizer()
         opt.optimize(circuit, max_block_size)
         if not silent:
-            print("qulacs: optimized circuit depth from {} to {} with max_block_size {}".format(old, circuit.calculate_depth(), max_block_size))
+            print("qulacs: optimized circuit depth from {} to {} with max_block_size {}".format(old,
+                                                                                                circuit.calculate_depth(),
+                                                                                                max_block_size))
         return circuit
 
 
@@ -146,18 +147,16 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         result = [H.get_expectation_value(state) for H in self.H]
         return numpy.asarray(result)
 
-
-
     def initialize_hamiltonian(self, hamiltonians):
         result = []
-        if self.use_mapping:
-            # initialize only the active parts of the Hamiltonian and pre-evaluate the passive ones
-            # passive parts are the components of each individual pauli string which act on qubits where the circuit does not act on
-            # if the circuit does not act on those qubits the passive parts are always evaluating to 1 (if the pauli operator is Z) or 0 (otherwise)
-            # since those qubits are always in state |0>
-            non_zero_strings = []
-            unit_strings = 0
-            for H in hamiltonians:
+        for H in hamiltonians:
+            if self.use_mapping:
+                # initialize only the active parts of the Hamiltonian and pre-evaluate the passive ones
+                # passive parts are the components of each individual pauli string which act on qubits where the circuit does not act on
+                # if the circuit does not act on those qubits the passive parts are always evaluating to 1 (if the pauli operator is Z) or 0 (otherwise)
+                # since those qubits are always in state |0>
+                non_zero_strings = []
+                unit_strings = 0
                 for ps in H.paulistrings:
                     string = ""
                     for k, v in ps.items():
@@ -182,13 +181,12 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                     qulacs_H.add_operator(coeff, string)
 
                 result.append(qulacs_H)
-        else:
-            if self.U.n_qubits < H.n_qubits:
-                raise TequilaQulacsException(
-                    "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are switched off")
+            else:
+                if self.U.n_qubits < H.n_qubits:
+                    raise TequilaQulacsException(
+                        "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are switched off")
 
-            qulacs_H = qulacs.Observable(self.n_qubits)
-            for H in hamiltonians:
+                qulacs_H = qulacs.Observable(self.n_qubits)
                 for ps in H.paulistrings:
                     string = ""
                     for k, v in ps.items():

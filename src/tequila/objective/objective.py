@@ -48,7 +48,7 @@ class ExpectationValueImpl:
             self._hamiltonian = tuple([copy.deepcopy(H)])
         else:
             self._hamiltonian = tuple(H)
-        self._contraction = None
+        self._contraction = contraction
         self._shape = shape
 
     def __call__(self, *args, **kwargs):
@@ -120,17 +120,17 @@ class Objective:
         return not all([hasattr(arg, "name") for arg in self.args])
 
     @classmethod
-    def ExpectationValue(cls, U=None, H=None):
+    def ExpectationValue(cls, U=None, H=None, *args, **kwargs):
         """
         Initialize a wrapped expectationvalue directly as Objective
         """
-        E = ExpectationValueImpl(H=H, U=U)
+        E = ExpectationValueImpl(H=H, U=U, *args, **kwargs)
         return Objective(args=[E])
 
     @property
     def transformation(self) -> typing.Callable:
         if self._transformation is None:
-            return numpy.sum
+            return lambda x: x
         else:
             return self._transformation
 
@@ -296,14 +296,14 @@ class Objective:
                "variables = {}".format(len(ev), argstring.strip().rstrip(','), variables)
 
     def __call__(self, variables = None, *args, **kwargs):
-        return to_float(self.transformation(*[Ei(variables=variables, *args, **kwargs) for Ei in self.args]))
+        return self.transformation(*[Ei(variables=variables, *args, **kwargs) for Ei in self.args])
 
 
-def ExpectationValue(U, H) -> Objective:
+def ExpectationValue(U, H, *args, **kwargs) -> Objective:
     """
     Initialize an Objective which is just a single expectationvalue
     """
-    return Objective.ExpectationValue(U=U, H=H)
+    return Objective.ExpectationValue(U=U, H=H, *args, **kwargs)
 
 
 class TequilaVariableException(TequilaException):
