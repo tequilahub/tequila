@@ -43,13 +43,9 @@ def test_method_convergence(simulator,method):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    samples=numpy.random.choice([None,1000])
+    samples=None
     angles={'a':numpy.pi}
-    if method == 'adadelta':
-        ### adadelta sucks
-        result = minimize(objective=O,initial_values=angles,method=method,samples=samples,lr=0.1, maxiter=1000,stop_count=50, backend=simulator)
-    else:
-        result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1, maxiter=100, backend=simulator)
+    result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,stop_count=10, maxiter=100, backend=simulator)
     assert (numpy.isclose(result.energy, -1.0,atol=3.e-2))
 
 

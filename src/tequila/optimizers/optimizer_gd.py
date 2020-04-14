@@ -143,7 +143,7 @@ class OptimizerGD(Optimizer):
             ### check if its time to stop!
             if tally == stop_count:
                 if not self.silent:
-                    print('no improvement after {} epochs. Stopping optimization.')
+                    print('no improvement after {} epochs. Stopping optimization.'.format(str(stop_count)))
                 break
 
             new,moments=f(lr=lr,step=step,gradients=gradients,v=v,moments=moments,active_angles=active_angles,**kwargs)
