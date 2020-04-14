@@ -33,7 +33,6 @@ try:
     HAS_QULACS = True
     INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
                                                   ExpValueType=BackendExpectationValueQulacs)
-    INSTALLED_SAMPLERS["qulacs"] = BackendTypes(BackendCircuitQulacs, BackendExpectationValueQulacs)
 except ImportError:
     HAS_QULACS = False
 

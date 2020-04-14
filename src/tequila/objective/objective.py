@@ -519,17 +519,10 @@ class Variables(collections.abc.MutableMapping):
             result += "{} : {}\n".format(str(k), str(v))
         return result
 
-if __name__ == "__main__":
+    def __repr__(self):
+        return self.__str__()
 
-    a = Variables()
-    a["a"] = 1.0
-    a[(1,)] = 2.0
-    a["hallo"] = 3.0
 
-    print(a)
-    print((1,) in a)
-    print("a" in a)
-    print(assign_variable("a") in a)
-    print("b" in a)
+
 
 
