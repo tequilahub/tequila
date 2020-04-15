@@ -1,5 +1,6 @@
 from tequila.optimizers.optimizer_base import OptimizerHistory
 from tequila.optimizers.optimizer_scipy import OptimizerSciPy
+from tequila.optimizers.optimizer_gd import OptimizerGD
 from shutil import which
 has_phoenics = False
 try:

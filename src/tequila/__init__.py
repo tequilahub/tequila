@@ -3,6 +3,7 @@ from tequila.circuit import gates, QCircuit,NoiseModel
 from tequila.hamiltonian import paulis, QubitHamiltonian, PauliString
 from tequila.objective import Objective, ExpectationValue, Variable, assign_variable, format_variable_dictionary
 from tequila.optimizers import optimizer_scipy
+from tequila.optimizers import optimizer_gd
 
 from tequila.optimizers import has_phoenics
 if has_phoenics:
