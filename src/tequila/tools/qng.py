@@ -43,7 +43,7 @@ class QngMatrix:
         numpy.linalg.pinv(output)
         return output
 
-class QngVector:
+class CallableVector:
     @property
     def dim(self):
         return (len(self._vector))
@@ -181,7 +181,7 @@ def subvector_procedure(eval,initial_values=None,samples=None,backend=None,noise
     for entry in vect:
         out.append(compile_objective(entry,variables=initial_values,samples=samples,
                                      backend=backend,noise_model=noise_model))
-    return QngVector(out)
+    return CallableVector(out)
 
 def get_self_pars(U):
     out=[]
@@ -207,7 +207,7 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
         if not isinstance(arg,ExpectationValueImpl):
             ### this is a variable, no QNG involved
             mat=QngMatrix([[[1]]])
-            vec=QngVector([__grad_inner(arg,arg)])
+            vec=CallableVector([__grad_inner(arg, arg)])
             mapping={0:{v:__grad_inner(arg,v) for v in vars}}
         else:
             ### if the arg is an expectationvalue, we need to build some qngs and mappings!
@@ -255,3 +255,11 @@ def evaluate_qng(combos,variables):
 
     out=[v for v in gd.values()]
     return out
+
+class QNGVector():
+
+    def __init__(self,combos):
+        self.combos=combos
+
+    def __call__(self, variables):
+        return numpy.asarray(evaluate_qng(self.combos,variables))

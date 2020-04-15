@@ -6,6 +6,7 @@ from tequila.circuit.gradient import grad
 from collections import namedtuple
 from tequila.simulators.simulator_api import compile
 from tequila.circuit.noise import NoiseModel
+from tequila.tools.qng import CallableVector,QNGVector,get_qng_combos
 
 GDReturnType = namedtuple('GDReturnType', 'energy angles history moments')
 
@@ -43,6 +44,7 @@ class OptimizerGD(Optimizer):
                  maxiter,
                  lr: float = .01,
                  method: str = 'sgd',
+                 qng : bool = False,
                  stop_count : int = None,
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  variables: typing.List[Variable] = None,
@@ -56,6 +58,7 @@ class OptimizerGD(Optimizer):
         :param objective: The tequila Objective to minimize
         :param maxiter: how many iterations to run, at maximum.
         :param method: what method to optimize via.
+        :param qng: whether or not to use the QNG to calculate gradients.
         :param stop_count: how many steps after which to abort if no improvement occurs.
         :param initial_values: initial values for the objective
         :param variables: which variables to optimize over. Default None: all the variables of the objective.
@@ -86,19 +89,28 @@ class OptimizerGD(Optimizer):
                                      noise_model=noise,
                                      samples=samples)
 
-        gradients=[]
-        for k in active_angles.keys():
-            g=grad(objective,k)
-            g_comp = compile(objective=g,variables=initial_values, backend=backend,
-                             noise_model=noise,samples=samples)
-            gradients.append(g_comp)
 
+        if not qng:
+            g_list=[]
+            for k in active_angles.keys():
+                g=grad(objective,k)
+                g_comp = compile(objective=g,variables=initial_values, backend=backend,
+                                 noise_model=noise,samples=samples)
+                g_list.append(g_comp)
+
+            gradients=CallableVector(g_list)
+        else:
+            if method.lower() == 'adagrad':
+                print('Warning! you have chosen to use QNG with adagrad ; convergence is not likely.'.format(method))
+            gradients = QNGVector(get_qng_combos(objective=objective,initial_values=initial_values,backend=backend,
+                                                 noise_model=noise,samples=samples))
 
         if not self.silent:
             print("ObjectiveType is {}".format(type(comp)))
             print("backend: {}".format(comp.backend))
             print("samples: {}".format(samples))
             print("{} active variables".format(len(active_angles)))
+            print("qng: {}".format(str(qng)))
 
         ### prefactor. Early stopping, initialization, etc. handled here
 
@@ -111,7 +123,7 @@ class OptimizerGD(Optimizer):
 
         f=self.method_dict[method.lower()]
         v = initial_values
-        vec_len = len(gradients)
+        vec_len = len(active_angles)
         best = None
         best_angles = None
         first = numpy.zeros(vec_len)
@@ -133,6 +145,7 @@ class OptimizerGD(Optimizer):
                 if e < best:
                     best = e
                     best_angles = v
+                    tally=0
                 else:
                     tally += 1
 
@@ -154,7 +167,7 @@ class OptimizerGD(Optimizer):
                 v = new
             for i,k in enumerate(active_angles.keys()):
                 save_grad[k]=grads[i]
-            self.history.gradients.apend(save_grad)
+            self.history.gradients.append(save_grad)
             all_moments.append(moments)
         E_final,angles_final=best,best_angles
         angles_final = {**angles_final, **passive_angles}
@@ -168,7 +181,7 @@ class OptimizerGD(Optimizer):
         s = moments[0]
         r = moments[1]
         t = step+1
-        grads = numpy.asarray([g(v) for g in gradients])
+        grads = gradients(v)
         s = beta * s + (1 - beta) * grads
         r = beta2 * r + (1 - beta2) * numpy.square(grads)
         s_hat = s / (1 - beta ** t)
@@ -186,7 +199,7 @@ class OptimizerGD(Optimizer):
     def adagrad(self, lr, gradients,
             v, moments, active_angles,epsilon=10**-6, **kwargs):
         r=moments[1]
-        grads = numpy.asarray([g(v) for g in gradients])
+        grads = gradients(v)
 
         r += numpy.square(grads)
         new = {}
@@ -199,11 +212,11 @@ class OptimizerGD(Optimizer):
 
     def adamax(self, lr, gradients,
              v, moments, active_angles,
-             beta=0.9, beta2=0.999, epsilon=10 ** -7, **kwargs):
+             beta=0.9, beta2=0.999, **kwargs):
 
         s = moments[0]
         r = moments[1]
-        grads = numpy.asarray([g(v) for g in gradients])
+        grads = gradients(v)
         s = beta * s + (1 - beta) * grads
         r = beta2 * r + (1 - beta2) * numpy.linalg.norm(grads,numpy.inf)
         updates = []
@@ -224,7 +237,7 @@ class OptimizerGD(Optimizer):
         s = moments[0]
         r = moments[1]
         t = step+1
-        grads = numpy.asarray([g(v) for g in gradients])
+        grads = gradients(v)
         s = beta * s + (1 - beta) * grads
         r = beta2 * r + (1 - beta2) * numpy.square(grads)
         s_hat = s / (1 - beta ** t)
@@ -242,12 +255,12 @@ class OptimizerGD(Optimizer):
     def basic(self, lr, gradients,
             v, moments, active_angles, **kwargs):
 
-        ### the sgd momentum optimizer. m is our moment tally
-        grads = numpy.asarray([g(v) for g in gradients])
+        ### the sgd  optimizer without momentum.
+        grads = gradients(v)
         new = {}
         for i, k in enumerate(active_angles.keys()):
             new[k] = v[k] - lr*grads[i]
-        return new, moments
+        return new, moments, grads
 
     def sgd(self,lr,gradients,
              v,moments,active_angles,
@@ -256,7 +269,7 @@ class OptimizerGD(Optimizer):
         m=moments[0]
 
         ### the sgd momentum optimizer. m is our moment tally
-        grads = numpy.asarray([g(v) for g in gradients])
+        grads = gradients(v)
 
         m=beta*m -lr*grads
         new={}
@@ -281,7 +294,7 @@ class OptimizerGD(Optimizer):
         for k in total_keyset:
             if k not in active_keyset:
                 interim[k]=v[k]
-        grads = numpy.asarray([g(interim) for g in gradients])
+        grads = gradients(interim)
 
         m = beta * m - lr * grads
         new = {}
@@ -289,14 +302,14 @@ class OptimizerGD(Optimizer):
             new[k] = v[k] + m[i]
 
         back_moments=[m,moments[1]]
-        return new, back_moments,grads
+        return new,back_moments,grads
 
     def rms(self, lr, gradients,
                  v, moments, active_angles,
                  rho=0.999,epsilon=10**-6, **kwargs):
 
         r = moments[1]
-        grads = numpy.asarray([g(v) for g in gradients])
+        grads = gradients(v)
         r = rho*r +(1-rho)*numpy.square(grads)
         new = {}
         for i, k in enumerate(active_angles.keys()):
@@ -320,7 +333,7 @@ class OptimizerGD(Optimizer):
         for k in total_keyset:
             if k not in active_keyset:
                 interim[k]=v[k]
-        grads = numpy.asarray([g(interim) for g in gradients])
+        grads = gradients(interim)
 
         r = rho * r + (1 - rho) * numpy.square(grads)
         for i in range(len(m)):
@@ -338,6 +351,7 @@ class OptimizerGD(Optimizer):
 def minimize(objective: Objective,
              lr=0.01,
              method='sgd',
+             qng: bool = False,
              stop_count = None,
              initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
              variables: typing.List[typing.Hashable] = None,
@@ -359,6 +373,8 @@ def minimize(objective: Objective,
         the learning rate. Default 0.01.
     method: string:
         which variation on Gradient Descent to use. Options include 'sgd','adam','nesterov','adagrad','rmsprop',
+    qng: bool:
+        whether or not the gradient calculated should be the quantum natural gradient or not. defaults to False.
     stop_count: int:
         how many steps after which to cease training if no improvement occurs. Default None results in going till maxiter is complete
     initial_values: typing.Dict[typing.Hashable, numbers.Real]: (Default value = None):
@@ -424,6 +440,7 @@ def minimize(objective: Objective,
                      maxiter=maxiter,
                      lr=lr,
                      method=method,
+                     qng=qng,
                      stop_count=stop_count,
                      backend=backend, initial_values=initial_values,
                      variables=variables, noise=noise,
