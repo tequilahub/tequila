@@ -1,10 +1,8 @@
 class JoinedTransformation:
     '''
     class structure used to construct,track, and permit differentiation of the computation required
-    by mathematical operations on ExpectationValues and Objectives, on the one hand,
-    and by Variables and Transforms, on the other. The algebraics of those two sets of structures
-    are mirrors of eachother; Objectives represent expressions involving ExpectationValues, while Transforms
-    represent expressions involving Variables. JoinedTransformations allow operations to be combined.
+    by mathematical operations on ExpectationValues,Variables and Objectives thereof.
+    JoinedTransformations allow operations to be combined.
     '''
 
 

@@ -3,6 +3,7 @@
 *.out
 *.inp
 *.hdf5
+*.h5
 *.dat
 
 # Byte-compiled / optimized / DLL files

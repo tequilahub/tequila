@@ -9,7 +9,7 @@ from tequila.circuit import gates
 from tequila.hamiltonian import paulis
 from tequila.objective import Objective
 import numpy
-from tequila.circuit import Variable
+from tequila.objective.objective import Variable
 from tequila.optimizers import optimizer_scipy
 
 # uncomment if you want to use a specific simulators
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     O = Objective.ExpectationValue(U=U,H=H)
 
     # do the optimization
-    result = optimizer_scipy.minimize(objective=O, method="CG", maxiter=maxiter, samples=samples, simulator=simulator)
+    result = optimizer_scipy.minimize(objective=O, method="CG", maxiter=maxiter, samples=samples, backend=simulator)
 
     print("optimal energy = ", -1.0)
     print("optimal angle  = ", optimal_angle)

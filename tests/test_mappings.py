@@ -1,6 +1,14 @@
 from tequila.wavefunction import QubitWaveFunction
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila import BitString, BitStringLSB
+from tequila.circuit import QCircuit, gates
+from tequila import ExpectationValue, Objective
+from tequila.simulators.simulator_api import simulate
+from tequila import INSTALLED_SAMPLERS
+from tequila.hamiltonian import QubitHamiltonian, PauliString
+
+import pytest, numpy
+from numpy import isclose
 
 
 def test_keymaps():
@@ -39,12 +47,7 @@ def test_endianness():
         assert (i1 == BitString.from_bitstring(i22))
         assert (i2 == BitString.from_bitstring(i11))
 
-
-from tequila.circuit import QCircuit, gates
-from tequila.simulators.simulator_cirq import SimulatorCirq
-from tequila.simulators.simulator_qiskit import SimulatorQiskit
-
-
+@pytest.mark.skipif(condition="cirq" not in INSTALLED_SAMPLERS or "qiskit" not in INSTALLED_SAMPLERS, reason="need cirq and qiskit for cross validation")
 def test_endianness_simulators():
     tests = ["000111",
              "111000",
@@ -61,15 +64,42 @@ def test_endianness_simulators():
             if v == 1:
                 c += gates.X(target=i)
 
-        c += gates.Measurement(name="", target=[x for x in range(len(string))])
+        c += gates.Measurement(target=[x for x in range(len(string))])
 
-        wfn_cirq = SimulatorCirq().simulate_wavefunction(abstract_circuit=c, initial_state=0).wavefunction
-        counts_cirq = SimulatorCirq().run(abstract_circuit=c, samples=1).measurements
-        counts_qiskit = SimulatorQiskit().run(abstract_circuit=c, samples=1).measurements
+        wfn_cirq = simulate(c, initial_state=0, backend="cirq")
+        counts_cirq = simulate(c, samples=1, backend="cirq")
+        counts_qiskit = simulate(c, samples=1, backend="qiskit")
         print("counts_cirq  =", type(counts_cirq))
         print("counts_qiskit=", type(counts_qiskit))
         print("counts_cirq  =", counts_cirq)
         print("counts_qiskit=", counts_qiskit)
         assert (counts_cirq == counts_qiskit)
-        assert (wfn_cirq.state == counts_cirq[''].state)
+        assert (wfn_cirq.state == counts_cirq.state)
 
+
+@pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
+@pytest.mark.parametrize("case",
+                         [("X(0)Y(1)Z(4)", 0.0), ("Z(0)", 1.0), ("Z(0)Z(1)Z(3)", 1.0), ("Z(0)Z(1)Z(2)Z(3)Z(5)", -1.0)])
+def test_paulistring_sampling(backend, case):
+    H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
+    U = gates.X(target=1) + gates.X(target=3) + gates.X(target=5)
+    E = ExpectationValue(H=H, U=U)
+    result = simulate(E,backend=backend, samples=1)
+    assert (isclose(result, case[1], 1.e-4))
+
+
+@pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
+@pytest.mark.parametrize("case", [("X(0)Y(1)Z(4)", 0.0), ("Z(0)X(1)X(5)", -1.0), ("Z(0)X(1)X(3)", 1.0), ("Z(0)X(1)Z(2)X(3)X(5)", -1.0)])
+def test_paulistring_sampling_2(backend, case):
+    H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
+    U = gates.H(target=1) + gates.H(target=3) + gates.X(target=5) + gates.H(target=5)
+    E = ExpectationValue(H=H, U=U)
+    result = simulate(E,backend=backend, samples=1)
+    assert (isclose(result, case[1], 1.e-4))
+
+@pytest.mark.parametrize("array", [numpy.random.uniform(0.0,1.0,i) for i in [2,4,8,16]])
+def test_qubitwavefunction_array(array):
+    print(array)
+    wfn = QubitWaveFunction.from_array(arr=array)
+    array2 = wfn.to_array()
+    assert (array == array2).all()

@@ -1,16 +1,16 @@
-numpy>=1.11.0
-scipy>=1.3.0
+numpy
+scipy
+sympy
 jax
 jaxlib
-dataclasses
+#autograd # use if jaxlib gives you trouble, make sure jax is uninstalled then
 setuptools 
 pytest
 openfermion
-openfermionpsi4 # trying to get rid of this
-pyscf>=1.6.5 # Find the right wheel 
-openfermionpyscf # trying to get rid of this
-cirq # not really a requirement
-networkx==2.3 # It is required for cirq
-pyquil # not really a requirement
-qiskit # not really a requirement
-qulacs # not really a requirement
+qulacs # default simulator
+cirq # default sampler (smaller than qiskit)
+
+#optional samplers
+#qiskit
+#pyquil # you need to install forest-sdk yourself
+

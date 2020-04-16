@@ -1,11 +1,77 @@
 from tequila.circuit._gates_impl import QGateImpl
 from tequila import TequilaException
 from tequila import BitNumbering
-from tequila.circuit.variable import has_variable
-import numpy, typing, numbers
-
+import numpy, typing, numbers,copy
 
 class QCircuit():
+
+    @property
+    def moments(self):
+        table = {i:0 for i in self.qubits}
+        moms = []
+        moms.append(Moment())
+        for g in self.gates:
+            qus = g.qubits
+            spots=[table[q] for q in qus]
+
+            if max(spots) == len(moms):
+
+                moms.append(Moment([g]))
+            else:
+                moms[max(spots)].add_gate(g)
+            for q in qus:
+                table[q] =max(spots)+1
+        for mom in moms:
+            mom.sort_gates()
+        return moms
+
+    @property
+    def canonical_moments(self):
+        table_u = {i: 0 for i in self.qubits}
+        table_p = {i: 0 for i in self.qubits}
+        moms = []
+        moms.append((Moment(),Moment()))
+
+        for g in self.gates:
+            p=0
+            qus = g.qubits
+            if g.is_parametrized():
+                if hasattr(g.parameter,'extract_variables'):
+                    p=1
+
+            if p == 0:
+                spots=[table_u[q] for q in qus] + [table_p[q] for q in qus]
+                if max(spots) == len(moms):
+                    moms.append((Moment([g]),Moment()))
+                else:
+                    moms[max(spots)][0].add_gate(g)
+                for q in qus:
+                    table_u[q] = max(spots)+1
+                    table_p[q] = max(spots)
+
+            else:
+                spots=[max(table_p[q],table_u[q]-1) for q in qus]
+                if max(spots) == len(moms):
+                    moms.append((Moment(),Moment([g])))
+                else:
+                    moms[max(spots)][1].add_gate(g)
+                for q in qus:
+                    table_u[q] = table_p[q]= max(spots)+1
+        noms=[]
+        for m in moms:
+            noms.extend([m[0],m[1]])
+
+        for nom in noms:
+            nom.sort_gates()
+        return noms
+
+    @property
+    def depth(self):
+        return len(self.moments)
+
+    @property
+    def canonical_depth(self):
+        return len(self.canonical_moments)
 
     @property
     def gates(self):
@@ -13,27 +79,6 @@ class QCircuit():
             return []
         else:
             return self._gates
-
-    @property
-    def parameter_list(self):
-        """
-        this property is designed to return a list of the variables in a gate, and for the list to be equal in length
-        to the number of gates. Unparametrized or Frozen gates will insert None. This can be used to experiment with the behavior
-        of the circuit; changes to the object in the list (unless it is deepcopied) will change the object in the gate directly.
-        This is an unprotected property and abuse will break it, but if you've come this far, you knew that.
-        :returns: list
-        """
-        parameters = []
-        for g in self.gates:
-            if g.is_parametrized() and not g.is_frozen():
-                if hasattr(g.parameter, 'f'):
-                    gpars = g.parameter.parameter_list
-                    parameters.append(gpars)
-                elif hasattr(g.parameter, '_name') and hasattr(g.parameter, '_value'):
-                    parameters.append(g.parameter)
-            else:
-                parameters.append(None)
-        return parameters
 
     @property
     def numbering(self) -> BitNumbering:
@@ -45,6 +90,7 @@ class QCircuit():
         for g in self.gates:
             accumulate += list(g.qubits)
         return sorted(list(set(accumulate)))
+
 
     @property
     def n_qubits(self):
@@ -68,36 +114,22 @@ class QCircuit():
         else:
             self._gates = list(gates)
 
-    def validate(self):
-        '''
-        helper function to ensure consistency between frozen and unfrozen gates; makes sure no Variable
-        parametrizes both frozen and unfrozen gates. Reproduces something alike to the parameters attribute, but note that it also looks at frozen gates.
-        '''
-        pars = dict()
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized():
-                for name, val in g.parameter.variables.items():
-                    pars[name] = [0, 0]
-
-        for g in self.gates:
-            if g.is_parametrized():
-                if g.is_frozen():
-                    for k in g.parameter.variables.keys():
-                        pars[k][1] = 1
-                else:
-                    for k in g.parameter.variables.keys():
-                        pars[k][0] = 1
-
-        if any([numpy.sum(pars[k]) > 1 for k in pars.keys()]):
-            error_string = 'This circuit contains gates depending on a given parameter, some of which are frozen and others not. \n This breaks the gradient! please rebuild your circuit without doing so.'
-            raise TequilaException(error_string)
-
     def is_primitive(self):
         """
         Check if this is a single gate wrapped in this structure
         :return: True if the circuit is just a single gate
         """
         return len(self.gates) == 1
+
+    def sort_gates(self):
+        sl=[]
+        for m in self.moments:
+            sd={}
+            for gate in m.gates:
+                q=min(gate.qubits)
+                sd[q]=gate
+            sl.extend([sd[k] for k in sorted(sd.keys())])
+        self._gates=sl
 
     def replace_gate(self, position, gates):
         if hasattr(gates, '__iter__'):
@@ -112,8 +144,6 @@ class QCircuit():
 
     def dagger(self):
         """
-        Sumner's Fork:
-        I have changed this so that the call to dagger is just dagger all the way down.
         :return: Circuit in reverse with signs of rotations switched
         """
         result = QCircuit()
@@ -121,45 +151,16 @@ class QCircuit():
             result += g.dagger()
         return result
 
-    def extract_variables(self) -> dict:
+    def extract_variables(self) -> list:
         """
-        return a dict containing all the variable objects contained in any of the gates within the unitary
+        return a list containing all the variable objects contained in any of the gates within the unitary
         including those nested within transforms.
-        rtype dict: {parameter.name:parameter.value}
         """
-        pars = dict()
+        variables = []
         for i, g in enumerate(self.gates):
             if g.is_parametrized():
-                pars = {**pars, **g.extract_variables()}
-        return pars
-
-    def update_variables(self, variables: dict):
-        """
-        inplace operation
-        :param variables: a dict of all parameters that shall be updated (order does not matter)
-        :return: self for chaining
-        """
-        for g in self.gates:
-            if g.is_parametrized():
-                g.update_variables(variables)
-
-        return self
-
-    def get_indices_for_parameter(self, name: str):
-        """
-        Lookup all the indices of gates parameterized by a paramter with this name
-        :param name: the name of the parameter
-        :return: all indices as list
-        """
-        namex = name
-        if hasattr(name, "name"):
-            namex = name.name
-
-        result = []
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized() and not g.is_frozen() and g.parameter.name == namex:
-                result.append(i)
-        return result
+                variables += g.extract_variables()
+        return list(set(variables))
 
     def max_qubit(self):
         """
@@ -169,6 +170,38 @@ class QCircuit():
         for g in self.gates:
             qmax = max(qmax, g.max_qubit)
         return qmax
+
+    def is_fully_parametrized(self):
+        for gate in self.gates:
+            if not gate.is_parametrized():
+                return False
+            else:
+                if hasattr(gate,'parameter'):
+                    if not hasattr(gate.parameter,'wrap'):
+                        return False
+                    else:
+                        continue
+                else:
+                    continue
+        return True
+
+    def is_fully_unparametrized(self):
+        for gate in self.gates:
+            if not gate.is_parametrized():
+                continue
+            else:
+                if hasattr(gate,'parameter'):
+                    if not hasattr(gate.parameter,'wrap'):
+                        continue
+                    else:
+                        return False
+                else:
+                    return False
+        return True
+
+    def is_mixed(self):
+        return not (self.is_fully_parametrized() or self.is_fully_unparametrized())
+
 
     def __iadd__(self, other):
         if isinstance(other, QGateImpl):
@@ -187,17 +220,6 @@ class QCircuit():
         result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
         return result
 
-    def __pow__(self, power, modulo=None):
-        if modulo is not None:
-            raise TequilaException("Modulo powers for circuits/unitaries not supported")
-        if not self.is_primitive():
-            raise TequilaException("Powers are currently only supported for single gates")
-
-        pgates = []
-        for g in self.gates:
-            pgates.append(g ** power)
-        return QCircuit(gates=pgates)
-
     def __str__(self):
         result = "circuit: \n"
         for g in self.gates:
@@ -207,6 +229,8 @@ class QCircuit():
     def __eq__(self, other):
         if len(self.gates) != len(other.gates):
             return False
+        self.sort_gates()
+        other.sort_gates()
         for i, g in enumerate(self.gates):
             if g != other.gates[i]:
                 return False
@@ -225,3 +249,211 @@ class QCircuit():
             return gate
         else:
             return QCircuit(gates=[gate])
+    @staticmethod
+    def from_moments(moments: typing.List):
+        c=QCircuit()
+        for m in moments:
+            c+=m.as_circuit()
+        return c
+
+
+
+class Moment(QCircuit):
+    '''
+    the class which represents all operations to be applied at once in a circuit.
+    wraps a list of gates with a list of occupied qubits.
+    Can be converted directly to a circuit.
+    '''
+
+    @property
+    def moments(self):
+        return [self]
+
+    @property
+    def canonical_moments(self):
+        mu=[]
+        mp=[]
+        for gate in self.gates:
+            if not gate.is_parametrized():
+                mu.append(gate)
+            else:
+                if hasattr(gate,'parameter'):
+                    if not hasattr(gate.parameter,'wrap'):
+                        mu.append(gate)
+                    else:
+                        mp.append(gate)
+                else:
+                    mp.append(gate)
+        return[Moment(mu),Moment(mp)]
+
+
+    @property
+    def depth(self):
+        return 1
+
+    @property
+    def canonical_depth(self):
+        return 2
+
+    def __init__(self, gates: typing.List[QGateImpl] = None,sort=False):
+        super().__init__(gates=gates)
+        occ = []
+        if gates is not None:
+            for g in list(gates):
+                for q in g.qubits:
+                    if q in occ:
+                        raise TequilaException('cannot have doubly occupied qubits, which occurred at qubit {}'.format(str(q)))
+                    else:
+                        occ.append(q)
+        if sort:
+            self.sort_gates()
+    def with_gate(self, gate: typing.Union[QCircuit, QGateImpl]):
+        prev = self.qubits
+        newq=gate.qubits
+        overlap = []
+        for n in newq:
+            if n in prev:
+                overlap.append(n)
+
+        gates=copy.deepcopy(self.gates)
+        if len(overlap) is 0:
+            gates.append(gate)
+        else:
+            for i,g in enumerate(gates):
+                if any([q in overlap for q in g.qubits]):
+                    del g
+            gates.append(gate)
+
+        return Moment(gates=gates)
+
+    def with_gates(self,gates):
+        gl=list(gates)
+        first_overlap=[]
+        for g in gl:
+            for q in g.qubits:
+                if q not in first_overlap:
+                    first_overlap.append(q)
+                else:
+                    raise TequilaException('cannot have a moment with multiple operations acting on the same qubit!')
+
+
+        new=self.with_gate(gl[0])
+        for g in gl[1:]:
+            new=new.with_gate(g)
+        new.sort_gates()
+        return new
+
+    def add_gate(self,gate: typing.Union[QCircuit,QGateImpl]):
+        prev = self.qubits
+        newq=gate.qubits
+        for n in newq:
+            if n in prev:
+                raise TequilaException('cannot add gate {} to moment; qubit {} already occupied.'.format(str(gate),str(n)))
+
+        self._gates.append(gate)
+        self.sort_gates()
+        return self
+
+    def replace_gate(self, position, gates):
+        if hasattr(gates, '__iter__'):
+            gs = gates
+        else:
+            gs = [gates]
+
+        new = self.gates[:position]
+        new.extend(gs)
+        new.extend(self.gates[(position + 1):])
+        try:
+            return Moment(gates=new)
+        except:
+            return QCircuit(gates=new)
+
+    def as_circuit(self):
+        return QCircuit(gates=self.gates)
+
+
+    def fully_parametrized(self):
+        for gate in self.gates:
+            if not gate.is_parametrized():
+                return False
+            else:
+                if hasattr(gate,'parameter'):
+                    if not hasattr(gate.parameter,'wrap'):
+                        return False
+                    else:
+                        continue
+                else:
+                    continue
+        return True
+
+    def __str__(self):
+        result = "Moment: "
+        for g in self.gates:
+            result += str(g) + ", "
+        return result
+
+    def __iadd__(self, other):
+        new=self.as_circuit()
+        if isinstance(other, QGateImpl):
+            other = new.wrap_gate(other)
+
+        if isinstance(other, list) and isinstance(other[0], QGateImpl):
+            new._gates += other
+
+        if isinstance(other,list) and isinstance(other[0],QCircuit):
+            for o in other:
+                new._gates += o.gates
+        else:
+            new._gates += other.gates
+        new._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
+        if new.depth is 1:
+            new=Moment(new.gates)
+        return new
+
+    def __add__(self, other):
+        if isinstance(other,Moment):
+            gates = [g.copy() for g in (self.gates + other.gates)]
+            result = QCircuit(gates=gates)
+            result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
+            if result.depth == 1:
+                result=Moment(gates=result.gates)
+                result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
+        elif isinstance(other,QCircuit) and not isinstance(other,Moment):
+            if not other.is_primitive():
+                gates = [g.copy() for g in (self.gates + other.gates)]
+                result = QCircuit(gates=gates)
+                result._min_n_qubits = max(self.as_circuit()._min_n_qubits, other._min_n_qubits)
+            else:
+                try:
+                    result=self.add_gate(other.gates[0])
+                    result._min_n_qubits += len(other.qubits)
+                except:
+                    result=self.as_circuit()+QCircuit.wrap_gate(other)
+                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
+
+        else:
+            if isinstance(other,QGateImpl):
+                try:
+                    result=self.add_gate(other)
+                    result._min_n_qubits += len(other.qubits)
+                except:
+                    result=self.as_circuit()+QCircuit.wrap_gate(other)
+                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
+            else:
+                raise TequilaException('cannot add moments to types other than QCircuit,Moment,or Gate; recieved summand of type {}'.format(str(type(other))))
+        return result
+
+    @staticmethod
+    def wrap_gate(gate: QGateImpl):
+        """
+        :param gate: Abstract Gate
+        :return: wrap gate in QCircuit structure (enable arithmetic operators)
+        """
+        if isinstance(gate, QCircuit):
+            return gate
+        else:
+            return Moment(gates=[gate])
+
+    @staticmethod
+    def from_moments(moments: typing.List):
+        raise TequilaException('this method should never be called from Moment. Call from the QCircuit class itself instead.')

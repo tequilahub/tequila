@@ -2,8 +2,8 @@
 Play around with UCC
 This is far from optimal and needs major improvements
 """
-
-from tequila.simulators import pick_simulator
+import tequila.simulators.simulator_api
+from tequila import pick_backend
 from tequila.objective import Objective
 from tequila.circuit.exponential_gate import DecompositionFirstOrderTrotter
 from tequila.optimizers import  GradientDescent
@@ -18,7 +18,7 @@ if not qc.has_pyscf:
 
 # initialize your favorite Simulator
 samples = None # none means full wavefunction simulation
-simulator = pick_simulator(samples=samples)
+simulator = pick_backend(samples=samples)
 
 if __name__ == "__main__":
 
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     angles = O.extract_variables()
 
     # compute energy
-    E = simulator().simulate_objective(O)
+    E = tequila.simulators.simulator_api.simulate_objective(O)
 
     print("Energy = ", E)
 

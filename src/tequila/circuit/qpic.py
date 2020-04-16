@@ -18,6 +18,8 @@ system_has_pdflatex = which("pdflatex") is not None
 def assign_name(parameter):
     if isinstance(parameter, tuple):
         return "\\theta"
+    if hasattr(parameter, "extract_variables"):
+        return str(parameter.extract_variables()).lstrip('[').rstrip(']')
     return str(parameter)
 
 
@@ -37,13 +39,13 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
                 result += names[t] + " "
 
             if hasattr(g, "angle"):
-                result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.angle) + ")$ width=" + str(
-                    25 + 5*len(assign_name(g.angle))) + " "
+                result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.parameter) + ")$ width=" + str(
+                    25 + 5*len(assign_name(g.parameter))) + " "
             elif hasattr(g, "parameter") and g.parameter is not None:
                 result += " G $" + g.name + "(" + g.parameter.name + ")$ width=" + str(
                     25 + 5*len(assign_name(g.parameter))) + " "
             elif g.name.lower() == "x":
-                result += "+"
+                result += " C "
             else:
                 result += g.name + " "
 
@@ -53,8 +55,8 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
             for t in g.target:
                 result += names[t] + " "
             if hasattr(g, "angle"):
-                result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.angle) + ")$ width=" + str(
-                    25 + 5*len(assign_name(g.angle))) + " "
+                result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.parameter) + ")$ width=" + str(
+                    25 + 5*len(assign_name(g.parameter))) + " "
             elif hasattr(g, "parameter") and g.parameter is not None:
                 result += " G $" + g.name + "(" + assign_name(g.parameter) + ")$ width=" + str(
                     25 + 5*len(assign_name(g.parameter))) + " "

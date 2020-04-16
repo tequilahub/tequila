@@ -1,5 +1,5 @@
 from tequila.circuit import gates
-from tequila.circuit import Variable
+from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.objective import Objective
 from tequila.optimizers.optimizer_phoenics import PhoenicsOptimizer
@@ -45,16 +45,16 @@ tol = 1.e-3
 
 if __name__ == "__main__":
     # initialize Variables with initial values
-    a = Variable(name="a", value=4.0)
-    b = Variable(name="b", value=2.0)
+    a = Variable(name="a")
+    b = Variable(name="b")
 
     # initialize the Hamiltonian
     H = paulis.X(1) + 0.001*paulis.Z(1)
 
     # initialize the parametrized Circuit
-    U = gates.Ry(target=0, angle=-a / 2, frozen=False)  # frozen=true: this variable will not be optimized
+    U = gates.Ry(target=0, angle=-a / 2)  # frozen=true: this variable will not be optimized
     U += gates.Ry(target=0, angle=-a / 2)  # will behave the same as only one time Ry with angle=-a, this is just to demonstrate that it works. This is not possible in the string based initialization
-    U += gates.Ry(target=1, control=0, angle=b, frozen=False)  # frozen=true: this variable will not be optimized
+    U += gates.Ry(target=1, control=0, angle=b)  # frozen=true: this variable will not be optimized
     U += gates.Rx(target=0, angle=1.234)  # this gate will not be recognized as parametrized (it also has no effect on the energy in this example)
 
     # initialize the objective
@@ -62,12 +62,9 @@ if __name__ == "__main__":
 
     # Extract parameters from circuit and set initial values
     # not necessary if already initialized above
-    angles = U.extract_variables()
-    angles['a'] = 4.0
-    angles['b'] = 2.0
 
     # Optimize
-    result = PhoenicsOptimizer(samples=samples,simulator=simulator)(O,20)
+    result = PhoenicsOptimizer(samples=samples,maxiter=10,backend=simulator)(objective=O,maxiter=10)
 
     # plot the history, default are energies
     result.history.plot()

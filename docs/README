@@ -1,0 +1,16 @@
+To build documentation from specs in source directory:
+
+make html
+
+or 
+
+make latexpdf 
+
+
+Some useful links:
+
+* Examples of themes:
+
+https://sphinx-themes.org/
+
+

@@ -1,0 +1,10 @@
+###section for phoenics optimizer with python 3.6
+phoenics
+pyyaml>=5.1
+sqlalchemy>=1.3
+watchdog >=0.9
+wheel>=0.33
+
+edward ==1.3.5
+tensorflow ==1.4.1
+
