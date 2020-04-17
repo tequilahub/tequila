@@ -1,14 +1,13 @@
-from tequila.simulators.simulator_api import simulate
 from tequila.objective.objective import Objective
 from tequila.optimizers.optimizer_base import Optimizer
 import typing
 import numbers
-from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
-import multiprocessing as mp
+from tequila.objective.objective import Variable
 import copy
 import warnings
 import pickle
 from tequila import TequilaException
+
 warnings.simplefilter("ignore")
 
 __HAS_PHOENICS__ = False
@@ -22,15 +21,13 @@ except:
     __HAS_PHOENICS__ = False
 
 
-from tequila.autograd_imports import jax
 import numpy as np
 from numpy import pi as pi
-from tequila.simulators.simulator_api import compile_objective, simulate
+from tequila.simulators.simulator_api import compile_objective
 import os
 from collections import namedtuple
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import tensorflow as tf
 warnings.filterwarnings('ignore', category=FutureWarning)
 PhoenicsReturnType = namedtuple('PhoenicsReturnType', 'energy angles history observations')
 
@@ -95,7 +92,7 @@ class PhoenicsOptimizer(Optimizer):
                 if thing in passives.keys():
                     op.remove(thing)
 
-        config={"general": {"auto_desc_gen": "False","batches":int(np.log2(mp.cpu_count())),"boosted":"False","parallel":"True"}}
+        config={"general": {"auto_desc_gen": "False","batches":1,"boosted":"False","parallel":"False"}}
         config['parameters']=[{'name':k, 'periodic':'True','type':'continuous','size':1,'low':0,'high':2*pi} for k in op]
         if self._minimize is True:
             config['objectives']=[{"name": "Energy", "goal": "minimize"}]
@@ -166,9 +163,13 @@ class PhoenicsOptimizer(Optimizer):
                 enablePrint()
             runs=[]
             recs=self._process_for_sim(precs,passives=passives)
+            # avoid multiple compilations
+            compiled_objective = compile_objective(objective=objective, backend=backend, variables=recs[0], samples=samples,
+                                                   noise_model=noise)
+
             for i,rec in enumerate(recs):
 
-                En=simulate(objective=objective,backend=backend,variables=rec,samples=samples,noise_model=noise)
+                En=compiled_objective(variables=rec,samples=samples,noise_model=noise)
                 '''
                 if samples is None:
                     En = simulate_objective(objective=objective,backend=backend,variables=rec)

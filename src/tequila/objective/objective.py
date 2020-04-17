@@ -269,12 +269,14 @@ class Objective:
         # same as wrap, might be more intuitive for some
         return self.wrap(op=op)
 
-    def count_expectationvalues(self):
-        i = 0
-        for arg in self.args:
-            if hasattr(arg, "U"):
-                i += 1
-        return i
+    def get_expectationvalues(self):
+        return [arg for arg in self.args if hasattr(arg, "U")]
+
+    def count_expectationvalues(self, unique = True):
+        if unique:
+            return len(set(self.get_expectationvalues()))
+        else:
+            return len(self.get_expectationvalues())
 
     def __repr__(self):
         variables = self.extract_variables()
@@ -291,12 +293,22 @@ class Objective:
             else:
                 assert not arg.has_expectationvalues()
                 argstring += "g({}), ".format(arg.extract_variables())
-        return "Objective with {} expectation values\n" \
+        return "Objective with {}({}) (unique) expectation values\n" \
                "Objective = f({})\n" \
-               "variables = {}".format(len(ev), argstring.strip().rstrip(','), variables)
+               "variables = {}".format(len(ev), len(set(ev)), argstring.strip().rstrip(','), variables)
 
     def __call__(self, variables = None, *args, **kwargs):
-        return self.transformation(*[Ei(variables=variables, *args, **kwargs) for Ei in self.args])
+        # avoid multiple evaluations
+        evaluated = {}
+        ev_array = []
+        for E in self.args:
+            if E not in evaluated:
+                expval_result = E(variables=variables, *args, **kwargs)
+                evaluated[E] = expval_result
+            else:
+                expval_result = evaluated[E]
+            ev_array.append(evaluated[E])
+        return self.transformation(*ev_array)
 
 
 def ExpectationValue(U, H, *args, **kwargs) -> Objective:

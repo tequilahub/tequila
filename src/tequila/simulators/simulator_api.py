@@ -194,9 +194,16 @@ def compile_objective(objective: 'Objective',
         return objective
 
     compiled_args = []
+    # avoid double compilations
+    expectationvalues = {}
     for arg in objective.args:
         if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, ExpValueType):
-            compiled_args.append(ExpValueType(arg, variables, noise_model))
+            if arg not in expectationvalues:
+                compiled_expval = ExpValueType(arg, variables, noise_model)
+                expectationvalues[arg] = compiled_expval
+            else:
+                compiled_expval = expectationvalues[arg]
+            compiled_args.append(compiled_expval)
         else:
             compiled_args.append(arg)
     return type(objective)(args=compiled_args, transformation=objective._transformation)
