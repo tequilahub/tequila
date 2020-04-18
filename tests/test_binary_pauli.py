@@ -147,3 +147,16 @@ def test_commuting_groups():
 
     for part in commuting_parts:
         assert part.is_commuting()
+
+def test_qubit_wise_commuting():
+    '''
+    Testing whether method is_qubit_wise_commuting correctly 
+    recognizes qubit wise commuting parts.
+    '''
+    not_qwc = -1.0 * paulis.Z(0) * paulis.Z(1) - 0.5 * paulis.Y(0) * paulis.Y(1)
+    not_qwc = BinaryHamiltonian.init_from_qubit_hamiltonian(not_qwc)
+    qwc =  paulis.Z(0) * paulis.Z(1) + paulis.Z(1) * paulis.Y(2)
+    qwc = BinaryHamiltonian.init_from_qubit_hamiltonian(qwc)
+
+    assert not not_qwc.is_qubit_wise_commuting()
+    assert qwc.is_qubit_wise_commuting()

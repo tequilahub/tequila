@@ -43,6 +43,8 @@ class BinaryHamiltonian:
         if not self.is_commuting():
             raise TequilaException(
                 'Not all terms in the Hamiltonians are commuting.')
+        if self.is_qubit_wise_commuting():
+            return self, [], []
 
         lagrangian_basis = get_lagrangian_subspace(self.get_binary())
         new_basis = self.get_single_qubit_basis(lagrangian_basis)
@@ -111,6 +113,25 @@ class BinaryHamiltonian:
                 if not self.binary_terms[i].commute(self.binary_terms[j]):
                     return False
         return True
+
+    def is_qubit_wise_commuting(self):
+        '''
+        Return whether all terms in the Hamiltonian are qubit-wise commuting 
+        '''
+        # Keep a dictionary of qubit-wise term found
+        qubit_term = {}
+        for i in range(self.n_term):
+            for qub in range(self.n_qubit):
+                cur_binary_term = self.binary_terms[i].get_binary()
+                cur_qub_term = (cur_binary_term[qub], cur_binary_term[qub+self.n_qubit])
+                if cur_qub_term != (0, 0):
+                    if qub not in qubit_term:
+                        qubit_term[qub] = cur_qub_term
+                    else:
+                        if not qubit_term[qub] == cur_qub_term:
+                            return False
+        return True
+                
 
     def to_qubit_hamiltonian(self):
         qub_ham = QubitHamiltonian.init_zero()
