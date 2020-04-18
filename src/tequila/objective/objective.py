@@ -74,9 +74,13 @@ class Objective:
 
     """
 
-    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None):
-        self._args = tuple(args)
-        self._transformation = transformation
+    def __init__(self, args: typing.Iterable = None, transformation: typing.Callable = None):
+        if args is None:
+            self._args = tuple()
+            self._transformation = lambda *x: 0.0
+        else:
+            self._args = tuple(args)
+            self._transformation = transformation
 
     @property
     def backend(self) -> str:
@@ -293,9 +297,14 @@ class Objective:
             else:
                 assert not arg.has_expectationvalues()
                 argstring += "g({}), ".format(arg.extract_variables())
-        return "Objective with {}({}) (unique) expectation values\n" \
-               "Objective = f({})\n" \
-               "variables = {}".format(len(ev), len(set(ev)), argstring.strip().rstrip(','), variables)
+
+        unique = len(set(ev))
+        if unique == 0:
+            return "f({})".format(argstring.strip().rstrip(','))
+        else:
+            return "Objective with {}({}) (unique) expectation values\n" \
+                   "Objective = f({})\n" \
+                   "variables = {}".format(len(ev), unique, argstring.strip().rstrip(','), variables)
 
     def __call__(self, variables = None, *args, **kwargs):
         # avoid multiple evaluations

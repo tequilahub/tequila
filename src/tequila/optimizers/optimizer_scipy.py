@@ -8,7 +8,6 @@ from collections import namedtuple
 from tequila.simulators.simulator_api import compile
 from tequila.utils.exceptions import TequilaException
 from tequila.circuit.noise import NoiseModel
-#from tequila.tools.qng import qng_metric_tensor_blocks
 
 class TequilaScipyException(TequilaException):
     """ """

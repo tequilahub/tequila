@@ -297,7 +297,7 @@ class BackendCircuitPyquil(BackendCircuit):
                 self.counter += 1
         pyquil_gate=op(angle=par,qubit=self.qubit_map[gate.target[0]])
         if gate.is_controlled():
-            for c in gate.controls:
+            for c in gate.control:
                 pyquil_gate=pyquil_gate.controlled(self.qubit_map[c])
         circuit += pyquil_gate
 
