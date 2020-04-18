@@ -73,7 +73,6 @@ class Compiler:
             raise TequilaCompilerException("Tequila compiler can't process type {}".format(type(objective)))
 
         stop = time.time()
-        print("pre-compiler = ", stop - start)
         return result
 
     def compile_objective(self, objective, variables=None, *args, **kwargs):
