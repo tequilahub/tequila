@@ -34,10 +34,24 @@ op_lookup = {
 
 
 class BackendCircuitQulacs(BackendCircuit):
-    recompile_swap = False
-    recompile_multitarget = True
-    recompile_controlled_rotation = True
-    recompile_exponential_pauli = False
+
+    compiler_arguments = {
+        "trotterized": True,
+        "swap": False,
+        "multitarget": True,
+        "controlled_rotation": True, # problems with multicontrol
+        "gaussian": True,
+        "exponential_pauli": False,
+        "controlled_exponential_pauli": True,
+        "phase": True,
+        "power": True,
+        "hadamard_power": True,
+        "controlled_power": True,
+        "controlled_phase": True,
+        "toffoli": False,
+        "phase_to_z": True,
+        "cc_max": False
+    }
 
     numbering = BitNumbering.LSB
 
@@ -104,6 +118,7 @@ class BackendCircuitQulacs(BackendCircuit):
         return qulacs.ParametricQuantumCircuit(n_qubits)
 
     def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
+        assert not gate.is_controlled()
         convert = {'x': 1, 'y': 2, 'z': 3}
         pind = [convert[x.lower()] for x in gate.paulistring.values()]
         qind = [self.qubit_map[x] for x in gate.paulistring.keys()]

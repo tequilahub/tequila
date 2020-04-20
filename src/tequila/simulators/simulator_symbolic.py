@@ -14,11 +14,11 @@ Simple Symbolic Simulator for debugging purposes
 class BackendCircuitSymbolic(BackendCircuit):
 
     # compiler instructions
-    recompile_trotter = True
-    recompile_swap = True
-    recompile_multitarget = True
-    recompile_controlled_rotation = False
-    recompile_exponential_pauli = True
+    compile_trotter = True
+    compile_swap = True
+    compile_multitarget = True
+    compile_controlled_rotation = False
+    compile_exponential_pauli = True
 
     convert_to_numpy = True
 

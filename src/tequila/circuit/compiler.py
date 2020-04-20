@@ -26,21 +26,21 @@ class TequilaCompilerException(TequilaException):
 class Compiler:
 
     def __init__(self,
-                 multitarget=True,
+                 multitarget=False,
                  multicontrol=False,
-                 trotterized=True,
-                 gaussian=True,
-                 exponential_pauli=True,
-                 controlled_exponential_pauli=True,
-                 hadamard_power=True,
-                 controlled_power=True,
-                 power=True,
+                 trotterized=False,
+                 gaussian=False,
+                 exponential_pauli=False,
+                 controlled_exponential_pauli=False,
+                 hadamard_power=False,
+                 controlled_power=False,
+                 power=False,
                  toffoli=False,
-                 controlled_phase=True,
-                 phase=True,
+                 controlled_phase=False,
+                 phase=False,
                  phase_to_z=False,
-                 controlled_rotation=True,
-                 swap=True,
+                 controlled_rotation=False,
+                 swap=False,
                  cc_max=False
                  ):
         self.multitarget = multitarget

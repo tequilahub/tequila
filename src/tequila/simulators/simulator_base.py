@@ -26,20 +26,25 @@ class BackendCircuit():
     self.abstract_circuit: compiled tequila circuit
     """
 
-    # compiler instructions
-    recompile_trotter = True
-    recompile_swap = False
-    recompile_multitarget = True
-    recompile_controlled_rotation = False
-    recompile_exponential_pauli = True
-    recompile_phase = True
-    recompile_power = True
-    recompile_hadamard_power = True
-    recompile_controlled_power = True
-    recompile_controlled_phase = True
-    recompile_toffoli = False
-    recompile_phase_to_z = False
-    cc_max = False
+    # compiler instructions, override in backends
+    # try to reduce True statements as much as possible for new backends
+    compiler_arguments = {
+        "trotterized": True,
+        "swap": True,
+        "multitarget": True,
+        "controlled_rotation": True,
+        "gaussian": True,
+        "exponential_pauli": True,
+        "controlled_exponential_pauli": True,
+        "phase": True,
+        "power": True,
+        "hadamard_power": True,
+        "controlled_power": True,
+        "controlled_phase": True,
+        "toffoli": True,
+        "phase_to_z": True,
+        "cc_max": True
+    }
 
     @property
     def n_qubits(self) -> numbers.Integral:
@@ -53,27 +58,16 @@ class BackendCircuit():
                  use_mapping=True, optimize_circuit=True, *args, **kwargs):
         self._variables = tuple(abstract_circuit.extract_variables())
         self.use_mapping = use_mapping
+
+        compiler_arguments = self.compiler_arguments
         if noise_model is not None:
-            self.cc_max = True
-            self.recompile_controlled_phase = True
-            self.recompile_controlled_rotation = True
-            self.recompile_hadamard_power = True
+            compiler_arguments["cc_max"] = True
+            compiler_arguments["controlled_phase"] = True
+            compiler_arguments["controlled_rotation"] = True
+            compiler_arguments["hadamard_power"] = True
+
         # compile the abstract_circuit
-        c = compiler.Compiler(multitarget=self.recompile_multitarget,
-                              multicontrol=False,
-                              trotterized=self.recompile_trotter,
-                              exponential_pauli=self.recompile_exponential_pauli,
-                              controlled_exponential_pauli=True,
-                              hadamard_power=self.recompile_hadamard_power,
-                              controlled_power=self.recompile_controlled_power,
-                              power=self.recompile_power,
-                              controlled_phase=self.recompile_controlled_phase,
-                              phase=self.recompile_phase,
-                              phase_to_z=self.recompile_phase_to_z,
-                              toffoli=self.recompile_toffoli,
-                              controlled_rotation=self.recompile_controlled_rotation,
-                              cc_max=self.cc_max,
-                              swap=self.recompile_swap)
+        c = compiler.Compiler(**compiler_arguments)
 
         if self.use_mapping:
             qubits = abstract_circuit.qubits
