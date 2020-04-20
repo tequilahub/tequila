@@ -19,6 +19,23 @@ class BackendCircuitSymbolic(BackendCircuit):
     compile_multitarget = True
     compile_controlled_rotation = False
     compile_exponential_pauli = True
+    compiler_arguments = {
+        "trotterized": True,
+        "swap": True,
+        "multitarget": True,
+        "controlled_rotation": False,
+        "gaussian": True,
+        "exponential_pauli": False,
+        "controlled_exponential_pauli": True,
+        "phase": True,
+        "power": True,
+        "hadamard_power": True,
+        "controlled_power": True,
+        "controlled_phase": True,
+        "toffoli": True,
+        "phase_to_z": True,
+        "cc_max": True
+    }
 
     convert_to_numpy = True
 
