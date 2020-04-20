@@ -39,7 +39,7 @@ class BackendCircuitQulacs(BackendCircuit):
         "trotterized": True,
         "swap": False,
         "multitarget": True,
-        "controlled_rotation": True, # problems with multicontrol
+        "controlled_rotation": True, # needed for gates depending on variables
         "gaussian": True,
         "exponential_pauli": False,
         "controlled_exponential_pauli": True,
@@ -139,6 +139,8 @@ class BackendCircuitQulacs(BackendCircuit):
                 op = op[0]
                 self.variables.append(-gate.parameter)
                 op(circuit)(self.qubit_map[gate.target[0]], -gate.parameter(variables=variables))
+                if gate.is_controlled():
+                    raise TequilaQulacsException("Gates which depend on variables can not be controlled! Gate was:\n{}".format(gate))
                 return
             else:
                 op = op[1]
