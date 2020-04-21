@@ -106,7 +106,7 @@ class QCircuit():
                     self.max_qubit() + 1))
         return self
 
-    def __init__(self, gates=None, parameter_map = None):
+    def __init__(self, gates=None, parameter_map=None):
         self._n_qubits = None
         self._min_n_qubits = 0
         if gates is None:
@@ -119,7 +119,15 @@ class QCircuit():
         else:
             self._parameter_map = parameter_map
 
-    def make_parameter_map(self):
+    def make_parameter_map(self) -> dict:
+        """
+        Returns
+        -------
+            ParameterMap of the circuit: A dictionary with
+            keys: variables in the circuit
+            values: list of all gates and their positions in the circuit
+            e.g. result[Variable("a")] = [(3, Rx), (5, Ry), ...]
+        """
         parameter_map = defaultdict(list)
         for idx, gate in enumerate(self.gates):
             if gate.is_parametrized():
@@ -146,22 +154,71 @@ class QCircuit():
             sl.extend([sd[k] for k in sorted(sd.keys())])
         self._gates = sl
 
-    def replace_gate(self, position, gates):
-        if hasattr(gates, '__iter__'):
-            gs = gates
-        elif isinstance(gates, QCircuit):
-            gs = gates.gates
-        else:
-            gs = [gates]
+    def replace_gates(self, positions: list, circuits: list, replace: list = None):
+        """
+        Notes
+        ----------
+        Replace or insert gates at specific positions into the circuit
+        at different positions (faster than multiple calls to replace_gate)
 
-        new = self.gates[:position]
-        new.extend(gs)
-        new.extend(self.gates[(position + 1):])
-        return QCircuit(gates=new)
+        Parameters
+        ----------
+        positions: list of int:
+            the positions at which the gates should be added. Always refer to the positions in the original circuit
+        circuits: list or QCircuit:
+            the gates to add at the corresponding positions
+        replace: list of bool: (Default value: None)
+            Default is None which corresponds to all true
+            decide if gates shall be replaces or if the new parts shall be inserted without replacement
+            if replace[i] = true: gate at position [i] will be replaces by gates[i]
+            if replace[i] = false: gates[i] circuit will be inserted at position [i] (beaming before gate previously at position [i])
+        Returns
+        -------
+            new circuit with inserted gates
+        """
+
+        assert len(circuits) == len(positions)
+        if replace is None:
+            replace = [True] * len(circuits)
+        else:
+            assert len(circuits) == len(replace)
+
+        dataset = zip(positions, circuits, replace)
+        dataset = sorted(dataset, key=lambda x: x[0])
+
+        offset = 0
+        new_gatelist = self.gates
+        for idx, circuit, do_replace in dataset:
+
+            # failsafe
+            if hasattr(circuit, "gates"):
+                gatelist = circuit.gates
+            elif isinstance(circuit, typing.Iterable):
+                gatelist = circuit
+            else:
+                gatelist = [circuit]
+
+            pos = idx + offset
+            if do_replace:
+                new_gatelist = new_gatelist[:pos] + gatelist + new_gatelist[pos + 1:]
+                offset += len(gatelist) - 1
+            else:
+                new_gatelist = new_gatelist[:pos] + gatelist + new_gatelist[pos:]
+                offset += len(gatelist)
+
+        result = QCircuit(gates=new_gatelist)
+        result.n_qubits = max(result.n_qubits, self.n_qubits)
+        return result
+
+    def insert_gates(self, positions, gates):
+        """
+        See replace_gates
+        """
+        return self.replace_gates(positions=positions, circuits=gates, replace=[False] * len(gates))
 
     def dagger(self):
         """
-        :return: Circuit in reverse with signs of rotations switched
+        :return: Return adjoint of the circuit
         """
         result = QCircuit()
         for g in reversed(self.gates):
@@ -225,7 +282,7 @@ class QCircuit():
 
         offset = len(self.gates)
         for k, v in other._parameter_map.items():
-            self._parameter_map[k] += [(x[0]+offset, x[1]) for x in v]
+            self._parameter_map[k] += [(x[0] + offset, x[1]) for x in v]
 
         self._gates += other.gates
         self._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)

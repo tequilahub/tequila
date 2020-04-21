@@ -158,16 +158,13 @@ class Compiler:
 
             compiled_gates.append((idx, cg))
 
-        compiled_gates = sorted(compiled_gates, key=lambda x: x[0])
-        offset = 0
-        compiled = abstract_circuit.gates
-        for idx, cg in compiled_gates:
-            pos = idx + offset
-            compiled = compiled[:pos] + cg.gates + compiled[pos + 1:]
-            offset += len(cg.gates) - 1
-        compiled = QCircuit(gates=compiled)
-        compiled.n_qubits = max(compiled.n_qubits, n_qubits)
-        return compiled
+        if len(compiled_gates) == 0:
+            return abstract_circuit
+        else:
+            pos, cgs = zip(*compiled_gates)
+            compiled = abstract_circuit.replace_gates(positions=pos, circuits=cgs)
+
+            return compiled
 
 
 def compiler(f):

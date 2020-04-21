@@ -152,19 +152,7 @@ class OptimizerSciPy(Optimizer):
                 grad_exval.append(gradient[k].count_expectationvalues())
                 compiled_grad_objectives[k] = compile(objective=gradient[k], variables=initial_values,
                                                            samples=samples,noise_model=noise, backend=backend)
-            '''
-            if qng:
-                metric_tensor_blocks=qng_metric_tensor_blocks(objective,initial_values,samples=samples,noise_model=noise,
-                                                backend=backend)
-                dE = _QngContainer(objective=compiled_grad_objectives,
-                                   metric_tensor_blocks=metric_tensor_blocks,
-                                param_keys=param_keys,
-                                samples=samples,
-                                passive_angles=passive_angles,
-                                save_history=self.save_history,
-                                silent=self.silent)
-            else:
-            '''
+
             dE = _GradContainer(objective=compiled_grad_objectives,
                                 param_keys=param_keys,
                                 samples=samples,
@@ -185,8 +173,7 @@ class OptimizerSciPy(Optimizer):
 
             if isinstance(gradient, str):
                 raise TequilaScipyException("Can not use numerical gradients for Hessian based methods")
-            #if qng is True:
-                #raise TequilaScipyException('Quantum Natural Hessian not yet well-defined, sorry!')
+
             compiled_hess_objectives = dict()
             hess_exval = []
             for i, k in enumerate(active_angles.keys()):

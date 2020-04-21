@@ -298,7 +298,7 @@ class Objective:
                 assert not arg.has_expectationvalues()
                 argstring += "g({}), ".format(arg.extract_variables())
 
-        unique = len(set(ev))
+        unique = self.count_expectationvalues(unique=True)
         if unique == 0:
             return "f({})".format(argstring.strip().rstrip(','))
         else:

@@ -164,10 +164,10 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     neo_b = copy.deepcopy(g)
     neo_b._parameter = shift_b
 
-    U1 = unitary.replace_gate(position=i, gates=[neo_a])
+    U1 = unitary.replace_gates(positions=[i], circuits=[neo_a])
     w1 = g.shift * __grad_inner(g.parameter, variable)
 
-    U2 = unitary.replace_gate(position=i, gates=[neo_b])
+    U2 = unitary.replace_gates(positions=[i], circuits=[neo_b])
     w2 = -g.shift * __grad_inner(g.parameter, variable)
 
     Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
