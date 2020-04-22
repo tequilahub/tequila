@@ -38,7 +38,7 @@ def test_execution_shot(simulator):
     print(result.history.energies)
     assert (len(result.history.energies) <= mi*mp.cpu_count())
 
-@pytest.mark.parametrize("simulator", numpy.random.choice(['qiskit','cirq','qulacs'],1))
+@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
 @pytest.mark.parametrize('method', tq.optimizers.optimizer_gd.OptimizerGD.available_methods())
 def test_method_convergence(simulator,method):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
@@ -49,7 +49,7 @@ def test_method_convergence(simulator,method):
     result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,stop_count=40, maxiter=200, backend=simulator)
     assert (numpy.isclose(result.energy, -1.0,atol=3.e-2))
 
-@pytest.mark.parametrize("simulator", numpy.random.choice(['qulacs'],1))
+@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizers.optimizer_gd.OptimizerGD.available_methods())
 def test_methods_qng(simulator, method):
     ### please note! I am finely tuned to always pass! don't get cocky and change lr, maxiter, etc.
