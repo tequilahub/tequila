@@ -49,7 +49,7 @@ def test_gradient_UY_HX(simulator, angle_value, controlled, silent=True):
         print("cos(angle)=", numpy.cos(angle()))
 
 
-@pytest.mark.parametrize("simulator", ['cirq','qiskit','pyquil'])
+@pytest.mark.parametrize("simulator", ['cirq','qiskit','pyquil','qulacs'])
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0*numpy.pi, 1))
 def test_gradient_UY_HX_sample(simulator, angle_value, controlled, silent=True):
