@@ -36,103 +36,6 @@ op_lookup={
     'SWAP': (cirq.ops.SwapPowGate,None),
 }
 
-
-
-'''
-potentially useful in hash table merge, leaving in
-type_lookup={
-    'x':[cirq.ops.pauli_gates._PauliX,cirq.ops.common_gates.XPowGate],
-    'rx':[cirq.ops.common_gates.XPowGate],
-    'y': [cirq.ops.pauli_gates._PauliY,cirq.ops.common_gates.YPowGate],
-    'ry': [cirq.ops.common_gates.YPowGate],
-    'z': [cirq.ops.pauli_gates._PauliZ,cirq.ops.common_gates.ZPowGate],
-    'r':[cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.XPowGate,
-         cirq.ops.common_gates.YPowGate],
-    'single':[cirq.ops.pauli_gates._PauliX,cirq.ops.pauli_gates._PauliY,
-                cirq.ops.pauli_gates._PauliZ,
-              cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.XPowGate,
-         cirq.ops.common_gates.YPowGate,cirq.ops.common_gates.HPowGate],
-    'control':[cirq.ops.pauli_gates._PauliX,
-               cirq.ops.pauli_gates._PauliY,
-               cirq.ops.pauli_gates._PauliZ,
-               cirq.ops.common_gates.ZPowGate,
-               cirq.ops.common_gates.XPowGate,
-               cirq.ops.common_gates.YPowGate,
-               cirq.ops.common_gates.HPowGate,
-               cirq.ops.common_gates.CNotPowGate,
-               cirq.ops.common_gates.CZPowGate,
-               cirq.ops.SwapPowGate],
-    'multicontrol':[cirq.ops.pauli_gates._PauliX,
-               cirq.ops.pauli_gates._PauliY,
-               cirq.ops.pauli_gates._PauliZ,
-               cirq.ops.common_gates.ZPowGate,
-               cirq.ops.common_gates.XPowGate,
-               cirq.ops.common_gates.YPowGate,
-               cirq.ops.common_gates.HPowGate,
-               cirq.ops.common_gates.CNotPowGate,
-               cirq.ops.common_gates.CZPowGate,
-               cirq.ops.SwapPowGate,
-               cirq.ops.three_qubit_gates.CCXPowGate,
-               cirq.ops.three_qubit_gates.CCZPowGate,
-               cirq.ops.three_qubit_gates.CSwapGate
-                ],
-    'rz': [cirq.ops.common_gates.ZPowGate],
-    'h': [cirq.ops.common_gates.HPowGate],
-    'crx':[cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate],
-    'cry': [cirq.ops.common_gates.YPowGate],
-    'crz': [cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.CZPowGate],
-    'cx': [cirq.ops.pauli_gates._PauliX, cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate],
-    'cy': [cirq.ops.pauli_gates._PauliY, cirq.ops.common_gates.YPowGate],
-    'cz': [cirq.ops.pauli_gates._PauliZ, cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.CZPowGate],
-    'ch': [cirq.ops.common_gates.HPowGate],
-    'cnot':[cirq.ops.pauli_gates._PauliX, cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate],
-    'ccrx': [cirq.ops.pauli_gates._PauliX, cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate,cirq.ops.three_qubit_gates.CCXPowGate],
-    'ccry': [cirq.ops.pauli_gates._PauliY, cirq.ops.common_gates.YPowGate],
-    'ccrz': [cirq.ops.pauli_gates._PauliZ, cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.CZPowGate,cirq.ops.three_qubit_gates.CCZPowGate],
-    'ccx': [cirq.ops.pauli_gates._PauliX, cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate,cirq.ops.three_qubit_gates.CCXPowGate],
-    'ccnot':[cirq.ops.pauli_gates._PauliX, cirq.ops.common_gates.XPowGate,cirq.ops.common_gates.CNotPowGate,cirq.ops.three_qubit_gates.CCXPowGate],
-    'ccy': [cirq.ops.pauli_gates._PauliY, cirq.ops.common_gates.YPowGate],
-    'ccz': [cirq.ops.pauli_gates._PauliZ, cirq.ops.common_gates.ZPowGate,cirq.ops.common_gates.CZPowGate,cirq.ops.three_qubit_gates.CCZPowGate],
-    'cch': [cirq.ops.common_gates.HPowGate],
-    'swap':[cirq.ops.SwapPowGate],
-}
-'''
-
-
-'''
-potentially useful in hash table merge, leaving in
-qubit_lookup ={
-    'x':1,
-    'rx':1,
-    'y': 1,
-    'ry': 1,
-    'z': 1,
-    'rz': 1,
-    'h': 1,
-    'r':1,
-    'single':1,
-    'control':2,
-    'multicontrol':3,
-    'crx':2,
-    'cry': 2,
-    'crz': 2,
-    'cx': 2,
-    'cy': 2,
-    'cz': 2,
-    'ch': 2,
-    'cnot':2,
-    'ccrx':3,
-    'ccry':3,
-    'ccrz':3,
-    'ccx':3,
-    'ccnot':3,
-    'ccy':3,
-    'ccz':3,
-    'cch':3,
-    'swap':2
-}
-'''
-
 def qubit_satisfier(op,level):
     oplen=len(op.qubits)
     if level <3:
@@ -146,28 +49,37 @@ class TequilaCirqException(TequilaException):
 
 
 class BackendCircuitCirq(BackendCircuit):
-    recompile_swap = False
-    recompile_multitarget = True
-    recompile_controlled_rotation = False
-    recompile_hadamard_power= False
-    recompile_controlled_power = False
-    recompile_power = False
-    recompile_phase_to_z=True
-    recompile_toffoli=False
-    recompile_trotter = True
+
+    compiler_arguments = {
+    "trotterized" : True,
+    "swap" : False,
+    "multitarget" : True,
+    "controlled_rotation" : False,
+    "gaussian" : True,
+    "exponential_pauli" : True,
+    "controlled_exponential_pauli" : True,
+    "phase" : True,
+    "power" : False,
+    "hadamard_power" : False,
+    "controlled_power" : False,
+    "controlled_phase" : True,
+    "toffoli" : False,
+    "phase_to_z" : False,
+    "cc_max" : False
+    }
 
     numbering: BitNumbering = BitNumbering.MSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
-        self.match_par_to_sympy={}
+        self.tq_to_sympy={}
         self.counter=0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model, use_mapping=use_mapping, *args, **kwargs)
-        if len(self.match_par_to_sympy.keys()) is None:
-            self.match_sympy_to_value = None
+        if len(self.tq_to_sympy.keys()) is None:
+            self.sympy_to_tq = None
             self.resolver=None
         else:
-            self.match_sympy_to_value = {v: k for k, v in self.match_par_to_sympy.items()}
-            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.match_sympy_to_value.items()})
+            self.sympy_to_tq = {v: k for k, v in self.tq_to_sympy.items()}
+            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
         if self.noise_model is not None:
             self.circuit=self.build_noise_model(self.noise_model)
 
@@ -203,10 +115,10 @@ class BackendCircuitCirq(BackendCircuit):
             par = gate.parameter
         else:
             try:
-                par = self.match_par_to_sympy[gate.parameter]
+                par = self.tq_to_sympy[gate.parameter]
             except:
-                par = sympy.Symbol('p_{}'.format(str(self.counter)))
-                self.match_par_to_sympy[gate.parameter] = par
+                par = sympy.Symbol('{}_{}'.format(self._name_variable_objective(gate.parameter),str(self.counter)))
+                self.tq_to_sympy[gate.parameter] = par
                 self.counter += 1
         cirq_gate = op(**mapping(par)).on(*[self.qubit_map[t] for t in gate.target])
         if gate.is_controlled():
@@ -243,8 +155,8 @@ class BackendCircuitCirq(BackendCircuit):
         """
         overriding the underlying base to make sure this stuff remains noisy
         """
-        if self.match_sympy_to_value is not None:
-            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.match_sympy_to_value.items()})
+        if self.sympy_to_tq is not None:
+            self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
         else:
             self.resolver=None
 

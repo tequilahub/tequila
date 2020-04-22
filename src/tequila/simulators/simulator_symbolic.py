@@ -14,11 +14,23 @@ Simple Symbolic Simulator for debugging purposes
 class BackendCircuitSymbolic(BackendCircuit):
 
     # compiler instructions
-    recompile_trotter = True
-    recompile_swap = True
-    recompile_multitarget = True
-    recompile_controlled_rotation = False
-    recompile_exponential_pauli = True
+    compiler_arguments = {
+        "trotterized": True,
+        "swap": True,
+        "multitarget": True,
+        "controlled_rotation": False,
+        "gaussian": True,
+        "exponential_pauli": True,
+        "controlled_exponential_pauli": True,
+        "phase": True,
+        "power": True,
+        "hadamard_power": True,
+        "controlled_power": True,
+        "controlled_phase": True,
+        "toffoli": True,
+        "phase_to_z": True,
+        "cc_max": True
+    }
 
     convert_to_numpy = True
 

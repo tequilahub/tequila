@@ -1,14 +1,8 @@
-from tequila.circuit.compiler import compile_controlled_rotation
-from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, GaussianGateImpl
-from tequila.circuit.compiler import compile_trotterized_gate, compile_exponential_pauli_gate, compile_multitarget, \
-    compile_power_gate, compile_controlled_phase, compile_h_power
-from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, ExpectationValue
+from tequila.circuit.compiler import Compiler
+from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable
 from tequila import TequilaException
-from tequila.circuit.circuit import QCircuit
-from tequila.hamiltonian import paulis
 import numpy as np
 import copy
-import typing
 
 # make sure to use the jax/autograd numpy
 from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
@@ -23,19 +17,9 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
     return: dictionary of Objectives, if called on gate, circuit, exp.value, or objective; if Variable or Transform, returns number.
     '''
 
-    if not no_compile:
-        compiled = compile_multitarget(gate=objective)
-        compiled = compile_trotterized_gate(gate=compiled)
-        compiled = compile_h_power(gate=compiled)
-        compiled = compile_power_gate(gate=compiled)
-        compiled = compile_controlled_phase(gate=compiled)
-        compiled = compile_controlled_rotation(gate=compiled)
-    else:
-        compiled = objective
-
     if variable is None:
         # None means that all components are created
-        variables = compiled.extract_variables()
+        variables = objective.extract_variables()
         result = {}
 
         if len(variables) == 0:
@@ -43,11 +27,21 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
 
         for k in variables:
             assert (k is not None)
-            result[k] = grad(compiled, k)
+            result[k] = grad(objective, k)
         return result
+    else:
+        variable = assign_variable(variable)
 
-    elif not isinstance(variable, Variable) and hasattr(variable, "__hash__"):
-        variable = Variable(name=variable)
+    if no_compile:
+        compiled = objective
+    else:
+        compiler = Compiler(multitarget=True,
+                            trotterized=True,
+                            hadamard_power=True,
+                            power=True,
+                            controlled_phase=True,
+                            controlled_rotation=True)
+        compiled = compiler(objective, variables=[variable])
 
     if variable not in compiled.extract_variables():
         raise TequilaException("Error in taking gradient. Objective does not depend on variable {} ".format(variable))
@@ -122,28 +116,28 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     '''
     hamiltonian = E.H
     unitary = E.U
+    assert(unitary.verify())
 
     # fast return if possible
     if variable not in unitary.extract_variables():
         return 0.0
 
-    dO = None
-    for i, g in enumerate(unitary.gates):
-        if g.is_parametrized():
-            if g.is_controlled():
-                raise TequilaException("controlled gate in gradient: Compiler was not called")
-            if variable in g.extract_variables():
-                if hasattr(g, "shift"):
-                    dOinc = __grad_gaussian(unitary, g, i, variable, hamiltonian)
-                    if dO is None:
-                        dO = dOinc
-                    else:
-                        dO = dO + dOinc
-                else:
-                    print(g, type(g))
-                    raise TequilaException('No shift found for gate {}'.format(g))
-    if dO is None:
-        raise TequilaException("caught None type in gradient")
+    param_gates = unitary._parameter_map[variable]
+
+    dO = Objective()
+    for idx_g in param_gates:
+        idx, g = idx_g
+        # failsafe
+        if g.is_controlled():
+            raise TequilaException("controlled gate in gradient: Compiler was not called. Gate is {}".format(g))
+        if not hasattr(g, "shift"):
+            raise TequilaException('No shift found for gate {}'.format(g))
+
+        dOinc = __grad_gaussian(unitary, g, idx, variable, hamiltonian)
+
+        dO += dOinc
+
+    assert dO is not None
     return dO
 
 
@@ -170,10 +164,10 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     neo_b = copy.deepcopy(g)
     neo_b._parameter = shift_b
 
-    U1 = unitary.replace_gate(position=i, gates=[neo_a])
+    U1 = unitary.replace_gates(positions=[i], circuits=[neo_a])
     w1 = g.shift * __grad_inner(g.parameter, variable)
 
-    U2 = unitary.replace_gate(position=i, gates=[neo_b])
+    U2 = unitary.replace_gates(positions=[i], circuits=[neo_b])
     w2 = -g.shift * __grad_inner(g.parameter, variable)
 
     Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)

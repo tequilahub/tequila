@@ -2,7 +2,7 @@ from tequila.objective.objective import Objective
 from tequila.optimizers.optimizer_base import Optimizer
 import typing
 import numbers
-from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
+from tequila.objective.objective import Variable
 import warnings
 warnings.simplefilter("ignore")
 
@@ -16,7 +16,7 @@ except:
 
 
 import numpy as np
-from tequila.simulators.simulator_api import compile, simulate
+from tequila.simulators.simulator_api import compile
 from collections import namedtuple
 GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history opt')
 

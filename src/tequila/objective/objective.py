@@ -42,10 +42,14 @@ class ExpectationValueImpl:
             self.U.update_variables(variables)
 
 
-    def __init__(self, U=None, H=None):
-        assert (H.is_hermitian())
+    def __init__(self, U=None, H=None, contraction=None, shape=None):
         self._unitary = copy.deepcopy(U)
-        self._hamiltonian = copy.deepcopy(H)
+        if hasattr(H, "paulistrings"):
+            self._hamiltonian = tuple([copy.deepcopy(H)])
+        else:
+            self._hamiltonian = tuple(H)
+        self._contraction = contraction
+        self._shape = shape
 
     def __call__(self, *args, **kwargs):
         raise TequilaException("Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")
@@ -70,9 +74,13 @@ class Objective:
 
     """
 
-    def __init__(self, args: typing.Iterable, transformation: typing.Callable = None):
-        self._args = tuple(args)
-        self._transformation = transformation
+    def __init__(self, args: typing.Iterable = None, transformation: typing.Callable = None):
+        if args is None:
+            self._args = tuple()
+            self._transformation = lambda *x: 0.0
+        else:
+            self._args = tuple(args)
+            self._transformation = transformation
 
     @property
     def backend(self) -> str:
@@ -116,17 +124,17 @@ class Objective:
         return not all([hasattr(arg, "name") for arg in self.args])
 
     @classmethod
-    def ExpectationValue(cls, U=None, H=None):
+    def ExpectationValue(cls, U=None, H=None, *args, **kwargs):
         """
         Initialize a wrapped expectationvalue directly as Objective
         """
-        E = ExpectationValueImpl(H=H, U=U)
+        E = ExpectationValueImpl(H=H, U=U, *args, **kwargs)
         return Objective(args=[E])
 
     @property
     def transformation(self) -> typing.Callable:
         if self._transformation is None:
-            return numpy.sum
+            return lambda x: x
         else:
             return self._transformation
 
@@ -265,12 +273,14 @@ class Objective:
         # same as wrap, might be more intuitive for some
         return self.wrap(op=op)
 
-    def count_expectationvalues(self):
-        i = 0
-        for arg in self.args:
-            if hasattr(arg, "U"):
-                i += 1
-        return i
+    def get_expectationvalues(self):
+        return [arg for arg in self.args if hasattr(arg, "U")]
+
+    def count_expectationvalues(self, unique = True):
+        if unique:
+            return len(set(self.get_expectationvalues()))
+        else:
+            return len(self.get_expectationvalues())
 
     def __repr__(self):
         variables = self.extract_variables()
@@ -287,19 +297,34 @@ class Objective:
             else:
                 assert not arg.has_expectationvalues()
                 argstring += "g({}), ".format(arg.extract_variables())
-        return "Objective with {} expectation values\n" \
-               "Objective = f({})\n" \
-               "variables = {}".format(len(ev), argstring.strip().rstrip(','), variables)
+
+        unique = self.count_expectationvalues(unique=True)
+        if unique == 0:
+            return "f({})".format(argstring.strip().rstrip(','))
+        else:
+            return "Objective with {}({}) (unique) expectation values\n" \
+                   "Objective = f({})\n" \
+                   "variables = {}".format(len(ev), unique, argstring.strip().rstrip(','), variables)
 
     def __call__(self, variables = None, *args, **kwargs):
-        return to_float(self.transformation(*[Ei(variables) for Ei in self.args]))
+        # avoid multiple evaluations
+        evaluated = {}
+        ev_array = []
+        for E in self.args:
+            if E not in evaluated:
+                expval_result = E(variables=variables, *args, **kwargs)
+                evaluated[E] = expval_result
+            else:
+                expval_result = evaluated[E]
+            ev_array.append(evaluated[E])
+        return self.transformation(*ev_array)
 
 
-def ExpectationValue(U, H) -> Objective:
+def ExpectationValue(U, H, *args, **kwargs) -> Objective:
     """
     Initialize an Objective which is just a single expectationvalue
     """
-    return Objective.ExpectationValue(U=U, H=H)
+    return Objective.ExpectationValue(U=U, H=H, *args, **kwargs)
 
 
 class TequilaVariableException(TequilaException):
@@ -519,17 +544,10 @@ class Variables(collections.abc.MutableMapping):
             result += "{} : {}\n".format(str(k), str(v))
         return result
 
-if __name__ == "__main__":
+    def __repr__(self):
+        return self.__str__()
 
-    a = Variables()
-    a["a"] = 1.0
-    a[(1,)] = 2.0
-    a["hallo"] = 3.0
 
-    print(a)
-    print((1,) in a)
-    print("a" in a)
-    print(assign_variable("a") in a)
-    print("b" in a)
+
 
 

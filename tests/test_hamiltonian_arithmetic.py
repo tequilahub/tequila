@@ -40,7 +40,14 @@ def test_convenience():
     test = -test
     assert test == -1.0*(paulis.X(i) - paulis.Y(i) + 3.0)
 
+    test = paulis.X([0,1,2,3])
+    assert test == QubitHamiltonian.init_from_string("X(0)X(1)X(2)X(3)", False)
 
+    test = paulis.Y([0,1,2,3])
+    assert test == QubitHamiltonian.init_from_string("Y(0)Y(1)Y(2)Y(3)", False)
+
+    test = paulis.Z([0,1,2,3])
+    assert test == QubitHamiltonian.init_from_string("Z(0)Z(1)Z(2)Z(3)", False)
 
 
 def test_ketbra():
@@ -58,7 +65,7 @@ def test_ketbra_random(n_qubits):
     assert result == QubitWaveFunction.from_array(ket)
 
 def test_paulistring_conversion():
-    X1 = QubitHamiltonian.init_from_string("X0")
+    X1 = QubitHamiltonian.init_from_string("X0", openfermion_format=True)
     X2 = paulis.X(0)
     keys = [i for i in X2.keys()]
     pwx = PauliString.from_openfermion(key=keys[0], coeff=X2[keys[0]])
