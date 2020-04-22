@@ -261,6 +261,6 @@ def test_initial_state_from_integer(simulator, initial_state):
     for i in range(6):
         U += tq.gates.X(target=i) + tq.gates.X(target=i)
 
-    wfn = tequila.simulators.simulator_api.simulate(U, initial_state=initial_state)
+    wfn = tq.simulate(U, initial_state=initial_state, backend=simulator)
     assert (initial_state in wfn)
     assert (numpy.isclose(wfn[initial_state], 1.0))

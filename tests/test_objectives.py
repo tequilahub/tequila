@@ -7,10 +7,32 @@ from tequila.circuit.gradient import grad
 from tequila import numpy as np
 import numpy
 import pytest
-from tequila import INSTALLED_SIMULATORS
+import tequila as tq
 from tequila.simulators.simulator_api import simulate
-from tequila import simulators
 
+@pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+def test_compilation(backend):
+    U = gates.X(target=[0,1,2,3,4,5])
+    for i in range(10):
+        U += gates.Ry(angle=(i,), target=numpy.random.randint(0,5,1)[0])
+    U += gates.CZ(0,1) + gates.CNOT(1,2) + gates.CZ(2,3) + gates.CNOT(3,4) + gates.CZ(5,6)
+    H = paulis.X(0) + paulis.X(1) + paulis.X(2) + paulis.X(3) + paulis.X(4) + paulis.X(5)
+    H += paulis.Z(0) + paulis.Z(1) + paulis.Z(2) + paulis.Z(3) + paulis.Z(4) + paulis.Z(5)
+    E = ExpectationValue(H=H, U=U)
+
+    randvals = numpy.random.uniform(0.0, 2.0, 10)
+    variables = {(i,): randvals[i] for i in range(10)}
+    e0 = simulate(E, variables=variables, backend=backend)
+
+    E2 = E*E
+    for i in range(99):
+        E2 += E*E
+
+    compiled = tq.compile(E2, variables=variables, backend=backend)
+    e2 = compiled(variables=variables)
+    assert(E2.count_expectationvalues(unique=True) == 1)
+    assert(compiled.count_expectationvalues(unique=True) == 1)
+    assert numpy.isclose(100*e0**2, e2)
 
 ### these 8 tests test add,mult,div, and power, with the expectationvalue on the left and right.
 

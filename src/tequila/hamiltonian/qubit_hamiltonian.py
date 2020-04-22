@@ -271,7 +271,7 @@ class QubitHamiltonian:
         return QubitHamiltonian(hamiltonian=QubitOperator.identity())
 
     @classmethod
-    def init_from_string(cls, string, openfermion_format=True):
+    def init_from_string(cls, string, openfermion_format=False):
         """
         stringify your hamiltonian as str(H.hamiltonian) to get the openfermion stringification
         :param string: Hamiltonian as string
@@ -282,7 +282,7 @@ class QubitHamiltonian:
         if openfermion_format:
             return QubitHamiltonian(hamiltonian=QubitOperator(string, 1.0))
         else:
-            raise TequilaException("Not there yet")
+            return cls.init_from_paulistring(ps=PauliString.from_string(string=string))
 
     @classmethod
     def init_from_paulistring(cls, ps: PauliString):

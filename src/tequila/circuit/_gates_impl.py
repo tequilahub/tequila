@@ -28,11 +28,26 @@ class QGateImpl:
     def control(self):
         return self._control
 
+    @property
+    def qubits(self):
+        return self._qubits
+
+    @property
+    def max_qubit(self):
+        return self._max_qubit
+
     def __init__(self, name, target: UnionList, control: UnionList = None):
         self._name = name
         self._target = tuple(list_assignement(target))
         self._control = tuple(list_assignement(control))
         self.finalize()
+        # Set the active qubits
+        if self.control:
+            self._qubits = self.target + self.control
+        else:
+            self._qubits = self.target
+
+        self._max_qubit = self.compute_max_qubit()
 
     def copy(self):
         return copy.deepcopy(self)
@@ -65,7 +80,7 @@ class QGateImpl:
         Convenience and easier to interpret
         :return: True if the Gate only acts on one qubit (not controlled)
         """
-        return ((not self.control) and (len(self.target) == 1))
+        return (not self.control) and (len(self.target) == 1)
 
     def finalize(self):
         if not self.target:
@@ -74,14 +89,6 @@ class QGateImpl:
             for c in self.target:
                 if c in self.control:
                     raise Exception("control and target are the same qubit: " + self.__str__())
-
-        # Set the active qubits
-        if self.control:
-            self.qubits = self.target + self.control
-        else:
-            self.qubits = self.target
-
-        self.max_qubit = self.compute_max_qubit()
 
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
