@@ -161,7 +161,7 @@ class OptimizerGD(Optimizer):
 
             new,moments,grads=f(lr=lr,step=step,gradients=gradients,v=v,moments=moments,active_angles=active_angles,**kwargs)
             save_grad={}
-            if passive_angles is not None:
+            if passive_angles != None:
                 v = {**new, **passive_angles}
             else:
                 v = new
@@ -176,7 +176,6 @@ class OptimizerGD(Optimizer):
     def adam(self,lr,step,gradients,
              v,moments,active_angles,
              beta=0.9,beta2=0.999,epsilon=10**-7,**kwargs):
-
 
         s = moments[0]
         r = moments[1]

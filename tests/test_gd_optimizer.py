@@ -45,8 +45,8 @@ def test_method_convergence(simulator,method):
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
     samples=None
-    angles={'a':numpy.pi/2}
-    result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,stop_count=10, maxiter=100, backend=simulator)
+    angles={'a':numpy.pi/3}
+    result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,stop_count=40, maxiter=200, backend=simulator)
     assert (numpy.isclose(result.energy, -1.0,atol=3.e-2))
 
 @pytest.mark.parametrize("simulator", numpy.random.choice(['qulacs'],1))

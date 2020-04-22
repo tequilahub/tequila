@@ -59,7 +59,6 @@ class CallableVector:
                 output[i] = entry(variables)
             else:
                 output[i] = entry
-
         return output
 
 def get_generator(gate):
