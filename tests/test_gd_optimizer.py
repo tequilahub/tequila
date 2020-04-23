@@ -5,9 +5,11 @@ from tequila.simulators.simulator_api import simulate
 from tequila.optimizers.optimizer_gd import minimize
 import copy
 
+
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
 @pytest.mark.parametrize('method', numpy.random.choice(tq.optimizers.optimizer_gd.OptimizerGD.available_methods(),1))
-def test_execution(simulator,method):
+@pytest.mark.parametrize('options', [None, {"jac":'2-point', 'eps':1.e-3}])
+def test_execution(simulator,method, options):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
         + tq.gates.Ry(angle="b", target=1, control=2) \
@@ -19,10 +21,11 @@ def test_execution(simulator,method):
 
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
-    result = minimize(objective=O,method=method, maxiter=1, backend=simulator)
+    result = minimize(objective=O,method=method, maxiter=1, backend=simulator, method_options=options)
 
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
-def test_execution_shot(simulator):
+@pytest.mark.parametrize('options', [None, {"jac":'2-point', 'eps':1.e-3}])
+def test_execution(simulator, options):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
         + tq.gates.Ry(angle="b", target=1, control=2) \
@@ -34,7 +37,7 @@ def test_execution_shot(simulator):
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
     mi=2
-    result = minimize(objective=O, maxiter=mi, backend=simulator,samples=1024)
+    result = minimize(objective=O, maxiter=mi, backend=simulator,samples=1024, method_options=options)
     print(result.history.energies)
     assert (len(result.history.energies) <= mi*mp.cpu_count())
 
