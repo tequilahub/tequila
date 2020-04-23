@@ -108,19 +108,23 @@ class OptimizerGD(Optimizer):
             g_list=[]
             for k in active_angles.keys():
                 if use_2_point:
-                    def numerical_gradient(variables, *args, **kwargs):
-                        left = copy.deepcopy(variables)
-                        right = copy.deepcopy(variables)
-                        left[k] += eps
-                        right[k] -= eps
-                        return (comp(left) - comp(right))/(2*eps)
 
                     if 'func' in method_options:
-                        func = method_options['func'](comp, eps)
+                        func = method_options['func']
                     else:
-                        func = numerical_gradient
+                        func = None
 
-                    g_comp=func
+                    def numerical_gradient(variables, *args, **kwargs):
+                        if func is None:
+                            left = copy.deepcopy(variables)
+                            right = copy.deepcopy(variables)
+                            left[k] += eps
+                            right[k] -= eps
+                            return (comp(left) - comp(right))/(2*eps)
+                        else:
+                            return func(comp, variables, k, eps)
+
+                    g_comp=numerical_gradient
                     g_list.append(g_comp)
                 else:
                     g=grad(objective,k)
