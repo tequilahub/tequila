@@ -15,14 +15,7 @@ def get_phase_flip(p):
     return qiskitnoise.pauli_error(noise_ops=[('Z', p), ('I', 1 - p)])
 
 
-noise_lookup = {
-    'phase damp': qiskitnoise.phase_damping_error,
-    'amplitude damp': qiskitnoise.amplitude_damping_error,
-    'bit flip': get_bit_flip,
-    'phase flip': get_phase_flip,
-    'phase-amplitude damp': qiskitnoise.phase_amplitude_damping_error,
-    'depolarizing': qiskitnoise.depolarizing_error
-}
+
 
 gate_qubit_lookup = {
     'x': 1,
@@ -53,18 +46,7 @@ class TequilaQiskitException(TequilaException):
         return "Error in qiskit backend:" + self.message
 
 
-op_lookup = {
-    'I': (lambda c: c.iden),
-    'X': (lambda c: c.x, lambda c: c.cx, lambda c: c.ccx),
-    'Y': (lambda c: c.y, lambda c: c.cy, lambda c: c.ccy),
-    'Z': (lambda c: c.z, lambda c: c.cz, lambda c: c.ccz),
-    'H': (lambda c: c.h, lambda c: c.ch, lambda c: c.cch),
-    'Rx': (lambda c: c.rx, lambda c: c.mcrx),
-    'Ry': (lambda c: c.ry, lambda c: c.mcry),
-    'Rz': (lambda c: c.rz, lambda c: c.mcrz),
-    'Phase': (lambda c: c.u1, lambda c: c.cu1),
-    'SWAP': (lambda c: c.swap, lambda c: c.cswap),
-}
+
 
 
 class BackendCircuitQiskit(BackendCircuit):
@@ -89,11 +71,35 @@ class BackendCircuitQiskit(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise_model=None, *args, **kwargs):
+
+
+        self.op_lookup = {
+            'I': (lambda c: c.iden),
+            'X': (lambda c: c.x, lambda c: c.cx, lambda c: c.ccx),
+            'Y': (lambda c: c.y, lambda c: c.cy, lambda c: c.ccy),
+            'Z': (lambda c: c.z, lambda c: c.cz, lambda c: c.ccz),
+            'H': (lambda c: c.h, lambda c: c.ch, lambda c: c.cch),
+            'Rx': (lambda c: c.rx, lambda c: c.mcrx),
+            'Ry': (lambda c: c.ry, lambda c: c.mcry),
+            'Rz': (lambda c: c.rz, lambda c: c.mcrz),
+            'Phase': (lambda c: c.u1, lambda c: c.cu1),
+            'SWAP': (lambda c: c.swap, lambda c: c.cswap),
+        }
+
         if use_mapping:
             qubits = abstract_circuit.qubits
         else:
             qubits = range(abstract_circuit.n_qubits)
 
+        if noise_model != None:
+            self.noise_lookup = {
+                'phase damp': qiskitnoise.phase_damping_error,
+                'amplitude damp': qiskitnoise.amplitude_damping_error,
+                'bit flip': get_bit_flip,
+                'phase flip': get_phase_flip,
+                'phase-amplitude damp': qiskitnoise.phase_amplitude_damping_error,
+                'depolarizing': qiskitnoise.depolarizing_error
+            }
         nm = self.noise_model_converter(noise_model)
         self.noise_model = nm
         n_qubits = len(qubits)
@@ -162,7 +168,7 @@ class BackendCircuitQiskit(BackendCircuit):
         return qiskit.QuantumCircuit(self.q, self.c)
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
-        ops = op_lookup[gate.name]
+        ops = self.op_lookup[gate.name]
         if len(gate.extract_variables()) > 0:
             try:
                 par = self.tq_to_sympy[gate.parameter]
@@ -188,7 +194,7 @@ class BackendCircuitQiskit(BackendCircuit):
         circuit.measure(tq, tc)
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
-        ops = op_lookup[gate.name]
+        ops = self.op_lookup[gate.name]
         if gate.is_controlled():
             if len(gate.control) > 2:
                 raise TequilaQiskitException("multi-controls beyond 2 not yet supported for the qiskit backend. Gate was:\n{}".format(gate) )
@@ -210,7 +216,7 @@ class BackendCircuitQiskit(BackendCircuit):
         basis_gates = basis
         qnoise = qiskitnoise.NoiseModel(basis_gates)
         for noise in nm.noises:
-            op = noise_lookup[noise.name]
+            op = self.noise_lookup[noise.name]
             if op is qiskitnoise.depolarizing_error:
                 active = op(noise.probs[0], noise.level)
             else:

@@ -18,19 +18,7 @@ class TequilaQulacsException(TequilaException):
         return "Error in qulacs backend:" + self.message
 
 
-op_lookup = {
-    'I': qulacs.gate.Identity,
-    'X': qulacs.gate.X,
-    'Y': qulacs.gate.Y,
-    'Z': qulacs.gate.Z,
-    'H': qulacs.gate.H,
-    'Rx': (lambda c: c.add_parametric_RX_gate, qulacs.gate.RX),
-    'Ry': (lambda c: c.add_parametric_RY_gate, qulacs.gate.RY),
-    'Rz': (lambda c: c.add_parametric_RZ_gate, qulacs.gate.RZ),
-    'SWAP': qulacs.gate.SWAP,
-    'Measure': qulacs.gate.Measurement,
-    'Exp-Pauli': None
-}
+
 
 
 class BackendCircuitQulacs(BackendCircuit):
@@ -56,6 +44,19 @@ class BackendCircuitQulacs(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, *args, **kwargs):
+        self.op_lookup = {
+            'I': qulacs.gate.Identity,
+            'X': qulacs.gate.X,
+            'Y': qulacs.gate.Y,
+            'Z': qulacs.gate.Z,
+            'H': qulacs.gate.H,
+            'Rx': (lambda c: c.add_parametric_RX_gate, qulacs.gate.RX),
+            'Ry': (lambda c: c.add_parametric_RY_gate, qulacs.gate.RY),
+            'Rz': (lambda c: c.add_parametric_RZ_gate, qulacs.gate.RZ),
+            'SWAP': qulacs.gate.SWAP,
+            'Measure': qulacs.gate.Measurement,
+            'Exp-Pauli': None
+        }
         self.variables = []
         super().__init__(*args, **kwargs)
 
@@ -130,7 +131,7 @@ class BackendCircuitQulacs(BackendCircuit):
             circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.parameter(variables) * gate.paulistring.coeff)
 
     def add_parametrized_gate(self, gate, circuit, variables, *args, **kwargs):
-        op = op_lookup[gate.name]
+        op = self.op_lookup[gate.name]
         if gate.name == 'Exp-Pauli':
             self.add_exponential_pauli_gate(gate, circuit, variables)
             return
@@ -152,7 +153,7 @@ class BackendCircuitQulacs(BackendCircuit):
         circuit.add_gate(qulacs_gate)
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
-        op = op_lookup[gate.name]
+        op = self.op_lookup[gate.name]
         qulacs_gate = op(*[self.qubit_map[t] for t in gate.target])
         if gate.is_controlled():
             qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)

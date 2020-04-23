@@ -10,31 +10,9 @@ import typing, numbers
 import cirq
 
 
-noise_lookup={
-    'bit flip': [lambda x: cirq.bit_flip(x)],
-    'phase flip': [lambda x: cirq.phase_flip(x)],
-    'phase damp': [cirq.phase_damp],
-    'amplitude damp':[cirq.amplitude_damp],
-    'phase-amplitude damp': [cirq.amplitude_damp,cirq.phase_damp],
-    'depolarizing': [lambda x: cirq.depolarize(p=(3/4)*x)]
-}
-
-
 map_1 = lambda x: {'exponent':x}
 map_2 = lambda x: {'exponent':x/np.pi,'global_shift':-0.5}
 
-
-op_lookup={
-    'I':(cirq.ops.IdentityGate,None),
-    'X':(cirq.ops.common_gates.XPowGate,map_1),
-    'Y':(cirq.ops.common_gates.YPowGate,map_1),
-    'Z':(cirq.ops.common_gates.ZPowGate,map_1),
-    'H':(cirq.ops.common_gates.HPowGate,map_1),
-    'Rx': (cirq.ops.common_gates.XPowGate,map_2),
-    'Ry': (cirq.ops.common_gates.YPowGate,map_2),
-    'Rz': (cirq.ops.common_gates.ZPowGate,map_2),
-    'SWAP': (cirq.ops.SwapPowGate,None),
-}
 
 def qubit_satisfier(op,level):
     oplen=len(op.qubits)
@@ -71,6 +49,20 @@ class BackendCircuitCirq(BackendCircuit):
     numbering: BitNumbering = BitNumbering.MSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
+
+
+        self.op_lookup = {
+            'I': (cirq.ops.IdentityGate, None),
+            'X': (cirq.ops.common_gates.XPowGate, map_1),
+            'Y': (cirq.ops.common_gates.YPowGate, map_1),
+            'Z': (cirq.ops.common_gates.ZPowGate, map_1),
+            'H': (cirq.ops.common_gates.HPowGate, map_1),
+            'Rx': (cirq.ops.common_gates.XPowGate, map_2),
+            'Ry': (cirq.ops.common_gates.YPowGate, map_2),
+            'Rz': (cirq.ops.common_gates.ZPowGate, map_2),
+            'SWAP': (cirq.ops.SwapPowGate, None),
+        }
+
         self.tq_to_sympy={}
         self.counter=0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model, use_mapping=use_mapping, *args, **kwargs)
@@ -81,7 +73,17 @@ class BackendCircuitCirq(BackendCircuit):
             self.sympy_to_tq = {v: k for k, v in self.tq_to_sympy.items()}
             self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
         if self.noise_model is not None:
+            self.noise_lookup = {
+                'bit flip': [lambda x: cirq.bit_flip(x)],
+                'phase flip': [lambda x: cirq.phase_flip(x)],
+                'phase damp': [cirq.phase_damp],
+                'amplitude damp': [cirq.amplitude_damp],
+                'phase-amplitude damp': [cirq.amplitude_damp, cirq.phase_damp],
+                'depolarizing': [lambda x: cirq.depolarize(p=(3 / 4) * x)]
+            }
             self.circuit=self.build_noise_model(self.noise_model)
+
+
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         simulator = cirq.Simulator()
@@ -110,7 +112,7 @@ class BackendCircuitCirq(BackendCircuit):
         return cirq.Circuit()
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
-        op, mapping = op_lookup[gate.name]
+        op, mapping = self.op_lookup[gate.name]
         if isinstance(gate.parameter, float):
             par = gate.parameter
         else:
@@ -126,7 +128,7 @@ class BackendCircuitCirq(BackendCircuit):
         circuit.append(cirq_gate)
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
-        op, mapping = op_lookup[gate.name]
+        op, mapping = self.op_lookup[gate.name]
         cirq_gate = op().on(*[self.qubit_map[t] for t in gate.target])
         if gate.is_controlled():
             cirq_gate = cirq_gate.controlled_by(*[self.qubit_map[c] for c in gate.control])
@@ -147,7 +149,7 @@ class BackendCircuitCirq(BackendCircuit):
             new_ops.append(op)
             for noise in n.noises:
                 if qubit_satisfier(op,noise.level):
-                    for i,channel in enumerate(noise_lookup[noise.name]):
+                    for i,channel in enumerate(self.noise_lookup[noise.name]):
                         new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
         return cirq.Circuit.from_ops(new_ops)
 

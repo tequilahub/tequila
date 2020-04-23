@@ -140,14 +140,6 @@ def depolarizing_map(p):
     return [mat1, mat2, mat3, mat4]
 
 
-noise_lookup = {
-    'amplitude damp': amp_damp_map,
-    'phase damp': phase_damp_map,
-    'bit flip': bit_flip_map,
-    'phase flip': phase_flip_map,
-    'phase-amplitude damp': phase_amp_damp_map,
-    'depolarizing': depolarizing_map
-}
 
 
 def kraus_tensor(klist, n):
@@ -192,18 +184,7 @@ class TequilaPyquilException(TequilaException):
         return "simulator_pyquil: " + self.message
 
 
-op_lookup = {
-    'I': (pyquil.gates.I),
-    'X': (pyquil.gates.X, pyquil.gates.CNOT, pyquil.gates.CCNOT),
-    'Y': (pyquil.gates.Y,),
-    'Z': (pyquil.gates.Z, pyquil.gates.CZ),
-    'H': (pyquil.gates.H,),
-    'Rx': pyquil.gates.RX,
-    'Ry': pyquil.gates.RY,
-    'Rz': pyquil.gates.RZ,
-    'Phase': pyquil.gates.PHASE,
-    'SWAP': (pyquil.gates.SWAP, pyquil.gates.CSWAP),
-}
+
 
 
 class BackendCircuitPyquil(BackendCircuit):
@@ -229,11 +210,32 @@ class BackendCircuitPyquil(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise_model=None, *args, **kwargs):
+        self.op_lookup = {
+            'I': (pyquil.gates.I),
+            'X': (pyquil.gates.X, pyquil.gates.CNOT, pyquil.gates.CCNOT),
+            'Y': (pyquil.gates.Y,),
+            'Z': (pyquil.gates.Z, pyquil.gates.CZ),
+            'H': (pyquil.gates.H,),
+            'Rx': pyquil.gates.RX,
+            'Ry': pyquil.gates.RY,
+            'Rz': pyquil.gates.RZ,
+            'Phase': pyquil.gates.PHASE,
+            'SWAP': (pyquil.gates.SWAP, pyquil.gates.CSWAP),
+        }
         self.match_par_to_dummy = {}
         self.counter = 0
         super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise_model=noise_model,
                          use_mapping=use_mapping, *args, **kwargs)
         if self.noise_model is not None:
+            self.noise_lookup = {
+                'amplitude damp': amp_damp_map,
+                'phase damp': phase_damp_map,
+                'bit flip': bit_flip_map,
+                'phase flip': phase_flip_map,
+                'phase-amplitude damp': phase_amp_damp_map,
+                'depolarizing': depolarizing_map
+            }
+
             self.circuit = self.get_noisy_prog(self.circuit, self.noise_model)
         if len(self.match_par_to_dummy.keys()) is None:
             self.match_dummy_to_value = None
@@ -306,7 +308,7 @@ class BackendCircuitPyquil(BackendCircuit):
         return pyquil.Program()
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
-        op = op_lookup[gate.name]
+        op = self.op_lookup[gate.name]
         if isinstance(gate.parameter, float):
             par = gate.parameter
         else:
@@ -329,7 +331,7 @@ class BackendCircuitPyquil(BackendCircuit):
             circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
-        op = op_lookup[gate.name]
+        op = self.op_lookup[gate.name]
         try:
             g = op[len(gate.control)]
             if gate.is_controlled():
@@ -349,10 +351,10 @@ class BackendCircuitPyquil(BackendCircuit):
         collected = {}
         for noise in noise_model.noises:
             try:
-                collected[str(noise.level)] = combine_kraus_maps(noise_lookup[noise.name](*noise.probs),
+                collected[str(noise.level)] = combine_kraus_maps(self.noise_lookup[noise.name](*noise.probs),
                                                                  collected[str(noise.level)])
             except:
-                collected[str(noise.level)] = noise_lookup[noise.name](*noise.probs)
+                collected[str(noise.level)] = self.noise_lookup[noise.name](*noise.probs)
         done = []
         for gate in prog:
             new.inst(gate)
