@@ -316,7 +316,7 @@ class Objective:
                 evaluated[E] = expval_result
             else:
                 expval_result = evaluated[E]
-            ev_array.append(evaluated[E])
+            ev_array.append(expval_result)
         return self.transformation(*ev_array)
 
 
