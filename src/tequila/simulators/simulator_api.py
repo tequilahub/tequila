@@ -5,11 +5,10 @@ from typing import Dict, Union, Hashable
 
 from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary
 from tequila.utils.exceptions import TequilaException
-from tequila.utils import to_float
-from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
+from tequila.simulators.simulator_base import BackendCircuit
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit",'cirq', 'pyquil']
+SUPPORTED_NOISE_BACKENDS = ["qiskit",'cirq', 'pyquil','qulacs']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -25,33 +24,6 @@ if typing.TYPE_CHECKING:
 Check which simulators are installed
 We are distinguishing two classes of simulators: Samplers and full wavefunction simuators
 """
-
-try:
-    import qulacs
-    from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
-
-    HAS_QULACS = True
-    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
-    INSTALLED_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
-except ImportError:
-    HAS_QULACS = False
-
-HAS_PYQUIL = True
-from shutil import which
-
-HAS_QVM = which("qvm") is not None
-if HAS_QVM:
-    try:
-        from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil
-
-        HAS_PYQUIL = True
-        INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-        INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-        INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-    except ImportError:
-        HAS_PYQUIL = False
-else:
-    HAS_PYQUIL = False
 
 HAS_QISKIT = True
 try:
@@ -76,11 +48,43 @@ try:
 except ImportError:
     HAS_CIRQ = False
 
+try:
+    import qulacs
+    from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
+
+    HAS_QULACS = True
+    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
+    INSTALLED_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
+    INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
+                                                ExpValueType=BackendExpectationValueQulacs)
+except ImportError:
+    HAS_QULACS = False
+
+HAS_PYQUIL = True
+from shutil import which
+
+HAS_QVM = which("qvm") is not None
+if HAS_QVM:
+    try:
+        from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil
+
+        HAS_PYQUIL = True
+        INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+        INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+        INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+    except ImportError:
+        HAS_PYQUIL = False
+else:
+    HAS_PYQUIL = False
+
+
+
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
 
 INSTALLED_SIMULATORS["symbolic"] = BackendTypes(CircType=BackendCircuitSymbolic,
                                                 ExpValueType=BackendExpectationValueSymbolic)
 HAS_SYMBOLIC = True
+
 
 
 def show_available_simulators():
@@ -111,13 +115,14 @@ def pick_backend(backend: str = None, samples: int = None, noise: bool = False, 
 
     if backend is None:
         if noise is False:
-            for f in SUPPORTED_BACKENDS:
-                if samples is None:
+            if samples is None:
+                for f in SUPPORTED_BACKENDS:
                     if f in INSTALLED_SIMULATORS:
                         return f
-                else:
-                    if f in INSTALLED_SAMPLERS:
-                        return f
+            else:
+                ### qulacs sampling is awful. Rearranged to prefer qiskit or cirq when sampling over qulacs
+                for f in INSTALLED_SAMPLERS.keys():
+                    return f
         else:
             for f in SUPPORTED_NOISE_BACKENDS:
                 if samples is None:
