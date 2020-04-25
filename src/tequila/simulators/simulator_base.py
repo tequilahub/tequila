@@ -167,7 +167,7 @@ class BackendCircuit():
         else:
             keymap = KeyMapSubregisterToRegister(subregister=all_qubits, register=all_qubits)
 
-        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer)
+        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args, **kwargs)
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
