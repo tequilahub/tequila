@@ -268,8 +268,6 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
     def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
         # todo: generalize in baseclass. Do Hamiltonian mapping on initialization
         self.update_variables(variables)
-        state = qulacs.QuantumState(self.U.n_qubits)
-        self.U.circuit.update_quantum_state(state)
 
         result = []
         for H in self._abstract_hamiltonians:
@@ -295,7 +293,8 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                 qbc = self.U.create_circuit(abstract_circuit=bc, variables=None)
                 Esamples = []
                 for sample in range(samples):
-                    state_tmp = state.copy()
+                    state_tmp = qulacs.QuantumState(self.U.n_qubits)
+                    self.U.circuit.update_quantum_state(state_tmp)
                     if len(bc.gates) > 0:  # otherwise there is no basis change (empty qulacs circuit does not work out)
                         qbc.update_quantum_state(state_tmp)
                     ps_measure = 1.0

@@ -142,11 +142,39 @@ class BackendCircuitQiskit(BackendCircuit):
                                         backend_options=opts).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
+    def get_backend(self, qiskit_backend: str = None, samples=None, qiskit_provider=None, *args, **kwargs):
+        """
+        Handle Defaults
+        """
+        if not isinstance(qiskit_backend, str):
+            return qiskit_backend
+        else:
+            qiskit_backend = qiskit_backend.lower()
+
+        # set default backends
+        if qiskit_backend is None:
+            if samples is None:
+                qiskit_backend = 'state_vector_simulator'
+            else:
+                qiskit_backend = 'qasm_simulator'
+        if qiskit_provider is None:
+            # detect if a cloud service is demanded
+            if qiskit_backend in [str(x) for x in qiskit.Aer.backends()] + [qiskit.Aer.backends()]:
+                qiskit_provider = qiskit.Aer
+            else:
+                qiskit.IBMQ.load_account()
+                qiskit_provider = qiskit.IBMQ.get_provider()
+        return qiskit_provider.get_backend(name=qiskit_backend)
+
+
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
-        simulator = qiskit.providers.aer.QasmSimulator()
-        return self.convert_measurements(qiskit.execute(circuit, backend=simulator, shots=samples,
-                                                        optimization_level=0,
-                                                        noise_model=self.noise_model, parameter_binds=[self.resolver]))
+        optimization_level = None
+        if "optimization_level" in kwargs:
+            optimization_level = kwargs['optimization_level']
+        qiskit_backend = self.get_backend(**kwargs)
+        return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
+                                                        optimization_level=optimization_level,
+                                                        parameter_binds=[self.resolver]))
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
         """0.

@@ -201,7 +201,7 @@ class BackendCircuit():
             #measure += Measurement(name=str(paulistring), target=qubits)
             circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
-            counts = self.do_sample(samples=samples, circuit=circuit)
+            counts = self.do_sample(samples=samples, circuit=circuit, *args, **kwargs)
             # compute energy
             E = 0.0
             n_samples = 0
