@@ -72,7 +72,6 @@ class BackendCircuitQiskit(BackendCircuit):
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise_model=None, *args, **kwargs):
 
-
         self.op_lookup = {
             'I': (lambda c: c.iden),
             'X': (lambda c: c.x, lambda c: c.cx, lambda c: c.ccx),
@@ -182,7 +181,7 @@ class BackendCircuitQiskit(BackendCircuit):
         optimization_level = None
         if "optimization_level" in kwargs:
             optimization_level = kwargs['optimization_level']
-        qiskit_backend = self.get_backend(**kwargs)
+        qiskit_backend = self.get_backend(**kwargs, samples=samples)
         assert(qiskit_backend is not None)
 
         if qiskit_backend in qiskit.Aer.backends() or str(qiskit_backend).lower() == "ibmq_qasm_simulator":
