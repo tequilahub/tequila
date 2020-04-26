@@ -1,4 +1,4 @@
-from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException
+from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bitstring, TequilaException, TequilaWarning
 from tequila.circuit import gates, QCircuit,NoiseModel
 from tequila.hamiltonian import paulis, QubitHamiltonian, PauliString
 from tequila.objective import Objective, ExpectationValue, Variable, assign_variable, format_variable_dictionary
@@ -25,5 +25,4 @@ from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
 import warnings
 
 warnings.filterwarnings("ignore", module="jax")
-
-__version__ = "BorisYeltsin"
+warnings.filterwarnings("default", category=TequilaWarning)
