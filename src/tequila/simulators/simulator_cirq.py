@@ -151,7 +151,7 @@ class BackendCircuitCirq(BackendCircuit):
                 if qubit_satisfier(op,noise.level):
                     for i,channel in enumerate(self.noise_lookup[noise.name]):
                         new_ops.append(channel(noise.probs[i]).on_each([q for q in op.qubits]))
-        return cirq.Circuit.from_ops(new_ops)
+        return cirq.Circuit(*new_ops)
 
     def update_variables(self, variables):
         """

@@ -62,7 +62,7 @@ def test_one_qubit_shot(simulator):
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, backend=simulator, samples=10000, silent=True)
-    assert (numpy.isclose(result.energy, -1.0, atol=1.e-2))
+    assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
@@ -81,7 +81,7 @@ def test_gradient_free_methods(simulator, method):
 
     result = tq.optimizer_scipy.minimize(objective=-E, method=method, tol=1.e-4,backend=simulator,
                                          initial_values=initial_values,silent=True)
-    assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
+    assert(numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
@@ -125,7 +125,7 @@ def test_gradient_based_methods_qng(simulator, method):
     result = tq.optimizer_scipy.minimize(objective=-O,qng=True,backend=simulator,
                                          method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4},
                                          initial_values=initial_values, silent=False)
-    assert(numpy.isclose(result.energy, -0.612, atol=1.e-3))
+    assert(numpy.isclose(result.energy, -0.612, atol=1.e-1))
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
@@ -155,4 +155,4 @@ def test_hessian_based_methods(simulator, method, use_hessian):
 
     result = tq.optimizer_scipy.minimize(objective=-E,backend=simulator, hessian=use_hessian, method=method, tol=1.e-4,
                                          method_options=method_options, initial_values=initial_values, silent=True)
-    assert (numpy.isclose(result.energy, -1.0, atol=1.e-3))
+    assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))
