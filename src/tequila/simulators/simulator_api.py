@@ -57,7 +57,6 @@ else:
 HAS_QISKIT = True
 try:
     from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit
-
     HAS_QISKIT = True
     INSTALLED_SIMULATORS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
     INSTALLED_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)

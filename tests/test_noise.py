@@ -7,10 +7,17 @@ import tequila
 from tequila.circuit.noise import BitFlip,PhaseDamp,PhaseFlip,AmplitudeDamp,PhaseAmplitudeDamp,DepolarizingError
 import numpy
 import pytest
-import tequila.simulators.simulator_api
 
+samplers = [k for k in tequila.INSTALLED_SAMPLERS.keys() if k not in ['qulacs'] ]
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.dependencies
+def test_dependencies():
+    assert 'qiskit' in samplers
+    assert 'pyquil' in samplers
+    assert 'cirq' in samplers
+
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 @pytest.mark.parametrize('controlled',[False,True])
 def test_bit_flip(simulator, p,controlled):
@@ -32,7 +39,8 @@ def test_bit_flip(simulator, p,controlled):
 
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.,2*numpy.pi,1))
 def test_rx_bit_flip_0(simulator, p,angle):
@@ -47,7 +55,8 @@ def test_rx_bit_flip_0(simulator, p,angle):
     assert (numpy.isclose(E, (1-2*p)*numpy.cos(angle), atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.,2*numpy.pi,1))
 def test_rx_bit_flip_1(simulator, p,angle):
@@ -66,7 +75,8 @@ def test_rx_bit_flip_1(simulator, p,angle):
     assert (numpy.isclose(E, p+numpy.cos(angle)-p*numpy.cos(angle), atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_double_cnot_bit_flip(simulator, p):
 
@@ -81,7 +91,8 @@ def test_double_cnot_bit_flip(simulator, p):
     assert (numpy.isclose(E, 2 * (p - p * p), atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_flip(simulator, p):
 
@@ -94,7 +105,8 @@ def test_phase_flip(simulator, p):
     E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
     assert (numpy.isclose(E, 1.0-2*p, atol=1.e-2))
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.,2*numpy.pi,1))
 def test_rz_phase_flip_0(simulator, p,angle):
@@ -108,7 +120,8 @@ def test_rz_phase_flip_0(simulator, p,angle):
     print(E)
     assert (numpy.isclose(E, ((-1.+2*p)**3)*numpy.sin(angle), atol=1.e-2))
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.,2*numpy.pi,1))
 def test_rz_phase_flip_1(simulator, p,angle):
@@ -122,7 +135,8 @@ def test_rz_phase_flip_1(simulator, p,angle):
     assert (numpy.isclose(E, ((1.0-2*p)**2)*numpy.cos(angle), atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_damp(simulator, p):
 
@@ -136,7 +150,8 @@ def test_phase_damp(simulator, p):
     assert (numpy.isclose(E, numpy.sqrt(1-p), atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_amp_damp(simulator, p):
 
@@ -150,7 +165,8 @@ def test_amp_damp(simulator, p):
     assert (numpy.isclose(E, 1-p, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_amp_damp(simulator, p):
 
@@ -164,7 +180,8 @@ def test_phase_amp_damp(simulator, p):
     assert (numpy.isclose(E, -1+2*p, atol=1.e-2))
 
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_phase_amp_damp_is_both(simulator, p):
 
@@ -179,7 +196,8 @@ def test_phase_amp_damp_is_both(simulator, p):
     E2 =simulate(O,backend=simulator,samples=100000,noise_model=NM2)
     assert (numpy.isclose(E1,E2, atol=1.e-2))
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 @pytest.mark.parametrize('controlled',[False,True])
 def test_depolarizing_error(simulator, p,controlled):
@@ -198,7 +216,8 @@ def test_depolarizing_error(simulator, p,controlled):
     E = simulate(O,backend=simulator,samples=100000,noise_model=NM)
     assert (numpy.isclose(E, -1+p, atol=1.e-2))
 
-@pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("p", numpy.random.uniform(0.,1.,1))
 def test_repetition_works(simulator, p):
     qubit = 0

@@ -6,12 +6,19 @@ import numpy
 import pytest
 import tequila as tq
 
+samplers = [k for k in tq.INSTALLED_SAMPLERS.keys() if k not in ['qulacs'] ]
 
-@pytest.mark.parametrize("simulator", [['qiskit','cirq'][numpy.random.randint(0,2,1)[0]]])
+@pytest.mark.dependencies
+def test_dependencies():
+    assert 'qiskit' in samplers
+    assert 'pyquil' in samplers
+    assert 'cirq' in samplers
+
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 @pytest.mark.parametrize('method',[['NELDER-MEAD', 'COBYLA'][numpy.random.randint(0,2)]])
 def test_bit_flip_scipy_gradient_free(simulator, p,method):
-
     qubit = 0
     H = paulis.Qm(qubit)
     U = gates.Rx(target=qubit,angle=tq.Variable('a'))
@@ -20,7 +27,8 @@ def test_bit_flip_scipy_gradient_free(simulator, p,method):
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
     assert(numpy.isclose(result.energy, p, atol=3.e-2))
 
-@pytest.mark.parametrize("simulator", [['qiskit','cirq','pyquil'][numpy.random.randint(0,3,1)[0]]])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 @pytest.mark.parametrize('method',[tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods[numpy.random.randint(0,4,1)[0]]])
 def test_bit_flip_scipy_gradient(simulator, p,method):
@@ -33,7 +41,8 @@ def test_bit_flip_scipy_gradient(simulator, p,method):
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
     assert(numpy.isclose(result.energy, p, atol=1.e-2))
 
-@pytest.mark.parametrize("simulator", ['qiskit'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 @pytest.mark.parametrize('method',[["TRUST-KRYLOV", "NEWTON-CG", "TRUST-NCG", "TRUST-CONSTR"][numpy.random.randint(0,4,1)[0]]])
 def test_bit_flip_scipy_hessian(simulator, p,method):
@@ -46,7 +55,8 @@ def test_bit_flip_scipy_hessian(simulator, p,method):
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
     assert(numpy.isclose(result.energy, p, atol=3.e-2))
 
-@pytest.mark.parametrize("simulator", ['qiskit'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 def test_bit_flip_phoenics(simulator, p):
 
@@ -58,8 +68,8 @@ def test_bit_flip_phoenics(simulator, p):
     result = tq.optimizer_phoenics.minimize(objective=O,maxiter=3,samples=1000,backend=simulator,noise=NM)
     assert(numpy.isclose(result.energy, p, atol=3.e-2))
 
-
-@pytest.mark.parametrize("simulator", ['cirq'])
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 @pytest.mark.parametrize('method',['lbfgs','DIRECT','CMA'])
 def test_bit_flip_gpyopt(simulator, p,method):
