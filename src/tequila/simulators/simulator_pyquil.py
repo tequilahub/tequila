@@ -168,7 +168,7 @@ def append_kraus_to_gate(kraus_ops, g, level):
 def add_controls(matrix, count):
     gc = np.log2(matrix.shape[0])
     controls = count - gc
-    if int(controls) is 0:
+    if int(controls) == 0:
         return matrix
     new = np.eye(2 ** count)
     new[-matrix.shape[0]:, -matrix.shape[0]:] = matrix
@@ -368,7 +368,7 @@ class BackendCircuitPyquil(BackendCircuit):
             if hasattr(gate, 'qubits'):
                 level = str(len(gate.qubits))
                 if level in collected.keys():
-                    if name_dict[gate.name] is 'parametrized':
+                    if name_dict[gate.name] == 'parametrized':
                         new.inst([pyquil.gates.I(q) for q in gate.qubits])
                         if ['parametrized', gate.qubits] not in done:
                             new.define_noisy_gate('I',

@@ -49,10 +49,10 @@ class Noise():
         probs=list_assignement(probs)
         self._name=name
         self._level=int(level)
-        assert len(probs) is self.prob_length[name]
-        if form is 'kraus':
+        assert len(probs) == self.prob_length[name]
+        if form == 'kraus':
             assert sum(probs)<=1.
-        if form is 'depolarizing':
+        if form == 'depolarizing':
             assert sum(probs)<=1.
         self.probs=list_assignement(probs)
 
@@ -64,9 +64,9 @@ class Noise():
 
     @staticmethod
     def from_dict(d):
-        if type(d) is dict:
+        if isinstance(d, dict)
             return Noise(**d)
-        elif type(d) is Noise:
+        elif isinstance(d, Noise):
             return d
         else:
             raise TequilaException('who the fuck do you think you are?')
@@ -90,14 +90,14 @@ class NoiseModel():
     def __add__(self, other):
         new=NoiseModel()
         new.noises+=self.noises
-        if type(other) is dict:
+        if isinstance(other, dict):
             new.noises+=Noise.from_dict(other)
         elif hasattr(other,'noises'):
             new.noises.extend(copy.copy(other.noises))
         return new
 
     def __iadd__(self, other):
-        if type(other) is dict:
+        if isinstance(other, dict):
             self.noises+=Noise.from_dict(other)
         elif hasattr(other,'noises'):
             self.noises.extend(copy.copy(other.noises))

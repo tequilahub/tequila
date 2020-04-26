@@ -218,7 +218,7 @@ class OptimizerSciPy(Optimizer):
 
         else:
             infostring += "Hessian: {}\n".format(hessian)
-            if self.method is not "TRUST-CONSTR" and hessian is not None:
+            if self.method != "TRUST-CONSTR" and hessian is not None:
                 raise TequilaScipyException("numerical hessians only for trust-constr method")
             ddE = hessian
 

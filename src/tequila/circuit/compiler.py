@@ -306,7 +306,7 @@ def compile_to_cc(gate) -> QCircuit:
     elif isinstance(gate, RotationGateImpl):
         partial = compile_controlled_rotation(gate=gate)
         back += compile_to_cc(gate=partial)
-    elif isinstance(g, PhaseGateImpl):
+    elif isinstance(gate, PhaseGateImpl):
         partial = compile_controlled_phase(gate=gate)
         back += compile_to_cc(gate=partial)
     else:
