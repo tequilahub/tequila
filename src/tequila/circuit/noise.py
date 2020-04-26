@@ -64,7 +64,7 @@ class Noise():
 
     @staticmethod
     def from_dict(d):
-        if isinstance(d, dict)
+        if isinstance(d, dict):
             return Noise(**d)
         elif isinstance(d, Noise):
             return d

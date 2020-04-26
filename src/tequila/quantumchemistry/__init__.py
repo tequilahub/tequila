@@ -4,7 +4,7 @@ import typing
 SUPPORTED_QCHEMISTRY_BACKENDS = ["psi4", "pyscf"]
 INSTALLED_QCHEMISTRY_BACKENDS = {}
 
-from .qc_base import ParametersQC
+from .qc_base import ParametersQC, QuantumChemistryBase
 
 has_psi4 = which("psi4") is not None
 if has_psi4:
@@ -38,7 +38,7 @@ def Molecule(geometry: str,
              guess_wfn = None,
              filename = None,
              *args,
-             **kwargs) -> qc_base.QuantumChemistryBase:
+             **kwargs) -> QuantumChemistryBase:
     """
 
     Parameters
@@ -89,11 +89,11 @@ def Molecule(geometry: str,
         raise Exception("guess_wfn only works for psi4")
     return INSTALLED_QCHEMISTRY_BACKENDS[backend](parameters=parameters, transformation=transformation, guess_wfn=guess_wfn, *args, **kwargs)
 
-def MoleculeOpenFermion(molecule,
-                        transformation: typing.Union[str, typing.Callable] = None,
-                        backend:str=None,
-                        *args,
-                        **kwargs) -> qc_base.QuantumChemistryBase:
+def MoleculeFromOpenFermion(molecule,
+                            transformation: typing.Union[str, typing.Callable] = None,
+                            backend:str=None,
+                            *args,
+                            **kwargs) -> QuantumChemistryBase:
     """
     Initialize a tequila Molecule directly from an openfermion molecule object
     Parameters
@@ -109,6 +109,6 @@ def MoleculeOpenFermion(molecule,
         The tequila molecule
     """
     if backend is None:
-        return qc_base.QuantumChemistryBase.from_openfermion(molecule=molecule, transformation=transformation, *args, **kwargs)
+        return QuantumChemistryBase.from_openfermion(molecule=molecule, transformation=transformation, *args, **kwargs)
     else:
         INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(molecule=molecule, transformation=transformation, *args, **kwargs)
