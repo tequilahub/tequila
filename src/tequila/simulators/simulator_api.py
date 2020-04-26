@@ -40,18 +40,14 @@ except ImportError:
 HAS_PYQUIL = True
 from shutil import which
 
-HAS_QVM = which("qvm") is not None
-if HAS_QVM:
-    try:
-        from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil
+try:
+    from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil
 
-        HAS_PYQUIL = True
-        INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-        INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-        INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-    except ImportError:
-        HAS_PYQUIL = False
-else:
+    HAS_PYQUIL = True
+    INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+    INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+    INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+except ImportError:
     HAS_PYQUIL = False
 
 HAS_QISKIT = True
@@ -185,12 +181,14 @@ def compile_objective(objective: 'Objective',
 
     ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
     all_compiled = True
+    # check if compiling is necessary
     for arg in objective.args:
-        if hasattr(arg, "U") and not isinstance(arg, ExpValueType):
-            warnings.warn(
-                "Looks like part the objective was already compiled for another backend.\nFound ExpectationValue of type {} and {}\n... proceeding with hybrid\n".format(
-                    type(arg), ExpValueType), TequilaWarning)
-        if hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
+        if hasattr(arg, "U") and isinstance(arg, BackendExpectationValue):
+            if not isinstance(arg, ExpValueType):
+                warnings.warn(
+                    "Looks like part the objective was already compiled for another backend.\nFound ExpectationValue of type {} and {}\n... proceeding with hybrid\n".format(
+                        type(arg), ExpValueType), TequilaWarning)
+        elif hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
             all_compiled = False
 
     if all_compiled:

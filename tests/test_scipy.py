@@ -104,7 +104,7 @@ def test_gradient_based_methods(simulator, method, use_gradient):
     result = tq.optimizer_scipy.minimize(objective=-E, backend=simulator,gradient=use_gradient, method=method, tol=1.e-4,
                                          method_options={"gtol":1.e-4, "eps":1.e-4},
                                          initial_values=initial_values,silent=True)
-    assert(numpy.isclose(result.energy, -1.0, atol=1.e-3))
+    assert(numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)

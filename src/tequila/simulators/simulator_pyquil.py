@@ -254,17 +254,7 @@ class BackendCircuitPyquil(BackendCircuit):
         for i, val in enumerate(msb.array):
             if val > 0:
                 iprep += pyquil.gates.X(i)
-        with open('qvm.log', "a+") as outfile:
-            sys.stdout = outfile
-            sys.stderr = outfile
-            outfile.write("\nSTART SIMULATION: \n")
-            outfile.write(str(self.abstract_circuit))
-            process = subprocess.Popen(["qvm", "-S"], stdout=outfile, stderr=outfile)
-            backend_result = simulator.wavefunction(iprep + self.circuit, memory_map=self.resolver)
-            outfile.write("END SIMULATION: \n")
-            process.terminate()
-            sys.stdout = sys.__stdout__
-            sys.stderr = sys.__stderr__
+        backend_result = simulator.wavefunction(iprep + self.circuit, memory_map=self.resolver)
         return QubitWaveFunction.from_array(arr=backend_result.amplitudes, numbering=self.numbering)
 
     def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
