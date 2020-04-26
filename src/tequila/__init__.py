@@ -2,17 +2,9 @@ from tequila.utils import BitString, BitNumbering, BitStringLSB, initialize_bits
 from tequila.circuit import gates, QCircuit, NoiseModel
 from tequila.hamiltonian import paulis, QubitHamiltonian, PauliString
 from tequila.objective import Objective, ExpectationValue, Variable, assign_variable, format_variable_dictionary
-from tequila.optimizers import optimizer_scipy
-from tequila.optimizers import optimizer_gd
 
-from tequila.optimizers import has_phoenics
-
-if has_phoenics:
-    from tequila.optimizers import optimizer_phoenics
-from tequila.optimizers import has_gpyopt
-
-if has_gpyopt:
-    from tequila.optimizers import optimizer_gpyopt
+from tequila.optimizers import INSTALLED_OPTIMIZERS
+from tequila.optimizers import minimize, minimize_scipy, minimize_gd, optimizer_scipy
 
 from tequila.simulators.simulator_api import simulate, compile, compile_to_function, draw, pick_backend, \
     INSTALLED_SAMPLERS, \

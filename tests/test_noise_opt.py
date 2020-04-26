@@ -25,7 +25,7 @@ def test_bit_flip_scipy_gradient_free(simulator, p,method):
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
-    assert(numpy.isclose(result.energy, p, atol=3.e-2))
+    assert(numpy.isclose(result.energy, p, atol=1.e-1))
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
 @pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
@@ -39,7 +39,7 @@ def test_bit_flip_scipy_gradient(simulator, p,method):
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
-    assert(numpy.isclose(result.energy, p, atol=1.e-2))
+    assert(numpy.isclose(result.energy, p, atol=1.e-1))
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
 @pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
@@ -53,9 +53,10 @@ def test_bit_flip_scipy_hessian(simulator, p,method):
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_scipy.minimize(objective=O,samples=10000,backend=simulator, method=method,noise=NM, tol=1.e-4,silent=False)
-    assert(numpy.isclose(result.energy, p, atol=3.e-2))
+    assert(numpy.isclose(result.energy, p, atol=1.e-1))
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.skipif(not tq.has_phoenics, reason="Missing gpyopt")
 @pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 def test_bit_flip_phoenics(simulator, p):
@@ -66,9 +67,10 @@ def test_bit_flip_phoenics(simulator, p):
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_phoenics.minimize(objective=O,maxiter=3,samples=1000,backend=simulator,noise=NM)
-    assert(numpy.isclose(result.energy, p, atol=3.e-2))
+    assert(numpy.isclose(result.energy, p, atol=1.e-1))
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.skipif(not tq.has_gpyopt, reason="Missing gpyopt")
 @pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 @pytest.mark.parametrize('method',['lbfgs','DIRECT','CMA'])
@@ -80,4 +82,4 @@ def test_bit_flip_gpyopt(simulator, p,method):
     O = ExpectationValue(U=U, H=H)
     NM=BitFlip(p,1)
     result = tq.optimizer_gpyopt.minimize(objective=O,maxiter=10,samples=10000,backend=simulator, method=method,noise=NM)
-    assert(numpy.isclose(result.energy, p, atol=3.e-2))
+    assert(numpy.isclose(result.energy, p, atol=1.e-1))

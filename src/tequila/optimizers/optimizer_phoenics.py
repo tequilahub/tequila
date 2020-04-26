@@ -9,16 +9,10 @@ import pickle
 from tequila import TequilaException
 
 warnings.simplefilter("ignore")
-
-__HAS_PHOENICS__ = False
-try:
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
-        warnings.filterwarnings("ignore")
-        import phoenics
-    __HAS_PHOENICS__ = True
-except:
-    __HAS_PHOENICS__ = False
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    warnings.filterwarnings("ignore")
+import phoenics
 
 import numpy as np
 from numpy import pi as pi
@@ -45,7 +39,11 @@ def enablePrint():
 
 
 ### wrapper for Phoenics, so that it can be used as an optimizer for parameters.
-class PhoenicsOptimizer(Optimizer):
+class OptimizerPhoenics(Optimizer):
+
+    @classmethod
+    def available_methods(cls):
+        return "phoenics"
 
     def __init__(self, maxiter, backend=None, save_history=True, minimize=True, samples=None):
         self._minimize = minimize
@@ -221,7 +219,9 @@ def minimize(objective: Objective,
              previous: typing.Union[str, list] = None,
              phoenics_config: typing.Union[str, typing.Dict] = None,
              save_to_file: bool = False,
-             file_name: str = None):
+             file_name: str = None,
+             *args,
+             **kwargs):
     """
 
     Parameters
@@ -270,7 +270,7 @@ def minimize(objective: Objective,
         for k, v in initial_values.items():
             if k not in variables and k in all_vars:
                 passives[k] = v
-    optimizer = PhoenicsOptimizer(samples=samples, backend=backend, maxiter=maxiter)
+    optimizer = OptimizerPhoenics(samples=samples, backend=backend, maxiter=maxiter)
     return optimizer(objective=objective, backend=backend, passives=passives, previous=previous,
                      maxiter=maxiter, noise=noise, samples=samples,
                      phoenics_config=phoenics_config, save_to_file=save_to_file, file_name=file_name)

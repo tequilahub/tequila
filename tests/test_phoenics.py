@@ -2,17 +2,11 @@ import pytest, numpy
 import tequila as tq
 import multiprocessing as mp
 
-try:
-    from tequila.optimizers.optimizer_phoenics import minimize as minimize
-
-    has_phoenics = True
-except:
-    has_phoenics = False
-
+has_phoenics = 'phoenics' in tq.INSTALLED_OPTIMIZERS
 
 @pytest.mark.dependencies
 def test_dependencies():
-    assert tq.has_phoenics
+    assert 'phoenics' in tq.INSTALLED_OPTIMIZERS
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
@@ -29,7 +23,7 @@ def test_execution(simulator):
 
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
-    result = minimize(objective=O, maxiter=1, backend=simulator)
+    result = tq.minimize(method="phoenics", objective=O, maxiter=1, backend=simulator)
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
@@ -46,7 +40,7 @@ def test_execution_shot(simulator):
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
     mi = 2
-    result = minimize(objective=O, maxiter=mi, backend=simulator)
+    result = tq.minimize(method="phoenics", objective=O, maxiter=mi, backend=simulator)
     assert (len(result.history.energies) <= mi * mp.cpu_count())
 
 
@@ -56,7 +50,7 @@ def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = tq.optimizers.optimizer_phoenics.minimize(objective=O, maxiter=8, backend=simulator)
+    result = tq.minimize(method="phoenics", objective=O, maxiter=8, backend=simulator)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-2))
 
 
@@ -66,5 +60,5 @@ def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = minimize(objective=O, maxiter=3, backend=simulator, samples=10000)
+    result = tq.minimize(method="phoenics", objective=O, maxiter=3, backend=simulator, samples=10000)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))

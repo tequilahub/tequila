@@ -6,15 +6,8 @@ from tequila.objective.objective import Variable
 import warnings
 
 warnings.simplefilter("ignore")
-
-__HAS_GPYOPT__ = False
-try:
-    import GPyOpt
-    from GPyOpt.methods import BayesianOptimization
-
-    __HAS_GPYOPT__ = True
-except:
-    __HAS_GPYOPT__ = False
+import GPyOpt
+from GPyOpt.methods import BayesianOptimization
 
 import numpy as np
 from tequila.simulators.simulator_api import compile
@@ -36,7 +29,11 @@ def array_to_objective_dict(objective, array, passives=None) -> typing.Dict[Vari
     return back
 
 
-class GPyOptOptimizer(Optimizer):
+class OptimizerGpyOpt(Optimizer):
+
+    @classmethod
+    def available_methods(cls):
+        return ['lbfgs', 'direct', 'cma']
 
     def __init__(self, maxiter=100, backend=None, save_history=True, minimize=True, samples=None):
         self._minimize = minimize
@@ -148,7 +145,7 @@ def minimize(objective: Objective,
         for k, v in initial_values.items():
             if k not in variables and k in all_vars:
                 passives[k] = v
-    optimizer = GPyOptOptimizer()
+    optimizer = OptimizerGpyOpt()
     return optimizer(objective=objective, samples=samples, backend=backend, passives=passives, maxiter=maxiter,
                      noise=noise,
                      method=method

@@ -2,7 +2,7 @@ from tequila.circuit import gates
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.objective import Objective
-from tequila.optimizers.optimizer_phoenics import PhoenicsOptimizer
+from tequila.optimizers.optimizer_phoenics import OptimizerPhoenics
 import numpy
 
 """
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     # not necessary if already initialized above
 
     # Optimize
-    result = PhoenicsOptimizer(samples=samples,maxiter=10,backend=simulator)(objective=O,maxiter=10)
+    result = OptimizerPhoenics(samples=samples, maxiter=10, backend=simulator)(objective=O, maxiter=10)
 
     # plot the history, default are energies
     result.history.plot()
