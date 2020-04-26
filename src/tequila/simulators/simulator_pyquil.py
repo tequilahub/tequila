@@ -5,7 +5,7 @@ import subprocess
 import sys
 import numpy as np
 import pyquil
-from pyquil import get_qc
+from pyquil.api import get_qc
 from pyquil.noise import combine_kraus_maps
 from tequila.utils import to_float
 
@@ -269,7 +269,14 @@ class BackendCircuitPyquil(BackendCircuit):
 
     def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
         n_qubits = self.n_qubits
-        qc = get_qc('{}q-qvm'.format(str(n_qubits)))
+        if "pyquil_backend" in kwargs:
+            pyquil_backend = kwargs["pyquil_backend"]
+            if isinstance(pyquil_backend, dict):
+                qc = get_qc(**pyquil_backend)
+            else:
+                qc = get_qc(pyquil_backend)
+        else:
+            qc = get_qc('{}q-qvm'.format(str(n_qubits)))
         p = circuit
         p.wrap_in_numshots_loop(samples)
         stacked = qc.run(p, memory_map=self.resolver)

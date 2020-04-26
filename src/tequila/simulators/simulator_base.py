@@ -221,7 +221,7 @@ class BackendCircuit():
                 E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
             return E
         else:
-            return self.do_sample(samples=samples, circuit=self.circuit)
+            return self.do_sample(samples=samples, circuit=self.circuit, *args, **kwargs)
 
     def do_sample(self, samples, circuit, noise_model, *args, **kwargs) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")

@@ -214,7 +214,7 @@ def test_shot_simple_execution(simulator):
     ac += tq.gates.Ry(target=1, control=0, angle=1.2 / 2)
     ac += tq.gates.H(target=1, control=None)
     ac += tq.gates.Measurement([0, 1])
-    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1)
+    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1, pyquil_backend="2q-qvm", additional_keyword="Andreas-Dorn")
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
