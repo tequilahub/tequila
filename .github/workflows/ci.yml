@@ -38,4 +38,3 @@ jobs:
       run: |
         pip install -e .
         pip install pytest -m "not dependencies"
-        pytest
