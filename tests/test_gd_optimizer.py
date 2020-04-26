@@ -20,7 +20,7 @@ def test_execution(simulator,method):
     result = tq.minimize(objective=O,method=method, maxiter=1, backend=simulator)
 
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
-@pytest.mark.parametrize("method", [numpy.random.choice(tq.INSTALLED_OPTIMIZERS['gpyopt'].methods)])
+@pytest.mark.parametrize("method", [numpy.random.choice(tq.INSTALLED_OPTIMIZERS['gd'].methods)])
 def test_execution_shot(simulator, method):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \

@@ -56,7 +56,7 @@ def test_bit_flip_scipy_hessian(simulator, p,method):
     assert(numpy.isclose(result.energy, p, atol=1.e-1))
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
-@pytest.mark.skipif(not tq.has_phoenics, reason="Missing gpyopt")
+@pytest.mark.skipif(not tq.optimizers.has_phoenics, reason="Missing phoenics installation")
 @pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 def test_bit_flip_phoenics(simulator, p):
@@ -70,7 +70,7 @@ def test_bit_flip_phoenics(simulator, p):
     assert(numpy.isclose(result.energy, p, atol=1.e-1))
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
-@pytest.mark.skipif(not tq.has_gpyopt, reason="Missing gpyopt")
+@pytest.mark.skipif(not tq.optimizers.has_gpyopt, reason="Missing gpyopt installation")
 @pytest.mark.parametrize("simulator", [numpy.random.choice(samplers)])
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1,.4,1))
 @pytest.mark.parametrize('method',['lbfgs','DIRECT','CMA'])
