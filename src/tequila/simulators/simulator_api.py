@@ -134,7 +134,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: bool = False, 
     if backend == "random":
         from numpy import random as random
         import time
-        state = random.RandomState(int(str(time.clock()).split('.')[-1]) % 2 ** 32)
+        state = random.RandomState(int(str(time.process_time()).split('.')[-1]) % 2 ** 32)
         if samples is None:
             backend = state.choice(list(INSTALLED_SIMULATORS.keys()), 1)[0]
         else:
