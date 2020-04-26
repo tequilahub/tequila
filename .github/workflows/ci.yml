@@ -37,5 +37,5 @@ jobs:
     - name: Test basic installation with pytest
       run: |
         pip install -e .
-        pip install pytest -m "not dependencies"
-        pytest
+        pip install pytest 
+        pytest -m "not dependencies"
