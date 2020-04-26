@@ -116,7 +116,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     '''
     hamiltonian = E.H
     unitary = E.U
-    assert(unitary.verify())
+    assert (unitary.verify())
 
     # fast return if possible
     if variable not in unitary.extract_variables():
@@ -174,7 +174,3 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
     dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
     return dOinc
-
-
-
-

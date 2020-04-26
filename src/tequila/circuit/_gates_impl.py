@@ -229,7 +229,7 @@ class RotationGateImpl(ParametrizedGateImpl):
 
 class PhaseGateImpl(ParametrizedGateImpl):
 
-    def __init__(self, phase, target: list, control: list=None):
+    def __init__(self, phase, target: list, control: list = None):
         assert (phase is not None)
         super().__init__(name='Phase', parameter=phase, target=target, control=control)
 
@@ -242,7 +242,6 @@ class PhaseGateImpl(ParametrizedGateImpl):
         result = copy.deepcopy(self)
         result.parameter *= power
         return result
-
 
     @property
     def shift(self):

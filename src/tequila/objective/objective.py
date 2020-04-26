@@ -7,6 +7,7 @@ from tequila.autograd_imports import numpy
 
 import collections
 
+
 class ExpectationValueImpl:
     """
     Internal Object, do not use from the outside
@@ -41,7 +42,6 @@ class ExpectationValueImpl:
         if self.U is not None:
             self.U.update_variables(variables)
 
-
     def __init__(self, U=None, H=None, contraction=None, shape=None):
         self._unitary = copy.deepcopy(U)
         if hasattr(H, "paulistrings"):
@@ -52,7 +52,8 @@ class ExpectationValueImpl:
         self._shape = shape
 
     def __call__(self, *args, **kwargs):
-        raise TequilaException("Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")
+        raise TequilaException(
+            "Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")
 
     def info(self, short=True, *args, **kwargs):
         if short:
@@ -103,7 +104,7 @@ class Objective:
         """
         variables = []
         for arg in self.args:
-            if hasattr(arg,'extract_variables'):
+            if hasattr(arg, 'extract_variables'):
                 variables += arg.extract_variables()
             else:
                 variables += []
@@ -276,7 +277,7 @@ class Objective:
     def get_expectationvalues(self):
         return [arg for arg in self.args if hasattr(arg, "U")]
 
-    def count_expectationvalues(self, unique = True):
+    def count_expectationvalues(self, unique=True):
         if unique:
             return len(set(self.get_expectationvalues()))
         else:
@@ -306,7 +307,7 @@ class Objective:
                    "Objective = f({})\n" \
                    "variables = {}".format(len(ev), unique, argstring.strip().rstrip(','), variables)
 
-    def __call__(self, variables = None, *args, **kwargs):
+    def __call__(self, variables=None, *args, **kwargs):
         # avoid multiple evaluations
         evaluated = {}
         ev_array = []
@@ -449,7 +450,7 @@ class Variable:
         assert (callable(other))
         return Objective(args=[self], transformation=other)
 
-    def wrap(self,other):
+    def wrap(self, other):
         return self.apply(other)
 
     def __repr__(self):
@@ -540,14 +541,9 @@ class Variables(collections.abc.MutableMapping):
 
     def __str__(self):
         result = ""
-        for k,v in self.items():
+        for k, v in self.items():
             result += "{} : {}\n".format(str(k), str(v))
         return result
 
     def __repr__(self):
         return self.__str__()
-
-
-
-
-

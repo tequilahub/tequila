@@ -331,7 +331,6 @@ def Measurement(target):
     return MeasurementImpl(name='Measure', target=target)
 
 
-
 def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None,
              ):
     """Exponentiated Pauligate:
@@ -418,7 +417,9 @@ def GaussianGate(angle: typing.Union[typing.List[typing.Hashable], typing.List[n
     -------
     The gate wrapped in a circuit
     """
-    return QCircuit.wrap_gate(GaussianGateImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
+    return QCircuit.wrap_gate(
+        GaussianGateImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
+
 
 def Trotterized(generators: typing.List[QubitHamiltonian],
                 steps: int,

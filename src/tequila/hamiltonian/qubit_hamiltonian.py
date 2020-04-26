@@ -290,26 +290,26 @@ class QubitHamiltonian:
 
     def __add__(self, other):
         if isinstance(other, numbers.Number):
-            return QubitHamiltonian(hamiltonian=self.hamiltonian + other*self.init_unit().hamiltonian)
+            return QubitHamiltonian(hamiltonian=self.hamiltonian + other * self.init_unit().hamiltonian)
         else:
             return QubitHamiltonian(hamiltonian=self.hamiltonian + other.hamiltonian)
 
     def __sub__(self, other):
         if isinstance(other, numbers.Number):
-            return QubitHamiltonian(hamiltonian=self.hamiltonian - other*self.init_unit().hamiltonian)
+            return QubitHamiltonian(hamiltonian=self.hamiltonian - other * self.init_unit().hamiltonian)
         else:
             return QubitHamiltonian(hamiltonian=self.hamiltonian - other.hamiltonian)
 
     def __iadd__(self, other):
         if isinstance(other, numbers.Number):
-            self.hamiltonian += other*self.init_unit().hamiltonian
+            self.hamiltonian += other * self.init_unit().hamiltonian
         else:
             self.hamiltonian += other.hamiltonian
         return self
 
     def __isub__(self, other):
         if isinstance(other, numbers.Number):
-            self.hamiltonian -= other*self.init_unit().hamiltonian
+            self.hamiltonian -= other * self.init_unit().hamiltonian
         else:
             self.hamiltonian -= other.hamiltonian
         return self
@@ -472,7 +472,7 @@ class QubitHamiltonian:
         self._hamiltonian = new_hamiltonian
         return self
 
-    def map_qubits(self, qubit_map:dict):
+    def map_qubits(self, qubit_map: dict):
         """
 
         E.G.  X(1)Y(2) --> X(3)Y(1) with qubit_map = {1:3, 2:1}
@@ -490,10 +490,10 @@ class QubitHamiltonian:
 
         mapped_terms = {}
 
-        for k,v in self.hamiltonian.terms.items():
-            mk = tuple([ (qubit_map[x[0]], x[1]) for x in k ])
+        for k, v in self.hamiltonian.terms.items():
+            mk = tuple([(qubit_map[x[0]], x[1]) for x in k])
             mapped_terms[k] = v
 
         mapped = QubitOperator.zero()
-        mapped.terms=mapped_terms
+        mapped.terms = mapped_terms
         return QubitHamiltonian(hamiltonian=mapped)

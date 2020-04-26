@@ -655,7 +655,6 @@ class QuantumChemistryBase:
                         variables.append(Variable(name=key))  # abab
                         variables.append(Variable(name=key))  # baba
                         if partner is not None and key[0] != key[1] and key[2] != key[3]:
-
                             variables.append(Variable(name=key) - Variable(partner))  # aaaa
                             variables.append(Variable(name=key) - Variable(partner))  # bbbb
                     else:

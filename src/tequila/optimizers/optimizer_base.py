@@ -104,9 +104,9 @@ class OptimizerHistory:
             labels = kwargs['label']
 
         if hasattr(labels, "lower"):
-            labels = [labels]*len(properties)
+            labels = [labels] * len(properties)
 
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             if hasattr(plt, k):
                 getattr(plt, k)(v)
 
@@ -130,7 +130,8 @@ class OptimizerHistory:
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(list(data.keys()), list(data.values()), label=str(label) + " " + str(k), marker='o', linestyle='--')
+                    plt.plot(list(data.keys()), list(data.values()), label=str(label) + " " + str(k), marker='o',
+                             linestyle='--')
 
         loc = 'best'
         if 'loc' in kwargs:

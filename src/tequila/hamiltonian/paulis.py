@@ -145,7 +145,8 @@ def Qp(qubit) -> QubitHamiltonian:
     result = I()
     for q in qubit:
         result *= 0.5 * (I(qubit=q) + Z(qubit=q))
-    return  result
+    return result
+
 
 def Qm(qubit) -> QubitHamiltonian:
     """
@@ -172,6 +173,7 @@ def Qm(qubit) -> QubitHamiltonian:
         result *= 0.5 * (I(qubit=q) - Z(qubit=q))
     return result
 
+
 def Sp(qubit) -> QubitHamiltonian:
     """
     Notes
@@ -194,7 +196,7 @@ def Sp(qubit) -> QubitHamiltonian:
     qubit = list_assignement(qubit)
     result = I()
     for q in qubit:
-        result *=0.5 * (X(qubit=q) + 1.j*Y(qubit=q))
+        result *= 0.5 * (X(qubit=q) + 1.j * Y(qubit=q))
     return result
 
 
@@ -220,7 +222,7 @@ def Sm(qubit) -> QubitHamiltonian:
     qubit = list_assignement(qubit)
     result = I()
     for q in qubit:
-        result *=0.5 * (X(qubit=q) - 1.j*Y(qubit=q))
+        result *= 0.5 * (X(qubit=q) - 1.j * Y(qubit=q))
     return result
 
 
@@ -264,7 +266,8 @@ def Projector(wfn, threshold=0.0, n_qubits=None) -> QubitHamiltonian:
     return H
 
 
-def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.e-6, n_qubits=None):
+def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.e-6,
+           n_qubits=None):
     """
     Notes
     ----------

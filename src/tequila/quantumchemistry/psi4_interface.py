@@ -144,7 +144,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                                frozen_docc=frozen_docc,
                                frozen_uocc=frozen_uocc)
 
-
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals=None,
@@ -204,7 +203,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             self.compute_energy(method="hf", recompute=True)
             self.ref_wfn = self.logs["hf"].wfn
 
-
     @property
     def point_group(self):
         return self.psi4_mol.point_group().symbol()
@@ -254,7 +252,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def make_hamiltonian(self):
         if self.active_space:
-            return super().make_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals, active_indices=self.active_space.active_orbitals)
+            return super().make_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals,
+                                            active_indices=self.active_space.active_orbitals)
         else:
             return super().make_hamiltonian()
 
@@ -458,7 +457,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 all_amplitudes = wfn.get_amplitudes()
                 closed_shell = isinstance(wfn.reference_wavefunction(), psi4.core.RHF)
                 if closed_shell:
-                    return self._extract_active_space(ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()}))
+                    return self._extract_active_space(
+                        ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()}))
                 else:
                     assert (self.active_space is None)  # only for closed-shell currently
                     return Amplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
@@ -481,7 +481,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             options['basis'] = self.parameters.basis_set
             if self.active_space is not None and self.active_space.psi4_representable:
                 options['frozen_docc'] = self.active_space.frozen_docc
-                #options['frozen_uocc'] = self.active_space.frozen_uocc
+                # options['frozen_uocc'] = self.active_space.frozen_uocc
 
             return self._run_psi4(method=method, options=options, *args, **kwargs)[0]
         else:
@@ -504,7 +504,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if self.active_space is None:
             return super().prepare_reference(*args, **kwargs)
         else:
-            n_qubits = len(self.active_space.active_orbitals)*2
+            n_qubits = len(self.active_space.active_orbitals) * 2
             active_reference_orbitals = [i for i in self.active_space.reference_orbitals if
                                          i in self.active_space.active_orbitals]
             return super().prepare_reference(reference_orbitals=[i for i in range(len(active_reference_orbitals))],

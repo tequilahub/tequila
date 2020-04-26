@@ -132,7 +132,7 @@ class QubitWaveFunction:
         return result
 
     @classmethod
-    def from_int(cls, i: int, coeff=1, n_qubits: int=None):
+    def from_int(cls, i: int, coeff=1, n_qubits: int = None):
         if isinstance(i, BitString):
             return QubitWaveFunction(state={i: coeff}, n_qubits=n_qubits)
         else:

@@ -276,7 +276,6 @@ class QCircuit():
     def is_mixed(self):
         return not (self.is_fully_parametrized() or self.is_fully_unparametrized())
 
-
     def __iadd__(self, other):
         # duck typing
         other = self.wrap_gate(gate=other)
@@ -369,7 +368,6 @@ class Moment(QCircuit):
                 else:
                     mp.append(gate)
         return [Moment(mu), Moment(mp)]
-
 
     @property
     def depth(self):

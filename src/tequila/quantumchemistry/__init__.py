@@ -9,10 +9,13 @@ from .qc_base import ParametersQC, QuantumChemistryBase
 has_psi4 = which("psi4") is not None
 if has_psi4:
     from .psi4_interface import QuantumChemistryPsi4
+
     INSTALLED_QCHEMISTRY_BACKENDS["psi4"] = QuantumChemistryPsi4
 
 # import importlib
 has_pyscf = False
+
+
 # try:
 #     importlib.util.find_spec('pyscf')
 #     has_pyscf = True
@@ -24,19 +27,21 @@ has_pyscf = False
 #     INSTALLED_QCHEMISTRY_BACKENDS["pyscf"] = QuantumChemistryPySCF
 
 def show_available_modules():
-    print ("Available QuantumChemistry Modules:")
+    print("Available QuantumChemistry Modules:")
     for k in INSTALLED_QCHEMISTRY_BACKENDS.keys():
         print(k)
 
+
 def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
+
 
 def Molecule(geometry: str,
              basis_set: str,
              transformation: typing.Union[str, typing.Callable] = None,
              backend: str = None,
-             guess_wfn = None,
-             filename = None,
+             guess_wfn=None,
+             filename=None,
              *args,
              **kwargs) -> QuantumChemistryBase:
     """
@@ -65,7 +70,7 @@ def Molecule(geometry: str,
     """
 
     keyvals = {}
-    for k,v in kwargs.items():
+    for k, v in kwargs.items():
         if k in ParametersQC.__dict__.keys():
             keyvals[k] = v
 
@@ -87,11 +92,13 @@ def Molecule(geometry: str,
 
     if guess_wfn is not None and backend != 'psi4':
         raise Exception("guess_wfn only works for psi4")
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend](parameters=parameters, transformation=transformation, guess_wfn=guess_wfn, *args, **kwargs)
+    return INSTALLED_QCHEMISTRY_BACKENDS[backend](parameters=parameters, transformation=transformation,
+                                                  guess_wfn=guess_wfn, *args, **kwargs)
+
 
 def MoleculeFromOpenFermion(molecule,
                             transformation: typing.Union[str, typing.Callable] = None,
-                            backend:str=None,
+                            backend: str = None,
                             *args,
                             **kwargs) -> QuantumChemistryBase:
     """
@@ -111,4 +118,5 @@ def MoleculeFromOpenFermion(molecule,
     if backend is None:
         return QuantumChemistryBase.from_openfermion(molecule=molecule, transformation=transformation, *args, **kwargs)
     else:
-        INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(molecule=molecule, transformation=transformation, *args, **kwargs)
+        INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(molecule=molecule, transformation=transformation, *args,
+                                                                **kwargs)

@@ -2,9 +2,11 @@ from tequila.optimizers.optimizer_base import OptimizerHistory
 from tequila.optimizers.optimizer_scipy import OptimizerSciPy
 from tequila.optimizers.optimizer_gd import OptimizerGD
 from shutil import which
+
 has_phoenics = False
 try:
     import phoenics
+
     has_phoenics = True
 except ImportError:
     has_phoenics = False
@@ -12,6 +14,7 @@ except ImportError:
 has_gpyopt = False
 try:
     import GPyOpt
+
     has_gpyopt = True
 except ImportError:
     has_gpyopt = False

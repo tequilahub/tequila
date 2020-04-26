@@ -8,7 +8,7 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit",'cirq', 'pyquil']
+SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -30,8 +30,10 @@ try:
     from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
 
     HAS_QULACS = True
-    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
-    INSTALLED_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
+    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
+                                                  ExpValueType=BackendExpectationValueQulacs)
+    INSTALLED_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
+                                                ExpValueType=BackendExpectationValueQulacs)
 except ImportError:
     HAS_QULACS = False
 
@@ -176,7 +178,6 @@ def compile_objective(objective: 'Objective',
     :return: Compiled Objective
     """
 
-
     backend = pick_backend(backend=backend, samples=samples, noise=noise_model is not None)
 
     # dummy variables
@@ -215,7 +216,7 @@ def compile_objective(objective: 'Objective',
 def compile_circuit(abstract_circuit: 'QCircuit',
                     variables: typing.Dict['Variable', 'RealNumber'] = None,
                     backend: str = None,
-                    samples: int =None,
+                    samples: int = None,
                     noise_model=None,
                     *args,
                     **kwargs) -> BackendCircuit:
@@ -230,7 +231,8 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     :return: The compiled circuit object
     """
 
-    CircType = INSTALLED_SIMULATORS[pick_backend(backend=backend,samples=samples, noise=noise_model is not None)].CircType
+    CircType = INSTALLED_SIMULATORS[
+        pick_backend(backend=backend, samples=samples, noise=noise_model is not None)].CircType
 
     # dummy variables
     if variables is None:
@@ -240,7 +242,8 @@ def compile_circuit(abstract_circuit: 'QCircuit',
         if not isinstance(abstract_circuit, CircType):
             abstract_circuit = abstract_circuit.abstract_circuit
             warnings.warn(
-                "Looks like the circuit was already compiled for another backend.\nChanging from {} to {}\n".format(type(abstract_circuit), CircType), TequilaWarning)
+                "Looks like the circuit was already compiled for another backend.\nChanging from {} to {}\n".format(
+                    type(abstract_circuit), CircType), TequilaWarning)
         else:
             return abstract_circuit
 
@@ -365,15 +368,13 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
 
     """
 
-    backend = pick_backend(backend=backend,noise=noise_model is not None, samples=samples)
-
+    backend = pick_backend(backend=backend, noise=noise_model is not None, samples=samples)
 
     if variables is None and not (len(objective.extract_variables()) == 0):
         variables = {key: 0.0 for key in objective.extract_variables()}
     elif variables is not None:
         # allow hashable types as keys without casting it to variables
         variables = {assign_variable(k): v for k, v in variables.items()}
-
 
     if isinstance(objective, Objective) or hasattr(objective, "args"):
         return compile_objective(objective=objective, variables=variables, backend=backend, noise_model=noise_model)

@@ -11,6 +11,7 @@ class TequilaException(Exception):
 
     pass
 
+
 class TequilaWarning(UserWarning):
     """
     Base class for other exceptions in tequila
@@ -22,6 +23,7 @@ class TequilaWarning(UserWarning):
 
     def __str__(self):
         return self.message
+
 
 class TequilaParameterError(TequilaException):
     """
