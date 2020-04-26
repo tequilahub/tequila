@@ -85,11 +85,11 @@ def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,backen
     generators =[]
     for pm in parametric_moms:
         set=[]
-        if len(pm.gates) is not 0:
+        if len(pm.gates) !=0:
             for gate in pm.gates:
                 gen=get_generator(gate)
                 set.append(gen)
-        if len(set) is not 0:
+        if len(set) !=0:
             generators.append(set)
         else:
             generators.append(None)

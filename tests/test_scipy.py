@@ -149,7 +149,7 @@ def test_hessian_based_methods(simulator, method, use_hessian):
 
     # numerical hessian only works for this method
     if use_hessian in ['2-point', '3-point']:
-        if method is not "TRUST-CONSTR":
+        if method != "TRUST-CONSTR":
             return
         initial_values = {"a": 0.3, "b": 0.8}
 

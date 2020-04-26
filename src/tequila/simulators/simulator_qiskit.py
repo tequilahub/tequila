@@ -276,7 +276,7 @@ class BackendCircuitQiskit(BackendCircuit):
                     for i in range(noise.level - 1):
                         active = active.tensor(action)
 
-            if noise.level is 2:
+            if noise.level == 2:
                 targets = ['cx',
                            'cy',
                            'cz',
@@ -286,7 +286,7 @@ class BackendCircuitQiskit(BackendCircuit):
                            'cu3',
                            'ch']
 
-            elif noise.level is 1:
+            elif noise.level == 1:
                 targets = ['x',
                            'y',
                            'z',
@@ -295,7 +295,7 @@ class BackendCircuitQiskit(BackendCircuit):
                            'u2',
                            'h']
 
-            elif noise.level is 3:
+            elif noise.level == 3:
                 targets = ['ccx']
             qnoise.add_all_qubit_quantum_error(active, targets)
 

@@ -402,7 +402,7 @@ class Moment(QCircuit):
                 overlap.append(n)
 
         gates = copy.deepcopy(self.gates)
-        if len(overlap) is 0:
+        if len(overlap) == 0:
             gates.append(gate)
         else:
             for i, g in enumerate(gates):
@@ -492,7 +492,7 @@ class Moment(QCircuit):
         else:
             new._gates += other.gates
         new._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
-        if new.depth is 1:
+        if new.depth == 1:
             new = Moment(new.gates)
         return new
 
