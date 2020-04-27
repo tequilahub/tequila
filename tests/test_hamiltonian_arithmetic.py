@@ -49,6 +49,18 @@ def test_convenience():
     test = paulis.Z([0,1,2,3])
     assert test == QubitHamiltonian.init_from_string("Z(0)Z(1)Z(2)Z(3)", False)
 
+def test_initialization():
+    H = paulis.I()
+    for i in range(10):
+        H += paulis.pauli(qubit=numpy.random.randint(0,5,3), type=numpy.random.choice(["X", "Y", "Z"],1))
+
+    for H1 in [H, paulis.I(), paulis.Zero(), paulis.X(0), paulis.Y(1), 1.234*paulis.Z(2)]:
+        string = str(H1)
+        ofstring = str(H1.to_openfermion())
+        H2 = QubitHamiltonian.init_from_string(string=string)
+        assert H1 == H2
+        H3 = QubitHamiltonian.init_from_string(string=ofstring, openfermion_format=True)
+        assert H1 == H3
 
 def test_ketbra():
     ket = QubitWaveFunction.from_string("1.0*|00> + 1.0*|11>").normalize()
@@ -100,7 +112,7 @@ def test_simple_arithmetic():
     assert (paulis.Y(qubit).transpose() == -1 * paulis.Y(qubit))
     assert (paulis.Z(qubit).transpose() == paulis.Z(qubit))
     for P in primitives:
-        assert (P(qubit) * P(qubit) == QubitHamiltonian())
+        assert (P(qubit) * P(qubit) == QubitHamiltonian(1.0))
         n = random.randint(0, 10)
         nP = QubitHamiltonian.init_zero()
         for i in range(n):

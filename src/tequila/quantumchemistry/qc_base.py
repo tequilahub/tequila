@@ -374,12 +374,12 @@ class QuantumChemistryBase:
         op += openfermion.FermionOperator(((2 * q, 1), (2 * p, 0)), 1.j)  # dagger alpha
         op += openfermion.FermionOperator(((2 * q + 1, 1), (2 * p + 1, 0)), 1.j)  # dagger beta
 
-        qop = QubitHamiltonian(hamiltonian=self.transformation(op))
+        qop = QubitHamiltonian(qubit_hamiltonian=self.transformation(op))
 
         # check if the operator is hermitian and cast coefficients to floats
         assert qop.is_hermitian()
-        for k, v in qop.hamiltonian.terms.items():
-            qop.hamiltonian.terms[k] = to_float(v)
+        for k, v in qop.qubit_operator.terms.items():
+            qop.qubit_operator.terms[k] = to_float(v)
 
         return qop
 
@@ -427,12 +427,12 @@ class QuantumChemistryBase:
         op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
 
-        qop = QubitHamiltonian(hamiltonian=self.transformation(op))
+        qop = QubitHamiltonian(qubit_hamiltonian=self.transformation(op))
 
         # check if the operator is hermitian and cast coefficients to floats
         assert qop.is_hermitian()
-        for k, v in qop.hamiltonian.terms.items():
-            qop.hamiltonian.terms[k] = to_float(v)
+        for k, v in qop.qubit_operator.terms.items():
+            qop.qubit_operator.terms[k] = to_float(v)
 
         return qop
 
@@ -467,7 +467,7 @@ class QuantumChemistryBase:
 
         fop = openfermion.FermionOperator(string, 1.0)
 
-        op = QubitHamiltonian(hamiltonian=self.transformation(fop))
+        op = QubitHamiltonian(qubit_hamiltonian=self.transformation(fop))
         from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
         wfn = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
         wfn = wfn.apply_qubitoperator(operator=op)
@@ -538,7 +538,7 @@ class QuantumChemistryBase:
         """ """
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
-        return QubitHamiltonian(hamiltonian=self.transformation(fop))
+        return QubitHamiltonian(qubit_hamiltonian=self.transformation(fop))
 
     def compute_one_body_integrals(self):
         """ """

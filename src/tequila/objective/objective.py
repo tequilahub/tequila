@@ -288,9 +288,19 @@ class Objective:
 
     def __repr__(self):
         variables = self.extract_variables()
+        types = [type(E) for E in self.get_expectationvalues()]
+        types = list(set(types))
+
+        if ExpectationValueImpl in types:
+            if len(types) == 1:
+                types = "not compiled"
+            else:
+                types = "partially compiled to " + str([t for t in types if t is not ExpectationValueImpl])
 
         unique = self.count_expectationvalues(unique=True)
-        return "Objective with {} unique expectation values\nvariables = {}".format(unique, variables)
+        return "Objective with {} unique expectation values\n" \
+               "variables = {}\n" \
+               "types     = {}".format(unique, variables, types)
 
     def __call__(self, variables=None, *args, **kwargs):
         variables = format_variable_dictionary(variables)

@@ -89,27 +89,43 @@ class QubitWaveFunction:
         return self.state.values()
 
     @staticmethod
-    def convert_bitstring(key: typing.Union[BitString, numbers.Integral]):
+    def convert_bitstring(key: typing.Union[BitString, numbers.Integral], n_qubits):
         if isinstance(key, numbers.Integral):
-            return BitString.from_int(integer=key)
+            return BitString.from_int(integer=key, nbits=n_qubits)
         elif isinstance(key, str):
-            return BitString.from_binary(binary=key)
+            return BitString.from_binary(binary=key, nbits=n_qubits)
         else:
             return key
 
     def __getitem__(self, item: BitString):
-        key = self.convert_bitstring(item)
-        if key in self.state:
-            return self.state[key]
+        key = self.convert_bitstring(item, self.n_qubits)
+        return self.state[key]
+
+    def __call__(self, key, *args, **kwargs) -> numbers.Number:
+        """
+        Like getitem but returns zero if key is not there
+
+        Parameters
+        ----------
+        key: bitstring (or int or str)
+        Returns
+        -------
+            Return the amplitude or measurement occurence of a bitstring
+        """
+        ckey = self.convert_bitstring(key, self.n_qubits)
+        if ckey in self.state:
+            return self.state[ckey]
         else:
             return 0.0
 
+
+
     def __setitem__(self, key: BitString, value: numbers.Number):
-        self._state[self.convert_bitstring(key)] = value
+        self._state[self.convert_bitstring(key, self.n_qubits)] = value
         return self
 
     def __contains__(self, item: BitString):
-        return self.convert_bitstring(item) in self.keys()
+        return self.convert_bitstring(item, self.n_qubits) in self.keys()
 
     def __len__(self):
         return len(self.state)
@@ -239,8 +255,8 @@ class QubitWaveFunction:
         :return: Normalizes the wavefunction/countrate
         """
         norm2 = self.inner(other=self)
-        self = 1.0 / numpy.sqrt(norm2) * self
-        return self
+        normalized = 1.0 / numpy.sqrt(norm2) * self
+        return normalized
 
     def compute_expectationvalue(self, operator: 'QubitHamiltonian') -> numbers.Real:
         tmp = self.apply_qubitoperator(operator=operator)
@@ -289,3 +305,11 @@ class QubitWaveFunction:
         for k, v in self.items():
             result[int(k)] = v
         return result
+
+    def simplify(self, threshold = 1.e-8):
+        state = {}
+        for k, v in self.state.items():
+            if not numpy.isclose(v, 0.0, atol=threshold):
+                state[k] = v
+        return QubitWaveFunction(state=state)
+

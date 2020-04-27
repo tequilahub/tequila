@@ -191,12 +191,19 @@ class QubitHamiltonian:
     axis_to_string = {0: "x", 1: "y", 2: "z"}
     string_to_axis = {"x": 0, "y": 1, "z": 2}
 
+    @classmethod
+    def from_openfermion(cls, qubit_operator: QubitOperator):
+        return QubitHamiltonian(qubit_hamiltonian=qubit_operator)
+
+    def to_openfermion(self) -> QubitOperator:
+        return self.qubit_operator
+
     @property
-    def hamiltonian(self) -> QubitOperator:
+    def qubit_operator(self) -> QubitOperator:
         """
         :return: The underlying OpenFermion QubitOperator
         """
-        return self._hamiltonian
+        return self._qubit_operator
 
     @property
     def qubits(self):
@@ -208,9 +215,9 @@ class QubitHamiltonian:
             accumulate += ps.qubits
         return sorted(list(set(accumulate)))
 
-    @hamiltonian.setter
-    def hamiltonian(self, other: QubitOperator) -> QubitOperator:
-        self._hamiltonian = other
+    @qubit_operator.setter
+    def qubit_operator(self, other: QubitOperator) -> QubitOperator:
+        self._qubit_operator = other
 
     def index(self, ituple):
         return ituple[0]
@@ -218,27 +225,27 @@ class QubitHamiltonian:
     def pauli(selfs, ituple):
         return ituple[1]
 
-    def __init__(self, hamiltonian: typing.Union[QubitOperator, str, numbers.Number] = None):
+    def __init__(self, qubit_hamiltonian: typing.Union[QubitOperator, str, numbers.Number] = None):
         """
         Initialize from string or from a preexisting OpenFermion QubitOperator instance
-        :param hamiltonian: string or openfermion.QubitOperator
+        :param qubit_hamiltonian: string or openfermion.QubitOperator
         if string: Same conventions as openfermion
         if None: The Hamiltonian is initialized as identity operator
         if Number: initialized as scaled unit operator
         """
-        if isinstance(hamiltonian, str):
-            self._hamiltonian = self.init_from_string(string=hamiltonian)._hamiltonian
-        elif hamiltonian is None:
-            self._hamiltonian = QubitOperator.identity()
-        elif isinstance(hamiltonian, numbers.Number):
-            self._hamiltonian = hamiltonian * QubitOperator.identity()
+        if isinstance(qubit_hamiltonian, str):
+            self._qubit_operator = self.init_from_string(string=qubit_hamiltonian)._qubit_operator
+        elif qubit_hamiltonian is None:
+            self._qubit_operator = QubitOperator.zero()
+        elif isinstance(qubit_hamiltonian, numbers.Number):
+            self._qubit_operator = qubit_hamiltonian * QubitOperator.identity()
         else:
-            self._hamiltonian = hamiltonian
+            self._qubit_operator = qubit_hamiltonian
 
-        assert (isinstance(self._hamiltonian, QubitOperator))
+        assert (isinstance(self._qubit_operator, QubitOperator))
 
     def __len__(self):
-        return len(self._hamiltonian.terms)
+        return len(self._qubit_operator.terms)
 
     def __repr__(self):
         result = ""
@@ -247,28 +254,28 @@ class QubitHamiltonian:
         return result
 
     def __getitem__(self, item):
-        return self._hamiltonian.terms[item]
+        return self._qubit_operator.terms[item]
 
     def __setitem__(self, key, value):
-        self._hamiltonian.terms[key] = value
+        self._qubit_operator.terms[key] = value
         return self
 
     def items(self):
-        return self._hamiltonian.terms.items()
+        return self._qubit_operator.terms.items()
 
     def keys(self):
-        return self._hamiltonian.terms.keys()
+        return self._qubit_operator.terms.keys()
 
     def values(self):
-        return self._hamiltonian.terms.values()
+        return self._qubit_operator.terms.values()
 
     @classmethod
     def init_zero(cls):
-        return QubitHamiltonian(hamiltonian=QubitOperator("", 0.0))
+        return QubitHamiltonian(qubit_hamiltonian=QubitOperator("", 0.0))
 
     @classmethod
     def init_unit(cls):
-        return QubitHamiltonian(hamiltonian=QubitOperator.identity())
+        return QubitHamiltonian(qubit_hamiltonian=QubitOperator.identity())
 
     @classmethod
     def init_from_string(cls, string, openfermion_format=False):
@@ -278,40 +285,75 @@ class QubitHamiltonian:
         :param openfermion_format: use the openfermion string format
         :return: QubitHamiltonian
         """
-
-        if openfermion_format:
-            return QubitHamiltonian(hamiltonian=QubitOperator(string, 1.0))
+        if string.strip() == "":
+            return cls.init_zero()
+        elif openfermion_format:
+            return QubitHamiltonian(qubit_hamiltonian=QubitOperator(string))
         else:
-            return cls.init_from_paulistring(ps=PauliString.from_string(string=string))
+            H = QubitHamiltonian.init_zero()
+            string = string.replace(" ", "")
+            string = string.replace("*", "")
+            string = string.replace("+-", "-")
+            string = string.replace("-+", "-")
+            string = string.replace("-", "+-")
+            string = string.replace("X", " X")
+            string = string.replace("Y", " Y")
+            string = string.replace("Z", " Z")
+            string += " "
+            print("string=", string)
+            terms = string.split('+')
+            for term in terms:
+                if term.strip() == "":
+                    continue
+
+                coeff = term.split(" ")[0]
+                if coeff.strip() == "" or coeff[0] in ["X", "Y", "Z"]:
+                    coeff = '1.0'
+                    ps = term
+                else:
+                    ps = term.replace(coeff, " ").replace(" ", "")
+
+                try:
+                    if "i" in coeff:
+                        coeff = coeff.replace("i", "j")
+                    coeff = complex(coeff)
+                except Exception as E:
+                    raise Exception("failed to convert coefficient : {}".format(coeff))
+
+                if coeff.imag == 0.0:
+                    coeff = float(coeff.real)
+
+                H += cls.init_from_paulistring(ps=PauliString.from_string(string=ps, coeff=coeff))
+            return H.simplify()
 
     @classmethod
     def init_from_paulistring(cls, ps: PauliString):
-        return QubitHamiltonian(hamiltonian=QubitOperator(term=ps.key_openfermion(), coefficient=ps.coeff))
+        return QubitHamiltonian(qubit_hamiltonian=QubitOperator(term=ps.key_openfermion(), coefficient=ps.coeff))
 
     def __add__(self, other):
         if isinstance(other, numbers.Number):
-            return QubitHamiltonian(hamiltonian=self.hamiltonian + other * self.init_unit().hamiltonian)
+            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator + other * self.init_unit().qubit_operator)
         else:
-            return QubitHamiltonian(hamiltonian=self.hamiltonian + other.hamiltonian)
+            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator + other.qubit_operator)
 
     def __sub__(self, other):
         if isinstance(other, numbers.Number):
-            return QubitHamiltonian(hamiltonian=self.hamiltonian - other * self.init_unit().hamiltonian)
+            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator - other * self.init_unit().qubit_operator)
         else:
-            return QubitHamiltonian(hamiltonian=self.hamiltonian - other.hamiltonian)
+            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator - other.qubit_operator)
 
     def __iadd__(self, other):
         if isinstance(other, numbers.Number):
-            self.hamiltonian += other * self.init_unit().hamiltonian
+            self.qubit_operator += other * self.init_unit().qubit_operator
         else:
-            self.hamiltonian += other.hamiltonian
+            self.qubit_operator += other.qubit_operator
         return self
 
     def __isub__(self, other):
         if isinstance(other, numbers.Number):
-            self.hamiltonian -= other * self.init_unit().hamiltonian
+            self.qubit_operator -= other * self.init_unit().qubit_operator
         else:
-            self.hamiltonian -= other.hamiltonian
+            self.qubit_operator -= other.qubit_operator
         return self
 
     def __mul__(self, other):
@@ -319,20 +361,20 @@ class QubitHamiltonian:
             # actually an apply operation
             return other.apply_qubitoperator(operator=self)
         elif isinstance(other, numbers.Number):
-            return QubitHamiltonian(hamiltonian=self.hamiltonian * other)
+            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator * other)
         else:
-            return QubitHamiltonian(hamiltonian=self.hamiltonian * other.hamiltonian)
+            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator * other.qubit_operator)
 
     def __imul__(self, other):
         if isinstance(other, numbers.Number):
-            self.hamiltonian *= other
+            self.qubit_operator *= other
         else:
-            self.hamiltonian *= other.hamiltonian
+            self.qubit_operator *= other.qubit_operator
         return self
 
     def __rmul__(self, other):
         assert isinstance(other, numbers.Number)
-        return QubitHamiltonian(hamiltonian=self.hamiltonian * other)
+        return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator * other)
 
     def __radd__(self, other):
         return self.__add__(other=other)
@@ -341,28 +383,28 @@ class QubitHamiltonian:
         return self.__neg__().__add__(other=other)
 
     def __pow__(self, power):
-        return QubitHamiltonian(hamiltonian=self.hamiltonian ** power)
+        return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator ** power)
 
     def __neg__(self):
         return self.__mul__(other=-1.0)
 
     def __eq__(self, other):
-        return self._hamiltonian == other._hamiltonian
+        return self._qubit_operator == other._qubit_operator
 
     def is_hermitian(self):
         try:
-            for k, v in self.hamiltonian.terms.items():
-                self.hamiltonian.terms[k] = to_float(v)
+            for k, v in self.qubit_operator.terms.items():
+                self.qubit_operator.terms[k] = to_float(v)
             return True
         except TypeError:
             return False
 
     def simplify(self, threshold=0.0):
         simplified = {}
-        for k, v in self.hamiltonian.terms.items():
+        for k, v in self.qubit_operator.terms.items():
             if not numpy.isclose(v, 0.0, atol=threshold):
                 simplified[k] = v
-        self._hamiltonian.terms = simplified
+        self._qubit_operator.terms = simplified
         return self
 
     def split(self, *args, **kwargs) -> tuple:
@@ -373,11 +415,11 @@ class QubitHamiltonian:
         """
         hermitian = QubitHamiltonian.init_zero()
         anti_hermitian = QubitHamiltonian.init_zero()
-        for k, v in self.hamiltonian.terms.items():
-            hermitian.hamiltonian.terms[k] = numpy.float(v.real)
-            anti_hermitian.hamiltonian.terms[k] = 1.j * v.imag
+        for k, v in self.qubit_operator.terms.items():
+            hermitian.qubit_operator.terms[k] = numpy.float(v.real)
+            anti_hermitian.qubit_operator.terms[k] = 1.j * v.imag
 
-        return hermitian, anti_hermitian
+        return hermitian.simplify(), anti_hermitian.simplify()
 
     def is_antihermitian(self):
         for v in self.values():
@@ -387,7 +429,7 @@ class QubitHamiltonian:
 
     def conjugate(self):
         conj_hamiltonian = QubitOperator("", 0)
-        for key, value in self._hamiltonian.terms.items():
+        for key, value in self._qubit_operator.terms.items():
             sign = 1
             for term in key:
                 p = self.pauli(term)
@@ -395,11 +437,11 @@ class QubitHamiltonian:
                     sign *= -1
             conj_hamiltonian.terms[key] = sign * value.conjugate()
 
-        return QubitHamiltonian(hamiltonian=conj_hamiltonian)
+        return QubitHamiltonian(qubit_hamiltonian=conj_hamiltonian)
 
     def transpose(self):
         trans_hamiltonian = QubitOperator("", 0)
-        for key, value in self._hamiltonian.terms.items():
+        for key, value in self._qubit_operator.terms.items():
             sign = 1
             for term in key:
                 p = self.pauli(term)
@@ -407,17 +449,17 @@ class QubitHamiltonian:
                     sign *= -1
             trans_hamiltonian.terms[key] = sign * value
 
-        return QubitHamiltonian(hamiltonian=trans_hamiltonian)
+        return QubitHamiltonian(qubit_hamiltonian=trans_hamiltonian)
 
     def dagger(self):
         dag_hamiltonian = QubitOperator("", 0)
-        for key, value in self._hamiltonian.terms.items():
+        for key, value in self._qubit_operator.terms.items():
             dag_hamiltonian.terms[key] = value.conjugate()
 
-        return QubitHamiltonian(hamiltonian=dag_hamiltonian)
+        return QubitHamiltonian(qubit_hamiltonian=dag_hamiltonian)
 
     def normalize(self):
-        self._hamiltonian.renormalize()
+        self._qubit_operator.renormalize()
         return self
 
     def to_matrix(self):
@@ -469,7 +511,7 @@ class QubitHamiltonian:
         for ps in other:
             tmp = QubitOperator(term=ps.key_openfermion(), value=ps.coeff)
             new_hamiltonian += tmp
-        self._hamiltonian = new_hamiltonian
+        self._qubit_operator = new_hamiltonian
         return self
 
     def map_qubits(self, qubit_map: dict):
@@ -490,10 +532,10 @@ class QubitHamiltonian:
 
         mapped_terms = {}
 
-        for k, v in self.hamiltonian.terms.items():
+        for k, v in self.qubit_operator.terms.items():
             mk = tuple([(qubit_map[x[0]], x[1]) for x in k])
             mapped_terms[k] = v
 
         mapped = QubitOperator.zero()
         mapped.terms = mapped_terms
-        return QubitHamiltonian(hamiltonian=mapped)
+        return QubitHamiltonian(qubit_hamiltonian=mapped)
