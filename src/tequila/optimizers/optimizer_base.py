@@ -147,7 +147,7 @@ class OptimizerHistory:
 class Optimizer:
 
     def __init__(self, simulator: str = None, maxiter: int = None, samples: int = None,
-                 save_history: bool = True):
+                 save_history: bool = True, silent: bool = False):
         """
         :param simulator: The simulators to use (None means autopick)
         :param maxiter: Maximum number of iterations
@@ -164,6 +164,11 @@ class Optimizer:
             self.maxiter = 100
         else:
             self.maxiter = maxiter
+
+        if silent is None:
+            self.silent = False
+        else:
+            self.silent = silent
 
         self.samples = samples
         self.save_history = save_history

@@ -77,8 +77,19 @@ class Compiler:
 
     def compile_objective(self, objective, variables=None, *args, **kwargs):
         compiled_args = []
+        already_processed = {}
         for arg in objective.args:
-            compiled_args.append(self.compile_objective_argument(arg, variables=None, *args, **kwargs))
+            if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
+                if arg in already_processed:
+                    compiled_args.append(already_processed[arg])
+                else:
+                    compiled = self.compile_objective_argument(arg, variables=None, *args, **kwargs)
+                    compiled_args.append(compiled)
+                    already_processed[arg] = compiled
+            else:
+                # nothing to process for non-expectation-value types, but acts as sanity check
+                compiled_args.append(self.compile_objective_argument(arg, variables=None, *args, **kwargs))
+
         return type(objective)(args=compiled_args, transformation=objective._transformation)
 
     def compile_objective_argument(self, arg, variables=None, *args, **kwargs):

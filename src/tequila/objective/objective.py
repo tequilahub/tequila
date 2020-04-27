@@ -283,31 +283,17 @@ class Objective:
         else:
             return len(self.get_expectationvalues())
 
+    def __str__(self):
+        return self.__repr__()
+
     def __repr__(self):
         variables = self.extract_variables()
-        ev = []
-        argstring = ""
-        i = 0
-        for arg in self.args:
-            if hasattr(arg, "U"):
-                ev.append(i)
-                argstring += "E_" + str(i) + ", "
-                i += 1
-            elif hasattr(arg, "name"):
-                argstring += str(arg) + ", "
-            else:
-                assert not arg.has_expectationvalues()
-                argstring += "g({}), ".format(arg.extract_variables())
 
         unique = self.count_expectationvalues(unique=True)
-        if unique == 0:
-            return "f({})".format(argstring.strip().rstrip(','))
-        else:
-            return "Objective with {}({}) (unique) expectation values\n" \
-                   "Objective = f({})\n" \
-                   "variables = {}".format(len(ev), unique, argstring.strip().rstrip(','), variables)
+        return "Objective with {} unique expectation values\nvariables = {}".format(unique, variables)
 
     def __call__(self, variables=None, *args, **kwargs):
+        variables = format_variable_dictionary(variables)
         # avoid multiple evaluations
         evaluated = {}
         ev_array = []
@@ -461,6 +447,13 @@ class FixedVariable(float):
 
     def __call__(self, *args, **kwargs):
         return self
+
+    def apply(self, other):
+        assert (callable(other))
+        return Objective(args=[self], transformation=other)
+
+    def wrap(self, other):
+        return self.apply(other)
 
 
 def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List[Variable]:

@@ -6,6 +6,7 @@ from tequila.objective.objective import Variable
 import copy
 import warnings
 import pickle
+import time
 from tequila import TequilaException
 
 warnings.simplefilter("ignore")
@@ -45,11 +46,11 @@ class OptimizerPhoenics(Optimizer):
     def available_methods(cls):
         return "phoenics"
 
-    def __init__(self, maxiter, backend=None, save_history=True, minimize=True, samples=None):
+    def __init__(self, maxiter, backend=None, save_history=True, minimize=True, samples=None, silent=None):
         self._minimize = minimize
         if samples is not None:
             print('warning you: the samples you input do not matter, except when calling')
-        super().__init__(simulator=backend, maxiter=maxiter, samples=None, save_history=save_history)
+        super().__init__(simulator=backend, maxiter=maxiter, samples=None, save_history=save_history, silent=silent)
 
     def _process_for_sim(self, recommendation, passives):
         '''
@@ -75,7 +76,7 @@ class OptimizerPhoenics(Optimizer):
 
         return new
 
-    def _make_phoenics_object(self, objective, passives=None, conf=None):
+    def _make_phoenics_object(self, objective, passives=None, conf=None, *args, **kwargs):
         if conf is not None:
             if hasattr(conf, 'readlines'):
                 bird = phoenics.Phoenics(config_file=conf)
@@ -89,7 +90,7 @@ class OptimizerPhoenics(Optimizer):
                 if thing in passives.keys():
                     op.remove(thing)
 
-        config = {"general": {"auto_desc_gen": "False", "batches": 1, "boosted": "False", "parallel": "False"}}
+        config = {"general": {"auto_desc_gen": "False", "batches": 5, "boosted": "False", "parallel": "False"}}
         config['parameters'] = [
             {'name': k, 'periodic': 'True', 'type': 'continuous', 'size': 1, 'low': 0, 'high': 2 * pi} for k in op]
         if self._minimize is True:
@@ -97,11 +98,18 @@ class OptimizerPhoenics(Optimizer):
         else:
             config['objectives'] = [{"name": "Energy", "goal": "maximize"}]
 
+        for k,v in kwargs.items():
+            if hasattr(k, "lower") and k.lower() in config["general"]:
+                config["general"][k.lower()] = v
+
+        if not self.silent:
+            print("Phoenics config:\n")
+            print(config)
         bird = phoenics.Phoenics(config_dict=config)
         return bird
 
     def __call__(self, objective: Objective,
-                 maxiter: int,
+                 maxiter: int = None,
                  passives: typing.Dict[Variable, numbers.Real] = None,
                  samples: int = None,
                  backend: str = None,
@@ -109,9 +117,14 @@ class OptimizerPhoenics(Optimizer):
                  previous=None,
                  phoenics_config=None,
                  save_to_file=False,
-                 file_name=None):
+                 file_name=None,
+                 *args,
+                 **kwargs):
 
-        bird = self._make_phoenics_object(objective, passives, phoenics_config)
+        if maxiter is None:
+            maxiter = 10
+
+        bird = self._make_phoenics_object(objective, passives, phoenics_config, *args, **kwargs)
         if previous is not None:
             if type(previous) is str:
                 try:
@@ -146,38 +159,43 @@ class OptimizerPhoenics(Optimizer):
         best = None
         best_angles = None
 
-        print('phoenics has recieved')
-        print(backend)
-        print(noise)
-        print('now lets begin')
+        # avoid multiple compilations
+        compiled_objective = compile_objective(objective=objective, backend=backend, samples=samples, noise_model=noise)
+
+        if not self.silent:
+            print('phoenics has recieved')
+            print("objective: \n")
+            print(objective)
+            print("noise model : {}".format(noise))
+            print("samples     : {}".format(samples))
+            print("maxiter     : {}".format(maxiter))
+            print("variables   : {}".format(objective.extract_variables()))
+            print("passive var : {}".format(passives))
+            print('now lets begin')
         for i in range(0, maxiter):
             with warnings.catch_warnings():
                 np.testing.suppress_warnings()
                 warnings.simplefilter("ignore")
                 warnings.filterwarnings("ignore", category=FutureWarning)
-                blockPrint()
-                if len(obs) >= 1:
 
-                    precs = bird.recommend(observations=obs)
-                else:
-                    precs = bird.recommend()
-                enablePrint()
+            if len(obs) >= 1:
+                precs = bird.recommend(observations=obs)
+            else:
+                precs = bird.recommend()
+
             runs = []
             recs = self._process_for_sim(precs, passives=passives)
-            # avoid multiple compilations
-            compiled_objective = compile_objective(objective=objective, backend=backend, variables=recs[0],
-                                                   samples=samples,
-                                                   noise_model=noise)
 
+            start = time.time()
             for i, rec in enumerate(recs):
                 En = compiled_objective(variables=rec, samples=samples, noise_model=noise)
-                '''
-                if samples is None:
-                    En = simulate_objective(objective=objective,backend=backend,variables=rec)
-                else:
-                    En = sample_objective(objective=objective,variables=rec,backend=backend, samples=samples,noise=noise)
-                '''
                 runs.append((rec, En))
+                if not self.silent:
+                    print("energy = {:+2.8f} , angles=".format(En), rec)
+            stop = time.time()
+            if not self.silent:
+                print("Quantum Objective evaluations: {}s Wall-Time".format(stop-start))
+
             for run in runs:
                 angles = run[0]
                 E = run[1]
@@ -189,14 +207,10 @@ class OptimizerPhoenics(Optimizer):
                         if E < best:
                             best = E
                             best_angles = angles
-                        else:
-                            pass
                     else:
                         if E > best:
                             best = E
                             best_angles = angles
-                        else:
-                            pass
 
                 if self.save_history:
                     self.history.energies.append(E)
@@ -206,11 +220,14 @@ class OptimizerPhoenics(Optimizer):
         if save_to_file is True:
             with open(file_name, 'wb') as file:
                 pickle.dump(obs, file)
+
+        if not self.silent:
+            print("best energy after {} iterations : {:+2.8f}".format(self.maxiter, best))
         return PhoenicsReturnType(energy=best, angles=best_angles, history=self.history, observations=obs)
 
 
 def minimize(objective: Objective,
-             maxiter: int,
+             maxiter: int = None,
              samples: int = None,
              variables: typing.List = None,
              initial_values: typing.Dict = None,
@@ -220,6 +237,7 @@ def minimize(objective: Objective,
              phoenics_config: typing.Union[str, typing.Dict] = None,
              save_to_file: bool = False,
              file_name: str = None,
+             silent: bool = False,
              *args,
              **kwargs):
     """
@@ -250,13 +268,15 @@ def minimize(objective: Objective,
     phoenics_config:
         (Default value = None)
         a pre-made phoenics configuration. if str, the name of a file from which to load it; Else, a dictionary.
+        Individual keywords of the 'general' sections can also be passed down as kwargs
     save_to_file: bool:
         (Default value = False)
         whether or not to save the output of the optimization to an external file
     file_name: str:
         (Default value = None)
         where to save output to, if save_to_file is True.
-
+    kwargs: dict:
+        Send down more keywords for single replacements in the phoenics config 'general' section, like e.g. batches=5, boosted=True etc
     Returns
     -------
 
@@ -270,7 +290,7 @@ def minimize(objective: Objective,
         for k, v in initial_values.items():
             if k not in variables and k in all_vars:
                 passives[k] = v
-    optimizer = OptimizerPhoenics(samples=samples, backend=backend, maxiter=maxiter)
+    optimizer = OptimizerPhoenics(samples=samples, backend=backend, maxiter=maxiter, silent=silent)
     return optimizer(objective=objective, backend=backend, passives=passives, previous=previous,
                      maxiter=maxiter, noise=noise, samples=samples,
-                     phoenics_config=phoenics_config, save_to_file=save_to_file, file_name=file_name)
+                     phoenics_config=phoenics_config, save_to_file=save_to_file, file_name=file_name, *args, **kwargs)

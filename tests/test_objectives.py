@@ -10,6 +10,19 @@ import pytest
 import tequila as tq
 from tequila.simulators.simulator_api import simulate
 
+
+def test_non_quantum():
+    E = tq.Objective()
+    E += 1.0
+    E = E + 2.0
+    E *= 2.0
+    E = E * 2.0
+    E = 1.0 * E
+    E -= 1.0
+    E = 1.0 + E
+    E = E.apply(lambda x: x/3.0)
+    assert E() == 2.0*2.0*(1.0 + 2.0)/3.0
+
 @pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_compilation(backend):
     U = gates.X(target=[0,1,2,3,4,5])

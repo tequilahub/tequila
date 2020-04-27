@@ -92,11 +92,17 @@ class QubitWaveFunction:
     def convert_bitstring(key: typing.Union[BitString, numbers.Integral]):
         if isinstance(key, numbers.Integral):
             return BitString.from_int(integer=key)
+        elif isinstance(key, str):
+            return BitString.from_binary(binary=key)
         else:
             return key
 
     def __getitem__(self, item: BitString):
-        return self.state[self.convert_bitstring(item)]
+        key = self.convert_bitstring(item)
+        if key in self.state:
+            return self.state[key]
+        else:
+            return 0.0
 
     def __setitem__(self, key: BitString, value: numbers.Number):
         self._state[self.convert_bitstring(key)] = value

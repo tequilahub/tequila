@@ -84,7 +84,7 @@ def show_available_simulators():
     print("Supported Backends:\n")
     for k in SUPPORTED_BACKENDS:
         print(k)
-    print("Installed Wavefunction Simulators:\n")
+    print("\nInstalled Wavefunction Simulators:\n")
     for k in INSTALLED_SIMULATORS.keys():
         print(k)
     print("\nInstalled Wavefunction Samplers:\n")
@@ -318,8 +318,19 @@ def draw(objective, variables=None, backend: str = None):
             backend = "qiskit"
 
     if isinstance(objective, Objective):
-        # pretty printer not here yet
         print(objective)
+        drawn = {}
+        for i,E in enumerate(objective.get_expectationvalues()):
+            if E in drawn:
+                print("\nExpectation Value {} is the same as {}".format(i, drawn[E]))
+            else:
+                print("\nExpectation Value {}".format(i))
+                print("Hamiltonian : ", E.H)
+                print("variables : ", E.U.extract_variables())
+                print("circuit:\n")
+                draw(E.U)
+            drawn[E] = i
+
     else:
         if backend is None:
             print(objective)
