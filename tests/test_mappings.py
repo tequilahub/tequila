@@ -81,7 +81,7 @@ def test_endianness_simulators():
 @pytest.mark.parametrize("case",
                          [("X(0)Y(1)Z(4)", 0.0), ("Z(0)", 1.0), ("Z(0)Z(1)Z(3)", 1.0), ("Z(0)Z(1)Z(2)Z(3)Z(5)", -1.0)])
 def test_paulistring_sampling(backend, case):
-    H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
+    H = QubitHamiltonian.from_paulistrings(PauliString.from_string(case[0]))
     U = gates.X(target=1) + gates.X(target=3) + gates.X(target=5)
     E = ExpectationValue(H=H, U=U)
     result = simulate(E,backend=backend, samples=1)
@@ -91,7 +91,7 @@ def test_paulistring_sampling(backend, case):
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
 @pytest.mark.parametrize("case", [("X(0)Y(1)Z(4)", 0.0), ("Z(0)X(1)X(5)", -1.0), ("Z(0)X(1)X(3)", 1.0), ("Z(0)X(1)Z(2)X(3)X(5)", -1.0)])
 def test_paulistring_sampling_2(backend, case):
-    H = QubitHamiltonian.init_from_paulistring(PauliString.from_string(case[0]))
+    H = QubitHamiltonian.from_paulistrings(PauliString.from_string(case[0]))
     U = gates.H(target=1) + gates.H(target=3) + gates.X(target=5) + gates.H(target=5)
     E = ExpectationValue(H=H, U=U)
     result = simulate(E,backend=backend, samples=1)

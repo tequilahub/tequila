@@ -28,7 +28,7 @@ class ExpectationValueImpl:
     @property
     def H(self):
         if self._hamiltonian is None:
-            return paulis.QubitHamiltonian.init_unit()
+            return paulis.QubitHamiltonian.unit()
         else:
             return self._hamiltonian
 

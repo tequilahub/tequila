@@ -44,7 +44,7 @@ import multiprocessing as mp
 # need this definition for this example
 def anihilation(qubits: typing.List[int]) -> QubitHamiltonian:
     max_occ = 2 ** len(qubits) - 1
-    result = QubitHamiltonian.init_zero()
+    result = QubitHamiltonian.zero()
     for occ in range(max_occ):
         c = numpy.sqrt(occ + 1)
         result += c * paulis.decompose_transfer_operator(ket=occ + 1, bra=occ, qubits=qubits)
@@ -54,7 +54,7 @@ def anihilation(qubits: typing.List[int]) -> QubitHamiltonian:
 # need this definition for this example
 def creation(qubits: typing.List[int]) -> QubitHamiltonian:
     max_occ = 2 ** len(qubits) - 1
-    result = QubitHamiltonian.init_zero()
+    result = QubitHamiltonian.zero()
     for occ in range(max_occ):
         c = numpy.sqrt(occ + 1)
         result += c * paulis.decompose_transfer_operator(ket=occ, bra=occ + 1, qubits=qubits)

@@ -234,7 +234,7 @@ class QubitHamiltonian:
         if Number: initialized as scaled unit operator
         """
         if isinstance(qubit_hamiltonian, str):
-            self._qubit_operator = self.init_from_string(string=qubit_hamiltonian)._qubit_operator
+            self._qubit_operator = self.from_string(string=qubit_hamiltonian)._qubit_operator
         elif qubit_hamiltonian is None:
             self._qubit_operator = QubitOperator.zero()
         elif isinstance(qubit_hamiltonian, numbers.Number):
@@ -270,15 +270,15 @@ class QubitHamiltonian:
         return self._qubit_operator.terms.values()
 
     @classmethod
-    def init_zero(cls):
+    def zero(cls):
         return QubitHamiltonian(qubit_hamiltonian=QubitOperator("", 0.0))
 
     @classmethod
-    def init_unit(cls):
+    def unit(cls):
         return QubitHamiltonian(qubit_hamiltonian=QubitOperator.identity())
 
     @classmethod
-    def init_from_string(cls, string, openfermion_format=False):
+    def from_string(cls, string, openfermion_format=False):
         """
         stringify your hamiltonian as str(H.hamiltonian) to get the openfermion stringification
         :param string: Hamiltonian as string
@@ -286,11 +286,11 @@ class QubitHamiltonian:
         :return: QubitHamiltonian
         """
         if string.strip() == "":
-            return cls.init_zero()
+            return cls.zero()
         elif openfermion_format:
             return QubitHamiltonian(qubit_hamiltonian=QubitOperator(string))
         else:
-            H = QubitHamiltonian.init_zero()
+            H = QubitHamiltonian.zero()
             string = string.replace(" ", "")
             string = string.replace("*", "")
             string = string.replace("+-", "-")
@@ -300,7 +300,6 @@ class QubitHamiltonian:
             string = string.replace("Y", " Y")
             string = string.replace("Z", " Z")
             string += " "
-            print("string=", string)
             terms = string.split('+')
             for term in terms:
                 if term.strip() == "":
@@ -323,35 +322,41 @@ class QubitHamiltonian:
                 if coeff.imag == 0.0:
                     coeff = float(coeff.real)
 
-                H += cls.init_from_paulistring(ps=PauliString.from_string(string=ps, coeff=coeff))
+                H += cls.from_paulistrings(ps=PauliString.from_string(string=ps, coeff=coeff))
             return H.simplify()
 
     @classmethod
-    def init_from_paulistring(cls, ps: PauliString):
-        return QubitHamiltonian(qubit_hamiltonian=QubitOperator(term=ps.key_openfermion(), coefficient=ps.coeff))
+    def from_paulistrings(cls, ps: typing.List[PauliString]):
+        if isinstance(ps, PauliString):
+            return cls.from_paulistrings(ps=[ps])
+        else:
+            H = cls.zero()
+            for x in ps:
+                H += QubitHamiltonian(qubit_hamiltonian=QubitOperator(term=x.key_openfermion(), coefficient=x.coeff))
+            return H.simplify()
 
     def __add__(self, other):
         if isinstance(other, numbers.Number):
-            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator + other * self.init_unit().qubit_operator)
+            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator + other * self.unit().qubit_operator)
         else:
             return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator + other.qubit_operator)
 
     def __sub__(self, other):
         if isinstance(other, numbers.Number):
-            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator - other * self.init_unit().qubit_operator)
+            return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator - other * self.unit().qubit_operator)
         else:
             return QubitHamiltonian(qubit_hamiltonian=self.qubit_operator - other.qubit_operator)
 
     def __iadd__(self, other):
         if isinstance(other, numbers.Number):
-            self.qubit_operator += other * self.init_unit().qubit_operator
+            self.qubit_operator += other * self.unit().qubit_operator
         else:
             self.qubit_operator += other.qubit_operator
         return self
 
     def __isub__(self, other):
         if isinstance(other, numbers.Number):
-            self.qubit_operator -= other * self.init_unit().qubit_operator
+            self.qubit_operator -= other * self.unit().qubit_operator
         else:
             self.qubit_operator -= other.qubit_operator
         return self
@@ -413,8 +418,8 @@ class QubitHamiltonian:
         -------
             Hermitian and anti-Hermitian part as tuple
         """
-        hermitian = QubitHamiltonian.init_zero()
-        anti_hermitian = QubitHamiltonian.init_zero()
+        hermitian = QubitHamiltonian.zero()
+        anti_hermitian = QubitHamiltonian.zero()
         for k, v in self.qubit_operator.terms.items():
             hermitian.qubit_operator.terms[k] = numpy.float(v.real)
             anti_hermitian.qubit_operator.terms[k] = 1.j * v.imag
