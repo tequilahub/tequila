@@ -151,9 +151,7 @@ class BackendCircuitCirq(BackendCircuit):
         return cirq.Circuit.from_ops(new_ops)
 
     def update_variables(self, variables):
-        """
-        overriding the underlying base to make sure this stuff remains noisy
-        """
+
         if self.sympy_to_tq is not None:
             self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
         else:

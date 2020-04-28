@@ -83,7 +83,7 @@ class BackendCircuit():
         # translate into the backend object
         self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
 
-        if optimize_circuit:
+        if optimize_circuit and noise_model ==None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
         self.noise_model = noise_model
