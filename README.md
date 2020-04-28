@@ -85,6 +85,9 @@ Tequila will then detect them automatically.
 Currently those are: [Phoenics](https://github.com/aspuru-guzik-group/phoenics)
  and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).
 
+# Documentation
+You can build the documentation by navigating to `docs` and entering `make html`.  
+Open the documentation with a browser over like `firefox docs/build/html/index.html`
 
 # Troubleshooting
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need
