@@ -100,7 +100,7 @@ def minimize(method: str,
 
     """
     for k, v in INSTALLED_OPTIMIZERS.items():
-        if method.lower() in v.methods:
+        if method.lower() in v.methods or method.upper() in v.methods:
             return v.minimize(method=method,
                               objective=objective,
                               variables=variables,

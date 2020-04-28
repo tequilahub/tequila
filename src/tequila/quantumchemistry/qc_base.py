@@ -574,7 +574,7 @@ class QuantumChemistryBase:
         ----------
         initial_amplitudes :
             initial amplitudes given as ManyBodyAmplitudes structure or as string
-            where 'mp2' 'ccsd' or 'zero' are possible initializations
+            where 'mp2', 'cc2' or 'ccsd' are possible initializations
         include_reference_ansatz :
             Also do the reference ansatz (prepare closed-shell Hartree-Fock) (Default value = True)
         parametrized :
@@ -597,11 +597,11 @@ class QuantumChemistryBase:
 
         """
 
-        if self.molecule.n_electrons % 2 != 0:
+        if self.n_electrons % 2 != 0:
             raise TequilaException("make_uccsd_ansatz currently only for closed shell systems")
 
-        nocc = self.molecule.n_electrons // 2
-        nvirt = self.molecule.n_orbitals // 2 - nocc
+        nocc = self.n_electrons // 2
+        nvirt = self.n_orbitals // 2 - nocc
 
         Uref = QCircuit()
         if include_reference_ansatz:
@@ -611,7 +611,6 @@ class QuantumChemistryBase:
         if hasattr(initial_amplitudes, "lower"):
             if initial_amplitudes.lower() == "mp2":
                 amplitudes = self.compute_mp2_amplitudes()
-                amplitudes.tIA = numpy.zeros(shape=[nocc, nvirt])
             elif initial_amplitudes.lower() == "ccsd":
                 amplitudes = self.compute_ccsd_amplitudes()
             else:
@@ -629,7 +628,11 @@ class QuantumChemistryBase:
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
         generators = []
         variables = []
-        amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
+
+        if not isinstance(amplitudes, dict):
+            amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
+            amplitudes = dict(sorted(amplitudes.items(), key=lambda x: x[1]))
+
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0, atol=threshold):
