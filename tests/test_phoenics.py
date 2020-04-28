@@ -41,7 +41,6 @@ def test_execution_shot(simulator):
     O = tq.ExpectationValue(U=U, H=H)
     mi = 2
     result = tq.minimize(method="phoenics", objective=O, maxiter=mi, backend=simulator)
-    assert (len(result.history.energies) <= mi * mp.cpu_count())
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")

@@ -106,7 +106,7 @@ def test_gradient_based_methods(simulator, method, use_gradient):
                                          initial_values=initial_values,silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random")])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
 def test_gradient_based_methods_qng(simulator, method):
 
@@ -127,7 +127,7 @@ def test_gradient_based_methods_qng(simulator, method):
                                          initial_values=initial_values, silent=False)
     assert(numpy.isclose(result.energy, -0.612, atol=1.e-1))
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
 @pytest.mark.parametrize("use_hessian", [None, '2-point', '3-point'])
 def test_hessian_based_methods(simulator, method, use_hessian):
