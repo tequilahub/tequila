@@ -1,37 +1,57 @@
 # Tequila
-Code for tequila: a Python framework for algorithm development on quantum computers
 
-# Simulators
+Tequila is an Extensible Quantum Information and Learning Architecture where the main goal is to simplify and accelerate implementation of new ideas for quantum algorithms.   
+It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
+Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum
+
+# Quantum Backends
 Currently supported
-- Qulacs
-- Qiskit
-- Cirq
-- Pyquil
+- [Qulacs](https://github.com/qulacs/qulacs)
+- [Qiskit](https://github.com/qiskit/qiskit)
+- [Cirq](https://github.com/quantumlib/cirq)
+- [PyQuil](https://github.com/rigetti/pyquil)
+
+Tequila detects backends automatically if they are installed on your systems.  
+All of them are available over standard pip installation like for example `pip install qulacs`.  
+For best performance tt is recommended to have `qulacs` installed.
 
 # QuantumChemistry:
-If you are intenting to use psi4:
-psi4 has no default pip installer, so it is not part of requirements.txt
-if you are using conda you can install it with
-conda install psi4 -c psi4
+Tequila supports [Psi4](https://github.com/psi4/psi4).  
+In a conda environment this can be installed with  
+`conda install psi4 -c psi4`
 
 # Installation
-We currently recommend to install in development version
-Here is the full procedure for that
-1. cd into the tequila main directory (that is the directory where setup.py is)
-2. (optional) check out the 'devel' branch for the most recent version with 'git checkout devel'
-3. (optional) modify the dependencies.txt file to your needs (see also dependencies section in this readme)
-4. install dependencies with 'pip install -r requirements.txt'
-5. install tequila with 'pip install -e . ' (note the dot)
-6. (optional) test tequila by going to tests and typing 'pytest'
-(dependency tests might fail if you have not installed all packages, don't worry about that)
+clone this repository, cd to the main directory (where `setup.py` is located) and hit  
+`pip install .`  
+We recommend installing in developer mode with  
+`pip install -e .`
+
+# Getting Started
+Check out the tutorial notebooks provided in tutorials.
+
+## Tequila Hello World
+```python
+a = tq.Variable("a")
+U = tq.gates.Ry(angle=a*pi, target=0)
+H = tq.paulis.X(0)
+E = tq.ExpectationValue(H=H, U=U)
+result = tq.minimize(method="bfgs", objective=E**2)
+wfn = tq.simulate(U, variables=result.angles)
+print("optimized wavefunction = ", wfn)
+result.history.plot("energies")
+result.history.plot("angles")
+result.history.plot("gradients")
+```
 
 # Dependencies
-All packages listed in requirements.txt are needed to work with tequila
-There are some optional packages which you can comment in if you want them
-like pyquil and qiskit
-If you want to use phoenics or gpyopt optimizers you need to install the packages listed in requirements_phoenics.txt (and the same for gpyopt)
-If you are using python 3.6 install the packages in requirements_phoenics_36.txt
+Support for additional optimizers can be activated by intalling them in your environment.  
+Tequila will then detect them automatically.  
+Currently those are: [Phoenics](https://github.com/aspuru-guzik-group/phoenics)
+ and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).
+You can install them with
+`pip install --upgrade -r requirements_gpyopt.txt`  
+Note that the phoenics dependencies vary for pyhton 3.6  
 
 # Troubleshooting
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need
-don't hesitate to contact one of the developers or write in the #open-vqe slack channel
+don't hesitate to contact us directly or raise an issue here on github
