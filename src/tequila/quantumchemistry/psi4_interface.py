@@ -481,7 +481,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             options['basis'] = self.parameters.basis_set
             if self.active_space is not None and self.active_space.psi4_representable:
                 options['frozen_docc'] = self.active_space.frozen_docc
-                # options['frozen_uocc'] = self.active_space.frozen_uocc
+                options['frozen_uocc'] = self.active_space.frozen_uocc
 
             return self._run_psi4(method=method, options=options, *args, **kwargs)[0]
         else:
