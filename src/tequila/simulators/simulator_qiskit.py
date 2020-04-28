@@ -249,6 +249,9 @@ class BackendCircuitQiskit(BackendCircuit):
 
             elif noise.level is 3:
                 targets = ['ccx']
+
+            else:
+                raise TequilaQiskitException('Sorry, no support yet for qiskit for noise on more than 3 qubits.')
             qnoise.add_all_qubit_quantum_error(active, targets)
 
         return qnoise

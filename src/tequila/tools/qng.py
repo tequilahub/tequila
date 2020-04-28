@@ -23,7 +23,7 @@ class QngMatrix:
     def __init__(self,blocks):
         self.blocks= blocks
 
-    def __call__(self, variables):
+    def __call__(self, variables,samples=None):
         output= numpy.zeros(self.dim)
         d_v = 0
         for block in self.blocks:
@@ -32,7 +32,7 @@ class QngMatrix:
                 for j, term in enumerate(row):
                     if i <= j:
                         try:
-                            output[i + d_v][j + d_v] = term(variables=variables)
+                            output[i + d_v][j + d_v] = term(variables=variables,samples=samples)
                         except:
                             output[i + d_v][j + d_v] = term
                     else:
@@ -52,11 +52,11 @@ class CallableVector:
         self._vector=vector
 
 
-    def __call__(self, variables):
+    def __call__(self, variables,samples=None):
         output = numpy.empty(self.dim)
         for i,entry in enumerate(self._vector):
             if hasattr(entry, '__call__'):
-                output[i] = entry(variables)
+                output[i] = entry(variables,samples=samples)
             else:
                 output[i] = entry
         return output
@@ -239,18 +239,18 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
         combos.append(qng_dict(arg, mat, vec, mapping, pos))
     return combos
 
-def evaluate_qng(combos,variables):
+def evaluate_qng(combos,variables,samples=None):
     gd={v:0 for v in variables.keys()}
     for c in combos:
         qgt=c['matrix']
         vec=c['vector']
         m=c['mapping']
         pos=c['positional']
-        ev=numpy.dot(qgt(variables),vec(variables))
+        ev=numpy.dot(qgt(variables,samples=samples),vec(variables,samples=samples))
         for i,val in enumerate(ev):
             maps=m[i]
             for k in maps.keys():
-                gd[k] += val*maps[k]*pos(variables)
+                gd[k] += val*maps[k]*pos(variables,samples=samples)
 
     out=[v for v in gd.values()]
     return out
@@ -260,5 +260,5 @@ class QNGVector():
     def __init__(self,combos):
         self.combos=combos
 
-    def __call__(self, variables):
-        return numpy.asarray(evaluate_qng(self.combos,variables))
+    def __call__(self, variables,samples=None):
+        return numpy.asarray(evaluate_qng(self.combos,variables,samples=samples))

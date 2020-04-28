@@ -122,7 +122,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: bool = False, 
             for f in SUPPORTED_NOISE_BACKENDS:
                 if samples is None:
                     raise TequilaException(
-                        "Noise requires sampling; please provide a positive, integer value for samples")
+                        "QuantumNoise requires sampling; please provide a positive, integer value for samples")
                 else:
                     if f in INSTALLED_NOISE_SAMPLERS:
                         return f
@@ -153,7 +153,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: bool = False, 
         raise TequilaException("Backend {backend} not installed ".format(backend=backend))
     elif noise is not False and samples is not None and backend not in INSTALLED_NOISE_SAMPLERS:
         raise TequilaException(
-            "Backend {backend} not installed or else Noise has not been implemented".format(backend=backend))
+            "Backend {backend} not installed or else QuantumNoise has not been implemented".format(backend=backend))
 
     return backend
 

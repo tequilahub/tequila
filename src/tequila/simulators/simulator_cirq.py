@@ -16,10 +16,7 @@ map_2 = lambda x: {'exponent':x/np.pi,'global_shift':-0.5}
 
 def qubit_satisfier(op,level):
     oplen=len(op.qubits)
-    if level <3:
-        return oplen ==level
-    else:
-        return oplen >=level
+    return oplen ==level
 
 class TequilaCirqException(TequilaException):
     def __str__(self):

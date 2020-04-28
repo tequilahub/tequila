@@ -3,11 +3,9 @@ from tequila.objective import ExpectationValue
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila import simulate
-import tequila
 from tequila.circuit.noise import BitFlip,PhaseDamp,PhaseFlip,AmplitudeDamp,PhaseAmplitudeDamp,DepolarizingError
 import numpy
 import pytest
-import tequila.simulators.simulator_api
 
 
 @pytest.mark.parametrize("simulator", ['qiskit','pyquil','cirq'])
