@@ -77,6 +77,7 @@ class OptimizerHistory:
              property: typing.Union[str, typing.List[str]] = 'energies',
              key: str = None,
              filename=None,
+             baselines: typing.Dict[str, float] = None,
              *args, **kwargs):
         """
         Convenience function to plot the progress of the optimizer
@@ -92,6 +93,10 @@ class OptimizerHistory:
         fig.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
         import pickle
 
+        if baselines is not None:
+            for k, v in baselines.items():
+                plt.axhline(y=v, label=k)
+
         if hasattr(property, "lower"):
             properties = [property.lower()]
         else:
@@ -104,11 +109,15 @@ class OptimizerHistory:
             labels = kwargs['label']
 
         if hasattr(labels, "lower"):
-            labels = [labels] * len(properties)
+            labels = [labels]*len(properties)
 
-        for k, v in kwargs.items():
+        for k,v in kwargs.items():
             if hasattr(plt, k):
-                getattr(plt, k)(v)
+                f = getattr(plt, k)
+                if callable(f):
+                    f(v)
+                else:
+                    f = v
 
         if key is None:
             keys = [[k for k in self.angles[-1].keys()]] * len(properties)
@@ -130,8 +139,7 @@ class OptimizerHistory:
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(list(data.keys()), list(data.values()), label=str(label) + " " + str(k), marker='o',
-                             linestyle='--')
+                    plt.plot(list(data.keys()), list(data.values()), label=str(label) + " " + str(k), marker='o', linestyle='--')
 
         loc = 'best'
         if 'loc' in kwargs:
