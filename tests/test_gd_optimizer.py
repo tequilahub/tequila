@@ -1,6 +1,5 @@
 import pytest, numpy
 import tequila as tq
-import multiprocessing as mp
 from tequila.simulators.simulator_api import simulate
 
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
@@ -35,7 +34,6 @@ def test_execution_shot(simulator, method):
     mi=2
     result = tq.minimize(method=method , objective=O, maxiter=mi, backend=simulator,samples=1024)
     print(result.history.energies)
-    assert (len(result.history.energies) <= mi*mp.cpu_count())
 
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
 @pytest.mark.parametrize('method', tq.optimizers.optimizer_gd.OptimizerGD.available_methods())

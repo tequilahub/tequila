@@ -26,6 +26,8 @@ We recommend installing in editable mode with
 `cd tequila` 
 `pip install -e .`
 
+**Do not** install over PyPi (Minecraft lovers excluded)
+
 Recommended Python version is 3.7
 
 # Getting Started
