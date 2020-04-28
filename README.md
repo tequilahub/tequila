@@ -31,13 +31,22 @@ Check out the tutorial notebooks provided in tutorials.
 
 ## Tequila Hello World
 ```python
+# optimize a one qubit example
+
+# define a variable
 a = tq.Variable("a")
+# define a simple circuit
 U = tq.gates.Ry(angle=a*pi, target=0)
+# define an Hamiltonian
 H = tq.paulis.X(0)
+# define an expectation value
 E = tq.ExpectationValue(H=H, U=U)
+# optimize the expectation value
 result = tq.minimize(method="bfgs", objective=E**2)
+# check out the optimized wavefunction
 wfn = tq.simulate(U, variables=result.angles)
 print("optimized wavefunction = ", wfn)
+# plot information about the optimization
 result.history.plot("energies")
 result.history.plot("angles")
 result.history.plot("gradients")
@@ -48,9 +57,6 @@ Support for additional optimizers can be activated by intalling them in your env
 Tequila will then detect them automatically.  
 Currently those are: [Phoenics](https://github.com/aspuru-guzik-group/phoenics)
  and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).
-You can install them with
-`pip install --upgrade -r requirements_gpyopt.txt`  
-Note that the phoenics dependencies vary for pyhton 3.6  
 
 # Troubleshooting
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need
