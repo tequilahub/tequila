@@ -16,7 +16,7 @@ class OptimizerGD(Optimizer):
     @classmethod
     def available_methods(cls):
         """:return: All tested available methods"""
-        return ['adam','adagrad','adamax','nadam','basic','sgd','nesterov','rmsprop','rmsprop-nesterov']
+        return ['adam','adagrad','adamax','nadam','sgd','momentum','nesterov','rmsprop','rmsprop-nesterov']
 
     def __init__(self,
                  maxiter=100,
@@ -34,8 +34,8 @@ class OptimizerGD(Optimizer):
             'adagrad':self.adagrad,
             'adamax':self.adamax,
             'nadam':self.nadam,
-            'basic': self.basic,
-            'sgd': self.sgd,
+            'basic': self.sgd,
+            'momentum': self.momentum,
             'nesterov': self.nesterov,
             'rmsprop': self.rms,
             'rmsprop-nesterov':self.rms_nesterov}
