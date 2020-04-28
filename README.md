@@ -21,10 +21,12 @@ In a conda environment this can be installed with
 `conda install psi4 -c psi4`
 
 # Installation
-clone this repository, cd to the main directory (where `setup.py` is located) and hit  
-`pip install .`  
-We recommend installing in developer mode with  
+We recommend installing in editable mode with  
+`git clone https://github.com/aspuru-guzik-group/tequila.git`
+`cd tequila` 
 `pip install -e .`
+
+Recommended Python version is 3.7
 
 # Getting Started
 Check out the tutorial notebooks provided in tutorials.
