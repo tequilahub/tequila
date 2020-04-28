@@ -4,7 +4,8 @@ sqlalchemy>=1.3
 watchdog >=0.9
 wheel>=0.33
 
-tensorflow >=1.15
-tensorflow-probability >=0.8
+# silencing github warnings, comment back in when installing 
+#tensorflow >=1.15
+#tensorflow-probability >=0.8
 
 phoenics
