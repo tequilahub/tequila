@@ -276,7 +276,6 @@ class QCircuit():
     def is_mixed(self):
         return not (self.is_fully_parametrized() or self.is_fully_unparametrized())
 
-
     def __iadd__(self, other):
         # duck typing
         other = self.wrap_gate(gate=other)
@@ -370,7 +369,6 @@ class Moment(QCircuit):
                     mp.append(gate)
         return [Moment(mu), Moment(mp)]
 
-
     @property
     def depth(self):
         return 1
@@ -402,7 +400,7 @@ class Moment(QCircuit):
                 overlap.append(n)
 
         gates = copy.deepcopy(self.gates)
-        if len(overlap) is 0:
+        if len(overlap) == 0:
             gates.append(gate)
         else:
             for i, g in enumerate(gates):
@@ -492,7 +490,7 @@ class Moment(QCircuit):
         else:
             new._gates += other.gates
         new._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
-        if new.depth is 1:
+        if new.depth == 1:
             new = Moment(new.gates)
         return new
 

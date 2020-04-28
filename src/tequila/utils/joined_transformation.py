@@ -5,7 +5,6 @@ class JoinedTransformation:
     JoinedTransformations allow operations to be combined.
     '''
 
-
     def __init__(self, left, right, split, op):
         '''
         :param left: Callable: the lefthand operation, one level down
@@ -32,7 +31,7 @@ class JoinedTransformation:
         E_left = args[:self.split]
         E_right = args[self.split:]
         if self.op is None:
-            if len(args)==1:
+            if len(args) == 1:
                 return args[0]
             return None
         if self.right is None:
@@ -41,12 +40,12 @@ class JoinedTransformation:
                 return self.op(*args)
             else:
 
-                return self.op(self.left(*E_left,**kwargs),*E_right)
+                return self.op(self.left(*E_left, **kwargs), *E_right)
         if self.left is None:
             if self.right is None:
                 return self.op(*args)
             else:
 
-                return self.op(*E_left,self.right(*E_right, **kwargs))
+                return self.op(*E_left, self.right(*E_right, **kwargs))
         else:
             return self.op(self.left(*E_left, **kwargs), self.right(*E_right, **kwargs))

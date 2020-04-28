@@ -238,7 +238,13 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         self.U.update_variables(variables)
         state = qulacs.QuantumState(self.U.n_qubits)
         self.U.circuit.update_quantum_state(state)
-        result = [H.get_expectation_value(state) for H in self.H]
+        result = []
+        for H in self.H:
+            if isinstance(H, numbers.Number):
+                result.append(H) # those are accumulated unit strings, e.g 0.1*X(3) in wfn on qubits 0,1
+            else:
+                result.append(H.get_expectation_value(state))
+
         return numpy.asarray(result)
 
     def initialize_hamiltonian(self, hamiltonians):
@@ -250,7 +256,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                 # if the circuit does not act on those qubits the passive parts are always evaluating to 1 (if the pauli operator is Z) or 0 (otherwise)
                 # since those qubits are always in state |0>
                 non_zero_strings = []
-                unit_strings = 0
+                unit_strings = []
                 for ps in H.paulistrings:
                     string = ""
                     for k, v in ps.items():
@@ -263,18 +269,21 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                     if string != "ZERO":
                         non_zero_strings.append((ps.coeff, string))
                     elif string == "":
-                        unit_strings += 1
+                        unit_strings.append((ps.coeff, string))
 
-                if len(non_zero_strings) == 0:
-                    return unit_strings
-                else:
-                    assert unit_strings == 0
+                # accumulate unit strings
+                if len(unit_strings) > 0:
+                    coeffs = [x[0] for x in unit_strings]
+                    result.append(sum(coeffs))
 
-                qulacs_H = qulacs.Observable(self.n_qubits)
-                for coeff, string in non_zero_strings:
-                    qulacs_H.add_operator(coeff, string)
+                if len(non_zero_strings) > 0:
+                    qulacs_H = qulacs.Observable(self.n_qubits)
+                    for coeff, string in non_zero_strings:
+                        qulacs_H.add_operator(coeff, string)
+                    result.append(qulacs_H)
 
-                result.append(qulacs_H)
+
+
             else:
                 if self.U.n_qubits < H.n_qubits:
                     raise TequilaQulacsException(
@@ -287,13 +296,11 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                         string += v.upper() + " " + str(k)
                     qulacs_H.add_operator(ps.coeff, string)
                 result.append(qulacs_H)
-
         return result
 
     def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
         # todo: generalize in baseclass. Do Hamiltonian mapping on initialization
         self.update_variables(variables)
-
         state = qulacs.QuantumState(self.U.n_qubits)
         self.U.circuit.update_quantum_state(state)
         result = []
@@ -340,5 +347,4 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                     Esamples.append(ps_measure)
                 E += ps.coeff * sum(Esamples) / len(Esamples)
             result.append(E)
-
         return numpy.asarray(result)

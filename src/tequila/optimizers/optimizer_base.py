@@ -77,6 +77,7 @@ class OptimizerHistory:
              property: typing.Union[str, typing.List[str]] = 'energies',
              key: str = None,
              filename=None,
+             baselines: typing.Dict[str, float] = None,
              *args, **kwargs):
         """
         Convenience function to plot the progress of the optimizer
@@ -91,6 +92,10 @@ class OptimizerHistory:
         fig = plt.figure()
         fig.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
         import pickle
+
+        if baselines is not None:
+            for k, v in baselines.items():
+                plt.axhline(y=v, label=k)
 
         if hasattr(property, "lower"):
             properties = [property.lower()]
@@ -108,7 +113,11 @@ class OptimizerHistory:
 
         for k,v in kwargs.items():
             if hasattr(plt, k):
-                getattr(plt, k)(v)
+                f = getattr(plt, k)
+                if callable(f):
+                    f(v)
+                else:
+                    f = v
 
         if key is None:
             keys = [[k for k in self.angles[-1].keys()]] * len(properties)
@@ -146,7 +155,7 @@ class OptimizerHistory:
 class Optimizer:
 
     def __init__(self, simulator: str = None, maxiter: int = None, samples: int = None,
-                 save_history: bool = True):
+                 save_history: bool = True, silent: bool = False):
         """
         :param simulator: The simulators to use (None means autopick)
         :param maxiter: Maximum number of iterations
@@ -163,6 +172,11 @@ class Optimizer:
             self.maxiter = 100
         else:
             self.maxiter = maxiter
+
+        if silent is None:
+            self.silent = False
+        else:
+            self.silent = silent
 
         self.samples = samples
         self.save_history = save_history

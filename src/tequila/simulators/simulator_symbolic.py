@@ -110,7 +110,7 @@ class BackendCircuitSymbolic(BackendCircuit):
 
         return result
 
-    def do_simulate(self, variables, initial_state: int = None) -> QubitWaveFunction:
+    def do_simulate(self, variables, initial_state: int = None, *args, **kwargs) -> QubitWaveFunction:
         qubits = dict()
         count = 0
         for q in self.abstract_circuit.qubits:

@@ -15,8 +15,6 @@ def get_phase_flip(p):
     return qiskitnoise.pauli_error(noise_ops=[('Z', p), ('I', 1 - p)])
 
 
-
-
 gate_qubit_lookup = {
     'x': 1,
     'y': 1,
@@ -46,9 +44,6 @@ class TequilaQiskitException(TequilaException):
         return "Error in qiskit backend:" + self.message
 
 
-
-
-
 class BackendCircuitQiskit(BackendCircuit):
     compiler_arguments = {
         "trotterized": True,
@@ -71,7 +66,6 @@ class BackendCircuitQiskit(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise_model=None, *args, **kwargs):
-
 
         self.op_lookup = {
             'I': (lambda c: c.iden),
@@ -125,9 +119,17 @@ class BackendCircuitQiskit(BackendCircuit):
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         if self.noise_model is None:
-            simulator = qiskit.Aer.get_backend("statevector_simulator")
+            qiskit_backend = self.get_backend(*args, **kwargs)
+            if qiskit_backend != qiskit.Aer.get_backend(name="statevector_simulator"):
+                raise TequilaQiskitException(
+                    "quiskit_backend for simulations without samples (full wavefunction simulations) need to be the statevector_simulator. Received: qiskit_backend={}".format(
+                        qiskit_backend))
         else:
             raise TequilaQiskitException("wave function simulation with noise cannot be performed presently")
+
+        optimization_level = None
+        if "optimization_level" in kwargs:
+            optimization_level = kwargs['optimization_level']
 
         opts = None
         if initial_state != 0:
@@ -138,15 +140,58 @@ class BackendCircuitQiskit(BackendCircuit):
             opts = {"initial_statevector": array}
             print(opts)
 
-        backend_result = qiskit.execute(experiments=self.circuit, backend=simulator, parameter_binds=[self.resolver],
+        backend_result = qiskit.execute(experiments=self.circuit, optimization_level=optimization_level,
+                                        backend=qiskit_backend, parameter_binds=[self.resolver],
                                         backend_options=opts).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
+    def get_backend(self, qiskit_backend: str = None, samples=None, qiskit_provider=None, *args, **kwargs):
+        """
+        Handle Defaults
+        """
+        if qiskit_backend is None:
+            # set default backends
+            if samples is None:
+                qiskit_backend = 'statevector_simulator'
+            else:
+                qiskit_backend = 'qasm_simulator'
+
+        if not isinstance(qiskit_backend, str):
+            # if the qiskit_backend is not passed down as string or None type
+            # it is assumed that it is already a initialized qiskit type
+            return qiskit_backend
+        else:
+            qiskit_backend = qiskit_backend.lower()
+
+        if qiskit_provider is None:
+            # detect if a cloud service is demanded
+            if qiskit_backend in [str(x).lower() for x in qiskit.Aer.backends()] + [qiskit.Aer.backends()]:
+                qiskit_provider = qiskit.Aer
+            else:
+                if qiskit.IBMQ.active_account() is None:
+                    qiskit.IBMQ.load_account()
+                qiskit_provider = qiskit.IBMQ.get_provider()
+
+        return qiskit_provider.get_backend(name=qiskit_backend)
+
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
-        simulator = qiskit.providers.aer.QasmSimulator()
-        return self.convert_measurements(qiskit.execute(circuit, backend=simulator, shots=samples,
-                                                        optimization_level=0,
-                                                        noise_model=self.noise_model, parameter_binds=[self.resolver]))
+        optimization_level = None
+        if "optimization_level" in kwargs:
+            optimization_level = kwargs['optimization_level']
+        qiskit_backend = self.get_backend(**kwargs, samples=samples)
+        assert (qiskit_backend is not None)
+
+        if qiskit_backend in qiskit.Aer.backends() or str(qiskit_backend).lower() == "ibmq_qasm_simulator":
+            return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
+                                                            optimization_level=optimization_level,
+                                                            noise_model=self.noise_model,
+                                                            parameter_binds=[self.resolver]))
+        else:
+            if self.noise_model is not None:
+                print("WARNING: There are no noise models for ", qiskit_backend)
+            return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
+                                                            optimization_level=optimization_level,
+                                                            parameter_binds=[self.resolver]))
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
         """0.
@@ -197,7 +242,8 @@ class BackendCircuitQiskit(BackendCircuit):
         ops = self.op_lookup[gate.name]
         if gate.is_controlled():
             if len(gate.control) > 2:
-                raise TequilaQiskitException("multi-controls beyond 2 not yet supported for the qiskit backend. Gate was:\n{}".format(gate) )
+                raise TequilaQiskitException(
+                    "multi-controls beyond 2 not yet supported for the qiskit backend. Gate was:\n{}".format(gate))
             ops[len(gate.control)](circuit)(*[self.qubit_map[q] for q in gate.control + gate.target])
         else:
             ops[0](circuit)(*[self.qubit_map[q] for q in gate.target])
@@ -228,7 +274,7 @@ class BackendCircuitQiskit(BackendCircuit):
                     for i in range(noise.level - 1):
                         active = active.tensor(action)
 
-            if noise.level is 2:
+            if noise.level == 2:
                 targets = ['cx',
                            'cy',
                            'cz',
@@ -238,7 +284,7 @@ class BackendCircuitQiskit(BackendCircuit):
                            'cu3',
                            'ch']
 
-            elif noise.level is 1:
+            elif noise.level == 1:
                 targets = ['x',
                            'y',
                            'z',
@@ -247,7 +293,7 @@ class BackendCircuitQiskit(BackendCircuit):
                            'u2',
                            'h']
 
-            elif noise.level is 3:
+            elif noise.level == 3:
                 targets = ['ccx']
 
             else:

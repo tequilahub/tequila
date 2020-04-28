@@ -41,7 +41,7 @@ def pauli(qubit, type) -> QubitHamiltonian:
 
     init_string = "".join("{}{} ".format(t, q) for t, q in zip(type, qubit))
 
-    return QubitHamiltonian.init_from_string(string=init_string, openfermion_format=True)
+    return QubitHamiltonian.from_string(string=init_string, openfermion_format=True)
 
 
 def X(qubit) -> QubitHamiltonian:
@@ -107,7 +107,7 @@ def I(*args, **kwargs) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    return QubitHamiltonian.init_unit()
+    return QubitHamiltonian.unit()
 
 
 def Zero(*args, **kwargs) -> QubitHamiltonian:
@@ -119,7 +119,7 @@ def Zero(*args, **kwargs) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    return QubitHamiltonian.init_zero()
+    return QubitHamiltonian.zero()
 
 
 def Qp(qubit) -> QubitHamiltonian:
@@ -145,7 +145,8 @@ def Qp(qubit) -> QubitHamiltonian:
     result = I()
     for q in qubit:
         result *= 0.5 * (I(qubit=q) + Z(qubit=q))
-    return  result
+    return result
+
 
 def Qm(qubit) -> QubitHamiltonian:
     """
@@ -172,6 +173,7 @@ def Qm(qubit) -> QubitHamiltonian:
         result *= 0.5 * (I(qubit=q) - Z(qubit=q))
     return result
 
+
 def Sp(qubit) -> QubitHamiltonian:
     """
     Notes
@@ -194,7 +196,7 @@ def Sp(qubit) -> QubitHamiltonian:
     qubit = list_assignement(qubit)
     result = I()
     for q in qubit:
-        result *=0.5 * (X(qubit=q) + 1.j*Y(qubit=q))
+        result *= 0.5 * (X(qubit=q) + 1.j * Y(qubit=q))
     return result
 
 
@@ -220,7 +222,7 @@ def Sm(qubit) -> QubitHamiltonian:
     qubit = list_assignement(qubit)
     result = I()
     for q in qubit:
-        result *=0.5 * (X(qubit=q) - 1.j*Y(qubit=q))
+        result *= 0.5 * (X(qubit=q) - 1.j * Y(qubit=q))
     return result
 
 
@@ -254,7 +256,7 @@ def Projector(wfn, threshold=0.0, n_qubits=None) -> QubitHamiltonian:
 
     wfn = QubitWaveFunction(state=wfn, n_qubits=n_qubits)
 
-    H = QubitHamiltonian.init_zero()
+    H = QubitHamiltonian.zero()
     for k1, v1 in wfn.items():
         for k2, v2 in wfn.items():
             c = v1.conjugate() * v2
@@ -264,7 +266,8 @@ def Projector(wfn, threshold=0.0, n_qubits=None) -> QubitHamiltonian:
     return H
 
 
-def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.e-6, n_qubits=None):
+def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.e-6,
+           n_qubits=None):
     """
     Notes
     ----------
@@ -297,7 +300,7 @@ def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = Fal
     a tequila QubitHamiltonian (not necessarily hermitian)
 
     """
-    H = QubitHamiltonian.init_zero()
+    H = QubitHamiltonian.zero()
     ket = QubitWaveFunction(state=ket, n_qubits=n_qubits)
     bra = QubitWaveFunction(state=bra, n_qubits=n_qubits)
 
@@ -367,7 +370,7 @@ def decompose_transfer_operator(ket: BitString, bra: BitString, qubits: typing.L
 
     assert (n_qubits <= len(qubits))
 
-    result = QubitHamiltonian.init_unit()
+    result = QubitHamiltonian.unit()
     for q, b in enumerate(b_arr):
         k = k_arr[q]
         result *= opmap[(k, b)](qubit=qubits[q])

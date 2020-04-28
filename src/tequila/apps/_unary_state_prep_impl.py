@@ -482,7 +482,7 @@ class UnaryStatePrepImpl:
                 if control_bit_index == None:
                     # must be something with a rotation
                     string_to_rotate = self.left_compressed[0]
-                    possible_rot_controls = get_0_rotation(strings, strings.index(string_to_rotate))
+                    possible_rot_controls = self.get_0_rotation(strings, strings.index(string_to_rotate))
                     if len(possible_rot_controls) > 0:  # you can do a rotation
                         control_bit_index = possible_rot_controls[0][0]
                         control_type = possible_rot_controls[0][1]
@@ -573,29 +573,6 @@ class UnaryStatePrepImpl:
             equations.append(v)
 
         return equations
-
-    '''
-    This function takes in the final state equation and the coefficients wanted
-    and solve for the possible angles (parameters) of the equation
-    '''
-
-    def solve_coeff(self, f_state, coeff):
-
-        equations = self.get_equations(f_state)
-
-        a, b, c, d = sympy.symbols('a,b,c,d', real=True)
-        final_eqs = []
-
-        for i in range(len(equations)):
-            f = sympy.Eq(equations[i], sympy.Float(coeff[i]))
-            final_eqs.append(f)
-
-        res = sympy.solve((a - 1.0, a * a - 1.0), a)
-        if not self.silenced: print("res=", res)
-
-        if not self.silenced: print("final_eqs=", final_eqs)
-        if not self.silenced: print("symbols=", symbols)
-        return sympy.solve(final_eqs, symbols)
 
     ### main ###
 

@@ -38,7 +38,7 @@ def test_hamiltonian_consistency(geom: str, basis: str, trafo: str):
     parameters_qc = qc.ParametersQC(geometry=geom, basis_set=basis, outfile="asd")
     hqc1 = qc.QuantumChemistryPsi4(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
     hqc2 = qc.QuantumChemistryPySCF(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
-    assert (hqc1.hamiltonian == hqc2.hamiltonian)
+    assert (hqc1.qubit_operator == hqc2.qubit_operator)
 
 
 @pytest.mark.skipif(condition=not qc.has_psi4, reason="you don't have psi4")

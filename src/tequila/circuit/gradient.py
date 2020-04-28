@@ -41,6 +41,7 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
                             power=True,
                             controlled_phase=True,
                             controlled_rotation=True)
+
         compiled = compiler(objective, variables=[variable])
 
     if variable not in compiled.extract_variables():
@@ -59,8 +60,9 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
 def __grad_objective(objective: Objective, variable: Variable):
     args = objective.args
     transformation = objective.transformation
-
     dO = None
+
+    processed_expectationvalues = {}
     for i, arg in enumerate(args):
         if __AUTOGRAD__BACKEND__ == "jax":
             df = jax.grad(transformation, argnums=i)
@@ -68,9 +70,23 @@ def __grad_objective(objective: Objective, variable: Variable):
             df = jax.grad(transformation, argnum=i)
         else:
             raise TequilaException("Can't differentiate without autograd or jax")
-        outer = Objective(args=args, transformation=df)
 
-        inner = __grad_inner(arg=arg, variable=variable)
+        # We can detect one simple case where the outer derivative is const=1
+        if objective.transformation is None:
+            outer = 1.0
+        else:
+            outer = Objective(args=args, transformation=df)
+
+        if hasattr(arg, "U"):
+            # save redundancies
+            if arg in processed_expectationvalues:
+                inner = processed_expectationvalues[arg]
+            else:
+                inner = __grad_inner(arg=arg, variable=variable)
+                processed_expectationvalues[arg] = inner
+        else:
+            # this means this inner derivative is purely variable dependent
+            inner = __grad_inner(arg=arg, variable=variable)
 
         if inner == 0.0:
             # don't pile up zero expectationvalues
@@ -116,7 +132,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     '''
     hamiltonian = E.H
     unitary = E.U
-    assert(unitary.verify())
+    assert (unitary.verify())
 
     # fast return if possible
     if variable not in unitary.extract_variables():
@@ -174,7 +190,3 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
     dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
     return dOinc
-
-
-
-

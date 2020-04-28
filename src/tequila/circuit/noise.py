@@ -3,29 +3,28 @@ from tequila.tools import list_assignement
 from tequila.utils import TequilaException
 import copy
 
-
-names_dict={
-    'x':'x',
-    'y':'y',
-    'z':'z',
-    'h':'h',
-    'rx':'r',
-    'ry':'r',
-    'rz':'r',
-    'r':'r',
-    'phase':'r',
-    'single':'single',
-    'swap':'control',
-    'cx':'control',
-    'cy':'control',
-    'cz':'control',
-    'crx':'control',
-    'cry':'control',
-    'crz':'control',
-    'control':'control',
-    'cnot':'control',
-    'ccnot':'multicontrol',
-    'multicontrol':'multicontrol'
+names_dict = {
+    'x': 'x',
+    'y': 'y',
+    'z': 'z',
+    'h': 'h',
+    'rx': 'r',
+    'ry': 'r',
+    'rz': 'r',
+    'r': 'r',
+    'phase': 'r',
+    'single': 'single',
+    'swap': 'control',
+    'cx': 'control',
+    'cy': 'control',
+    'cz': 'control',
+    'crx': 'control',
+    'cry': 'control',
+    'crz': 'control',
+    'control': 'control',
+    'cnot': 'control',
+    'ccnot': 'multicontrol',
+    'multicontrol': 'multicontrol'
 }
 
 noises_available=['bit flip','phase flip','phase damp','amplitude damp','phase-amplitude damp','depolarizing']
@@ -40,6 +39,7 @@ class QuantumNoise():
         'phase-amplitude damp':2,
         'depolarizing':1
     }
+
     @property
     def name(self):
         return self._name
@@ -76,14 +76,14 @@ class QuantumNoise():
         else:
             raise TequilaException('object provided in neither a dictionary nor a QuantumNoise.')
 
+
 class NoiseModel():
 
     def __init__(self, noises: typing.List[typing.Union[dict, QuantumNoise]]=None):
         if noises is None:
-            self.noises=[]
+            self.noises = []
         else:
             self.noises=[QuantumNoise.from_dict(d) for d in list_assignement(noises)]
-
 
     def __str__(self):
         back='NoiseModel with: \n'
@@ -110,19 +110,19 @@ class NoiseModel():
             self.noises.extend(copy.copy(other.noises))
         return self
 
-    def without_noise_on_level(self,level):
-        new=NoiseModel()
+    def without_noise_on_level(self, level):
+        new = NoiseModel()
         for noise in self.noises:
-            if noise.level==level:
+            if noise.level == level:
                 pass
             else:
                 new.noises.append(noise)
         return new
 
-    def without_noise_op(self,name):
-        new=NoiseModel()
+    def without_noise_op(self, name):
+        new = NoiseModel()
         for noise in self.noises:
-            if noise.name==name:
+            if noise.name == name:
                 pass
             else:
                 new.noises.append(noise)

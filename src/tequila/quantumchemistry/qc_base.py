@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from tequila import TequilaException, BitString
-from tequila.hamiltonian import QubitHamiltonian
+from tequila import TequilaException, BitString, QubitWaveFunction
+from tequila.hamiltonian import QubitHamiltonian, paulis
 
 from tequila.circuit import QCircuit, gates
 from tequila.objective.objective import Variable
@@ -303,8 +303,11 @@ class QuantumChemistryBase:
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
+                 active_orbitals: list = None,
+                 reference: list = None,
                  *args,
                  **kwargs):
+
         self.parameters = parameters
         if transformation is None:
             self.transformation = openfermion.jordan_wigner
@@ -332,6 +335,61 @@ class QuantumChemistryBase:
         assert (parameters.basis_set.lower() == self.molecule.basis.lower())
         assert (parameters.multiplicity == self.molecule.multiplicity)
         assert (parameters.charge == self.molecule.charge)
+        self.active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
+
+    def _make_active_space_data(self, active_orbitals, reference=None):
+        """
+        Small helper function
+        Internal use only
+        Parameters
+        ----------
+        active_orbitals: dictionary :
+            list: Give a list of spatial orbital indices
+            i.e. occ = [0,1,3] means that spatial orbital 0, 1 and 3 are used
+        reference: (Default value=None)
+            List of orbitals which form the reference
+            Can be given in the same format as active_orbitals
+            If given as None then the first N_electron/2 orbitals are taken
+            for closed-shell systems.
+
+        Returns
+        -------
+        Dataclass with active indices and reference indices (in spatial notation)
+
+        """
+
+        if active_orbitals is None:
+            return None
+
+        @dataclass
+        class ActiveSpaceData:
+            active_orbitals: list  # active orbitals (spatial, c1)
+            reference_orbitals: list  # reference orbitals (spatial, c1)
+
+            def __str__(self):
+                result = "Active Space Data:\n"
+                result += "{key:15} : {value:15} \n".format(key="active_orbitals", value=str(self.active_orbitals))
+                result += "{key:15} : {value:15} \n".format(key="reference_orbitals",
+                                                            value=str(self.reference_orbitals))
+                result += "{key:15} : {value:15} \n".format(key="frozen_docc", value=str(self.frozen_docc))
+                result += "{key:15} : {value:15} \n".format(key="frozen_uocc", value=str(self.frozen_uocc))
+                return result
+
+            @property
+            def frozen_reference_orbitals(self):
+                return [i for i in self.reference_orbitals if i not in self.active_orbitals]
+
+            @property
+            def active_reference_orbitals(self):
+                return [i for i in self.reference_orbitals if i in self.active_orbitals]
+
+        if reference is None:
+            # auto assignment only for closed-shell
+            assert (self.n_electrons % 2 == 0)
+            reference = sorted([i for i in range(self.n_electrons // 2)])
+
+        return ActiveSpaceData(active_orbitals=sorted(active_orbitals),
+                               reference_orbitals=sorted(reference))
 
     @classmethod
     def from_openfermion(cls, molecule: openfermion.MolecularData,
@@ -354,86 +412,57 @@ class QuantumChemistryBase:
                                   charge=molecule.charge)
         return cls(parameters=parameters, transformation=transformation, molecule=molecule, *args, **kwargs)
 
-    def make_singlet_excitation_operator(self, p: int, q: int):
+    def make_excitation_generator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
         """
-        Parameters
-        -------
-        p : int :
-            spatial index
-        q : int :
-            spatial index
-        Returns
-        -------
-        Singlet excitation generator is:
-        Epq = a^\dagger_p(\alpha) a_q(\alpha) + a^\dagger_p(\beta) a_q(\beta)
-        this function returns then the hermitian version of the anti-hermitian generator of singlet excitations
-        1j*(E_{pq} - E^\dagger_{pq})
-        """
-        op = openfermion.FermionOperator(((2 * p, 1), (2 * q, 0)), 1.j)  # alpha
-        op += openfermion.FermionOperator(((2 * p + 1, 1), (2 * q + 1, 0)), 1.j)  # beta
-        op += openfermion.FermionOperator(((2 * q, 1), (2 * p, 0)), 1.j)  # dagger alpha
-        op += openfermion.FermionOperator(((2 * q + 1, 1), (2 * p + 1, 0)), 1.j)  # dagger beta
-
-        qop = QubitHamiltonian(hamiltonian=self.transformation(op))
-
-        # check if the operator is hermitian and cast coefficients to floats
-        assert qop.is_hermitian()
-        for k, v in qop.hamiltonian.terms.items():
-            qop.hamiltonian.terms[k] = to_float(v)
-
-        return qop
-
-    def make_excitation_operator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
-        """Creates the transformed excitation operator: a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.
-        And gives it back multiplied with 1j to make it hermitian
+        Notes
+        ----------
+        Creates the transformed hermitian generator of UCC type unitaries:
+              M(a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.)
+              where the qubit map M depends is self.transformation
 
         Parameters
         ----------
-        indices :
-            List of tuples [(a_0, i_0), (a_1, i_1), ... ], in spin-orbital notation (alpha odd numbers, beta even numbers)
+        indices : typing.Iterable[typing.Tuple[int, int]] :
+            List of tuples [(a_0, i_0), (a_1, i_1), ... ] - recommended format, in spin-orbital notation (alpha odd numbers, beta even numbers)
             can also be given as one big list: [a_0, i_0, a_1, i_1 ...]
-        indices: typing.Iterable[typing.Tuple[int :
-
-        int]] :
-
-
         Returns
         -------
         type
             1j*Transformed qubit excitation operator, depends on self.transformation
-
         """
         # check indices and convert to list of tuples if necessary
         if len(indices) == 0:
             raise TequilaException("make_excitation_operator: no indices given")
         elif not isinstance(indices[0], typing.Iterable):
             if len(indices) % 2 != 0:
-                raise TequilaException("make_excitation_operator: unexpected input format of infices\n"
+                raise TequilaException("make_excitation_generator: unexpected input format of indices\n"
                                        "use list of tuples as [(a_0, i_0),(a_1, i_1) ...]\n"
                                        "or list as [a_0, i_0, a_1, i_1, ... ]\n"
                                        "you gave: {}".format(indices))
             converted = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
         else:
             converted = indices
+
         # convert to openfermion input format
         ofi = []
         dag = []
         for pair in converted:
             assert (len(pair) == 2)
             ofi += [(int(pair[0]), 1),
-                    (int(pair[1]), 0)]  # openfermion does not take other types of interges like numpy.int64
+                    (int(pair[1]), 0)]  # openfermion does not take other types of integers like numpy.int64
             dag += [(int(pair[0]), 0), (int(pair[1]), 1)]
 
         op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
-
-        qop = QubitHamiltonian(hamiltonian=self.transformation(op))
+        qop = QubitHamiltonian(qubit_hamiltonian=self.transformation(op))
 
         # check if the operator is hermitian and cast coefficients to floats
+        # in order to avoid trouble with the simulation backends
         assert qop.is_hermitian()
-        for k, v in qop.hamiltonian.terms.items():
-            qop.hamiltonian.terms[k] = to_float(v)
+        for k, v in qop.qubit_operator.terms.items():
+            qop.qubit_operator.terms[k] = to_float(v)
 
+        qop = qop.simplify()
         return qop
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
@@ -467,7 +496,7 @@ class QuantumChemistryBase:
 
         fop = openfermion.FermionOperator(string, 1.0)
 
-        op = QubitHamiltonian(hamiltonian=self.transformation(fop))
+        op = QubitHamiltonian(qubit_hamiltonian=self.transformation(fop))
         from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
         wfn = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
         wfn = wfn.apply_qubitoperator(operator=op)
@@ -511,42 +540,68 @@ class QuantumChemistryBase:
         return molecule
 
     def do_make_molecule(self, *args, **kwargs):
-        """ """
-        raise TequilaException("Needs to be overwridden by inherited backend class")
+        """
+
+        Parameters
+        ----------
+        args
+        kwargs
+
+        Returns
+        -------
+
+        """
+        # integrals need to be passed in base class
+        assert ("one_body_integrals" in kwargs)
+        assert ("two_body_integrals" in kwargs)
+        assert ("nuclear_repulsion" in kwargs)
+        assert ("n_orbitals" in kwargs)
+
+        molecule = MolecularData(**self.parameters.molecular_data_param)
+
+        molecule.one_body_integrals = kwargs["one_body_integrals"]
+        molecule.two_body_integrals = kwargs["two_body_integrals"]
+        molecule.nuclear_repulsion = kwargs["nuclear_repulsion"]
+        molecule.n_orbitals = kwargs["n_orbitals"]
+        molecule.save()
+        return molecule
 
     @property
     def n_orbitals(self) -> int:
         """ """
-        return self.molecule.n_orbitals
+        if self.active_space is None:
+            return self.molecule.n_orbitals
+        else:
+            return len(self.active_space.active_orbitals)
 
     @property
     def n_electrons(self) -> int:
         """ """
-        return self.molecule.n_electrons
-
-    @property
-    def n_alpha_electrons(self) -> int:
-        """ """
-        return self.molecule.get_n_alpha_electrons()
-
-    @property
-    def n_beta_electrons(self) -> int:
-        """ """
-        return self.molecule.get_n_beta_electrons()
+        if self.active_space is None:
+            return self.molecule.n_electrons
+        else:
+            return 2 * len(self.active_space.active_reference_orbitals)
 
     def make_hamiltonian(self, occupied_indices=None, active_indices=None) -> QubitHamiltonian:
         """ """
+        if occupied_indices is None and self.active_space is not None:
+            occupied_indices = self.active_space.frozen_reference_orbitals
+        if active_indices is None and self.active_space is not None:
+            active_indices = self.active_space.active_orbitals
+
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
-        return QubitHamiltonian(hamiltonian=self.transformation(fop))
+        return QubitHamiltonian(qubit_hamiltonian=self.transformation(fop))
 
     def compute_one_body_integrals(self):
         """ """
-        pass
+        if hasattr(self, "molecule"):
+            return self.molecule.one_body_integrals
 
     def compute_two_body_integrals(self):
         """ """
-        pass
+        if hasattr(self, "molecule"):
+            return self.molecule.two_body_integrals
 
     def compute_ccsd_amplitudes(self) -> ClosedShellAmplitudes:
         """ """
@@ -559,6 +614,7 @@ class QuantumChemistryBase:
         -------
         A tequila circuit object which prepares the reference of this molecule in the chosen transformation
         """
+
         return prepare_product_state(self.reference_state(*args, **kwargs))
 
     def make_uccsd_ansatz(self, trotter_steps: int,
@@ -567,14 +623,13 @@ class QuantumChemistryBase:
                           parametrized=True,
                           threshold=1.e-8,
                           trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
-
         """
 
         Parameters
         ----------
         initial_amplitudes :
             initial amplitudes given as ManyBodyAmplitudes structure or as string
-            where 'mp2' 'ccsd' or 'zero' are possible initializations
+            where 'mp2', 'cc2' or 'ccsd' are possible initializations
         include_reference_ansatz :
             Also do the reference ansatz (prepare closed-shell Hartree-Fock) (Default value = True)
         parametrized :
@@ -597,11 +652,11 @@ class QuantumChemistryBase:
 
         """
 
-        if self.molecule.n_electrons % 2 != 0:
+        if self.n_electrons % 2 != 0:
             raise TequilaException("make_uccsd_ansatz currently only for closed shell systems")
 
-        nocc = self.molecule.n_electrons // 2
-        nvirt = self.molecule.n_orbitals // 2 - nocc
+        nocc = self.n_electrons // 2
+        nvirt = self.n_orbitals // 2 - nocc
 
         Uref = QCircuit()
         if include_reference_ansatz:
@@ -611,7 +666,6 @@ class QuantumChemistryBase:
         if hasattr(initial_amplitudes, "lower"):
             if initial_amplitudes.lower() == "mp2":
                 amplitudes = self.compute_mp2_amplitudes()
-                amplitudes.tIA = numpy.zeros(shape=[nocc, nvirt])
             elif initial_amplitudes.lower() == "ccsd":
                 amplitudes = self.compute_ccsd_amplitudes()
             else:
@@ -629,7 +683,11 @@ class QuantumChemistryBase:
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
         generators = []
         variables = []
-        amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
+
+        if not isinstance(amplitudes, dict):
+            amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
+            amplitudes = dict(sorted(amplitudes.items(), key=lambda x: x[1]))
+
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0, atol=threshold):
@@ -649,13 +707,12 @@ class QuantumChemistryBase:
 
                     for idx in spin_indices:
                         idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
-                        generators.append(self.make_excitation_operator(indices=idx))
+                        generators.append(self.make_excitation_generator(indices=idx))
 
                     if parametrized:
                         variables.append(Variable(name=key))  # abab
                         variables.append(Variable(name=key))  # baba
                         if partner is not None and key[0] != key[1] and key[2] != key[3]:
-
                             variables.append(Variable(name=key) - Variable(partner))  # aaaa
                             variables.append(Variable(name=key) - Variable(partner))  # bbbb
                     else:
@@ -715,7 +772,7 @@ class QuantumChemistryBase:
         assert self.parameters.closed_shell
         g = self.molecule.two_body_integrals
         fij = self.molecule.orbital_energies
-        nocc = self.n_alpha_electrons
+        nocc = self.molecule.n_electrons // 2 # this is never the active space
         ei = fij[:nocc]
         ai = fij[nocc:]
         abgij = g[nocc:, nocc:, :nocc, :nocc]
@@ -779,46 +836,6 @@ class QuantumChemistryBase:
             amplitudes.append(ClosedShellAmplitudes(tIA=t))
 
         return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
-
-    def compute_cispd_amplitudes(self, state=None, xcis=None, omega=None) -> ClosedShellAmplitudes:
-        assert self.parameters.closed_shell
-
-        if xcis is None:
-            assert (state is not None)
-            cis_result = self.compute_cis_amplitudes()
-            xcis = cis_result.amplitudes[state].amplitudes
-            omega = cis_result.omegas[state]
-
-        assert xcis.shape == (self.n_orbitals - self.n_alpha_electrons, self.n_alpha_electrons)
-        assert omega > 0.0
-        g = self.molecule.two_body_integrals
-        fij = self.molecule.orbital_energies
-        nocc = self.n_alpha_electrons
-        ei = fij[:nocc]
-        ai = fij[nocc:]
-        abgic = g[nocc:, nocc:, :nocc, nocc:]
-        abgcj = g[nocc:, nocc:, nocc:, :nocc]
-        kbgij = g[:nocc, nocc:, :nocc, :nocc]
-        akgij = g[nocc:, :nocc, :nocc, :nocc]
-        abgix = numpy.einsum('abic,cj -> abij', abgic, xcis, optimize='optimize')
-        abgxj = numpy.einsum('abcj,ci -> abij', abgcj, xcis, optimize='optimize')
-        xbgij = numpy.einsum('kbij,ak -> abij', kbgij, xcis, optimize='optimize')
-        axgij = numpy.einsum('akij,bk -> abij', akgij, xcis, optimize='optimize')
-
-        abgij = abgix + abgxj - xbgij - axgij
-        amplitudes = abgij * -1.0 / (
-                ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1,
-                                                                                                         1) - omega)
-
-        # # energy
-        # s2b = 2.0 * numpy.einsum('abij, abij -> ', abgxj, amplitudes, optimize='optimize') - numpy.einsum(
-        #     'baij, abij -> ', abgxj, amplitudes, optimize='optimize')
-        # s2c = 2.0 * numpy.einsum('abij, abij -> ', xbgij, amplitudes, optimize='optimize') - numpy.einsum(
-        #     'baij, abij -> ', xbgij, amplitudes, optimize='optimize')
-        # print("2e corr energy = ", s2b - s2c)
-
-        return ClosedShellAmplitudes(
-            tIjAb=numpy.einsum('abij -> aibj', amplitudes, optimize='optimize'))
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"

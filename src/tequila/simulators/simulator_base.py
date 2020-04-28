@@ -167,7 +167,7 @@ class BackendCircuit():
         else:
             keymap = KeyMapSubregisterToRegister(subregister=all_qubits, register=all_qubits)
 
-        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer)
+        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args, **kwargs)
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
@@ -201,7 +201,7 @@ class BackendCircuit():
             #measure += Measurement(name=str(paulistring), target=qubits)
             circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
-            counts = self.do_sample(samples=samples, circuit=circuit)
+            counts = self.do_sample(samples=samples, circuit=circuit, *args, **kwargs)
             # compute energy
             E = 0.0
             n_samples = 0
@@ -221,7 +221,7 @@ class BackendCircuit():
                 E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
             return E
         else:
-            return self.do_sample(samples=samples, circuit=self.circuit)
+            return self.do_sample(samples=samples, circuit=self.circuit, *args, **kwargs)
 
     def do_sample(self, samples, circuit, noise_model, *args, **kwargs) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")

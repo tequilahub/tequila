@@ -41,14 +41,26 @@ def test_convenience():
     assert test == -1.0*(paulis.X(i) - paulis.Y(i) + 3.0)
 
     test = paulis.X([0,1,2,3])
-    assert test == QubitHamiltonian.init_from_string("X(0)X(1)X(2)X(3)", False)
+    assert test == QubitHamiltonian.from_string("X(0)X(1)X(2)X(3)", False)
 
     test = paulis.Y([0,1,2,3])
-    assert test == QubitHamiltonian.init_from_string("Y(0)Y(1)Y(2)Y(3)", False)
+    assert test == QubitHamiltonian.from_string("Y(0)Y(1)Y(2)Y(3)", False)
 
     test = paulis.Z([0,1,2,3])
-    assert test == QubitHamiltonian.init_from_string("Z(0)Z(1)Z(2)Z(3)", False)
+    assert test == QubitHamiltonian.from_string("Z(0)Z(1)Z(2)Z(3)", False)
 
+def test_initialization():
+    H = paulis.I()
+    for i in range(10):
+        H += paulis.pauli(qubit=numpy.random.randint(0,5,3), type=numpy.random.choice(["X", "Y", "Z"],1))
+
+    for H1 in [H, paulis.I(), paulis.Zero(), paulis.X(0), paulis.Y(1), 1.234*paulis.Z(2)]:
+        string = str(H1)
+        ofstring = str(H1.to_openfermion())
+        H2 = QubitHamiltonian.from_string(string=string)
+        assert H1 == H2
+        H3 = QubitHamiltonian.from_string(string=ofstring, openfermion_format=True)
+        assert H1 == H3
 
 def test_ketbra():
     ket = QubitWaveFunction.from_string("1.0*|00> + 1.0*|11>").normalize()
@@ -65,11 +77,11 @@ def test_ketbra_random(n_qubits):
     assert result == QubitWaveFunction.from_array(ket)
 
 def test_paulistring_conversion():
-    X1 = QubitHamiltonian.init_from_string("X0", openfermion_format=True)
+    X1 = QubitHamiltonian.from_string("X0", openfermion_format=True)
     X2 = paulis.X(0)
     keys = [i for i in X2.keys()]
     pwx = PauliString.from_openfermion(key=keys[0], coeff=X2[keys[0]])
-    X3 = QubitHamiltonian.init_from_paulistring(pwx)
+    X3 = QubitHamiltonian.from_paulistrings(pwx)
     assert (X1 == X2)
     assert (X2 == X3)
 
@@ -100,9 +112,9 @@ def test_simple_arithmetic():
     assert (paulis.Y(qubit).transpose() == -1 * paulis.Y(qubit))
     assert (paulis.Z(qubit).transpose() == paulis.Z(qubit))
     for P in primitives:
-        assert (P(qubit) * P(qubit) == QubitHamiltonian())
+        assert (P(qubit) * P(qubit) == QubitHamiltonian(1.0))
         n = random.randint(0, 10)
-        nP = QubitHamiltonian.init_zero()
+        nP = QubitHamiltonian.zero()
         for i in range(n):
             nP += P(qubit)
         assert (n * P(qubit) == nP)
@@ -122,13 +134,13 @@ def test_simple_arithmetic():
 
 def test_special_operators():
     # sigma+ sigma- as well as Q+ and Q-
-    assert (paulis.Sp(0) * paulis.Sp(0) == QubitHamiltonian.init_zero())
-    assert (paulis.Sm(0) * paulis.Sm(0) == QubitHamiltonian.init_zero())
+    assert (paulis.Sp(0) * paulis.Sp(0) == QubitHamiltonian.zero())
+    assert (paulis.Sm(0) * paulis.Sm(0) == QubitHamiltonian.zero())
 
     assert (paulis.Qp(0) * paulis.Qp(0) == paulis.Qp(0))
     assert (paulis.Qm(0) * paulis.Qm(0) == paulis.Qm(0))
-    assert (paulis.Qp(0) * paulis.Qm(0) == QubitHamiltonian.init_zero())
-    assert (paulis.Qm(0) * paulis.Qp(0) == QubitHamiltonian.init_zero())
+    assert (paulis.Qp(0) * paulis.Qm(0) == QubitHamiltonian.zero())
+    assert (paulis.Qm(0) * paulis.Qp(0) == QubitHamiltonian.zero())
 
     assert (paulis.Sp(0) * paulis.Sm(0) == paulis.Qp(0))
     assert (paulis.Sm(0) * paulis.Sp(0) == paulis.Qm(0))
@@ -175,8 +187,8 @@ def test_projectors(qubits):
 def test_conjugation():
     primitives = [paulis.X, paulis.Y, paulis.Z]
     factors = [1, -1, 1j, -1j, 0.5 + 1j]
-    string = QubitHamiltonian.init_unit()
-    cstring = QubitHamiltonian.init_unit()
+    string = QubitHamiltonian.unit()
+    cstring = QubitHamiltonian.unit()
     for repeat in range(10):
         for q in random.randint(0, 7, 5):
             ri = random.randint(0, 2)
@@ -200,8 +212,8 @@ def test_transposition():
     assert ((paulis.X(0) * paulis.X(1) * paulis.Z(2)).transpose() == paulis.X(0) * paulis.X(1) * paulis.Z(2))
 
     for repeat in range(10):
-        string = QubitHamiltonian.init_unit()
-        tstring = QubitHamiltonian.init_unit()
+        string = QubitHamiltonian.unit()
+        tstring = QubitHamiltonian.unit()
         for q in range(5):
             ri = random.randint(0, 2)
             P = primitives[ri]
@@ -217,7 +229,7 @@ def test_transposition():
 
 def make_random_pauliword(complex=True):
     primitives = [paulis.X, paulis.Y, paulis.Z]
-    result = QubitHamiltonian.init_unit()
+    result = QubitHamiltonian.unit()
     for q in random.choice(range(10), 5, replace=False):
         P = primitives[random.randint(0, 2)]
         real = random.uniform(0, 1)

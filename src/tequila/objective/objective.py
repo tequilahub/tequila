@@ -7,6 +7,7 @@ from tequila.autograd_imports import numpy
 
 import collections
 
+
 class ExpectationValueImpl:
     """
     Internal Object, do not use from the outside
@@ -27,7 +28,7 @@ class ExpectationValueImpl:
     @property
     def H(self):
         if self._hamiltonian is None:
-            return paulis.QubitHamiltonian.init_unit()
+            return paulis.QubitHamiltonian.unit()
         else:
             return self._hamiltonian
 
@@ -41,7 +42,6 @@ class ExpectationValueImpl:
         if self.U is not None:
             self.U.update_variables(variables)
 
-
     def __init__(self, U=None, H=None, contraction=None, shape=None):
         self._unitary = copy.deepcopy(U)
         if hasattr(H, "paulistrings"):
@@ -52,7 +52,8 @@ class ExpectationValueImpl:
         self._shape = shape
 
     def __call__(self, *args, **kwargs):
-        raise TequilaException("Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")
+        raise TequilaException(
+            "Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")
 
     def info(self, short=True, *args, **kwargs):
         if short:
@@ -103,7 +104,7 @@ class Objective:
         """
         variables = []
         for arg in self.args:
-            if hasattr(arg,'extract_variables'):
+            if hasattr(arg, 'extract_variables'):
                 variables += arg.extract_variables()
             else:
                 variables += []
@@ -276,37 +277,33 @@ class Objective:
     def get_expectationvalues(self):
         return [arg for arg in self.args if hasattr(arg, "U")]
 
-    def count_expectationvalues(self, unique = True):
+    def count_expectationvalues(self, unique=True):
         if unique:
             return len(set(self.get_expectationvalues()))
         else:
             return len(self.get_expectationvalues())
 
+    def __str__(self):
+        return self.__repr__()
+
     def __repr__(self):
         variables = self.extract_variables()
-        ev = []
-        argstring = ""
-        i = 0
-        for arg in self.args:
-            if hasattr(arg, "U"):
-                ev.append(i)
-                argstring += "E_" + str(i) + ", "
-                i += 1
-            elif hasattr(arg, "name"):
-                argstring += str(arg) + ", "
+        types = [type(E) for E in self.get_expectationvalues()]
+        types = list(set(types))
+
+        if ExpectationValueImpl in types:
+            if len(types) == 1:
+                types = "not compiled"
             else:
-                assert not arg.has_expectationvalues()
-                argstring += "g({}), ".format(arg.extract_variables())
+                types = "partially compiled to " + str([t for t in types if t is not ExpectationValueImpl])
 
         unique = self.count_expectationvalues(unique=True)
-        if unique == 0:
-            return "f({})".format(argstring.strip().rstrip(','))
-        else:
-            return "Objective with {}({}) (unique) expectation values\n" \
-                   "Objective = f({})\n" \
-                   "variables = {}".format(len(ev), unique, argstring.strip().rstrip(','), variables)
+        return "Objective with {} unique expectation values\n" \
+               "variables = {}\n" \
+               "types     = {}".format(unique, variables, types)
 
-    def __call__(self, variables = None, *args, **kwargs):
+    def __call__(self, variables=None, *args, **kwargs):
+        variables = format_variable_dictionary(variables)
         # avoid multiple evaluations
         evaluated = {}
         ev_array = []
@@ -449,7 +446,7 @@ class Variable:
         assert (callable(other))
         return Objective(args=[self], transformation=other)
 
-    def wrap(self,other):
+    def wrap(self, other):
         return self.apply(other)
 
     def __repr__(self):
@@ -460,6 +457,13 @@ class FixedVariable(float):
 
     def __call__(self, *args, **kwargs):
         return self
+
+    def apply(self, other):
+        assert (callable(other))
+        return Objective(args=[self], transformation=other)
+
+    def wrap(self, other):
+        return self.apply(other)
 
 
 def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List[Variable]:
@@ -540,14 +544,9 @@ class Variables(collections.abc.MutableMapping):
 
     def __str__(self):
         result = ""
-        for k,v in self.items():
+        for k, v in self.items():
             result += "{} : {}\n".format(str(k), str(v))
         return result
 
     def __repr__(self):
         return self.__str__()
-
-
-
-
-

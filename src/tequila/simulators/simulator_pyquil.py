@@ -5,7 +5,7 @@ import subprocess
 import sys
 import numpy as np
 import pyquil
-from pyquil import get_qc
+from pyquil.api import get_qc
 from pyquil.noise import combine_kraus_maps
 from tequila.utils import to_float
 
@@ -168,7 +168,7 @@ def append_kraus_to_gate(kraus_ops, g, level):
 def add_controls(matrix, count):
     gc = np.log2(matrix.shape[0])
     controls = count - gc
-    if int(controls) is 0:
+    if int(controls) == 0:
         return matrix
     new = np.eye(2 ** count)
     new[-matrix.shape[0]:, -matrix.shape[0]:] = matrix
@@ -254,22 +254,19 @@ class BackendCircuitPyquil(BackendCircuit):
         for i, val in enumerate(msb.array):
             if val > 0:
                 iprep += pyquil.gates.X(i)
-        with open('qvm.log', "a+") as outfile:
-            sys.stdout = outfile
-            sys.stderr = outfile
-            outfile.write("\nSTART SIMULATION: \n")
-            outfile.write(str(self.abstract_circuit))
-            process = subprocess.Popen(["qvm", "-S"], stdout=outfile, stderr=outfile)
-            backend_result = simulator.wavefunction(iprep + self.circuit, memory_map=self.resolver)
-            outfile.write("END SIMULATION: \n")
-            process.terminate()
-            sys.stdout = sys.__stdout__
-            sys.stderr = sys.__stderr__
+        backend_result = simulator.wavefunction(iprep + self.circuit, memory_map=self.resolver)
         return QubitWaveFunction.from_array(arr=backend_result.amplitudes, numbering=self.numbering)
 
     def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
         n_qubits = self.n_qubits
-        qc = get_qc('{}q-qvm'.format(str(n_qubits)))
+        if "pyquil_backend" in kwargs:
+            pyquil_backend = kwargs["pyquil_backend"]
+            if isinstance(pyquil_backend, dict):
+                qc = get_qc(**pyquil_backend)
+            else:
+                qc = get_qc(pyquil_backend)
+        else:
+            qc = get_qc('{}q-qvm'.format(str(n_qubits)))
         p = circuit
         p.wrap_in_numshots_loop(samples)
         stacked = qc.run(p, memory_map=self.resolver)
@@ -361,7 +358,7 @@ class BackendCircuitPyquil(BackendCircuit):
             if hasattr(gate, 'qubits'):
                 level = str(len(gate.qubits))
                 if level in collected.keys():
-                    if name_dict[gate.name] is 'parametrized':
+                    if name_dict[gate.name] == 'parametrized':
                         new.inst([pyquil.gates.I(q) for q in gate.qubits])
                         if ['parametrized', gate.qubits] not in done:
                             new.define_noisy_gate('I',
