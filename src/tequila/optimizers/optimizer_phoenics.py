@@ -193,7 +193,7 @@ class OptimizerPhoenics(Optimizer):
 
             start = time.time()
             for i, rec in enumerate(recs):
-                En = compiled_objective(variables=rec, samples=samples, noise_model=noise, **backend_options)
+                En = compiled_objective(variables=rec, samples=samples, noise=noise, **backend_options)
                 runs.append((rec, En))
                 if not self.silent:
                     print("energy = {:+2.8f} , angles=".format(En), rec)
