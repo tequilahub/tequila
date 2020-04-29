@@ -62,7 +62,7 @@ def test_methods_qng(simulator, method):
     # need to improve starting points for some of the optimizations
     initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
 
-    if method == 'basic':
+    if method == 'sgd':
         ##needs a helping hand or it gets really slow!
         lr=0.5
     else:

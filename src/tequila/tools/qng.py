@@ -40,8 +40,8 @@ class QngMatrix:
                 d_v_temp += 1
             d_v += d_v_temp
 
-        numpy.linalg.pinv(output)
-        return output
+        back = numpy.linalg.pinv(output)
+        return back
 
 class CallableVector:
     @property
@@ -246,11 +246,13 @@ def evaluate_qng(combos,variables,samples=None):
         vec=c['vector']
         m=c['mapping']
         pos=c['positional']
-        ev=numpy.dot(qgt(variables,samples=samples),vec(variables,samples=samples))
+        marco=qgt(variables,samples=samples)
+        polo=vec(variables,samples=samples)
+        ev=numpy.dot(marco,polo)
         for i,val in enumerate(ev):
             maps=m[i]
             for k in maps.keys():
-                gd[k] += val*maps[k]*pos(variables,samples=samples)
+                gd[k] += val*maps[k]*pos(variables=variables,samples=samples)
 
     out=[v for v in gd.values()]
     return out
@@ -261,4 +263,4 @@ class QNGVector():
         self.combos=combos
 
     def __call__(self, variables,samples=None):
-        return numpy.asarray(evaluate_qng(self.combos,variables,samples=samples))
+        return numpy.asarray(evaluate_qng(self.combos,variables=variables,samples=samples))

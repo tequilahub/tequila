@@ -26,8 +26,7 @@ class OptimizerGD(Optimizer):
         Optimize a circuit to minimize a given objective using Adam
         See the Optimizer class for all other parameters to initialize
         """
-        self.silent = silent
-        self.maxiter = maxiter
+
         super().__init__(**kwargs)
         self.method_dict = {
             'adam': self.adam,
@@ -39,6 +38,9 @@ class OptimizerGD(Optimizer):
             'nesterov': self.nesterov,
             'rmsprop': self.rms,
             'rmsprop-nesterov': self.rms_nesterov}
+
+        self.silent = silent
+        self.maxiter = maxiter
 
     def __call__(self, objective: Objective,
                  maxiter,
@@ -246,7 +248,7 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def basic(self, lr, gradients,
+    def sgd(self, lr, gradients,
             v, moments, active_angles,samples, **kwargs):
 
         ### the sgd  optimizer without momentum.
@@ -256,7 +258,7 @@ class OptimizerGD(Optimizer):
             new[k] = v[k] - lr * grads[i]
         return new, moments, grads
 
-    def sgd(self,lr,gradients,
+    def momentum(self,lr,gradients,
              v,moments,active_angles,samples,
              beta=0.9,**kwargs):
 
