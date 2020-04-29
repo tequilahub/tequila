@@ -86,7 +86,7 @@ class OptimizerGD(Optimizer):
         # Transform the initial value directory into (ordered) arrays
 
         comp = compile(objective=objective, variables=initial_values, backend=backend,
-                       noise_model=noise,
+                       noise=noise,
                        samples=samples)
 
         if not qng:
@@ -94,7 +94,7 @@ class OptimizerGD(Optimizer):
             for k in active_angles.keys():
                 g = grad(objective, k)
                 g_comp = compile(objective=g, variables=initial_values, backend=backend,
-                                 noise_model=noise, samples=samples)
+                                 noise=noise, samples=samples)
                 g_list.append(g_comp)
 
             gradients = CallableVector(g_list)
@@ -102,7 +102,7 @@ class OptimizerGD(Optimizer):
             if method.lower() == 'adagrad':
                 print('Warning! you have chosen to use QNG with adagrad ; convergence is not likely.'.format(method))
             gradients = QNGVector(get_qng_combos(objective=objective, initial_values=initial_values, backend=backend,
-                                                 noise_model=noise, samples=samples))
+                                                 noise=noise, samples=samples))
 
         if not self.silent:
             print("backend: {}".format(comp.backend))
@@ -384,7 +384,7 @@ def minimize(objective: Objective,
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
     noise: NoiseModel:
-         (Default value =None)
+         (Default value = None)
          a NoiseModel to apply to all expectation values in the objective.
     stop_count: int :
          (Default value = None)

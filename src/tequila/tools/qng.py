@@ -76,7 +76,7 @@ def get_generator(gate):
     return gen
 
 
-def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,backend=None,noise_model=None):
+def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,backend=None,noise=None):
 
     U=expectation.U
     moments=U.canonical_moments
@@ -105,7 +105,8 @@ def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,backen
                         arg= (ExpectationValue(U=sub[i], H=gen1 * gen1) - ExpectationValue(U=sub[i],H=gen1)**2)/4
                     else:
                         arg = (ExpectationValue(U=sub[i], H=gen1 * gen2) - ExpectationValue(U=sub[i], H=gen1)*ExpectationValue(U=sub[i],H=gen2) ) / 4
-                    block[k][q] = compile_objective(arg, variables=initial_values, samples=samples, backend=backend,noise_model=noise_model)
+                    block[k][q] = compile_objective(arg, variables=initial_values, samples=samples, backend=backend,
+                                                    noise=noise)
             blocks.append(block)
     return blocks
 
@@ -174,12 +175,12 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian):
 
 
 
-def subvector_procedure(eval,initial_values=None,samples=None,backend=None,noise_model=None):
+def subvector_procedure(eval,initial_values=None,samples=None,backend=None,noise=None):
     vect=qng_circuit_grad(eval)
     out=[]
     for entry in vect:
-        out.append(compile_objective(entry,variables=initial_values,samples=samples,
-                                     backend=backend,noise_model=noise_model))
+        out.append(compile_objective(entry, variables=initial_values, samples=samples,
+                                     backend=backend, noise=noise))
     return CallableVector(out)
 
 def get_self_pars(U):
@@ -193,7 +194,7 @@ def get_self_pars(U):
 def qng_dict(argument,matrix,subvector,mapping,positional):
     return {'arg':argument,'matrix':matrix,'vector':subvector,'mapping':mapping,'positional':positional}
 
-def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise_model=None):
+def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise=None):
     combos=[]
     vars=objective.extract_variables()
     compiled = compile_multitarget(gate=objective)
@@ -211,11 +212,11 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
         else:
             ### if the arg is an expectationvalue, we need to build some qngs and mappings!
             blocks=qng_metric_tensor_blocks(arg,initial_values=initial_values,samples=samples,
-                                            backend=backend,noise_model=noise_model)
+                                            backend=backend,noise=noise)
             mat=QngMatrix(blocks)
 
             vec=subvector_procedure(arg,initial_values=initial_values,samples=samples,
-                                    backend=backend,noise_model=noise_model)
+                                    backend=backend,noise=noise)
 
             mapping={}
             self_pars=get_self_pars(arg.U)
@@ -224,8 +225,8 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
                 for v in p.extract_variables():
                     gi=__grad_inner(p,v)
                     if isinstance(gi,Objective):
-                        g=compile_objective(gi,variables=initial_values,samples=samples,
-                                            backend=backend,noise_model=noise_model)
+                        g=compile_objective(gi, variables=initial_values, samples=samples,
+                                            backend=backend, noise=noise)
                     else:
                         g=gi
                     indict[v]=g
@@ -234,8 +235,8 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,noise
         posarg = jax.grad(compiled.transformation, argnums=i)
         p = Objective(compiled.args, transformation=posarg)
 
-        pos = compile_objective(p,variables=initial_values,samples=samples,
-                          backend=backend,noise_model=noise_model)
+        pos = compile_objective(p, variables=initial_values, samples=samples,
+                                backend=backend, noise=noise)
         combos.append(qng_dict(arg, mat, vec, mapping, pos))
     return combos
 

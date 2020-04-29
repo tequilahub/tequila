@@ -129,7 +129,7 @@ class OptimizerSciPy(Optimizer):
             assert (names == param_keys)  # make sure the bounds are not shuffled
 
         # do the compilation here to avoid costly recompilation during the optimization
-        compiled_objective = compile(objective=objective, variables=initial_values, backend=backend, noise_model=noise,
+        compiled_objective = compile(objective=objective, variables=initial_values, backend=backend, noise=noise,
                                      samples=samples, *args, **kwargs)
 
         E = _EvalContainer(objective=compiled_objective,
@@ -154,11 +154,11 @@ class OptimizerSciPy(Optimizer):
                     raise Exception("No gradient for variable {}".format(k))
                 grad_exval.append(gradient[k].count_expectationvalues())
                 compiled_grad_objectives[k] = compile(objective=gradient[k], variables=initial_values,
-                                                      samples=samples, noise_model=noise, backend=backend, *args, **kwargs)
+                                                      samples=samples, noise=noise, backend=backend, *args, **kwargs)
 
             if qng:
                 combos = get_qng_combos(objective, samples=samples, backend=backend,
-                                        noise_model=noise, initial_values=initial_values)
+                                        noise=noise, initial_values=initial_values)
 
                 dE = _QngContainer(combos=combos,
                                    param_keys=param_keys,
@@ -200,7 +200,7 @@ class OptimizerSciPy(Optimizer):
                     if j > i: continue
                     hess = grad(gradient[k], l)
                     compiled_hess = compile(objective=hess, variables=initial_values, samples=samples,
-                                            noise_model=noise,
+                                            noise=noise,
                                             backend=backend, *args, **kwargs)
                     compiled_hess_objectives[(k, l)] = compiled_hess
                     compiled_hess_objectives[(l, k)] = compiled_hess

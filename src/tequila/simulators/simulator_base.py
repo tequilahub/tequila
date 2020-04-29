@@ -54,13 +54,13 @@ class BackendCircuit():
     def qubits(self) -> typing.Iterable[numbers.Integral]:
         return tuple(self._qubits)
 
-    def __init__(self, abstract_circuit: QCircuit, variables, noise_model=None,
+    def __init__(self, abstract_circuit: QCircuit, variables, noise=None,
                  use_mapping=True, optimize_circuit=True, *args, **kwargs):
         self._variables = tuple(abstract_circuit.extract_variables())
         self.use_mapping = use_mapping
 
         compiler_arguments = self.compiler_arguments
-        if noise_model is not None:
+        if noise is not None:
             compiler_arguments["cc_max"] = True
             compiler_arguments["controlled_phase"] = True
             compiler_arguments["controlled_rotation"] = True
@@ -83,10 +83,10 @@ class BackendCircuit():
         # translate into the backend object
         self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
 
-        if optimize_circuit and noise_model ==None:
+        if optimize_circuit and noise ==None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
-        self.noise_model = noise_model
+        self.noise = noise
 
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
@@ -98,9 +98,9 @@ class BackendCircuit():
             if variables is None or set(self._variables) != set(variables.keys()):
                 raise TequilaException("BackendCircuit received not all variables. Circuit depends on variables {}, you gave {}".format(self._variables, variables))
         if samples is None:
-            return self.simulate(variables=variables, noise_model=self.noise_model, *args, **kwargs)
+            return self.simulate(variables=variables, noise=self.noise, *args, **kwargs)
         else:
-            return self.sample(variables=variables, samples=samples, noise_model=self.noise_model, *args, **kwargs)
+            return self.sample(variables=variables, samples=samples, noise=self.noise, *args, **kwargs)
 
     def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
         """
@@ -223,7 +223,7 @@ class BackendCircuit():
         else:
             return self.do_sample(samples=samples, circuit=self.circuit, *args, **kwargs)
 
-    def do_sample(self, samples, circuit, noise_model, *args, **kwargs) -> QubitWaveFunction:
+    def do_sample(self, samples, circuit, noise, *args, **kwargs) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     # Those functions need to be overwritten:
@@ -295,8 +295,8 @@ class BackendExpectationValue:
             result = self.U.extract_variables()
         return result
 
-    def __init__(self, E, variables, noise_model):
-        self._U = self.initialize_unitary(E.U, variables, noise_model)
+    def __init__(self, E, variables, noise):
+        self._U = self.initialize_unitary(E.U, variables, noise)
         self._H = self.initialize_hamiltonian(E.H)
         self._abstract_hamiltonians = E.H
         self._variables = E.extract_variables()
@@ -331,9 +331,9 @@ class BackendExpectationValue:
     def initialize_hamiltonian(self, H):
         return tuple(H)
 
-    def initialize_unitary(self, U, variables, noise_model):
+    def initialize_unitary(self, U, variables, noise):
         return self.BackendCircuitType(abstract_circuit=U, variables=variables, use_mapping=self.use_mapping,
-                                       noise_model=noise_model)
+                                       noise=noise)
 
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)

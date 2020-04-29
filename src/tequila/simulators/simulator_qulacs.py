@@ -43,7 +43,7 @@ class BackendCircuitQulacs(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
-    def __init__(self,abstract_circuit, noise_model=None,*args, **kwargs):
+    def __init__(self, abstract_circuit, noise=None, *args, **kwargs):
         self.op_lookup = {
             'I': qulacs.gate.Identity,
             'X': qulacs.gate.X,
@@ -59,9 +59,9 @@ class BackendCircuitQulacs(BackendCircuit):
         }
 
         self.variables = []
-        super().__init__(abstract_circuit=abstract_circuit,noise_model=noise_model,*args, **kwargs)
+        super().__init__(abstract_circuit=abstract_circuit, noise=noise, *args, **kwargs)
         self.has_noise=False
-        if noise_model is not None:
+        if noise is not None:
             self.has_noise=True
             self.noise_lookup = {
                 'bit flip': [qulacs.gate.BitFlipNoise],
@@ -74,7 +74,7 @@ class BackendCircuitQulacs(BackendCircuit):
                 'depolarizing': [lambda target,prob: qulacs.gate.DepolarizingNoise(target,3*prob/4)]
             }
 
-            self.circuit=self.add_noise_to_circuit(noise_model)
+            self.circuit=self.add_noise_to_circuit(noise)
 
     def update_variables(self, variables):
         for k, angle in enumerate(self.variables):

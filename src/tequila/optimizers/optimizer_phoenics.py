@@ -160,7 +160,7 @@ class OptimizerPhoenics(Optimizer):
         best_angles = None
 
         # avoid multiple compilations
-        compiled_objective = compile_objective(objective=objective, backend=backend, samples=samples, noise_model=noise)
+        compiled_objective = compile_objective(objective=objective, backend=backend, samples=samples, noise=noise)
 
         if not self.silent:
             print('phoenics has recieved')
