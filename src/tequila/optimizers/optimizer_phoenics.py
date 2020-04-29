@@ -121,6 +121,10 @@ class OptimizerPhoenics(Optimizer):
                  *args,
                  **kwargs):
 
+        backend_options = {}
+        if 'backend_options' in kwargs:
+            backend_options = kwargs['backend_options']
+
         if maxiter is None:
             maxiter = 10
 
@@ -171,6 +175,7 @@ class OptimizerPhoenics(Optimizer):
             print("maxiter     : {}".format(maxiter))
             print("variables   : {}".format(objective.extract_variables()))
             print("passive var : {}".format(passives))
+            print("backend options {} ".format(backend), backend_options)
             print('now lets begin')
         for i in range(0, maxiter):
             with warnings.catch_warnings():
@@ -188,7 +193,7 @@ class OptimizerPhoenics(Optimizer):
 
             start = time.time()
             for i, rec in enumerate(recs):
-                En = compiled_objective(variables=rec, samples=samples, noise_model=noise)
+                En = compiled_objective(variables=rec, samples=samples, noise_model=noise, **backend_options)
                 runs.append((rec, En))
                 if not self.silent:
                     print("energy = {:+2.8f} , angles=".format(En), rec)
