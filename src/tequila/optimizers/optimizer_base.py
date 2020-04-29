@@ -2,7 +2,7 @@
 BaseCalss for Optimizers
 Suggestion, feel free to propose new things/changes
 """
-import typing, numbers
+import typing, numbers, copy
 
 from tequila.utils.exceptions import TequilaException
 from tequila.simulators.simulator_api import compile
@@ -237,7 +237,7 @@ class Optimizer:
         """
         raise TequilaOptimizerException("Tried to call BaseClass of Optimizer")
 
-    def update_parameters(self, parameters: typing.Dict[str, float], *args, **kwargs) -> typing.Dict[str, float]:
+    def update_parameters(self, parameters: typing.Dict[str, float], *args, **kwargs) -> typing.Dict[Variable, float]:
         """
         :param parameters: the parameters which will be updated
         :return: updated parameters
@@ -252,30 +252,125 @@ class Optimizer:
                        noise_model=self.noise_model,
                        *args, **kwargs)
 
-    def compile_gradient(self, objective: Objective, variables, gradient=None, *args, **kwargs) -> dict:
-        if isinstance(gradient, dict):
-            return {k: self.compile_objective(v) for k, v in gradient.items()}
+    def compile_gradient(self, objective: Objective,
+                         variables: typing.List[Variable],
+                         gradient=None,
+                         *args, **kwargs) -> typing.Tuple[
+        typing.Dict, typing.Dict]:
 
-        compiled_grad = {}
-        for k in variables:
-            dO = grad(objective=objective, variable=k, *args, **kwargs)
-            compiled_grad[k] = self.compile_objective(objective=dO, *args, **kwargs)
-        return compiled_grad
+        if gradient is None:
+            dO = {k: grad(objective=objective, variable=k, *args, **kwargs) for k in variables}
+            compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
+        elif isinstance(gradient, dict):
+            if all([isinstance(x, Objective) for x in gradient.values()]):
+                dO = gradient
+                compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
+            else:
+                dO = None
+                compiled = self.compile_objective(objective=objective)
+                compiled_grad = {k: _NumGrad(objective=compiled, variable=k, **gradient) for k in variables}
+        else:
+            raise TequilaOptimizerException("unknown gradient instruction of type {} : {}".format(type(gradient),gradient))
 
-    def compile_hessian(self, objective: Objective, variables, *args, **kwargs) -> dict:
-        compiled_hessian = {}
-        for k in variables:
-            dOk = grad(objective=objective, variable=k, *args, **kwargs)
-            for l in variables:
-                dOkl = grad(objective=dOk, variable=l)
-                compiled = self.compile_objective(dOkl)
-                compiled_hessian[(k, l)] = compiled
-                compiled_hessian[(l, k)] = compiled
-        return compiled_hessian
+        return dO, compiled_grad
+
+    def compile_hessian(self,
+                        variables: typing.List[Variable],
+                        grad_obj: typing.Dict[Variable, Objective],
+                        comp_grad_obj: typing.Dict[Variable, Objective],
+                        hessian: dict = None,
+                        *args,
+                        **kwargs) -> tuple:
+
+        dO = grad_obj
+        cdO = comp_grad_obj
+
+        if hessian is None:
+            if dO is None:
+                raise TequilaOptimizerException("Can not combine analytical Hessian with numerical Gradient\n"
+                                                "hessian instruction was: {}".format(hessian))
+
+            compiled_hessian = {}
+            ddO = {}
+            for k in variables:
+                dOk = dO[k]
+                for l in variables:
+                    ddO[(k, l)] = grad(objective=dOk, variable=l)
+                    compiled_hessian[(k, l)] = self.compile_objective(ddO[(k, l)])
+                    ddO[(l, k)] = ddO[(k, l)]
+                    compiled_hessian[(l, k)] = compiled_hessian[(k, l)]
+
+        elif isinstance(hessian, dict):
+            if all([isinstance(x, Objective) for x in hessian.values()]):
+                ddO = hessian
+                compiled_hessian = {k: self.compile_objective(objective=ddO[k], *args, **kwargs) for k in
+                                    hessian.keys()}
+            else:
+                ddO = None
+                compiled_hessian = {}
+                for k in variables:
+                    for l in variables:
+                        compiled_hessian[(k, l)] = _NumGrad(objective=cdO[k], variable=l, **hessian)
+                        compiled_hessian[(l, k)] = _NumGrad(objective=cdO[l], variable=k, **hessian)
+        else:
+            raise TequilaOptimizerException("unknown hessian instruction: {}".format(hessian))
+
+        return ddO, compiled_hessian
 
     def __repr__(self):
         infostring = "Optimizer: {} \n".format(str(type(self)))
-        infostring += "{:30} : {:30}".format("backend", self.backend)
-        infostring += "{:30} : {:30}".format("samples", self.samples)
-        infostring += "{:30} : {:30}".format("save_history", self.save_history)
-        infostring += "{:30} : {:30}".format("noise_model", self.noise_model)
+        infostring += "{:15} : {}\n".format("backend", self.backend)
+        infostring += "{:15} : {}\n".format("backend_options", self.backend_options)
+        infostring += "{:15} : {}\n".format("samples", self.samples)
+        infostring += "{:15} : {}\n".format("save_history", self.save_history)
+        infostring += "{:15} : {}\n".format("noise_model", self.noise_model)
+        return infostring
+
+
+class _NumGrad:
+    """
+    Numerical Gradient
+    Should not be used outside of optimizers
+    Can't interact with the current tequila structures
+    """
+
+    def __init__(self, objective, variable, stepsize, method=None):
+        self.objective = objective
+        self.variable = variable
+        self.stepsize = stepsize
+        if method is None or method == "2-point":
+            self.method = self.symmetric_two_point_stencil
+        elif method is None or method == "2-point-forward":
+            self.method = self.forward_two_point_stencil
+        elif method is None or method == "2-point-backward":
+            self.method = self.backward_two_point_stencil
+        else:
+            self.method = method
+
+    @staticmethod
+    def symmetric_two_point_stencil(obj, vars, key, step, *args, **kwargs):
+        left = copy.deepcopy(vars)
+        left[key] += step/2
+        right = copy.deepcopy(vars)
+        right[key] -= step/2
+        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args , **kwargs))
+
+    @staticmethod
+    def forward_two_point_stencil(obj, vars, key, step, *args, **kwargs):
+        left = copy.deepcopy(vars)
+        left[key] += step
+        right = copy.deepcopy(vars)
+        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args , **kwargs))
+
+    @staticmethod
+    def backward_two_point_stencil(obj, vars, key, step, *args, **kwargs):
+        left = copy.deepcopy(vars)
+        right = copy.deepcopy(vars)
+        right[key] -= step
+        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args , **kwargs))
+
+    def __call__(self, variables, *args, **kwargs):
+        return self.method(self.objective, variables, self.variable, self.stepsize, *args, **kwargs)
+
+    def count_expectationvalues(self, *args, **kwargs):
+        return self.objective.count_expectationvalues(*args, **kwargs)

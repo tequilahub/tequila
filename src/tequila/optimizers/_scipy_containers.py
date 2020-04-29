@@ -14,7 +14,7 @@ class _EvalContainer:
     """
 
     def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True,
-                 print_level: int = 2, backend_options=None):
+                 print_level: int = 3, backend_options=None):
         self.objective = objective
         self.samples = samples
         self.param_keys = param_keys
@@ -36,9 +36,9 @@ class _EvalContainer:
             angles = {**angles, **self.passive_angles}
         vars = format_variable_dictionary(angles)
         E = self.objective(variables=vars, samples=self.samples, **self.backend_options)
-        if self.print_level > 1:
+        if self.print_level > 2:
             print("E={:+2.8f}".format(E), " angles=", angles, " samples=", self.samples)
-        elif self.print_level > 0:
+        elif self.print_level > 1:
             print("E={:+2.8f}".format(E))
         if self.save_history:
             self.history.append(E)
