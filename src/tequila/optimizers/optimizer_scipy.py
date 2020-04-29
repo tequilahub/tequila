@@ -77,15 +77,10 @@ class OptimizerSciPy(Optimizer):
             self.method_constraints = method_constraints
 
     def __call__(self, objective: Objective,
-                 initial_values: typing.Dict[Variable, numbers.Real],
                  variables: typing.List[Variable],
+                 initial_values: typing.Dict[Variable, numbers.Real],
                  gradient: typing.Dict[Variable, Objective] = None,
-                 qng: bool = False,
                  hessian: typing.Dict[typing.Tuple[Variable, Variable], Objective] = None,
-                 samples: int = None,
-                 backend: str = None,
-                 backend_options: dict = None,
-                 noise: NoiseModel = None,
                  reset_history: bool = True,
                  *args,
                  **kwargs) -> SciPyReturnType:
@@ -101,6 +96,11 @@ class OptimizerSciPy(Optimizer):
 
         infostring = "Starting {method} optimization\n".format(method=self.method)
         infostring += "Objective: {} expectationvalues\n".format(objective.count_expectationvalues())
+
+        if gradient is not None:
+            infostring += "Gradients from {}".format(gradient)
+        if hessian is not None:
+            infostring += "Hessian from {}".format(hessian)
 
         if self.save_history and reset_history:
             self.reset_history()
@@ -118,6 +118,7 @@ class OptimizerSciPy(Optimizer):
         param_keys, param_values = zip(*active_angles.items())
         param_values = numpy.array(param_values)
 
+        # process and initialize scipy bounds
         bounds = None
         if self.method_bounds is not None:
             bounds = {k: None for k in active_angles}
@@ -129,111 +130,94 @@ class OptimizerSciPy(Optimizer):
             assert (names == param_keys)  # make sure the bounds are not shuffled
 
         # do the compilation here to avoid costly recompilation during the optimization
-        compiled_objective = compile(objective=objective, variables=initial_values, backend=backend, noise_model=noise,
-                                     samples=samples, *args, **kwargs)
-
+        compiled_objective = self.compile_objective(objective=objective)
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
-                           samples=samples,
+                           samples=self.samples,
                            passive_angles=passive_angles,
                            save_history=self.save_history,
-                           backend_options = backend_options,
-                           silent=self.silent)
+                           backend_options=self.backend_options,
+                           print_level=self.print_level)
 
-        # compile gradients
-        if self.method in self.gradient_based_methods + self.hessian_based_methods and not isinstance(gradient, str):
-            compiled_grad_objectives = dict()
-            if gradient is None:
-                gradient = {assign_variable(k): grad(objective=objective, variable=k) for k in active_angles.keys()}
-            else:
-                gradient = {assign_variable(k): v for k, v in gradient.items()}
+        compile_gradient = self.method in (self.gradient_based_methods + self.hessian_based_methods)
+        compile_hessian = self.method in self.hessian_based_methods
 
-            grad_exval = []
-            for k in active_angles.keys():
-                if k not in gradient:
-                    raise Exception("No gradient for variable {}".format(k))
-                grad_exval.append(gradient[k].count_expectationvalues())
-                compiled_grad_objectives[k] = compile(objective=gradient[k], variables=initial_values,
-                                                      samples=samples, noise_model=noise, backend=backend, *args, **kwargs)
+        dE = None
+        # detect if scipy numerical gradients shall be used
+        if isinstance(gradient, str) and "scipy" in gradient:
+            compile_gradient = False
+            tmp = gradient.split("_")
+            dE = tmp[1]
+            if tmp[0] != "scipy":
+                raise TequilaScipyException(
+                    "Unknown gradient option: {}. For numerical gradients of scipy use for example scipy_2-point".format(
+                        gradient))
 
-            if qng:
-                combos = get_qng_combos(objective, samples=samples, backend=backend,
-                                        noise_model=noise, initial_values=initial_values)
+        if compile_gradient:
+            compiled_grad_objectives = self.compile_gradient(objective=objective, variables=active_angles, gradient=gradient)
+            expvals = 0
+            for obj in compiled_grad_objectives.values():
+                expvals += obj.count_expectationvalues()
+            infostring += "Hessian: {} expectationvalues\n".format(expvals)
+            dE = _GradContainer(objective=compiled_grad_objectives,
+                                param_keys=param_keys,
+                                samples=self.samples,
+                                passive_angles=passive_angles,
+                                save_history=self.save_history,
+                                print_level=self.print_level,
+                                backend_options=self.backend_options)
 
-                dE = _QngContainer(combos=combos,
-                                   param_keys=param_keys,
-                                   samples=samples,
-                                   passive_angles=passive_angles,
-                                   save_history=self.save_history,
-                                   silent=self.silent,
-                                   backend_options=backend_options)
-            else:
+        ddE = None
+        # detect if scipy numerical gradients shall be used
+        if isinstance(gradient, str) and "scipy" in gradient:
+            compile_hessian = False
+            tmp = gradient.split("_")
+            ddE = tmp[1]
+            if tmp[0] != "scipy":
+                raise TequilaScipyException(
+                    "Unknown gradient option: {}. For numerical gradients of scipy use for example scipy_2-point".format(
+                        gradient))
 
-                dE = _GradContainer(objective=compiled_grad_objectives,
-                                    param_keys=param_keys,
-                                    samples=samples,
-                                    passive_angles=passive_angles,
-                                    save_history=self.save_history,
-                                    silent=self.silent,
-                                    backend_options=backend_options)
-
-                infostring += "Gradients: {} expectationvalues (min={}, max={})\n".format(sum(grad_exval),
-                                                                                          min(grad_exval),
-                                                                                          max(grad_exval))
-        else:
-            # use numerical gradient
-            dE = gradient
-            infostring += "Gradients: {}\n".format(gradient)
-
-        # compile hessian
-
-        if self.method in self.hessian_based_methods and not isinstance(hessian, str):
-
-            if isinstance(gradient, str):
-                raise TequilaScipyException("Can not use numerical gradients for Hessian based methods")
-            if qng is True:
-                raise TequilaScipyException('Quantum Natural Hessian not yet well-defined, sorry!')
-            compiled_hess_objectives = dict()
-            hess_exval = []
-            for i, k in enumerate(active_angles.keys()):
-                for j, l in enumerate(active_angles.keys()):
-                    if j > i: continue
-                    hess = grad(gradient[k], l)
-                    compiled_hess = compile(objective=hess, variables=initial_values, samples=samples,
-                                            noise_model=noise,
-                                            backend=backend, *args, **kwargs)
-                    compiled_hess_objectives[(k, l)] = compiled_hess
-                    compiled_hess_objectives[(l, k)] = compiled_hess
-                    hess_exval.append(compiled_hess.count_expectationvalues())
-
-            ddE = _HessContainer(objective=compiled_hess_objectives,
+        if compile_hessian:
+            compiled_hessian_objectives = self.compile_hessian(objective=objective, variables=variables)
+            expvals = 0
+            for obj in compiled_hessian_objectives.values():
+                expvals += obj.count_expectationvalues()
+            infostring += "Hessian: {} expectationvalues\n".format(expvals)
+            ddE = _HessContainer(objective=compiled_hessian_objectives,
                                  param_keys=param_keys,
-                                 samples=samples,
+                                 samples=self.samples,
                                  passive_angles=passive_angles,
                                  save_history=self.save_history,
-                                 silent=self.silent)
-
-            infostring += "Hessian: {} expectationvalues (min={}, max={})\n".format(sum(hess_exval), min(hess_exval),
-                                                                                    max(hess_exval))
-
-        else:
-            infostring += "Hessian: {}\n".format(hessian)
-            if self.method != "TRUST-CONSTR" and hessian is not None:
-                raise TequilaScipyException("numerical hessians only for trust-constr method")
-            ddE = hessian
+                                 print_level=self.print_level,
+                                 backend_options=self.backend_options)
 
         if not self.silent:
-            print("ObjectiveType is {}".format(type(compiled_objective)))
+            print(self)
+            print("-----------------------------------------")
+            print("{:30} : {}".format("Objective Type", type(compiled_objective)))
             print(infostring)
-            print("backend: {}".format(compiled_objective.backend))
-            print("samples: {}".format(samples))
-            print("{} active variables".format(len(active_angles)))
-
-        # get the number of real scipy iterations for better histories
-        real_iterations = []
+            print("{:30} : {}".format("active variables", len(active_angles)))
 
         Es = []
-        callback = lambda x, *args: real_iterations.append(len(E.history) - 1)
+
+        class SciPyCallback:
+            energies = []
+            gradients = []
+            hessians = []
+            angles = []
+            real_iterations = 0
+
+            def __call__(self, *args, **kwargs):
+                self.energies.append(E.history[-1])
+                self.angles.append(E.history_angles[-1])
+                if dE is not None:
+                    self.gradients.append(dE.history[-1])
+                if ddE is not None:
+                    self.hessians.append(ddE.history[-1])
+                self.real_iterations += 1
+
+        callback = SciPyCallback()
         res = scipy.optimize.minimize(E, x0=param_values, jac=dE, hess=ddE,
                                       args=(Es,),
                                       method=self.method, tol=self.tol,
@@ -243,28 +227,19 @@ class OptimizerSciPy(Optimizer):
                                       callback=callback)
 
         # failsafe since callback is not implemented everywhere
-        if len(real_iterations) == 0:
+        if callback.real_iterations == 0:
             real_iterations = range(len(E.history))
-        else:
-            real_iterations = [0] + real_iterations
+
         if self.save_history:
-            self.history.energies = [E.history[i] for i in real_iterations]
+            self.history.energies = callback.energies
             self.history.energy_evaluations = E.history
-            self.history.angles = [E.history_angles[i] for i in real_iterations]
+            self.history.angles = callback.angles
             self.history.angles_evaluations = E.history_angles
+            self.history.gradients = callback.gradients
+            self.history.hessians = callback.hessians
             if dE is not None and not isinstance(dE, str):
-                # can currently only save gradients if explicitly evaluated
-                # and will fail for hessian based approaches
-                # need better callback functions
-                try:
-                    if self.method not in self.hessian_based_methods:
-                        self.history.gradients = [dE.history[i] for i in real_iterations]
-                except:
-                    print("WARNING: History could not assign the stored gradients")
                 self.history.gradients_evaluations = dE.history
             if ddE is not None and not isinstance(ddE, str):
-                # hessians are not evaluated in the same frequencies as energies
-                # therefore we can not store the "real" iterations currently
                 self.history.hessians_evaluations = ddE.history
 
         E_final = res.fun
@@ -306,7 +281,6 @@ def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[s
 def minimize(objective: Objective,
              gradient: typing.Union[str, typing.Dict[Variable, Objective]] = None,
              hessian: typing.Union[str, typing.Dict[typing.Tuple[Variable, Variable], Objective]] = None,
-             qng: bool = None,
              initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
              variables: typing.List[typing.Hashable] = None,
              samples: int = None,
@@ -337,9 +311,6 @@ def minimize(objective: Objective,
         '2-point', 'cs' or '3-point' for numerical gradient evaluation (does not work in combination with all optimizers),
         dictionary (keys:tuple of variables, values:tequila objective) to define own gradient,
         None for automatic construction (default)
-    qng: bool : (Default value = False) :
-        whether or not, in the event that a gradient-based method is to be used, the qng, rather than the standard gradient,
-        should be employed. NOTE: throws an error for anything but a single expectationvalue with no passive angles.
     initial_values: typing.Dict[typing.Hashable, numbers.Real]: (Default value = None):
         Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero
     variables: typing.List[typing.Hashable] :
@@ -420,10 +391,15 @@ def minimize(objective: Objective,
                                method_bounds=method_bounds,
                                method_constraints=method_constraints,
                                silent=silent,
-                               tol=tol)
+                               backend=backend,
+                               backend_options=backend_options,
+                               noise_model=noise,
+                               tol=tol,
+                               *args,
+                               **kwargs)
     if initial_values is not None:
         initial_values = {assign_variable(k): v for k, v in initial_values.items()}
-    return optimizer(objective=objective, qng=qng,
-                     backend=backend, backend_options=backend_options, gradient=gradient, hessian=hessian, initial_values=initial_values,
-                     variables=variables, noise=noise,
-                     samples=samples, *args, **kwargs)
+    return optimizer(objective=objective,
+                     radient=gradient, hessian=hessian,
+                     initial_values=initial_values,
+                     variables=variables, *args, **kwargs)

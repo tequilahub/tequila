@@ -50,7 +50,7 @@ class OptimizerPhoenics(Optimizer):
         self._minimize = minimize
         if samples is not None:
             print('warning you: the samples you input do not matter, except when calling')
-        super().__init__(simulator=backend, maxiter=maxiter, samples=None, save_history=save_history, silent=silent)
+        super().__init__(backend=backend, maxiter=maxiter, samples=None, save_history=save_history, silent=silent)
 
     def _process_for_sim(self, recommendation, passives):
         '''

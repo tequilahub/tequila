@@ -5,9 +5,10 @@ Suggestion, feel free to propose new things/changes
 import typing, numbers
 
 from tequila.utils.exceptions import TequilaException
-from tequila.simulators.simulator_api import pick_backend
-from tequila.objective.objective import assign_variable
+from tequila.simulators.simulator_api import compile
+from tequila.objective.objective import assign_variable, Variable
 from tequila.objective import Objective
+from tequila.circuit.gradient import grad
 from dataclasses import dataclass, field
 
 
@@ -109,9 +110,9 @@ class OptimizerHistory:
             labels = kwargs['label']
 
         if hasattr(labels, "lower"):
-            labels = [labels]*len(properties)
+            labels = [labels] * len(properties)
 
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             if hasattr(plt, k):
                 f = getattr(plt, k)
                 if callable(f):
@@ -139,7 +140,8 @@ class OptimizerHistory:
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(list(data.keys()), list(data.values()), label=str(label) + " " + str(k), marker='o', linestyle='--')
+                    plt.plot(list(data.keys()), list(data.values()), label=str(label) + " " + str(k), marker='o',
+                             linestyle='--')
 
         loc = 'best'
         if 'loc' in kwargs:
@@ -153,20 +155,43 @@ class OptimizerHistory:
 
 
 class Optimizer:
+    """
+    Base Class for Tequila Optimizers
+    """
 
-    def __init__(self, simulator: str = None, maxiter: int = None, samples: int = None,
-                 save_history: bool = True, silent: bool = False):
+    def __init__(self, backend: str = None,
+                 backend_options: dict = None,
+                 maxiter: int = None,
+                 samples: int = None,
+                 noise_model=None,
+                 save_history: bool = True,
+                 silent: typing.Union[bool, int] = False,
+                 print_level: int = 99, *args, **kwargs):
         """
-        :param simulator: The simulators to use (None means autopick)
+        :param backend: The quantum backend to use (None means autopick)
+        :param backend_options: backend specific options can also be passed as keywords with `backend_optionname=...`
         :param maxiter: Maximum number of iterations
         :param samples: Number of Samples for the Quantum Backend takes (None means full wavefunction simulation)
+        :param print_level: Allow customization in derived classes, is set to 0 if silent==True
         :param save_history: Save the optimization history in self.history
+        :silent: Silence printout
         """
 
-        if isinstance(simulator, type):
-            self.simulator = simulator()
+        if isinstance(backend, type):
+            self.backend = backend()
         else:
-            self.simulator = simulator
+            self.backend = backend
+
+        self.backend_options = {}
+        if backend_options is not None:
+            self.backend_options = backend_options
+
+        for k, v in kwargs:
+            # detect if backend specific options where passed
+            # as keyworkds
+            # like e.g. `qiskit_backend=...'
+            if self.backend.lower() in k:
+                self.backend_options[k] = v
 
         if maxiter is None:
             self.maxiter = 100
@@ -178,6 +203,14 @@ class Optimizer:
         else:
             self.silent = silent
 
+        if print_level is None:
+            self.print_level = 99
+        else:
+            self.print_level = print_level
+
+        if self.silent:
+            self.print_level = 0
+
         self.samples = samples
         self.save_history = save_history
         if save_history:
@@ -185,11 +218,16 @@ class Optimizer:
         else:
             self.history = None
 
+        self.noise_model = noise_model
+
     def reset_history(self):
         self.history = OptimizerHistory()
 
     def __call__(self, objective: Objective,
-                 initial_values: typing.Dict[str, numbers.Number] = None) -> typing.Tuple[
+                 variabeles: typing.List[Variable],
+                 initial_values: typing.Dict[Variable, numbers.Real] = None,
+                 *args,
+                 **kwargs) -> typing.Tuple[
         numbers.Number, typing.Dict[str, numbers.Number]]:
         """
         Will try to solve and give back optimized parameters
@@ -197,20 +235,47 @@ class Optimizer:
         :param parameters: initial parameters, if none the optimizers uses what was set in the objective
         :return: tuple of optimial energy and optimal parameters
         """
-        raise TequilaOptimizerException("Try to call BaseClass")
+        raise TequilaOptimizerException("Tried to call BaseClass of Optimizer")
 
     def update_parameters(self, parameters: typing.Dict[str, float], *args, **kwargs) -> typing.Dict[str, float]:
         """
         :param parameters: the parameters which will be updated
         :return: updated parameters
         """
-        raise TequilaOptimizerException("Try to call BaseClass")
+        raise TequilaOptimizerException("Tried to call BaseClass of Optimizer")
 
-    def initialize_simulator(self, samples: int):
-        if self.simulator is not None:
-            if hasattr(self.simulator, "run"):
-                return self.simulator
-            else:
-                return self.simulator()
-        else:
-            return pick_backend(samples=samples)()
+    def compile_objective(self, objective: Objective, *args, **kwargs):
+        return compile(objective=objective,
+                       samples=self.samples,
+                       backend=self.backend,
+                       backend_options=self.backend_options,
+                       noise_model=self.noise_model,
+                       *args, **kwargs)
+
+    def compile_gradient(self, objective: Objective, variables, gradient=None, *args, **kwargs) -> dict:
+        if isinstance(gradient, dict):
+            return {k: self.compile_objective(v) for k, v in gradient.items()}
+
+        compiled_grad = {}
+        for k in variables:
+            dO = grad(objective=objective, variable=k, *args, **kwargs)
+            compiled_grad[k] = self.compile_objective(objective=dO, *args, **kwargs)
+        return compiled_grad
+
+    def compile_hessian(self, objective: Objective, variables, *args, **kwargs) -> dict:
+        compiled_hessian = {}
+        for k in variables:
+            dOk = grad(objective=objective, variable=k, *args, **kwargs)
+            for l in variables:
+                dOkl = grad(objective=dOk, variable=l)
+                compiled = self.compile_objective(dOkl)
+                compiled_hessian[(k, l)] = compiled
+                compiled_hessian[(l, k)] = compiled
+        return compiled_hessian
+
+    def __repr__(self):
+        infostring = "Optimizer: {} \n".format(str(type(self)))
+        infostring += "{:30} : {:30}".format("backend", self.backend)
+        infostring += "{:30} : {:30}".format("samples", self.samples)
+        infostring += "{:30} : {:30}".format("save_history", self.save_history)
+        infostring += "{:30} : {:30}".format("noise_model", self.noise_model)

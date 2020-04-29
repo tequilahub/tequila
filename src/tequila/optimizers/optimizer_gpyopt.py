@@ -37,7 +37,7 @@ class OptimizerGpyOpt(Optimizer):
 
     def __init__(self, maxiter=100, backend=None, save_history=True, minimize=True, samples=None):
         self._minimize = minimize
-        super().__init__(simulator=backend, maxiter=maxiter, samples=samples, save_history=save_history)
+        super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history)
 
     def get_domain(self, objective, passives=None) -> typing.List[typing.Dict]:
         op = objective.extract_variables()
