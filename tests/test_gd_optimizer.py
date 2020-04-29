@@ -61,14 +61,8 @@ def test_methods_qng(simulator, method):
     O=E
     # need to improve starting points for some of the optimizations
     initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
-
-    if method == 'sgd':
-        ##needs a helping hand or it gets really slow!
-        lr=0.5
-    else:
-        lr=0.1
     result = tq.minimize(objective=-O,qng=True,backend=simulator,
-                                         method=method, maxiter=200,lr=lr,stop_count=50,
+                                         method=method, maxiter=200,lr=0.1,stop_count=50,
                                          initial_values=initial_values, silent=False)
     assert(numpy.isclose(result.energy, -0.612, atol=2.e-2))
 
