@@ -65,7 +65,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise_model=None, *args, **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None, *args, **kwargs):
 
         self.op_lookup = {
             'I': (lambda c: c.iden),
@@ -85,7 +85,7 @@ class BackendCircuitQiskit(BackendCircuit):
         else:
             qubits = range(abstract_circuit.n_qubits)
 
-        if noise_model != None:
+        if noise != None:
             self.noise_lookup = {
                 'phase damp': qiskitnoise.phase_damping_error,
                 'amplitude damp': qiskitnoise.amplitude_damping_error,
@@ -94,7 +94,7 @@ class BackendCircuitQiskit(BackendCircuit):
                 'phase-amplitude damp': qiskitnoise.phase_amplitude_damping_error,
                 'depolarizing': qiskitnoise.depolarizing_error
             }
-        nm = self.noise_model_converter(noise_model)
+        nm = self.noise_model_converter(noise)
         self.noise_model = nm
         n_qubits = len(qubits)
         self.q = qiskit.QuantumRegister(n_qubits, "q")
@@ -104,7 +104,7 @@ class BackendCircuitQiskit(BackendCircuit):
         self.resolver = {}
         self.tq_to_sympy = {}
         self.counter = 0
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise_model=self.noise_model,
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=self.noise_model,
                          use_mapping=use_mapping, *args, **kwargs)
         if len(self.tq_to_sympy.keys()) is None:
             self.sympy_to_tq = None
@@ -295,6 +295,9 @@ class BackendCircuitQiskit(BackendCircuit):
 
             elif noise.level == 3:
                 targets = ['ccx']
+
+            else:
+                raise TequilaQiskitException('Sorry, no support yet for qiskit for noise on more than 3 qubits.')
             qnoise.add_all_qubit_quantum_error(active, targets)
 
         return qnoise

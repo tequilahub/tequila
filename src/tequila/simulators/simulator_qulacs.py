@@ -43,7 +43,7 @@ class BackendCircuitQulacs(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, abstract_circuit, noise=None, *args, **kwargs):
         self.op_lookup = {
             'I': qulacs.gate.Identity,
             'X': qulacs.gate.X,
@@ -57,8 +57,24 @@ class BackendCircuitQulacs(BackendCircuit):
             'Measure': qulacs.gate.Measurement,
             'Exp-Pauli': None
         }
+
         self.variables = []
-        super().__init__(*args, **kwargs)
+        super().__init__(abstract_circuit=abstract_circuit, noise=noise, *args, **kwargs)
+        self.has_noise=False
+        if noise is not None:
+            self.has_noise=True
+            self.noise_lookup = {
+                'bit flip': [qulacs.gate.BitFlipNoise],
+                'phase flip': [lambda target, prob: qulacs.gate.Probabilistic([prob],[qulacs.gate.Z(target)])],
+                'phase damp': [lambda target, prob: qulacs.gate.DephasingNoise(target,(1/2)*(1-numpy.sqrt(1-prob)))],
+                'amplitude damp': [qulacs.gate.AmplitudeDampingNoise],
+                'phase-amplitude damp': [qulacs.gate.AmplitudeDampingNoise,
+                                         lambda target, prob: qulacs.gate.DephasingNoise(target,(1/2)*(1-numpy.sqrt(1-prob)))
+                                         ],
+                'depolarizing': [lambda target,prob: qulacs.gate.DepolarizingNoise(target,3*prob/4)]
+            }
+
+            self.circuit=self.add_noise_to_circuit(noise)
 
     def update_variables(self, variables):
         for k, angle in enumerate(self.variables):
@@ -85,7 +101,6 @@ class BackendCircuitQulacs(BackendCircuit):
         return result
 
     def do_sample(self, samples, circuit, noise_model=None, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
-        assert (noise_model is None)
         state = qulacs.QuantumState(self.n_qubits)
         lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
         state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
@@ -171,6 +186,24 @@ class BackendCircuitQulacs(BackendCircuit):
             self.measurements = {**self.measurements, **measurements}
         else:
             self.measurements = measurements
+
+
+    def add_noise_to_circuit(self,noise_model):
+        c=self.circuit
+        n=noise_model
+        g_count=c.get_gate_count()
+        new=self.initialize_circuit()
+        for i in range(g_count):
+            g=c.get_gate(i)
+            new.add_gate(g)
+            qubits=g.get_target_index_list() + g.get_control_index_list()
+            for noise in n.noises:
+                if len(qubits) == noise.level:
+                    for j,channel in enumerate(self.noise_lookup[noise.name]):
+                        for q in qubits:
+                            chan=channel(q,noise.probs[j])
+                            new.add_gate(chan)
+        return new
 
     def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
         """
@@ -268,7 +301,8 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
     def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
         # todo: generalize in baseclass. Do Hamiltonian mapping on initialization
         self.update_variables(variables)
-
+        state = qulacs.QuantumState(self.U.n_qubits)
+        self.U.circuit.update_quantum_state(state)
         result = []
         for H in self._abstract_hamiltonians:
             E = 0.0
@@ -293,8 +327,12 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                 qbc = self.U.create_circuit(abstract_circuit=bc, variables=None)
                 Esamples = []
                 for sample in range(samples):
-                    state_tmp = qulacs.QuantumState(self.U.n_qubits)
-                    self.U.circuit.update_quantum_state(state_tmp)
+                    if self.U.has_noise:
+                        state = qulacs.QuantumState(self.U.n_qubits)
+                        self.U.circuit.update_quantum_state(state)
+                        state_tmp = state
+                    else:
+                        state_tmp = state.copy()
                     if len(bc.gates) > 0:  # otherwise there is no basis change (empty qulacs circuit does not work out)
                         qbc.update_quantum_state(state_tmp)
                     ps_measure = 1.0
@@ -308,6 +346,5 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                             ps_measure *= (-2.0 * measured + 1.0)  # 0 becomes 1 and 1 becomes -1
                     Esamples.append(ps_measure)
                 E += ps.coeff * sum(Esamples) / len(Esamples)
-
             result.append(E)
         return numpy.asarray(result)
