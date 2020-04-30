@@ -1,10 +1,15 @@
 import pytest, numpy
 import tequila as tq
+import multiprocessing as mp
 from tequila.simulators.simulator_api import simulate
+from tequila.optimizers.optimizer_gd import minimize
+import copy
+
 
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
 @pytest.mark.parametrize('method', numpy.random.choice(tq.optimizers.optimizer_gd.OptimizerGD.available_methods(),1))
-def test_execution(simulator,method):
+@pytest.mark.parametrize('options', [None, {"jac":'2-point', 'eps':1.e-3}])
+def test_execution(simulator,method, options):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
         + tq.gates.Ry(angle="b", target=1, control=2) \
@@ -16,11 +21,11 @@ def test_execution(simulator,method):
 
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
-    result = tq.minimize(objective=O,method=method, maxiter=1, backend=simulator)
+    result = minimize(objective=O,method=method, maxiter=1, backend=simulator, method_options=options)
 
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
-@pytest.mark.parametrize("method", [numpy.random.choice(tq.INSTALLED_OPTIMIZERS['gd'].methods)])
-def test_execution_shot(simulator, method):
+@pytest.mark.parametrize('options', [None, {"jac":'2-point', 'eps':1.e-3}])
+def test_execution(simulator, options):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
         + tq.gates.Ry(angle="b", target=1, control=2) \
@@ -32,8 +37,9 @@ def test_execution_shot(simulator, method):
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
     mi=2
-    result = tq.minimize(method=method , objective=O, maxiter=mi, backend=simulator,samples=1024)
+    result = minimize(objective=O, maxiter=mi, backend=simulator,samples=1024, method_options=options)
     print(result.history.energies)
+    assert (len(result.history.energies) <= mi*mp.cpu_count())
 
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
 @pytest.mark.parametrize('method', tq.optimizers.optimizer_gd.OptimizerGD.available_methods())
@@ -43,7 +49,7 @@ def test_method_convergence(simulator,method):
     O = tq.ExpectationValue(U=U, H=H)
     samples=None
     angles={'a':numpy.pi/3}
-    result = tq.minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,stop_count=40, maxiter=200, backend=simulator)
+    result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,stop_count=40, maxiter=200, backend=simulator)
     assert (numpy.isclose(result.energy, -1.0,atol=3.e-2))
 
 @pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend()])
@@ -61,8 +67,14 @@ def test_methods_qng(simulator, method):
     O=E
     # need to improve starting points for some of the optimizations
     initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
-    result = tq.minimize(objective=-O,qng=True,backend=simulator,
-                                         method=method, maxiter=200,lr=0.1,stop_count=50,
+
+    if method == 'basic':
+        ##needs a helping hand or it gets really slow!
+        lr=0.5
+    else:
+        lr=0.1
+    result = minimize(objective=-O,qng=True,backend=simulator,
+                                         method=method, maxiter=200,lr=lr,stop_count=50,
                                          initial_values=initial_values, silent=False)
     assert(numpy.isclose(result.energy, -0.612, atol=2.e-2))
 

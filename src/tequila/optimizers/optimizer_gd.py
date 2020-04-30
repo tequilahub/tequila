@@ -1,4 +1,4 @@
-import numpy, typing, numbers
+import numpy, typing, numbers, copy
 from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer
@@ -7,6 +7,7 @@ from collections import namedtuple
 from tequila.simulators.simulator_api import compile
 from tequila.circuit.noise import NoiseModel
 from tequila.tools.qng import CallableVector, QNGVector, get_qng_combos
+
 
 GDReturnType = namedtuple('GDReturnType', 'energy angles history moments')
 
@@ -53,7 +54,9 @@ class OptimizerGD(Optimizer):
                  samples: int = None,
                  backend: str = None,
                  noise: NoiseModel = None,
-                 reset_history: bool = True, *args, **kwargs) -> GDReturnType:
+                 reset_history: bool = True,
+                 method_options: dict = None,
+                 *args,**kwargs) -> GDReturnType:
         """
         Optimizes with a variation of gradient descent and gives back the optimized angles
         Get the optimized energies over the history
@@ -70,6 +73,19 @@ class OptimizerGD(Optimizer):
         :param reset_history: reset the history before optimization starts (has no effect if self.save_history is False)
         :return: tuple of optimized energy ,optimized angles and scipy output
         """
+
+        if method_options is not None and 'jac' in method_options and method_options['jac'].lower() in ['2-point', 'numerical']:
+            use_2_point=True
+            if 'eps' in method_options:
+                eps = method_options['eps']
+            else:
+                print("You demanded numerical gradients but did not pass down a stepsize.\n Better set the stepsize with 'eps' in the method_options dictionary")
+                eps = 1.e-5
+                print("Setting eps to ", eps)
+            print("Using numerical gradients ... proceed with caution")
+            print("options are: ", method_options)
+        else:
+            use_2_point=False
 
         if self.save_history and reset_history:
             self.reset_history()
@@ -92,13 +108,35 @@ class OptimizerGD(Optimizer):
         if not qng:
             g_list = []
             for k in active_angles.keys():
-                g = grad(objective, k)
-                g_comp = compile(objective=g, variables=initial_values, backend=backend,
-                                 noise=noise, samples=samples)
-                g_list.append(g_comp)
+                if use_2_point:
+
+                    if 'func' in method_options:
+                        func = method_options['func']
+                    else:
+                        func = None
+
+                    def numerical_gradient(variables, *args, **kwargs):
+                        if func is None:
+                            left = copy.deepcopy(variables)
+                            right = copy.deepcopy(variables)
+                            left[k] += eps
+                            right[k] -= eps
+                            return (comp(left) - comp(right))/(2*eps)
+                        else:
+                            return func(comp, variables, k, eps)
+
+                    g_comp=numerical_gradient
+                    g_list.append(g_comp)
+                else:
+                    g=grad(objective,k)
+                    g_comp = compile(objective=g,variables=initial_values, backend=backend,
+                                     noise_model=noise,samples=samples)
+                    g_list.append(g_comp)
 
             gradients = CallableVector(g_list)
         else:
+            if use_2_point:
+                raise Exception("Can currently not combine numerical gradients with QNG")
             if method.lower() == 'adagrad':
                 print('Warning! you have chosen to use QNG with adagrad ; convergence is not likely.'.format(method))
             gradients = QNGVector(get_qng_combos(objective=objective, initial_values=initial_values, backend=backend,
@@ -354,6 +392,7 @@ def minimize(objective: Objective,
              noise: NoiseModel = None,
              silent: bool = False,
              save_history: bool = True,
+             method_options: dict = None,
              *args,
              **kwargs) -> GDReturnType:
     """
@@ -437,4 +476,5 @@ def minimize(objective: Objective,
                      stop_count=stop_count,
                      backend=backend, initial_values=initial_values,
                      variables=variables, noise=noise,
-                     samples=samples, *args, **kwargs)
+                     method_options=method_options,
+                     samples=samples,*args,**kwargs)
