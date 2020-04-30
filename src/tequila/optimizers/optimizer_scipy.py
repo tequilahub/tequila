@@ -184,9 +184,8 @@ class OptimizerSciPy(Optimizer):
                                  print_level=self.print_level,
                                  backend_options=self.backend_options)
 
-        if True:
+        if self.print_level>0:
             print(self)
-            print("{:15} : {}\n".format("Objective Type", type(compiled_objective)))
             print(infostring)
             print("{:15} : {}\n".format("active variables", len(active_angles)))
 

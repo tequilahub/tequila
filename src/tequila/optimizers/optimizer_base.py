@@ -186,12 +186,13 @@ class Optimizer:
         if backend_options is not None:
             self.backend_options = backend_options
 
-        for k, v in kwargs:
-            # detect if backend specific options where passed
-            # as keyworkds
-            # like e.g. `qiskit_backend=...'
-            if self.backend.lower() in k:
-                self.backend_options[k] = v
+        if backend is not None:
+            for k, v in kwargs.items():
+                # detect if backend specific options where passed
+                # as keyworks
+                # like e.g. `qiskit_backend=...'
+                if self.backend.lower() in k:
+                    self.backend_options[k] = v
 
         if maxiter is None:
             self.maxiter = 100
