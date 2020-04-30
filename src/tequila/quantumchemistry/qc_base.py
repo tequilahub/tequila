@@ -412,7 +412,10 @@ class QuantumChemistryBase:
                                   charge=molecule.charge)
         return cls(parameters=parameters, transformation=transformation, molecule=molecule, *args, **kwargs)
 
-    def make_excitation_generator(self, indices: typing.Iterable[typing.Tuple[int, int]]) -> QubitHamiltonian:
+    def make_excitation_generator(self,
+                                  indices: typing.Iterable[typing.Tuple[int, int]],
+                                  form: str = None,
+                                  remove_constant_term: bool = True) -> QubitHamiltonian:
         """
         Notes
         ----------
@@ -425,6 +428,13 @@ class QuantumChemistryBase:
         indices : typing.Iterable[typing.Tuple[int, int]] :
             List of tuples [(a_0, i_0), (a_1, i_1), ... ] - recommended format, in spin-orbital notation (alpha odd numbers, beta even numbers)
             can also be given as one big list: [a_0, i_0, a_1, i_1 ...]
+        form : str : (Default value None):
+            Manipulate the generator to involution or projector
+            set form='involution' or 'projector'
+            the default is no manipulation which gives the standard fermionic excitation operator back
+        remove_constant_term: bool: (Default value True):
+            by default the constant term in the qubit operator is removed since it has no effect on the unitary it generates
+            if the unitary is controlled this might not be true!
         Returns
         -------
         type
@@ -454,7 +464,35 @@ class QuantumChemistryBase:
 
         op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
+
+        if isinstance(form, str) and form.lower() != 'fermionic':
+            # indices for all the Na operators
+            Na = [x for pair in converted for x in [(pair[0], 1), (pair[0], 0)]]
+            # indices for all the Ma operators (Ma = 1 - Na)
+            Ma = [x for pair in converted for x in [(pair[0], 0), (pair[0], 1)]]
+            # indices for all the Ni operators
+            Ni = [x for pair in converted for x in [(pair[1], 1), (pair[1], 0)]]
+            # indices for all the Mi operators
+            Mi = [x for pair in converted for x in [(pair[1], 0), (pair[1], 1)]]
+
+            # can gaussianize as projector or as involution (last is default)
+            if form.lower() == "projector"
+                op *= 0.5
+                op += openfermion.FermionOperator(Na+Mi, 0.5)
+                op += openfermion.FermionOperator(Ni+Ma, 0.5)
+            elif form.lower() == "involution":
+                op += openfermion.FermionOperator([], 1.0) # Just for clarity will be subtracted anyway
+                op += openfermion.FermionOperator(Na+Mi, -1.0)
+                op += openfermion.FermionOperator(Ni+Ma, -1.0)
+            else:
+                raise TequilaException("Unknown generator form {}, supported are fermionic, involution and projector".format(form))
+
         qop = QubitHamiltonian(qubit_hamiltonian=self.transformation(op))
+
+        # remove constant terms
+        # they have no effect in the unitary (if not controlled)
+        if remove_constant_term:
+            qop.hamiltonian.terms[tuple()] = 0.0
 
         # check if the operator is hermitian and cast coefficients to floats
         # in order to avoid trouble with the simulation backends
