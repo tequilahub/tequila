@@ -258,7 +258,7 @@ class PowerGateImpl(ParametrizedGateImpl):
         return result
 
 
-class GaussianGateImpl(ParametrizedGateImpl):
+class GeneralizedRotationImpl(ParametrizedGateImpl):
     """
     A gate which behaves 'gaussian'
      - its generator only has two distinguishable eigenvalues
@@ -283,7 +283,7 @@ class GaussianGateImpl(ParametrizedGateImpl):
         return self._shift
 
     def __init__(self, angle, generator, control, shift, steps):
-        super().__init__(name="GaussianGate", parameter=angle, target=self.extract_targets(generator), control=control)
+        super().__init__(name="GenRot", parameter=angle, target=self.extract_targets(generator), control=control)
         self._shift = shift
         self.steps = steps
         self.generator = generator

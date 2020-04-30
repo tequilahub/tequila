@@ -476,7 +476,7 @@ class QuantumChemistryBase:
             Mi = [x for pair in converted for x in [(pair[1], 0), (pair[1], 1)]]
 
             # can gaussianize as projector or as involution (last is default)
-            if form.lower() == "projector"
+            if form.lower() == "projector":
                 op *= 0.5
                 op += openfermion.FermionOperator(Na+Mi, 0.5)
                 op += openfermion.FermionOperator(Ni+Ma, 0.5)
@@ -487,12 +487,12 @@ class QuantumChemistryBase:
             else:
                 raise TequilaException("Unknown generator form {}, supported are fermionic, involution and projector".format(form))
 
-        qop = QubitHamiltonian(qubit_hamiltonian=self.transformation(op))
+        qop = QubitHamiltonian(qubit_operator=self.transformation(op))
 
         # remove constant terms
         # they have no effect in the unitary (if not controlled)
         if remove_constant_term:
-            qop.hamiltonian.terms[tuple()] = 0.0
+            qop.qubit_operator.terms[tuple()] = 0.0
 
         # check if the operator is hermitian and cast coefficients to floats
         # in order to avoid trouble with the simulation backends
@@ -534,7 +534,7 @@ class QuantumChemistryBase:
 
         fop = openfermion.FermionOperator(string, 1.0)
 
-        op = QubitHamiltonian(qubit_hamiltonian=self.transformation(fop))
+        op = QubitHamiltonian(qubit_operator=self.transformation(fop))
         from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
         wfn = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
         wfn = wfn.apply_qubitoperator(operator=op)
@@ -629,7 +629,7 @@ class QuantumChemistryBase:
 
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
-        return QubitHamiltonian(qubit_hamiltonian=self.transformation(fop))
+        return QubitHamiltonian(qubit_operator=self.transformation(fop))
 
     def compute_one_body_integrals(self):
         """ """

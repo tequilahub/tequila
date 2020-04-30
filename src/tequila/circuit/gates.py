@@ -1,7 +1,7 @@
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
-    ExponentialPauliGateImpl, TrotterizedGateImpl, GaussianGateImpl, PhaseGateImpl, TrotterParameters
+    ExponentialPauliGateImpl, TrotterizedGateImpl, GeneralizedRotationImpl, PhaseGateImpl, TrotterParameters
 import typing, numbers
 from tequila.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
 import numpy as np
@@ -422,7 +422,7 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
     The gate wrapped in a circuit
     """
     return QCircuit.wrap_gate(
-        GaussianGateImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
+        GeneralizedRotationImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
 
 
 def Trotterized(generators: typing.List[QubitHamiltonian],
