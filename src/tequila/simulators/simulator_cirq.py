@@ -16,10 +16,7 @@ map_2 = lambda x: {'exponent':x/np.pi,'global_shift':-0.5}
 
 def qubit_satisfier(op,level):
     oplen=len(op.qubits)
-    if level <3:
-        return oplen ==level
-    else:
-        return oplen >=level
+    return oplen ==level
 
 class TequilaCirqException(TequilaException):
     def __str__(self):
@@ -48,7 +45,7 @@ class BackendCircuitCirq(BackendCircuit):
 
     numbering: BitNumbering = BitNumbering.MSB
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True,noise_model=None, *args, **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None, *args, **kwargs):
 
 
         self.op_lookup = {
@@ -65,14 +62,14 @@ class BackendCircuitCirq(BackendCircuit):
 
         self.tq_to_sympy={}
         self.counter=0
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables,noise_model=noise_model, use_mapping=use_mapping, *args, **kwargs)
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, use_mapping=use_mapping, *args, **kwargs)
         if len(self.tq_to_sympy.keys()) is None:
             self.sympy_to_tq = None
             self.resolver=None
         else:
             self.sympy_to_tq = {v: k for k, v in self.tq_to_sympy.items()}
             self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
-        if self.noise_model is not None:
+        if self.noise is not None:
             self.noise_lookup = {
                 'bit flip': [lambda x: cirq.bit_flip(x)],
                 'phase flip': [lambda x: cirq.phase_flip(x)],
@@ -81,7 +78,7 @@ class BackendCircuitCirq(BackendCircuit):
                 'phase-amplitude damp': [cirq.amplitude_damp, cirq.phase_damp],
                 'depolarizing': [lambda x: cirq.depolarize(p=(3 / 4) * x)]
             }
-            self.circuit=self.build_noise_model(self.noise_model)
+            self.circuit=self.build_noisy_circuit(self.noise)
 
 
 
@@ -141,9 +138,9 @@ class BackendCircuitCirq(BackendCircuit):
     def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
         return {q: cirq.LineQubit(i) for i,q in enumerate(qubits)}
 
-    def build_noise_model(self,noise_model):
+    def build_noisy_circuit(self,noise):
         c=self.circuit
-        n=noise_model
+        n=noise
         new_ops=[]
         for op in c.all_operations():
             new_ops.append(op)
@@ -154,9 +151,7 @@ class BackendCircuitCirq(BackendCircuit):
         return cirq.Circuit(*new_ops)
 
     def update_variables(self, variables):
-        """
-        overriding the underlying base to make sure this stuff remains noisy
-        """
+
         if self.sympy_to_tq is not None:
             self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
         else:

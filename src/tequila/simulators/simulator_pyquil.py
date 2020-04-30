@@ -197,7 +197,7 @@ class BackendCircuitPyquil(BackendCircuit):
         "gaussian": True,
         "exponential_pauli": True,
         "controlled_exponential_pauli": True,
-        "phase": True,
+        "phase": False,
         "power": True,
         "hadamard_power": True,
         "controlled_power": True,
@@ -209,7 +209,7 @@ class BackendCircuitPyquil(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise_model=None, *args, **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None, *args, **kwargs):
         self.op_lookup = {
             'I': (pyquil.gates.I),
             'X': (pyquil.gates.X, pyquil.gates.CNOT, pyquil.gates.CCNOT),
@@ -224,9 +224,9 @@ class BackendCircuitPyquil(BackendCircuit):
         }
         self.match_par_to_dummy = {}
         self.counter = 0
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise_model=noise_model,
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise,
                          use_mapping=use_mapping, *args, **kwargs)
-        if self.noise_model is not None:
+        if self.noise is not None:
             self.noise_lookup = {
                 'amplitude damp': amp_damp_map,
                 'phase damp': phase_damp_map,
@@ -236,7 +236,7 @@ class BackendCircuitPyquil(BackendCircuit):
                 'depolarizing': depolarizing_map
             }
 
-            self.circuit = self.get_noisy_prog(self.circuit, self.noise_model)
+            self.circuit = self.build_noisy_circuit(self.circuit, self.noise)
         if len(self.match_par_to_dummy.keys()) is None:
             self.match_dummy_to_value = None
             self.resolver = None
@@ -342,7 +342,7 @@ class BackendCircuitPyquil(BackendCircuit):
 
         circuit += pyquil_gate
 
-    def get_noisy_prog(self, py_prog, noise_model):
+    def build_noisy_circuit(self, py_prog, noise_model):
         prog = py_prog
         new = pyquil.Program()
         collected = {}

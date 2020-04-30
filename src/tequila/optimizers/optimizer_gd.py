@@ -16,7 +16,7 @@ class OptimizerGD(Optimizer):
     @classmethod
     def available_methods(cls):
         """:return: All tested available methods"""
-        return ['adam', 'adagrad', 'adamax', 'nadam', 'basic', 'sgd', 'nesterov', 'rmsprop', 'rmsprop-nesterov']
+        return ['adam','adagrad','adamax','nadam','sgd','momentum','nesterov','rmsprop','rmsprop-nesterov']
 
     def __init__(self,
                  maxiter=100,
@@ -26,19 +26,21 @@ class OptimizerGD(Optimizer):
         Optimize a circuit to minimize a given objective using Adam
         See the Optimizer class for all other parameters to initialize
         """
-        self.silent = silent
-        self.maxiter = maxiter
+
         super().__init__(**kwargs)
         self.method_dict = {
             'adam': self.adam,
-            'adagrad': self.adagrad,
-            'adamax': self.adamax,
-            'nadam': self.nadam,
-            'basic': self.basic,
+            'adagrad':self.adagrad,
+            'adamax':self.adamax,
+            'nadam':self.nadam,
             'sgd': self.sgd,
+            'momentum': self.momentum,
             'nesterov': self.nesterov,
             'rmsprop': self.rms,
             'rmsprop-nesterov': self.rms_nesterov}
+
+        self.silent = silent
+        self.maxiter = maxiter
 
     def __call__(self, objective: Objective,
                  maxiter,
@@ -84,7 +86,7 @@ class OptimizerGD(Optimizer):
         # Transform the initial value directory into (ordered) arrays
 
         comp = compile(objective=objective, variables=initial_values, backend=backend,
-                       noise_model=noise,
+                       noise=noise,
                        samples=samples)
 
         if not qng:
@@ -92,7 +94,7 @@ class OptimizerGD(Optimizer):
             for k in active_angles.keys():
                 g = grad(objective, k)
                 g_comp = compile(objective=g, variables=initial_values, backend=backend,
-                                 noise_model=noise, samples=samples)
+                                 noise=noise, samples=samples)
                 g_list.append(g_comp)
 
             gradients = CallableVector(g_list)
@@ -100,10 +102,9 @@ class OptimizerGD(Optimizer):
             if method.lower() == 'adagrad':
                 print('Warning! you have chosen to use QNG with adagrad ; convergence is not likely.'.format(method))
             gradients = QNGVector(get_qng_combos(objective=objective, initial_values=initial_values, backend=backend,
-                                                 noise_model=noise, samples=samples))
+                                                 noise=noise, samples=samples))
 
         if not self.silent:
-            print("ObjectiveType is {}".format(type(comp)))
             print("backend: {}".format(comp.backend))
             print("samples: {}".format(samples))
             print("{} active variables".format(len(active_angles)))
@@ -129,7 +130,7 @@ class OptimizerGD(Optimizer):
         all_moments = [moments]
         tally = 0
         for step in range(maxiter):
-            e = comp(v)
+            e = comp(v,samples=samples)
             self.history.energies.append(e)
             self.history.angles.append(v)
 
@@ -156,9 +157,8 @@ class OptimizerGD(Optimizer):
                     print('no improvement after {} epochs. Stopping optimization.'.format(str(stop_count)))
                 break
 
-            new, moments, grads = f(lr=lr, step=step, gradients=gradients, v=v, moments=moments,
-                                    active_angles=active_angles, **kwargs)
-            save_grad = {}
+            new,moments,grads=f(lr=lr,step=step,gradients=gradients,v=v,moments=moments,active_angles=active_angles,samples=samples,**kwargs)
+            save_grad={}
             if passive_angles != None:
                 v = {**new, **passive_angles}
             else:
@@ -172,14 +172,14 @@ class OptimizerGD(Optimizer):
         return GDReturnType(energy=E_final, angles=format_variable_dictionary(angles_final), history=self.history,
                             moments=all_moments)
 
-    def adam(self, lr, step, gradients,
-             v, moments, active_angles,
-             beta=0.9, beta2=0.999, epsilon=10 ** -7, **kwargs):
+    def adam(self,lr,step,gradients,
+             v,moments,active_angles,samples,
+             beta=0.9,beta2=0.999,epsilon=10**-7,**kwargs):
 
         s = moments[0]
         r = moments[1]
-        t = step + 1
-        grads = gradients(v)
+        t = step+1
+        grads = gradients(v,samples)
         s = beta * s + (1 - beta) * grads
         r = beta2 * r + (1 - beta2) * numpy.square(grads)
         s_hat = s / (1 - beta ** t)
@@ -195,9 +195,9 @@ class OptimizerGD(Optimizer):
         return new, back_moment, grads
 
     def adagrad(self, lr, gradients,
-                v, moments, active_angles, epsilon=10 ** -6, **kwargs):
-        r = moments[1]
-        grads = gradients(v)
+            v, moments, active_angles,samples,epsilon=10**-6, **kwargs):
+        r=moments[1]
+        grads = gradients(v,samples)
 
         r += numpy.square(grads)
         new = {}
@@ -208,12 +208,12 @@ class OptimizerGD(Optimizer):
         return new, back_moments, grads
 
     def adamax(self, lr, gradients,
-               v, moments, active_angles,
-               beta=0.9, beta2=0.999, **kwargs):
+             v, moments, active_angles,samples,
+             beta=0.9, beta2=0.999, **kwargs):
 
         s = moments[0]
         r = moments[1]
-        grads = gradients(v)
+        grads = gradients(v,samples=samples)
         s = beta * s + (1 - beta) * grads
         r = beta2 * r + (1 - beta2) * numpy.linalg.norm(grads, numpy.inf)
         updates = []
@@ -226,14 +226,14 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def nadam(self, lr, step, gradients,
-              v, moments, active_angles,
-              beta=0.9, beta2=0.999, epsilon=10 ** -7, **kwargs):
+    def nadam(self,lr,step,gradients,
+             v,moments,active_angles,
+             samples,beta=0.9,beta2=0.999,epsilon=10**-7,**kwargs):
 
         s = moments[0]
         r = moments[1]
-        t = step + 1
-        grads = gradients(v)
+        t = step+1
+        grads = gradients(v,samples=samples)
         s = beta * s + (1 - beta) * grads
         r = beta2 * r + (1 - beta2) * numpy.square(grads)
         s_hat = s / (1 - beta ** t)
@@ -248,24 +248,24 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def basic(self, lr, gradients,
-              v, moments, active_angles, **kwargs):
+    def sgd(self, lr, gradients,
+            v, moments, active_angles,samples, **kwargs):
 
         ### the sgd  optimizer without momentum.
-        grads = gradients(v)
+        grads = gradients(v,samples=samples)
         new = {}
         for i, k in enumerate(active_angles.keys()):
             new[k] = v[k] - lr * grads[i]
         return new, moments, grads
 
-    def sgd(self, lr, gradients,
-            v, moments, active_angles,
-            beta=0.9, **kwargs):
+    def momentum(self,lr,gradients,
+             v,moments,active_angles,samples,
+             beta=0.9,**kwargs):
 
         m = moments[0]
 
         ### the sgd momentum optimizer. m is our moment tally
-        grads = gradients(v)
+        grads = gradients(v,samples=samples)
 
         m = beta * m - lr * grads
         new = {}
@@ -276,8 +276,8 @@ class OptimizerGD(Optimizer):
         return new, back_moments, grads
 
     def nesterov(self, lr, gradients,
-                 v, moments, active_angles,
-                 beta=0.9, **kwargs):
+            v, moments, active_angles,samples,
+            beta=0.9, **kwargs):
 
         m = moments[0]
 
@@ -289,7 +289,7 @@ class OptimizerGD(Optimizer):
         for k in total_keyset:
             if k not in active_keyset:
                 interim[k] = v[k]
-        grads = gradients(interim)
+        grads = gradients(interim,samples=samples)
 
         m = beta * m - lr * grads
         new = {}
@@ -300,11 +300,11 @@ class OptimizerGD(Optimizer):
         return new, back_moments, grads
 
     def rms(self, lr, gradients,
-            v, moments, active_angles,
-            rho=0.999, epsilon=10 ** -6, **kwargs):
+                 v, moments, active_angles,samples,
+                 rho=0.999,epsilon=10**-6, **kwargs):
 
         r = moments[1]
-        grads = gradients(v)
+        grads = gradients(v,samples=samples)
         r = rho * r + (1 - rho) * numpy.square(grads)
         new = {}
         for i, k in enumerate(active_angles.keys()):
@@ -314,8 +314,8 @@ class OptimizerGD(Optimizer):
         return new, back_moments, grads
 
     def rms_nesterov(self, lr, gradients,
-                     v, moments, active_angles, beta=0.9,
-                     rho=0.999, epsilon=10 ** -6, **kwargs):
+            v, moments, active_angles, samples, beta=0.9,
+            rho=0.999, epsilon=10 ** -6, **kwargs):
 
         m = moments[0]
         r = moments[1]
@@ -328,7 +328,7 @@ class OptimizerGD(Optimizer):
         for k in total_keyset:
             if k not in active_keyset:
                 interim[k] = v[k]
-        grads = gradients(interim)
+        grads = gradients(interim,samples=samples)
 
         r = rho * r + (1 - rho) * numpy.square(grads)
         for i in range(len(m)):
@@ -384,7 +384,7 @@ def minimize(objective: Objective,
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
     noise: NoiseModel:
-         (Default value =None)
+         (Default value = None)
          a NoiseModel to apply to all expectation values in the objective.
     stop_count: int :
          (Default value = None)

@@ -106,6 +106,27 @@ def test_gradient_based_methods(simulator, method, use_gradient):
                                          initial_values=initial_values,silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
+def test_gradient_based_methods_qng(simulator, method):
+
+    H = tq.paulis.Y(0)
+    U = tq.gates.Ry(numpy.pi/4,0) +tq.gates.Ry(numpy.pi/3,1)+tq.gates.Ry(numpy.pi/7,2)
+    U += tq.gates.Rz('a',0)+tq.gates.Rz('b',1)
+    U += tq.gates.CNOT(control=0,target=1)+tq.gates.CNOT(control=1,target=2)
+    U += tq.gates.Ry('c',1) +tq.gates.Rx('d',2)
+    U += tq.gates.CNOT(control=0,target=1)+tq.gates.CNOT(control=1,target=2)
+    E = tq.ExpectationValue(H=H, U=U)
+    # just equal to the original circuit, but i'm checking that all the sub-division works
+    O=(4/8)*E+(3/8)*copy.deepcopy(E)+(1/8)*copy.deepcopy(E)+tq.Variable('a')-tq.Variable('a')
+
+    initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
+
+    result = tq.optimizer_scipy.minimize(objective=-O,qng=True,backend=simulator,
+                                         method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4},
+                                         initial_values=initial_values, silent=False)
+    assert(numpy.isclose(result.energy, -0.612, atol=1.e-1))
+
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
 @pytest.mark.parametrize("use_hessian", [None, '2-point', '3-point', {"method":"2-point", "stepsize": 1.e-4}])

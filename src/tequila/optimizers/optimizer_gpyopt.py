@@ -85,7 +85,7 @@ class OptimizerGpyOpt(Optimizer):
         dom = self.get_domain(objective, passives)
         init = {v: np.random.uniform(0, 2 * np.pi) for v in objective.extract_variables()}
         ### O is broken, not using it right now
-        O = compile(objective=objective, variables=init, backend=backend, noise_model=noise, samples=samples)
+        O = compile(objective=objective, variables=init, backend=backend, noise=noise, samples=samples)
         f = self.construct_function(O, backend, passives, samples, noise_model=noise)
         opt = self.get_object(f, dom, method)
         opt.run_optimization(maxiter)
