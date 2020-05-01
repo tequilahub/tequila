@@ -121,8 +121,10 @@ def test_gradient_based_methods_qng(simulator, method):
     O=(4/8)*E+(3/8)*copy.deepcopy(E)+(1/8)*copy.deepcopy(E)+tq.Variable('a')-tq.Variable('a')
 
     initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
-
-    result = tq.optimizer_scipy.minimize(objective=-O,qng=True,backend=simulator,
+    if method in ['TNC','CG']:
+        ### these methods have to be babied to guarantee convergence
+        initial_values = {"a": 0.8, "b": 1.6, 'c': 0.9, 'd': -0.15}
+    result = tq.optimizer_scipy.minimize(objective=-O,gradient='qng', backend=simulator,
                                          method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4},
                                          initial_values=initial_values, silent=False)
     assert(numpy.isclose(result.energy, -0.612, atol=1.e-1))

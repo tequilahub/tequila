@@ -62,6 +62,7 @@ class _GradContainer(_EvalContainer):
         for i in range(self.N):
             dE_vec[i] = dO[self.param_keys[i]](variables=variables, samples=self.samples, **self.backend_options)
             memory[self.param_keys[i]] = dE_vec[i]
+
         self.history.append(memory)
         return numpy.asarray(dE_vec, dtype=numpy.float64)  # jax types confuse optimizers
 
@@ -69,10 +70,10 @@ class _GradContainer(_EvalContainer):
 class _QngContainer(_EvalContainer):
 
     def __init__(self, combos, param_keys, passive_angles=None, samples=None, save_history=True,
-                 silent: bool = True, *args, **kwargs):
+                 backend_options=None):
 
         super().__init__(objective=None, param_keys=param_keys, passive_angles=passive_angles,
-                         samples=samples, save_history=save_history, silent=silent, *args, **kwargs)
+                         samples=samples, save_history=save_history,backend_options=backend_options)
 
         self.combos = combos
 

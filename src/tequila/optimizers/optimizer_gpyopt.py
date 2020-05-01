@@ -1,5 +1,6 @@
 from tequila.objective.objective import Objective
 from tequila.optimizers.optimizer_base import Optimizer
+
 import typing
 import numbers
 from tequila.objective.objective import Variable
@@ -10,7 +11,7 @@ import GPyOpt
 from GPyOpt.methods import BayesianOptimization
 
 import numpy as np
-from tequila.simulators.simulator_api import compile
+from tequila.simulators.simulator_api import compile,pick_backend
 from collections import namedtuple
 
 GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history opt')
@@ -35,73 +36,72 @@ class OptimizerGpyOpt(Optimizer):
     def available_methods(cls):
         return ['lbfgs', 'direct', 'cma']
 
-    def __init__(self, maxiter=100, backend=None, save_history=True, minimize=True, samples=None):
+    def __init__(self, maxiter=100, backend=None, save_history=True, minimize=True,
+                 samples=None,noise=None,backend_options=None):
         self._minimize = minimize
-        super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history)
+        if backend == None:
+            backend = pick_backend(samples=samples,noise=noise is not None)
+        super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history,
+                         noise=noise,backend_options=backend_options)
 
-    def get_domain(self, objective, passives=None) -> typing.List[typing.Dict]:
+    def get_domain(self, objective, passive_angles=None) -> typing.List[typing.Dict]:
         op = objective.extract_variables()
-        if passives is not None:
+        if passive_angles is not None:
             for i, thing in enumerate(op):
-                if thing in passives.keys():
+                if thing in passive_angles.keys():
                     op.remove(thing)
         return [{'name': v, 'type': 'continuous', 'domain': (0, 2 * np.pi)} for v in op]
 
     def get_object(self, func, domain, method) -> GPyOpt.methods.BayesianOptimization:
         return BayesianOptimization(f=func, domain=domain, acquisition=method)
 
-    def construct_function(self, objective, backend, passives=None, samples=None, noise_model=None) -> typing.Callable:
-        return lambda arr: objective(backend=backend,
-                                     variables=array_to_objective_dict(objective, arr, passives),
-                                     samples=samples,
-                                     noise_model=noise_model)
+    def construct_function(self, objective,passive_angles=None) -> typing.Callable:
+        return lambda arr: objective(backend=self.backend,
+                                     variables=array_to_objective_dict(objective, arr, passive_angles),
+                                     samples=self.samples,
+                                     noise=self.noise)
 
-    def redictify(self, arr, objective, passives=None) -> typing.Dict:
+    def redictify(self, arr, objective, passive_angles=None) -> typing.Dict:
         op = objective.extract_variables()
-        if passives is not None:
+        if passive_angles is not None:
             for i, thing in enumerate(op):
-                if thing in passives.keys():
+                if thing in passive_angles.keys():
                     op.remove(thing)
         back = {v: arr[i] for i, v in enumerate(op)}
-        if passives is not None:
-            for k, v in passives.items():
+        if passive_angles is not None:
+            for k, v in passive_angles.items():
                 back[k] = v
         return back
 
     def __call__(self, objective: Objective,
-                 maxiter: int,
-                 passives: typing.Dict[Variable, numbers.Real] = None,
-                 samples: int = None,
-                 backend: str = None,
-                 noise=None,
-                 method: str = 'lbfgs') -> GPyOptReturnType:
-        if self.samples is not None:
-            if samples is None:
-                samples = self.samples
-            else:
-                pass
-        else:
-            pass
-        dom = self.get_domain(objective, passives)
-        init = {v: np.random.uniform(0, 2 * np.pi) for v in objective.extract_variables()}
-        ### O is broken, not using it right now
-        O = compile(objective=objective, variables=init, backend=backend, noise=noise, samples=samples)
-        f = self.construct_function(O, backend, passives, samples, noise_model=noise)
+                 initial_values: typing.Dict[Variable, numbers.Real] = None,
+                 variables : typing.List[typing.Hashable] = None,
+                 method: str = 'lbfgs',*args,**kwargs) -> GPyOptReturnType:
+
+        active_angles,passive_angles,variables = self.initialize_variables(objective, initial_values, variables)
+        dom = self.get_domain(objective, passive_angles)
+
+        O = compile(objective=objective, variables=initial_values, backend=self.backend,
+                    noise=self.noise, samples=self.samples,
+                    backend_options=self.backend_options)
+
+        f = self.construct_function(O,passive_angles)
         opt = self.get_object(f, dom, method)
-        opt.run_optimization(maxiter)
+        opt.run_optimization(self.maxiter)
         if self.save_history:
             self.history.energies = opt.get_evaluations()[1].flatten()
-            self.history.angles = [self.redictify(v, objective, passives) for v in opt.get_evaluations()[0]]
-        return GPyOptReturnType(energy=opt.fx_opt, angles=self.redictify(opt.x_opt, objective, passives),
+            self.history.angles = [self.redictify(v, objective, passive_angles) for v in opt.get_evaluations()[0]]
+        return GPyOptReturnType(energy=opt.fx_opt, angles=self.redictify(opt.x_opt, objective, passive_angles),
                                 history=self.history, opt=opt)
 
 
 def minimize(objective: Objective,
              maxiter: int,
-             samples: int = None,
              variables: typing.List = None,
              initial_values: typing.Dict = None,
+             samples: int = None,
              backend: str = None,
+             backend_options: dict = None,
              noise=None,
              method: str = 'lbfgs'
              ) -> GPyOptReturnType:
@@ -137,16 +137,10 @@ def minimize(objective: Objective,
 
     """
 
-    if variables is None:
-        passives = None
-    else:
-        all_vars = Objective.extract_variables()
-        passives = {}
-        for k, v in initial_values.items():
-            if k not in variables and k in all_vars:
-                passives[k] = v
-    optimizer = OptimizerGpyOpt()
-    return optimizer(objective=objective, samples=samples, backend=backend, passives=passives, maxiter=maxiter,
-                     noise=noise,
+    optimizer = OptimizerGpyOpt(samples=samples, backend=backend, maxiter=maxiter,
+                                backend_options=backend_options,
+                                noise=noise)
+    return optimizer(objective=objective, initial_values=initial_values,
+                     variables=variables,
                      method=method
                      )

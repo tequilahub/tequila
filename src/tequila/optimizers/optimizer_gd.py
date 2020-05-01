@@ -21,6 +21,10 @@ class OptimizerGD(Optimizer):
 
     def __init__(self,
                  maxiter=100,
+                 samples=None,
+                 backend=None,
+                 backend_options=None,
+                 noise=None,
                  silent=True,
                  **kwargs):
         """
@@ -28,7 +32,10 @@ class OptimizerGD(Optimizer):
         See the Optimizer class for all other parameters to initialize
         """
 
-        super().__init__(**kwargs)
+        super().__init__(maxiter=maxiter,samples=samples,
+                         backend=backend,backend_options=backend_options,
+                         noise=noise,
+                         **kwargs)
         self.method_dict = {
             'adam': self.adam,
             'adagrad':self.adagrad,
@@ -51,9 +58,6 @@ class OptimizerGD(Optimizer):
                  stop_count: int = None,
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  variables: typing.List[Variable] = None,
-                 samples: int = None,
-                 backend: str = None,
-                 noise: NoiseModel = None,
                  reset_history: bool = True,
                  method_options: dict = None,
                  *args,**kwargs) -> GDReturnType:
@@ -90,20 +94,13 @@ class OptimizerGD(Optimizer):
         if self.save_history and reset_history:
             self.reset_history()
 
-        active_angles = {}
-        for v in variables:
-            active_angles[v] = initial_values[v]
-
-        passive_angles = {}
-        for k, v in initial_values.items():
-            if k not in active_angles.keys():
-                passive_angles[k] = v
-
+        active_angles, passive_angles, variables = self.initialize_variables(objective,initial_values, variables)
+        v = {**active_angles, **passive_angles}
         # Transform the initial value directory into (ordered) arrays
 
-        comp = compile(objective=objective, variables=initial_values, backend=backend,
-                       noise=noise,
-                       samples=samples)
+        comp = compile(objective=objective, variables=v, backend=self.backend,
+                       noise=self.noise,backend_options=self.backend_options,
+                       samples=self.samples)
 
         if not qng:
             g_list = []
@@ -129,22 +126,24 @@ class OptimizerGD(Optimizer):
                     g_list.append(g_comp)
                 else:
                     g=grad(objective,k)
-                    g_comp = compile(objective=g,variables=initial_values, backend=backend,
-                                     noise_model=noise,samples=samples)
+                    g_comp = compile(objective=g,variables=v, backend=self.backend,
+                                     noise_model=self.noise,samples=self.samples)
                     g_list.append(g_comp)
 
             gradients = CallableVector(g_list)
         else:
             if use_2_point:
-                raise Exception("Can currently not combine numerical gradients with QNG")
+                raise Exception("Can not currently combine numerical gradients with QNG")
             if method.lower() == 'adagrad':
                 print('Warning! you have chosen to use QNG with adagrad ; convergence is not likely.'.format(method))
-            gradients = QNGVector(get_qng_combos(objective=objective, initial_values=initial_values, backend=backend,
-                                                 noise=noise, samples=samples))
+            gradients = QNGVector(get_qng_combos(objective=objective, initial_values=v,
+                                                 backend=self.backend,
+                                                 noise=self.noise, samples=self.samples,
+                                                 backend_options=self.backend_options))
 
         if not self.silent:
             print("backend: {}".format(comp.backend))
-            print("samples: {}".format(samples))
+            print("samples: {}".format(self.samples))
             print("{} active variables".format(len(active_angles)))
             print("qng: {}".format(str(qng)))
 
@@ -158,7 +157,6 @@ class OptimizerGD(Optimizer):
         ### the actual algorithm acts here:
 
         f = self.method_dict[method.lower()]
-        v = initial_values
         vec_len = len(active_angles)
         best = None
         best_angles = None
@@ -168,7 +166,7 @@ class OptimizerGD(Optimizer):
         all_moments = [moments]
         tally = 0
         for step in range(maxiter):
-            e = comp(v,samples=samples)
+            e = comp(v,samples=self.samples)
             self.history.energies.append(e)
             self.history.angles.append(v)
 
@@ -195,7 +193,8 @@ class OptimizerGD(Optimizer):
                     print('no improvement after {} epochs. Stopping optimization.'.format(str(stop_count)))
                 break
 
-            new,moments,grads=f(lr=lr,step=step,gradients=gradients,v=v,moments=moments,active_angles=active_angles,samples=samples,**kwargs)
+            new,moments,grads=f(lr=lr,step=step,gradients=gradients,v=v,moments=moments,
+                                active_angles=active_angles,samples=self.samples,**kwargs)
             save_grad={}
             if passive_angles != None:
                 v = {**new, **passive_angles}
@@ -389,6 +388,7 @@ def minimize(objective: Objective,
              samples: int = None,
              maxiter: int = 100,
              backend: str = None,
+             backend_options: typing.Dict = None,
              noise: NoiseModel = None,
              silent: bool = False,
              save_history: bool = True,
@@ -422,6 +422,9 @@ def minimize(objective: Objective,
     backend: str :
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
+    backend_options: dict:
+        (Default value = None)
+        extra options, to be passed to the backend
     noise: NoiseModel:
          (Default value = None)
          a NoiseModel to apply to all expectation values in the objective.
@@ -443,31 +446,11 @@ def minimize(objective: Objective,
 
     """
 
-    # bring into right format
-    variables = format_variable_list(variables)
-    initial_values = format_variable_dictionary(initial_values)
-
-    # set defaults
-    all_variables = objective.extract_variables()
-    if variables is None:
-        variables = all_variables
-    if initial_values is None:
-        initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
-    else:
-        # autocomplete initial values, warn if you did
-        detected = False
-        for k in all_variables:
-            if k not in initial_values:
-                initial_values[k] = numpy.random.uniform(0, 2 * numpy.pi)
-                detected = True
-        if detected and not silent:
-            print("WARNING: initial_variables given but not complete: Autocomplete with random number")
-
     optimizer = OptimizerGD(save_history=save_history,
+                            samples=samples,backend=backend,
+                            noise=noise,backend_options=backend_options,
                             maxiter=maxiter,
                             silent=silent)
-    if initial_values is not None:
-        initial_values = {assign_variable(k): v for k, v in initial_values.items()}
     return optimizer(objective=objective,
                      maxiter=maxiter,
                      lr=lr,
@@ -475,6 +458,5 @@ def minimize(objective: Objective,
                      qng=qng,
                      stop_count=stop_count,
                      backend=backend, initial_values=initial_values,
-                     variables=variables, noise=noise,
-                     method_options=method_options,
-                     samples=samples,*args,**kwargs)
+                     variables=variables,
+                     method_options=method_options,*args,**kwargs)

@@ -1,16 +1,16 @@
 """
-BaseCalss for Optimizers
+BaseClss for Optimizers
 Suggestion, feel free to propose new things/changes
 """
 import typing, numbers, copy
 
 from tequila.utils.exceptions import TequilaException
 from tequila.simulators.simulator_api import compile
-from tequila.objective.objective import assign_variable, Variable
 from tequila.objective import Objective
 from tequila.circuit.gradient import grad
 from dataclasses import dataclass, field
-
+from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
+import numpy
 
 class TequilaOptimizerException(TequilaException):
     pass
@@ -163,7 +163,7 @@ class Optimizer:
                  backend_options: dict = None,
                  maxiter: int = None,
                  samples: int = None,
-                 noise_model=None,
+                 noise=None,
                  save_history: bool = True,
                  silent: typing.Union[bool, int] = False,
                  print_level: int = 99, *args, **kwargs):
@@ -219,7 +219,7 @@ class Optimizer:
         else:
             self.history = None
 
-        self.noise_model = noise_model
+        self.noise = noise
 
     def reset_history(self):
         self.history = OptimizerHistory()
@@ -238,19 +238,41 @@ class Optimizer:
         """
         raise TequilaOptimizerException("Tried to call BaseClass of Optimizer")
 
-    def update_parameters(self, parameters: typing.Dict[str, float], *args, **kwargs) -> typing.Dict[Variable, float]:
-        """
-        :param parameters: the parameters which will be updated
-        :return: updated parameters
-        """
-        raise TequilaOptimizerException("Tried to call BaseClass of Optimizer")
+    def initialize_variables(self, objective, initial_values, variables):
+        # bring into right format
+        variables = format_variable_list(variables)
+        initial_values = format_variable_dictionary(initial_values)
+        all_variables = objective.extract_variables()
+        if variables is None:
+            variables = all_variables
+        if initial_values is None:
+            initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
+        else:
+            # autocomplete initial values, warn if you did
+            detected = False
+            for k in all_variables:
+                if k not in initial_values:
+                    initial_values[k] = numpy.random.uniform(0, 2 * numpy.pi)
+                    detected = True
+            if detected and not self.silent:
+                print("WARNING: initial_variables given but not complete: Autocomplete with random number")
+
+        active_angles = {}
+        for v in variables:
+            active_angles[v] = initial_values[v]
+
+        passive_angles = {}
+        for k, v in initial_values.items():
+            if k not in active_angles.keys():
+                passive_angles[k] = v
+        return active_angles,passive_angles,variables
 
     def compile_objective(self, objective: Objective, *args, **kwargs):
         return compile(objective=objective,
                        samples=self.samples,
                        backend=self.backend,
                        backend_options=self.backend_options,
-                       noise_model=self.noise_model,
+                       noise=self.noise,
                        *args, **kwargs)
 
     def compile_gradient(self, objective: Objective,
@@ -260,8 +282,9 @@ class Optimizer:
         typing.Dict, typing.Dict]:
 
         if gradient is None:
-            dO = {k: grad(objective=objective, variable=k, *args, **kwargs) for k in variables}
-            compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
+                dO = {k: grad(objective=objective, variable=k, *args, **kwargs) for k in variables}
+                compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
+
         elif isinstance(gradient, dict):
             if all([isinstance(x, Objective) for x in gradient.values()]):
                 dO = gradient
@@ -324,7 +347,7 @@ class Optimizer:
         infostring += "{:15} : {}\n".format("backend_options", self.backend_options)
         infostring += "{:15} : {}\n".format("samples", self.samples)
         infostring += "{:15} : {}\n".format("save_history", self.save_history)
-        infostring += "{:15} : {}\n".format("noise_model", self.noise_model)
+        infostring += "{:15} : {}\n".format("noise", self.noise)
         return infostring
 
 

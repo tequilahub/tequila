@@ -2,10 +2,11 @@ import scipy, numpy, typing, numbers
 from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer
-from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer
+from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer, _QngContainer
 from collections import namedtuple
 from tequila.utils.exceptions import TequilaException
 from tequila.circuit.noise import NoiseModel
+from tequila.tools.qng import get_qng_combos
 
 
 class TequilaScipyException(TequilaException):
@@ -74,8 +75,8 @@ class OptimizerSciPy(Optimizer):
             self.method_constraints = method_constraints
 
     def __call__(self, objective: Objective,
-                 variables: typing.List[Variable],
-                 initial_values: typing.Dict[Variable, numbers.Real],
+                 variables: typing.List[Variable] = None,
+                 initial_values: typing.Dict[Variable, numbers.Real] = None,
                  gradient: typing.Dict[Variable, Objective] = None,
                  hessian: typing.Dict[typing.Tuple[Variable, Variable], Objective] = None,
                  reset_history: bool = True,
@@ -85,7 +86,7 @@ class OptimizerSciPy(Optimizer):
         Optimizes with scipy and gives back the optimized angles
         Get the optimized energies over the history
         :param objective: The tequila Objective to minimize
-        :param initial_valuesxx: initial values for the objective
+        :param initial_values: initial values for the objective
         :param return_scipy_output: chose if the full scipy output shall be returned
         :param reset_history: reset the history before optimization starts (has no effect if self.save_history is False)
         :return: tuple of optimized energy ,optimized angles and scipy output
@@ -102,14 +103,7 @@ class OptimizerSciPy(Optimizer):
         if self.save_history and reset_history:
             self.reset_history()
 
-        active_angles = {}
-        for v in variables:
-            active_angles[v] = initial_values[v]
-
-        passive_angles = {}
-        for k, v in initial_values.items():
-            if k not in active_angles.keys():
-                passive_angles[k] = v
+        active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
 
         # Transform the initial value directory into (ordered) arrays
         param_keys, param_values = zip(*active_angles.items())
@@ -144,24 +138,35 @@ class OptimizerSciPy(Optimizer):
         # detect if scipy numerical gradients shall be used
         # switch of compiling if so
         if isinstance(gradient, str):
-            dE = gradient
-            compile_gradient = False
-            if compile_hessian:
-                compile_hessian = False
-                if hessian is None:
-                    hessian = gradient
-            infostring += "{:15} : scipy numerical {}\n".format("gradient", dE)
-            infostring += "{:15} : scipy numerical {}\n".format("hessian", ddE)
+            if gradient.lower() == 'qng':
+                compile_gradient = False
+                if compile_hessian:
+                    raise TequilaException('Sorry, QNG and hessian not yet tested together.')
+
+                combos=get_qng_combos(objective,initial_values=initial_values,backend=self.backend,
+                                      samples=self.samples,noise=self.noise,
+                                      backend_options=self.backend_options)
+                dE=_QngContainer(combos=combos,param_keys=param_keys,passive_angles=passive_angles)
+                infostring += "{:15} : QNG {}\n".format("gradient", dE)
+            else:
+                dE = gradient
+                compile_gradient = False
+                if compile_hessian:
+                    compile_hessian = False
+                    if hessian is None:
+                        hessian = gradient
+                infostring += "{:15} : scipy numerical {}\n".format("gradient", dE)
+                infostring += "{:15} : scipy numerical {}\n".format("hessian", ddE)
 
         if isinstance(hessian, str):
             ddE = hessian
             compile_hessian = False
 
         if compile_gradient:
-            grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
-            expvals = sum([o.count_expectationvalues() for o in comp_grad_obj.values()])
-            infostring += "{:15} : {} expectationvalues\n".format("gradient", expvals)
-            dE = _GradContainer(objective=comp_grad_obj,
+                grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
+                expvals = sum([o.count_expectationvalues() for o in comp_grad_obj.values()])
+                infostring += "{:15} : {} expectationvalues\n".format("gradient", expvals)
+                dE = _GradContainer(objective=comp_grad_obj,
                                 param_keys=param_keys,
                                 samples=self.samples,
                                 passive_angles=passive_angles,
@@ -297,6 +302,7 @@ def minimize(objective: Objective,
         '2-point', 'cs' or '3-point' for numerical gradient evaluation (does not work in combination with all optimizers),
         dictionary of variables and tequila objective to define own gradient,
         None for automatic construction (default)
+        Other options include 'qng' to use the quantum natural gradient.
     hessian: typing.Union[str, typing.Dict[Variable, Objective], None] : (Default value = None) :
         '2-point', 'cs' or '3-point' for numerical gradient evaluation (does not work in combination with all optimizers),
         dictionary (keys:tuple of variables, values:tequila objective) to define own gradient,
@@ -349,9 +355,6 @@ def minimize(objective: Objective,
 
     """
 
-    # bring into right format
-    variables = format_variable_list(variables)
-    initial_values = format_variable_dictionary(initial_values)
     if isinstance(gradient, dict) or hasattr(gradient, "items"):
         if all([isinstance(x, Objective) for x in gradient.values()]):
             gradient = format_variable_dictionary(gradient)
@@ -361,20 +364,7 @@ def minimize(objective: Objective,
     method_bounds = format_variable_dictionary(method_bounds)
 
     # set defaults
-    all_variables = objective.extract_variables()
-    if variables is None:
-        variables = all_variables
-    if initial_values is None:
-        initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
-    else:
-        # autocomplete initial values, warn if you did
-        detected = False
-        for k in all_variables:
-            if k not in initial_values:
-                initial_values[k] = numpy.random.uniform(0, 2 * numpy.pi)
-                detected = True
-        if detected and not silent:
-            print("WARNING: initial_variables given but not complete: Autocomplete with random number")
+
 
     optimizer = OptimizerSciPy(save_history=save_history,
                                maxiter=maxiter,
