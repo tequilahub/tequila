@@ -2,7 +2,7 @@ import scipy, numpy, typing, numbers
 from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer
-from ._scipy_containers import _EvalContainer, _GradContainer, _HessContainer, _QngContainer
+from ._containers import _EvalContainer, _GradContainer, _HessContainer, _QngContainer
 from collections import namedtuple
 from tequila.utils.exceptions import TequilaException
 from tequila.circuit.noise import NoiseModel
@@ -135,8 +135,8 @@ class OptimizerSciPy(Optimizer):
 
         dE = None
         ddE = None
-        # detect if scipy numerical gradients shall be used
-        # switch of compiling if so
+        # detect if numerical gradients shall be used
+        # switch off compiling if so
         if isinstance(gradient, str):
             if gradient.lower() == 'qng':
                 compile_gradient = False
