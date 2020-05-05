@@ -107,32 +107,32 @@ class OptimizerGD(Optimizer):
             maxiter = self.maxiter
 
         ### the actual algorithm acts here:
-        best = None
-        best_angles = None
-        for step in range(maxiter):
+        e = comp(v, samples=self.samples)
+        self.history.energies.append(e)
+        self.history.angles.append(v)
+        best = e
+        best_angles = v
+        v = self.step(comp, v)
+        last = e
+        for step in range(1,maxiter):
             e = comp(v,samples=self.samples)
             self.history.energies.append(e)
             self.history.angles.append(v)
             ### saving best performance and counting the stop tally.
-            if step == 0:
+            if e < best:
                 best = e
                 best_angles = v
-            else:
-                if e < best:
-                    best = e
-                    best_angles = v
 
 
             if not self.silent:
                 string = "Iteration: {} , Energy: {}, angles: {}".format(str(step), str(e), v)
                 print(string)
 
-            if step !=0:
-                if self.tol != None:
-                    if numpy.abs(e-last) <=self.tol:
-                        if not self.silent:
-                            print('delta f smaller than tolerance {}. Stopping optimization.'.format(str(self.tol)))
-                        break
+            if self.tol != None:
+                if numpy.abs(e-last) <= self.tol:
+                    if not self.silent:
+                        print('delta f smaller than tolerance {}. Stopping optimization.'.format(str(self.tol)))
+                    break
 
             ### get new parameters with self.step!
             v=self.step(comp,v)
