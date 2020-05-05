@@ -185,7 +185,7 @@ class OptimizerGD(Optimizer):
     def step(self,objective,parameters):
         s=id(objective)
         try:
-            gradients=self.active_key_lookup[s]
+            gradients=self.gradient_lookup[s]
             active_keys=self.active_key_lookup[s]
             last_moment=self.moments_lookup[s]
             adam_step=self.step_lookup[s]
