@@ -21,6 +21,7 @@ class OptimizerGD(Optimizer):
 
     def __init__(self,maxiter=100,
                  method='sgd',
+                 tol: numbers.Real = None,
                  lr=0.1,
                  beta=0.9,
                  rho=0.999,
@@ -41,15 +42,15 @@ class OptimizerGD(Optimizer):
                          noise=noise,
                          **kwargs)
         method_dict = {
-            'adam': self.adam,
-            'adagrad':self.adagrad,
-            'adamax':self.adamax,
-            'nadam':self.nadam,
-            'sgd': self.sgd,
-            'momentum': self.momentum,
-            'nesterov': self.nesterov,
-            'rmsprop': self.rms,
-            'rmsprop-nesterov': self.rms_nesterov}
+            'adam': self._adam,
+            'adagrad':self._adagrad,
+            'adamax':self._adamax,
+            'nadam':self._nadam,
+            'sgd': self._sgd,
+            'momentum': self._momentum,
+            'nesterov': self._nesterov,
+            'rmsprop': self._rms,
+            'rmsprop-nesterov': self._rms_nesterov}
 
         self.f = method_dict[method.lower()]
         self.silent = silent
@@ -65,11 +66,13 @@ class OptimizerGD(Optimizer):
         self.rho = rho
         self.epsilon = epsilon
         assert all([k >.0 for k in [lr,beta,rho,epsilon]])
+        self.tol=tol
+        if self.tol is not None:
+            self.tol=abs(float(tol))
 
 
     def __call__(self, objective: Objective,
                  maxiter,
-                 tol: float =1.*10**(-4),
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  variables: typing.List[Variable] = None,
                  reset_history: bool = True,
@@ -82,16 +85,12 @@ class OptimizerGD(Optimizer):
         :param objective: The tequila Objective to minimize
         :param maxiter: how many iterations to run, at maximum.
         :param qng: whether or not to use the QNG to calculate gradients.
-        :param tol: if the change in value between two evaluations is smaller than tol, stop.
         :param initial_values: initial values for the objective
         :param variables: which variables to optimize over. Default None: all the variables of the objective.
         :param reset_history: reset the history before optimization starts (has no effect if self.save_history is False)
         :return: tuple of optimized energy ,optimized angles and scipy output
         """
 
-        if tol is not None:
-            assert tol>0
-            tol=float(tol)
 
         if self.save_history and reset_history:
             self.reset_history()
@@ -129,8 +128,8 @@ class OptimizerGD(Optimizer):
                 print(string)
 
             if step !=0:
-                if tol != None:
-                    if numpy.abs(e-last) <=tol:
+                if self.tol != None:
+                    if numpy.abs(e-last) <=self.tol:
                         if not self.silent:
                             print('delta f smaller than tolerance {}. Stopping optimization.'.format(str(tol)))
                         break
@@ -211,6 +210,7 @@ class OptimizerGD(Optimizer):
         self.moments_lookup={}
         self.step_lookup={}
         self.gradient_lookup={}
+        self.reset_history()
 
     def reset_momenta(self):
         for k in self.moments_lookup.keys():
@@ -218,10 +218,27 @@ class OptimizerGD(Optimizer):
             vlen=len(m[0])
             first=numpy.zeros(vlen)
             second=numpy.zeros(vlen)
+            self.moments_lookup[k]=(first,second)
+            self.moments_trajectory[k]=[(first,second)]
+            self.step_lookup[k]=0
 
-    def adam(self,gradients,step,
-             v,moments,active_keys,
-             **kwargs):
+    def reset_momenta_for(self,objective):
+        k=id(objective)
+        try:
+            m = self.moments_lookup[k]
+            vlen = len(m[0])
+            first = numpy.zeros(vlen)
+            second = numpy.zeros(vlen)
+            self.moments_lookup[k] = (first, second)
+            self.moments_trajectory[k] = [(first, second)]
+            self.step_lookup[k] = 0
+        except:
+            print('found no compiled objective with id {} in lookup. Did you pass the correct object?'.format(k))
+
+
+    def _adam(self, gradients, step,
+              v, moments, active_keys,
+              **kwargs):
         t=step+1
         s = moments[0]
         r = moments[1]
@@ -240,7 +257,7 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def adagrad(self,gradients,
+    def _adagrad(self,gradients,
             v, moments, active_keys, **kwargs):
         r=moments[1]
         grads = gradients(v,self.samples)
@@ -253,7 +270,7 @@ class OptimizerGD(Optimizer):
         back_moments = [moments[0], r]
         return new, back_moments, grads
 
-    def adamax(self, gradients,
+    def _adamax(self, gradients,
              v, moments, active_keys, **kwargs):
 
         s = moments[0]
@@ -271,7 +288,7 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def nadam(self,step,gradients,
+    def _nadam(self,step,gradients,
              v,moments,active_keys,
              **kwargs):
 
@@ -293,7 +310,7 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def sgd(self, gradients,
+    def _sgd(self, gradients,
             v, moments, active_keys, **kwargs):
 
         ### the sgd optimizer without momentum.
@@ -303,7 +320,7 @@ class OptimizerGD(Optimizer):
             new[k] = v[k] - self.lr * grads[i]
         return new, moments, grads
 
-    def momentum(self,gradients,
+    def _momentum(self,gradients,
              v,moments,active_keys,**kwargs):
 
         m = moments[0]
@@ -318,7 +335,7 @@ class OptimizerGD(Optimizer):
         back_moments = [m, moments[1]]
         return new, back_moments, grads
 
-    def nesterov(self, gradients,
+    def _nesterov(self, gradients,
             v, moments, active_keys, **kwargs):
 
         m = moments[0]
@@ -341,7 +358,7 @@ class OptimizerGD(Optimizer):
         back_moments = [m, moments[1]]
         return new, back_moments, grads
 
-    def rms(self, gradients,
+    def _rms(self, gradients,
                  v, moments, active_keys,
                  **kwargs):
 
@@ -355,7 +372,7 @@ class OptimizerGD(Optimizer):
         back_moments = [moments[0], r]
         return new, back_moments, grads
 
-    def rms_nesterov(self,gradients,
+    def _rms_nesterov(self,gradients,
             v, moments, active_keys,
             **kwargs):
 
@@ -386,15 +403,15 @@ class OptimizerGD(Optimizer):
 def minimize(objective: Objective,
              lr=0.1,
              method='sgd',
-             tol: float=1.*10**(-4),
              initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
              variables: typing.List[typing.Hashable] = None,
-             gradient: str=None,
+             gradient: str = None,
              samples: int = None,
              maxiter: int = 100,
              backend: str = None,
              backend_options: typing.Dict = None,
              noise: NoiseModel = None,
+             tol: float = None,
              silent: bool = False,
              save_history: bool = True,
              beta: float = 0.9,
@@ -409,7 +426,7 @@ def minimize(objective: Objective,
     objective: Objective :
         The tequila objective to optimize
     lr: float >0:
-        the learning rate. Default 0.01.
+        the learning rate. Default 0.1.
     beta: float >0:
         scaling factor for first moments. default 0.9
     rho: float >0:
@@ -419,8 +436,6 @@ def minimize(objective: Objective,
 
     method: string:
         which variation on Gradient Descent to use. Options include 'sgd','adam','nesterov','adagrad','rmsprop', etc.
-    stop_count: int:
-        how many steps after which to cease training if no improvement occurs. Default None results in going till maxiter is complete
     initial_values: typing.Dict[typing.Hashable, numbers.Real]: (Default value = None):
         Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero
     variables: typing.List[typing.Hashable] :
@@ -469,6 +484,7 @@ def minimize(objective: Objective,
                             lr=lr,
                             beta=beta,
                             rho=rho,
+                            tol=tol,
                             epsilon=epsilon,
                             samples=samples,backend=backend,
                             noise=noise,backend_options=backend_options,
@@ -477,5 +493,5 @@ def minimize(objective: Objective,
     return optimizer(objective=objective,
                      maxiter=maxiter,
                      gradient=gradient,
-                     tol=tol, initial_values=initial_values,
+                     initial_values=initial_values,
                      variables=variables,*args,**kwargs)
