@@ -131,7 +131,7 @@ class OptimizerGD(Optimizer):
                 if self.tol != None:
                     if numpy.abs(e-last) <=self.tol:
                         if not self.silent:
-                            print('delta f smaller than tolerance {}. Stopping optimization.'.format(str(tol)))
+                            print('delta f smaller than tolerance {}. Stopping optimization.'.format(str(self.tol)))
                         break
 
             ### get new parameters with self.step!
