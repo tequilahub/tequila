@@ -27,7 +27,7 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
 
         for k in variables:
             assert (k is not None)
-            result[k] = grad(objective, k, no_compile=no_compile, numerical=numerical)
+            result[k] = grad(objective, k, no_compile=no_compile)
         return result
     else:
         variable = assign_variable(variable)
