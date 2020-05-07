@@ -8,13 +8,14 @@ from tequila.circuit.noise import BitFlip,PhaseDamp,PhaseFlip,AmplitudeDamp,Phas
 import numpy
 import pytest
 
-samplers = [k for k in tequila.INSTALLED_SAMPLERS.keys() if k not in ['qulacs'] ]
+samplers = [k for k in tequila.INSTALLED_SAMPLERS.keys() ]
 
 @pytest.mark.dependencies
 def test_dependencies():
     assert 'qiskit' in samplers
     assert 'pyquil' in samplers
     assert 'cirq' in samplers
+    assert 'qulacs' in samplers
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
 @pytest.mark.parametrize("simulator", samplers)

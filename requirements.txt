@@ -8,9 +8,9 @@ setuptools
 pytest
 openfermion
 qulacs # default simulator
-cirq # default sampler (smaller than qiskit)
 
-#optional samplers
+#optional quantum backends
+#cirq
 #qiskit
-#pyquil # you need to install forest-sdk yourself
+#pyquil # you need to install the forest-sdk
 
