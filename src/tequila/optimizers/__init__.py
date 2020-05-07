@@ -96,6 +96,20 @@ def minimize(method: str,
        e.g. tq.minimize_scipy
        See their documentation for more details
 
+       example: gradient keyword:
+       gradient (Default Value: None):
+       instructions for gradient compilation
+       can be a dictionary of tequila objectives representing the gradients
+       or a string/dictionary giving instructions for numerical gradients
+       examples are
+            gradient = '2-point'
+            gradient = {'method':'2-point', 'stepsize': 1.e-4}
+            gradient = {'method':Callable, 'stepsize': 1.e-4}
+            see optimizer_base.py for method examples
+
+        gradient = None: analytical gradients are compiled
+
+
     Returns
     -------
 

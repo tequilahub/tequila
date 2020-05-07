@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 import numpy
 
+
 class TequilaOptimizerException(TequilaException):
     pass
 
@@ -265,7 +266,7 @@ class Optimizer:
         for k, v in initial_values.items():
             if k not in active_angles.keys():
                 passive_angles[k] = v
-        return active_angles,passive_angles,variables
+        return active_angles, passive_angles, variables
 
     def compile_objective(self, objective: Objective, *args, **kwargs):
         return compile(objective=objective,
@@ -282,8 +283,8 @@ class Optimizer:
         typing.Dict, typing.Dict]:
 
         if gradient is None:
-                dO = {k: grad(objective=objective, variable=k, *args, **kwargs) for k in variables}
-                compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
+            dO = {k: grad(objective=objective, variable=k, *args, **kwargs) for k in variables}
+            compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
 
         elif isinstance(gradient, dict):
             if all([isinstance(x, Objective) for x in gradient.values()]):
@@ -294,7 +295,8 @@ class Optimizer:
                 compiled = self.compile_objective(objective=objective)
                 compiled_grad = {k: _NumGrad(objective=compiled, variable=k, **gradient) for k in variables}
         else:
-            raise TequilaOptimizerException("unknown gradient instruction of type {} : {}".format(type(gradient),gradient))
+            raise TequilaOptimizerException(
+                "unknown gradient instruction of type {} : {}".format(type(gradient), gradient))
 
         return dO, compiled_grad
 
@@ -374,24 +376,24 @@ class _NumGrad:
     @staticmethod
     def symmetric_two_point_stencil(obj, vars, key, step, *args, **kwargs):
         left = copy.deepcopy(vars)
-        left[key] += step/2
+        left[key] += step / 2
         right = copy.deepcopy(vars)
-        right[key] -= step/2
-        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args , **kwargs))
+        right[key] -= step / 2
+        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args, **kwargs))
 
     @staticmethod
     def forward_two_point_stencil(obj, vars, key, step, *args, **kwargs):
         left = copy.deepcopy(vars)
         left[key] += step
         right = copy.deepcopy(vars)
-        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args , **kwargs))
+        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args, **kwargs))
 
     @staticmethod
     def backward_two_point_stencil(obj, vars, key, step, *args, **kwargs):
         left = copy.deepcopy(vars)
         right = copy.deepcopy(vars)
         right[key] -= step
-        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args , **kwargs))
+        return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args, **kwargs))
 
     def __call__(self, variables, *args, **kwargs):
         return self.method(self.objective, variables, self.variable, self.stepsize, *args, **kwargs)

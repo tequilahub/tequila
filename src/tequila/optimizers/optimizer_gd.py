@@ -96,7 +96,7 @@ class OptimizerGD(Optimizer):
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         v = {**active_angles, **passive_angles}
 
-        comp = self.prepare(objective, v, variables, gradient)
+        comp = self.prepare(objective=objective, initial_values=v, variables=variables, gradient=gradient)
 
         ### prefactor. Early stopping, initialization, etc. handled here
 
@@ -168,6 +168,7 @@ class OptimizerGD(Optimizer):
             if compile_gradient:
                 counts = [x.count_expectationvalues() for x in comp_grad_obj.values()]
                 print("{:15} : {} expectationvalues".format("Gradient", sum(counts)))
+                print("{:15} : {}".format("gradient instr", gradient))
             print("{:15} : {}".format("active variables", len(active_angles)))
 
         vec_len = len(active_angles)
