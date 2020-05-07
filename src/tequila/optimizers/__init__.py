@@ -49,7 +49,7 @@ except ImportError:
     has_phoenics = False
 
 
-def show_available_methods():
+def show_available_optimizers():
     """
     Returns
     -------
@@ -57,10 +57,11 @@ def show_available_methods():
         The list depends on optimization packages installed in your system
     """
     print("available methods for optimizer modules found on your system:")
-    print("{} | {}".format("method", "optimizer module"))
+    print("{:20} | {}".format("method", "optimizer module"))
+    print("--------------------------")
     for k, v in INSTALLED_OPTIMIZERS.items():
         for method in v.methods:
-            print("{} | {}".format(method, k))
+            print("{:20} | {}".format(method, k))
 
     print("Supported optimizer modules: ", SUPPORTED_OPTIMIZERS)
     print("Installed optimizer modules: ", list(INSTALLED_OPTIMIZERS.keys()))
@@ -94,6 +95,20 @@ def minimize(method: str,
        can also be called directly as tq.minimize_modulename
        e.g. tq.minimize_scipy
        See their documentation for more details
+
+       example: gradient keyword:
+       gradient (Default Value: None):
+       instructions for gradient compilation
+       can be a dictionary of tequila objectives representing the gradients
+       or a string/dictionary giving instructions for numerical gradients
+       examples are
+            gradient = '2-point'
+            gradient = {'method':'2-point', 'stepsize': 1.e-4}
+            gradient = {'method':Callable, 'stepsize': 1.e-4}
+            see optimizer_base.py for method examples
+
+        gradient = None: analytical gradients are compiled
+
 
     Returns
     -------

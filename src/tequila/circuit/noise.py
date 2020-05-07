@@ -30,7 +30,7 @@ names_dict = {
 noises_available=['bit flip','phase flip','phase damp','amplitude damp','phase-amplitude damp','depolarizing']
 krausses=['bit flip','phase flip','phase damp','amplitude damp','phase-amplitude damp','depolarizing']
 
-class QuantumNoise():
+class QuantumNoise:
     prob_length={
         'bit flip':1,
         'phase flip':1,

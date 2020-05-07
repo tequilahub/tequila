@@ -6,9 +6,10 @@ from typing import Dict, Union, Hashable
 from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
+from tequila.circuit.noise import NoiseModel
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit",'cirq', 'pyquil','qulacs']
+SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil', 'qulacs']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -53,10 +54,12 @@ try:
     from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
 
     HAS_QULACS = True
-    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
-    INSTALLED_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs)
-    INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
+    INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
+                                                  ExpValueType=BackendExpectationValueQulacs)
+    INSTALLED_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
                                                 ExpValueType=BackendExpectationValueQulacs)
+    INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
+                                                      ExpValueType=BackendExpectationValueQulacs)
 except ImportError:
     HAS_QULACS = False
 
@@ -73,8 +76,6 @@ try:
 except ImportError:
     HAS_PYQUIL = False
 
-
-
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
 
 INSTALLED_SIMULATORS["symbolic"] = BackendTypes(CircType=BackendCircuitSymbolic,
@@ -82,21 +83,20 @@ INSTALLED_SIMULATORS["symbolic"] = BackendTypes(CircType=BackendCircuitSymbolic,
 HAS_SYMBOLIC = True
 
 
-
 def show_available_simulators():
     """ """
-    print("Supported Backends:\n")
+    print("{:15} | {:10} | {:10} | {:10} | {:10}".format("backend", "wfn", "sampling", "noise", "installed"))
+    print("--------------------------------------------------------------------")
     for k in SUPPORTED_BACKENDS:
-        print(k)
-    print("\nInstalled Wavefunction Simulators:\n")
-    for k in INSTALLED_SIMULATORS.keys():
-        print(k)
-    print("\nInstalled Wavefunction Samplers:\n")
-    for k in INSTALLED_SAMPLERS.keys():
-        print(k)
+        print("{:15} | {:10} | {:10} | {:10} | {:10}".format(k,
+                                                             str(k in INSTALLED_SIMULATORS),
+                                                             str(k in INSTALLED_SAMPLERS),
+                                                             str(k in INSTALLED_NOISE_SAMPLERS),
+                                                             str(k in INSTALLED_BACKENDS)))
 
 
-def pick_backend(backend: str = None, samples: int = None, noise: bool = False, exclude_symbolic: bool = True) -> str:
+def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = None,
+                 exclude_symbolic: bool = True) -> str:
     """
     verifies if the backend is installed and picks one automatically if set to None
     :param backend: the demanded backend
@@ -110,7 +110,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: bool = False, 
         raise TequilaException("No simulators installed on your system")
 
     if backend is None:
-        if noise is False:
+        if noise is None:
             if samples is None:
                 for f in SUPPORTED_BACKENDS:
                     if f in INSTALLED_SIMULATORS:
@@ -163,7 +163,7 @@ def compile_objective(objective: 'Objective',
                       variables: typing.Dict['Variable', 'RealNumber'] = None,
                       backend: str = None,
                       samples: int = None,
-                      noise=None,
+                      noise: NoiseModel = None,
                       *args,
                       **kwargs) -> Objective:
     """
@@ -178,7 +178,7 @@ def compile_objective(objective: 'Objective',
     :return: Compiled Objective
     """
 
-    backend = pick_backend(backend=backend, samples=samples, noise=noise is not None)
+    backend = pick_backend(backend=backend, samples=samples, noise=noise)
 
     # dummy variables
     if variables is None:
@@ -219,7 +219,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
                     variables: typing.Dict['Variable', 'RealNumber'] = None,
                     backend: str = None,
                     samples: int = None,
-                    noise=None,
+                    noise: NoiseModel = None,
                     *args,
                     **kwargs) -> BackendCircuit:
     """
@@ -234,7 +234,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     """
 
     CircType = INSTALLED_SIMULATORS[
-        pick_backend(backend=backend, samples=samples, noise=noise is not None)].CircType
+        pick_backend(backend=backend, samples=samples, noise=noise)].CircType
 
     # dummy variables
     if variables is None:
@@ -256,7 +256,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,
              samples: int = None,
              backend: str = None,
-             noise=None,
+             noise: NoiseModel = None,
              *args,
              **kwargs) -> Union[RealNumber, 'QubitWaveFunction']:
     """Simulate a tequila objective or circuit
@@ -325,7 +325,7 @@ def draw(objective, variables=None, backend: str = None):
     if isinstance(objective, Objective):
         print(objective)
         drawn = {}
-        for i,E in enumerate(objective.get_expectationvalues()):
+        for i, E in enumerate(objective.get_expectationvalues()):
             if E in drawn:
                 print("\nExpectation Value {} is the same as {}".format(i, drawn[E]))
             else:
@@ -355,7 +355,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
             variables: Dict[Union['Variable', Hashable], RealNumber] = None,
             samples: int = None,
             backend: str = None,
-            noise=None,
+            noise: NoiseModel = None,
             *args,
             **kwargs) -> typing.Union['BackendCircuit', 'Objective']:
     """Compile a tequila objective or circuit to a backend
@@ -381,7 +381,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
 
     """
 
-    backend = pick_backend(backend=backend, noise=noise is not None, samples=samples)
+    backend = pick_backend(backend=backend, noise=noise, samples=samples)
 
     if variables is None and not (len(objective.extract_variables()) == 0):
         variables = {key: 0.0 for key in objective.extract_variables()}

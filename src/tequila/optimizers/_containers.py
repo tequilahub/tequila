@@ -14,13 +14,13 @@ class _EvalContainer:
     """
 
     def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True,
-                 silent: bool = True, backend_options=None):
+                 print_level: int = 3, backend_options=None):
         self.objective = objective
         self.samples = samples
         self.param_keys = param_keys
         self.N = len(param_keys)
         self.save_history = save_history
-        self.silent = silent
+        self.print_level = print_level
         self.passive_angles = passive_angles
         if backend_options is None:
             self.backend_options = {}
@@ -36,8 +36,10 @@ class _EvalContainer:
             angles = {**angles, **self.passive_angles}
         vars = format_variable_dictionary(angles)
         E = self.objective(variables=vars, samples=self.samples, **self.backend_options)
-        if not self.silent:
-            print("E=", E, " angles=", angles, " samples=", self.samples)
+        if self.print_level > 2:
+            print("E={:+2.8f}".format(E), " angles=", angles, " samples=", self.samples)
+        elif self.print_level > 1:
+            print("E={:+2.8f}".format(E))
         if self.save_history:
             self.history.append(E)
             self.history_angles.append(angles)
@@ -60,6 +62,7 @@ class _GradContainer(_EvalContainer):
         for i in range(self.N):
             dE_vec[i] = dO[self.param_keys[i]](variables=variables, samples=self.samples, **self.backend_options)
             memory[self.param_keys[i]] = dE_vec[i]
+
         self.history.append(memory)
         return numpy.asarray(dE_vec, dtype=numpy.float64)  # jax types confuse optimizers
 
@@ -67,10 +70,10 @@ class _GradContainer(_EvalContainer):
 class _QngContainer(_EvalContainer):
 
     def __init__(self, combos, param_keys, passive_angles=None, samples=None, save_history=True,
-                 silent: bool = True, *args, **kwargs):
+                 backend_options=None):
 
         super().__init__(objective=None, param_keys=param_keys, passive_angles=passive_angles,
-                         samples=samples, save_history=save_history, silent=silent, *args, **kwargs)
+                         samples=samples, save_history=save_history,backend_options=backend_options)
 
         self.combos = combos
 

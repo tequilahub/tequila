@@ -61,7 +61,11 @@ def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, backend=simulator, samples=10000, silent=True)
+    samples=10000
+    if simulator in ['qulacs','pyquil']:
+        ## qulacs sampling is hellishly slow, this test can take 8 minutes to run
+        samples=100
+    result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, backend=simulator, samples=samples, silent=True)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
 
@@ -85,7 +89,7 @@ def test_gradient_free_methods(simulator, method):
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.gradient_based_methods)
-@pytest.mark.parametrize("use_gradient", [None, '2-point'])
+@pytest.mark.parametrize("use_gradient", [None, '2-point', {"method":"2-point", "stepsize": 1.e-4}, {"method":"2-point-forward", "stepsize": 1.e-4}, {"method":"2-point-backward", "stepsize": 1.e-4} ])
 def test_gradient_based_methods(simulator, method, use_gradient):
 
     wfn = tq.QubitWaveFunction.from_string(string="1.0*|00> + 1.0*|11>")
@@ -101,7 +105,7 @@ def test_gradient_based_methods(simulator, method, use_gradient):
     if use_gradient is False:
         initial_values = {"a": 0.3, "b": 0.8}
 
-    result = tq.optimizer_scipy.minimize(objective=-E, backend=simulator,gradient=use_gradient, method=method, tol=1.e-4,
+    result = tq.optimizer_scipy.minimize(objective=-E, backend=simulator,gradient=use_gradient, method=method, tol=1.e-3,
                                          method_options={"gtol":1.e-4, "eps":1.e-4},
                                          initial_values=initial_values,silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-1))
@@ -119,20 +123,19 @@ def test_gradient_based_methods_qng(simulator, method):
     E = tq.ExpectationValue(H=H, U=U)
     # just equal to the original circuit, but i'm checking that all the sub-division works
     O=(4/8)*E+(3/8)*copy.deepcopy(E)+(1/8)*copy.deepcopy(E)+tq.Variable('a')-tq.Variable('a')
-    if method == 'CG' or method == 'TNC':
-        ### these methods SUCK. these parameters are almost correct, drawn from the history of more successful opt.
-        initial_values = {'b': 1.2015702944309066, 'a': 0.36870888682982483, 'c': 1.4772702039340424, 'd': -0.5109743059462741}
-    else:
-        initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
 
-    result = tq.optimizer_scipy.minimize(objective=-O,qng=True,backend=simulator,
+    initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
+    if method in ['TNC','CG']:
+        ### these methods have to be babied to guarantee convergence
+        initial_values = {"a": 0.8, "b": 1.6, 'c': 0.9, 'd': -0.15}
+    result = tq.optimizer_scipy.minimize(objective=-O,gradient='qng', backend=simulator,
                                          method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4},
                                          initial_values=initial_values, silent=False)
     assert(numpy.isclose(result.energy, -0.612, atol=1.e-1))
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend()])
 @pytest.mark.parametrize("method", tq.optimizer_scipy.OptimizerSciPy.hessian_based_methods)
-@pytest.mark.parametrize("use_hessian", [None, '2-point', '3-point'])
+@pytest.mark.parametrize("use_hessian", [None, '2-point', '3-point', {"method":"2-point", "stepsize": 1.e-4}])
 def test_hessian_based_methods(simulator, method, use_hessian):
 
     wfn = tq.QubitWaveFunction.from_string(string="1.0*|00> + 1.0*|11>")
