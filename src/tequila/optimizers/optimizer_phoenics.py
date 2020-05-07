@@ -44,7 +44,7 @@ class OptimizerPhoenics(Optimizer):
 
     @classmethod
     def available_methods(cls):
-        return "phoenics"
+        return ["phoenics"]
 
     def __init__(self, maxiter, backend=None, save_history=True, minimize=True, backend_options=None,
                  samples=None, silent=None, noise=None):
@@ -188,7 +188,10 @@ class OptimizerPhoenics(Optimizer):
                                         backend_options=self.backend_options)
                 runs.append((rec, En))
                 if not self.silent:
-                    print("energy = {:+2.8f} , angles=".format(En), rec)
+                    if self.print_level > 2:
+                        print("energy = {:+2.8f} , angles=".format(En), rec)
+                    else:
+                        print("energy = {:+2.8f}".format(En))
             stop = time.time()
             if not self.silent:
                 print("Quantum Objective evaluations: {}s Wall-Time".format(stop-start))

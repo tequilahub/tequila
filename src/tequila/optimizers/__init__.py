@@ -49,7 +49,7 @@ except ImportError:
     has_phoenics = False
 
 
-def show_available_methods():
+def show_available_optimizers():
     """
     Returns
     -------
@@ -57,10 +57,11 @@ def show_available_methods():
         The list depends on optimization packages installed in your system
     """
     print("available methods for optimizer modules found on your system:")
-    print("{} | {}".format("method", "optimizer module"))
+    print("{:20} | {}".format("method", "optimizer module"))
+    print("--------------------------")
     for k, v in INSTALLED_OPTIMIZERS.items():
         for method in v.methods:
-            print("{} | {}".format(method, k))
+            print("{:20} | {}".format(method, k))
 
     print("Supported optimizer modules: ", SUPPORTED_OPTIMIZERS)
     print("Installed optimizer modules: ", list(INSTALLED_OPTIMIZERS.keys()))

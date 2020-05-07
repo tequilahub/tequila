@@ -11,7 +11,7 @@ import GPyOpt
 from GPyOpt.methods import BayesianOptimization
 
 import numpy as np
-from tequila.simulators.simulator_api import compile,pick_backend
+from tequila.simulators.simulator_api import compile, pick_backend
 from collections import namedtuple
 
 GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history opt')
@@ -37,12 +37,10 @@ class OptimizerGpyOpt(Optimizer):
         return ['lbfgs', 'direct', 'cma']
 
     def __init__(self, maxiter=100, backend=None, save_history=True, minimize=True,
-                 samples=None,noise=None,backend_options=None):
+                 samples=None, noise=None, backend_options=None, silent=False):
         self._minimize = minimize
-        if backend == None:
-            backend = pick_backend(samples=samples,noise=noise is not None)
         super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history,
-                         noise=noise,backend_options=backend_options)
+                         noise=noise, backend_options=backend_options, silent=silent)
 
     def get_domain(self, objective, passive_angles=None) -> typing.List[typing.Dict]:
         op = objective.extract_variables()
@@ -55,7 +53,7 @@ class OptimizerGpyOpt(Optimizer):
     def get_object(self, func, domain, method) -> GPyOpt.methods.BayesianOptimization:
         return BayesianOptimization(f=func, domain=domain, acquisition=method)
 
-    def construct_function(self, objective,passive_angles=None) -> typing.Callable:
+    def construct_function(self, objective, passive_angles=None) -> typing.Callable:
         return lambda arr: objective(backend=self.backend,
                                      variables=array_to_objective_dict(objective, arr, passive_angles),
                                      samples=self.samples,
@@ -75,19 +73,24 @@ class OptimizerGpyOpt(Optimizer):
 
     def __call__(self, objective: Objective,
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
-                 variables : typing.List[typing.Hashable] = None,
-                 method: str = 'lbfgs',*args,**kwargs) -> GPyOptReturnType:
+                 variables: typing.List[typing.Hashable] = None,
+                 method: str = 'lbfgs', *args, **kwargs) -> GPyOptReturnType:
 
-        active_angles,passive_angles,variables = self.initialize_variables(objective, initial_values, variables)
+        active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         dom = self.get_domain(objective, passive_angles)
 
         O = compile(objective=objective, variables=initial_values, backend=self.backend,
                     noise=self.noise, samples=self.samples,
                     backend_options=self.backend_options)
 
-        f = self.construct_function(O,passive_angles)
+        if not self.silent:
+            print(self)
+            print("{:15} : {}".format("method", method))
+            print("{:15} : {} expectationvalues".format("Objective", O.count_expectationvalues()))
+
+        f = self.construct_function(O, passive_angles)
         opt = self.get_object(f, dom, method)
-        opt.run_optimization(self.maxiter)
+        opt.run_optimization(self.maxiter, verbosity=not self.silent)
         if self.save_history:
             self.history.energies = opt.get_evaluations()[1].flatten()
             self.history.angles = [self.redictify(v, objective, passive_angles) for v in opt.get_evaluations()[0]]
@@ -103,7 +106,10 @@ def minimize(objective: Objective,
              backend: str = None,
              backend_options: dict = None,
              noise=None,
-             method: str = 'lbfgs'
+             method: str = 'lbfgs',
+             silent: bool = False,
+             *args,
+             **kwargs
              ) -> GPyOptReturnType:
     """
 
@@ -139,7 +145,7 @@ def minimize(objective: Objective,
 
     optimizer = OptimizerGpyOpt(samples=samples, backend=backend, maxiter=maxiter,
                                 backend_options=backend_options,
-                                noise=noise)
+                                noise=noise, silent=silent)
     return optimizer(objective=objective, initial_values=initial_values,
                      variables=variables,
                      method=method

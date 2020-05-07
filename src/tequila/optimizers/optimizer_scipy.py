@@ -143,10 +143,10 @@ class OptimizerSciPy(Optimizer):
                 if compile_hessian:
                     raise TequilaException('Sorry, QNG and hessian not yet tested together.')
 
-                combos=get_qng_combos(objective,initial_values=initial_values,backend=self.backend,
-                                      samples=self.samples,noise=self.noise,
-                                      backend_options=self.backend_options)
-                dE=_QngContainer(combos=combos,param_keys=param_keys,passive_angles=passive_angles)
+                combos = get_qng_combos(objective, initial_values=initial_values, backend=self.backend,
+                                        samples=self.samples, noise=self.noise,
+                                        backend_options=self.backend_options)
+                dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
                 infostring += "{:15} : QNG {}\n".format("gradient", dE)
             else:
                 dE = gradient
@@ -163,10 +163,10 @@ class OptimizerSciPy(Optimizer):
             compile_hessian = False
 
         if compile_gradient:
-                grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
-                expvals = sum([o.count_expectationvalues() for o in comp_grad_obj.values()])
-                infostring += "{:15} : {} expectationvalues\n".format("gradient", expvals)
-                dE = _GradContainer(objective=comp_grad_obj,
+            grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
+            expvals = sum([o.count_expectationvalues() for o in comp_grad_obj.values()])
+            infostring += "{:15} : {} expectationvalues\n".format("gradient", expvals)
+            dE = _GradContainer(objective=comp_grad_obj,
                                 param_keys=param_keys,
                                 samples=self.samples,
                                 passive_angles=passive_angles,
@@ -189,7 +189,7 @@ class OptimizerSciPy(Optimizer):
                                  print_level=self.print_level,
                                  backend_options=self.backend_options)
 
-        if self.print_level>0:
+        if self.print_level > 0:
             print(self)
             print(infostring)
             print("{:15} : {}\n".format("active variables", len(active_angles)))
@@ -236,6 +236,13 @@ class OptimizerSciPy(Optimizer):
                 self.history.gradients_evaluations = dE.history
             if ddE is not None and not isinstance(ddE, str):
                 self.history.hessians_evaluations = ddE.history
+
+            # some methods like "cobyla" do not support callback functions
+            if len(self.history.energies) == 0:
+                self.history.energies = E.history
+                self.history.angles = E.history_angles
+
+
 
         E_final = res.fun
         angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
@@ -364,7 +371,6 @@ def minimize(objective: Objective,
     method_bounds = format_variable_dictionary(method_bounds)
 
     # set defaults
-
 
     optimizer = OptimizerSciPy(save_history=save_history,
                                maxiter=maxiter,

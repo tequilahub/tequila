@@ -5,7 +5,7 @@ Suggestion, feel free to propose new things/changes
 import typing, numbers, copy
 
 from tequila.utils.exceptions import TequilaException
-from tequila.simulators.simulator_api import compile
+from tequila.simulators.simulator_api import compile, pick_backend
 from tequila.objective import Objective
 from tequila.circuit.gradient import grad
 from dataclasses import dataclass, field
@@ -177,8 +177,8 @@ class Optimizer:
         :silent: Silence printout
         """
 
-        if isinstance(backend, type):
-            self.backend = backend()
+        if backend is None:
+            self.backend = pick_backend(backend, samples=samples, noise=noise)
         else:
             self.backend = backend
 
