@@ -724,7 +724,7 @@ class QuantumChemistryBase:
 
         if not isinstance(amplitudes, dict):
             amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
-            amplitudes = dict(sorted(amplitudes.items(), key=lambda x: x[1]))
+            amplitudes = dict(sorted(amplitudes.items(), key=lambda x: numpy.fabs(x[1]), reverse=True))
 
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
