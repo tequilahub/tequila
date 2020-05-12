@@ -8,11 +8,15 @@ from tequila.circuit.gates import Measurement
 from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
-from tequila.circuit._gates_impl import MeasurementImpl, \
-    RotationGateImpl, PowerGateImpl, ExponentialPauliGateImpl, PhaseGateImpl
 
-import numbers, typing
+import numbers, typing, numpy
 
+"""
+TODO: Classes are now immutable: 
+       - Map the hamiltonian in the very beginning
+       - Add additional features from Skylars project
+       - Maybe only keep paulistrings and not full hamiltonian types
+"""
 
 class BackendCircuit():
     """
@@ -22,20 +26,25 @@ class BackendCircuit():
     self.abstract_circuit: compiled tequila circuit
     """
 
-    # compiler instructions
-    recompile_trotter = True
-    recompile_swap = False
-    recompile_multitarget = True
-    recompile_controlled_rotation = False
-    recompile_exponential_pauli = True
-    recompile_phase = True
-    recompile_power = True
-    recompile_hadamard_power = True
-    recompile_controlled_power = True
-    recompile_controlled_phase = True
-    recompile_toffoli = False
-    recompile_phase_to_z = False
-    cc_max = False
+    # compiler instructions, override in backends
+    # try to reduce True statements as much as possible for new backends
+    compiler_arguments = {
+        "trotterized": True,
+        "swap": True,
+        "multitarget": True,
+        "controlled_rotation": True,
+        "gaussian": True,
+        "exponential_pauli": True,
+        "controlled_exponential_pauli": True,
+        "phase": True,
+        "power": True,
+        "hadamard_power": True,
+        "controlled_power": True,
+        "controlled_phase": True,
+        "toffoli": True,
+        "phase_to_z": True,
+        "cc_max": True
+    }
 
     @property
     def n_qubits(self) -> numbers.Integral:
@@ -45,31 +54,20 @@ class BackendCircuit():
     def qubits(self) -> typing.Iterable[numbers.Integral]:
         return tuple(self._qubits)
 
-    def __init__(self, abstract_circuit: QCircuit, variables, noise_model=None,
+    def __init__(self, abstract_circuit: QCircuit, variables, noise=None,
                  use_mapping=True, optimize_circuit=True, *args, **kwargs):
         self._variables = tuple(abstract_circuit.extract_variables())
         self.use_mapping = use_mapping
-        if noise_model is not None:
-            self.cc_max = True
-            self.recompile_controlled_phase = True
-            self.recompile_controlled_rotation = True
-            self.recompile_hadamard_power = True
+
+        compiler_arguments = self.compiler_arguments
+        if noise is not None:
+            compiler_arguments["cc_max"] = True
+            compiler_arguments["controlled_phase"] = True
+            compiler_arguments["controlled_rotation"] = True
+            compiler_arguments["hadamard_power"] = True
+
         # compile the abstract_circuit
-        c = compiler.Compiler(multitarget=self.recompile_multitarget,
-                              multicontrol=False,
-                              trotterized=self.recompile_trotter,
-                              exponential_pauli=self.recompile_exponential_pauli,
-                              controlled_exponential_pauli=True,
-                              hadamard_power=self.recompile_hadamard_power,
-                              controlled_power=self.recompile_controlled_power,
-                              power=self.recompile_power,
-                              controlled_phase=self.recompile_controlled_phase,
-                              phase=self.recompile_phase,
-                              phase_to_z=self.recompile_phase_to_z,
-                              toffoli=self.recompile_toffoli,
-                              controlled_rotation=self.recompile_controlled_rotation,
-                              cc_max=self.cc_max,
-                              swap=self.recompile_swap)
+        c = compiler.Compiler(**compiler_arguments)
 
         if self.use_mapping:
             qubits = abstract_circuit.qubits
@@ -85,10 +83,10 @@ class BackendCircuit():
         # translate into the backend object
         self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
 
-        if optimize_circuit:
+        if optimize_circuit and noise ==None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
-        self.noise_model = noise_model
+        self.noise = noise
 
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
@@ -100,9 +98,9 @@ class BackendCircuit():
             if variables is None or set(self._variables) != set(variables.keys()):
                 raise TequilaException("BackendCircuit received not all variables. Circuit depends on variables {}, you gave {}".format(self._variables, variables))
         if samples is None:
-            return self.simulate(variables=variables, noise_model=self.noise_model, *args, **kwargs)
+            return self.simulate(variables=variables, noise=self.noise, *args, **kwargs)
         else:
-            return self.sample(variables=variables, samples=samples, noise_model=self.noise_model, *args, **kwargs)
+            return self.sample(variables=variables, samples=samples, noise=self.noise, *args, **kwargs)
 
     def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
         """
@@ -169,7 +167,7 @@ class BackendCircuit():
         else:
             keymap = KeyMapSubregisterToRegister(subregister=all_qubits, register=all_qubits)
 
-        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer)
+        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args, **kwargs)
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
@@ -203,7 +201,7 @@ class BackendCircuit():
             #measure += Measurement(name=str(paulistring), target=qubits)
             circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
-            counts = self.do_sample(samples=samples, circuit=circuit)
+            counts = self.do_sample(samples=samples, circuit=circuit, *args, **kwargs)
             # compute energy
             E = 0.0
             n_samples = 0
@@ -223,9 +221,9 @@ class BackendCircuit():
                 E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
             return E
         else:
-            return self.do_sample(samples=samples, circuit=self.circuit)
+            return self.do_sample(samples=samples, circuit=self.circuit, *args, **kwargs)
 
-    def do_sample(self, samples, circuit, noise_model, *args, **kwargs) -> QubitWaveFunction:
+    def do_sample(self, samples, circuit, noise, *args, **kwargs) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     # Those functions need to be overwritten:
@@ -297,10 +295,13 @@ class BackendExpectationValue:
             result = self.U.extract_variables()
         return result
 
-    def __init__(self, E, variables, noise_model):
-        self._U = self.initialize_unitary(E.U, variables, noise_model)
+    def __init__(self, E, variables, noise):
+        self._U = self.initialize_unitary(E.U, variables, noise)
         self._H = self.initialize_hamiltonian(E.H)
+        self._abstract_hamiltonians = E.H
         self._variables = E.extract_variables()
+        self._contraction = E._contraction
+        self._shape = E._shape
 
     def __call__(self, variables, samples: int = None, *args, **kwargs):
 
@@ -312,50 +313,68 @@ class BackendExpectationValue:
                         self._variables, variables))
 
         if samples is None:
-            return to_float(self.simulate(variables=variables, *args, **kwargs))
+            data = self.simulate(variables=variables, *args, **kwargs)
         else:
-            return to_float(self.sample(variables=variables, samples=samples, *args, **kwargs))
+            data = self.sample(variables=variables, samples=samples, *args, **kwargs)
+
+        if self._shape is None and self._contraction is None:
+            # this is the default
+            return numpy.sum(data)
+
+        if self._shape is not None:
+            data = data.reshape(self._shape)
+        if self._contraction is None:
+            return data
+        else:
+            return self._contraction(data)
 
     def initialize_hamiltonian(self, H):
-        return H
+        return tuple(H)
 
-    def initialize_unitary(self, U, variables, noise_model):
+    def initialize_unitary(self, U, variables, noise):
         return self.BackendCircuitType(abstract_circuit=U, variables=variables, use_mapping=self.use_mapping,
-                                       noise_model=noise_model)
+                                       noise=noise)
 
     def update_variables(self, variables):
         self._U.update_variables(variables=variables)
 
-    def sample(self, variables, samples, *args, **kwargs):
+    def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
         self.update_variables(variables)
-        E = 0.0
-        for ps in self.H.paulistrings:
-            E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
-        return E
+
+        result = []
+        for H in self.H:
+            E = 0.0
+            for ps in H.paulistrings:
+                E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
+            result.append(to_float(E))
+        return numpy.asarray(result)
 
     def simulate(self, variables, *args, **kwargs):
         self.update_variables(variables)
-        final_E = 0.0
-        if self.use_mapping:
-            # The hamiltonian can be defined on more qubits as the unitaries
-            qubits_h = self.H.qubits
-            qubits_u = self.U.qubits
-            all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit() + 1)))
-            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
-        else:
-            if self.H.qubits != self.U.qubits:
-                raise TequilaException(
-                    "Can not compute expectation value without using qubit mappings."
-                    " Your Hamiltonian and your Unitary do not act on the same set of qubits. "
-                    "Hamiltonian acts on {}, Unitary acts on {}".format(
-                        self.H.qubits, self.U.qubits))
-            keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
-        # TODO inefficient, let the backend do it if possible or interface some library
-        simresult = self.U.simulate(variables=variables, *args, **kwargs)
-        wfn = simresult.apply_keymap(keymap=keymap)
-        final_E += wfn.compute_expectationvalue(operator=self.H)
+        result = []
+        for H in self.H:
+            final_E = 0.0
+            if self.use_mapping:
+                # The hamiltonian can be defined on more qubits as the unitaries
+                qubits_h = H.qubits
+                qubits_u = self.U.qubits
+                all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit() + 1)))
+                keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
+            else:
+                if H.qubits != self.U.qubits:
+                    raise TequilaException(
+                        "Can not compute expectation value without using qubit mappings."
+                        " Your Hamiltonian and your Unitary do not act on the same set of qubits. "
+                        "Hamiltonian acts on {}, Unitary acts on {}".format(
+                            H.qubits, self.U.qubits))
+                keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
+            # TODO inefficient, let the backend do it if possible or interface some library
+            simresult = self.U.simulate(variables=variables, *args, **kwargs)
+            wfn = simresult.apply_keymap(keymap=keymap)
+            final_E += wfn.compute_expectationvalue(operator=H)
 
-        return to_float(final_E)
+            result.append(to_float(final_E))
+        return numpy.asarray(result)
 
     def sample_paulistring(self, samples: int,
                            paulistring,*args,**kwargs) -> numbers.Real:

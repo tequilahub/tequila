@@ -14,6 +14,7 @@ if typing.TYPE_CHECKING:
     # don't need those structures, just for convenient type hinting
     from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian, PauliString
 
+
 class QubitWaveFunction:
     """
     Store Wavefunction as dictionary of comp. basis state and complex numbers
@@ -66,6 +67,14 @@ class QubitWaveFunction:
     def __init__(self, state: typing.Dict[BitString, complex] = None, n_qubits=None):
         if state is None:
             self._state = dict()
+        elif isinstance(state, int):
+            self._state = self.from_int(i=state, n_qubits=n_qubits).state
+        elif isinstance(state, str):
+            self._state = self.from_string(string=state, n_qubits=n_qubits).state
+        elif isinstance(state, numpy.ndarray) or isinstance(state, list):
+            self._state = self.from_array(arr=state, n_qubits=n_qubits).state
+        elif hasattr(state, "state"):
+            self._state = state.state
         else:
             self._state = state
         self._n_qubits = n_qubits
@@ -80,28 +89,50 @@ class QubitWaveFunction:
         return self.state.values()
 
     @staticmethod
-    def convert_bitstring(key:typing.Union[BitString,numbers.Integral]):
+    def convert_bitstring(key: typing.Union[BitString, numbers.Integral], n_qubits):
         if isinstance(key, numbers.Integral):
-            return BitString.from_int(integer=key)
+            return BitString.from_int(integer=key, nbits=n_qubits)
+        elif isinstance(key, str):
+            return BitString.from_binary(binary=key, nbits=n_qubits)
         else:
             return key
 
     def __getitem__(self, item: BitString):
-        return self.state[self.convert_bitstring(item)]
+        key = self.convert_bitstring(item, self.n_qubits)
+        return self.state[key]
+
+    def __call__(self, key, *args, **kwargs) -> numbers.Number:
+        """
+        Like getitem but returns zero if key is not there
+
+        Parameters
+        ----------
+        key: bitstring (or int or str)
+        Returns
+        -------
+            Return the amplitude or measurement occurence of a bitstring
+        """
+        ckey = self.convert_bitstring(key, self.n_qubits)
+        if ckey in self.state:
+            return self.state[ckey]
+        else:
+            return 0.0
+
+
 
     def __setitem__(self, key: BitString, value: numbers.Number):
-        self._state[self.convert_bitstring(key)] = value
+        self._state[self.convert_bitstring(key, self.n_qubits)] = value
         return self
 
     def __contains__(self, item: BitString):
-        return self.convert_bitstring(item) in self.keys()
+        return self.convert_bitstring(item, self.n_qubits) in self.keys()
 
     def __len__(self):
         return len(self.state)
 
     @classmethod
     def from_array(cls, arr: numpy.ndarray, keymap=None, threshold: float = 1.e-6,
-                   numbering: BitNumbering = BitNumbering.MSB):
+                   numbering: BitNumbering = BitNumbering.MSB, n_qubits: int = None):
         arr = numpy.asarray(arr)
         assert (len(arr.shape) == 1)
         state = dict()
@@ -112,7 +143,7 @@ class QubitWaveFunction:
             if not numpy.isclose(abs(v), 0.0, atol=threshold):
                 key = i if keymap is None else keymap(i)
                 state[key] = v
-        result = QubitWaveFunction(state)
+        result = QubitWaveFunction(state, n_qubits=n_qubits)
 
         if cls.numbering != numbering:
             if cls.numbering == BitNumbering.MSB:
@@ -123,14 +154,14 @@ class QubitWaveFunction:
         return result
 
     @classmethod
-    def from_int(cls, i: int, coeff=1, n_qubits=None):
+    def from_int(cls, i: int, coeff=1, n_qubits: int = None):
         if isinstance(i, BitString):
             return QubitWaveFunction(state={i: coeff}, n_qubits=n_qubits)
         else:
             return QubitWaveFunction(state={BitString.from_int(integer=i, nbits=n_qubits): coeff}, n_qubits=n_qubits)
 
     @classmethod
-    def from_string(cls, string: str):
+    def from_string(cls, string: str, n_qubits: int = None):
         """
         Complex values like (x+iy)|...> will currently not work, you need to type Real and imaginary separately
         Or improve this constructor :-)
@@ -165,7 +196,7 @@ class QubitWaveFunction:
                                                                                                     "e.g. instead of (0.5+1.0j)|0101> do 0.5|0101> + 1.0j|0101>")
         except:
             raise TequilaException("Failed to initialize QubitWaveFunction from string:" + string)
-        return QubitWaveFunction(state=state)
+        return QubitWaveFunction(state=state, n_qubits=n_qubits)
 
     def __repr__(self):
         result = str()
@@ -224,8 +255,8 @@ class QubitWaveFunction:
         :return: Normalizes the wavefunction/countrate
         """
         norm2 = self.inner(other=self)
-        self = 1.0 / numpy.sqrt(norm2) * self
-        return self
+        normalized = 1.0 / numpy.sqrt(norm2) * self
+        return normalized
 
     def compute_expectationvalue(self, operator: 'QubitHamiltonian') -> numbers.Real:
         tmp = self.apply_qubitoperator(operator=operator)
@@ -270,7 +301,15 @@ class QubitWaveFunction:
         return paulistring.coeff * result
 
     def to_array(self):
-        result = numpy.zeros(shape=2**self.n_qubits)
-        for k,v in self.items():
+        result = numpy.zeros(shape=2 ** self.n_qubits)
+        for k, v in self.items():
             result[int(k)] = v
         return result
+
+    def simplify(self, threshold = 1.e-8):
+        state = {}
+        for k, v in self.state.items():
+            if not numpy.isclose(v, 0.0, atol=threshold):
+                state[k] = v
+        return QubitWaveFunction(state=state)
+

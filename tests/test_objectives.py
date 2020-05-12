@@ -7,10 +7,45 @@ from tequila.circuit.gradient import grad
 from tequila import numpy as np
 import numpy
 import pytest
-from tequila import INSTALLED_SIMULATORS
+import tequila as tq
 from tequila.simulators.simulator_api import simulate
-from tequila import simulators
 
+
+def test_non_quantum():
+    E = tq.Objective()
+    E += 1.0
+    E = E + 2.0
+    E *= 2.0
+    E = E * 2.0
+    E = 1.0 * E
+    E -= 1.0
+    E = 1.0 + E
+    E = E.apply(lambda x: x/3.0)
+    assert E() == 2.0*2.0*(1.0 + 2.0)/3.0
+
+@pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+def test_compilation(backend):
+    U = gates.X(target=[0,1,2,3,4,5])
+    for i in range(10):
+        U += gates.Ry(angle=(i,), target=numpy.random.randint(0,5,1)[0])
+    U += gates.CZ(0,1) + gates.CNOT(1,2) + gates.CZ(2,3) + gates.CNOT(3,4) + gates.CZ(5,6)
+    H = paulis.X(0) + paulis.X(1) + paulis.X(2) + paulis.X(3) + paulis.X(4) + paulis.X(5)
+    H += paulis.Z(0) + paulis.Z(1) + paulis.Z(2) + paulis.Z(3) + paulis.Z(4) + paulis.Z(5)
+    E = ExpectationValue(H=H, U=U)
+
+    randvals = numpy.random.uniform(0.0, 2.0, 10)
+    variables = {(i,): randvals[i] for i in range(10)}
+    e0 = simulate(E, variables=variables, backend=backend)
+
+    E2 = E*E
+    for i in range(99):
+        E2 += E*E
+
+    compiled = tq.compile(E2, variables=variables, backend=backend)
+    e2 = compiled(variables=variables)
+    assert(E2.count_expectationvalues(unique=True) == 1)
+    assert(compiled.count_expectationvalues(unique=True) == 1)
+    assert numpy.isclose(100*e0**2, e2)
 
 ### these 8 tests test add,mult,div, and power, with the expectationvalue on the left and right.
 
@@ -27,8 +62,8 @@ def test_l_addition(simulator, value=(numpy.random.randint(0, 1000) / 1000.0 * (
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator) + 1.
     an1 = np.sin(angle1(variables=variables)) + 1.
-    assert bool(np.isclose(val, en1)) is True
-    assert bool(np.isclose(val, an1)) is True
+    assert np.isclose(val, en1, atol=1.e-4)
+    assert np.isclose(val, an1, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
@@ -44,8 +79,8 @@ def test_r_addition(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
     val = simulate(added, variables=variables, backend=simulator)
     en1 = 1 + simulate(e1, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables)) + 1.
-    assert bool(np.isclose(val, en1)) is True
-    assert bool(np.isclose(val, an1)) is True
+    assert np.isclose(val, en1, atol=1.e-4)
+    assert np.isclose(val, an1, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
@@ -61,8 +96,8 @@ def test_l_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.p
     val = simulate(added, variables=variables, backend=simulator)
     en1 = 2 * simulate(e1, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables)) * 2
-    assert bool(np.isclose(val, en1)) is True
-    assert bool(np.isclose(val, an1)) is True
+    assert np.isclose(val, en1, atol=1.e-4)
+    assert np.isclose(val, an1, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
@@ -408,7 +443,7 @@ def test_heterogeneous_gradient_r_add(simulator):
     deval = simulate(dE, variables=variables, backend=simulator)
     doval = simulate(dO, variables=variables, backend=simulator)
     dtrue = 1.0 + deval
-    assert bool(np.isclose(val, float(np.add(en1, anval)))) is True
+    assert np.isclose(float(val), float(np.add(en1, anval)))
     assert np.isclose(en1, an1, atol=1.e-4)
     assert np.isclose(doval, dtrue, atol=1.e-4)
 
@@ -434,7 +469,7 @@ def test_heterogeneous_gradient_r_mul(simulator):
     deval = simulate(dE, variables=variables, backend=simulator)
     doval = simulate(dO, variables=variables, backend=simulator)
     dtrue = deval * anval + en1
-    assert bool(np.isclose(val, float(np.multiply(en1, anval)))) is True
+    assert np.isclose(float(val), float(np.multiply(en1, anval)))
     assert np.isclose(en1, an1, atol=1.e-4)
     assert np.isclose(doval, dtrue, atol=1.e-4)
 
@@ -460,7 +495,7 @@ def test_heterogeneous_gradient_r_div(simulator):
     deval = simulate(dE, variables=variables, backend=simulator)
     doval = simulate(dO, variables=variables, backend=simulator)
     dtrue = deval / anval - en1 / (anval ** 2)
-    assert bool(np.isclose(val, float(np.true_divide(en1, anval)))) is True
+    assert np.isclose(float(val), float(np.true_divide(en1, anval)))
     assert np.isclose(en1, an1, atol=1.e-4)
     assert np.isclose(doval, dtrue, atol=1.e-4)
 

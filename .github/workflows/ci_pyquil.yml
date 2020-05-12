@@ -1,0 +1,44 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Tequila-Test-Pyquil
+
+on:
+  push:
+    branches: [ master, devel ]
+  pull_request:
+    branches: [ master, devel ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install and run
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade pytest
+        pip install -r requirements.txt
+        pip install pyquil
+        pip install -e .
+        docker pull rigetti/qvm
+        docker pull rigetti/quilc
+        docker run --rm -itd -p 5555:5555 rigetti/quilc -R
+        docker run --rm -itd -p 5000:5000 rigetti/qvm -S
+        pytest -m "not dependencies" tests/test_simulator_backends.py
+        pytest tests/test_recompilation_routines.py
+        pytest -m "not dependencies" tests/test_noise.py
+        pytest tests/test_gradient.py
+        pytest tests/test_scipy.py
+        pytest tests/test_mappings.py
+

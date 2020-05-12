@@ -93,7 +93,7 @@ def test_moments():
     c += Z(target=1)
     c += Phase(phi=numpy.pi, target=4)
     moms = c.moments
-    assert len(moms) is 3
+    assert len(moms) == 3
     assert (moms[0].gates[1].parameter == assign_variable(numpy.pi))
     assert (moms[0].gates[1].target == (4,))
 
@@ -108,11 +108,11 @@ def test_canonical_moments():
     c += Z(target=1)
     c += Phase(phi=numpy.pi, target=4)
     moms = c.canonical_moments
-    assert len(moms) is 6
+    assert len(moms) == 6
     assert (moms[0].gates[1].parameter == assign_variable(numpy.pi))
     assert (moms[0].gates[1].target == (4,))
     assert hasattr(moms[3].gates[0], 'axis')
-    assert len(moms[0].qubits) is 5
+    assert len(moms[0].qubits) == 5
 
 
 def test_circuit_from_moments():

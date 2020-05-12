@@ -331,9 +331,7 @@ def Measurement(target):
     return MeasurementImpl(name='Measure', target=target)
 
 
-
-def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None,
-             ):
+def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None):
     """Exponentiated Pauligate:
     
     ExpPauli(PauliString, angle) = exp(-i* angle/2* PauliString)
@@ -383,18 +381,23 @@ def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing
     else:
         return QCircuit.wrap_gate(ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control))
 
+def Rp(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None):
+    """
+    Same as ExpPauli
+    """
+    return ExpPauli(paulistring=paulistring, angle=angle, control=control)
 
-def GaussianGate(angle: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real]],
-                 generator: QubitHamiltonian,
-                 control: typing.Union[list, int] = None,
-                 shift: float = 0.5,
-                 steps: int = 1) -> QCircuit:
+def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real]],
+                        generator: QubitHamiltonian,
+                        control: typing.Union[list, int] = None,
+                        shift: float = 0.5,
+                        steps: int = 1) -> QCircuit:
     """
 
     Notes
     --------
     
-    A gate which behaves 'gaussian'
+    A gates which is shift-rule differentiable
      - its generator only has two distinguishable eigenvalues
      - it is then differentiable by the shift rule
      - shift needs to be given upon initialization (otherwise its default is 1/2)
@@ -418,7 +421,9 @@ def GaussianGate(angle: typing.Union[typing.List[typing.Hashable], typing.List[n
     -------
     The gate wrapped in a circuit
     """
-    return QCircuit.wrap_gate(GaussianGateImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
+    return QCircuit.wrap_gate(
+        GaussianGateImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
+
 
 def Trotterized(generators: typing.List[QubitHamiltonian],
                 steps: int,

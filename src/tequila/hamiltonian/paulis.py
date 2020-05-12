@@ -5,8 +5,9 @@ Currently uses OpenFermion as backend (QubitOperators)
 """
 import typing
 from tequila.hamiltonian import QubitHamiltonian
-from tequila import BitString
+from tequila import BitString, TequilaException
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.tools import list_assignement
 import numpy
 
 
@@ -14,20 +15,33 @@ def pauli(qubit, type) -> QubitHamiltonian:
     """
     Parameters
     ----------
-    qubit: int
+    qubit: int or list of ints
 
-    type: str or int:
+    type: str or int or list of string or int:
         define if X, Y or Z (0,1,2)
 
     Returns
     -------
     QubitHamiltonian
     """
-    if type in QubitHamiltonian.axis_to_string:
-        type = QubitHamiltonian.axis_to_string(type)
-    else:
-        type = type.upper()
-    return QubitHamiltonian(type + str(qubit))
+
+    def assign_axis(axis):
+        if axis in QubitHamiltonian.axis_to_string:
+            return QubitHamiltonian.axis_to_string[axis]
+        elif hasattr(axis, "upper"):
+            return axis.upper()
+        else:
+            raise TequilaException("unknown initialization for pauli operator: {}".format(axis))
+
+    if not isinstance(qubit, typing.Iterable):
+        qubit = [qubit]
+        type = [type]
+
+    type = [assign_axis(x) for x in type]
+
+    init_string = "".join("{}{} ".format(t, q) for t, q in zip(type, qubit))
+
+    return QubitHamiltonian.from_string(string=init_string, openfermion_format=True)
 
 
 def X(qubit) -> QubitHamiltonian:
@@ -36,15 +50,16 @@ def X(qubit) -> QubitHamiltonian:
 
     Parameters
     ----------
-    qubit: int
-        qubit on which the operator should act
+    qubit: int or list of ints
+        qubit(s) on which the operator should act
 
     Returns
     -------
     QubitHamiltonian
 
     """
-    return QubitHamiltonian.init_from_string("X" + str(qubit))
+    qubit = list_assignement(qubit)
+    return pauli(qubit=qubit, type=["X"] * len(qubit))
 
 
 def Y(qubit) -> QubitHamiltonian:
@@ -53,15 +68,16 @@ def Y(qubit) -> QubitHamiltonian:
 
     Parameters
     ----------
-    qubit: int
-        qubit on which the operator should act
+    qubit: int or list of ints
+        qubit(s) on which the operator should act
 
     Returns
     -------
     QubitHamiltonian
 
     """
-    return QubitHamiltonian.init_from_string("Y" + str(qubit))
+    qubit = list_assignement(qubit)
+    return pauli(qubit=qubit, type=["Y"] * len(qubit))
 
 
 def Z(qubit) -> QubitHamiltonian:
@@ -70,15 +86,16 @@ def Z(qubit) -> QubitHamiltonian:
 
     Parameters
     ----------
-    qubit: int
-        qubit on which the operator should act
+    qubit: int or list of ints
+        qubit(s) on which the operator should act
 
     Returns
     -------
     QubitHamiltonian
 
     """
-    return QubitHamiltonian.init_from_string("Z" + str(qubit))
+    qubit = list_assignement(qubit)
+    return pauli(qubit=qubit, type=["Z"] * len(qubit))
 
 
 def I(*args, **kwargs) -> QubitHamiltonian:
@@ -90,7 +107,7 @@ def I(*args, **kwargs) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    return QubitHamiltonian.init_unit()
+    return QubitHamiltonian.unit()
 
 
 def Zero(*args, **kwargs) -> QubitHamiltonian:
@@ -102,7 +119,7 @@ def Zero(*args, **kwargs) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    return QubitHamiltonian.init_zero()
+    return QubitHamiltonian.zero()
 
 
 def Qp(qubit) -> QubitHamiltonian:
@@ -116,15 +133,19 @@ def Qp(qubit) -> QubitHamiltonian:
 
     Parameters
     ----------
-    qubit: int
-        qubit on which the operator should act
+    qubit: int or list of ints
+        qubit(s) on which the operator should act
 
     Returns
     -------
     QubitHamiltonian
 
     """
-    return 0.5 * (I(qubit=qubit) + Z(qubit=qubit))
+    qubit = list_assignement(qubit)
+    result = I()
+    for q in qubit:
+        result *= 0.5 * (I(qubit=q) + Z(qubit=q))
+    return result
 
 
 def Qm(qubit) -> QubitHamiltonian:
@@ -138,15 +159,19 @@ def Qm(qubit) -> QubitHamiltonian:
 
     Parameters
     ----------
-    qubit: int
-        qubit on which the operator should act
+    qubit: int or list of ints
+        qubit(s) on which the operator should act
 
     Returns
     -------
     QubitHamiltonian
 
     """
-    return 0.5 * (I(qubit=qubit) - Z(qubit=qubit))
+    qubit = list_assignement(qubit)
+    result = I()
+    for q in qubit:
+        result *= 0.5 * (I(qubit=q) - Z(qubit=q))
+    return result
 
 
 def Sp(qubit) -> QubitHamiltonian:
@@ -160,15 +185,19 @@ def Sp(qubit) -> QubitHamiltonian:
 
     Parameters
     ----------
-    qubit: int
-        qubit on which the operator should act
+    qubit: int or list of ints
+        qubit(s) on which the operator should act
 
     Returns
     -------
     QubitHamiltonian
 
     """
-    return 0.5 * (X(qubit=qubit) + 1.j * Y(qubit=qubit))
+    qubit = list_assignement(qubit)
+    result = I()
+    for q in qubit:
+        result *= 0.5 * (X(qubit=q) + 1.j * Y(qubit=q))
+    return result
 
 
 def Sm(qubit) -> QubitHamiltonian:
@@ -182,18 +211,22 @@ def Sm(qubit) -> QubitHamiltonian:
 
     Parameters
     ----------
-    qubit: int
-        qubit on which the operator should act
+    qubit: int or list of ints
+        qubit(s) on which the operator should act
 
     Returns
     -------
     QubitHamiltonian
 
     """
-    return 0.5 * (X(qubit=qubit) - 1.j * Y(qubit=qubit))
+    qubit = list_assignement(qubit)
+    result = I()
+    for q in qubit:
+        result *= 0.5 * (X(qubit=q) - 1.j * Y(qubit=q))
+    return result
 
 
-def Projector(wfn, threshold=0.0) -> QubitHamiltonian:
+def Projector(wfn, threshold=0.0, n_qubits=None) -> QubitHamiltonian:
     """
     Notes
     ----------
@@ -204,24 +237,26 @@ def Projector(wfn, threshold=0.0) -> QubitHamiltonian:
 
     Parameters
     ----------
-    wfn: QubitWaveFunction :
+    wfn: QubitWaveFunction or int, or string, or array :
         The wavefunction onto which the projector projects
         Needs to be passed down as tequilas QubitWaveFunction type
         See the documentation on how to initialize a QubitWaveFunction from
-        integer, string or array
+        integer, string or array (can also be passed down diretly as one of those types)
+
 
     threshold: float: (Default value = 0.0)
         neglect small parts of the operator
+
+    n_qubits: only needed when an integer is given as wavefunction
 
     Returns
     -------
 
     """
-    if isinstance(wfn, str):
-        wfn = QubitWaveFunction.from_string(string=wfn)
-    elif isinstance(wfn, numpy.ndarray):
-        wfn = QubitWaveFunction.from_array(arr=wfn)
-    H = QubitHamiltonian.init_zero()
+
+    wfn = QubitWaveFunction(state=wfn, n_qubits=n_qubits)
+
+    H = QubitHamiltonian.zero()
     for k1, v1 in wfn.items():
         for k2, v2 in wfn.items():
             c = v1.conjugate() * v2
@@ -231,7 +266,8 @@ def Projector(wfn, threshold=0.0) -> QubitHamiltonian:
     return H
 
 
-def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.e-6):
+def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.e-6,
+           n_qubits=None):
     """
     Notes
     ----------
@@ -249,29 +285,25 @@ def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = Fal
     ----------
     ket: QubitWaveFunction:
          QubitWaveFunction which defines the ket element
-         can also be given as string or array
+         can also be given as string or array or integer
     bra: QubitWaveFunction:
          QubitWaveFunction which defines the bra element
-         can also be given as string or array
+         can also be given as string or array or integer
     hermitian: bool: (Default False)
          if True the hermitian version H + H^\dagger is returned
     threshold: float: (Default 1.e-6)
          elements smaller than the threshold will be ignored
+    n_qubits: only needed if ket and/or bra are passed down as integers
 
     Returns
     -------
     a tequila QubitHamiltonian (not necessarily hermitian)
 
     """
-    H = QubitHamiltonian.init_zero()
-    if isinstance(ket, str):
-        ket = QubitWaveFunction.from_string(string=ket)
-    elif isinstance(ket, numpy.ndarray):
-        ket = QubitWaveFunction.from_array(arr=ket)
-    if isinstance(bra, str):
-        bra = QubitWaveFunction.from_string(string=bra)
-    elif isinstance(bra, numpy.ndarray):
-        ket = QubitWaveFunction.from_array(arr=bra)
+    H = QubitHamiltonian.zero()
+    ket = QubitWaveFunction(state=ket, n_qubits=n_qubits)
+    bra = QubitWaveFunction(state=bra, n_qubits=n_qubits)
+
     for k1, v1 in bra.items():
         for k2, v2 in ket.items():
             c = v1.conjugate() * v2
@@ -338,7 +370,7 @@ def decompose_transfer_operator(ket: BitString, bra: BitString, qubits: typing.L
 
     assert (n_qubits <= len(qubits))
 
-    result = QubitHamiltonian.init_unit()
+    result = QubitHamiltonian.unit()
     for q, b in enumerate(b_arr):
         k = k_arr[q]
         result *= opmap[(k, b)](qubit=qubits[q])

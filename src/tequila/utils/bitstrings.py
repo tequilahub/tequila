@@ -133,7 +133,7 @@ class BitString:
         self.update_nbits()
 
     def __mul__(self, other):
-        return BitString.from_int(integer=self.integer * other.integer, nbits=nbits)
+        return BitString.from_int(integer=self.integer * other.integer, nbits=max(self.nbits, other.nbits))
 
     def __imul__(self, other):
         self.integer = self.integer * other.integer

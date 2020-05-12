@@ -6,4 +6,3 @@ if __name__ == "__main__":
     print("test=", test)
     print("test: openfermion_key = ", test.key_openfermion())
     print("reinitialized: ", PauliString.from_openfermion(key=test.key_openfermion(), coeff=test.coeff))
-

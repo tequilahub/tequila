@@ -182,7 +182,7 @@ def test_wfn_multitarget(simulator):
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_multi_control(simulator):
     # currently no compiler, so that test can not succeed
-    if simulator is 'qiskit':
+    if simulator == 'qiskit':
         return
     ac = tq.gates.X([0, 1, 2])
     ac += tq.gates.Ry(target=[0], control=[1, 2], angle=2.3 / 2)
@@ -214,7 +214,7 @@ def test_shot_simple_execution(simulator):
     ac += tq.gates.Ry(target=1, control=0, angle=1.2 / 2)
     ac += tq.gates.H(target=1, control=None)
     ac += tq.gates.Measurement([0, 1])
-    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1)
+    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1, pyquil_backend="2q-qvm", additional_keyword="Andreas-Dorn")
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
@@ -261,6 +261,6 @@ def test_initial_state_from_integer(simulator, initial_state):
     for i in range(6):
         U += tq.gates.X(target=i) + tq.gates.X(target=i)
 
-    wfn = tequila.simulators.simulator_api.simulate(U, initial_state=initial_state)
+    wfn = tq.simulate(U, initial_state=initial_state, backend=simulator)
     assert (initial_state in wfn)
     assert (numpy.isclose(wfn[initial_state], 1.0))
