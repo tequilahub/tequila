@@ -24,7 +24,7 @@ from collections import namedtuple
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 warnings.filterwarnings('ignore', category=FutureWarning)
-PhoenicsReturnType = namedtuple('PhoenicsReturnType', 'energy angles history observations')
+PhoenicsReturnType = namedtuple('PhoenicsReturnType', 'energy angles history observations object')
 
 import sys
 
@@ -223,7 +223,7 @@ class OptimizerPhoenics(Optimizer):
 
         if not self.silent:
             print("best energy after {} iterations : {:+2.8f}".format(self.maxiter, best))
-        return PhoenicsReturnType(energy=best, angles=best_angles, history=self.history, observations=obs)
+        return PhoenicsReturnType(energy=best, angles=best_angles, history=self.history, observations=obs,object=bird)
 
 
 def minimize(objective: Objective,

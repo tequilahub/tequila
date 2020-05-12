@@ -14,7 +14,7 @@ import numpy as np
 from tequila.simulators.simulator_api import compile, pick_backend
 from collections import namedtuple
 
-GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history opt')
+GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history object')
 
 
 def array_to_objective_dict(objective, array, passives=None) -> typing.Dict[Variable, float]:
@@ -95,7 +95,7 @@ class OptimizerGpyOpt(Optimizer):
             self.history.energies = opt.get_evaluations()[1].flatten()
             self.history.angles = [self.redictify(v, objective, passive_angles) for v in opt.get_evaluations()[0]]
         return GPyOptReturnType(energy=opt.fx_opt, angles=self.redictify(opt.x_opt, objective, passive_angles),
-                                history=self.history, opt=opt)
+                                history=self.history, object=opt)
 
 
 def minimize(objective: Objective,
