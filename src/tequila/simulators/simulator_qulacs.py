@@ -242,15 +242,14 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                 if len(unit_strings) > 0:
                     coeffs = [x[0] for x in unit_strings]
                     result.append(sum(coeffs))
-
-                if len(non_zero_strings) > 0:
+                    assert len(non_zero_strings) == 0
+                elif len(non_zero_strings) > 0:
                     qulacs_H = qulacs.Observable(self.n_qubits)
                     for coeff, string in non_zero_strings:
                         qulacs_H.add_operator(coeff, string)
                     result.append(qulacs_H)
-
-
-
+                else:
+                    result.append(0.0)
             else:
                 if self.U.n_qubits < H.n_qubits:
                     raise TequilaQulacsException(
