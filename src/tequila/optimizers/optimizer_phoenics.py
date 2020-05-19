@@ -46,13 +46,12 @@ class OptimizerPhoenics(Optimizer):
     def available_methods(cls):
         return ["phoenics"]
 
-    def __init__(self, maxiter, backend=None, save_history=True, minimize=True, backend_options=None,
-                 samples=None, silent=None, noise=None):
+    def __init__(self, maxiter, backend=None, save_history=True, minimize=True,
+                 samples=None, silent=None, noise=None, device=None):
         self._minimize = minimize
 
         super().__init__(backend=backend, maxiter=maxiter, samples=samples,
-                         noise=noise,
-                         backend_options=backend_options,
+                         noise=noise,device=device,
                          save_history=save_history, silent=silent)
 
     def _process_for_sim(self, recommendation, passive_angles):
@@ -154,7 +153,7 @@ class OptimizerPhoenics(Optimizer):
 
         # avoid multiple compilations
         compiled_objective = compile_objective(objective=objective, backend=self.backend,
-                                               backend_options=self.backend_options,
+                                               backend_options=self.backend_options,device=self.device,
                                                samples=self.samples, noise=self.noise)
 
         if not self.silent:
@@ -233,7 +232,7 @@ def minimize(objective: Objective,
              initial_values: typing.Dict = None,
              backend: str = None,
              noise=None,
-             backend_options: typing.Dict = None,
+             device: str = None,
              previous: typing.Union[str, list] = None,
              phoenics_config: typing.Union[str, typing.Dict] = None,
              file_name: str = None,
@@ -262,6 +261,9 @@ def minimize(objective: Objective,
     noise: NoiseModel :
          (Default value = None)
          a noise model to apply to the circuits of Objective.
+    device: str:
+        (Default value = None)
+        the device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.
     previous:
         (Default value = None)
         Previous phoenics observations. If string, the name of a file from which to load them. Else, a list.
@@ -280,8 +282,7 @@ def minimize(objective: Objective,
     """
 
     optimizer = OptimizerPhoenics(samples=samples, backend=backend,
-                                  backend_options=backend_options,
-                                  noise=noise,
+                                  noise=noise,device=device,
                                   maxiter=maxiter, silent=silent)
     return optimizer(objective=objective, initial_values=initial_values, variables=variables, previous=previous,
                      maxiter=maxiter,

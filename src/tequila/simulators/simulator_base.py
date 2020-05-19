@@ -295,8 +295,8 @@ class BackendExpectationValue:
             result = self.U.extract_variables()
         return result
 
-    def __init__(self, E, variables, noise):
-        self._U = self.initialize_unitary(E.U, variables, noise)
+    def __init__(self, E, variables, noise, device):
+        self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device)
         self._H = self.initialize_hamiltonian(E.H)
         self._abstract_hamiltonians = E.H
         self._variables = E.extract_variables()
@@ -331,8 +331,8 @@ class BackendExpectationValue:
     def initialize_hamiltonian(self, H):
         return tuple(H)
 
-    def initialize_unitary(self, U, variables, noise):
-        return self.BackendCircuitType(abstract_circuit=U, variables=variables, use_mapping=self.use_mapping,
+    def initialize_unitary(self, U, variables, noise, device):
+        return self.BackendCircuitType(abstract_circuit=U, variables=variables, device=device, use_mapping=self.use_mapping,
                                        noise=noise)
 
     def update_variables(self, variables):

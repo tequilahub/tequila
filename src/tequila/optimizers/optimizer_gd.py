@@ -28,8 +28,8 @@ class OptimizerGD(Optimizer):
                  epsilon=1.0 * 10 ** (-7),
                  samples=None,
                  backend=None,
-                 backend_options=None,
                  noise=None,
+                 device=None,
                  silent=True,
                  **kwargs):
         """
@@ -37,8 +37,8 @@ class OptimizerGD(Optimizer):
         See the Optimizer class for all other parameters to initialize
         """
 
-        super().__init__(maxiter=maxiter, samples=samples,
-                         backend=backend, backend_options=backend_options,
+        super().__init__(maxiter=maxiter, samples=samples,device=device,
+                         backend=backend,
                          noise=noise,
                          **kwargs)
         method_dict = {
@@ -151,8 +151,9 @@ class OptimizerGD(Optimizer):
                 compile_gradient = False
 
                 combos = get_qng_combos(objective, initial_values=initial_values, backend=self.backend,
+                                        device=self.device,
                                         samples=self.samples, noise=self.noise,
-                                        backend_options=self.backend_options)
+                                        )
                 dE = QNGVector(combos)
             else:
                 gradient = {"method": gradient, "stepsize": 1.e-4}
@@ -410,8 +411,8 @@ def minimize(objective: Objective,
              samples: int = None,
              maxiter: int = 100,
              backend: str = None,
-             backend_options: typing.Dict = None,
              noise: NoiseModel = None,
+             device: str = None,
              tol: float = None,
              silent: bool = False,
              save_history: bool = True,
@@ -420,8 +421,8 @@ def minimize(objective: Objective,
              epsilon: float = 1. * 10 ** (-7),
              *args,
              **kwargs) -> GDReturnType:
-    """
 
+    """
     Parameters
     ----------
     objective: Objective :
@@ -437,7 +438,8 @@ def minimize(objective: Objective,
 
     method: string:
         which variation on Gradient Descent to use. Options include 'sgd','adam','nesterov','adagrad','rmsprop', etc.
-    initial_values: typing.Dict[typing.Hashable, numbers.Real]: (Default value = None):
+    initial_values: typing.Dict[typing.Hashable, numbers.Real]:
+        (Default value = None):
         Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero
     variables: typing.List[typing.Hashable] :
          (Default value = None)
@@ -453,12 +455,12 @@ def minimize(objective: Objective,
     backend: str :
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
-    backend_options: dict:
-        (Default value = None)
-        extra options, to be passed to the backend
     noise: NoiseModel:
          (Default value = None)
          a NoiseModel to apply to all expectation values in the objective.
+    device: str:
+        (Default value = None)
+        the device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.
     tol: float :
          (Default value = 10^-4)
          Convergence tolerance for optimization; if abs(delta f) smaller than tol, stop.
@@ -479,7 +481,6 @@ def minimize(objective: Objective,
     if isinstance(gradient, dict) or hasattr(gradient, "items"):
         if all([isinstance(x, Objective) for x in gradient.values()]):
             gradient = format_variable_dictionary(gradient)
-
     optimizer = OptimizerGD(save_history=save_history,
                             method=method,
                             lr=lr,
@@ -488,7 +489,8 @@ def minimize(objective: Objective,
                             tol=tol,
                             epsilon=epsilon,
                             samples=samples, backend=backend,
-                            noise=noise, backend_options=backend_options,
+                            device=device,
+                            noise=noise,
                             maxiter=maxiter,
                             silent=silent)
     return optimizer(objective=objective,

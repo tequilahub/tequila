@@ -76,8 +76,9 @@ def get_generator(gate):
     return gen
 
 
-def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,
-                             backend=None,backend_options=None,noise=None):
+def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,device=None,
+                             backend=None,noise=None):
+
 
     U=expectation.U
     moments=U.canonical_moments
@@ -106,8 +107,8 @@ def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,
                         arg= (ExpectationValue(U=sub[i], H=gen1 * gen1) - ExpectationValue(U=sub[i],H=gen1)**2)/4
                     else:
                         arg = (ExpectationValue(U=sub[i], H=gen1 * gen2) - ExpectationValue(U=sub[i], H=gen1)*ExpectationValue(U=sub[i],H=gen2) ) / 4
-                    block[k][q] = compile_objective(arg, variables=initial_values, samples=samples, backend=backend,
-                                                    noise=noise,backend_options=backend_options)
+                    block[k][q] = compile_objective(arg, variables=initial_values, samples=samples, backend=backend,device=device,
+                                                    noise=noise)
             blocks.append(block)
     return blocks
 
@@ -178,13 +179,13 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian):
 
 
 
-def subvector_procedure(eval,initial_values=None,samples=None,
-                        backend=None,backend_options=None,noise=None,):
+def subvector_procedure(eval,initial_values=None,samples=None,device=None,
+                        backend=None,noise=None):
     vect=qng_circuit_grad(eval)
     out=[]
     for entry in vect:
-        out.append(compile_objective(entry, variables=initial_values, samples=samples,
-                                     backend=backend,backend_options=backend_options,
+        out.append(compile_objective(entry, variables=initial_values, samples=samples,device=device,
+                                     backend=backend,
                                      noise=noise))
     return CallableVector(out)
 
@@ -199,8 +200,7 @@ def get_self_pars(U):
 def qng_dict(argument,matrix,subvector,mapping,positional):
     return {'arg':argument,'matrix':matrix,'vector':subvector,'mapping':mapping,'positional':positional}
 
-def get_qng_combos(objective,initial_values=None,samples=None,backend=None,
-                   backend_options=None,noise=None):
+def get_qng_combos(objective,initial_values=None,samples=None,backend=None,device=None,noise=None):
     combos=[]
     vars=objective.extract_variables()
     compiled = compile_multitarget(gate=objective)
@@ -217,12 +217,12 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,
             mapping={0:{v:__grad_inner(arg,v) for v in vars}}
         else:
             ### if the arg is an expectationvalue, we need to build some qngs and mappings!
-            blocks=qng_metric_tensor_blocks(arg,initial_values=initial_values,samples=samples,
-                                            backend=backend,noise=noise,backend_options=backend_options)
+            blocks=qng_metric_tensor_blocks(arg,initial_values=initial_values,samples=samples,device=device,
+                                            backend=backend,noise=noise)
             mat=QngMatrix(blocks)
 
-            vec=subvector_procedure(arg,initial_values=initial_values,samples=samples,
-                                    backend=backend,noise=noise,backend_options=backend_options)
+            vec=subvector_procedure(arg,initial_values=initial_values,samples=samples,device=device,
+                                    backend=backend,noise=noise)
 
             mapping={}
             self_pars=get_self_pars(arg.U)
@@ -231,8 +231,8 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,
                 for v in p.extract_variables():
                     gi=__grad_inner(p,v)
                     if isinstance(gi,Objective):
-                        g=compile_objective(gi, variables=initial_values, samples=samples,
-                                            backend=backend, noise=noise,backend_options=backend_options)
+                        g=compile_objective(gi, variables=initial_values, samples=samples,device=device,
+                                            backend=backend, noise=noise)
                     else:
                         g=gi
                     indict[v]=g
@@ -241,8 +241,8 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,
         posarg = jax.grad(compiled.transformation, argnums=i)
         p = Objective(compiled.args, transformation=posarg)
 
-        pos = compile_objective(p, variables=initial_values, samples=samples,
-                                backend=backend, noise=noise,backend_options=backend_options)
+        pos = compile_objective(p, variables=initial_values, samples=samples,device=device,
+                                backend=backend, noise=noise)
         combos.append(qng_dict(arg, mat, vec, mapping, pos))
     return combos
 
@@ -259,7 +259,9 @@ def evaluate_qng(combos,variables,samples=None):
         for i,val in enumerate(ev):
             maps=m[i]
             for k in maps.keys():
-                gd[k] += val*maps[k]*pos(variables=variables,samples=samples)
+                f=val*maps[k](variables=variables,samples=samples)
+                p=pos(variables=variables,samples=samples)
+                gd[k] += f*p
 
     out=[v for v in gd.values()]
     return out
