@@ -181,61 +181,6 @@ class TequilaPyquilException(TequilaException):
     def __str__(self):
         return "simulator_pyquil: " + self.message
 
-def check_pyquil_device(device):
-    if isinstance(device,str):
-        d=device
-        if '-qvm' in device.lower():
-            d=device[:-4]
-        if d in pyquil.list_quantum_computers():
-            return
-        else:
-            try:
-                get_qc(d)
-                return
-            except:
-                try:
-                    get_qc(d,as_qvm=True)
-                    return
-                except:
-                    raise TequilaException('could not obtain device from string!')
-
-    elif isinstance(device,dict):
-        try:
-            get_qc(**device)
-            return
-        except:
-            raise TequilaException('could not initialize device from dict!')
-    elif isinstance(device, pyquil.api.QuantumComputer):
-            return
-
-    elif device is None:
-        return
-    else:
-        raise TequilaException('Uninterpretable object type passed to check_pyquil_device!')
-
-def retrieve_pyquil_device(device,use_device_noise=False):
-    if isinstance(device,str):
-        try:
-            back=get_qc(device,noisy=use_device_noise)
-            print(back)
-            return back
-        except:
-            try:
-                back= get_qc(device,as_qvm=True,noisy=use_device_noise)
-                return back
-            except:
-                raise TequilaException('could not initialize device from string!')
-    elif isinstance(device,pyquil.api.QuantumComputer):
-        return device
-    elif isinstance(device,dict):
-        try:
-            return get_qc(**device)
-        except:
-            raise TequilaException('could not initialize device from dict!')
-    elif device is None:
-        return None
-    else:
-        raise TequilaException('Uninterpretable object type passed to get_pyquil_device!')
 
 class BackendCircuitPyquil(BackendCircuit):
 
@@ -277,7 +222,7 @@ class BackendCircuitPyquil(BackendCircuit):
         self.counter = 0
         if device is not None:
             self.compiler_arguments['cc_max'] = True
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise,
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device,
                          use_mapping=use_mapping, *args, **kwargs)
         if self.noise is not None:
             self.noise_lookup = {
@@ -290,22 +235,13 @@ class BackendCircuitPyquil(BackendCircuit):
             }
 
             if isinstance(self.noise,str):
-                if device is not None:
-                    if self.noise == 'device':
-                        self.device=retrieve_pyquil_device(device,True)
-                    else:
-                        raise TequilaException('noise was a string, but was not the string device. Not allowed!')
+                if self.noise == 'device':
+                    pass
                 else:
-                    raise TequilaException('noise was a string, but no device provided'
-                                        )
+                    raise TequilaException('noise was a string: {}, which is not \'device\'. This is not allowed!'.format(self.noise))
+
             else:
-                self.device = retrieve_pyquil_device(device, False)
                 self.circuit = self.build_noisy_circuit(self.circuit, self.noise)
-        else:
-            if device is not None:
-                self.device=retrieve_pyquil_device(device,False)
-            else:
-                self.device = None
 
         if len(self.match_par_to_dummy.keys()) is None:
             self.match_dummy_to_value = None
@@ -460,6 +396,63 @@ class BackendCircuitPyquil(BackendCircuit):
         else:
             self.resolver = None
 
+    def check_device(self,device):
+        if device is None:
+            return
+        if isinstance(device, str):
+            d = device
+            if '-qvm' in d.lower():
+                d = d[:-4]
+            if '-noisy' in d.lower():
+                d = d[:-6]
+            if d in pyquil.list_quantum_computers():
+                return
+            else:
+                try:
+                    get_qc(d)
+                    return
+                except:
+                    try:
+                        get_qc(d, as_qvm=True)
+                        return
+                    except:
+                        raise TequilaException('could not obtain device from string; received {}'.format(device))
+
+        elif isinstance(device, dict):
+            try:
+                get_qc(**device)
+                return
+            except:
+                raise TequilaException('could not initialize device from dict; received {}'.format(device))
+        elif isinstance(device, pyquil.api.QuantumComputer):
+            return
+
+        else:
+            raise TequilaException('Uninterpretable object {} of type {} passed to check_device!'.format(device,type(device)))
+
+    def retrieve_device(self,device):
+        use_device_noise = (self.noise == 'device')
+        if device is None:
+            return None
+        if isinstance(device, str):
+            try:
+                back = get_qc(device, noisy=use_device_noise)
+                return back
+            except:
+                try:
+                    back = get_qc(device, as_qvm=True, noisy=use_device_noise)
+                    return back
+                except:
+                    raise TequilaException('could not obtain device from string; received {}'.format(device))
+        elif isinstance(device, pyquil.api.QuantumComputer):
+            return device
+        elif isinstance(device, dict):
+            try:
+                return get_qc(**device)
+            except:
+                raise TequilaException('could not initialize device from dict; received {}'.format(device))
+        else:
+            raise TequilaException('Uninterpretable object {} of type {} passed to check_device!'.format(device,type(device)))
 
 class BackendExpectationValuePyquil(BackendExpectationValue):
     BackendCircuitType = BackendCircuitPyquil

@@ -143,6 +143,14 @@ class OptimizerGD(Optimizer):
     def prepare(self, objective, initial_values=None, variables=None, gradient=None):
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         comp = self.compile_objective(objective=objective)
+        for arg in comp.args:
+            if hasattr(arg,'U'):
+                if arg.U.device is not None:
+                    # don't retrieve computer 100 times; pyquil errors out if this happens!
+                    self.device = arg.U.device
+                    break
+
+
         compile_gradient = True
 
         dE = None

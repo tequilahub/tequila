@@ -9,14 +9,12 @@ from tequila.simulators.simulator_base import BackendCircuit, BackendExpectation
 from tequila.circuit.noise import NoiseModel
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTS_DEVICES = ['qiskit','pyquil','cirq']
 SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil', 'qulacs']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
 HAS_QULACS = True
 INSTALLED_NOISE_SAMPLERS = {}
-INSTALLED_DEVICE_SAMPLERS = {}
 if typing.TYPE_CHECKING:
     from tequila.objective import Objective, Variable
     from tequila.circuit.gates import QCircuit
@@ -25,24 +23,23 @@ if typing.TYPE_CHECKING:
 
 """
 Check which simulators are installed
-We are distinguishing two classes of simulators: Samplers and full wavefunction simuators
+We are distinguishing two classes of simulators: Samplers and full wavefunction simulators
 """
 
 
 HAS_QISKIT = True
 try:
-    from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit, check_qiskit_device,retrieve_qiskit_device
+    from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit
     HAS_QISKIT = True
     INSTALLED_SIMULATORS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
     INSTALLED_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
     INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
-    INSTALLED_DEVICE_SAMPLERS['qiskit'] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
 except ImportError:
     HAS_QISKIT = False
 
 HAS_CIRQ = True
 try:
-    from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq, check_cirq_device,retrieve_cirq_device
+    from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq
 
     HAS_CIRQ = True
     INSTALLED_SIMULATORS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
@@ -50,7 +47,6 @@ try:
     INSTALLED_NOISE_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq,
                                                     ExpValueType=BackendExpectationValueCirq)
 
-    INSTALLED_DEVICE_SAMPLERS['cirq'] = BackendTypes(BackendCircuitCirq, BackendExpectationValueCirq)
 except ImportError:
     HAS_CIRQ = False
 
@@ -71,13 +67,12 @@ except ImportError:
 HAS_PYQUIL = True
 
 try:
-    from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil, check_pyquil_device,retrieve_pyquil_device
+    from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil
 
     HAS_PYQUIL = True
     INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
     INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
     INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
-    INSTALLED_DEVICE_SAMPLERS['pyquil'] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
 except ImportError:
     HAS_PYQUIL = False
 
@@ -90,14 +85,13 @@ HAS_SYMBOLIC = True
 
 def show_available_simulators():
     """ """
-    print("{:15} | {:10} | {:10} | {:10} | {:10} | {:10}".format("backend", "wfn", "sampling", "noise", 'devices', "installed"))
+    print("{:15} | {:10} | {:10} | {:10} | {:10}".format("backend", "wfn", "sampling", "noise", "installed"))
     print("--------------------------------------------------------------------")
     for k in SUPPORTED_BACKENDS:
-        print("{:15} | {:10} | {:10} | {:10} | {:10} | {:10}".format(k,
+        print("{:15} | {:10} | {:10} | {:10} | {:10}".format(k,
                                                              str(k in INSTALLED_SIMULATORS),
                                                              str(k in INSTALLED_SAMPLERS),
                                                              str(k in INSTALLED_NOISE_SAMPLERS),
-                                                             str(k in INSTALLED_DEVICE_SAMPLERS),
                                                              str(k in INSTALLED_BACKENDS)))
 
 
@@ -159,12 +153,10 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
                 backend = state.choice(list(INSTALLED_SIMULATORS.keys()), 1)[0]
         return backend
 
-    if backend is not None:
-        if device is not None:
-            if samples is not None:
-                check_device_validity(device,backend)
-            else:
-                raise TequilaException('choosing a device requires non-zero samples!')
+    if device is not None and samples is None:
+        raise TequilaException('Use of a device requires sampling!')
+    if noise == 'device' and device is None:
+        raise TequilaException('Use of device noise requires a device!')
 
     if backend not in SUPPORTED_BACKENDS:
         raise TequilaException("Backend {backend} not supported ".format(backend=backend))
@@ -178,32 +170,6 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
             "Backend {backend} not installed or else Noise has not been implemented".format(backend=backend))
 
     return backend
-
-def check_device_validity(device,backend):
-    if device is None:
-        return
-    if backend not in INSTALLED_DEVICE_SAMPLERS.keys():
-        raise TequilaException('Chosen backend {backend} does not support devices!'.format(backend=backend))
-    if backend == 'pyquil':
-        check_pyquil_device(device)
-    elif backend == 'qiskit':
-        check_qiskit_device(device)
-    elif backend == 'cirq':
-        check_cirq_device(device)
-
-def retrieve_device(device,backend,use_device_noise=False):
-    print('retrieve device called on ', device)
-    if backend not in INSTALLED_DEVICE_SAMPLERS.keys():
-        raise TequilaException('Chosen backend {backend} does not support devices!'.format(backend=backend))
-    if backend == 'pyquil':
-        return retrieve_pyquil_device(device,use_device_noise)
-    elif backend == 'qiskit':
-        return retrieve_qiskit_device(device)
-    elif backend == 'cirq':
-        return retrieve_cirq_device(device)
-    else:
-        raise TequilaException('could not retrieve requested device!')
-
 
 def compile_objective(objective: 'Objective',
                       variables: typing.Dict['Variable', 'RealNumber'] = None,

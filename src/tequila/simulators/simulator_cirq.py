@@ -9,26 +9,10 @@ import typing, numbers
 
 import cirq
 
-cirq_devices = {'foxtail':cirq.google.Foxtail,
-                'sycamore':cirq.google.Sycamore,
-                'sycamore23':cirq.google.Sycamore23,
-                'bristlecone':cirq.google.Bristlecone
-               }
-
 map_1 = lambda x: {'exponent':x}
 map_2 = lambda x: {'exponent':x/np.pi,'global_shift':-0.5}
 
-def check_cirq_device(device):
-    if device is None:
-        return
-    if isinstance(device,cirq.Device):
-        return
-    else:
-        assert isinstance(device,str)
-        if device.lower() in ['foxtail','sycamore','sycamore23','bristlecone']:
-            pass
-        else:
-            raise TequilaException('requested device {} could not be found!'.format(device))
+
 
 
 def qubit_satisfier(op,level):
@@ -81,17 +65,16 @@ class BackendCircuitCirq(BackendCircuit):
         self.counter=0
         if device is not None:
             self.compiler_arguments['cc_max']=True
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, use_mapping=use_mapping, *args, **kwargs)
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables,
+                         noise=noise, use_mapping=use_mapping,device=device, *args, **kwargs)
         if len(self.tq_to_sympy.keys()) is None:
             self.sympy_to_tq = None
             self.resolver=None
         else:
             self.sympy_to_tq = {v: k for k, v in self.tq_to_sympy.items()}
             self.resolver = cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
-        if device is not None:
-            check_cirq_device(device)
-            self.device = device
-            self.circuit = self.build_device_circuit(device)
+        if self.device is not None:
+            self.circuit = self.build_device_circuit()
         if self.noise is not None:
             if self.noise == 'device':
                 raise TequilaException('cannot get device noise for cirq yet, sorry!')
@@ -163,36 +146,53 @@ class BackendCircuitCirq(BackendCircuit):
     def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
         return {q: cirq.LineQubit(i) for i,q in enumerate(qubits)}
 
-    def build_device_circuit(self,device):
+    def build_device_circuit(self, ignore_failures=False):
         c = self.circuit
-        if isinstance(device,str):
-            d = cirq_devices[device.lower()]
-            return self.build_device_circuit(d)
-        else:
-            if isinstance(device,cirq.Device):
-                d=device
-                if d in cirq_devices.values():
-                    line = cirq.google.line_on_device(d, length=len(self.abstract_circuit.qubits))
-                    for k in self.qubit_map.keys():
-                        self.qubit_map[k] = line[self.qubit_map[k].x]
-                    if d is cirq.google.Sycamore or d is cirq.google.Sycamore23:
-                        circuit = cirq.google.optimized_for_sycamore(circuit=c, new_device=d,
-                                                                     qubit_map=lambda q: line[q.x])
-                    else:
-                        circuit = cirq.google.optimized_for_xmon(circuit=c, new_device=d,
-                                                                 qubit_map=lambda q: line[q.x])
+        device = self.device
+        line = None
+        circuit = None
+        if isinstance(device,cirq.Device):
+            if isinstance(device,cirq.google.devices.XmonDevice) or isinstance(device,cirq.google.devices.serializable_device.SerializableDevice):
+                options = ['xmon', 'xmon_partial_cz','sqrt_iswap','sycamore']
+                if device in [cirq.google.Sycamore,cirq.google.Sycamore23]:
+                    options = ['sycamore','sqrt_iswap','xmon','xmon_partial_cz']
+                for option in options:
+                    try:
+                        line = cirq.google.line_on_device(device, length=len(self.abstract_circuit.qubits))
 
-                else:
-
-                    if isinstance(d,cirq.NeutralAtomDevice):
-                        raise TequilaException('sorry, NeutralAtoms Not Working!')
-                    elif isinstance(d,cirq.IonDevice):
-                        raise TequilaException('sorry,Ions not working well')
-                    else:
-                        raise TequilaException('sorry, I have not idea what to do with this device.')
+                        circuit = cirq.google.optimized_for_sycamore(circuit=c, new_device=device,optimizer_type=option,
+                                                             qubit_map=lambda q: line[q.x])
+                    except:
+                        line = None
+                        pass
+                if circuit is None:
+                    print(device)
+                    raise TequilaException('could not optimize for the device above')
+            ### under construction
             else:
-                raise TequilaException('build_device_circuit demands a cirq.Device object')
-        self.device=d
+                '''
+                if isinstance(device,cirq.NeutralAtomDevice):
+                    line = cirq.google.line_on_device(device, length=len(self.abstract_circuit.qubits))
+                    circuit = cirq.ConvertToNeutralAtomGates(ignore_failures=ignore_failures)(c)
+                elif isinstance(device,cirq.IonDevice):
+                    circuit = cirq.ConvertToIonGates(ignore_failures=ignore_failures)(c)
+                else:
+                    raise TequilaException('sorry, I have not idea what to do with this device.')
+                if circuit is None:
+                    if ignore_failures is False:
+                        print('could not optimize circuit for device ', device, '; will ignore failures this time.')
+                        return self.build_device_circuit(ignore_failures=True)
+                    else:
+                        print(device)
+                        raise TequilaException('could not optimize for above device')
+                '''
+                raise TequilaException('Only known and Xmon devices currently functional. Sorry!')
+        else:
+            raise TequilaException('build_device_circuit demands a cirq.Device object; received {}, of type {}'.format(str(device),type(device)))
+
+        if line is not None:
+            for k in self.qubit_map.keys():
+                self.qubit_map[k] = line[self.qubit_map[k].x]
         return circuit
 
     def build_noisy_circuit(self,noise):
@@ -214,14 +214,28 @@ class BackendCircuitCirq(BackendCircuit):
         else:
             self.resolver=None
 
-def retrieve_cirq_device(device):
-    if isinstance(device,str):
-        return cirq_devices[device.lower()]
-    else:
-        if isinstance(device, cirq.Device):
-            return device
+    def retrieve_device(self,device):
+        if isinstance(device,str):
+            return getattr(cirq.google,device)
         else:
-            raise TequilaException('no clue what to do with what you gave me!')
+            if device is None:
+                return device
+            if isinstance(device, cirq.Device):
+                return device
+            else:
+                raise TequilaException('Unable to retrieve requested device, {}, in cirq'.format(str(device)))
+
+    def check_device(self,device):
+        if device is None:
+            return
+        if isinstance(device, cirq.Device):
+            return
+        else:
+            assert isinstance(device, str)
+            if device.lower() in ['foxtail', 'sycamore', 'sycamore23', 'bristlecone']:
+                pass
+            else:
+                raise TequilaException('requested device {} could not be found!'.format(device))
 
 
 class BackendExpectationValueCirq(BackendExpectationValue):
