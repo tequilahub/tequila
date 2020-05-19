@@ -54,7 +54,7 @@ class BackendCircuit():
     def qubits(self) -> typing.Iterable[numbers.Integral]:
         return tuple(self._qubits)
 
-    def __init__(self, abstract_circuit: QCircuit, variables, noise=None,
+    def __init__(self, abstract_circuit: QCircuit, variables, noise=None,device=None,
                  use_mapping=True, optimize_circuit=True, *args, **kwargs):
         self._variables = tuple(abstract_circuit.extract_variables())
         self.use_mapping = use_mapping
@@ -87,6 +87,9 @@ class BackendCircuit():
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
         self.noise = noise
+
+        self.check_device(device)
+        self.device = self.retrieve_device(device)
 
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
@@ -123,6 +126,16 @@ class BackendCircuit():
                 else:
                     self.add_measurement(g, result, *args, **kwargs)
         return result
+
+    def check_device(self,device):
+        if device is not None:
+            TequilaException('Devices not enabled for {}'.format(str(type(self))))
+
+    def retrieve_device(self,device):
+        if device is None:
+            return device
+        else:
+            TequilaException('Devices not enabled for {}'.format(str(type(self))))
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
         TequilaException("Backend Handler needs to be overwritten for supported simulators")

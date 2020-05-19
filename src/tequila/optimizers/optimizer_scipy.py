@@ -122,6 +122,13 @@ class OptimizerSciPy(Optimizer):
 
         # do the compilation here to avoid costly recompilation during the optimization
         compiled_objective = self.compile_objective(objective=objective)
+        for arg in compiled_objective.args:
+            if hasattr(arg,'U'):
+                if arg.U.device is not None:
+                    # don't retrieve computer 100 times; pyquil errors out if this happens!
+                    self.device = arg.U.device
+                    break
+
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
                            samples=self.samples,

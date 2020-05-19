@@ -26,11 +26,16 @@ class QngMatrix:
     def __call__(self, variables,samples=None):
         output= numpy.zeros(self.dim)
         d_v = 0
+        ### blocks are square, so if we are using a block diagonal approx, we need to
+        ### displace our running index of position, as we enumerate through a block
+        ### d_v does this. If you only provide one block (the whole QGT), this won't matter
         for block in self.blocks:
+
             d_v_temp = 0
             for i, row in enumerate(block):
                 for j, term in enumerate(row):
                     if i <= j:
+                        ### if its an objective, call it. Else, it is a float.
                         try:
                             output[i + d_v][j + d_v] = term(variables=variables,samples=samples)
                         except:
@@ -76,33 +81,43 @@ def get_generator(gate):
     return gen
 
 
-def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,device=None,
+def stokes_block(expectation,initial_values=None,samples=None,device=None,
                              backend=None,noise=None):
 
 
     U=expectation.U
+    ### orders the circuit into alternating layer ansatz, where a moment is all simultaneous gates
     moments=U.canonical_moments
+    ### rebuild the sub circuits used in the expectation values that populate the QGT
     sub=[QCircuit.from_moments(moments[:i]) for i in range(1,len(moments),2)]
+    ### this is the list of just the moments which are parametrized.
     parametric_moms=[moments[i] for i in range(1,len(moments)+1,2)]
     generators =[]
+    ### generators is a list of lists, ultimately, where each sublist is all the generators in order
+    ### for a given parametric layer (if said layer is occupied, which it might not be! a layer can be nothing, I.E, the identity.)
     for pm in parametric_moms:
         set=[]
         if len(pm.gates) !=0:
             for gate in pm.gates:
+                ### get_generator takes a gaussian gate, and returns the pauli that is its generator. See that function for detail.
                 gen=get_generator(gate)
                 set.append(gen)
         if len(set) !=0:
             generators.append(set)
         else:
+            ### blank sets get passed over
             generators.append(None)
     blocks=[]
     for i,set in enumerate(generators):
         if set is None:
             pass
         else:
+            ### a block is a list of lists, and indexing it should correspond to indexing a matrix in A[row][column] fashion.
+            ### alternate functions could have the whole QGT be a single block, but you need to have as a return a List of (List of Lists)!!!!
             block=[[0 for _ in range(len(set))] for _ in range(len(set))]
             for k,gen1 in enumerate(set):
                 for q,gen2 in enumerate(set):
+                    ### make sure you compile the objectives! otherwise this bad boy will not run
                     if k == q:
                         arg= (ExpectationValue(U=sub[i], H=gen1 * gen1) - ExpectationValue(U=sub[i],H=gen1)**2)/4
                     else:
@@ -155,6 +170,9 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian):
     :return: a list of objectives; the gradient of the Exp. with respect to each of its (internal) parameters
     '''
 
+    ### unlike grad_gaussian, this doesn't dig below, into a gate's underlying parametrization.
+    ### In other words, if a gate is Rx(y), y=f(x), this gives you back d Rx / dy.
+
     if not hasattr(g, "shift"):
         raise TequilaException("No shift found for gate {}".format(g))
 
@@ -200,9 +218,9 @@ def get_self_pars(U):
 def qng_dict(argument,matrix,subvector,mapping,positional):
     return {'arg':argument,'matrix':matrix,'vector':subvector,'mapping':mapping,'positional':positional}
 
-def get_qng_combos(objective,initial_values=None,samples=None,backend=None,device=None,noise=None):
+def get_qng_combos(objective,func=stokes_block,initial_values=None,samples=None,backend=None,device=None,noise=None):
     combos=[]
-    vars=objective.extract_variables()
+    vars = objective.extract_variables()
     compiled = compile_multitarget(gate=objective)
     compiled = compile_trotterized_gate(gate=compiled)
     compiled = compile_h_power(gate=compiled)
@@ -217,7 +235,7 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,devic
             mapping={0:{v:__grad_inner(arg,v) for v in vars}}
         else:
             ### if the arg is an expectationvalue, we need to build some qngs and mappings!
-            blocks=qng_metric_tensor_blocks(arg,initial_values=initial_values,samples=samples,device=device,
+            blocks=func(arg,initial_values=initial_values,samples=samples,device=device,
                                             backend=backend,noise=noise)
             mat=QngMatrix(blocks)
 

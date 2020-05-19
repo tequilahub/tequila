@@ -143,6 +143,14 @@ class OptimizerGD(Optimizer):
     def prepare(self, objective, initial_values=None, variables=None, gradient=None):
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         comp = self.compile_objective(objective=objective)
+        for arg in comp.args:
+            if hasattr(arg,'U'):
+                if arg.U.device is not None:
+                    # don't retrieve computer 100 times; pyquil errors out if this happens!
+                    self.device = arg.U.device
+                    break
+
+
         compile_gradient = True
 
         dE = None
@@ -150,13 +158,27 @@ class OptimizerGD(Optimizer):
             if gradient.lower() == 'qng':
                 compile_gradient = False
 
-                combos = get_qng_combos(objective, initial_values=initial_values, backend=self.backend,
+                combos = get_qng_combos(objective,initial_values=initial_values, backend=self.backend,
                                         device=self.device,
                                         samples=self.samples, noise=self.noise,
                                         )
                 dE = QNGVector(combos)
             else:
                 gradient = {"method": gradient, "stepsize": 1.e-4}
+        elif isinstance(gradient,dict):
+            if gradient['method'] == 'qng':
+                if 'function' in gradient.keys():
+                    compile_gradient = False
+
+                    combos = get_qng_combos(objective, func=gradient['function'], initial_values=initial_values,
+                                            backend=self.backend,
+                                            device=self.device,
+                                            samples=self.samples, noise=self.noise,
+                                            )
+                    dE = QNGVector(combos)
+                else:
+                    raise TequilaException('if you are using the qng dict initialization, please provide a function for calculating the QGT, using key \'function\'.')
+
 
         if compile_gradient:
             grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)

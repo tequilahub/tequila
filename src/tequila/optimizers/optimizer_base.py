@@ -5,7 +5,7 @@ Suggestion, feel free to propose new things/changes
 import typing, numbers, copy
 
 from tequila.utils.exceptions import TequilaException
-from tequila.simulators.simulator_api import compile, pick_backend, retrieve_device
+from tequila.simulators.simulator_api import compile, pick_backend
 from tequila.objective import Objective
 from tequila.circuit.gradient import grad
 from dataclasses import dataclass, field
@@ -209,16 +209,13 @@ class Optimizer:
             self.history = None
 
         self.noise = noise
-        if device is not None:
-            self.device = retrieve_device(device,self.backend,noise == 'device')
-        else:
-            self.device = None
+        self.device = device
 
     def reset_history(self):
         self.history = OptimizerHistory()
 
     def __call__(self, objective: Objective,
-                 variabeles: typing.List[Variable],
+                 variables: typing.List[Variable],
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  *args,
                  **kwargs) -> typing.Tuple[
