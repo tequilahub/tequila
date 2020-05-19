@@ -5,7 +5,7 @@ Suggestion, feel free to propose new things/changes
 import typing, numbers, copy
 
 from tequila.utils.exceptions import TequilaException
-from tequila.simulators.simulator_api import compile, pick_backend
+from tequila.simulators.simulator_api import compile, pick_backend, retrieve_device
 from tequila.objective import Objective
 from tequila.circuit.gradient import grad
 from dataclasses import dataclass, field
@@ -161,39 +161,27 @@ class Optimizer:
     """
 
     def __init__(self, backend: str = None,
-                 backend_options: dict = None,
                  maxiter: int = None,
                  samples: int = None,
+                 device: str= None,
                  noise=None,
                  save_history: bool = True,
                  silent: typing.Union[bool, int] = False,
                  print_level: int = 99, *args, **kwargs):
         """
         :param backend: The quantum backend to use (None means autopick)
-        :param backend_options: backend specific options can also be passed as keywords with `backend_optionname=...`
         :param maxiter: Maximum number of iterations
         :param samples: Number of Samples for the Quantum Backend takes (None means full wavefunction simulation)
+
         :param print_level: Allow customization in derived classes, is set to 0 if silent==True
         :param save_history: Save the optimization history in self.history
         :silent: Silence printout
         """
 
         if backend is None:
-            self.backend = pick_backend(backend, samples=samples, noise=noise)
+            self.backend = pick_backend(backend, samples=samples, noise=noise,device=device)
         else:
             self.backend = backend
-
-        self.backend_options = {}
-        if backend_options is not None:
-            self.backend_options = backend_options
-
-        if backend is not None:
-            for k, v in kwargs.items():
-                # detect if backend specific options where passed
-                # as keyworks
-                # like e.g. `qiskit_backend=...'
-                if self.backend.lower() in k:
-                    self.backend_options[k] = v
 
         if maxiter is None:
             self.maxiter = 100
@@ -221,6 +209,10 @@ class Optimizer:
             self.history = None
 
         self.noise = noise
+        if device is not None:
+            self.device = retrieve_device(device,self.backend,noise == 'device')
+        else:
+            self.device = None
 
     def reset_history(self):
         self.history = OptimizerHistory()
@@ -269,10 +261,11 @@ class Optimizer:
         return active_angles, passive_angles, variables
 
     def compile_objective(self, objective: Objective, *args, **kwargs):
+
         return compile(objective=objective,
                        samples=self.samples,
                        backend=self.backend,
-                       backend_options=self.backend_options,
+                       device=self.device,
                        noise=self.noise,
                        *args, **kwargs)
 
@@ -346,7 +339,6 @@ class Optimizer:
     def __repr__(self):
         infostring = "Optimizer: {} \n".format(str(type(self)))
         infostring += "{:15} : {}\n".format("backend", self.backend)
-        infostring += "{:15} : {}\n".format("backend_options", self.backend_options)
         infostring += "{:15} : {}\n".format("samples", self.samples)
         infostring += "{:15} : {}\n".format("save_history", self.save_history)
         infostring += "{:15} : {}\n".format("noise", self.noise)

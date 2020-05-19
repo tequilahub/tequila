@@ -9,12 +9,14 @@ from tequila.simulators.simulator_base import BackendCircuit, BackendExpectation
 from tequila.circuit.noise import NoiseModel
 
 SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
+SUPPORTS_DEVICES = ['qiskit','pyquil','cirq']
 SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil', 'qulacs']
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
 HAS_QULACS = True
 INSTALLED_NOISE_SAMPLERS = {}
+INSTALLED_DEVICE_SAMPLERS = {}
 if typing.TYPE_CHECKING:
     from tequila.objective import Objective, Variable
     from tequila.circuit.gates import QCircuit
@@ -26,26 +28,29 @@ Check which simulators are installed
 We are distinguishing two classes of simulators: Samplers and full wavefunction simuators
 """
 
+
 HAS_QISKIT = True
 try:
-    from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit
-
+    from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit, check_qiskit_device,retrieve_qiskit_device
     HAS_QISKIT = True
     INSTALLED_SIMULATORS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
     INSTALLED_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
     INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
+    INSTALLED_DEVICE_SAMPLERS['qiskit'] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
 except ImportError:
     HAS_QISKIT = False
 
 HAS_CIRQ = True
 try:
-    from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq
+    from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq, check_cirq_device,retrieve_cirq_device
 
     HAS_CIRQ = True
     INSTALLED_SIMULATORS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
     INSTALLED_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
     INSTALLED_NOISE_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq,
                                                     ExpValueType=BackendExpectationValueCirq)
+
+    INSTALLED_DEVICE_SAMPLERS['cirq'] = BackendTypes(BackendCircuitCirq, BackendExpectationValueCirq)
 except ImportError:
     HAS_CIRQ = False
 
@@ -64,15 +69,15 @@ except ImportError:
     HAS_QULACS = False
 
 HAS_PYQUIL = True
-from shutil import which
 
 try:
-    from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil
+    from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil, check_pyquil_device,retrieve_pyquil_device
 
     HAS_PYQUIL = True
     INSTALLED_SIMULATORS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
     INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
     INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
+    INSTALLED_DEVICE_SAMPLERS['pyquil'] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
 except ImportError:
     HAS_PYQUIL = False
 
@@ -85,19 +90,21 @@ HAS_SYMBOLIC = True
 
 def show_available_simulators():
     """ """
-    print("{:15} | {:10} | {:10} | {:10} | {:10}".format("backend", "wfn", "sampling", "noise", "installed"))
+    print("{:15} | {:10} | {:10} | {:10} | {:10} | {:10}".format("backend", "wfn", "sampling", "noise", 'devices', "installed"))
     print("--------------------------------------------------------------------")
     for k in SUPPORTED_BACKENDS:
-        print("{:15} | {:10} | {:10} | {:10} | {:10}".format(k,
+        print("{:15} | {:10} | {:10} | {:10} | {:10} | {:10}".format(k,
                                                              str(k in INSTALLED_SIMULATORS),
                                                              str(k in INSTALLED_SAMPLERS),
                                                              str(k in INSTALLED_NOISE_SAMPLERS),
+                                                             str(k in INSTALLED_DEVICE_SAMPLERS),
                                                              str(k in INSTALLED_BACKENDS)))
 
 
-def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = None,
+def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = None, device: str = None,
                  exclude_symbolic: bool = True) -> str:
     """
+    TODO: break this up into smaller functions!
     verifies if the backend is installed and picks one automatically if set to None
     :param backend: the demanded backend
     :param samples: if not None the simulator needs to be able to sample wavefunctions
@@ -105,9 +112,11 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
     :param exclude_symbolic: only for random choice
     :return: An installed backend as string
     """
-
     if len(INSTALLED_SIMULATORS) == 0:
         raise TequilaException("No simulators installed on your system")
+
+    if backend is None and device is not None:
+        raise TequilaException('device use requires backend specification!')
 
     if backend is None:
         if noise is None:
@@ -116,22 +125,27 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
                     if f in INSTALLED_SIMULATORS:
                         return f
             else:
-                ### qulacs sampling is awful. Rearranged to prefer qiskit or cirq when sampling over qulacs
                 for f in INSTALLED_SAMPLERS.keys():
                     return f
         else:
+            if samples is None:
+                raise TequilaException(
+                    "Noise requires sampling; please provide a positive, integer value for samples")
             for f in SUPPORTED_NOISE_BACKENDS:
-                if samples is None:
-                    raise TequilaException(
-                        "Noise requires sampling; please provide a positive, integer value for samples")
+                if noise == 'device':
+                    raise TequilaException('device noise requires a device, which requires a named backend!')
                 else:
-                    if f in INSTALLED_NOISE_SAMPLERS:
-                        return f
+                    return f
+            raise TequilaException(
+                            'Could not find any installed sampler!')
+
 
     if hasattr(backend, "lower"):
         backend = backend.lower()
 
     if backend == "random":
+        if device is not None:
+            raise TequilaException('cannot ask for a random backend and a specific device!')
         from numpy import random as random
         import time
         state = random.RandomState(int(str(time.process_time()).split('.')[-1]) % 2 ** 32)
@@ -145,24 +159,57 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
                 backend = state.choice(list(INSTALLED_SIMULATORS.keys()), 1)[0]
         return backend
 
+    if backend is not None:
+        if device is not None:
+            if samples is not None:
+                check_device_validity(device,backend)
+            else:
+                raise TequilaException('choosing a device requires non-zero samples!')
+
     if backend not in SUPPORTED_BACKENDS:
         raise TequilaException("Backend {backend} not supported ".format(backend=backend))
 
-    if noise is False and samples is None and backend not in INSTALLED_SIMULATORS:
+    elif noise is False and samples is None and backend not in INSTALLED_SIMULATORS.keys():
         raise TequilaException("Backend {backend} not installed ".format(backend=backend))
-    elif noise is False and samples is not None and backend not in INSTALLED_SAMPLERS:
-        raise TequilaException("Backend {backend} not installed ".format(backend=backend))
-    elif noise is not False and samples is not None and backend not in INSTALLED_NOISE_SAMPLERS:
+    elif noise is False and samples is not None and backend not in INSTALLED_SAMPLERS.keys():
+        raise TequilaException("Backend {backend} not installed or sampling not supported".format(backend=backend))
+    elif noise is not False and samples is not None and backend not in INSTALLED_NOISE_SAMPLERS.keys():
         raise TequilaException(
             "Backend {backend} not installed or else Noise has not been implemented".format(backend=backend))
 
     return backend
+
+def check_device_validity(device,backend):
+    if device is None:
+        return
+    if backend not in INSTALLED_DEVICE_SAMPLERS.keys():
+        raise TequilaException('Chosen backend {backend} does not support devices!'.format(backend=backend))
+    if backend == 'pyquil':
+        check_pyquil_device(device)
+    elif backend == 'qiskit':
+        check_qiskit_device(device)
+    elif backend == 'cirq':
+        check_cirq_device(device)
+
+def retrieve_device(device,backend,use_device_noise=False):
+    print('retrieve device called on ', device)
+    if backend not in INSTALLED_DEVICE_SAMPLERS.keys():
+        raise TequilaException('Chosen backend {backend} does not support devices!'.format(backend=backend))
+    if backend == 'pyquil':
+        return retrieve_pyquil_device(device,use_device_noise)
+    elif backend == 'qiskit':
+        return retrieve_qiskit_device(device)
+    elif backend == 'cirq':
+        return retrieve_cirq_device(device)
+    else:
+        raise TequilaException('could not retrieve requested device!')
 
 
 def compile_objective(objective: 'Objective',
                       variables: typing.Dict['Variable', 'RealNumber'] = None,
                       backend: str = None,
                       samples: int = None,
+                      device: str = None,
                       noise: NoiseModel = None,
                       *args,
                       **kwargs) -> Objective:
@@ -178,7 +225,7 @@ def compile_objective(objective: 'Objective',
     :return: Compiled Objective
     """
 
-    backend = pick_backend(backend=backend, samples=samples, noise=noise)
+    backend = pick_backend(backend=backend, samples=samples, noise=noise, device=device)
 
     # dummy variables
     if variables is None:
@@ -205,7 +252,7 @@ def compile_objective(objective: 'Objective',
     for arg in objective.args:
         if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
             if arg not in expectationvalues:
-                compiled_expval = ExpValueType(arg, variables, noise)
+                compiled_expval = ExpValueType(arg, variables=variables, noise=noise, device=device)
                 expectationvalues[arg] = compiled_expval
             else:
                 compiled_expval = expectationvalues[arg]
@@ -220,6 +267,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
                     backend: str = None,
                     samples: int = None,
                     noise: NoiseModel = None,
+                    device: str = None,
                     *args,
                     **kwargs) -> BackendCircuit:
     """
@@ -234,7 +282,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     """
 
     CircType = INSTALLED_SIMULATORS[
-        pick_backend(backend=backend, samples=samples, noise=noise)].CircType
+        pick_backend(backend=backend, samples=samples, noise=noise, device=device)].CircType
 
     # dummy variables
     if variables is None:
@@ -249,7 +297,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
         else:
             return abstract_circuit
 
-    return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise)
+    return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device)
 
 
 def simulate(objective: typing.Union['Objective', 'QCircuit'],
@@ -257,6 +305,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
              samples: int = None,
              backend: str = None,
              noise: NoiseModel = None,
+             device: str = None,
              *args,
              **kwargs) -> Union[RealNumber, 'QubitWaveFunction']:
     """Simulate a tequila objective or circuit
@@ -274,7 +323,8 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
         specify the backend or give None for automatic assignment
     noise: NoiseModel :
         specify a noise model to apply to simulation/sampling
-
+    device: str:
+        a string (or iff using cirq, a cirq.Device object) upon which (or in emulation of which) to sample
     *args :
 
     **kwargs :
@@ -295,7 +345,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
                 objective.extract_variables()))
 
     compiled_objective = compile(objective=objective, samples=samples, variables=variables, backend=backend,
-                                 noise=noise, *args, **kwargs)
+                                 noise=noise,device=device, *args, **kwargs)
 
     return compiled_objective(variables=variables, samples=samples, *args, **kwargs)
 
@@ -356,6 +406,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
             samples: int = None,
             backend: str = None,
             noise: NoiseModel = None,
+            device: str = None,
             *args,
             **kwargs) -> typing.Union['BackendCircuit', 'Objective']:
     """Compile a tequila objective or circuit to a backend
@@ -371,9 +422,10 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
         if None a full wavefunction simulation is performed, otherwise a fixed number of samples is simulated
     backend : str : (Default value = None) :
         specify the backend or give None for automatic assignment
-    noise: NoiseModel : (Default value =None) :
+    noise: NoiseModel : (Default value = None) :
         the noise model to apply to the objective or QCircuit.
-
+    device: str: (Default value = None) :
+        a device on which (or in emulation of which) to sample the circuit.
     Returns
     -------
     simulators.BackendCircuit
@@ -381,7 +433,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
 
     """
 
-    backend = pick_backend(backend=backend, noise=noise, samples=samples)
+    backend = pick_backend(backend=backend, noise=noise, samples=samples, device=device)
 
     if variables is None and not (len(objective.extract_variables()) == 0):
         variables = {key: 0.0 for key in objective.extract_variables()}
@@ -390,10 +442,10 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
         variables = {assign_variable(k): v for k, v in variables.items()}
 
     if isinstance(objective, Objective) or hasattr(objective, "args"):
-        return compile_objective(objective=objective, variables=variables, backend=backend, noise=noise)
+        return compile_objective(objective=objective, samples=samples, variables=variables, backend=backend, noise=noise, device=device)
     elif hasattr(objective, "gates") or hasattr(objective, "abstract_circuit"):
-        return compile_circuit(abstract_circuit=objective, variables=variables, backend=backend,
-                               noise=noise, *args, **kwargs)
+        return compile_circuit(abstract_circuit=objective, variables=variables, backend=backend,samples=samples,
+                               noise=noise, device=device, *args, **kwargs)
     else:
         raise TequilaException(
             "Don't know how to compile object of type: {type}, \n{object}".format(type=type(objective),
