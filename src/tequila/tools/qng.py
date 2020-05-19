@@ -259,9 +259,7 @@ def evaluate_qng(combos,variables,samples=None):
         for i,val in enumerate(ev):
             maps=m[i]
             for k in maps.keys():
-                f=val*maps[k](variables=variables,samples=samples)
-                p=pos(variables=variables,samples=samples)
-                gd[k] += f*p
+                gd[k] += (val*maps[k]*pos)(variables=variables,samples=samples)
 
     out=[v for v in gd.values()]
     return out

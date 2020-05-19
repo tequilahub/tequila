@@ -153,7 +153,7 @@ class OptimizerPhoenics(Optimizer):
 
         # avoid multiple compilations
         compiled_objective = compile_objective(objective=objective, backend=self.backend,
-                                               backend_options=self.backend_options,device=self.device,
+                                               device=self.device,
                                                samples=self.samples, noise=self.noise)
 
         if not self.silent:
@@ -165,7 +165,6 @@ class OptimizerPhoenics(Optimizer):
             print("maxiter     : {}".format(maxiter))
             print("variables   : {}".format(objective.extract_variables()))
             print("passive var : {}".format(passive_angles))
-            print("backend options {} ".format(self.backend), self.backend_options)
             print('now lets begin')
         for i in range(0, maxiter):
             with warnings.catch_warnings():
@@ -183,8 +182,7 @@ class OptimizerPhoenics(Optimizer):
 
             start = time.time()
             for j, rec in enumerate(recs):
-                En = compiled_objective(variables=rec, samples=self.samples, noise=self.noise,
-                                        backend_options=self.backend_options)
+                En = compiled_objective(variables=rec, samples=self.samples, noise=self.noise)
                 runs.append((rec, En))
                 if not self.silent:
                     if self.print_level > 2:

@@ -207,6 +207,9 @@ def check_pyquil_device(device):
             raise TequilaException('could not initialize device from dict!')
     elif isinstance(device, pyquil.api.QuantumComputer):
             return
+
+    elif device is None:
+        return
     else:
         raise TequilaException('Uninterpretable object type passed to check_pyquil_device!')
 
@@ -229,7 +232,8 @@ def retrieve_pyquil_device(device,use_device_noise=False):
             return get_qc(**device)
         except:
             raise TequilaException('could not initialize device from dict!')
-
+    elif device is None:
+        return None
     else:
         raise TequilaException('Uninterpretable object type passed to get_pyquil_device!')
 
@@ -287,7 +291,7 @@ class BackendCircuitPyquil(BackendCircuit):
 
             if isinstance(self.noise,str):
                 if device is not None:
-                    if self.noise is 'device':
+                    if self.noise == 'device':
                         self.device=retrieve_pyquil_device(device,True)
                     else:
                         raise TequilaException('noise was a string, but was not the string device. Not allowed!')

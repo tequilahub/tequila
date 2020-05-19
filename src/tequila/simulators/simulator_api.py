@@ -184,22 +184,22 @@ def check_device_validity(device,backend):
         return
     if backend not in INSTALLED_DEVICE_SAMPLERS.keys():
         raise TequilaException('Chosen backend {backend} does not support devices!'.format(backend=backend))
-    if backend is 'pyquil':
+    if backend == 'pyquil':
         check_pyquil_device(device)
-    elif backend is 'qiskit':
+    elif backend == 'qiskit':
         check_qiskit_device(device)
-    elif backend is 'cirq':
+    elif backend == 'cirq':
         check_cirq_device(device)
 
 def retrieve_device(device,backend,use_device_noise=False):
     print('retrieve device called on ', device)
     if backend not in INSTALLED_DEVICE_SAMPLERS.keys():
         raise TequilaException('Chosen backend {backend} does not support devices!'.format(backend=backend))
-    if backend is 'pyquil':
+    if backend == 'pyquil':
         return retrieve_pyquil_device(device,use_device_noise)
-    elif backend is 'qiskit':
+    elif backend == 'qiskit':
         return retrieve_qiskit_device(device)
-    elif backend is 'cirq':
+    elif backend == 'cirq':
         return retrieve_cirq_device(device)
     else:
         raise TequilaException('could not retrieve requested device!')

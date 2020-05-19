@@ -93,7 +93,7 @@ class BackendCircuitCirq(BackendCircuit):
             self.device = device
             self.circuit = self.build_device_circuit(device)
         if self.noise is not None:
-            if self.noise is 'device':
+            if self.noise == 'device':
                 raise TequilaException('cannot get device noise for cirq yet, sorry!')
             self.noise_lookup = {
                 'bit flip': [lambda x: cirq.bit_flip(x)],
