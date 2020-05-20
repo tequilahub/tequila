@@ -1,10 +1,8 @@
-import numpy, typing, numbers, copy
+import numpy, typing, numbers
 from tequila.objective import Objective
-from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
+from tequila.objective.objective import Variable, format_variable_dictionary
 from .optimizer_base import Optimizer
-from tequila.circuit.gradient import grad
 from collections import namedtuple
-from tequila.simulators.simulator_api import compile
 from tequila.circuit.noise import NoiseModel
 from tequila.tools.qng import get_qng_combos, CallableVector, QNGVector
 from tequila.utils import TequilaException

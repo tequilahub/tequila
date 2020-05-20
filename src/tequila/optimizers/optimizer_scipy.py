@@ -39,13 +39,11 @@ class OptimizerSciPy(Optimizer):
         Optimize a circuit to minimize a given objective using scipy
         See the Optimizer class for all other parameters to initialize
         :param method: The scipy method passed as string
-        :param use_gradient: do gradient based optimization
         :param tol: See scipy documentation for the method you picked
         :param method_options: See scipy documentation for the method you picked
         :param method_bounds: See scipy documentation for the method you picked
         :param method_constraints: See scipy documentation for the method you picked
         :param silent: if False the optimizer print out all evaluated energies
-        :param use_gradient: select if gradients shall be used. Can be done automatically for most methods
         """
         super().__init__(**kwargs)
         if hasattr(method, "upper"):
@@ -143,7 +141,19 @@ class OptimizerSciPy(Optimizer):
         ddE = None
         # detect if numerical gradients shall be used
         # switch off compiling if so
-        if isinstance(gradient, str):
+        if isinstance(gradient, dict):
+            if gradient['method'] == 'qng':
+                compile_gradient = False
+                if compile_hessian:
+                    raise TequilaException('Sorry, QNG and hessian not yet tested together.')
+
+                func = gradient['function']
+                combos = get_qng_combos(objective,func=func, initial_values=initial_values, backend=self.backend,
+                                        samples=self.samples, noise=self.noise, device=self.device)
+                dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
+                infostring += "{:15} : QNG {}\n".format("gradient", dE)
+
+        elif isinstance(gradient, str):
             if gradient.lower() == 'qng':
                 compile_gradient = False
                 if compile_hessian:
