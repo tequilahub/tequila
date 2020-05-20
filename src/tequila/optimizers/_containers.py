@@ -14,7 +14,7 @@ class _EvalContainer:
     """
 
     def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True,
-                 print_level: int = 3, backend_options=None):
+                 print_level: int = 3):
         self.objective = objective
         self.samples = samples
         self.param_keys = param_keys
@@ -22,10 +22,6 @@ class _EvalContainer:
         self.save_history = save_history
         self.print_level = print_level
         self.passive_angles = passive_angles
-        if backend_options is None:
-            self.backend_options = {}
-        else:
-            self.backend_options = backend_options
         if save_history:
             self.history = []
             self.history_angles = []
@@ -35,7 +31,7 @@ class _EvalContainer:
         if self.passive_angles is not None:
             angles = {**angles, **self.passive_angles}
         vars = format_variable_dictionary(angles)
-        E = self.objective(variables=vars, samples=self.samples, **self.backend_options)
+        E = self.objective(variables=vars, samples=self.samples)
         if self.print_level > 2:
             print("E={:+2.8f}".format(E), " angles=", angles, " samples=", self.samples)
         elif self.print_level > 1:
@@ -60,7 +56,7 @@ class _GradContainer(_EvalContainer):
         if self.passive_angles is not None:
             variables = {**variables, **self.passive_angles}
         for i in range(self.N):
-            dE_vec[i] = dO[self.param_keys[i]](variables=variables, samples=self.samples, **self.backend_options)
+            dE_vec[i] = dO[self.param_keys[i]](variables=variables, samples=self.samples)
             memory[self.param_keys[i]] = dE_vec[i]
 
         self.history.append(memory)
@@ -69,11 +65,10 @@ class _GradContainer(_EvalContainer):
 
 class _QngContainer(_EvalContainer):
 
-    def __init__(self, combos, param_keys, passive_angles=None, samples=None, save_history=True,
-                 backend_options=None):
+    def __init__(self, combos, param_keys, passive_angles=None, samples=None, save_history=True):
 
         super().__init__(objective=None, param_keys=param_keys, passive_angles=passive_angles,
-                         samples=samples, save_history=save_history,backend_options=backend_options)
+                         samples=samples, save_history=save_history)
 
         self.combos = combos
 
@@ -104,7 +99,7 @@ class _HessContainer(_EvalContainer):
         for i in range(self.N):
             for j in range(i, self.N):
                 key = (self.param_keys[i], self.param_keys[j])
-                value = ddO[key](variables=variables, samples=self.samples, **self.backend_options)
+                value = ddO[key](variables=variables, samples=self.samples)
                 ddE_mat[i, j] = value
                 ddE_mat[j, i] = value
                 memory[key] = value

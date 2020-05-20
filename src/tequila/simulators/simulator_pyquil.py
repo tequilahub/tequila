@@ -1,8 +1,6 @@
 from tequila.simulators.simulator_base import QCircuit, TequilaException, BackendCircuit, BackendExpectationValue
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import BitString, BitNumbering
-import subprocess
-import sys
 import numpy as np
 import pyquil
 from pyquil.api import get_qc
@@ -184,9 +182,6 @@ class TequilaPyquilException(TequilaException):
         return "simulator_pyquil: " + self.message
 
 
-
-
-
 class BackendCircuitPyquil(BackendCircuit):
 
     compiler_arguments = {
@@ -209,7 +204,8 @@ class BackendCircuitPyquil(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None, *args, **kwargs):
+
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None,device=None, *args, **kwargs):
         self.op_lookup = {
             'I': (pyquil.gates.I),
             'X': (pyquil.gates.X, pyquil.gates.CNOT, pyquil.gates.CCNOT),
@@ -224,7 +220,9 @@ class BackendCircuitPyquil(BackendCircuit):
         }
         self.match_par_to_dummy = {}
         self.counter = 0
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise,
+        if device is not None:
+            self.compiler_arguments['cc_max'] = True
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device,
                          use_mapping=use_mapping, *args, **kwargs)
         if self.noise is not None:
             self.noise_lookup = {
@@ -236,7 +234,15 @@ class BackendCircuitPyquil(BackendCircuit):
                 'depolarizing': depolarizing_map
             }
 
-            self.circuit = self.build_noisy_circuit(self.circuit, self.noise)
+            if isinstance(self.noise,str):
+                if self.noise == 'device':
+                    pass
+                else:
+                    raise TequilaException('noise was a string: {}, which is not \'device\'. This is not allowed!'.format(self.noise))
+
+            else:
+                self.circuit = self.build_noisy_circuit(self.circuit, self.noise)
+
         if len(self.match_par_to_dummy.keys()) is None:
             self.match_dummy_to_value = None
             self.resolver = None
@@ -259,16 +265,16 @@ class BackendCircuitPyquil(BackendCircuit):
 
     def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
         n_qubits = self.n_qubits
-        if "pyquil_backend" in kwargs:
-            pyquil_backend = kwargs["pyquil_backend"]
-            if isinstance(pyquil_backend, dict):
-                qc = get_qc(**pyquil_backend)
-            else:
-                qc = get_qc(pyquil_backend)
-        else:
-            qc = get_qc('{}q-qvm'.format(str(n_qubits)))
+
         p = circuit
-        p.wrap_in_numshots_loop(samples)
+
+        if self.device is None:
+            qc = get_qc('{}q-qvm'.format(str(n_qubits)))
+            p.wrap_in_numshots_loop(samples)
+        else:
+            qc=self.device
+            p=qc.compile(p)
+            p.attributes['num_shots']=samples
         stacked = qc.run(p, memory_map=self.resolver)
         return self.convert_measurements(stacked)
 
@@ -390,6 +396,63 @@ class BackendCircuitPyquil(BackendCircuit):
         else:
             self.resolver = None
 
+    def check_device(self,device):
+        if device is None:
+            return
+        if isinstance(device, str):
+            d = device
+            if '-qvm' in d.lower():
+                d = d[:-4]
+            if '-noisy' in d.lower():
+                d = d[:-6]
+            if d in pyquil.list_quantum_computers():
+                return
+            else:
+                try:
+                    get_qc(d)
+                    return
+                except:
+                    try:
+                        get_qc(d, as_qvm=True)
+                        return
+                    except:
+                        raise TequilaException('could not obtain device from string; received {}'.format(device))
+
+        elif isinstance(device, dict):
+            try:
+                get_qc(**device)
+                return
+            except:
+                raise TequilaException('could not initialize device from dict; received {}'.format(device))
+        elif isinstance(device, pyquil.api.QuantumComputer):
+            return
+
+        else:
+            raise TequilaException('Uninterpretable object {} of type {} passed to check_device!'.format(device,type(device)))
+
+    def retrieve_device(self,device):
+        use_device_noise = (self.noise == 'device')
+        if device is None:
+            return None
+        if isinstance(device, str):
+            try:
+                back = get_qc(device, noisy=use_device_noise)
+                return back
+            except:
+                try:
+                    back = get_qc(device, as_qvm=True, noisy=use_device_noise)
+                    return back
+                except:
+                    raise TequilaException('could not obtain device from string; received {}'.format(device))
+        elif isinstance(device, pyquil.api.QuantumComputer):
+            return device
+        elif isinstance(device, dict):
+            try:
+                return get_qc(**device)
+            except:
+                raise TequilaException('could not initialize device from dict; received {}'.format(device))
+        else:
+            raise TequilaException('Uninterpretable object {} of type {} passed to check_device!'.format(device,type(device)))
 
 class BackendExpectationValuePyquil(BackendExpectationValue):
     BackendCircuitType = BackendCircuitPyquil
