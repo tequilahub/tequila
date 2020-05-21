@@ -837,6 +837,136 @@ class QuantumChemistryBase:
 
         return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
 
+    def measure_rdms(self):
+        """
+        Determine the reduced density matrices
+        todo: naming convention, need to figure out what is used in openfermion!!
+        todo: options
+        todo: SO and SF formalism
+        todo: based on self.molecule
+        """
+        active_space = self.active_space
+        # and so on...
+        if active_space is None:
+            Hmol = mol.molecule.get_molecular_hamiltonian()
+        else:
+            Hmol = mol.molecule.get_molecular_hamiltonian(occupied_indices=active_space.frozen_reference_orbitals,
+                                                          active_indices=active_space.active_orbitals)
+        # Get number of orbitals
+        if nOBS is not None:  # i.e. there is an active space specified
+            nOrbs = nOBS
+        else:
+            nOrbs = len(mol.active_space.active_orbitals)  # todo: adapt this to active orbitals
+
+        # Build array for 1- and 2-particle ops
+        # We use a COO-like sparse format, i.e. we collect coo's and know the final shape
+        # todo: adapt symmetry
+        qops_1part_real = []
+        qops_1part_imag = []
+        qops_2part_real = []
+        qops_2part_imag = []
+        coos_1part = []
+        coos_2part = []
+
+        # Build arrays of operators
+        # TODO: TWO COO-ARRAYS, AND IF-STATEMENTS FOR ALL +='s TO AVOID ZERO-EXPECTED VALUES
+        for h in Hmol:
+            if len(h) == 2:  # <=> 1-particle ops
+                i = h[0][0] // 2
+                j = h[1][0] // 2
+                # Get operator and map it to qubit-operator
+                op = openfermion.FermionOperator(h)
+                qop = tq.QubitHamiltonian(mol.transformation(op))
+                real, imag = qop.split(hermitian=True, anti_hermitian=True)
+                if real:
+                    qops_1part_real.append(real)
+                else:
+                    qops_1part_real.append(QubitHamiltonian.zero())
+                # for now, but maybe change this to 2 different coos-arrays #todo
+                if imag:
+                    qops_1part_imag.append(imag)
+                else:
+                    qops_1part_imag.append(QubitHamiltonian.zero())
+                coos_1part.append((i, j))
+
+            if len(h) == 4:  # <=> 2-particle ops
+                i = h[0][0] // 2
+                j = h[1][0] // 2
+                k = h[2][0] // 2
+                l = h[3][0] // 2
+                # Get operator and map it to qubit-operator
+                op = openfermion.FermionOperator(h)
+                qop = tq.QubitHamiltonian(mol.transformation(op))
+                real, imag = qop.split(hermitian=True, anti_hermitian=True)
+                if real:
+                    qops_2part_real.append(real)
+                else:
+                    qops_2part_real.append(QubitHamiltonian.zero())
+                # for now, but maybe change this to 2 different coos-arrays #todo
+                if imag:
+                    qops_2part_imag.append(imag)
+                else:
+                    qops_2part_imag.append(QubitHamiltonian.zero())
+                coos_2part.append((i, j, k, l))
+
+        # Number of 1/2-particle operators
+        # Note, that we have half, since we collect both spin DOFs in one molecular orbital
+        # num_1part_ops = len(qops_1part_real) // 2
+        # print(num_1part_ops)
+        # num_2part_ops = len(qops_2part_real) // 2
+        shape_1 = [-1]  # [num_1part_ops]
+        shape_2 = [-1]  # [num_2part_ops]
+
+        # Compute the respective expected values
+        # todo: make the arrays numpy arrays, s.th. one can use *= on array
+        # todo: is it ok to use the __mul__ here?
+        qops_1part_imag = [elem.__mul__(-1j) for elem in qops_1part_imag]  # [-1j*elem for elem in qops_1part_imag]
+        qops_2part_imag = [elem.__mul__(-1j) for elem in qops_2part_imag]
+
+        evals_1_real = numpy.zeros_like(qops_1part_real, dtype='complex')
+        evals_1_imag = numpy.zeros_like(qops_2part_imag, dtype='complex')
+        evals_2_real = numpy.zeros_like(qops_2part_real, dtype='complex')
+        evals_2_imag = numpy.zeros_like(qops_2part_imag, dtype='complex')
+
+        evals_1_real = tq.simulate(tq.ExpectationValue(H=qops_1part_real, U=U, shape=shape_1), variables=variables)
+        evals_1_imag = tq.simulate(tq.ExpectationValue(H=qops_1part_imag, U=U, shape=shape_1), variables=variables)
+        # print(evals_1_real)
+        # print(evals_1_imag)
+        evals_1_imag = 1j * evals_1_imag  # [1j*elem for elem in evals_1_imag]
+
+        evals_2_real = tq.simulate(tq.ExpectationValue(H=qops_2part_real, U=U, shape=shape_2), variables=variables)
+        evals_2_imag = tq.simulate(tq.ExpectationValue(H=qops_2part_imag, U=U, shape=shape_2), variables=variables)
+        evals_2_imag = 1j * evals_2_imag  # [1j*elem for elem in evals_2_imag]
+
+        # print(len(evals_2_real))
+        # print(len(evals_2_imag))
+        # print(len(coos_2part))
+
+        # Assemble RDM's
+        # 1-rdm
+        rdm1 = numpy.zeros([nOrbs, nOrbs], dtype=complex)
+        # for i in range(len(coos_1part)):
+        # idx = coos_1part[i]
+        # rdm1[idx[0],idx[1]] += evals_1_real[i] + evals_1_imag[i]
+        # 2-rdm
+        # print(nOrbs)
+        rdm2 = numpy.zeros([nOrbs, nOrbs, nOrbs, nOrbs], dtype=complex)
+        # for i in range(len(coos_2part)):
+        # idx = coos_2part[i]
+        # rdm2[idx[0],idx[1],idx[2],idx[3]] += evals_2_real[i] + evals_2_imag[i]
+
+        for er, ei, idx in zip(evals_1_real, evals_1_imag, coos_1part):
+            rdm1[idx[0], idx[1]] += er + ei
+        # 2-rdm
+        rdm2 = numpy.zeros([nOrbs, nOrbs, nOrbs, nOrbs], dtype=complex)
+        for er, ei, idx in zip(evals_2_real, evals_2_imag, coos_2part):
+            rdm2[idx[0], idx[1], idx[2], idx[3]] += er + ei
+
+        # Discard imaginary part if small (tol means tol*machine precision)
+        rdm1 = numpy.real_if_close(rdm1, tol=1e5)
+        rdm2 = numpy.real_if_close(rdm2, tol=1e5)
+        return
+
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
         for k, v in self.parameters.__dict__.items():
