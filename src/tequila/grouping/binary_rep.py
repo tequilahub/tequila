@@ -2,6 +2,7 @@ from tequila import TequilaException
 from tequila.hamiltonian import QubitHamiltonian, PauliString
 from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first
 import numpy as np
+import tequila as tq
 import numbers
 
 
@@ -34,27 +35,65 @@ class BinaryHamiltonian:
         coeff = [p.get_coeff() for p in self.binary_terms]
         return coeff
 
-    def get_qubit_wise(self):
+    def single_qubit_form(self):
         '''
-        Return the qubit-wise form of the current binary hamiltonian.
-        And the components of corresponding unitary transformation U, 
-        where U = prod_i (1/2) ** (1/2) * (lagrangian_basis[i] + new_basis[i])
+        Returns
+        -------
+        hamiltonian : BinaryHamiltonian
+            The original hamiltonian in qubit-wise commuting form
+        lagrangian_basis : list of BinaryPauliStrings 
+            Represents the basis of original Hamiltonian
+        new_basis : list of BinaryPauliStrings 
+            Represents the basis of new Hamiltonian
         '''
-        if not self.is_commuting():
-            raise TequilaException(
-                'Not all terms in the Hamiltonians are commuting.')
-        if self.is_qubit_wise_commuting():
-            return self, [], []
-
         lagrangian_basis = get_lagrangian_subspace(self.get_binary())
         new_basis = self.get_single_qubit_basis(lagrangian_basis)
         lagrangian_basis = [BinaryPauliString(p) for p in lagrangian_basis]
         new_basis = [BinaryPauliString(p) for p in new_basis]
         qubit_wise_hamiltonian = self.basis_transform(lagrangian_basis,
                                                       new_basis)
-
-        # Return the basis in terms of Binary Hamiltonian
         return qubit_wise_hamiltonian, lagrangian_basis, new_basis
+
+    def get_qubit_wise(self, binary = False):
+        '''
+        Return the qubit-wise form of the current binary hamiltonian.
+        And the unitary transformation U, 
+        where U = prod_i (1/2) ** (1/2) * (lagrangian_basis[i] + new_basis[i])
+        
+        Parameters
+        ----------
+        binary : determines whether the returned qwc hamiltonian is binary or qubit hamiltonian
+
+
+        Returns
+        -------
+        hamiltonian : BinaryHamiltonian or QubitHamiltonian
+            The original hamiltonian in qubit-wise commuting form
+        U : QCircuit
+            The unitary circuit that transforms the original hamiltonian into qwc form
+        '''
+        if not self.is_commuting():
+            raise TequilaException(
+                'Not all terms in the Hamiltonians are commuting.')
+        if self.is_qubit_wise_commuting():
+            return self, tq.QCircuit()
+
+        qubit_wise_hamiltonian, lagrangian_basis, new_basis = self.single_qubit_form()
+
+        # Constructing the unitary that rotates into qubit-wise parts
+        qwc_u = tq.QCircuit()
+        for i in range(len(lagrangian_basis)):
+            sigma = lagrangian_basis[i].to_pauli_strings()
+            tau = new_basis[i].to_pauli_strings()
+            qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=sigma)
+            qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=tau)
+            qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=sigma)
+        
+        # Return the basis in terms of Binary Hamiltonian
+        if binary:
+            return qubit_wise_hamiltonian, qwc_u
+        else:
+            return qubit_wise_hamiltonian.to_qubit_hamiltonian(), qwc_u
 
     def get_single_qubit_basis(self, lagrangian_basis):
         '''
@@ -134,9 +173,9 @@ class BinaryHamiltonian:
                 
 
     def to_qubit_hamiltonian(self):
-        qub_ham = QubitHamiltonian.init_zero()
+        qub_ham = QubitHamiltonian()
         for p in self.binary_terms:
-            qub_ham += QubitHamiltonian.init_from_paulistring(
+            qub_ham += QubitHamiltonian.from_paulistrings(
                 p.to_pauli_strings())
         return qub_ham
 

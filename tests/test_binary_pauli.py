@@ -88,7 +88,7 @@ def test_single_qubit_basis_transfrom():
     H, n_qubits, binary_sol, coeff_sol = prepare_test_hamiltonian()
 
     single_qub_H, old_basis, new_basis = BinaryHamiltonian.init_from_qubit_hamiltonian(
-        H).get_qubit_wise()
+        H).single_qubit_form()
 
     H_brute_force = brute_force_transformation(H, old_basis, new_basis)
 
@@ -99,7 +99,7 @@ def test_single_qubit_basis_transfrom():
         0) * paulis.Y(1)
 
     single_qub_H, old_basis, new_basis = BinaryHamiltonian.init_from_qubit_hamiltonian(
-        H).get_qubit_wise()
+        H).single_qubit_form()
 
     H_brute_force = brute_force_transformation(H, old_basis, new_basis)
 
@@ -113,11 +113,11 @@ def brute_force_transformation(H, old_basis, new_basis):
         Accepts a BinaryPauliString. 
         Return the paired unitary 1/sqrt(2) (a + b) in qubit hamiltonian. 
         '''
-        a = QubitHamiltonian.init_from_paulistring(a.to_pauli_strings())
-        b = QubitHamiltonian.init_from_paulistring(b.to_pauli_strings())
+        a = QubitHamiltonian.from_paulistrings(a.to_pauli_strings())
+        b = QubitHamiltonian.from_paulistrings(b.to_pauli_strings())
         return (1 / 2)**(1 / 2) * (a + b)
 
-    U = QubitHamiltonian.init_unit()
+    U = QubitHamiltonian(1)
     for i, i_basis in enumerate(old_basis):
         U *= pair_unitary(i_basis, new_basis[i])
 
