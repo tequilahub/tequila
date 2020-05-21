@@ -9,7 +9,7 @@ import numbers
 class BinaryHamiltonian:
     def __init__(self, binary_terms):
         '''
-        Initiate from a list of Pauli Strings
+        Initiate from a list of Binary Pauli Strings
         '''
         self.binary_terms = binary_terms
 
@@ -38,7 +38,7 @@ class BinaryHamiltonian:
     def single_qubit_form(self):
         '''
         Returns
-        -------
+        ----------
         hamiltonian : BinaryHamiltonian
             The original hamiltonian in qubit-wise commuting form
         lagrangian_basis : list of BinaryPauliStrings 
@@ -53,6 +53,44 @@ class BinaryHamiltonian:
         qubit_wise_hamiltonian = self.basis_transform(lagrangian_basis,
                                                       new_basis)
         return qubit_wise_hamiltonian, lagrangian_basis, new_basis
+
+    def z_form(self):
+        '''
+        Parameters
+        ----------
+        self : BinaryHamiltonian 
+            a qubit-wise commuting hamiltonian
+
+        Modifies
+        ----------
+        self : BinaryHamiltoina
+            The original hamiltonian but in qubit-wise commuting form with all z
+
+        Returns
+        ----------
+        U : QCircuit
+            the single qubit transformation that rotates each term to z
+        '''
+        U = tq.QCircuit()
+        non_z = {}
+        for p in self.binary_terms:
+            for qub in range(self.n_qubit):
+                z_data = {qub: 'z'}
+                if p.has_x(qub):
+                    p.set_z(qub)
+                    non_z[qub] = 'x'
+                elif p.has_y(qub):
+                    p.set_z(qub)
+                    non_z[qub] = 'y'
+        
+        for qub, term in non_z.items():
+            xy_data = {qub: term}
+            z_data = {qub: 'z'}
+            U += tq.gates.ExpPauli(angle = -tq.numpy.pi/2, paulistring=tq.PauliString(z_data))
+            U += tq.gates.ExpPauli(angle = -tq.numpy.pi/2, paulistring=tq.PauliString(xy_data))
+            U += tq.gates.ExpPauli(angle = -tq.numpy.pi/2, paulistring=tq.PauliString(z_data))
+
+        return U
 
     def get_qubit_wise(self, binary = False):
         '''
@@ -76,24 +114,26 @@ class BinaryHamiltonian:
             raise TequilaException(
                 'Not all terms in the Hamiltonians are commuting.')
         if self.is_qubit_wise_commuting():
-            return self, tq.QCircuit()
+            qubit_wise_hamiltonian = self
+            qwc_u = tq.QCircuit()
+        else: 
+            qubit_wise_hamiltonian, lagrangian_basis, new_basis = self.single_qubit_form()
 
-        qubit_wise_hamiltonian, lagrangian_basis, new_basis = self.single_qubit_form()
-
-        # Constructing the unitary that rotates into qubit-wise parts
-        qwc_u = tq.QCircuit()
-        for i in range(len(lagrangian_basis)):
-            sigma = lagrangian_basis[i].to_pauli_strings()
-            tau = new_basis[i].to_pauli_strings()
-            qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=sigma)
-            qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=tau)
-            qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=sigma)
+            # Constructing the unitary that rotates into qubit-wise parts
+            qwc_u = tq.QCircuit()
+            for i in range(len(lagrangian_basis)):
+                sigma = lagrangian_basis[i].to_pauli_strings()
+                tau = new_basis[i].to_pauli_strings()
+                qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=sigma)
+                qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=tau)
+                qwc_u += tq.gates.ExpPauli(angle=-tq.numpy.pi/2, paulistring=sigma)
         
+        single_qub_u = qubit_wise_hamiltonian.z_form()
         # Return the basis in terms of Binary Hamiltonian
         if binary:
-            return qubit_wise_hamiltonian, qwc_u
+            return qubit_wise_hamiltonian, qwc_u + single_qub_u
         else:
-            return qubit_wise_hamiltonian.to_qubit_hamiltonian(), qwc_u
+            return qubit_wise_hamiltonian.to_qubit_hamiltonian(), qwc_u + single_qub_u
 
     def get_single_qubit_basis(self, lagrangian_basis):
         '''
@@ -278,14 +318,44 @@ class BinaryPauliString:
     def same_pauli(self, other):
         return all(self.binary == other.binary)
 
+    def has_x(self, i):
+        return self.binary[i] == 1 and self.binary[i + self.n_qubit] == 0
+
+    def has_y(self, i):
+        return self.binary[i] == 1 and self.binary[i + self.n_qubit] == 1
+
+    def has_z(self, i):
+        return self.binary[i] == 0 and self.binary[i + self.n_qubit] == 1
+    
+    def set_x(self, i):
+        '''
+        Set the ith qubit to having x
+        '''
+        self.binary[i] = 1
+        self.binary[i + self.n_qubit] = 0
+    
+    def set_y(self, i):
+        '''
+        Set the ith qubit to having y
+        '''
+        self.binary[i] = 1
+        self.binary[i + self.n_qubit] = 1
+
+    def set_z(self, i):
+        '''
+        Set the ith qubit to having z
+        '''
+        self.binary[i] = 0
+        self.binary[i + self.n_qubit] = 1
+    
     def to_pauli_strings(self):
         data = {}
         for i in range(self.n_qubit):
-            if (self.binary[i] == 1 and self.binary[i + self.n_qubit] == 0):
+            if self.has_x(i):
                 data[i] = 'X'
-            elif (self.binary[i] == 1 and self.binary[i + self.n_qubit] == 1):
+            elif self.has_y(i):
                 data[i] = 'Y'
-            elif (self.binary[i] == 0 and self.binary[i + self.n_qubit] == 1):
+            elif self.has_z(i):
                 data[i] = 'Z'
         return PauliString(data, self.coeff)
 

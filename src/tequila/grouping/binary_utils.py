@@ -219,17 +219,17 @@ def binary_phase(self_binary, other_binary, n_qubit):
 
 def gen_single_qubit_term(dim, qub, term):
     '''
-    Generate single qubit term on the given qubit with given term (0, 1, 2 represents x, y, z) 
+    Generate single qubit term on the given qubit with given term (0, 1, 2 represents z, x, y) 
 
     Return: A binary vector representing the single qubit term specified. 
     '''
     word = np.zeros(dim * 2)
     if term == 0:
-        word[qub] = 1
+        word[qub + dim] = 1
     elif term == 1:
         word[qub] = 1
-        word[qub + dim] = 1
     elif term == 2:
+        word[qub] = 1
         word[qub + dim] = 1
     return word
 
