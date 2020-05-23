@@ -318,14 +318,14 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def compute_two_body_integrals(self, ref_wfn=None):
         """
-          For two-body integrals, we use the usual chemistry convention
+          For two-body integrals, we use the usual convention
         < rs | O(1,2) | pq > = int r(1)* s(2)* O(1,2) p(1) q(2),
         while here, O(1,2) = g12 = 1/r12.
           Then, the 2-bdy terms become sum_{pqrs} h^pq_rs a^pq_rs,
         where a^pq_rs = a^p a^q a_s a_r
-          Psi4 uses int p(1) q(1) g12 r(2) s(2) (only real orbitals)
-        Due to the 8-fold symmetry for real orbs,
-        we can e.g. reorder according to 'psqr -> pqrs'
+          Psi4 uses int p(1) q(1) g12 r(2) s(2) (only real orbitals).
+        To assimilate this to our ordering,
+        we can e.g. reorder according to 'prqs -> pqrs'.
         """
         if ref_wfn is None:
             if 'hf' not in self.logs:
@@ -342,7 +342,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         # Molecular orbitals (coeffs)
         Ca = wfn.Ca()
         h = numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca))
-        h = numpy.einsum("psqr -> pqrs", h, optimize='greedy')
+        h = numpy.einsum("prqs -> pqrs", h, optimize='greedy')
         return h
 
     def compute_ccsd_amplitudes(self):
