@@ -298,6 +298,106 @@ class Amplitudes:
         return variables
 
 
+@dataclass
+class TwoBodyTensor:
+    """
+    Convenience class for reordering of two-body tensors
+    """
+    hPQrs: numpy.ndarray = None
+    # default ordering is 'chem', assumes that we get data from psi4
+    scheme: str = 'chem'
+
+    def is_openfermion(self) -> bool:
+        """
+        Checks whether current ordering scheme is 'openfermion'
+        """
+        if self.scheme == 'openfermion' or self.scheme == 'of':
+            return True
+        else:
+            return False
+
+    def is_chem(self) -> bool:
+        """
+        Checks whether current ordering scheme is 'chem'
+        """
+        if self.scheme == 'chem' or self.scheme == 'c':
+            return True
+        else:
+            return False
+
+    def is_phys(self) -> bool:
+        """
+        Checks whether current ordering scheme is 'phys'
+        """
+        if self.scheme == 'phys' or self.scheme == 'p':
+            return True
+        else:
+            return False
+
+    def reorder(self, to: str = 'of'):
+        """
+        Function to reorder tensors according to some convention
+
+        Parameters
+        ----------
+
+        to :
+            Ordering scheme of choice.
+            'openfermion', 'of' (default) :
+                openfermion - ordering, corresponds to integrals of the type
+                h^pq_rs = int p(1)* q(2)* O(1,2) r(2) s(1) (O(1,2)
+                with operators a^pq_rs = a^p a^q a_r a_s (a^p == a^dagger_p)
+                currently needed for dependencies on openfermion-library
+            'chem', 'c' :
+                quantum chemistry ordering, collect particle terms,
+                more convenient for real-space methods
+                h^pq_rs = int p(1) q(1) O(1,2) r(2) s(2)
+                This is output by psi4
+            'phys', 'p' :
+                typical physics ordering, integrals of type
+                h^pq_rs = int p(1)* q(2)* O(1,2) r(1) s(2)
+                with operators a^pq_rs = a^p a^q a_s a_r
+
+            Returns
+            -------
+            type
+                the two-body tensors in chosen ordering (openfermion per default)
+        """
+        to = to.lower()
+
+        if self.is_chem():
+            if to == 'chem' or to == 'c':
+                pass
+            elif to == 'openfermion' or to == 'of':
+                self.hPQrs = numpy.einsum("psqr -> pqrs", self.hPQrs, optimize='greedy')
+                self.scheme = 'openfermion'
+            elif to == 'phys' or to == 'p':
+                self.hPQrs = numpy.einsum("prqs -> pqrs", self.hPQrs, optimize='greedy')
+                self.scheme = 'phys'
+        elif self.is_openfermion():
+            if to == 'chem' or to == 'c':
+                self.hPQrs = numpy.einsum("pqrs -> psqr", self.hPQrs, optimize='greedy')
+                self.scheme = 'chem'
+            elif to == 'openfermion' or to == 'of':
+                pass
+            elif to == 'phys' or to == 'p':
+                self.hPQrs = numpy.einsum("pqrs -> pqsr", self.hPQrs, optimize='greedy')
+                self.scheme = 'phys'
+        elif self.is_phys():
+            if to == 'chem' or to == 'c':
+                self.hPQrs = numpy.einsum("pqrs -> prqs", self.hPQrs, optimize='greedy')
+                self.scheme = 'chem'
+            elif to == 'openfermion' or to == 'of':
+                self.hPQrs = numpy.einsum("pqsr -> pqrs", self.hPQrs, optimize='greedy')
+                self.scheme = 'openfermion'
+            elif to == 'phys' or to == 'p':
+                pass
+
+    def get_hPQrs(self) -> numpy.ndarray:
+        """ """
+        return self.hPQrs
+
+
 class QuantumChemistryBase:
     """ """
 
@@ -772,7 +872,7 @@ class QuantumChemistryBase:
         assert self.parameters.closed_shell
         g = self.molecule.two_body_integrals
         fij = self.molecule.orbital_energies
-        nocc = self.molecule.n_electrons // 2 # this is never the active space
+        nocc = self.molecule.n_electrons // 2  # this is never the active space
         ei = fij[:nocc]
         ai = fij[nocc:]
         abgij = g[nocc:, nocc:, :nocc, :nocc]
