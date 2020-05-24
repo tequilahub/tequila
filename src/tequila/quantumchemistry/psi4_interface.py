@@ -290,7 +290,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             wfn = wfn.c1_deep_copy(wfn.basisset())
 
         molecule.one_body_integrals = self.compute_one_body_integrals(ref_wfn=wfn)
-        molecule.two_body_integrals = self.compute_two_body_integrals(ref_wfn=wfn)
+        if "ordering" in kwargs:
+            molecule.two_body_integrals = self.compute_two_body_integrals(ref_wfn=wfn,
+                                                                          ordering=kwargs["ordering"])
+        else:
+            molecule.two_body_integrals = self.compute_two_body_integrals(ref_wfn=wfn)
         molecule.hf_energy = energy
         molecule.nuclear_repulsion = wfn.variables()['NUCLEAR REPULSION ENERGY']
         molecule.canonical_orbitals = numpy.asarray(wfn.Ca())
@@ -316,16 +320,35 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         h = numpy.einsum("xj, xi -> ji", Ca, h, optimize='greedy')
         return h
 
-    def compute_two_body_integrals(self, ref_wfn=None):
+    def compute_two_body_integrals(self, ref_wfn=None, ordering='openfermion'):
         """
-          For two-body integrals, we use the usual convention
-        < rs | O(1,2) | pq > = int r(1)* s(2)* O(1,2) p(1) q(2),
-        while here, O(1,2) = g12 = 1/r12.
-          Then, the 2-bdy terms become sum_{pqrs} h^pq_rs a^pq_rs,
-        where a^pq_rs = a^p a^q a_s a_r
-          Psi4 uses int p(1) q(1) g12 r(2) s(2) (only real orbitals).
-        To assimilate this to our ordering,
-        we can e.g. reorder according to 'prqs -> pqrs'.
+        Function to compute two body integrals
+
+        Parameters
+        ----------
+        ref_wfn :
+
+        ordering :
+            Ordering scheme chosen.
+            'openfermion', 'of' (default) :
+                openfermion - ordering, corresponds to integrals of the type
+                h^pq_rs = int p(1)* q(2)* g12 r(2) s(1) (g12 == 1/r12)
+                with operators a^pq_rs = a^p a^q a_r a_s (a^p == a^dagger_p)
+                currently needed for dependencies on openfermion-library
+            'chem', 'c' :
+                quantum chemistry ordering, collect particle terms,
+                more convenient for real-space methods
+                h^pq_rs = int p(1) q(1) g12 r(2) s(2)
+                This is output by psi4
+            'phys', 'p' :
+                typical physics ordering, integrals of type
+                h^pq_rs = int p(1)* q(2)* g12 r(1) s(2)
+                with operators a^pq_rs = a^p a^q a_s a_r
+
+            Returns
+            -------
+            type
+                the two-body integrals in chosen ordering (openfermion per default)
         """
         if ref_wfn is None:
             if 'hf' not in self.logs:
@@ -342,7 +365,14 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         # Molecular orbitals (coeffs)
         Ca = wfn.Ca()
         h = numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca))
-        h = numpy.einsum("prqs -> pqrs", h, optimize='greedy')
+        # Reorder if necessary
+        if ordering == 'chem' or ordering == 'c':
+            pass
+        elif ordering == 'openfermion' or ordering == 'of':
+            h = numpy.einsum("psqr -> pqrs", h, optimize='greedy')
+        elif ordering == 'physics' or ordering == 'p':
+            h = numpy.einsum("prqs -> pqrs", h, optimize='greedy')
+
         return h
 
     def compute_ccsd_amplitudes(self):
