@@ -127,7 +127,6 @@ class OptimizerSciPy(Optimizer):
                            samples=self.samples,
                            passive_angles=passive_angles,
                            save_history=self.save_history,
-                           backend_options=self.backend_options,
                            print_level=self.print_level)
 
         compile_gradient = self.method in (self.gradient_based_methods + self.hessian_based_methods)
@@ -182,9 +181,7 @@ class OptimizerSciPy(Optimizer):
                                 samples=self.samples,
                                 passive_angles=passive_angles,
                                 save_history=self.save_history,
-                                print_level=self.print_level,
-                                backend_options=self.backend_options)
-
+                                print_level=self.print_level)
         if compile_hessian:
             hess_obj, comp_hess_obj = self.compile_hessian(variables=variables,
                                                            hessian=hessian,
@@ -197,9 +194,7 @@ class OptimizerSciPy(Optimizer):
                                  samples=self.samples,
                                  passive_angles=passive_angles,
                                  save_history=self.save_history,
-                                 print_level=self.print_level,
-                                 backend_options=self.backend_options)
-
+                                 print_level=self.print_level)
         if self.print_level > 0:
             print(self)
             print(infostring)

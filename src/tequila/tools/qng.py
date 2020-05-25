@@ -255,10 +255,9 @@ def get_qng_combos(objective,func=stokes_block,initial_values=None,samples=None,
                         g=gi
                     indict[v]=g
                 mapping[j]=indict
-        try:
-            posarg = jax.grad(compiled.transformation, argnums=i)
-        except:
-            posarg = jax.grad(compiled.transformation,argnum=i)
+
+        posarg = jax.grad(compiled.transformation,i)
+
         p = Objective(compiled.args, transformation=posarg)
 
         pos = compile_objective(p, variables=initial_values, samples=samples,device=device,
