@@ -28,7 +28,7 @@ def array_to_objective_dict(objective, array, passives=None) -> typing.Dict[Vari
     if passives is not None:
         for k, v in passives.items():
             back[k] = v
-    #back={k: to_float(v) for k,v in back.items()}
+    back={k: to_float(v) for k,v in back.items()}
     return back
 
 
