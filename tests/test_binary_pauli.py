@@ -1,3 +1,4 @@
+import tequila as tq
 from tequila.hamiltonian import QubitHamiltonian, PauliString, paulis
 from tequila.grouping.binary_rep import BinaryPauliString, BinaryHamiltonian
 from collections import namedtuple
@@ -160,3 +161,34 @@ def test_qubit_wise_commuting():
 
     assert not not_qwc.is_qubit_wise_commuting()
     assert qwc.is_qubit_wise_commuting()
+
+def test_get_qubit_wise():
+    '''
+    Testing whether the get_qubit_wise methods correctly gives the all-Z form of the hamiltonian
+    '''
+    H, _, _, _ = prepare_test_hamiltonian()
+    H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+    qwc, qwc_U = H.get_qubit_wise()
+    
+    # Check qwc has all z
+    for term, val in qwc.items():
+        for qub in term:
+            assert qub[1] == 'Z'
+
+    # Checking the expectation values are the same
+    U = tq.gates.ExpPauli(angle = "a", paulistring=tq.PauliString.from_string('X(0)Y(1)'))
+    variables = {"a": np.random.rand(1) * 2 * np.pi}
+
+    e_ori = tq.ExpectationValue(H = H.to_qubit_hamiltonian(), U = U)
+    e_qwc = tq.ExpectationValue(H = qwc, U = U + qwc_U)
+    result_ori = tq.simulate(e_ori, variables)
+    result_qwc = tq.simulate(e_qwc, variables)
+
+    assert abs(result_qwc - result_ori) < 1e-8
+
+    # Checking the optimized expectation values are the same
+    sol = tq.minimize(method='cobyla', objective=e_ori)
+
+    result_ori = tq.simulate(e_ori, sol.angles)
+    result_qwc = tq.simulate(e_qwc, sol.angles)
+    assert abs(result_qwc - result_ori) < 1e-8
