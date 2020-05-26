@@ -1,7 +1,8 @@
 from tequila import TequilaException
 from openfermion import MolecularData
 
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, ClosedShellAmplitudes, Amplitudes
+from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase,\
+    ClosedShellAmplitudes, Amplitudes, TwoBodyTensor
 
 import copy
 import numpy
@@ -290,7 +291,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             wfn = wfn.c1_deep_copy(wfn.basisset())
 
         molecule.one_body_integrals = self.compute_one_body_integrals(ref_wfn=wfn)
-        molecule.two_body_integrals = self.compute_two_body_integrals(ref_wfn=wfn)
+        if "two_body_ordering" not in kwargs:
+            molecule.two_body_integrals = self.compute_two_body_integrals(ref_wfn=wfn)
+        else:
+            molecule.two_body_integrals = self.compute_two_body_integrals(ref_wfn=wfn,
+                                                                          ordering=kwargs["two_body_ordering"])
         molecule.hf_energy = energy
         molecule.nuclear_repulsion = wfn.variables()['NUCLEAR REPULSION ENERGY']
         molecule.canonical_orbitals = numpy.asarray(wfn.Ca())
@@ -312,11 +317,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             wfn = ref_wfn
         Ca = numpy.asarray(wfn.Ca())
         h = wfn.H()
-        h = numpy.einsum("xy, yi -> xi", h, Ca, optimize='optimize')
-        h = numpy.einsum("xj, xi -> ji", Ca, h, optimize='optimize')
+        h = numpy.einsum("xy, yi -> xi", h, Ca, optimize='greedy')
+        h = numpy.einsum("xj, xi -> ji", Ca, h, optimize='greedy')
         return h
 
-    def compute_two_body_integrals(self, ref_wfn=None):
+    def compute_two_body_integrals(self, ref_wfn=None, ordering='openfermion'):
         if ref_wfn is None:
             if 'hf' not in self.logs:
                 self.compute_energy(method="hf")
@@ -331,13 +336,10 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # Molecular orbitals (coeffs)
         Ca = wfn.Ca()
-        h = numpy.asarray(mints.ao_eri())
-        h = numpy.einsum("psqr", h, optimize='optimize')  # meet openfermion conventions
-        h = numpy.einsum("wxyz, wi -> ixyz", h, Ca, optimize='optimize')
-        h = numpy.einsum("wxyz, xi -> wiyz", h, Ca, optimize='optimize')
-        h = numpy.einsum("wxyz, yi -> wxiz", h, Ca, optimize='optimize')
-        h = numpy.einsum("wxyz, zi -> wxyi", h, Ca, optimize='optimize')
-        return h
+        h = TwoBodyTensor(hPQrs=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), scheme='chem')
+        # Order tensor. default: meet openfermion conventions
+        h.reorder(to=ordering)
+        return h.get_hPQrs()
 
     def compute_ccsd_amplitudes(self):
         return self.compute_amplitudes(method='ccsd')
