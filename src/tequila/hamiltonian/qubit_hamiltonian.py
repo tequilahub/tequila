@@ -80,6 +80,8 @@ class PauliString:
             self._data = data
         self._coeff = coeff
 
+        self._all_z = all([x.lower() == "z" for x in data.values()])
+
     def items(self):
         return self._data.items()
 
@@ -179,6 +181,11 @@ class PauliString:
             else:
                 raise TequilaException("Unknown Pauli: %" + str(v))
         return BinaryPauli(coeff=self.coeff, binary=binary)
+
+    def is_all_z(self):
+        return self._all_z
+
+
 
 
 class QubitHamiltonian:
@@ -544,3 +551,14 @@ class QubitHamiltonian:
         mapped = QubitOperator.zero()
         mapped.terms = mapped_terms
         return QubitHamiltonian(qubit_hamiltonian=mapped)
+
+    def is_all_z(self):
+        """
+        Returns
+        -------
+            returns True if all non-unit paulis in the hamiltonian are Z
+        """
+        for p in self.paulistrings:
+            if not p.is_all_z():
+                return False
+        return True

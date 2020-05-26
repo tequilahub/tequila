@@ -171,6 +171,33 @@ class BackendCircuit():
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
+    def sample(self, variables, samples, *args, **kwargs):
+        self.update_variables(variables)
+        return self.do_sample(samples=samples, circuit=self.circuit, *args, **kwargs)
+
+    def sample_all_z_hamiltonian(self, samples: int, hamiltonian, *args, **kwargs):
+        # make measurement instruction
+        qubits = [q for q in hamiltonian.qubits if q in self.abstract_qubit_map]
+        if len(qubits) == 0:
+            return sum([ps.coeff for ps in hamiltonian.paulistrings])
+        measure = Measurement(target=qubits)
+        circuit = self.circuit + self.create_circuit(measure)
+        # run simulators
+        counts = self.do_sample(samples=samples, circuit=circuit, *args, **kwargs)
+
+        # compute energy
+        E = 0.0
+        for paulistring in hamiltonian.paulistrings:
+            n_samples = 0
+            Etmp = 0.0
+            for key, count in counts.items():
+                parity = [k for i,k in enumerate(key.array) if i in paulistring._data].count(1)
+                sign = (-1) ** parity
+                Etmp += sign * count
+                n_samples += count
+            E += Etmp / samples * paulistring.coeff
+        return E
+
     def sample_paulistring(self, samples: int, paulistring, *args,
                            **kwargs) -> numbers.Real:
         # make basis change and translate to backend
@@ -198,7 +225,6 @@ class BackendCircuit():
             return paulistring.coeff
         else:
             measure += Measurement(target=qubits)
-            #measure += Measurement(name=str(paulistring), target=qubits)
             circuit = self.circuit + self.create_circuit(basis_change + measure)
             # run simulators
             counts = self.do_sample(samples=samples, circuit=circuit, *args, **kwargs)
@@ -210,18 +236,9 @@ class BackendCircuit():
                 sign = (-1) ** parity
                 E += sign * count
                 n_samples += count
+            assert n_samples == samples
             E = E / samples * paulistring.coeff
             return E
-
-    def sample(self, variables, samples, *args, **kwargs):
-        self.update_variables(variables)
-        E = 0.0
-        if hasattr(self, 'H'):
-            for ps in self.H.paulistrings:
-                E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
-            return E
-        else:
-            return self.do_sample(samples=samples, circuit=self.circuit, *args, **kwargs)
 
     def do_sample(self, samples, circuit, noise, *args, **kwargs) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
@@ -342,10 +359,13 @@ class BackendExpectationValue:
         self.update_variables(variables)
 
         result = []
-        for H in self.H:
+        for H in self._abstract_hamiltonians:
             E = 0.0
-            for ps in H.paulistrings:
-                E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
+            if H.is_all_z():
+                E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, *args, **kwargs)
+            else:
+                for ps in H.paulistrings:
+                    E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
             result.append(to_float(E))
         return numpy.asarray(result)
 
