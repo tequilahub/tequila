@@ -116,7 +116,7 @@ def brute_force_transformation(H, old_basis, new_basis):
         '''
         a = QubitHamiltonian.from_paulistrings(a.to_pauli_strings())
         b = QubitHamiltonian.from_paulistrings(b.to_pauli_strings())
-        return (1 / 2)**(1 / 2) * (a + b)
+        return (1 / 2) ** (1 / 2) * (a + b)
 
     U = QubitHamiltonian(1)
     for i, i_basis in enumerate(old_basis):
@@ -136,11 +136,12 @@ def equal_qubit_hamiltonian(a, b):
                 return False
     return True
 
+
 def test_commuting_groups():
     '''
     Testing whether the partitioning gives commuting parts
     '''
-    H, _, _, _ = prepare_test_hamiltonian() 
+    H, _, _, _ = prepare_test_hamiltonian()
     H = H + paulis.X(0) + paulis.Y(0)
     H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
 
@@ -149,6 +150,7 @@ def test_commuting_groups():
     for part in commuting_parts:
         assert part.is_commuting()
 
+
 def test_qubit_wise_commuting():
     '''
     Testing whether method is_qubit_wise_commuting correctly 
@@ -156,11 +158,12 @@ def test_qubit_wise_commuting():
     '''
     not_qwc = -1.0 * paulis.Z(0) * paulis.Z(1) - 0.5 * paulis.Y(0) * paulis.Y(1)
     not_qwc = BinaryHamiltonian.init_from_qubit_hamiltonian(not_qwc)
-    qwc =  paulis.Z(0) * paulis.Z(1) + paulis.Z(1) * paulis.Y(2)
+    qwc = paulis.Z(0) * paulis.Z(1) + paulis.Z(1) * paulis.Y(2)
     qwc = BinaryHamiltonian.init_from_qubit_hamiltonian(qwc)
 
     assert not not_qwc.is_qubit_wise_commuting()
     assert qwc.is_qubit_wise_commuting()
+
 
 def test_get_qubit_wise():
     '''
@@ -169,26 +172,31 @@ def test_get_qubit_wise():
     H, _, _, _ = prepare_test_hamiltonian()
     H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
     qwc, qwc_U = H.get_qubit_wise()
-    
+
     # Check qwc has all z
     for term, val in qwc.items():
         for qub in term:
             assert qub[1] == 'Z'
 
     # Checking the expectation values are the same
-    U = tq.gates.ExpPauli(angle = "a", paulistring=tq.PauliString.from_string('X(0)Y(1)'))
+    U = tq.gates.ExpPauli(angle="a", paulistring=tq.PauliString.from_string('X(0)Y(1)'))
     variables = {"a": np.random.rand(1) * 2 * np.pi}
 
-    e_ori = tq.ExpectationValue(H = H.to_qubit_hamiltonian(), U = U)
-    e_qwc = tq.ExpectationValue(H = qwc, U = U + qwc_U)
+    e_ori = tq.ExpectationValue(H=H.to_qubit_hamiltonian(), U=U)
+    e_qwc = tq.ExpectationValue(H=qwc, U=U + qwc_U)
+    e_integrated = tq.ExpectationValue(H=H.to_qubit_hamiltonian(), U=U, optimize_measurements=True)
     result_ori = tq.simulate(e_ori, variables)
     result_qwc = tq.simulate(e_qwc, variables)
+    result_integrated = tq.simulate(e_qwc, variables)
 
-    assert abs(result_qwc - result_ori) < 1e-8
+    assert np.isclose(result_ori, result_qwc)
+    assert np.isclose(result_ori, result_integrated)
 
     # Checking the optimized expectation values are the same
-    sol = tq.minimize(method='cobyla', objective=e_ori)
+    initial_values = {k: np.random.uniform(0.0, 6.0, 1) for k in e_ori.extract_variables()}
+    sol1 = tq.minimize(method='bfgs', objective=e_ori, initial_values=initial_values)
+    sol2 = tq.minimize(method='bfgs', objective=e_qwc, initial_values=initial_values)
+    sol3 = tq.minimize(method='bfgs', objective=e_integrated, initial_values=initial_values)
 
-    result_ori = tq.simulate(e_ori, sol.angles)
-    result_qwc = tq.simulate(e_qwc, sol.angles)
-    assert abs(result_qwc - result_ori) < 1e-8
+    assert np.isclose(sol1.energy, sol2.energy)
+    assert np.isclose(sol1.energy, sol3.energy)
