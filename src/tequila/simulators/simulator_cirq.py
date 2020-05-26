@@ -3,6 +3,7 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering
 import sympy
+from tequila.objective.objective import to_float
 
 import numpy as np
 import typing, numbers
@@ -208,6 +209,9 @@ class BackendCircuitCirq(BackendCircuit):
         return cirq.Circuit(*new_ops)
 
     def update_variables(self, variables):
+        # this is here because cirq cant take numpy arrays correctly
+        if isinstance(variables,dict):
+            variables = {k: to_float(v) for k, v in variables.items()}
 
         if self.sympy_to_tq is not None:
             self.resolver=cirq.ParamResolver({k:v(variables) for k,v in self.sympy_to_tq.items()})
