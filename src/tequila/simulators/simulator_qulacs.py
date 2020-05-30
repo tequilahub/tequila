@@ -12,14 +12,9 @@ Developer Note:
     The angles are scaled with -1.0 to keep things consistent with the rest of tequila
 """
 
-
 class TequilaQulacsException(TequilaException):
     def __str__(self):
         return "Error in qulacs backend:" + self.message
-
-
-
-
 
 class BackendCircuitQulacs(BackendCircuit):
     """
@@ -64,6 +59,12 @@ class BackendCircuitQulacs(BackendCircuit):
     }
 
     numbering = BitNumbering.LSB
+
+    def initialize_state(self, n_qubits = None):
+        if n_qubits is None:
+            n_qubits = self.n_qubits
+        return qulacs.QuantumState(n_qubits)
+
 
     def __init__(self, abstract_circuit, noise=None, *args, **kwargs):
         """
@@ -142,7 +143,7 @@ class BackendCircuitQulacs(BackendCircuit):
         QubitWaveFunction:
             QubitWaveFunction representing result of the simulation.
         """
-        state = qulacs.QuantumState(self.n_qubits)
+        state = self.initialize_state(n_qubits=self.n_qubits)
         lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
         state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
         self.circuit.update_quantum_state(state)
@@ -195,7 +196,7 @@ class BackendCircuitQulacs(BackendCircuit):
         QubitWaveFunction:
             the results of sampling, as a Qubit Wave Function.
         """
-        state = qulacs.QuantumState(self.n_qubits)
+        state = self.initialize_state(self.n_qubits)
         lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
         state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
         self.circuit.update_quantum_state(state)
@@ -458,7 +459,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             return numpy.asarray[self.H]
 
         self.U.update_variables(variables)
-        state = qulacs.QuantumState(self.U.n_qubits)
+        state = self.U.initialize_state()
         self.U.circuit.update_quantum_state(state)
         result = []
         for H in self.H:
@@ -552,7 +553,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         """
         # todo: generalize in baseclass. Do Hamiltonian mapping on initialization
         self.update_variables(variables)
-        state = qulacs.QuantumState(self.U.n_qubits)
+        state = self.U.initialize_state()
         self.U.circuit.update_quantum_state(state)
         result = []
         for H in self._abstract_hamiltonians:
@@ -579,7 +580,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                 Esamples = []
                 for sample in range(samples):
                     if self.U.has_noise:
-                        state = qulacs.QuantumState(self.U.n_qubits)
+                        state = self.U.initialize_state()
                         self.U.circuit.update_quantum_state(state)
                         state_tmp = state
                     else:

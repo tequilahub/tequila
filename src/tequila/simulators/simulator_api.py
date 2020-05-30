@@ -2,17 +2,20 @@ from collections import namedtuple
 import typing, warnings
 from numbers import Real as RealNumber
 from typing import Dict, Union, Hashable
+import pkg_resources
+from pkg_resources import DistributionNotFound
 
 from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 
-SUPPORTED_BACKENDS = ["qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil', 'qulacs']
+SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
+SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil', 'qulacs', "qulacs_gpu"]
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
+
 HAS_QULACS = True
 INSTALLED_NOISE_SAMPLERS = {}
 if typing.TYPE_CHECKING:
@@ -51,6 +54,7 @@ except ImportError:
     HAS_CIRQ = False
 
 try:
+    pkg_resources.require("qulacs")
     import qulacs
     from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
 
@@ -61,8 +65,24 @@ try:
                                                 ExpValueType=BackendExpectationValueQulacs)
     INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
                                                       ExpValueType=BackendExpectationValueQulacs)
-except ImportError:
+except (ImportError, DistributionNotFound):
     HAS_QULACS = False
+
+try:
+    pkg_resources.require("qulacs-gpu")
+    import qulacs
+    from tequila.simulators.simulator_qulacs_gpu import BackendCircuitQulacsGpu, BackendExpectationValueQulacsGpu
+
+    HAS_QULACS_GPU = True
+    INSTALLED_SIMULATORS["qulacs_gpu"] = BackendTypes(CircType=BackendCircuitQulacsGpu,
+                                                  ExpValueType=BackendExpectationValueQulacsGpu)
+    INSTALLED_SAMPLERS["qulacs_gpu"] = BackendTypes(CircType=BackendCircuitQulacsGpu,
+                                                ExpValueType=BackendExpectationValueQulacsGpu)
+    INSTALLED_NOISE_SAMPLERS["qulacs_gpu"] = BackendTypes(CircType=BackendCircuitQulacsGpu,
+                                                      ExpValueType=BackendExpectationValueQulacsGpu)
+except (ImportError, DistributionNotFound):
+    HAS_QULACS_GPU = False
+
 
 HAS_PYQUIL = True
 
