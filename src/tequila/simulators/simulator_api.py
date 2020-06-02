@@ -259,20 +259,24 @@ def compile_objective(objective: 'Objective',
     if all_compiled:
         return objective
 
-    compiled_args = []
-    # avoid double compilations
-    expectationvalues = {}
-    for arg in objective.args:
-        if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
-            if arg not in expectationvalues:
-                compiled_expval = ExpValueType(arg, variables=variables, noise=noise, device=device)
-                expectationvalues[arg] = compiled_expval
+    argsets = objective.argsets
+    compiled_sets = []
+    for argset in argsets:
+        compiled_args = []
+        # avoid double compilations
+        expectationvalues = {}
+        for arg in argset:
+            if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
+                if arg not in expectationvalues:
+                    compiled_expval = ExpValueType(arg, variables=variables, noise=noise, device=device)
+                    expectationvalues[arg] = compiled_expval
+                else:
+                    compiled_expval = expectationvalues[arg]
+                compiled_args.append(compiled_expval)
             else:
-                compiled_expval = expectationvalues[arg]
-            compiled_args.append(compiled_expval)
-        else:
-            compiled_args.append(arg)
-    return type(objective)(args=compiled_args, transformation=objective._transformation)
+                compiled_args.append(arg)
+        compiled_sets.append(compiled_args)
+    return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
 
 
 def compile_circuit(abstract_circuit: 'QCircuit',

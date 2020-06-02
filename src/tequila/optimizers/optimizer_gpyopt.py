@@ -220,7 +220,7 @@ class OptimizerGPyOpt(Optimizer):
         GPyOptReturnType.
             Results of the optimization.
         """
-
+        objective = objective.contract()
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         dom = self.get_domain(objective, passive_angles)
 

@@ -392,7 +392,7 @@ def test_heterogeneous_operations_l(simulator, op, value1=(numpy.random.randint(
     H2 = paulis.X(qubit=qubit)
     U2 = gates.X(target=control) + gates.Ry(target=qubit, control=control, angle=angle2)
     e2 = ExpectationValue(U=U2, H=H2)
-    added = Objective(args=[angle1, e2.args[0]], transformation=op)
+    added = Objective(argsets=[[angle1, e2.args[0]]], transformations=[op])
     val = simulate(added, variables=variables, backend=simulator)
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = angle1(variables=variables)
@@ -413,7 +413,7 @@ def test_heterogeneous_operations_r(simulator, op, value1=(numpy.random.randint(
     H1 = paulis.Y(qubit=qubit)
     U1 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle1)
     e1 = ExpectationValue(U=U1, H=H1)
-    added = Objective(args=[e1.args[0], angle2], transformation=op)
+    added = Objective(argsets=[[e1.args[0], angle2]], transformations=[op])
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
@@ -433,7 +433,7 @@ def test_heterogeneous_gradient_r_add(simulator):
     H1 = paulis.Y(qubit=qubit)
     U1 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle1)
     e1 = ExpectationValue(U=U1, H=H1)
-    added = Objective(args=[e1.args[0], angle1], transformation=np.add)
+    added = Objective(argsets=[[e1.args[0], angle1]], transformations=[np.add])
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
@@ -459,7 +459,7 @@ def test_heterogeneous_gradient_r_mul(simulator):
     H1 = paulis.Y(qubit=qubit)
     U1 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle1)
     e1 = ExpectationValue(U=U1, H=H1)
-    added = Objective(args=[e1.args[0], angle1], transformation=np.multiply)
+    added = Objective(argsets=[[e1.args[0], angle1]], transformations=[np.multiply])
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
@@ -485,7 +485,7 @@ def test_heterogeneous_gradient_r_div(simulator):
     H1 = paulis.Y(qubit=qubit)
     U1 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle1)
     e1 = ExpectationValue(U=U1, H=H1)
-    added = Objective(args=[e1.args[0], angle1], transformation=np.true_divide)
+    added = Objective(argsets=[[e1.args[0], angle1]], transformations=[np.true_divide])
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
@@ -595,3 +595,16 @@ def test_really_awfull_thing(simulator, value1=(numpy.random.randint(0, 1000) / 
     assert np.isclose(en1, an1, atol=1.e-4)
     assert np.isclose(deval, an2 * (uen + den), atol=1.e-4)
     assert np.isclose(doval, dtrue, atol=1.e-4)
+
+def test_stacking():
+    a=Variable('a')
+    b=Variable('b')
+    def f(x):
+        return np.cos(x)**2. + np.sin(x)**2.
+    funcs=[f,f,f,f]
+    vals = {Variable('a'):numpy.random.uniform(0,np.pi),Variable('b'):numpy.random.uniform(0,np.pi)}
+    O = Objective(argsets=[[a],[b],[a],[b]],transformations=funcs)
+    O1 = O.apply_op_list(funcs)
+    O2 = O1/4
+    output = simulate(O2,variables=vals)
+    assert np.isclose(1.,np.sum(output))

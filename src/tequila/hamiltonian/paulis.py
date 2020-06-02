@@ -7,7 +7,7 @@ import typing
 from tequila.hamiltonian import QubitHamiltonian
 from tequila import BitString, TequilaException
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.tools import list_assignement
+from tequila.tools import list_assignment
 import numpy
 
 
@@ -58,7 +58,7 @@ def X(qubit) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    qubit = list_assignement(qubit)
+    qubit = list_assignment(qubit)
     return pauli(qubit=qubit, type=["X"] * len(qubit))
 
 
@@ -76,7 +76,7 @@ def Y(qubit) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    qubit = list_assignement(qubit)
+    qubit = list_assignment(qubit)
     return pauli(qubit=qubit, type=["Y"] * len(qubit))
 
 
@@ -94,7 +94,7 @@ def Z(qubit) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    qubit = list_assignement(qubit)
+    qubit = list_assignment(qubit)
     return pauli(qubit=qubit, type=["Z"] * len(qubit))
 
 
@@ -141,7 +141,7 @@ def Qp(qubit) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    qubit = list_assignement(qubit)
+    qubit = list_assignment(qubit)
     result = I()
     for q in qubit:
         result *= 0.5 * (I(qubit=q) + Z(qubit=q))
@@ -167,7 +167,7 @@ def Qm(qubit) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    qubit = list_assignement(qubit)
+    qubit = list_assignment(qubit)
     result = I()
     for q in qubit:
         result *= 0.5 * (I(qubit=q) - Z(qubit=q))
@@ -193,7 +193,7 @@ def Sp(qubit) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    qubit = list_assignement(qubit)
+    qubit = list_assignment(qubit)
     result = I()
     for q in qubit:
         result *= 0.5 * (X(qubit=q) + 1.j * Y(qubit=q))
@@ -219,7 +219,7 @@ def Sm(qubit) -> QubitHamiltonian:
     QubitHamiltonian
 
     """
-    qubit = list_assignement(qubit)
+    qubit = list_assignment(qubit)
     result = I()
     for q in qubit:
         result *= 0.5 * (X(qubit=q) - 1.j * Y(qubit=q))

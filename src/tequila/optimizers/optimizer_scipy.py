@@ -130,7 +130,7 @@ class OptimizerSciPy(Optimizer):
             the results of optimization.
         """
 
-
+        objective = objective.contract()
         infostring = "{:15} : {}\n".format("Method", self.method)
         infostring += "{:15} : {} expectationvalues\n".format("Objective", objective.count_expectationvalues())
 

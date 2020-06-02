@@ -328,7 +328,7 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian) -> Objective:
 
     Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
-    dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
+    dOinc = w1 * Objective(argsets=[[Oplus]]) + w2 * Objective(argsets=[[Ominus]])
     return dOinc
 
 
@@ -450,6 +450,7 @@ def get_qng_combos(objective, func=stokes_block,
 
     combos=[]
     vars = objective.extract_variables()
+    objective.contract()
     compiled = compile_multitarget(gate=objective)
     compiled = compile_trotterized_gate(gate=compiled)
     compiled = compile_h_power(gate=compiled)
@@ -485,9 +486,9 @@ def get_qng_combos(objective, func=stokes_block,
                     indict[v]=g
                 mapping[j]=indict
 
-        posarg = jax.grad(compiled.transformation,i)
+        posarg = jax.grad(compiled.transformations[0],i)
 
-        p = Objective(compiled.args, transformation=posarg)
+        p = Objective(argsets=compiled.argsets, transformations=[posarg])
 
         pos = compile_objective(p, variables=initial_values, samples=samples,device=device,
                                 backend=backend, noise=noise)

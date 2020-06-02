@@ -158,21 +158,24 @@ class Compiler:
         -------
         the objective, compiled
         """
-        compiled_args = []
-        already_processed = {}
-        for arg in objective.args:
-            if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
-                if arg in already_processed:
-                    compiled_args.append(already_processed[arg])
+        argsets=objective.argsets
+        compiled_sets=[]
+        for argset in argsets:
+            compiled_args = []
+            already_processed = {}
+            for arg in argset:
+                if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
+                    if arg in already_processed:
+                        compiled_args.append(already_processed[arg])
+                    else:
+                        compiled = self.compile_objective_argument(arg, variables=None, *args, **kwargs)
+                        compiled_args.append(compiled)
+                        already_processed[arg] = compiled
                 else:
-                    compiled = self.compile_objective_argument(arg, variables=None, *args, **kwargs)
-                    compiled_args.append(compiled)
-                    already_processed[arg] = compiled
-            else:
-                # nothing to process for non-expectation-value types, but acts as sanity check
-                compiled_args.append(self.compile_objective_argument(arg, variables=None, *args, **kwargs))
-
-        return type(objective)(args=compiled_args, transformation=objective._transformation)
+                    # nothing to process for non-expectation-value types, but acts as sanity check
+                    compiled_args.append(self.compile_objective_argument(arg, variables=None, *args, **kwargs))
+            compiled_sets.append(compiled_args)
+        return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
 
     def compile_objective_argument(self, arg, variables=None, *args, **kwargs):
         """
@@ -191,6 +194,7 @@ class Compiler:
         -------
         the arg, compiled
         """
+
 
         if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
             return ExpectationValueImpl(H=arg.H,
@@ -316,17 +320,20 @@ def compiler(f):
             for g in gate.U.gates:
                 cU += f(gate=g, **kwargs)
             return type(gate)(U=cU, H=gate.H)
-        elif hasattr(gate, 'transformation'):
-            compiled = []
-            for E in gate.args:
-                if hasattr(E, 'name'):
-                    compiled.append(E)
-                else:
-                    cU = QCircuit()
-                    for g in E.U.gates:
-                        cU += f(gate=g, **kwargs)
-                    compiled.append(type(E)(U=cU, H=E.H))
-            return type(gate)(args=compiled, transformation=gate._transformation)
+        elif hasattr(gate, 'transformations'):
+            outer=[]
+            for args in gate.argsets:
+                compiled = []
+                for E in args:
+                    if hasattr(E, 'name'):
+                        compiled.append(E)
+                    else:
+                        cU = QCircuit()
+                        for g in E.U.gates:
+                            cU += f(gate=g, **kwargs)
+                        compiled.append(type(E)(U=cU, H=E.H))
+                outer.append(compiled)
+            return type(gate)(argsets=outer, transformations=gate._transformations)
         else:
             return f(gate=gate, **kwargs)
 

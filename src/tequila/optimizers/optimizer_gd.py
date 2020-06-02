@@ -276,7 +276,7 @@ class OptimizerGD(Optimizer):
         Objective:
             compiled version of objective.
         """
-
+        objective=objective.contract()
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         comp = self.compile_objective(objective=objective)
         for arg in comp.args:

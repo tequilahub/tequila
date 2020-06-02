@@ -2,8 +2,11 @@ import typing, copy, numbers
 
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
+from tequila.tools.convenience import list_assignment
 from tequila.hamiltonian import paulis
-from tequila.autograd_imports import numpy
+import numpy as onp
+from tequila.autograd_imports import numpy as numpy
+
 
 import collections
 
@@ -90,26 +93,62 @@ class ExpectationValueImpl:
             print("\n", str(self.U))
 
 
+def identity(x):
+    """
+    Returns input unchanged.
+
+    Use: in place of lambda x: x, this function is used for smarter auto-diff in grad.
+    Parameters
+    ----------
+    x:
+        anything.
+
+    Returns
+    -------
+    object
+        input, returned unchanged.
+    """
+    return x
+
+
 class Objective:
     """
-    the class which represents mathematical manipulation of ExpectationValue and Variable objects. The core of tequila.
+    fundamental class for arithmetic on quantum data; the core of tequila.
 
-    Todo: Jakob, wanna write some nice examples here?
-
-    Attributes:
-
-    backend: str:
-        a string; the backend to which the objective has been compiled, if any. If no expectationvalues, returns 'free'.
+    A callable class which returns either a scalar or a vector. Implements all tools needed for arithmetic,
+    as well as automatic differentiation, of user defined objectives, which may be either quantum or classical
+    in nature.
 
     """
+    def __init__(self, argsets: typing.Iterable = None, transformations: typing.Iterable[callable] = None):
+        """
 
-    def __init__(self, args: typing.Iterable = None, transformation: typing.Callable = None):
-        if args is None:
-            self._args = tuple()
-            self._transformation = lambda *x: 0.0
+        Parameters
+        ----------
+        argsets: iterable:
+            a (list, tuple) of (list,tuple) of arguments; each the argument of a transformation.
+        transformations: iterable:
+            a (list, tuple) of callables; these determine the output of call.
+        """
+
+        if argsets is None:
+            self._argsets = ((),)
+            self._transformations = tuple([lambda *x: 0.0])
         else:
-            self._args = tuple(args)
-            self._transformation = transformation
+            # make sure all things initialize rightly
+            groups=[]
+            for argset in argsets:
+                la = list_assignment(argset)
+                tup=tuple(la)
+                groups.append(tup)
+            tups=tuple(groups)
+            self._argsets = tups
+            if transformations is None:
+                self._transformations = tuple([identity for i in range(len(self.argsets))])
+            else:
+                self._transformations = tuple(list_assignment(transformations))
+
+            assert len(self.argsets) == len(self.transformations)
 
     @property
     def backend(self) -> str:
@@ -143,37 +182,41 @@ class Objective:
         """
         :return: bool: whether or not this objective is just a wrapped ExpectationValue
         """
-        return len(self.args) == 1 and self._transformation is None and type(self.args[0]) is ExpectationValueImpl
+        return len(self.args) == 1 and self._transformations is None and type(self.args[0]) is ExpectationValueImpl
 
     def has_expectationvalues(self):
         """
         :return: bool: wether or not this objective has expectationvalues or is just a function of the variables
         """
         # testing if all arguments are only variables and give back the negative
-        return not all([hasattr(arg, "name") for arg in self.args])
-
-    @classmethod
-    def ExpectationValue(cls, U=None, H=None, *args, **kwargs):
-        """
-        Initialize a wrapped expectationvalue directly as Objective
-        """
-        E = ExpectationValueImpl(H=H, U=U, *args, **kwargs)
-        return Objective(args=[E])
+        return any([hasattr(arg, "U") for arg in self.args])
 
     @property
-    def transformation(self) -> typing.Callable:
-        if self._transformation is None:
-            return lambda x: x
-        else:
-            return self._transformation
+    def transformations(self) -> typing.Tuple:
+        back=[]
+        for t in self._transformations:
+            if t is None:
+                back.append(identity)
+            else:
+                back.append(t)
+        return tuple(back)
 
     @property
     def args(self) -> typing.Tuple:
+        all_args= []
+        for argset in self.argsets:
+            for arg in argset:
+                all_args.append(arg)
 
-        if self._args is None:
-            return tuple()
+        return tuple(list(set(all_args)))
+
+    @property
+    def argsets(self) -> typing.Tuple:
+
+        if self._argsets is None:
+            return ((),)
         else:
-            return self._args
+            return self._argsets
 
     def _left_helper(self, op, other):
         """
@@ -193,16 +236,15 @@ class Objective:
         Objective:
             an Objective, who transform is the joined_transform of self with op, acting on self and other.
         """
-        if isinstance(other, numbers.Number):
-            t = lambda v: op(v, other)
-            new = self.unary_operator(left=self, op=t)
-        elif isinstance(other, Objective):
+        sized=self._size_helper(len(self),other)
+        if isinstance(sized, numpy.ndarray):
+            ops=[lambda v: op(v, s) for s in sized]
+            new = self.unary_operator(left=self, ops=ops)
+        elif isinstance(sized, Objective):
             new = self.binary_operator(left=self, right=other, op=op)
-        elif isinstance(other, ExpectationValueImpl):
-            new = self.binary_operator(left=self, right=Objective(args=[other]), op=op)
         else:
             t = op
-            nother = Objective(args=[assign_variable(other)])
+            nother = Objective(argsets=[[assign_variable(other)]])
             new = self.binary_operator(left=self, right=nother, op=t)
         return new
 
@@ -210,18 +252,20 @@ class Objective:
         """
         see the doc of _left_helper above for explanation
         """
-        if isinstance(other, numbers.Number):
-            t = lambda v: op(other, v)
-            new = self.unary_operator(left=self, op=t)
+        sized = self._size_helper(len(self), other)
+        if isinstance(sized, numpy.ndarray):
+            ops = [lambda v: op(s, v) for s in sized]
+            new = self.unary_operator(left=self, ops=ops)
         elif isinstance(other, Objective):
             new = self.binary_operator(left=other, right=self, op=op)
-        elif isinstance(other, ExpectationValueImpl):
-            new = self.binary_operator(left=Objective(args=[other]), right=self, op=op)
         else:
             t = op
-            nother = Objective(args=[assign_variable(other)])
+            nother = Objective(argsets=[[assign_variable(other)]])
             new = self.binary_operator(left=nother, right=self, op=t)
         return new
+
+    def __len__(self):
+        return len(self.transformations)
 
     def __mul__(self, other):
         return self._left_helper(numpy.multiply, other)
@@ -236,7 +280,7 @@ class Objective:
         return self._left_helper(numpy.true_divide, other)
 
     def __neg__(self):
-        return self.unary_operator(left=self, op=lambda v: numpy.multiply(v, -1))
+        return self._left_helper(numpy.multiply,-1.0)
 
     def __pow__(self, other):
         return self._left_helper(numpy.float_power, other)
@@ -257,11 +301,46 @@ class Objective:
         return self._right_helper(numpy.true_divide, other)
 
     def __invert__(self):
-        new = Objective(args=[self])
-        return new ** -1
+        new = Objective(argsets=self.argsets, transformations=self.transformations)
+        return new ** -1.0
+
+    @staticmethod
+    def _size_helper(size,other):
+        ls=size
+        if isinstance(other, numbers.Number):
+            vectorized=[other for i in range(ls)]
+            return numpy.asarray(vectorized)
+        elif isinstance(other,numpy.ndarray):
+            if ls == 1:
+                return other.flatten()
+            flat=other.flatten()
+            if flat.shape[0] != ls:
+                raise TequilaException('cannot combine objective of len {} with {} element array!'.format(ls,flat.shape[0]))
+            else:
+                return flat
+        elif isinstance(other, Objective):
+            if ls == 1:
+                return other
+            lo = len(other)
+            if lo == 1:
+                argset=other.argsets[0]
+                argsets=[argset for i in range(ls)]
+                transform=other.transformations[0]
+                transforms=[transform for i in range(ls)]
+                return Objective(argsets=argsets, transformations=transforms)
+            if ls != lo:
+                raise TequilaException('cannot combine objectives of len  {} and {}!'.format(ls,len(other)))
+            else:
+                return other
+        elif isinstance(other,ExpectationValueImpl):
+            return Objective(argsets=[[other] for i in range(ls)])
+        elif isinstance(other,Variable):
+            return Objective(argsets=[[other] for i in range(ls)])
+        else:
+            raise TequilaException('Received unknown object of type {}'.format(type(other)))
 
     @classmethod
-    def unary_operator(cls, left, op):
+    def unary_operator(cls, left, ops):
         """
         Arithmetical function for unary operations.
         Generally, called by the magic methods of Objective itself.
@@ -270,17 +349,20 @@ class Objective:
         left: Objective:
             the objective to which op will be applied
 
-        op: Callable:
-            an operation to apply to left
+        ops: list of Callable:
+            operations to apply to left
 
         Returns
         -------
         Objective:
-            Objective representing op applied to objective left.
+            Objective representing ops applied to objective left.
 
         """
-        return Objective(args=left.args,
-                         transformation=lambda *args: op(left.transformation(*args)))
+        transformations=[]
+        for i,op in enumerate(ops):
+            transformations.append(lambda *args: op(left.transformations[i](*args)))
+        return Objective(argsets=left.argsets,
+                         transformations=transformations)
 
     @classmethod
     def binary_operator(cls, left, right, op):
@@ -304,26 +386,42 @@ class Objective:
         Returns
         -------
         Objective:
-            an objective whose Transformation is op acting on left and right.
+            op acting on left, right. Will arguments appropriately if one is scalar.
         """
-
-        if isinstance(right, numbers.Number):
+        if isinstance(right, numbers.Number) or isinstance(right, numpy.ndarray):
             if isinstance(left, Objective):
-                return cls.unary_operator(left=left, op=lambda E: op(E, right))
+                sized_r=left._size_helper(len(left),right)
+                sized_l=left._size_helper(len(right),left)
+                ops=[lambda E: op(E, s) for s in sized_r]
+                return cls.unary_operator(left=sized_l, ops=ops)
             else:
                 raise TequilaException(
                     'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
-        elif isinstance(left, numbers.Number):
+        elif isinstance(left, numbers.Number) or isinstance(left, numpy.ndarray):
             if isinstance(right, Objective):
-                return cls.unary_operator(left=right, op=lambda E: op(left, E))
+                sized_r = right._size_helper(len(left), right)
+                sized_l = right._size_helper(len(right), left)
+                ops = [lambda E: op(s, E) for s in sized_l]
+                return cls.unary_operator(left=sized_r, ops=ops)
             else:
                 raise TequilaException(
                     'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
         else:
-            split_at = len(left.args)
-            return Objective(args=left.args + right.args,
-                             transformation=JoinedTransformation(left=left.transformation, right=right.transformation,
-                                                                 split=split_at, op=op))
+            sized_r=Objective._size_helper(len(left),right)
+            sized_l=Objective._size_helper(len(right),left)
+            sets = []
+            trans = []
+            for i in range(len(sized_r)):
+                left_args=sized_l.argsets[i]
+                left_f=sized_l.transformations[i]
+                right_args=sized_r.argsets[i]
+                right_f=sized_r.transformations[i]
+                split_at=len(left_args)
+                sets.append(left_args+right_args)
+                new_tran=JoinedTransformation(left=left_f,right=right_f,split=split_at,op=op)
+                trans.append(new_tran)
+            return Objective(argsets=sets,
+                             transformations=trans)
 
     def wrap(self, op):
         """
@@ -338,11 +436,65 @@ class Objective:
         Objective:
             an objective which is evaluated as op(self)
         """
-        return self.unary_operator(self, op)
+        ops = [op for i in range(len(self))]
+        return self.unary_operator(self, ops)
 
     def apply(self, op):
         """alias for wrap"""
         return self.wrap(op=op)
+
+    def apply_to(self,op,positions):
+        """
+        Apply a single operation to all transformations in a list
+        Parameters
+        ----------
+        op: callable:
+            the operation to apply to transformations in specified positions
+        positions: list:
+            which of the transformations in self.transformation to apply op to.
+
+        Returns
+        -------
+        Objective:
+            self, with op applied at chosen positions.
+        """
+        positions=list(set(list_assignment(positions)))
+        assert max(positions) <= len(self)-1
+        argsets=self.argsets
+        transformations=self.transformations
+        new_transformations=[]
+        for i, t in enumerate(transformations):
+            if i in positions:
+                new = lambda *args: op(t(*args))
+            else:
+                new= t
+            new_transformations.append(new)
+
+        return Objective(argsets=argsets,transformations=new_transformations)
+
+    def apply_op_list(self,oplist):
+        """
+        Apply a list of operations to each output of self.
+        Parameters
+        ----------
+        oplist:  list of Callabe:
+            the list of operations to compose with the current transformations. Must have equal length.
+
+        Returns
+        -------
+        Objective:
+            an Objective, corresponding to oplist[i] composed with self.transformations[i] for all i.
+        """
+        assert len(oplist) == len(self)
+        argsets = self.argsets
+        transformations = self.transformations
+        new_transformations = []
+        for i, t in enumerate(transformations):
+            new = lambda *args: oplist[i](t(*args))
+            new_transformations.append(new)
+
+        return Objective(argsets=argsets, transformations=new_transformations)
+
 
     def get_expectationvalues(self):
         """
@@ -370,6 +522,18 @@ class Objective:
             return len(set(self.get_expectationvalues()))
         else:
             return len(self.get_expectationvalues())
+
+    def contract(self):
+        argsets=self.argsets
+        trans=self.transformations
+        group=[]
+        for i, a in enumerate(argsets):
+            o = Objective(argsets=[a], transformations=[trans[i]])
+            group.append(o)
+        back = group[0]
+        for i in range(1,len(group)):
+            back += group[i]
+        return back
 
     def __str__(self):
         return self.__repr__()
@@ -403,21 +567,53 @@ class Objective:
 
         Returns
         -------
-        float:
+        float or numpy.ndarray:
             the result of the calculation represented by this objective.
         """
         variables = format_variable_dictionary(variables)
         # avoid multiple evaluations
-        evaluated = {}
-        ev_array = []
-        for E in self.args:
-            if E not in evaluated:
-                expval_result = E(variables=variables, *args, **kwargs)
-                evaluated[E] = expval_result
-            else:
-                expval_result = evaluated[E]
-            ev_array.append(expval_result)
-        return self.transformation(*ev_array)
+
+        eved=[]
+        for argset in self.argsets:
+            evaluated = {}
+            ev_array = []
+            for E in argset:
+                if E not in evaluated:
+                    expval_result = E(variables=variables, *args, **kwargs)
+                    evaluated[E] = expval_result
+                else:
+                    expval_result = evaluated[E]
+                ev_array.append(expval_result)
+            eved.append(ev_array)
+        called=[]
+        for i,f in enumerate(self.transformations):
+            called.append(f(*eved[i]))
+        if len(called) == 1:
+            return called[0]
+        else:
+            return onp.asarray(called)
+
+    @staticmethod
+    def empty(length: int = 1):
+        f = lambda *x: 0.0
+        trans = [f for i in range(length)]
+        return Objective(argsets=None, transformations=trans)
+
+    @staticmethod
+    def from_list(input):
+        assert isinstance(input,list)
+        assert all([isinstance(i, Objective) for i in input])
+        argsets=[]
+        transformations=[]
+        for i in input:
+            argsets.extend(i.argsets)
+            transformations.extend(i.transformations)
+        return Objective(argsets=argsets, transformations=transformations)
+
+    @staticmethod
+    def ExpectationValue(U,H,*args,**kwargs):
+        ev=ExpectationValueImpl(U=U,H=H,*args,**kwargs)
+        return Objective(argsets=[ev])
 
 
 def ExpectationValue(U, H, *args, **kwargs) -> Objective:
@@ -425,6 +621,18 @@ def ExpectationValue(U, H, *args, **kwargs) -> Objective:
     Initialize an Objective which is just a single expectationvalue
     """
     return Objective.ExpectationValue(U=U, H=H, *args, **kwargs)
+
+
+def stack_objectives(objectives):
+    l=list_assignment(objectives)
+    argsets=[]
+    trans=[]
+    for o in l:
+        for s in o.argsets:
+            argsets.append(s)
+        for t in o.transformations:
+            trans.append(t)
+    return Objective(argsets=argsets,transformations=trans)
 
 
 class TequilaVariableException(TequilaException):
@@ -505,35 +713,17 @@ class Variable:
         Objective:
             an Objective, who transform is op, acting on self and other
         """
-        if isinstance(other, numbers.Number):
-            t = lambda v: op(v, other)
-            new = Objective(args=[self], transformation=t)
-        elif isinstance(other, Variable):
-            t = op
-            new = Objective(args=[self, other], transformation=t)
-        elif isinstance(other, Objective):
-            new = Objective(args=[self])
-            new = new.binary_operator(left=new, right=other, op=op)
-        elif isinstance(other, ExpectationValueImpl):
-            new = Objective(args=[self, other], transformation=op)
-        return new
+        as_obj=Objective(argsets=[[self]])
+        return as_obj._left_helper(op,other)
+
 
     def _right_helper(self, op, other):
         """
         see _left_helper for details.
         """
-        if isinstance(other, numbers.Number):
-            t = lambda v: op(other, v)
-            new = Objective(args=[self], transformation=t)
-        elif isinstance(other, Variable):
-            t = op
-            new = Objective(args=[other, self], transformation=t)
-        elif isinstance(other, Objective):
-            new = Objective(args=[self])
-            new = new.binary_operator(right=new, left=other, op=op)
-        elif isinstance(other, ExpectationValueImpl):
-            new = Objective(args=[other, self], transformation=op)
-        return new
+
+        as_obj=Objective(argsets=[[self]])
+        return as_obj._right_helper(op,other)
 
     def __mul__(self, other):
         return self._left_helper(numpy.multiply, other)
@@ -548,7 +738,7 @@ class Variable:
         return self._left_helper(numpy.true_divide, other)
 
     def __neg__(self):
-        return Objective(args=[self], transformation=lambda v: numpy.multiply(v, -1))
+        return Objective(argsets=[[self]], transformations=[lambda v: numpy.multiply(v, -1.)])
 
     def __pow__(self, other):
         return self._left_helper(numpy.float_power, other)
@@ -566,8 +756,11 @@ class Variable:
         return self._right_helper(numpy.true_divide, other)
 
     def __invert__(self):
-        new = Objective(args=[self])
-        return new ** -1
+        new = Objective(argsets=[[self]])
+        return new ** -1.0
+
+    def __len__(self):
+        return 1
 
     def __ne__(self, other):
         if self.__eq__(other):
@@ -577,7 +770,7 @@ class Variable:
 
     def apply(self, other):
         assert (callable(other))
-        return Objective(args=[self], transformation=other)
+        return Objective(argsets=[[self]], transformations=[other])
 
     def wrap(self, other):
         return self.apply(other)
@@ -603,7 +796,7 @@ class FixedVariable(float):
 
     def apply(self, other):
         assert (callable(other))
-        return Objective(args=[self], transformation=other)
+        return Objective(argsets=[[self]], transformations=[other])
 
     def wrap(self, other):
         return self.apply(other)
