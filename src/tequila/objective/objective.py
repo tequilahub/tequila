@@ -15,7 +15,16 @@ class ExpectationValueImpl:
     """
     Implements the (uncompiled) Expectation Value as a class. Should not be called directly.
 
-    common arithmetical operations like addition, multiplication, etc. are defined, to return Objective objects.
+    Notes
+    -----
+    Though not obscured from the user, users should not initialize this class directly, since it lacks convenience
+    functions for arithmetics. Instead, these are handled by the Objective class; initializing an Objective
+    of a single Expectation Value is done with Objective.ExpectationValue or with tq.ExpectationValue.
+
+    See Also
+    --------
+    Objective
+    ExpectationValue
 
     Attributes
     ----------
@@ -49,6 +58,12 @@ class ExpectationValueImpl:
             return self._hamiltonian
 
     def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+        """
+        Wrapper over identically named function in QCircuit. Returns all variables from the underlying unitary.
+        Returns
+        -------
+
+        """
         result = []
         if self.U is not None:
             result = self.U.extract_variables()
@@ -113,11 +128,71 @@ def identity(x):
 
 class Objective:
     """
-    fundamental class for arithmetic on quantum data; the core of tequila.
+    fundamental class for arithmetic and transformations on quantum data; the core of tequila.
 
     A callable class which returns either a scalar or a vector. Implements all tools needed for arithmetic,
     as well as automatic differentiation, of user defined objectives, which may be either quantum or classical
     in nature.
+
+    Attributes
+    ----------
+    args:
+        list, contracting over argsets, and removing all duplicates.
+    argsets:
+        a list of lists of arguments to each of the functions represented by the objective.
+        Elements of said lists of arguments should be ExpectationValueImpl, Variable, or FixedVariable (i.e, a number)
+    backend:
+        string; what simulation backend, if any, the Objective has been compiled for. If Objective contains NO
+        quantum simulables, then the string 'free' will be returned.
+    transformations:
+        a list of callables; the functions represented by the objective. In the case that Objective has only one
+        callable -- i.e, returns a scalar when called -- then the objective represents a minimizable objective function,
+        such as is appropriate to be optimized over.
+
+    Methods
+    -------
+    apply:
+        see 'wrap'; just an alias.
+    apply_op_list:
+        compose a list of operations, elementwise, with the transforms of the objective.
+    apply_to:
+        apply a composition  of list of operations to a set of the objectives transformations determined by a list
+        of positions, elementwise. I.E: apply 'multiply by 1' and 'divide by 2' to the transformations at positions
+        3 and 5.
+    binary_operator:
+        class method. used by magic methods to construct new objectives arithmetically.
+        generally used for operations between two tequila types
+    contract:
+        return a 1-d objective, the sum over the vector represented by objective which calls this method.
+    count_expectationvalues:
+        return the number of expectationvalues in args
+    count_expectationvalues_at:
+        return the number of expectationvvalues in a specific argset
+    empty:
+        static method. return an empty objective of a given length.
+    ExpectationValue:
+        static method. return a 1-d objective of a single, ntrasformed expectation value.
+    extract_variables:
+        extract all the variables on which any position of th eobjective depends
+    extract_variables_at:
+        exctract all the variables on which a specific position of the objective depends
+    from_list:
+        static method. Initialize a new objective by 'stacking' a list thereof end to end in order.
+    get_expectationvalues:
+        get every expectationvalue on which the objective depends
+    get_expectationvalues_at:
+        get every expectationvalue on which a specific position of the objective depends
+    has_expectationvalues:
+        return whether or not there are any expectationvalues in args
+    has_expectationvalues_at:
+        return whether or not there are expectationvalues in a specific argset
+    is_expectationvalue:
+        return whether or not the whole objective is just a wrapper around a single expectation value.
+    wrap:
+        compose a callable with each and every transformation of the objective.
+    unary_operator:
+        class method. used by magic methods to construct new objectives arithmetically.
+        generally used for operations between tequila types and other python types.
 
     """
     def __init__(self, argsets: typing.Iterable = None, transformations: typing.Iterable[callable] = None):
@@ -126,9 +201,10 @@ class Objective:
         Parameters
         ----------
         argsets: iterable:
-            a (list, tuple) of (list,tuple) of arguments; each the argument of a transformation.
+            a (list, tuple) of (list,tuple) of arguments; each set the argument of a transformation.
+            In geneneral, the elements of each argset are ExpectationValueImpl, Variable, or  float.
         transformations: iterable:
-            a (list, tuple) of callables; these determine the output of call.
+            a (list, tuple) of Callable; these determine the output of call.
         """
 
         if argsets is None:
@@ -166,9 +242,13 @@ class Objective:
 
     def extract_variables(self):
         """
-        Extract all variables on which the objective depends
-        :return: List of all Variables
+        Extract all variables on which the objective depends.
+        Returns
+        -------
+        list:
+            all the variables.
         """
+
         variables = []
         for arg in self.args:
             if hasattr(arg, 'extract_variables'):
@@ -178,19 +258,66 @@ class Objective:
 
         return list(set(variables))
 
+    def extract_variables_at(self,pos):
+        """
+        Return all the variables from a given argset.
+        Parameters
+        ----------
+        pos: int:
+            which position in the list of argsets to return from.
+
+        Returns
+        -------
+        list:
+            a list of all the variables from a certain position in the list of argsets.
+        """
+        assert isinstance(pos,int)
+        assert pos <= len(self) -1
+        variables = []
+        for arg in self.argsets[pos]:
+            if hasattr(arg, 'extract_variables'):
+                variables += arg.extract_variables()
+            else:
+                variables += []
+
+        return list(set(variables))
     def is_expectationvalue(self):
         """
-        :return: bool: whether or not this objective is just a wrapped ExpectationValue
+        Returns
+        -------
+        bool:
+            whether or not this objective is just a wrapped ExpectationValue
         """
         return len(self.args) == 1 and self._transformations is None and type(self.args[0]) is ExpectationValueImpl
 
+
     def has_expectationvalues(self):
         """
-        :return: bool: wether or not this objective has expectationvalues or is just a function of the variables
+        Returns
+        -------
+        bool:
+            whether or not any element from any argset is an Expectation Value.
+
         """
-        # testing if all arguments are only variables and give back the negative
         return any([hasattr(arg, "U") for arg in self.args])
 
+    def has_expectationvalues_at(self,pos):
+        """
+        whether or not the nth argset has any expectation values in it.
+        Uses (O, N-1) notation (i.e, the first position is zero, the last is len(self) -1)
+        Parameters
+        ----------
+        pos: int:
+            which position in the list of argsets to check.
+
+        Returns
+        -------
+        bool:
+            whether or not  the 'pos'th argset contains any expectationvalues
+        """
+        assert isinstance(pos,int)
+        assert pos <= len(self) -1
+        return any([hasattr(arg,'U') for arg in self.argsets[pos] ])
     @property
     def transformations(self) -> typing.Tuple:
         back=[]
@@ -504,6 +631,22 @@ class Objective:
             all the expectation values that make up the objective.
         """
         return [arg for arg in self.args if hasattr(arg, "U")]
+    def get_expectationvalues_at(self,pos):
+        """
+        Return all the expectationvalues from a certain set of arguments.
+        Parameters
+        ----------
+        pos: int:
+            which position in the set of argsets to return all expectationvalues from.
+
+        Returns
+        -------
+        list:
+            a list of expectation values.
+        """
+        assert isinstance(pos,int)
+        assert pos <= len(self) - 1
+        return [arg for arg in self.argsets[pos] if hasattr(arg,'U')]
 
     def count_expectationvalues(self, unique=True):
         """
@@ -523,7 +666,39 @@ class Objective:
         else:
             return len(self.get_expectationvalues())
 
+    def count_expectationvalues_at(self,pos, unique=True):
+        """
+        Count all the expectationvalues in a certain argset.
+        Parameters
+        ----------
+        pos: int:
+            which position in the list of argsets to check.
+        unique: bool, Default = True:
+            whether or not to only count unique instances.
+
+
+        Returns
+        -------
+        int:
+            how many (possibly, how many unique) expectationvalues are contained within the objective.
+
+        """
+        assert isinstance(pos,int)
+        assert pos <= len(self) - 1
+        if unique:
+            return len(set(self.get_expectationvalues_at(pos)))
+        else:
+            return len(self.get_expectationvalues_at(pos))
+
     def contract(self):
+        """
+        return 1-d objective, summing over all transformations.
+
+        Returns
+        -------
+        Objective:
+            an Objective whose output, when called, would be the sum over the output of self.
+        """
         argsets=self.argsets
         trans=self.transformations
         group=[]
@@ -595,12 +770,43 @@ class Objective:
 
     @staticmethod
     def empty(length: int = 1):
+        """
+        Initialize an empty objective whose return on call would be of length 'length'.
+
+        Notes
+        -----
+        Named in this way to mirror numpy syntax for initialization of empty arrays.
+
+        Parameters
+        ----------
+        length: int (Default = 1):
+            how long the empty objective should be (i.e, length of its call return)
+
+        Returns
+        -------
+        Objective:
+            an empty objective of length 'length'.
+
+        """
+        assert isinstance(length,int)
         f = lambda *x: 0.0
         trans = [f for i in range(length)]
         return Objective(argsets=None, transformations=trans)
 
     @staticmethod
     def from_list(input):
+        """
+        Return an n-d array Objective from a list of Objectives whose lengths will total n.
+        Parameters
+        ----------
+        input: list:
+            a list of Objectives.
+
+        Returns
+        -------
+        Objective:
+            Objective representing the stacked Objectives of input.
+        """
         assert isinstance(input,list)
         assert all([isinstance(i, Objective) for i in input])
         argsets=[]
@@ -612,6 +818,22 @@ class Objective:
 
     @staticmethod
     def ExpectationValue(U,H,*args,**kwargs):
+        """
+        Return a 1-d Objective containing a single ExpectationValue, with the identity transform acting thereupon.
+        Parameters
+        ----------
+        U: QCircuit:
+            the unitary for state preparation in the expectation value
+        H: Hamiltonian:
+            the operator whose expectation value on state created by U is to be evaluated.
+        args
+        kwargs
+
+        Returns
+        -------
+        Objective:
+            1-d objective representing the desired ExpectationValue.
+        """
         ev=ExpectationValueImpl(U=U,H=H,*args,**kwargs)
         return Objective(argsets=[ev])
 
@@ -624,6 +846,20 @@ def ExpectationValue(U, H, *args, **kwargs) -> Objective:
 
 
 def stack_objectives(objectives):
+    """
+    Combine several objectives in order, into one longer vector.
+
+    Parameters
+    ----------
+    objectives: iterable:
+        the objectives to combine as a vector. Note that this is not addition, but the 'end to end' combination of
+        vectors; the new objective will have length Sum(len(x) for x in objectives)
+
+    Returns
+    -------
+    Objective:
+        Objectives stacked together.
+    """
     l=list_assignment(objectives)
     argsets=[]
     trans=[]
@@ -669,6 +905,16 @@ class Variable:
         return hash(self.name)
 
     def __init__(self, name: typing.Union[str, typing.Hashable]):
+        """
+        Parameters
+        ----------
+        name: hashable:
+            a unique identifier for this variable. All Variable instances with the same name are considered the same.
+
+        Raises
+        ------
+        TequilaVariableException
+        """
         if name is None:
             raise TequilaVariableException("Tried to initialize a variable with None")
         if not isinstance(name, typing.Hashable) or not hasattr(name, "__hash__"):

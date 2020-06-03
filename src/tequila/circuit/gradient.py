@@ -103,7 +103,7 @@ def __grad_objective(objective: Objective, variable: Variable):
                 dO = dO + outer * inner
 
         if dO is None:
-            continue
+            dO = Objective()
         outputs.append(dO)
     if len(outputs) == 1:
         return outputs[0]

@@ -530,8 +530,8 @@ def test_inside(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (num
 
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
-def test_akward_expression(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                           value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_awkward_expression(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                            value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -562,8 +562,8 @@ def test_akward_expression(simulator, value1=(numpy.random.randint(0, 1000) / 10
 
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
-def test_really_awfull_thing(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                             value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_really_awful_thing(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                            value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -608,3 +608,31 @@ def test_stacking():
     O2 = O1/4
     output = simulate(O2,variables=vals)
     assert np.isclose(1.,np.sum(output))
+
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+def test_stacking_quantum(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+    a = Variable('a')
+    b = Variable('b')
+    values = {a: value1, b: value2}
+    H1 = tq.paulis.X(0)
+    H2 = tq.paulis.Y(0)
+    U1= tq.gates.Ry(angle=a,target=0)
+    U2= tq.gates.Rx(angle=b,target=0)
+    e1=ExpectationValue(U1,H1)
+    e2=ExpectationValue(U2,H2)
+    stacked= tq.objective.stack_objectives([e1,e2])
+    out=simulate(stacked,variables=values,backend=simulator)
+    v1=out[0]
+    v2=out[1]
+    an1= np.sin(a(values))
+    an2= -np.sin(b(values))
+    assert np.isclose(v1+v2,an1+an2)
+    # not gonna contract, lets make gradient do some real work
+    ga=grad(stacked,a)
+    gb=grad(stacked,b)
+    tota= np.sum([tq.simulate(x,variables=values) for x in ga])
+    totb= np.sum([tq.simulate(x,variables=values) for x in gb])
+    gan1= np.cos(a(values))
+    gan2= -np.cos(b(values))
+    assert np.isclose(tota+totb,gan1+gan2)
