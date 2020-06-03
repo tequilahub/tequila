@@ -124,10 +124,8 @@ def test_gradient_based_methods_qng(simulator, method):
     # just equal to the original circuit, but i'm checking that all the sub-division works
     O=(4/8)*E+(3/8)*copy.deepcopy(E)+(1/8)*copy.deepcopy(E)+tq.Variable('a')-tq.Variable('a')
 
-    initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
-    if method in ['TNC','CG','BFGS']:
-        ### these methods have to be babied to guarantee convergence
-        initial_values = {"a": 0.8, "b": 1.6, 'c': 0.9, 'd': -0.15}
+
+    initial_values = {"a": 0.8, "b": 1.6, 'c': 0.9, 'd': -0.15}
     result = tq.optimizer_scipy.minimize(objective=-O,gradient='qng', backend=simulator,
                                          method=method, tol=1.e-4, method_options={"gtol":1.e-4, "eps":1.e-4},
                                          initial_values=initial_values, silent=False)
