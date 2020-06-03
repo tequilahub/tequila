@@ -1,6 +1,6 @@
 import scipy, numpy, typing, numbers
 from tequila.objective import Objective
-from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary
+from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer
 from ._containers import _EvalContainer, _GradContainer, _HessContainer, _QngContainer
 from collections import namedtuple
@@ -122,13 +122,6 @@ class OptimizerSciPy(Optimizer):
 
         # do the compilation here to avoid costly recompilation during the optimization
         compiled_objective = self.compile_objective(objective=objective)
-        for arg in compiled_objective.args:
-            if hasattr(arg,'U'):
-                if arg.U.device is not None:
-                    # don't retrieve computer 100 times; pyquil errors out if this happens!
-                    self.device = arg.U.device
-                    break
-
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
                            samples=self.samples,
@@ -150,7 +143,7 @@ class OptimizerSciPy(Optimizer):
                     raise TequilaException('Sorry, QNG and hessian not yet tested together.')
 
                 combos = get_qng_combos(objective, initial_values=initial_values, backend=self.backend,
-                                        samples=self.samples, noise=self.noise,device=self.device)
+                                        samples=self.samples, noise=self.noise)
                 dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
                 infostring += "{:15} : QNG {}\n".format("gradient", dE)
             else:
@@ -162,6 +155,18 @@ class OptimizerSciPy(Optimizer):
                         hessian = gradient
                 infostring += "{:15} : scipy numerical {}\n".format("gradient", dE)
                 infostring += "{:15} : scipy numerical {}\n".format("hessian", ddE)
+
+        if isinstance(gradient,dict):
+            if gradient['method'] == 'qng':
+                func = gradient['function']
+                compile_gradient = False
+                if compile_hessian:
+                    raise TequilaException('Sorry, QNG and hessian not yet tested together.')
+
+                combos = get_qng_combos(objective,func=func, initial_values=initial_values, backend=self.backend,
+                                        samples=self.samples, noise=self.noise)
+                dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
+                infostring += "{:15} : QNG {}\n".format("gradient", dE)
 
         if isinstance(hessian, str):
             ddE = hessian
@@ -177,7 +182,6 @@ class OptimizerSciPy(Optimizer):
                                 passive_angles=passive_angles,
                                 save_history=self.save_history,
                                 print_level=self.print_level)
-
         if compile_hessian:
             hess_obj, comp_hess_obj = self.compile_hessian(variables=variables,
                                                            hessian=hessian,
@@ -191,7 +195,6 @@ class OptimizerSciPy(Optimizer):
                                  passive_angles=passive_angles,
                                  save_history=self.save_history,
                                  print_level=self.print_level)
-
         if self.print_level > 0:
             print(self)
             print(infostring)
@@ -291,7 +294,7 @@ def minimize(objective: Objective,
              samples: int = None,
              maxiter: int = 100,
              backend: str = None,
-             device: str = None,
+             backend_options: dict = None,
              noise: NoiseModel = None,
              method: str = "BFGS",
              tol: float = 1.e-3,
@@ -330,12 +333,13 @@ def minimize(objective: Objective,
     backend: str :
          (Default value = None)
          Simulator backend, will be automatically chosen if set to None
+    backend_options: dict:
+         (Default value = None)
+         Additional options for the backend
+         Will be unpacked and passed to the compiled objective in every call
     noise: NoiseModel:
          (Default value =None)
          a NoiseModel to apply to all expectation values in the objective.
-    device: str:
-        (Default value = None)
-        the device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.
     method: str :
          (Default value = "BFGS")
          Optimization method (see scipy documentation, or 'available methods')
@@ -377,12 +381,12 @@ def minimize(objective: Objective,
     optimizer = OptimizerSciPy(save_history=save_history,
                                maxiter=maxiter,
                                method=method,
-                               device=device,
                                method_options=method_options,
                                method_bounds=method_bounds,
                                method_constraints=method_constraints,
                                silent=silent,
                                backend=backend,
+                               backend_options=backend_options,
                                samples=samples,
                                noise_model=noise,
                                tol=tol,
