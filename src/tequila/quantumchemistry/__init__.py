@@ -83,6 +83,8 @@ def Molecule(geometry: str,
             backend = "pyscf"
         else:
             raise Exception("No quantum chemistry backends installed on your system")
+    elif backend == "base":
+        return QuantumChemistryBase(parameters=parameters, *args, **kwargs)
 
     if backend not in SUPPORTED_QCHEMISTRY_BACKENDS:
         raise Exception(str(backend) + " is not (yet) supported by tequila")
