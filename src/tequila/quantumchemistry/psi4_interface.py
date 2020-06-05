@@ -2,7 +2,7 @@ from tequila import TequilaException
 from openfermion import MolecularData
 
 from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase,\
-    ClosedShellAmplitudes, Amplitudes, TwoBodyTensor
+    ClosedShellAmplitudes, Amplitudes, NBodyTensor
 
 import copy
 import numpy
@@ -336,10 +336,10 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # Molecular orbitals (coeffs)
         Ca = wfn.Ca()
-        h = TwoBodyTensor(hPQrs=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), scheme='chem')
+        h = NBodyTensor(elems=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), scheme='chem')
         # Order tensor. default: meet openfermion conventions
         h.reorder(to=ordering)
-        return h.get_hPQrs()
+        return h.elems
 
     def compute_ccsd_amplitudes(self):
         return self.compute_amplitudes(method='ccsd')
