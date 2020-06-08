@@ -3,7 +3,8 @@ from tequila import TequilaException, BitString, QubitWaveFunction
 from tequila.hamiltonian import QubitHamiltonian, paulis
 
 from tequila.circuit import QCircuit, gates
-from tequila.objective.objective import Variable, ExpectationValue
+from tequila.objective.objective import Variable, Variables, ExpectationValue
+from tequila.optimizers import minimize
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
 
@@ -309,7 +310,7 @@ class NBodyTensor:
     need to implement a test for this!
     """
 
-    def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, scheme: int = None,
+    def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, scheme: str = None,
                  size_full: int = None):
 
         # Set elements
@@ -545,6 +546,9 @@ class QuantumChemistryBase:
         assert (parameters.multiplicity == self.molecule.multiplicity)
         assert (parameters.charge == self.molecule.charge)
         self.active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
+
+        self._rdm1 = None
+        self._rdm2 = None
 
     def _make_active_space_data(self, active_orbitals, reference=None):
         """
@@ -1047,45 +1051,34 @@ class QuantumChemistryBase:
         return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
 
     @property
-    def rdm1(self):
-        if self.rdm1 is None:
-            #compute stuff -- standard is setting up a UCCSD, computing for VQE and then getting the rdms
-            # bla...
-            # compute_rdms()
-            pass
-        else:
-            return self.rdm1
-
-    @property
-    def rdm2(self):
-        if self.rdm2 is None:
-            # compute stuff
-            pass
-        else:
-            return self.rdm2
-    @property
     def rdms(self) -> tuple:
-        if self.rdm1 is None and self.rdm2 is None:
-            #compute both
-            pass
-        elif self.rdm1 is None and self.rdm2 is not None:
-            #compute only one
-            pass
-        elif self.rdm1 is not None and self.rdm2 is None:
-            # compute only one
-            pass
+        # Preferred method: give me a U, ..., and don't just call this
+        if self._rdm1 is not None and self._rdm2 is not None:
+            return self._rdm1, self._rdm2
         else:
-            return self.rdm1, self.rdm2
-    def compute_rdms(self, U: QCircuit, variables: Variable=None, spin_free: bool=True,
-                     as_tensors: bool=False, get_rdm1: bool=True, get_rdm2: bool=True):
-        #todo: or maybe get: list=[1,2]
+            print('No circuit specified. Using UCCSD ansatz with mp2 amplitudes for now.')
+            U = self.make_uccsd_ansatz(trotter_steps=1)
+            objective = ExpectationValue(U=U, H=self.make_hamiltonian())
+            E = minimize(method='bfgs', objective=objective, silent=True,
+                         initial_values={k: 0.0 for k in objective.extract_variables()})
+            variables = E.angles
+            if self._rdm1 is None and self._rdm2 is None:
+                self.compute_rdms(U=U, get_rdm1=True, get_rdm2=True, variables=variables)
+            elif self._rdm1 is None and self._rdm2 is not None:
+                self.compute_rdms(U=U, get_rdm1=True, get_rdm2=False, variables=variables)
+            elif self._rdm1 is not None and self._rdm2 is None:
+                self.compute_rdms(U=U, get_rdm1=False, get_rdm2=True, variables=variables)
+            return self._rdm1, self._rdm2
+
+    def compute_rdms(self, U: QCircuit, variables: Variables = None,
+                     spin_free: bool = True,
+                     get_rdm1: bool = True, get_rdm2: bool = True):
         """
         Standard ordering: phys
         def. of dens mats
         explain in&output
         short sentence only assuming real wfns
-        #todo: decouple everything reg. rdm1/2, to better allow selectively choosing rdm1/2
-
+        #todo: write sth that better have a VQE and then choose to get RDMs instead of automatedly getting it
 
         test for this:
         H2-circuit, and provide optimized angles ---> providing a U
@@ -1263,25 +1256,22 @@ class QuantumChemistryBase:
         # Compute expected values
         # Need to pass EITHER a fixed U and variables=None OR a parametrized U with a set of variables
         evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
-        # spin-dependent
-        len_1 = n_qubits*(n_qubits+1)/2
-        evals_1 = evals[:len_1]
-        evals_2 = evals[len_1:]
 
+        # Assemble density matrices
+        self._rdm1 = None
+        self._rdm2 = None
         if spin_free:
-            len_1 = n_qubits//2 * (n_qubits//2 + 1) / 2
-            rdm1 = assemble_rdm1_spinfree() if get_rdm1 else None
-            rdm2 = assemble_rdm2_spinfree() if get_rdm2 else None
+            len_1 = n_qubits//2 * (n_qubits//2 + 1) // 2 if get_rdm1 else 0
+            evals_1 = evals[:len_1]
+            evals_2 = evals[len_1:]
+            self._rdm1 = assemble_rdm1_spinfree(evals_1) if get_rdm1 else None
+            self._rdm2 = assemble_rdm2_spinfree(evals_2) if get_rdm2 else None
         else:
-            len_1 = n_qubits * (n_qubits + 1) / 2
-            rdm1 = assemble_rdm1_spinful() if get_rdm1 else None
-            rdm2 = assemble_rdm2_spinful() if get_rdm2 else None
-
-        if as_tensors:
-            rdm1 = NBodyTensor(elems=rdm1, scheme='phys')
-            rdm2 = NBodyTensor(elems=rdm2, scheme='phys')
-
-        return rdm1, rdm2 # todo: not as return thing, but make rdm's members of class... maybe even purely as NBodyTensors..
+            len_1 = n_qubits * (n_qubits + 1) // 2 if get_rdm1 else 0
+            evals_1 = evals[:len_1]
+            evals_2 = evals[len_1:]
+            self._rdm1 = assemble_rdm1_spinful(evals_1) if get_rdm1 else None
+            self._rdm2 = assemble_rdm2_spinful(evals_2) if get_rdm2 else None
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"

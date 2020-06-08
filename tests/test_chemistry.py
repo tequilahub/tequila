@@ -131,7 +131,7 @@ def do_test_mp2(qc_interface, parameters, result):
 @pytest.mark.parametrize("method", ["cc2", "ccsd", "cc3"])
 def test_amplitudes_psi4(method):
     results = {"mp2": -1.1279946983462537, "cc2": -1.1344484090805054, "ccsd": None, "cc3": None}
-    # the number might be wrong ... its definetely not what psi4 produces
+    # the number might be wrong ... its definitely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_amplitudes(method=method, qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc,
@@ -200,3 +200,13 @@ def test_active_spaces(active):
     assert (tq.numpy.isclose(hf, mol.energies["hf"], atol=1.e-4))
     qubits = 2*sum([len(v) for v in active.values()])
     assert (H.n_qubits == qubits)
+
+def test_rdms():
+    # use mp2 amplitudes here, then no need to have psi4...
+    # compute rdms for H2 or He and do some plausibility checks
+    # build spinful and spinfree rdms and compare them with something hard-coded
+    assert(1 == 1)
+
+@pytest.mark.skipif(condition=not tq.chemistry.has_psi4, reason="psi4 not found")
+def test_rdms_psi4():
+    assert(1 == 1)
