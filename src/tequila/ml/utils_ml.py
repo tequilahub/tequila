@@ -39,40 +39,6 @@ def check_compiler_args(c_args: dict) -> typing.Dict:
     return c_args
 
 
-def check_inclusion(input_vars: list,weight_vars:list) -> typing.Tuple[
-                typing.List[typing.Union[Variable, FixedVariable]], typing.List[typing.Union[Variable, FixedVariable]]]:
-    """
-    check that the input and weight variables specified (or left blank by the user) do not overlap.
-    return them properly formatted.
-    Parameters
-    ----------
-    input_vars: list of Hashable:
-        the list of variables whose values are meant to be input to call in the ml-compiled Objective.
-    weight_vars: list of Hashable:
-        the ist of variables whose values should be treated as internal weights in the ml-compiled Objective.
-
-    Returns
-    -------
-    tuple:
-        tuple of lists, the properly formatted input_vars and weight_vars respectively, if they do not overlap.
-    """
-    if input_vars is None:
-        if weight_vars is not None:
-            return [], [assign_variable(v) for v in weight_vars]
-        else:
-            raise TequilaException('Somehow, None was the argument to both lists. Please try again')
-
-    iv = [assign_variable(v) for v in input_vars]
-    if weight_vars is not None:
-        wv = [assign_variable(v) for v in weight_vars]
-        for v in iv:
-            if v in wv:
-                raise TequilaException('found duplicate variable {} in both input and weight variables.'.format(str(v)))
-        return iv,wv
-    else:
-        return iv,[]
-
-
 def check_full_span(all_vars: list, combined: list):
     """
     check that two lists of variables have all the same elements, even if in different orders.
@@ -99,13 +65,17 @@ def preamble(objective: Objective,compile_args: dict = None,input_vars: list = N
     Helper function for use at the beggining of
     Parameters
     ----------
-    objective
-    compile_args
-    input_vars
+    objective: Objective:
+        the objective to manipulate and compile.
+    compile_args: dict, optional:
+        a dictionary of args that can be passed as kwargs to tq.compile
+    input_vars: list, optional:
+        a list of variables of the objective to specify as input, rather than itnernal weights.
 
     Returns
     -------
-
+    tuple
+        the compiled objective, a list of input_variables, and a list of weight_variables.
     """
     all_vars = objective.extract_variables()
     compile_args = check_compiler_args(compile_args)
@@ -127,7 +97,7 @@ def preamble(objective: Objective,compile_args: dict = None,input_vars: list = N
             if assign_variable(k) in input_vars:
                 raise TequilaMLException('initial_values contained key {}, which is meant to be an input variable.'.format(k))
     comped = compile(objective,**compile_args)
-    return comped,input_vars,weight_vars
+    return comped,compile_args,weight_vars,input_vars
 
 
 def get_gradients(objective: Objective, compile_args: dict):
@@ -158,7 +128,7 @@ def get_gradients(objective: Objective, compile_args: dict):
     return back
 
 
-def separate_gradients(gradients,input_vars,weight_vars):
+def separate_gradients(gradients,weight_vars, input_vars):
     """
     split the gradient dictionary up into one for input and one for weights.
 
@@ -183,5 +153,28 @@ def separate_gradients(gradients,input_vars,weight_vars):
         i_grad[var] = gradients[var]
     for var in weight_vars:
         w_grad[var] = gradients[var]
-    return i_grad, w_grad
+    return w_grad, i_grad
 
+def get_variable_orders(weight_vars,input_vars):
+    """
+    get a dictionary mapping position in an array to tequila variables.
+    Parameters
+    ----------
+    input_vars: list:
+        which vars are interpreted as input
+    weight_vars: list:
+        which vars are interpreted as weight
+
+    Returns
+    -------
+
+    """
+    displace=0
+    pattern = {}
+    for i,v in enumerate(weight_vars):
+        displace += 1
+        pattern[i] = v
+    for j,v in enumerate(input_vars):
+        pattern[j + displace] = v
+
+    return pattern

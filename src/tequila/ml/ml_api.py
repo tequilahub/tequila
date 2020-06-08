@@ -6,8 +6,8 @@ CONVERTERS = {}
 
 HAS_TORCH = which('torch') is not None or which('pytorch') is not None
 if HAS_TORCH:
-    from .interface_torch import to_torch
-    CONVERTERS['pytorch'] = to_torch
+    from .interface_torch import TorchLayer
+    CONVERTERS['pytorch'] = TorchLayer
 HAS_TF = False
 
 
