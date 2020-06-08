@@ -13,4 +13,4 @@ qulacs # default simulator
 #cirq
 #qiskit
 #pyquil # you need to install the forest-sdk
-
+#qulacs-gpu

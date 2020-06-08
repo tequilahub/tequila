@@ -546,7 +546,7 @@ class QubitHamiltonian:
 
         for k, v in self.qubit_operator.terms.items():
             mk = tuple([(qubit_map[x[0]], x[1]) for x in k])
-            mapped_terms[k] = v
+            mapped_terms[mk] = v
 
         mapped = QubitOperator.zero()
         mapped.terms = mapped_terms

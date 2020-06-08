@@ -26,11 +26,16 @@ class QngMatrix:
     def __call__(self, variables,samples=None):
         output= numpy.zeros(self.dim)
         d_v = 0
+        ### blocks are square, so if we are using a block diagonal approx, we need to
+        ### displace our running index of position, as we enumerate through a block
+        ### d_v does this. If you only provide one block (the whole QGT), this won't matter
         for block in self.blocks:
+
             d_v_temp = 0
             for i, row in enumerate(block):
                 for j, term in enumerate(row):
                     if i <= j:
+                        ### if its an objective, call it. Else, it is a float.
                         try:
                             output[i + d_v][j + d_v] = term(variables=variables,samples=samples)
                         except:
@@ -49,7 +54,7 @@ class CallableVector:
         return (len(self._vector))
 
     def __init__(self,vector):
-        self._vector=vector
+        self._vector = vector
 
 
     def __call__(self, variables,samples=None):
@@ -76,38 +81,49 @@ def get_generator(gate):
     return gen
 
 
-def qng_metric_tensor_blocks(expectation,initial_values=None,samples=None,
-                             backend=None,backend_options=None,noise=None):
+def stokes_block(expectation,initial_values=None,samples=None,device=None,
+                             backend=None,noise=None):
+
 
     U=expectation.U
+    ### orders the circuit into alternating layer ansatz, where a moment is all simultaneous gates
     moments=U.canonical_moments
+    ### rebuild the sub circuits used in the expectation values that populate the QGT
     sub=[QCircuit.from_moments(moments[:i]) for i in range(1,len(moments),2)]
+    ### this is the list of just the moments which are parametrized.
     parametric_moms=[moments[i] for i in range(1,len(moments)+1,2)]
     generators =[]
+    ### generators is a list of lists, ultimately, where each sublist is all the generators in order
+    ### for a given parametric layer (if said layer is occupied, which it might not be! a layer can be nothing, I.E, the identity.)
     for pm in parametric_moms:
         set=[]
         if len(pm.gates) !=0:
             for gate in pm.gates:
+                ### get_generator takes a gaussian gate, and returns the pauli that is its generator. See that function for detail.
                 gen=get_generator(gate)
                 set.append(gen)
         if len(set) !=0:
             generators.append(set)
         else:
+            ### blank sets get passed over
             generators.append(None)
     blocks=[]
     for i,set in enumerate(generators):
         if set is None:
             pass
         else:
+            ### a block is a list of lists, and indexing it should correspond to indexing a matrix in A[row][column] fashion.
+            ### alternate functions could have the whole QGT be a single block, but you need to have as a return a List of (List of Lists)!!!!
             block=[[0 for _ in range(len(set))] for _ in range(len(set))]
             for k,gen1 in enumerate(set):
                 for q,gen2 in enumerate(set):
+                    ### make sure you compile the objectives! otherwise this bad boy will not run
                     if k == q:
                         arg= (ExpectationValue(U=sub[i], H=gen1 * gen1) - ExpectationValue(U=sub[i],H=gen1)**2)/4
                     else:
                         arg = (ExpectationValue(U=sub[i], H=gen1 * gen2) - ExpectationValue(U=sub[i], H=gen1)*ExpectationValue(U=sub[i],H=gen2) ) / 4
-                    block[k][q] = compile_objective(arg, variables=initial_values, samples=samples, backend=backend,
-                                                    noise=noise,backend_options=backend_options)
+                    block[k][q] = compile_objective(arg, variables=initial_values, samples=samples, backend=backend,device=device,
+                                                    noise=noise)
             blocks.append(block)
     return blocks
 
@@ -154,6 +170,9 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian):
     :return: a list of objectives; the gradient of the Exp. with respect to each of its (internal) parameters
     '''
 
+    ### unlike grad_gaussian, this doesn't dig below, into a gate's underlying parametrization.
+    ### In other words, if a gate is Rx(y), y=f(x), this gives you back d Rx / dy.
+
     if not hasattr(g, "shift"):
         raise TequilaException("No shift found for gate {}".format(g))
 
@@ -178,13 +197,13 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian):
 
 
 
-def subvector_procedure(eval,initial_values=None,samples=None,
-                        backend=None,backend_options=None,noise=None,):
+def subvector_procedure(eval,initial_values=None,samples=None,device=None,
+                        backend=None,noise=None):
     vect=qng_circuit_grad(eval)
     out=[]
     for entry in vect:
-        out.append(compile_objective(entry, variables=initial_values, samples=samples,
-                                     backend=backend,backend_options=backend_options,
+        out.append(compile_objective(entry, variables=initial_values, samples=samples,device=device,
+                                     backend=backend,
                                      noise=noise))
     return CallableVector(out)
 
@@ -199,10 +218,9 @@ def get_self_pars(U):
 def qng_dict(argument,matrix,subvector,mapping,positional):
     return {'arg':argument,'matrix':matrix,'vector':subvector,'mapping':mapping,'positional':positional}
 
-def get_qng_combos(objective,initial_values=None,samples=None,backend=None,
-                   backend_options=None,noise=None):
+def get_qng_combos(objective,func=stokes_block,initial_values=None,samples=None,backend=None,device=None,noise=None):
     combos=[]
-    vars=objective.extract_variables()
+    vars = objective.extract_variables()
     compiled = compile_multitarget(gate=objective)
     compiled = compile_trotterized_gate(gate=compiled)
     compiled = compile_h_power(gate=compiled)
@@ -217,12 +235,12 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,
             mapping={0:{v:__grad_inner(arg,v) for v in vars}}
         else:
             ### if the arg is an expectationvalue, we need to build some qngs and mappings!
-            blocks=qng_metric_tensor_blocks(arg,initial_values=initial_values,samples=samples,
-                                            backend=backend,noise=noise,backend_options=backend_options)
+            blocks=func(arg,initial_values=initial_values,samples=samples,device=device,
+                                            backend=backend,noise=noise)
             mat=QngMatrix(blocks)
 
-            vec=subvector_procedure(arg,initial_values=initial_values,samples=samples,
-                                    backend=backend,noise=noise,backend_options=backend_options)
+            vec=subvector_procedure(arg,initial_values=initial_values,samples=samples,device=device,
+                                    backend=backend,noise=noise)
 
             mapping={}
             self_pars=get_self_pars(arg.U)
@@ -231,18 +249,19 @@ def get_qng_combos(objective,initial_values=None,samples=None,backend=None,
                 for v in p.extract_variables():
                     gi=__grad_inner(p,v)
                     if isinstance(gi,Objective):
-                        g=compile_objective(gi, variables=initial_values, samples=samples,
-                                            backend=backend, noise=noise,backend_options=backend_options)
+                        g=compile_objective(gi, variables=initial_values, samples=samples,device=device,
+                                            backend=backend, noise=noise)
                     else:
                         g=gi
                     indict[v]=g
                 mapping[j]=indict
 
-        posarg = jax.grad(compiled.transformation, argnums=i)
+        posarg = jax.grad(compiled.transformation,i)
+
         p = Objective(compiled.args, transformation=posarg)
 
-        pos = compile_objective(p, variables=initial_values, samples=samples,
-                                backend=backend, noise=noise,backend_options=backend_options)
+        pos = compile_objective(p, variables=initial_values, samples=samples,device=device,
+                                backend=backend, noise=noise)
         combos.append(qng_dict(arg, mat, vec, mapping, pos))
     return combos
 
@@ -259,7 +278,7 @@ def evaluate_qng(combos,variables,samples=None):
         for i,val in enumerate(ev):
             maps=m[i]
             for k in maps.keys():
-                gd[k] += val*maps[k]*pos(variables=variables,samples=samples)
+                gd[k] += (val*maps[k]*pos)(variables=variables,samples=samples)
 
     out=[v for v in gd.values()]
     return out

@@ -13,8 +13,9 @@ from GPyOpt.methods import BayesianOptimization
 import numpy as np
 from tequila.simulators.simulator_api import compile, pick_backend
 from collections import namedtuple
+from tequila.utils import to_float
 
-GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history opt')
+GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history object')
 
 
 def array_to_objective_dict(objective, array, passives=None) -> typing.Dict[Variable, float]:
@@ -27,6 +28,7 @@ def array_to_objective_dict(objective, array, passives=None) -> typing.Dict[Vari
     if passives is not None:
         for k, v in passives.items():
             back[k] = v
+    back={k: to_float(v) for k,v in back.items()}
     return back
 
 
@@ -37,10 +39,10 @@ class OptimizerGpyOpt(Optimizer):
         return ['lbfgs', 'direct', 'cma']
 
     def __init__(self, maxiter=100, backend=None, save_history=True, minimize=True,
-                 samples=None, noise=None, backend_options=None, silent=False):
+                 samples=None, noise=None, device=None, silent=False):
         self._minimize = minimize
-        super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history,
-                         noise=noise, backend_options=backend_options, silent=silent)
+        super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history,device=device,
+                         noise=noise, silent=silent)
 
     def get_domain(self, objective, passive_angles=None) -> typing.List[typing.Dict]:
         op = objective.extract_variables()
@@ -80,8 +82,7 @@ class OptimizerGpyOpt(Optimizer):
         dom = self.get_domain(objective, passive_angles)
 
         O = compile(objective=objective, variables=initial_values, backend=self.backend,
-                    noise=self.noise, samples=self.samples,
-                    backend_options=self.backend_options)
+                    noise=self.noise, samples=self.samples,device=self.device)
 
         if not self.silent:
             print(self)
@@ -95,7 +96,7 @@ class OptimizerGpyOpt(Optimizer):
             self.history.energies = opt.get_evaluations()[1].flatten()
             self.history.angles = [self.redictify(v, objective, passive_angles) for v in opt.get_evaluations()[0]]
         return GPyOptReturnType(energy=opt.fx_opt, angles=self.redictify(opt.x_opt, objective, passive_angles),
-                                history=self.history, opt=opt)
+                                history=self.history, object=opt)
 
 
 def minimize(objective: Objective,
@@ -104,8 +105,8 @@ def minimize(objective: Objective,
              initial_values: typing.Dict = None,
              samples: int = None,
              backend: str = None,
-             backend_options: dict = None,
-             noise=None,
+             noise = None,
+             device: str = None,
              method: str = 'lbfgs',
              silent: bool = False,
              *args,
@@ -134,6 +135,9 @@ def minimize(objective: Objective,
     noise: NoiseModel :
          (Default value = None)
         a noise model to apply to the circuits of Objective.
+    device: str:
+        (Default value = None)
+        the device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.
     method: str:
          (Default value = 'lbfgs')
          method of acquisition. Allowed arguments are 'lbfgs', 'DIRECT', and 'CMA'
@@ -144,7 +148,7 @@ def minimize(objective: Objective,
     """
 
     optimizer = OptimizerGpyOpt(samples=samples, backend=backend, maxiter=maxiter,
-                                backend_options=backend_options,
+                                device=device,
                                 noise=noise, silent=silent)
     return optimizer(objective=objective, initial_values=initial_values,
                      variables=variables,

@@ -127,7 +127,6 @@ class OptimizerSciPy(Optimizer):
                            samples=self.samples,
                            passive_angles=passive_angles,
                            save_history=self.save_history,
-                           backend_options=self.backend_options,
                            print_level=self.print_level)
 
         compile_gradient = self.method in (self.gradient_based_methods + self.hessian_based_methods)
@@ -144,8 +143,7 @@ class OptimizerSciPy(Optimizer):
                     raise TequilaException('Sorry, QNG and hessian not yet tested together.')
 
                 combos = get_qng_combos(objective, initial_values=initial_values, backend=self.backend,
-                                        samples=self.samples, noise=self.noise,
-                                        backend_options=self.backend_options)
+                                        samples=self.samples, noise=self.noise)
                 dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
                 infostring += "{:15} : QNG {}\n".format("gradient", dE)
             else:
@@ -157,6 +155,18 @@ class OptimizerSciPy(Optimizer):
                         hessian = gradient
                 infostring += "{:15} : scipy numerical {}\n".format("gradient", dE)
                 infostring += "{:15} : scipy numerical {}\n".format("hessian", ddE)
+
+        if isinstance(gradient,dict):
+            if gradient['method'] == 'qng':
+                func = gradient['function']
+                compile_gradient = False
+                if compile_hessian:
+                    raise TequilaException('Sorry, QNG and hessian not yet tested together.')
+
+                combos = get_qng_combos(objective,func=func, initial_values=initial_values, backend=self.backend,
+                                        samples=self.samples, noise=self.noise)
+                dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
+                infostring += "{:15} : QNG {}\n".format("gradient", dE)
 
         if isinstance(hessian, str):
             ddE = hessian
@@ -171,9 +181,7 @@ class OptimizerSciPy(Optimizer):
                                 samples=self.samples,
                                 passive_angles=passive_angles,
                                 save_history=self.save_history,
-                                print_level=self.print_level,
-                                backend_options=self.backend_options)
-
+                                print_level=self.print_level)
         if compile_hessian:
             hess_obj, comp_hess_obj = self.compile_hessian(variables=variables,
                                                            hessian=hessian,
@@ -186,9 +194,7 @@ class OptimizerSciPy(Optimizer):
                                  samples=self.samples,
                                  passive_angles=passive_angles,
                                  save_history=self.save_history,
-                                 print_level=self.print_level,
-                                 backend_options=self.backend_options)
-
+                                 print_level=self.print_level)
         if self.print_level > 0:
             print(self)
             print(infostring)
