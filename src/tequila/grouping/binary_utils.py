@@ -1,4 +1,4 @@
-#from tequila import TequilaException
+from tequila import TequilaException
 import numpy as np
 
 
