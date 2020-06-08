@@ -171,7 +171,10 @@ class BackendCircuitQulacs(BackendCircuit):
 
     def add_measurement(self, gate, circuit, *args, **kwargs):
         if hasattr(self, "measurements"):
-            raise TequilaQulacsException("Measurement on qubit {} was given twice".format(key))
+            for key in gate.target:
+                if key in self.measurements:
+                    raise TequilaQulacsException("Measurement on qubit {} was given twice".format(key))
+            self.measurements += gate.target
         else:
             self.measurements = gate.target
 
