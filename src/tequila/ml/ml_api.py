@@ -12,7 +12,7 @@ HAS_TF = False
 
 
 def to_platform(objective: Objective,platform: str,
-                compile_args: dict = None, input_vars: list = None, weight_vars: list = None):
+                compile_args: dict = None, input_vars: list = None):
     plat = platform.lower()
     if plat == 'torch':
         # common alias.
@@ -20,6 +20,6 @@ def to_platform(objective: Objective,platform: str,
 
     try:
         f = CONVERTERS[plat]
-        return f(objective,compile_args,input_vars,weight_vars)
+        return f(objective,compile_args,input_vars)
     except KeyError:
         raise TequilaMLException('Desired ML platform {} either not supported, or not installed.'.format(plat))

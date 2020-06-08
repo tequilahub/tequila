@@ -4,6 +4,7 @@ import typing
 from tequila.simulators.simulator_api import compile
 from tequila.circuit.gradient import grad
 
+
 class TequilaMLException(TequilaException):
     pass
 
@@ -38,7 +39,7 @@ def check_compiler_args(c_args: dict) -> typing.Dict:
     return c_args
 
 
-def check_no_overlap(input_vars: list,weight_vars:list) -> typing.Tuple[
+def check_inclusion(input_vars: list,weight_vars:list) -> typing.Tuple[
                 typing.List[typing.Union[Variable, FixedVariable]], typing.List[typing.Union[Variable, FixedVariable]]]:
     """
     check that the input and weight variables specified (or left blank by the user) do not overlap.
@@ -92,7 +93,8 @@ def check_full_span(all_vars: list, combined: list):
     if not s1 == s2:
         raise TequilaException('Variables of the Objective and the input-and-weights lists are not identical!')
 
-def preamble(objective: Objective,compile_args: dict = None,input_vars: list = None ,weight_vars: list = None):
+
+def preamble(objective: Objective,compile_args: dict = None,input_vars: list = None):
     """
     Helper function for use at the beggining of
     Parameters
@@ -100,7 +102,6 @@ def preamble(objective: Objective,compile_args: dict = None,input_vars: list = N
     objective
     compile_args
     input_vars
-    weight_vars
 
     Returns
     -------
@@ -108,12 +109,26 @@ def preamble(objective: Objective,compile_args: dict = None,input_vars: list = N
     """
     all_vars = objective.extract_variables()
     compile_args = check_compiler_args(compile_args)
-    if input_vars is None and weight_vars is None:
-        input_vars = all_vars
-    input_vars, weight_vars = check_no_overlap(input_vars,weight_vars)
+
+    weight_vars=[]
+    if input_vars is None:
+        input_vars = []
+        weight_vars = all_vars
+    else:
+        input_vars=[assign_variable(v) for v in input_vars]
+        for var in all_vars:
+            if var not in input_vars:
+                weight_vars.append(assign_variable(var))
+
     check_full_span(all_vars,input_vars.extend(weight_vars))
+    initvals = compile_args['initial_values']
+    if initvals is not None:
+        for k in initvals.keys():
+            if assign_variable(k) in input_vars:
+                raise TequilaMLException('initial_values contained key {}, which is meant to be an input variable.'.format(k))
     comped = compile(objective,**compile_args)
     return comped,input_vars,weight_vars
+
 
 def get_gradients(objective: Objective, compile_args: dict):
     """
@@ -141,6 +156,7 @@ def get_gradients(objective: Objective, compile_args: dict):
         back[k] = new
 
     return back
+
 
 def separate_gradients(gradients,input_vars,weight_vars):
     """
