@@ -1,5 +1,6 @@
 from tequila.utils.exceptions import TequilaException
-from tequila.objective.objective import assign_variable, Variable,FixedVariable,Objective
+from tequila.objective.objective import assign_variable, Variable,FixedVariable,Objective,\
+    format_variable_dictionary, format_variable_list
 import typing
 from tequila.simulators.simulator_api import compile
 from tequila.circuit.gradient import grad
@@ -39,27 +40,6 @@ def check_compiler_args(c_args: dict) -> typing.Dict:
     return c_args
 
 
-def check_full_span(all_vars: list, combined: list):
-    """
-    check that two lists of variables have all the same elements, even if in different orders.
-
-    helper function for use in the ml preamble to ensure that the formatted input and weight variables combine
-    to give all the variables of the objective.
-
-    Parameters
-    ----------
-    all_vars: list:
-        a list of Tequila Variables, interpreted contextually as all the variables extract from an objective.
-    combined: list:
-        a list of Tequila Variables, interpreted contextually as the weight and input variable lists combined.
-
-    """
-    s1 = set(all_vars)
-    s2 = set(combined)
-    if not s1 == s2:
-        raise TequilaException('Variables of the Objective and the input-and-weights lists are not identical!')
-
-
 def preamble(objective: Objective,compile_args: dict = None,input_vars: list = None):
     """
     Helper function for use at the beggining of
@@ -90,12 +70,13 @@ def preamble(objective: Objective,compile_args: dict = None,input_vars: list = N
             if var not in input_vars:
                 weight_vars.append(assign_variable(var))
 
-    check_full_span(all_vars,input_vars.extend(weight_vars))
+    #check_full_span(all_vars,input_vars.extend(weight_vars))
     initvals = compile_args['initial_values']
     if initvals is not None:
         for k in initvals.keys():
             if assign_variable(k) in input_vars:
                 raise TequilaMLException('initial_values contained key {}, which is meant to be an input variable.'.format(k))
+        compile_args['initial_values'] = format_variable_dictionary(initvals)
     comped = compile(objective,**compile_args)
     return comped,compile_args,weight_vars,input_vars
 
@@ -119,8 +100,9 @@ def get_gradients(objective: Objective, compile_args: dict):
     compile_args = check_compiler_args(compile_args)
     grads=grad(objective)
     back = {}
-    for k,v in enumerate(grads):
+    for k,v in grads.items():
         new = []
+
         for o in v:
             new.append(compile(o,**compile_args))
         back[k] = new

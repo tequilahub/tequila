@@ -17,6 +17,7 @@ import tequila.quantumchemistry as chemistry # shortcut
 from tequila.circuit.gradient import grad
 from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
 
+import tequila.ml as ml
 # get rid of the jax GPU/CPU warnings
 import warnings
 

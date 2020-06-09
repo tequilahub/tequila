@@ -4,7 +4,13 @@ from tequila.objective import Objective
 SUPPORTED_PLATFORMS = ['pytorch']
 CONVERTERS = {}
 
-HAS_TORCH = which('torch') is not None or which('pytorch') is not None
+#HAS_TORCH = which('torch') is not None or which('pytorch') is not None
+HAS_TORCH=True
+try:
+    import torch
+except:
+    HAS_TORCH = False
+
 if HAS_TORCH:
     from .interface_torch import TorchLayer
     CONVERTERS['pytorch'] = TorchLayer
