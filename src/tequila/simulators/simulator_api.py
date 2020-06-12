@@ -115,17 +115,31 @@ def show_available_simulators():
                                                              str(k in INSTALLED_BACKENDS)))
 
 
-def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = None, device: str = None,
+def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = None, device=None,
                  exclude_symbolic: bool = True) -> str:
+
     """
-    TODO: break this up into smaller functions!
-    verifies if the backend is installed and picks one automatically if set to None
-    :param backend: the demanded backend
-    :param samples: if not None the simulator needs to be able to sample wavefunctions
-    :param noise: if true,
-    :param exclude_symbolic: only for random choice
-    :return: An installed backend as string
+    choose, or verify, a backend for the user.
+    Parameters
+    ----------
+    backend: str, optional:
+        what backend to choose or verify. if None: choose for the user.
+    samples: int, optional:
+        if int and not None, choose (verify) a simulator which supports sampling.
+    noise: str or NoiseModel, optional:
+        if not None, choose (verify) a simulator supports the specified noise.
+    device: optional:
+        verify that a given backend supports the specified device. MUST specify backend, if not None.
+        if None: do not emulate or use real device.
+    exclude_symbolic: bool, optional:
+        whether or not to exclude the tequila debugging simulator from the available simulators, when choosing.
+
+    Returns
+    -------
+    str:
+        the name of the chosen (or verified) backend.
     """
+
     if len(INSTALLED_SIMULATORS) == 0:
         raise TequilaException("No simulators installed on your system")
 
@@ -200,15 +214,28 @@ def compile_objective(objective: 'Objective',
                       *args,
                       **kwargs) -> Objective:
     """
-    Compiles an objective to a chosen backend
-    The abstract circuits are replaced by the circuit objects of the backend
-    Direct return if the objective was alrady compiled
-    :param objective: abstract objective
-    :param variables: The variables of the objective given as dictionary
-    with keys as tequila Variables and values the corresponding real numbers
-    :param backend: specify the backend or give None for automatic assignment
-    :param noise: the NoiseModel to apply to the objective.
-    :return: Compiled Objective
+    compile an objective to render it callable and return it.
+    Parameters
+    ----------
+    objective: Objective:
+        the objective to compile
+    variables: dict, optional:
+        the variables to compile the objective with. Will autogenerate zeros for all variables if not supplied.
+    backend: str, optional:
+        the backend to compile the objective to.
+    samples: int, optional:
+        only matters if not None; compile the objective for sampling/verify backend can do so
+    device: optional:
+        the device on which the objective should (perhaps emulatedly) sample.
+    noise: str or NoiseModel, optional:
+        the noise to apply to all circuits in the objective.
+    args
+    kwargs
+
+    Returns
+    -------
+    Objective:
+        the compiled objective.
     """
 
     backend = pick_backend(backend=backend, samples=samples, noise=noise, device=device)
@@ -257,14 +284,28 @@ def compile_circuit(abstract_circuit: 'QCircuit',
                     *args,
                     **kwargs) -> BackendCircuit:
     """
-    Compile an abstract tequila circuit into a circuit corresponding to a supported backend
-    direct return if the abstract circuit was already compiled
-    :param abstract_circuit: The abstract tequila circuit
-    :param variables: The variables of the objective given as dictionary
-    with keys as tequila Variables and values the corresponding real numbers
-    :param backend: specify the backend or give None for automatic assignment
-    :param noise: specify a NoiseModel object to convert to the backend's noise
-    :return: The compiled circuit object
+    compile a circuit to render it callable and return it.
+    Parameters
+    ----------
+    abstract_circuit: QCircuit:
+        the circuit to compile
+    variables: dict, optional:
+        the variables to compile the circuit with.
+    backend: str, optional:
+        the backend to compile the circuit to.
+    samples: int, optional:
+        only matters if not None; compile the circuit for sampling/verify backend can do so
+    device: optional:
+        the device on which the circuit should (perhaps emulatedly) sample.
+    noise: str or NoiseModel, optional:
+        the noise to apply to the circuit
+    args
+    kwargs
+
+    Returns
+    -------
+    BackendCircuit:
+        the compiled circuit.
     """
 
     CircType = INSTALLED_SIMULATORS[
@@ -298,19 +339,19 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
 
     Parameters
     ----------
-    objective :
+    objective: Objective:
         tequila objective or circuit
-    variables :
+    variables: Dict:
         The variables of the objective given as dictionary
         with keys as tequila Variables/hashable types and values the corresponding real numbers
-    samples : int : (Default value = None)
+    samples : int, optional:
         if None a full wavefunction simulation is performed, otherwise a fixed number of samples is simulated
-    backend : str : (Default value = None)
+    backend : str, optional:
         specify the backend or give None for automatic assignment
-    noise: NoiseModel :
+    noise: NoiseModel, optional:
         specify a noise model to apply to simulation/sampling
-    device: str:
-        a string (or iff using cirq, a cirq.Device object) upon which (or in emulation of which) to sample
+    device:
+        a device upon which (or in emulation of which) to sample
     *args :
 
     **kwargs :
@@ -318,9 +359,8 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
 
     Returns
     -------
-    type
-        simulated/sampled objective or simulated/sampled wavefunction
-
+    float or QubitWaveFunction
+        the result of simulation.
     """
 
     variables = format_variable_dictionary(variables)
@@ -338,18 +378,15 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
 
 def draw(objective, variables=None, backend: str = None):
     """
-
     Pretty output (depends on installed backends)
 
     Parameters
     ----------
     objective :
         the tequila objective to print out
-    variables :
-         (Default value = None)
+    variables : optional:
          Give variables if the objective is parametrized
-    backend:str :
-         (Default value = None)
+    backend: str, optional:
          chose backend (of None it will be automatically picked)
     """
     if backend is None:
@@ -399,23 +436,23 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
 
     Parameters
     ----------
-    objective : Objective:
+    objective: Objective:
         tequila objective or circuit
-    variables : Dict[Union[Variable :Hashable]:RealNumber]:
+    variables: dict, optional:
         The variables of the objective given as dictionary
         with keys as tequila Variables and values the corresponding real numbers
-    samples : str : (Default value = None) :
+    samples: int, optional:
         if None a full wavefunction simulation is performed, otherwise a fixed number of samples is simulated
-    backend : str : (Default value = None) :
+    backend : str, optional:
         specify the backend or give None for automatic assignment
-    noise: NoiseModel : (Default value = None) :
+    noise: NoiseModel, optional:
         the noise model to apply to the objective or QCircuit.
-    device: str: (Default value = None) :
+    device: optional:
         a device on which (or in emulation of which) to sample the circuit.
     Returns
     -------
-    simulators.BackendCircuit
-        simulated/sampled objective or simulated/sampled wavefunction
+    simulators.BackendCircuit or Objective
+        the compiled object.
 
     """
 
@@ -452,8 +489,9 @@ def compile_to_function(objective: typing.Union['Objective', 'QCircuit'], *args,
 
     Returns
     -------
-    wrapper over a compiled objective/circuit
-    can be called like: function(0.0,1.0,...,samples=None)
+    BackendCircuit or Objective:
+        wrapper over a compiled objective/circuit
+        can be called like: function(0.0,1.0,...,samples=None)
     """
 
     compiled_objective = compile(objective, *args, **kwargs)
