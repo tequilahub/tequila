@@ -2,6 +2,7 @@ from tequila import TequilaException
 from openfermion import MolecularData
 
 from tequila.circuit import QCircuit
+from tequila.hamiltonian import QubitHamiltonian
 from tequila.objective.objective import Variables, ExpectationValue
 from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase,\
     ClosedShellAmplitudes, Amplitudes, NBodyTensor
@@ -550,22 +551,45 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             return super().prepare_reference(reference_orbitals=[i for i in range(len(active_reference_orbitals))],
                                              n_qubits=n_qubits, *args, **kwargs)
 
-    def compute_rdms(self, U: QCircuit, variables: Variables = None, spin_free: bool = True,
+    @property
+    def rdm1(self) -> tuple:
+        return super().rdm1
+
+    @property
+    def rdm2(self) -> tuple:
+        return super().rdm2
+
+    def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True, psi4_rdms: bool = False):
+        """
+        Same functionality as qc_base.compute_rdms (look there for more information),
+        plus the additional option to compute 1- and 2-RDM using psi4
+
+        Parameters
+        ----------
+        psi4_rdms :
+            Set whether to compute matrices via psi4 or not.
+            If this is set to True, specifying U is no longer mandatory.
+
+        Returns
+        -------
+
+        """
         if not psi4_rdms:
             super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
                                  get_rdm1=get_rdm1, get_rdm2=get_rdm2)
         else:
+            # Get 1- and 2-particle reduced density matrix via Psi4 CISD computation
             cisd = self.compute_energy("fci", options={"detci__ex_level": 2,
-                                                       'detci__opdm': True,
-                                                       'detci__tpdm': True})
-
+                                                       'detci__opdm': get_rdm1,
+                                                       'detci__tpdm': get_rdm2})
             wfn = self.logs["fci"].wfn
-            rdm1 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_opdm(-1, -1, "SUM", False),
-                                                             dense=True)
-            rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
-            rdm2 = NBodyTensor(elems=rdm2, scheme='chem')
-            rdm2.reorder(to='openfermion')
-            rdm2 = 2*rdm2.elems # Factor 2 since psi4 includes 1/2 in tpdm
-            self._rdm1 = rdm1
-            self._rdm2 = rdm2
+            if get_rdm1:
+                rdm1 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_opdm(-1, -1, "SUM", False), dense=True)
+                self._rdm1 = rdm1
+            if get_rdm2:
+                rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
+                rdm2 = NBodyTensor(elems=rdm2, scheme='chem')
+                rdm2.reorder(to='openfermion')
+                rdm2 = 2*rdm2.elems # Factor 2 since psi4 includes 1/2 in 2-rdm
+                self._rdm2 = rdm2
