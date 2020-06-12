@@ -4,6 +4,7 @@ from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
 from tequila.tools.convenience import list_assignment
 from tequila.hamiltonian import paulis
+from tequila.grouping.binary_rep import BinaryHamiltonian
 import numpy as onp
 from tequila.autograd_imports import numpy as numpy
 
@@ -838,11 +839,21 @@ class Objective:
         return Objective(argsets=[ev])
 
 
-def ExpectationValue(U, H, *args, **kwargs) -> Objective:
+def ExpectationValue(U, H, optimize_measurements: bool=False, *args, **kwargs) -> Objective:
     """
     Initialize an Objective which is just a single expectationvalue
     """
-    return Objective.ExpectationValue(U=U, H=H, *args, **kwargs)
+    if optimize_measurements:
+        binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+        commuting_parts = binary_H.commuting_groups()
+        result = Objective()
+        for cH in commuting_parts:
+            qwc, Um = cH.get_qubit_wise()
+            Etmp = ExpectationValue(H=qwc, U=U + Um, optimize_measurements=False)
+            result += Etmp
+        return result
+    else:
+        return Objective.ExpectationValue(U=U, H=H, *args, **kwargs)
 
 
 def stack_objectives(objectives):
