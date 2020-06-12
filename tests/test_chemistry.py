@@ -229,7 +229,7 @@ def test_rdms():
         U += tq.gates.X(target=2)
         return U
 
-    mol = qc.Molecule(geometry="He 0.0 0.0 0.0", basis_set="6-31g", transformation="jw")
+    mol = qc.Molecule(geometry="data/he.xyz", basis_set="6-31g", transformation="jw")
     # Random angles - check consistency of spin-free, spin-ful matrices
     ang = numpy.random.uniform(low=0, high=1, size=3)
     U_random = rdm_circuit(angles=ang)

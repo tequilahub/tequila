@@ -190,6 +190,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         args
         kwargs
         """
+        psi4.core.clean()
+        psi4.core.clean_options()
+        psi4.core.clean_variables()
 
         self.psi4_mol = psi4.geometry(parameters.get_geometry_string())
         psi4.activate(self.psi4_mol)
