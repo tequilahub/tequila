@@ -1,6 +1,6 @@
 import torch
-from .utils_ml import TequilaMLException, preamble, get_gradients, separate_gradients, get_variable_orders
-from tequila.objective import Objective, Variable
+from .utils_ml import TequilaMLException, preamble
+from tequila.objective import Objective
 import numpy as np
 
 
@@ -23,11 +23,9 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
         the requisite pytorch autograd function, alongside necessary information for higher level classes.
     """
 
-    comped_objective, compile_args, weight_vars, input_vars = preamble(objective, compile_args, input_vars)
+    comped_objective, compile_args, weight_vars, w_grads, i_grads, pattern \
+        = preamble(objective, compile_args, input_vars)
     samples = compile_args['samples']
-    gradients = get_gradients(objective, compile_args)
-    w_grads, i_grads = separate_gradients(gradients, input_vars=input_vars, weight_vars=weight_vars)
-    pattern = get_variable_orders(weight_vars=weight_vars, input_vars=input_vars)
 
     class _TorchFunction(torch.autograd.Function):
         """
@@ -90,48 +88,29 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
         @staticmethod
         def backward(ctx, grad_backward):
             call_args = ctx.call_args
-            back_d =grad_backward.get_device()
+            back_d = grad_backward.get_device()
             # build up weight and input gradient matrices... see what needs to be done to them.
-            if w_grads != {}:
-                # this calculate the gradient w.r.t weights of this layer
-                w_keys = [j for j in w_grads.keys()]
-                w_probe = w_grads[w_keys[0]]
-                w_dims = len(w_keys), len(w_probe)
-                w_array = np.empty(w_dims, dtype=np.float)
-                for i, key in enumerate(w_keys):
-                    line = w_grads[key]
-                    for j, ob in enumerate(line):
-                        w_array[i, j] = ob(variables=call_args,samples=samples)
-                if back_d >= 0:
-                    w_tensor = torch.as_tensor(w_array, dtype=grad_backward.dtype,device=back_d)
-                else:
-                    w_tensor = torch.as_tensor(w_array, dtype=grad_backward.dtype)
-                w_jvp = torch.matmul(w_tensor, grad_backward)
-                w_out = w_jvp.flatten()
-                w_out.requires_grad_(True)
-            else:
-                w_out = None
+            grad_outs=[None,None]
+            for i, grads in enumerate([w_grads, i_grads]):
+                if grads != {}:
+                    g_keys = [j for j in grads.keys()]
+                    probe = grads[g_keys[0]]  # first entry will tell us number of output
+                    dims = len(g_keys), len(probe)
+                    arr = np.empty(dims, dtype=np.float)
+                    for j, key in enumerate(g_keys):
+                        line = grads[key]
+                        for k, ob in enumerate(line):
+                            arr[j, k] = ob(variables=call_args, samples=samples)
+                    if back_d >= 0:
+                        g_tensor = torch.as_tensor(arr, dtype=grad_backward.dtype, device=back_d)
+                    else:
+                        g_tensor = torch.as_tensor(arr, dtype=grad_backward.dtype)
+                    jvp = torch.matmul(g_tensor, grad_backward)
+                    jvp_out = jvp.flatten()
+                    jvp_out.requires_grad_(True)
+                    grad_outs[i] = jvp_out
 
-            if i_grads != {}:
-                # same as above, since this is quantum layer; get the gradient w.r.t network input
-                i_keys = [k for k in i_grads.keys()]
-                i_probe = i_grads[i_keys[0]]
-                i_dims = len(i_keys), len(i_probe)
-                i_array = np.empty(i_dims, dtype=np.float)
-                for i, key in enumerate(i_keys):
-                    line = i_grads[key]
-                    for j, ob in enumerate(line):
-                        i_array[i, j] = ob(variables=call_args,samples=samples)
-                if back_d >= 0:
-                    i_tensor = torch.as_tensor(i_array, dtype=grad_backward.dtype,device=back_d)
-                else:
-                    i_tensor = torch.as_tensor(i_array,dtype=grad_backward.dtype)
-                i_jvp = torch.matmul(i_tensor, grad_backward)
-                i_out = i_jvp.flatten()
-                i_out.requires_grad_(True)
-            else:
-                i_out = None
-            return w_out, i_out
+            return tuple(grad_outs)
 
     return _TorchFunction, weight_vars, compile_args
 
@@ -159,19 +138,23 @@ class TorchLayer(torch.nn.Module):
                 self.weights[str(v)] = torch.nn.Parameter(torch.nn.init.uniform(torch.Tensor(1),a=0.0,b=2*np.pi)[0])
                 self.register_parameter(str(v), self.weights[str(v)])
 
-    def forward(self,input = None):
-        weights =[]
-        for v in self.weights.values():
-            weights.append(v.detach())
+    def forward(self, x=None):
         cat = torch.stack([p for p in self.parameters()])
-        if input is not None:
-            send = torch.stack([cat,input])
+        if x is not None:
+            if len(x.shape) == 1:
+                out = self._do(torch.cat([cat, x]))
+            else:
+                out = torch.stack([self._do(torch.cat([cat, y])) for y in x])
         else:
-            send = cat
-        out = self.function.apply(send)
+            out = self._do(cat)
         out.requires_grad_(True)
         return out
 
+    def _do(self, x):
+        k = len(self.weights)
+        if len(x) != k + self._input_len:
+            raise TequilaMLException('Received input of len {} when Objective takes {} inputs.'.format(len(x)-k,self._input_len))
+        return self.function.apply(x)
 
 def tensor_fix(tensor, pattern):
     """

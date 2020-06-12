@@ -1,5 +1,5 @@
 from tequila.utils.exceptions import TequilaException
-from tequila.objective.objective import assign_variable, Variable,FixedVariable,Objective,\
+from tequila.objective.objective import assign_variable, Objective,\
     format_variable_dictionary, format_variable_list
 import typing
 from tequila.simulators.simulator_api import compile
@@ -29,7 +29,7 @@ def check_compiler_args(c_args: dict) -> typing.Dict:
     tequila.simulators.simulator_api.compile
     """
 
-    valid_keys=['backend','samples','noise','device','initial_values']
+    valid_keys=['backend', 'samples', 'noise', 'device', 'initial_values']
     if c_args is None:
         return {k:None for k in valid_keys}
     for k in c_args.keys():
@@ -40,9 +40,9 @@ def check_compiler_args(c_args: dict) -> typing.Dict:
     return c_args
 
 
-def preamble(objective: Objective,compile_args: dict = None,input_vars: list = None):
+def preamble(objective: Objective, compile_args: dict = None, input_vars: list = None):
     """
-    Helper function for use at the beggining of
+    Helper function for interfaces to ml backends.
     Parameters
     ----------
     objective: Objective:
@@ -55,30 +55,34 @@ def preamble(objective: Objective,compile_args: dict = None,input_vars: list = N
     Returns
     -------
     tuple
-        the compiled objective, a list of input_variables, and a list of weight_variables.
+        the compiled objective, it's compile arguments, its weight variables, dicts for the weight and input gradients,
+        and a dictionary that links positions in an array to each variable (parses parameters).
     """
     all_vars = objective.extract_variables()
     compile_args = check_compiler_args(compile_args)
 
-    weight_vars=[]
+    weight_vars = []
     if input_vars is None:
         input_vars = []
         weight_vars = all_vars
     else:
-        input_vars=[assign_variable(v) for v in input_vars]
+        input_vars = [assign_variable(v) for v in input_vars]
         for var in all_vars:
             if var not in input_vars:
                 weight_vars.append(assign_variable(var))
 
-    #check_full_span(all_vars,input_vars.extend(weight_vars))
-    initvals = compile_args['initial_values']
-    if initvals is not None:
-        for k in initvals.keys():
+    init_vals = compile_args['initial_values']
+    if init_vals is not None:
+        for k in init_vals.keys():
             if assign_variable(k) in input_vars:
-                raise TequilaMLException('initial_values contained key {}, which is meant to be an input variable.'.format(k))
-        compile_args['initial_values'] = format_variable_dictionary(initvals)
-    comped = compile(objective,**compile_args)
-    return comped,compile_args,weight_vars,input_vars
+                raise TequilaMLException('initial_values contained key {},'
+                                         'which is meant to be an input variable.'.format(k))
+        compile_args['initial_values'] = format_variable_dictionary(init_vals)
+    comped = compile(objective, **compile_args)
+    gradients = get_gradients(objective, compile_args)
+    w_grad, i_grad = separate_gradients(gradients, weight_vars=weight_vars, input_vars=input_vars)
+    pattern = get_variable_orders(weight_vars, input_vars)
+    return comped, compile_args, weight_vars, w_grad, i_grad, pattern
 
 
 def get_gradients(objective: Objective, compile_args: dict):
@@ -98,19 +102,19 @@ def get_gradients(objective: Objective, compile_args: dict):
 
     """
     compile_args = check_compiler_args(compile_args)
-    grads=grad(objective)
+    grads = grad(objective)
     back = {}
-    for k,v in grads.items():
+    for k, v in grads.items():
         new = []
 
         for o in v:
-            new.append(compile(o,**compile_args))
+            new.append(compile(o, **compile_args))
         back[k] = new
 
     return back
 
 
-def separate_gradients(gradients,weight_vars, input_vars):
+def separate_gradients(gradients, weight_vars, input_vars):
     """
     split the gradient dictionary up into one for input and one for weights.
 
@@ -137,7 +141,8 @@ def separate_gradients(gradients,weight_vars, input_vars):
         w_grad[var] = gradients[var]
     return w_grad, i_grad
 
-def get_variable_orders(weight_vars,input_vars):
+
+def get_variable_orders(weight_vars, input_vars):
     """
     get a dictionary mapping position in an array to tequila variables.
     Parameters
@@ -151,12 +156,12 @@ def get_variable_orders(weight_vars,input_vars):
     -------
 
     """
-    displace=0
+    displace = 0
     pattern = {}
-    for i,v in enumerate(weight_vars):
+    for i, v in enumerate(weight_vars):
         displace += 1
         pattern[i] = v
-    for j,v in enumerate(input_vars):
+    for j, v in enumerate(input_vars):
         pattern[j + displace] = v
-
     return pattern
+
