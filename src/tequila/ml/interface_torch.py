@@ -90,11 +90,13 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
         @staticmethod
         def backward(ctx, grad_backward):
             input, angles = ctx.saved_tensors
+            print('hey, it the back pass!')
             call_args = tensor_fix(input, angles, first, second)
             back_d = grad_backward.get_device()
             # build up weight and input gradient matrices... see what needs to be done to them.
             grad_outs = [None,None]
             for i, grads in enumerate([w_grads, i_grads]):
+                print(i)
                 if grads != {}:
                     g_keys = [j for j in grads.keys()]
                     probe = grads[g_keys[0]]  # first entry will tell us number of output
@@ -108,6 +110,8 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
                         g_tensor = torch.as_tensor(arr, dtype=grad_backward.dtype, device=back_d)
                     else:
                         g_tensor = torch.as_tensor(arr, dtype=grad_backward.dtype)
+                    print('g_tensor', g_tensor)
+                    print('grad_backward:', grad_backward)
                     jvp = torch.matmul(g_tensor, grad_backward)
                     jvp_out = jvp.flatten()
                     jvp_out.requires_grad_(True)
@@ -139,7 +143,6 @@ class TorchLayer(torch.nn.Module):
             for v in weight_vars:
                 self.weights[str(v)] = torch.nn.Parameter(torch.nn.init.uniform(torch.Tensor(1),a=0.0,b=2*np.pi)[0])
                 self.register_parameter(str(v), self.weights[str(v)])
-        print([k for k in self.parameters()])
 
     def forward(self, x=None):
         if x is not None:
@@ -153,10 +156,12 @@ class TorchLayer(torch.nn.Module):
         return out
 
     def _do(self, x):
+        f = torch.stack([*self.parameters()])
+        print(f)
         if x is not None:
             if len(x) != self._input_len:
                 raise TequilaMLException('Received input of len {} when Objective takes {} inputs.'.format(len(x),self._input_len))
-        return self.function.apply(x, self.parameters)
+        return self.function.apply(x, f)
 
 
 def tensor_fix(tensor,angles,first,second):
@@ -179,9 +184,7 @@ def tensor_fix(tensor,angles,first,second):
     back = {}
     if tensor is not None:
         for i, val in enumerate(tensor):
-            back[first[i]] = val.detach()
-    print(angles)
-    new = torch.stack([angle for angle in angles()])
-    for i, val in enumerate(new):
-        back[second[i]] = val.detach()
+            back[first[i]] = val.item()
+    for i, val in enumerate(angles):
+        back[second[i]] = val.item()
     return back
