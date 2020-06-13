@@ -23,7 +23,7 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
         the requisite pytorch autograd function, alongside necessary information for higher level classes.
     """
 
-    comped_objective, compile_args, weight_vars, w_grads, i_grads, pattern \
+    comped_objective, compile_args, weight_vars, w_grads, i_grads, first, second \
         = preamble(objective, compile_args, input_vars)
     samples = compile_args['samples']
 
@@ -66,31 +66,34 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
 
         """
         @staticmethod
-        def forward(ctx, input):
+        def forward(ctx, input, angles):
             """
             forward pass of the function.
             """
-            ctx.call_args = tensor_fix(input, pattern)
-            ctx.save_for_backward(input)
-            result = comped_objective(variables=ctx.call_args,samples=samples)
+
+            ctx.save_for_backward(input, angles)
+            call_args = tensor_fix(input, angles, first, second)
+            result = comped_objective(variables=call_args, samples=samples)
             if not isinstance(result, np.ndarray):
                 # this happens if the Objective is a scalar since that's usually more convenient for pure quantum stuff.
                 result = np.array(result)
-
+            """
             for entry in input:
                 if isinstance(entry, torch.Tensor):
                     if entry.is_cuda:
-                        return torch.as_tensor(torch.from_numpy(result),dtype=input.dtype, device=entry.get_device())
-
+                        return torch.as_tensor(torch.from_numpy(result), dtype=input.dtype, device=entry.get_device())
+            """
             r = torch.from_numpy(result)
+            r.requires_grad_(True)
             return r
 
         @staticmethod
         def backward(ctx, grad_backward):
-            call_args = ctx.call_args
+            input, angles = ctx.saved_tensors
+            call_args = tensor_fix(input, angles, first, second)
             back_d = grad_backward.get_device()
             # build up weight and input gradient matrices... see what needs to be done to them.
-            grad_outs=[None,None]
+            grad_outs = [None,None]
             for i, grads in enumerate([w_grads, i_grads]):
                 if grads != {}:
                     g_keys = [j for j in grads.keys()]
@@ -109,7 +112,6 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
                     jvp_out = jvp.flatten()
                     jvp_out.requires_grad_(True)
                     grad_outs[i] = jvp_out
-
             return tuple(grad_outs)
 
     return _TorchFunction, weight_vars, compile_args
@@ -127,7 +129,7 @@ class TorchLayer(torch.nn.Module):
         self.function,  weight_vars, compile_args = get_torch_function(objective, compile_args, input_vars)
         self._input_len = len(objective.extract_variables()) - len(weight_vars)
         inits = compile_args['initial_values']
-        self.weights={}
+        self.weights = {}
         if inits is not None:
             for v in weight_vars:
                 pv = torch.from_numpy(np.asarray(inits[v]))
@@ -137,41 +139,49 @@ class TorchLayer(torch.nn.Module):
             for v in weight_vars:
                 self.weights[str(v)] = torch.nn.Parameter(torch.nn.init.uniform(torch.Tensor(1),a=0.0,b=2*np.pi)[0])
                 self.register_parameter(str(v), self.weights[str(v)])
+        print([k for k in self.parameters()])
 
     def forward(self, x=None):
-        cat = torch.stack([p for p in self.parameters()])
         if x is not None:
             if len(x.shape) == 1:
-                out = self._do(torch.cat([cat, x]))
+                out = self._do(x)
             else:
-                out = torch.stack([self._do(torch.cat([cat, y])) for y in x])
+                out = torch.stack([self._do(y) for y in x])
         else:
-            out = self._do(cat)
+            out = self._do(None)
         out.requires_grad_(True)
         return out
 
     def _do(self, x):
-        k = len(self.weights)
-        if len(x) != k + self._input_len:
-            raise TequilaMLException('Received input of len {} when Objective takes {} inputs.'.format(len(x)-k,self._input_len))
-        return self.function.apply(x)
+        if x is not None:
+            if len(x) != self._input_len:
+                raise TequilaMLException('Received input of len {} when Objective takes {} inputs.'.format(len(x),self._input_len))
+        return self.function.apply(x, self.parameters)
 
-def tensor_fix(tensor, pattern):
+
+def tensor_fix(tensor,angles,first,second):
     """
     take a pytorch tensor and a dict of  int,Variable to create a variable,float dictionary therefrom.
     Parameters
     ----------
     tensor: torch.Tensor:
         a tensor.
-    pattern: dict:
+    angles: torch.Tensor:
+    first: dict:
         dict of int,Variable pairs indicating which position in Tensor corresponds to which variable.
-
+    second: dict:
+        dict of int,Variable pairs indicating which position in angles corresponds to which variable.
     Returns
     -------
     dict:
         dict of variable, float pairs. Can be used as call arg by underlying tq objectives
     """
     back = {}
-    for i, val in enumerate(tensor):
-        back[pattern[i]] = val.item()
+    if tensor is not None:
+        for i, val in enumerate(tensor):
+            back[first[i]] = val.detach()
+    print(angles)
+    new = torch.stack([angle for angle in angles()])
+    for i, val in enumerate(new):
+        back[second[i]] = val.detach()
     return back

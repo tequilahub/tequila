@@ -37,6 +37,12 @@ def check_compiler_args(c_args: dict) -> typing.Dict:
             raise TequilaException('improper keyword {} found in compilation kwargs dict; please try again.'.format(k))
         else:
             pass
+    for k in valid_keys:
+        if k in c_args.keys():
+            pass
+        else:
+            c_args[k] = None
+
     return c_args
 
 
@@ -78,11 +84,12 @@ def preamble(objective: Objective, compile_args: dict = None, input_vars: list =
                 raise TequilaMLException('initial_values contained key {},'
                                          'which is meant to be an input variable.'.format(k))
         compile_args['initial_values'] = format_variable_dictionary(init_vals)
+
     comped = compile(objective, **compile_args)
     gradients = get_gradients(objective, compile_args)
     w_grad, i_grad = separate_gradients(gradients, weight_vars=weight_vars, input_vars=input_vars)
-    pattern = get_variable_orders(weight_vars, input_vars)
-    return comped, compile_args, weight_vars, w_grad, i_grad, pattern
+    first, second = get_variable_orders(weight_vars, input_vars)
+    return comped, compile_args, weight_vars, w_grad, i_grad, first, second
 
 
 def get_gradients(objective: Objective, compile_args: dict):
@@ -106,9 +113,11 @@ def get_gradients(objective: Objective, compile_args: dict):
     back = {}
     for k, v in grads.items():
         new = []
-
-        for o in v:
-            new.append(compile(o, **compile_args))
+        if isinstance(v, Objective):
+            new.append(compile(v, **compile_args))
+        else:
+            for o in v:
+                new.append(compile(o, **compile_args))
         back[k] = new
 
     return back
@@ -154,14 +163,14 @@ def get_variable_orders(weight_vars, input_vars):
 
     Returns
     -------
-
+    tuple
+        dicts, which position in tensor of input and tensor of parameters corresponds to which variable.
     """
-    displace = 0
-    pattern = {}
-    for i, v in enumerate(weight_vars):
-        displace += 1
-        pattern[i] = v
-    for j, v in enumerate(input_vars):
-        pattern[j + displace] = v
-    return pattern
+    first = {}
+    second = {}
+    for i, v in enumerate(input_vars):
+        first[i] = v
+    for j, v in enumerate(weight_vars):
+        second[j] = v
+    return first, second
 
