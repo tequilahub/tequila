@@ -1068,7 +1068,8 @@ class QuantumChemistryBase:
         if self._rdm1 is not None:
             return self._rdm1
         else:
-            raise Exception("1-RDM has not been computed. Return None for 1-RDM.")
+            print("1-RDM has not been computed. Return None for 1-RDM.")
+            return None
 
     @property
     def rdm2(self):
@@ -1076,7 +1077,8 @@ class QuantumChemistryBase:
         if self._rdm2 is not None:
             return self._rdm2
         else:
-            raise Exception("2-RDM has not been computed. Return None for 2-RDM.")
+            print("2-RDM has not been computed. Return None for 2-RDM.")
+            return None
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None,
                      spin_free: bool = True,
@@ -1276,6 +1278,16 @@ class QuantumChemistryBase:
         evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
 
         # Assemble density matrices
+        # If self._rdm1, self._rdm2 exist, reset them if they are of other spin-type
+        def reset_rdm(rdm):
+            if rdm is not None:
+                if spin_free and rdm.shape[0] != n_MOs:
+                    return None
+                if not spin_free and rdm.shape[0] != n_SOs:
+                    return None
+            return rdm
+        self._rdm1 = reset_rdm(self._rdm1)
+        self._rdm2 = reset_rdm(self._rdm2)
         # Split expectation values in 1- and 2-particle expectation values
         if get_rdm1:
             len_1 = n_MOs * (n_MOs + 1) // 2 if spin_free else n_SOs * (n_SOs + 1) // 2
@@ -1311,7 +1323,7 @@ class QuantumChemistryBase:
         if sum_rdm1:
             # Check whether spin-rdm2 exists
             if self._rdm1 is None:
-                raise Exception("The spin-RDM does not exist!")
+                raise Exception("The spin-RDM for the 1-RDM does not exist!")
             # Check whether existing rdm1 is in spin-orbital basis
             if self._rdm1.shape[0] != 2*n_MOs:
                 raise Exception("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
@@ -1329,7 +1341,7 @@ class QuantumChemistryBase:
         if sum_rdm2:
             # Check whether spin-rdm2 exists
             if self._rdm2 is None:
-                raise Exception("The spin-RDM does not exist!")
+                raise Exception("The spin-RDM for the 2-RDM does not exist!")
             # Check whether existing rdm2 is in spin-orbital basis
             if self._rdm2.shape[0] != 2*n_MOs:
                 raise Exception("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
