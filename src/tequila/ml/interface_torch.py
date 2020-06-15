@@ -70,18 +70,34 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
             """
             forward pass of the function.
             """
-
             ctx.save_for_backward(input, angles)
             call_args = tensor_fix(input, angles, first, second)
             result = comped_objective(variables=call_args, samples=samples)
             if not isinstance(result, np.ndarray):
                 # this happens if the Objective is a scalar since that's usually more convenient for pure quantum stuff.
                 result = np.array(result)
+
             """
             for entry in input:
                 if isinstance(entry, torch.Tensor):
                     if entry.is_cuda:
                         return torch.as_tensor(torch.from_numpy(result), dtype=input.dtype, device=entry.get_device())
+           
+            """
+
+            """
+            ctx.save_for_backward(input, angles)
+            # Implementation of function
+            np_input = input.detach().numpy()
+            np_angles = angles.detach().numpy()
+            output = np.zeros((input.shape[0], len(comped_objective)))
+            for n in range(input.shape[0]):
+                call_args = tensor_fix(np_input[n, :], np_angles, first, second)
+                output[n, :] = comped_objective(variables=call_args, samples=samples)
+            # transform to torch using type of grad_output
+            # to avoid type conflicts
+            torch_output = torch.from_numpy(output).type(input.dtype)
+            return torch_output
             """
             r = torch.from_numpy(result)
             r.requires_grad_(True)
@@ -90,12 +106,12 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
         @staticmethod
         def backward(ctx, grad_backward):
             input, angles = ctx.saved_tensors
-            print('hey, it the back pass!')
+            print('back pass!')
             call_args = tensor_fix(input, angles, first, second)
             back_d = grad_backward.get_device()
             # build up weight and input gradient matrices... see what needs to be done to them.
             grad_outs = [None,None]
-            for i, grads in enumerate([w_grads, i_grads]):
+            for i, grads in enumerate([i_grads, w_grads]):
                 print(i)
                 if grads != {}:
                     g_keys = [j for j in grads.keys()]
@@ -110,9 +126,10 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
                         g_tensor = torch.as_tensor(arr, dtype=grad_backward.dtype, device=back_d)
                     else:
                         g_tensor = torch.as_tensor(arr, dtype=grad_backward.dtype)
-                    print('g_tensor', g_tensor)
-                    print('grad_backward:', grad_backward)
-                    jvp = torch.matmul(g_tensor, grad_backward)
+
+                    b = grad_backward.reshape(-1,1)
+                    print(b,b.shape)
+                    jvp = torch.matmul(g_tensor, b)
                     jvp_out = jvp.flatten()
                     jvp_out.requires_grad_(True)
                     grad_outs[i] = jvp_out
@@ -157,7 +174,6 @@ class TorchLayer(torch.nn.Module):
 
     def _do(self, x):
         f = torch.stack([*self.parameters()])
-        print(f)
         if x is not None:
             if len(x) != self._input_len:
                 raise TequilaMLException('Received input of len {} when Objective takes {} inputs.'.format(len(x),self._input_len))
