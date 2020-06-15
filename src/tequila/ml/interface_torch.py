@@ -66,53 +66,28 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
 
         """
         @staticmethod
-        def forward(ctx, input, angles):
+        def forward(ctx, inputs, angles):
             """
             forward pass of the function.
             """
-            ctx.save_for_backward(input, angles)
-            call_args = tensor_fix(input, angles, first, second)
+            ctx.save_for_backward(inputs, angles)
+            call_args = tensor_fix(inputs, angles, first, second)
             result = comped_objective(variables=call_args, samples=samples)
             if not isinstance(result, np.ndarray):
                 # this happens if the Objective is a scalar since that's usually more convenient for pure quantum stuff.
                 result = np.array(result)
-
-            """
-            for entry in input:
-                if isinstance(entry, torch.Tensor):
-                    if entry.is_cuda:
-                        return torch.as_tensor(torch.from_numpy(result), dtype=input.dtype, device=entry.get_device())
-           
-            """
-
-            """
-            ctx.save_for_backward(input, angles)
-            # Implementation of function
-            np_input = input.detach().numpy()
-            np_angles = angles.detach().numpy()
-            output = np.zeros((input.shape[0], len(comped_objective)))
-            for n in range(input.shape[0]):
-                call_args = tensor_fix(np_input[n, :], np_angles, first, second)
-                output[n, :] = comped_objective(variables=call_args, samples=samples)
-            # transform to torch using type of grad_output
-            # to avoid type conflicts
-            torch_output = torch.from_numpy(output).type(input.dtype)
-            return torch_output
-            """
             r = torch.from_numpy(result)
             r.requires_grad_(True)
             return r
 
         @staticmethod
         def backward(ctx, grad_backward):
-            input, angles = ctx.saved_tensors
-            print('back pass!')
-            call_args = tensor_fix(input, angles, first, second)
+            inputs, angles = ctx.saved_tensors
+            call_args = tensor_fix(inputs, angles, first, second)
             back_d = grad_backward.get_device()
             # build up weight and input gradient matrices... see what needs to be done to them.
             grad_outs = [None,None]
             for i, grads in enumerate([i_grads, w_grads]):
-                print(i)
                 if grads != {}:
                     g_keys = [j for j in grads.keys()]
                     probe = grads[g_keys[0]]  # first entry will tell us number of output
@@ -128,7 +103,6 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
                         g_tensor = torch.as_tensor(arr, dtype=grad_backward.dtype)
 
                     b = grad_backward.reshape(-1,1)
-                    print(b,b.shape)
                     jvp = torch.matmul(g_tensor, b)
                     jvp_out = jvp.flatten()
                     jvp_out.requires_grad_(True)
@@ -158,7 +132,7 @@ class TorchLayer(torch.nn.Module):
                 self.register_parameter(str(v), self.weights[str(v)])
         else:
             for v in weight_vars:
-                self.weights[str(v)] = torch.nn.Parameter(torch.nn.init.uniform(torch.Tensor(1),a=0.0,b=2*np.pi)[0])
+                self.weights[str(v)] = torch.nn.Parameter(torch.nn.init.uniform(torch.Tensor(1), a=0.0, b=2*np.pi)[0])
                 self.register_parameter(str(v), self.weights[str(v)])
 
     def forward(self, x=None):
@@ -179,6 +153,10 @@ class TorchLayer(torch.nn.Module):
                 raise TequilaMLException('Received input of len {} when Objective takes {} inputs.'.format(len(x),self._input_len))
         return self.function.apply(x, f)
 
+    def extra_repr(self) -> str:
+        string = 'Tequila TorchLayer. Represents: \n'
+        string += '{} \n'.format(str(self._objective))
+        string += 'Current Weights: {}'.format(self.weights)
 
 def tensor_fix(tensor,angles,first,second):
     """
