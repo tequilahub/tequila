@@ -1,13 +1,14 @@
+Install Sphinx
+
+pip install sphinxcontrib-napoleon
+pip install sphinx &recommonmark 
+
 To build documentation from specs in source directory:
 
 make html
 
-or 
-
-make latexpdf 
-
-
 Some useful links:
+
 
 * Examples of themes:
 

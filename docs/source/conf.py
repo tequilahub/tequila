@@ -56,7 +56,7 @@ html_theme = "nature"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-extensions = ['sphinx.ext.napoleon','m2r','sphinx.ext.autodoc','sphinx.ext.autosummary'] ## For docstring syntax 
+extensions = ['sphinx.ext.napoleon','recommonmark','sphinx.ext.autodoc','sphinx.ext.autosummary'] ## For docstring syntax 
 source_suffix = ['.rst', '.md']
 
 napoleon_google_docstring = True
