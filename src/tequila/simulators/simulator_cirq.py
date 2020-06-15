@@ -17,6 +17,20 @@ map_2 = lambda x: {'exponent':x/np.pi,'global_shift':-0.5}
 
 
 def qubit_satisfier(op,level):
+    """
+    check if a given operation acts on a certain number of qubits
+    Parameters
+    ----------
+    op:
+        the cirq operation
+    level:
+        the number of qubits in question
+
+    Returns
+    -------
+    bool:
+        whether or not the number of qubits in op is equal to level
+    """
     oplen=len(op.qubits)
     return oplen ==level
 
@@ -26,6 +40,34 @@ class TequilaCirqException(TequilaException):
 
 
 class BackendCircuitCirq(BackendCircuit):
+    """
+    Class for circuits compiled to be executed by Cirq.
+    See documentation for BackendCircuit for methods and attributes not listed here.
+
+    Attributes
+    ----------
+    counter:
+        counts how many distinct sympy.Symbol objects are employed in the circuit.
+    noise_lookup: dict:
+        dict mapping strings to lists of constructors for cirq noise channel objects.
+    op_lookup: dict:
+        dictionary mapping strings (tequila gate names) to cirq.ops objects.
+    resolver:
+        cirq ParamResolver object; assigns values to parameters at runtime.
+    sympy_to_tq_: dict:
+        dictionary mapping sympy.Symbols back to tequila Variables and Objectives.
+    tq_to_sympy: dict:
+        dictionary mapping tequila Variables and Objectives to sympy.Symbols, for parameter resolution.
+
+    Methods
+    -------
+    build_device_circuit:
+        fit the cirq circuit to a specific device, by compiling its gates and matching its qubits to those the device
+        supports.
+    build_noisy_circuit:
+        apply a tequila NoiseModel to a cirq circuit, by translating the NoiseModel's instructions into noise channels.
+
+    """
 
     compiler_arguments = {
     "trotterized" : True,
@@ -48,6 +90,23 @@ class BackendCircuitCirq(BackendCircuit):
     numbering: BitNumbering = BitNumbering.MSB
 
     def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None,device=None, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        abstract_circuit: QCircuit:
+            Tequila unitary to compile to cirq
+        variables: dict:
+            values of all variables in the circuit, to compile with.
+        use_mapping: bool:
+            whether or not to use a mapping that eliminates unnecessary qubits from the circuit.
+        noise:
+            Noise to apply to the circuit.
+        device:
+            device on which to emulatedly execute all sampling.
+        args
+        kwargs
+        """
 
 
         self.op_lookup = {
@@ -92,11 +151,42 @@ class BackendCircuitCirq(BackendCircuit):
 
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
+        """
+        Internal helper function for performing wavefunction simulation.
+
+        Parameters
+        ----------
+        variables:
+            the variables of parameters in the circuit to use during simulation
+        initial_state:
+            indicates, in some fashion, the initial state to which the self.circuit is applied.
+        args
+        kwargs
+
+        Returns
+        -------
+        QubitWaveFunction:
+            The wave function resulting from simulation.
+
+        """
         simulator = cirq.Simulator()
         backend_result = simulator.simulate(program=self.circuit,param_resolver=self.resolver, initial_state=initial_state)
         return QubitWaveFunction.from_array(arr=backend_result.final_state, numbering=self.numbering)
 
     def convert_measurements(self, backend_result: cirq.TrialResult) -> QubitWaveFunction:
+        """
+        Take the results of a cirq measurement and translate them to teuqila QubitWaveFunction.
+        Parameters
+        ----------
+        backend_result: cirq.TrialResult:
+            the result of sampled measurements.
+
+        Returns
+        -------
+        QubitWaveFunction:
+            the result of sampling, as a tequila QubitWavefunction.
+
+        """
         assert (len(backend_result.measurements) == 1)
         for key, value in backend_result.measurements.items():
             counter = QubitWaveFunction()
@@ -109,15 +199,60 @@ class BackendCircuitCirq(BackendCircuit):
             return counter
 
     def do_sample(self, samples,circuit, *args, **kwargs) -> QubitWaveFunction:
+        """
+        Helper function, sampling an individual circuit.
+
+        Parameters
+        ----------
+        samples: int:
+            the number of samples of measurement to make.
+        circuit:
+            the circuit to sample.
+        args
+        kwargs
+
+        Returns
+        -------
+        QubitWaveFunction:
+            the result of sampled measurement, as a tequila wavefunction.
+        """
         return self.convert_measurements(cirq.sample(program=circuit,param_resolver=self.resolver, repetitions=samples))
 
     def fast_return(self, abstract_circuit):
         return isinstance(abstract_circuit, cirq.Circuit)
 
     def initialize_circuit(self, *args, **kwargs):
+        """
+        Return an empty cirq Circuit.
+        Parameters
+        ----------
+        args
+        kwargs
+
+        Returns
+        -------
+        cirq.Circuit
+        """
         return cirq.Circuit()
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        """
+        Add a parametrized gate to the circuit. Used in inherited method create_circuit.
+
+        Additionally, builds and updates mappings so that cirq can resolve the parametrization of the gate at runtime.
+        Parameters
+        ----------
+        gate: QGateImpl:
+            the gate to translate to cirq.
+        circuit:
+            the cirq circuit, to which a new gate is to be added
+        args
+        kwargs
+
+        Returns
+        -------
+        None
+        """
         op, mapping = self.op_lookup[gate.name]
         if isinstance(gate.parameter, float):
             par = gate.parameter
@@ -134,6 +269,22 @@ class BackendCircuitCirq(BackendCircuit):
         circuit.append(cirq_gate)
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        """
+        Adds an unparametrized gate to a circuit.
+
+        Parameters
+        ----------
+        gate: QGateImpl:
+            the gate, to be added to the circuit.
+        circuit: cirq.Circuit:
+            the circuit, to which a gate is to be added.
+        args
+        kwargs
+
+        Returns
+        -------
+        None
+        """
         op, mapping = self.op_lookup[gate.name]
         cirq_gate = op().on(*[self.qubit_map[t] for t in gate.target])
         if gate.is_controlled():
@@ -141,13 +292,51 @@ class BackendCircuitCirq(BackendCircuit):
         circuit.append(cirq_gate)
 
     def add_measurement(self, gate, circuit, *args, **kwargs):
+        """
+        Adds a measurement operation to a cirq circuit.
+        Parameters
+        ----------
+        gate: MeasurementGateImpl:
+            a tequila measurement gate, to apply to circuit.
+        circuit: cirq.Circuit:
+            a cirq circuit, to add measurement to.
+        args
+        kwargs
+
+        Returns
+        -------
+        None
+        """
         cirq_gate = cirq.MeasurementGate(len(gate.target)).on(*[self.qubit_map[t] for t in gate.target])
         circuit.append(cirq_gate)
 
     def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
+        """
+        Map integers to cirq.Linequbits
+        Parameters
+        ----------
+        qubits:
+            the list of qubits.
+        Returns
+        -------
+        dict:
+            a qubit mapping lookup table.
+        """
         return {q: cirq.LineQubit(i) for i,q in enumerate(qubits)}
 
     def build_device_circuit(self, ignore_failures=False):
+        """
+        Attempts to configure a cirq circuit to run on a device
+        Parameters
+        ----------
+        ignore_failures: bool:
+            whether or not to include gates in the circuit that fail to compile. Ignore; currently under construction.
+        Returns
+        -------
+        cirq.Circuit
+            the circuit, reconfigured for the device.
+
+        """
         c = self.circuit
         device = self.device
         line = None
@@ -197,6 +386,18 @@ class BackendCircuitCirq(BackendCircuit):
         return circuit
 
     def build_noisy_circuit(self,noise):
+        """
+
+        Parameters
+        ----------
+        noise: NoiseModel:
+            the NoiseModel, which supplies instructions for noising a circuit.
+        Returns
+        -------
+        cirq.Circuit
+            self.circuit, with noise applied thereto.
+
+        """
         c=self.circuit
         n=noise
         new_ops=[]
@@ -209,6 +410,18 @@ class BackendCircuitCirq(BackendCircuit):
         return cirq.Circuit(*new_ops)
 
     def update_variables(self, variables):
+        """
+        Update the variables of the circuit by modifying the cirq.ParameterResolver sent to simulator at runtime.
+        Parameters
+        ----------
+        variables: dict:
+            dictionary assigning values to the parameters of the circuit.
+
+        Returns
+        -------
+        None
+
+        """
         # this is here because cirq cant take numpy arrays correctly
         if isinstance(variables,dict):
             variables = {k: to_float(v) for k, v in variables.items()}
@@ -219,6 +432,18 @@ class BackendCircuitCirq(BackendCircuit):
             self.resolver=None
 
     def retrieve_device(self,device):
+        """
+        Retrieve a cirq.Device object for circuit execution (emulated).
+
+        Parameters
+        ----------
+        device:
+            a cirq.Device or string pointing to a named cirq device.
+        Returns
+        -------
+        cirq.Device or None:
+            the device on which to execute cirq circuits.
+        """
         if isinstance(device,str):
             return getattr(cirq.google,device)
         else:
@@ -230,6 +455,17 @@ class BackendCircuitCirq(BackendCircuit):
                 raise TequilaException('Unable to retrieve requested device, {}, in cirq'.format(str(device)))
 
     def check_device(self,device):
+        """
+        Verify if a device is valid.
+        Parameters
+        ----------
+        device:
+            a cirq.Device or the name of a known cirq device.
+        Returns
+        -------
+        None
+
+        """
         if device is None:
             return
         if isinstance(device, cirq.Device):
@@ -243,4 +479,7 @@ class BackendCircuitCirq(BackendCircuit):
 
 
 class BackendExpectationValueCirq(BackendExpectationValue):
+    """
+    See BackendExpectationValue for details.
+    """
     BackendCircuitType = BackendCircuitCirq
