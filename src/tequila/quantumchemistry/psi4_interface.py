@@ -566,17 +566,25 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                      get_rdm1: bool = True, get_rdm2: bool = True, psi4_rdms: bool = False):
         """
         Same functionality as qc_base.compute_rdms (look there for more information),
-        plus the additional option to compute 1- and 2-RDM using psi4
+        plus the additional option to compute 1- and 2-RDM using psi4 by the keyword psi4_rdms
 
         Parameters
         ----------
+        U :
+             Quantum Circuit to achieve the desired state \\psi = U |0\\rangle, optional if psi4_rdms is set to True
+        variables :
+            If U is parametrized, then need to hand over a set of fixed variables
+        spin_free :
+            Set whether matrices should be spin-free (summation over spin) or defined by spin-orbitals
+        get_rdm1, get_rdm2 :
+            Set whether either one or both rdm1, rdm2 should be computed. If both are needed at some point,
+            it is recommended to compute them at once.
         psi4_rdms :
             Set whether to compute matrices via psi4 or not.
             If this is set to True, specifying U is no longer mandatory.
 
         Returns
         -------
-
         """
         if not psi4_rdms:
             super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
@@ -594,5 +602,5 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
                 rdm2 = NBodyTensor(elems=rdm2, scheme='chem')
                 rdm2.reorder(to='openfermion')
-                rdm2 = 2*rdm2.elems # Factor 2 since psi4 includes 1/2 in 2-rdm
+                rdm2 = 2*rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
                 self._rdm2 = rdm2

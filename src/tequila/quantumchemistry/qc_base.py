@@ -94,7 +94,7 @@ class ParametersQC:
         Returns
         -------
         type
-            A list with the correct format for openferion E.g return [ ['h',[0.0,0.0,0.0], [..]]
+            A list with the correct format for openfermion E.g return [ ['h',[0.0,0.0,0.0], [..]]
 
         """
         result = []
@@ -324,7 +324,7 @@ class NBodyTensor:
             self._size_full = self.elems.shape[0]
         else:
             self._size_full = size_full
-        # 2-body tensors (<=> of order 4) currently allow reordering
+        # 2-body tensors (<=> order 4) currently allow reordering
         if self.order == 4:
             if scheme is None:
                 self.scheme = 'chem'
@@ -340,8 +340,7 @@ class NBodyTensor:
         Get subspace of tensor by a set of index lists
         according to hPQ.sub_lists(idx_lists=[p, q]) = [hPQ for P in p and Q in q]
 
-        This essentially is an implementation of a non-contiguous slicing
-        using numpy.take
+        This essentially is an implementation of a non-contiguous slicing using numpy.take
 
         Parameters
         ----------
@@ -353,7 +352,6 @@ class NBodyTensor:
         -------
             out :
                 Sliced tensor as numpy.ndarray
-
         """
         # Check if index list has correct size
         if len(idx_lists) != self.order:
@@ -394,7 +392,6 @@ class NBodyTensor:
         ----------
             name :
                 String specifying the desired subspace, elements need to be a (active), f (full), p (full - active)
-
 
         Returns
         -------
@@ -460,11 +457,10 @@ class NBodyTensor:
 
     def reorder(self, to: str = 'of'):
         """
-        Function to reorder tensors according to some convention
+        Function to reorder tensors according to some convention.
 
         Parameters
         ----------
-
         to :
             Ordering scheme of choice.
             'openfermion', 'of' (default) :
@@ -484,8 +480,6 @@ class NBodyTensor:
 
             Returns
             -------
-            type :
-                the two-body tensors in chosen ordering (openfermion as default)
         """
         if self.order != 4:
             raise Exception('Reordering currently only implemented for two-body tensors.')
@@ -1080,8 +1074,7 @@ class QuantumChemistryBase:
             print("2-RDM has not been computed. Return None for 2-RDM.")
             return None
 
-    def compute_rdms(self, U: QCircuit = None, variables: Variables = None,
-                     spin_free: bool = True,
+    def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
@@ -1091,19 +1084,18 @@ class QuantumChemistryBase:
         matrices in the occupation picture.
 
         We only consider real orbitals and thus real-valued RDMs.
-
         The matrices are set as private members _rdm1, _rdm2 and can be accessed via the properties rdm1, rdm2.
 
         .. math :
-            \\text{rdm1: } \\gamma^p_q = \\langle \\psi | a^p a_q | \\psi \\rangle = \\langle U 0 | a^p a_q | U 0 \\rangle
+            \\text{rdm1: } \\gamma^p_q = \\langle \\psi | a^p a_q | \\psi \\rangle
+                                     = \\langle U 0 | a^p a_q | U 0 \\rangle
             \\text{rdm2: } \\gamma^{pq}_{rs} = \\langle \\psi | a^p a^q a_s a_r | \\psi \\rangle
                                              = \\langle U 0 | a^p a^q a_s a_r | U 0 \\rangle
 
         Parameters
         ----------
         U :
-            Quantum Circuit to achieve the desired state \\psi = U |0\\rangle
-            Non-optional, but pre-set to allow psi4-matrices in psi4-interface.
+            Quantum Circuit to achieve the desired state \\psi = U |0\\rangle, non-optional
         variables :
             If U is parametrized, then need to hand over a set of fixed variables
         spin_free :
@@ -1114,7 +1106,6 @@ class QuantumChemistryBase:
 
         Returns
         -------
-
         """
         # Set up number of spin-orbitals and molecular orbitals respectively
         n_SOs = 2*self.n_orbitals
@@ -1278,16 +1269,16 @@ class QuantumChemistryBase:
         evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
 
         # Assemble density matrices
-        # If self._rdm1, self._rdm2 exist, reset them if they are of other spin-type
-        def reset_rdm(rdm):
+        # If self._rdm1, self._rdm2 exist, reset them if they are of the other spin-type
+        def _reset_rdm(rdm):
             if rdm is not None:
                 if spin_free and rdm.shape[0] != n_MOs:
                     return None
                 if not spin_free and rdm.shape[0] != n_SOs:
                     return None
             return rdm
-        self._rdm1 = reset_rdm(self._rdm1)
-        self._rdm2 = reset_rdm(self._rdm2)
+        self._rdm1 = _reset_rdm(self._rdm1)
+        self._rdm2 = _reset_rdm(self._rdm2)
         # Split expectation values in 1- and 2-particle expectation values
         if get_rdm1:
             len_1 = n_MOs * (n_MOs + 1) // 2 if spin_free else n_SOs * (n_SOs + 1) // 2
