@@ -115,9 +115,38 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
 class TorchLayer(torch.nn.Module):
     """
     class representing a tequila Objective wrapped for use by pytorch.
+
+    Attributes
+    ----------
+    function: _TorchFunction:
+        a torch.autograd.function object which instructs pytorch how to do forward and backward passes on the Objective.
+    objective: Objective:
+        the underlying tequila Objective.
+    weights: dict:
+        a dictionary of weights; convenient, tequila-esque storage of the parameters of the TorchLayer.
+
+    Methods
+    -------
+    forward:
+        calls the underlying Objective on optional input (None is allowed, if all the variables are weights).
+    extra_repr:
+        augments the print statement of this class.
+
     """
 
-    def __init__(self, objective, compile_args, input_vars):
+    def __init__(self, objective, compile_args=None, input_vars=None):
+        """
+
+        Parameters
+        ----------
+        objective: Objective:
+            the underlying objective function.
+        compile_args: dict, optional:
+            information to be used to compile the Objective.
+        input_vars: list[Variable], optional:
+            which variables of the objective should be treated as inputs (recieved on call)
+            rather than stored as weights internally.
+        """
         super().__init__()
 
         self._objective = objective
@@ -136,6 +165,18 @@ class TorchLayer(torch.nn.Module):
                 self.register_parameter(str(v), self.weights[str(v)])
 
     def forward(self, x=None):
+        """
+        Calls the Objective on a torch Tensor object and returns the results.
+        Parameters
+        ----------
+        x: torch.Tensor, optional:
+            a torch tensor. Should have dimensions (any,self._input_len)
+
+        Returns
+        -------
+        torch.Tensor:
+            a PyTorch tensor, the result of calling the underlying objective on the data input.
+        """
         if x is not None:
             if len(x.shape) == 1:
                 out = self._do(x)
@@ -147,16 +188,27 @@ class TorchLayer(torch.nn.Module):
         return out
 
     def _do(self, x):
-        f = torch.stack([*self.parameters()])
+        listed = [*self.parameters()]
+        if listed != []:
+            f = torch.stack(listed)
+        else:
+            f = None
         if x is not None:
             if len(x) != self._input_len:
                 raise TequilaMLException('Received input of len {} when Objective takes {} inputs.'.format(len(x),self._input_len))
         return self.function.apply(x, f)
 
     def extra_repr(self) -> str:
+        """
+        Returns
+        -------
+        str:
+            Information used by print(TorchLayer).
+        """
         string = 'Tequila TorchLayer. Represents: \n'
         string += '{} \n'.format(str(self._objective))
         string += 'Current Weights: {}'.format(self.weights)
+        return string
 
 def tensor_fix(tensor,angles,first,second):
     """
@@ -179,6 +231,7 @@ def tensor_fix(tensor,angles,first,second):
     if tensor is not None:
         for i, val in enumerate(tensor):
             back[first[i]] = val.item()
-    for i, val in enumerate(angles):
-        back[second[i]] = val.item()
+    if angles is not None:
+        for i, val in enumerate(angles):
+            back[second[i]] = val.item()
     return back

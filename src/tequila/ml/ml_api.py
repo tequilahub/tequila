@@ -5,7 +5,7 @@ SUPPORTED_PLATFORMS = ['pytorch']
 CONVERTERS = {}
 
 #HAS_TORCH = which('torch') is not None or which('pytorch') is not None
-HAS_TORCH=True
+HAS_TORCH = True
 try:
     import torch
 except:
