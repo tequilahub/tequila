@@ -160,7 +160,11 @@ class PauliString:
         return PauliString(data=self._data, coeff=None)
 
     def binary(self, n_qubits: int = None):
-        maxq = max(self._data.keys()) + 1
+        if len(self._data.keys()) == 0:
+            maxq = 1
+        else: 
+            maxq = max(self._data.keys()) + 1
+            
         if n_qubits is None:
             n_qubits = maxq
 
