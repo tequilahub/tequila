@@ -6,6 +6,9 @@
 Welcome to tequila's documentation!
 ===================================
 
+-----------
+
+.. include:: ../../README.md
 
 
 Contents

@@ -12,6 +12,8 @@
 #
 import os
 import sys
+from recommonmark.parser import CommonMarkParser
+
 sys.path.insert(0, os.path.abspath('../src'))
 
 
@@ -57,7 +59,8 @@ html_theme = "nature"
 html_static_path = ['_static']
 
 extensions = ['sphinx.ext.napoleon','recommonmark','sphinx.ext.autodoc','sphinx.ext.autosummary'] ## For docstring syntax 
-source_suffix = ['.rst', '.md']
+source_suffix = ['.rst']
+
 
 napoleon_google_docstring = True
 napoleon_use_param = False
