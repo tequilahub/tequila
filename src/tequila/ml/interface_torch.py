@@ -1,6 +1,7 @@
 import torch
 from .utils_ml import TequilaMLException, preamble
-from tequila.objective import Objective
+from tequila.objective import Objective, vectorize
+from tequila.tools import list_assignment
 import numpy as np
 
 
@@ -23,9 +24,37 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
         the requisite pytorch autograd function, alongside necessary information for higher level classes.
     """
 
+    if isinstance(objective,tuple) or isinstance(objective,list) or isinstance(objective,Objective):
+        objective = vectorize(list_assignment(objective))
     comped_objective, compile_args, weight_vars, w_grads, i_grads, first, second \
         = preamble(objective, compile_args, input_vars)
     samples = compile_args['samples']
+
+    def tensor_fix(tensor, angles, first, second):
+        """
+        take a pytorch tensor and a dict of  int,Variable to create a variable,float dictionary therefrom.
+        Parameters
+        ----------
+        tensor: torch.Tensor:
+            a tensor.
+        angles: torch.Tensor:
+        first: dict:
+            dict of int,Variable pairs indicating which position in Tensor corresponds to which variable.
+        second: dict:
+            dict of int,Variable pairs indicating which position in angles corresponds to which variable.
+        Returns
+        -------
+        dict:
+            dict of variable, float pairs. Can be used as call arg by underlying tq objectives
+        """
+        back = {}
+        if tensor is not None:
+            for i, val in enumerate(tensor):
+                back[first[i]] = val.item()
+        if angles is not None:
+            for i, val in enumerate(angles):
+                back[second[i]] = val.item()
+        return back
 
     class _TorchFunction(torch.autograd.Function):
         """
@@ -210,28 +239,3 @@ class TorchLayer(torch.nn.Module):
         string += 'Current Weights: {}'.format(self.weights)
         return string
 
-def tensor_fix(tensor,angles,first,second):
-    """
-    take a pytorch tensor and a dict of  int,Variable to create a variable,float dictionary therefrom.
-    Parameters
-    ----------
-    tensor: torch.Tensor:
-        a tensor.
-    angles: torch.Tensor:
-    first: dict:
-        dict of int,Variable pairs indicating which position in Tensor corresponds to which variable.
-    second: dict:
-        dict of int,Variable pairs indicating which position in angles corresponds to which variable.
-    Returns
-    -------
-    dict:
-        dict of variable, float pairs. Can be used as call arg by underlying tq objectives
-    """
-    back = {}
-    if tensor is not None:
-        for i, val in enumerate(tensor):
-            back[first[i]] = val.item()
-    if angles is not None:
-        for i, val in enumerate(angles):
-            back[second[i]] = val.item()
-    return back
