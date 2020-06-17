@@ -276,7 +276,7 @@ class OptimizerGD(Optimizer):
         Objective:
             compiled version of objective.
         """
-        objective=objective.contract()
+        objective = objective.contract()
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         comp = self.compile_objective(objective=objective)
         for arg in comp.args:
@@ -306,7 +306,7 @@ class OptimizerGD(Optimizer):
             if gradient['method'] == 'qng':
                 func = gradient['function']
                 compile_gradient = False
-                combos = get_qng_combos(objective,func=func, initial_values=initial_values, backend=self.backend,
+                combos = get_qng_combos(objective, func=func, initial_values=initial_values, backend=self.backend,
                                         device=self.device,
                                         samples=self.samples, noise=self.noise)
                 dE = QNGVector(combos)

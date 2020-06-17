@@ -1,6 +1,6 @@
 import tequila.simulators.simulator_api
 from tequila.circuit import gates
-from tequila.objective import Objective, ExpectationValue
+from tequila.objective import Objective, ExpectationValue, VectorObjective
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.circuit.gradient import grad
@@ -392,7 +392,7 @@ def test_heterogeneous_operations_l(simulator, op, value1=(numpy.random.randint(
     H2 = paulis.X(qubit=qubit)
     U2 = gates.X(target=control) + gates.Ry(target=qubit, control=control, angle=angle2)
     e2 = ExpectationValue(U=U2, H=H2)
-    added = Objective(argsets=[[angle1, e2.args[0]]], transformations=[op])
+    added = Objective(args=[angle1, e2.args[0]], transformation=op)
     val = simulate(added, variables=variables, backend=simulator)
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = angle1(variables=variables)
@@ -413,7 +413,7 @@ def test_heterogeneous_operations_r(simulator, op, value1=(numpy.random.randint(
     H1 = paulis.Y(qubit=qubit)
     U1 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle1)
     e1 = ExpectationValue(U=U1, H=H1)
-    added = Objective(argsets=[[e1.args[0], angle2]], transformations=[op])
+    added = Objective(args=[e1.args[0], angle2], transformation=op)
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
@@ -433,7 +433,7 @@ def test_heterogeneous_gradient_r_add(simulator):
     H1 = paulis.Y(qubit=qubit)
     U1 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle1)
     e1 = ExpectationValue(U=U1, H=H1)
-    added = Objective(argsets=[[e1.args[0], angle1]], transformations=[np.add])
+    added = Objective([e1.args[0], angle1], np.add)
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
@@ -459,7 +459,7 @@ def test_heterogeneous_gradient_r_mul(simulator):
     H1 = paulis.Y(qubit=qubit)
     U1 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle1)
     e1 = ExpectationValue(U=U1, H=H1)
-    added = Objective(argsets=[[e1.args[0], angle1]], transformations=[np.multiply])
+    added = Objective([e1.args[0], angle1], transformation=np.multiply)
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
@@ -485,7 +485,7 @@ def test_heterogeneous_gradient_r_div(simulator):
     H1 = paulis.Y(qubit=qubit)
     U1 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle1)
     e1 = ExpectationValue(U=U1, H=H1)
-    added = Objective(argsets=[[e1.args[0], angle1]], transformations=[np.true_divide])
+    added = Objective(args=[e1.args[0], angle1], transformation=np.true_divide)
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     an1 = -np.sin(angle1(variables=variables))
@@ -603,7 +603,7 @@ def test_stacking():
         return np.cos(x)**2. + np.sin(x)**2.
     funcs=[f,f,f,f]
     vals = {Variable('a'):numpy.random.uniform(0,np.pi),Variable('b'):numpy.random.uniform(0,np.pi)}
-    O = Objective(argsets=[[a],[b],[a],[b]],transformations=funcs)
+    O = VectorObjective(argsets=[[a],[b],[a],[b]],transformations=funcs)
     O1 = O.apply_op_list(funcs)
     O2 = O1/4
     output = simulate(O2,variables=vals)
@@ -627,7 +627,7 @@ def test_stacking_quantum(simulator, value1=(numpy.random.randint(0, 1000) / 100
     v2=out[1]
     an1= np.sin(a(values))
     an2= -np.sin(b(values))
-    assert np.isclose(v1+v2,an1+an2)
+    assert np.isclose(v1+v2,an1+an2,atol=1e-3)
     # not gonna contract, lets make gradient do some real work
     ga=grad(stacked,a)
     gb=grad(stacked,b)
@@ -635,4 +635,35 @@ def test_stacking_quantum(simulator, value1=(numpy.random.randint(0, 1000) / 100
     totb= np.sum([tq.simulate(x,variables=values) for x in gb])
     gan1= np.cos(a(values))
     gan2= -np.cos(b(values))
+    assert np.isclose(tota+totb,gan1+gan2,atol=1e-3)
+
+
+@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+def test_total_type_jumble(simulator,value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+    a = Variable('a')
+    b = Variable('b')
+    values = {a: value1, b: value2}
+    H1 = tq.paulis.X(0)
+    H2 = tq.paulis.Y(0)
+    U1= tq.gates.Ry(angle=a,target=0)
+    U2= tq.gates.Rx(angle=b,target=0)
+    e1=ExpectationValue(U1,H1)
+    e2=ExpectationValue(U2,H2)
+    stacked= tq.objective.vectorize([e1, e2])
+    stacked = stacked*a*e2
+    out=simulate(stacked,variables=values,backend=simulator)
+    v1=out[0]
+    v2=out[1]
+    appendage =  a(values) * -np.sin(b(values))
+    an1= np.sin(a(values)) *  appendage
+    an2= -np.sin(b(values)) * appendage
+    assert np.isclose(v1+v2,an1+an2)
+    # not gonna contract, lets make gradient do some real work
+    ga=grad(stacked,a)
+    gb=grad(stacked,b)
+    tota= np.sum([tq.simulate(x,variables=values) for x in ga])
+    totb= np.sum([tq.simulate(x,variables=values) for x in gb])
+    gan1= np.cos(a(values)) * appendage + (np.sin(a(values)) * -np.sin(b(values))) - (np.sin(b(values)) * -np.sin(b(values)))
+    gan2= np.sin(a(values)) * a(values) * -np.cos(b(values)) + 2 * (-np.cos(b(values)) * appendage)
     assert np.isclose(tota+totb,gan1+gan2)

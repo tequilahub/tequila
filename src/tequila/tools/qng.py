@@ -1,6 +1,6 @@
 from tequila import TequilaException
 from tequila.hamiltonian import paulis
-from tequila.objective.objective import Objective, ExpectationValueImpl, ExpectationValue
+from tequila.objective.objective import Objective, ExpectationValueImpl, ExpectationValue, VectorObjective
 from tequila.circuit.circuit import QCircuit
 from tequila.simulators.simulator_api import compile_objective
 from tequila.circuit.gradient import __grad_inner
@@ -332,7 +332,7 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian) -> Objective:
 
     Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
-    dOinc = w1 * Objective(argsets=[[Oplus]]) + w2 * Objective(argsets=[[Ominus]])
+    dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
     return dOinc
 
 
@@ -490,9 +490,12 @@ def get_qng_combos(objective, func=stokes_block,
                     indict[v] = g
                 mapping[j] = indict
 
-        pos_arg = jax.grad(compiled.transformations[0], i)
-
-        p = Objective(argsets=compiled.argsets, transformations=[pos_arg])
+        if isinstance(objective,VectorObjective):
+            pos_arg = jax.grad(compiled.transformations[0], i)
+            p = VectorObjective(argsets=compiled.argsets, transformations=[pos_arg])
+        elif isinstance(objective, Objective):
+            pos_arg = jax.grad(compiled.transformation, i)
+            p = Objective(compiled.args, transformation=pos_arg)
 
         pos = compile_objective(p, variables=initial_values, samples=samples, device=device,
                                 backend=backend, noise=noise)

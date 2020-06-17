@@ -3,7 +3,7 @@ import copy
 import numbers
 from abc import ABC
 from tequila import TequilaException
-from tequila.objective.objective import Variable, FixedVariable, assign_variable
+from tequila.objective.objective import Variable, FixedVariable, assign_variable,Objective,VectorObjective
 from tequila.hamiltonian import PauliString, QubitHamiltonian
 from tequila.tools import list_assignment
 
@@ -152,6 +152,8 @@ class ParametrizedGateImpl(QGateImpl, ABC):
 
     def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None):
         super().__init__(name=name, target=target, control=control)
+        if isinstance(parameter, VectorObjective):
+            raise TequilaException('Received VectorObjective {} as parameter. This is forbidden.'.format(parameter))
         self._parameter = assign_variable(variable=parameter)
 
     def is_parametrized(self) -> bool:

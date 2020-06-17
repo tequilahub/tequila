@@ -5,7 +5,7 @@ from typing import Dict, Union, Hashable
 import pkg_resources
 from pkg_resources import DistributionNotFound
 
-from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary
+from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, VectorObjective
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
@@ -205,7 +205,8 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
 
     return backend
 
-def compile_objective(objective: 'Objective',
+
+def compile_objective(objective: typing.Union['Objective','VectorObjective'],
                       variables: typing.Dict['Variable', 'RealNumber'] = None,
                       backend: str = None,
                       samples: int = None,
@@ -276,7 +277,10 @@ def compile_objective(objective: 'Objective',
             else:
                 compiled_args.append(arg)
         compiled_sets.append(compiled_args)
-    return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
+    if isinstance(objective, Objective):
+        return type(objective)(args=compiled_sets[0], transformation=objective.transformation)
+    if isinstance(objective, VectorObjective):
+        return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
 
 
 def compile_circuit(abstract_circuit: 'QCircuit',
@@ -399,7 +403,7 @@ def draw(objective, variables=None, backend: str = None):
         elif "qiskit" in INSTALLED_SIMULATORS:
             backend = "qiskit"
 
-    if isinstance(objective, Objective):
+    if isinstance(objective, Objective) or isinstance(objective,VectorObjective):
         print(objective)
         drawn = {}
         for i, E in enumerate(objective.get_expectationvalues()):

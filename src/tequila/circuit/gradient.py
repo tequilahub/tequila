@@ -53,26 +53,18 @@ def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable 
         return __grad_expectationvalue(E=objective, variable=variable)
     elif objective.is_expectationvalue():
         return __grad_expectationvalue(E=compiled.args[-1], variable=variable)
-    elif isinstance(compiled, Objective):
+    elif isinstance(compiled, Objective) or isinstance(compiled, VectorObjective):
         return __grad_objective(objective=compiled, variable=variable)
     else:
         raise TequilaException("Gradient not implemented for other types than ExpectationValue and Objective.")
 
 
 def __grad_objective(objective: typing.Union[Objective, VectorObjective], variable: Variable):
-    if isinstance(objective,VectorObjective):
+    if isinstance(objective, VectorObjective):
         return __grad_vector_objective(objective, variable)
     else:
         args = objective.args
         transformation = objective.transformation
-
-def __grad_vector_objective(objective: typing.Union[Objective,VectorObjective], variable: Variable):
-    argsets = objective.argsets
-    transformations = objective._transformations
-    outputs=[]
-    for pos in range(len(objective)):
-        args=argsets[pos]
-        transformation=transformations[pos]
         dO = None
 
         processed_expectationvalues = {}
@@ -88,7 +80,56 @@ def __grad_vector_objective(objective: typing.Union[Objective,VectorObjective], 
             if transformation is None or transformation == identity:
                 outer = 1.0
             else:
-                outer = Objective(argsets=[args], transformations=[df])
+                outer = Objective(args=args, transformation=df)
+
+            if hasattr(arg, "U"):
+                # save redundancies
+                if arg in processed_expectationvalues:
+                    inner = processed_expectationvalues[arg]
+                else:
+                    inner = __grad_inner(arg=arg, variable=variable)
+                    processed_expectationvalues[arg] = inner
+            else:
+                # this means this inner derivative is purely variable dependent
+                inner = __grad_inner(arg=arg, variable=variable)
+
+            if inner == 0.0:
+                # don't pile up zero expectationvalues
+                continue
+
+            if dO is None:
+                dO = outer * inner
+            else:
+                dO = dO + outer * inner
+
+        if dO is None:
+            raise TequilaException("caught None in __grad_objective")
+        return dO
+
+
+def __grad_vector_objective(objective: typing.Union[Objective,VectorObjective], variable: Variable):
+    argsets = objective.argsets
+    transformations = objective._transformations
+    outputs = []
+    for pos in range(len(objective)):
+        args = argsets[pos]
+        transformation = transformations[pos]
+        dO = None
+
+        processed_expectationvalues = {}
+        for i, arg in enumerate(args):
+            if __AUTOGRAD__BACKEND__ == "jax":
+                df = jax.grad(transformation, argnums=i)
+            elif __AUTOGRAD__BACKEND__ == "autograd":
+                df = jax.grad(transformation, argnum=i)
+            else:
+                raise TequilaException("Can't differentiate without autograd or jax")
+
+            # We can detect one simple case where the outer derivative is const=1
+            if transformation is None or transformation == identity:
+                outer = 1.0
+            else:
+                outer = Objective(args=args, transformation=df)
 
             if hasattr(arg, "U"):
                 # save redundancies

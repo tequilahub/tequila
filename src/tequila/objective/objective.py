@@ -125,6 +125,7 @@ def identity(x):
     """
     return x
 
+
 class Objective:
     """
     the class which represents mathematical manipulation of ExpectationValue and Variable objects. The core of tequila.
@@ -465,6 +466,19 @@ class Objective:
             ev_array.append(expval_result)
         return self.transformation(*ev_array)
 
+    def contract(self):
+        """
+        Exists only to be convient in optimizers, which all contract over VectrObjectives.
+        Returns
+        -------
+        Objective:
+            itself.
+        """
+        return self
+
+    def __len__(self):
+        return  1
+
 class VectorObjective:
     """
     fundamental class for arithmetic and transformations on quantum data; the core of tequila.
@@ -785,23 +799,30 @@ class VectorObjective:
                 raise TequilaException('cannot combine objective of len {} with {} element array!'.format(ls,flat.shape[0]))
             else:
                 return flat
+        elif isinstance(other, Objective):
+            # same as 1d VectorObjective
+            argset = other.argsets[0]
+            argsets = [argset for i in range(ls)]
+            transform = other.transformations[0]
+            transforms = [transform for i in range(ls)]
+            return VectorObjective(argsets=argsets, transformations=transforms)
         elif isinstance(other, VectorObjective):
             if ls == 1:
                 return other
             lo = len(other)
             if lo == 1:
-                argset=other.argsets[0]
-                argsets=[argset for i in range(ls)]
-                transform=other.transformations[0]
-                transforms=[transform for i in range(ls)]
+                argset = other.argsets[0]
+                argsets = [argset for i in range(ls)]
+                transform = other.transformations[0]
+                transforms = [transform for i in range(ls)]
                 return VectorObjective(argsets=argsets, transformations=transforms)
             if ls != lo:
                 raise TequilaException('cannot combine objectives of len  {} and {}!'.format(ls,len(other)))
             else:
                 return other
-        elif isinstance(other,ExpectationValueImpl):
+        elif isinstance(other, ExpectationValueImpl):
             return VectorObjective(argsets=[[other] for i in range(ls)])
-        elif isinstance(other,Variable):
+        elif isinstance(other, Variable):
             return VectorObjective(argsets=[[other] for i in range(ls)])
         else:
             raise TequilaException('Received unknown object of type {}'.format(type(other)))

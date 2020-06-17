@@ -5,7 +5,7 @@ from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateIm
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
 from tequila import Variable
-from tequila import Objective
+from tequila import Objective, VectorObjective
 from tequila.objective.objective import ExpectationValueImpl
 from tequila.autograd_imports import numpy as jnp
 from tequila.autograd_imports import numpy
@@ -158,6 +158,7 @@ class Compiler:
         -------
         the objective, compiled
         """
+
         argsets=objective.argsets
         compiled_sets=[]
         for argset in argsets:
@@ -175,7 +176,11 @@ class Compiler:
                     # nothing to process for non-expectation-value types, but acts as sanity check
                     compiled_args.append(self.compile_objective_argument(arg, variables=None, *args, **kwargs))
             compiled_sets.append(compiled_args)
-        return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
+        if isinstance(objective,Objective):
+            return type(objective)(args=compiled_sets[0],transformation=objective.transformation)
+        if isinstance(objective, VectorObjective):
+            return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
+
 
     def compile_objective_argument(self, arg, variables=None, *args, **kwargs):
         """
@@ -333,7 +338,10 @@ def compiler(f):
                             cU += f(gate=g, **kwargs)
                         compiled.append(type(E)(U=cU, H=E.H))
                 outer.append(compiled)
-            return type(gate)(argsets=outer, transformations=gate._transformations)
+            if isinstance(gate, Objective):
+                return type(gate)(args=outer[0], transformation=gate._transformation)
+            if isinstance(gate, VectorObjective):
+                return type(gate)(argsets=outer, transformations=gate._transformations)
         else:
             return f(gate=gate, **kwargs)
 
