@@ -1,14 +1,15 @@
 from tequila.circuit.compiler import Compiler
-from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable,identity
+from tequila.objective.objective import Objective, ExpectationValueImpl, Variable,\
+    assign_variable, identity, VectorObjective
 from tequila import TequilaException
 import numpy as np
 import copy
-
+import typing
 # make sure to use the jax/autograd numpy
 from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
 
 
-def grad(objective: Objective, variable: Variable = None, no_compile=False):
+def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable = None, no_compile=False):
 
     '''
     wrapper function for getting the gradients of Objectives,ExpectationValues, Unitaries (including single gates), and Transforms.
@@ -58,7 +59,14 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
         raise TequilaException("Gradient not implemented for other types than ExpectationValue and Objective.")
 
 
-def __grad_objective(objective: Objective, variable: Variable):
+def __grad_objective(objective: typing.Union[Objective, VectorObjective], variable: Variable):
+    if isinstance(objective,VectorObjective):
+        return __grad_vector_objective(objective, variable)
+    else:
+        args = objective.args
+        transformation = objective.transformation
+
+def __grad_vector_objective(objective: typing.Union[Objective,VectorObjective], variable: Variable):
     argsets = objective.argsets
     transformations = objective._transformations
     outputs=[]
@@ -197,5 +205,5 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
 
     Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
-    dOinc = w1 * Objective(argsets=[[Oplus]]) + w2 * Objective(argsets=[[Ominus]])
+    dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
     return dOinc

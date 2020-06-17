@@ -23,7 +23,7 @@ def test_calls_correctly(angles):
     H3 = tq.paulis.Y(0)
 
     evals = [tq.ExpectationValue(U1, H1), tq.ExpectationValue(U2, H2), tq.ExpectationValue(U3, H3)]
-    stacked = tq.stack_objectives(evals)
+    stacked = tq.vectorize(evals)
     torched = tq.ml.to_platform(stacked, platform='torch', input_vars=['a', 'b', 'c'])
     inputs = torch.from_numpy(angles)
     output = torched(inputs)
@@ -40,7 +40,7 @@ def test_example_training():
     H3 = tq.paulis.Qm(3)
 
     stackable = [tq.ExpectationValue(U, H1), tq.ExpectationValue(U, H2), tq.ExpectationValue(U, H3)]
-    stacked = tq.stack_objectives(stackable)
+    stacked = tq.vectorize(stackable)
 
     initial_values = {'a': 1.5, 'b': 2.}
     cargs = {'samples': None, 'backend': 'random', 'initial_values': initial_values}

@@ -621,7 +621,7 @@ def test_stacking_quantum(simulator, value1=(numpy.random.randint(0, 1000) / 100
     U2= tq.gates.Rx(angle=b,target=0)
     e1=ExpectationValue(U1,H1)
     e2=ExpectationValue(U2,H2)
-    stacked= tq.objective.stack_objectives([e1,e2])
+    stacked= tq.objective.vectorize([e1, e2])
     out=simulate(stacked,variables=values,backend=simulator)
     v1=out[0]
     v2=out[1]
