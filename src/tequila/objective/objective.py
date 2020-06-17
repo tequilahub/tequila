@@ -19,12 +19,12 @@ class ExpectationValueImpl:
     Notes
     -----
     Though not obscured from the user, users should not initialize this class directly, since it lacks convenience
-    functions for arithmetics. Instead, these are handled by the Objective class; initializing an Objective
-    of a single Expectation Value is done with Objective.ExpectationValue or with tq.ExpectationValue.
+    functions for arithmetics. Instead, these are handled by the VectorObjective class; initializing an VectorObjective
+    of a single Expectation Value is done with VectorObjective.ExpectationValue or with tq.ExpectationValue.
 
     See Also
     --------
-    Objective
+    VectorObjective
     ExpectationValue
 
     Attributes
@@ -127,7 +127,7 @@ def identity(x):
     return x
 
 
-class Objective:
+class VectorObjective:
     """
     fundamental class for arithmetic and transformations on quantum data; the core of tequila.
 
@@ -143,10 +143,10 @@ class Objective:
         a list of lists of arguments to each of the functions represented by the objective.
         Elements of said lists of arguments should be ExpectationValueImpl, Variable, or FixedVariable (i.e, a number)
     backend:
-        string; what simulation backend, if any, the Objective has been compiled for. If Objective contains NO
+        string; what simulation backend, if any, the VectorObjective has been compiled for. If VectorObjective contains NO
         quantum simulables, then the string 'free' will be returned.
     transformations:
-        a list of callables; the functions represented by the objective. In the case that Objective has only one
+        a list of callables; the functions represented by the objective. In the case that VectorObjective has only one
         callable -- i.e, returns a scalar when called -- then the objective represents a minimizable objective function,
         such as is appropriate to be optimized over.
 
@@ -319,6 +319,7 @@ class Objective:
         assert isinstance(pos,int)
         assert pos <= len(self) -1
         return any([hasattr(arg,'U') for arg in self.argsets[pos] ])
+
     @property
     def transformations(self) -> typing.Tuple:
         back=[]
@@ -361,18 +362,18 @@ class Objective:
 
         Returns
         -------
-        Objective:
-            an Objective, who transform is the joined_transform of self with op, acting on self and other.
+        VectorObjective:
+            an VectorObjective, who transform is the joined_transform of self with op, acting on self and other.
         """
         sized=self._size_helper(len(self),other)
         if isinstance(sized, numpy.ndarray):
             ops=[lambda v: op(v, s) for s in sized]
             new = self.unary_operator(left=self, ops=ops)
-        elif isinstance(sized, Objective):
+        elif isinstance(sized, VectorObjective):
             new = self.binary_operator(left=self, right=other, op=op)
         else:
             t = op
-            nother = Objective(argsets=[[assign_variable(other)]])
+            nother = VectorObjective(argsets=[[assign_variable(other)]])
             new = self.binary_operator(left=self, right=nother, op=t)
         return new
 
@@ -384,11 +385,11 @@ class Objective:
         if isinstance(sized, numpy.ndarray):
             ops = [lambda v: op(s, v) for s in sized]
             new = self.unary_operator(left=self, ops=ops)
-        elif isinstance(other, Objective):
+        elif isinstance(other, VectorObjective):
             new = self.binary_operator(left=other, right=self, op=op)
         else:
             t = op
-            nother = Objective(argsets=[[assign_variable(other)]])
+            nother = VectorObjective(argsets=[[assign_variable(other)]])
             new = self.binary_operator(left=nother, right=self, op=t)
         return new
 
@@ -429,7 +430,7 @@ class Objective:
         return self._right_helper(numpy.true_divide, other)
 
     def __invert__(self):
-        new = Objective(argsets=self.argsets, transformations=self.transformations)
+        new = VectorObjective(argsets=self.argsets, transformations=self.transformations)
         return new ** -1.0
 
     @staticmethod
@@ -446,7 +447,7 @@ class Objective:
                 raise TequilaException('cannot combine objective of len {} with {} element array!'.format(ls,flat.shape[0]))
             else:
                 return flat
-        elif isinstance(other, Objective):
+        elif isinstance(other, VectorObjective):
             if ls == 1:
                 return other
             lo = len(other)
@@ -455,15 +456,15 @@ class Objective:
                 argsets=[argset for i in range(ls)]
                 transform=other.transformations[0]
                 transforms=[transform for i in range(ls)]
-                return Objective(argsets=argsets, transformations=transforms)
+                return VectorObjective(argsets=argsets, transformations=transforms)
             if ls != lo:
                 raise TequilaException('cannot combine objectives of len  {} and {}!'.format(ls,len(other)))
             else:
                 return other
         elif isinstance(other,ExpectationValueImpl):
-            return Objective(argsets=[[other] for i in range(ls)])
+            return VectorObjective(argsets=[[other] for i in range(ls)])
         elif isinstance(other,Variable):
-            return Objective(argsets=[[other] for i in range(ls)])
+            return VectorObjective(argsets=[[other] for i in range(ls)])
         else:
             raise TequilaException('Received unknown object of type {}'.format(type(other)))
 
@@ -471,10 +472,10 @@ class Objective:
     def unary_operator(cls, left, ops):
         """
         Arithmetical function for unary operations.
-        Generally, called by the magic methods of Objective itself.
+        Generally, called by the magic methods of VectorObjective itself.
         Parameters
         ----------
-        left: Objective:
+        left: VectorObjective:
             the objective to which op will be applied
 
         ops: list of Callable:
@@ -482,22 +483,22 @@ class Objective:
 
         Returns
         -------
-        Objective:
-            Objective representing ops applied to objective left.
+        VectorObjective:
+            VectorObjective representing ops applied to objective left.
 
         """
         transformations=[]
         for i,op in enumerate(ops):
             transformations.append(lambda *args: op(left.transformations[i](*args)))
-        return Objective(argsets=left.argsets,
-                         transformations=transformations)
+        return VectorObjective(argsets=left.argsets,
+                               transformations=transformations)
 
     @classmethod
     def binary_operator(cls, left, right, op):
         """
         Core arithmetical method for creating differentiable callables of two Tequila Objectives and or Variables.
 
-        this function, usually called by the convenience magic-methods of Observable objects, constructs a new Objective
+        this function, usually called by the convenience magic-methods of Observable objects, constructs a new VectorObjective
         whose Transformation  is the JoinedTransformation of the lower arguments and transformations
         of the left and right objects, alongside op (if they are or can be rendered as objectives).
         In case one of left or right is a number, calls unary_operator instead.
@@ -513,11 +514,11 @@ class Objective:
 
         Returns
         -------
-        Objective:
+        VectorObjective:
             op acting on left, right. Will arguments appropriately if one is scalar.
         """
         if isinstance(right, numbers.Number) or isinstance(right, numpy.ndarray):
-            if isinstance(left, Objective):
+            if isinstance(left, VectorObjective):
                 sized_r=left._size_helper(len(left),right)
                 sized_l=left._size_helper(len(right),left)
                 ops=[lambda E: op(E, s) for s in sized_r]
@@ -526,7 +527,7 @@ class Objective:
                 raise TequilaException(
                     'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
         elif isinstance(left, numbers.Number) or isinstance(left, numpy.ndarray):
-            if isinstance(right, Objective):
+            if isinstance(right, VectorObjective):
                 sized_r = right._size_helper(len(left), right)
                 sized_l = right._size_helper(len(right), left)
                 ops = [lambda E: op(s, E) for s in sized_l]
@@ -535,8 +536,8 @@ class Objective:
                 raise TequilaException(
                     'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
         else:
-            sized_r=Objective._size_helper(len(left),right)
-            sized_l=Objective._size_helper(len(right),left)
+            sized_r=VectorObjective._size_helper(len(left), right)
+            sized_l=VectorObjective._size_helper(len(right), left)
             sets = []
             trans = []
             for i in range(len(sized_r)):
@@ -548,8 +549,8 @@ class Objective:
                 sets.append(left_args+right_args)
                 new_tran=JoinedTransformation(left=left_f,right=right_f,split=split_at,op=op)
                 trans.append(new_tran)
-            return Objective(argsets=sets,
-                             transformations=trans)
+            return VectorObjective(argsets=sets,
+                                   transformations=trans)
 
     def wrap(self, op):
         """
@@ -561,7 +562,7 @@ class Objective:
 
         Returns
         -------
-        Objective:
+        VectorObjective:
             an objective which is evaluated as op(self)
         """
         ops = [op for i in range(len(self))]
@@ -583,7 +584,7 @@ class Objective:
 
         Returns
         -------
-        Objective:
+        VectorObjective:
             self, with op applied at chosen positions.
         """
         positions=list(set(list_assignment(positions)))
@@ -598,7 +599,7 @@ class Objective:
                 new= t
             new_transformations.append(new)
 
-        return Objective(argsets=argsets,transformations=new_transformations)
+        return VectorObjective(argsets=argsets, transformations=new_transformations)
 
     def apply_op_list(self,oplist):
         """
@@ -610,8 +611,8 @@ class Objective:
 
         Returns
         -------
-        Objective:
-            an Objective, corresponding to oplist[i] composed with self.transformations[i] for all i.
+        VectorObjective:
+            an VectorObjective, corresponding to oplist[i] composed with self.transformations[i] for all i.
         """
         assert len(oplist) == len(self)
         argsets = self.argsets
@@ -621,7 +622,7 @@ class Objective:
             new = lambda *args: oplist[i](t(*args))
             new_transformations.append(new)
 
-        return Objective(argsets=argsets, transformations=new_transformations)
+        return VectorObjective(argsets=argsets, transformations=new_transformations)
 
 
     def get_expectationvalues(self):
@@ -697,14 +698,14 @@ class Objective:
 
         Returns
         -------
-        Objective:
-            an Objective whose output, when called, would be the sum over the output of self.
+        VectorObjective:
+            an VectorObjective whose output, when called, would be the sum over the output of self.
         """
         argsets=self.argsets
         trans=self.transformations
         group=[]
         for i, a in enumerate(argsets):
-            o = Objective(argsets=[a], transformations=[trans[i]])
+            o = VectorObjective(argsets=[a], transformations=[trans[i]])
             group.append(o)
         back = group[0]
         for i in range(1,len(group)):
@@ -726,7 +727,7 @@ class Objective:
                 types = "partially compiled to " + str([t for t in types if t is not ExpectationValueImpl])
 
         unique = self.count_expectationvalues(unique=True)
-        return "Objective with {} unique expectation values\n" \
+        return "VectorObjective with {} unique expectation values\n" \
                "variables = {}\n" \
                "types     = {}".format(unique, variables, types)
 
@@ -785,19 +786,19 @@ class Objective:
 
         Returns
         -------
-        Objective:
+        VectorObjective:
             an empty objective of length 'length'.
 
         """
         assert isinstance(length,int)
         f = lambda *x: 0.0
         trans = [f for i in range(length)]
-        return Objective(argsets=None, transformations=trans)
+        return VectorObjective(argsets=None, transformations=trans)
 
     @staticmethod
     def from_list(input):
         """
-        Return an n-d array Objective from a list of Objectives whose lengths will total n.
+        Return an n-d array VectorObjective from a list of Objectives whose lengths will total n.
         Parameters
         ----------
         input: list:
@@ -805,22 +806,22 @@ class Objective:
 
         Returns
         -------
-        Objective:
-            Objective representing the stacked Objectives of input.
+        VectorObjective:
+            VectorObjective representing the stacked Objectives of input.
         """
         assert isinstance(input,list)
-        assert all([isinstance(i, Objective) for i in input])
+        assert all([isinstance(i, VectorObjective) for i in input])
         argsets=[]
         transformations=[]
         for i in input:
             argsets.extend(i.argsets)
             transformations.extend(i.transformations)
-        return Objective(argsets=argsets, transformations=transformations)
+        return VectorObjective(argsets=argsets, transformations=transformations)
 
     @staticmethod
     def ExpectationValue(U,H,*args,**kwargs):
         """
-        Return a 1-d Objective containing a single ExpectationValue, with the identity transform acting thereupon.
+        Return a 1-d VectorObjective containing a single ExpectationValue, with the identity transform acting thereupon.
         Parameters
         ----------
         U: QCircuit:
@@ -832,28 +833,28 @@ class Objective:
 
         Returns
         -------
-        Objective:
+        VectorObjective:
             1-d objective representing the desired ExpectationValue.
         """
         ev=ExpectationValueImpl(U=U,H=H,*args,**kwargs)
-        return Objective(argsets=[ev])
+        return VectorObjective(argsets=[ev])
 
 
-def ExpectationValue(U, H, optimize_measurements: bool=False, *args, **kwargs) -> Objective:
+def ExpectationValue(U, H, optimize_measurements: bool=False, *args, **kwargs) -> VectorObjective:
     """
-    Initialize an Objective which is just a single expectationvalue
+    Initialize an VectorObjective which is just a single expectationvalue
     """
     if optimize_measurements:
         binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
         commuting_parts = binary_H.commuting_groups()
-        result = Objective()
+        result = VectorObjective()
         for cH in commuting_parts:
             qwc, Um = cH.get_qubit_wise()
             Etmp = ExpectationValue(H=qwc, U=U + Um, optimize_measurements=False)
             result += Etmp
         return result
     else:
-        return Objective.ExpectationValue(U=U, H=H, *args, **kwargs)
+        return VectorObjective.ExpectationValue(U=U, H=H, *args, **kwargs)
 
 
 def stack_objectives(objectives):
@@ -868,7 +869,7 @@ def stack_objectives(objectives):
 
     Returns
     -------
-    Objective:
+    VectorObjective:
         Objectives stacked together.
     """
     l=list_assignment(objectives)
@@ -879,7 +880,7 @@ def stack_objectives(objectives):
             argsets.append(s)
         for t in o.transformations:
             trans.append(t)
-    return Objective(argsets=argsets,transformations=trans)
+    return VectorObjective(argsets=argsets, transformations=trans)
 
 
 class TequilaVariableException(TequilaException):
@@ -956,7 +957,7 @@ class Variable:
         external operator they call.
 
         left helper is responsible for all 'self # other' operations. Note similarity
-        to the same function in Objective.
+        to the same function in VectorObjective.
 
         Parameters
         ----------
@@ -967,10 +968,10 @@ class Variable:
 
         Returns
         -------
-        Objective:
-            an Objective, who transform is op, acting on self and other
+        VectorObjective:
+            an VectorObjective, who transform is op, acting on self and other
         """
-        as_obj=Objective(argsets=[[self]])
+        as_obj=VectorObjective(argsets=[[self]])
         return as_obj._left_helper(op,other)
 
 
@@ -979,7 +980,7 @@ class Variable:
         see _left_helper for details.
         """
 
-        as_obj=Objective(argsets=[[self]])
+        as_obj=VectorObjective(argsets=[[self]])
         return as_obj._right_helper(op,other)
 
     def __mul__(self, other):
@@ -995,7 +996,7 @@ class Variable:
         return self._left_helper(numpy.true_divide, other)
 
     def __neg__(self):
-        return Objective(argsets=[[self]], transformations=[lambda v: numpy.multiply(v, -1.)])
+        return VectorObjective(argsets=[[self]], transformations=[lambda v: numpy.multiply(v, -1.)])
 
     def __pow__(self, other):
         return self._left_helper(numpy.float_power, other)
@@ -1013,7 +1014,7 @@ class Variable:
         return self._right_helper(numpy.true_divide, other)
 
     def __invert__(self):
-        new = Objective(argsets=[[self]])
+        new = VectorObjective(argsets=[[self]])
         return new ** -1.0
 
     def __len__(self):
@@ -1027,7 +1028,7 @@ class Variable:
 
     def apply(self, other):
         assert (callable(other))
-        return Objective(argsets=[[self]], transformations=[other])
+        return VectorObjective(argsets=[[self]], transformations=[other])
 
     def wrap(self, other):
         return self.apply(other)
@@ -1053,7 +1054,7 @@ class FixedVariable(float):
 
     def apply(self, other):
         assert (callable(other))
-        return Objective(argsets=[[self]], transformations=[other])
+        return VectorObjective(argsets=[[self]], transformations=[other])
 
     def wrap(self, other):
         return self.apply(other)
@@ -1122,7 +1123,7 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
         return Variable(name=variable)
     elif isinstance(variable, Variable):
         return variable
-    elif isinstance(variable, Objective):
+    elif isinstance(variable, VectorObjective):
         return variable
     elif isinstance(variable, FixedVariable):
         return variable
