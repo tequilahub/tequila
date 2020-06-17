@@ -631,6 +631,12 @@ class QuantumChemistryBase:
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
         return QubitHamiltonian(qubit_operator=self.transformation(fop))
 
+    def make_molecular_hamiltonian(self):
+        if self.active_space:
+            return self.molecule.get_molecular_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals, active_indices=self.active_space.active_orbitals)
+        else:
+            return self.molecule.get_molecular_hamiltonian()
+
     def compute_one_body_integrals(self):
         """ """
         if hasattr(self, "molecule"):
