@@ -13,6 +13,7 @@
 import os
 import sys
 from recommonmark.parser import CommonMarkParser
+import sphinx_bootstrap_theme
 
 sys.path.insert(0, os.path.abspath('../src'))
 
@@ -50,8 +51,9 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-pygments_style = 'sphinx'
-html_theme = "nature"
+# Activate the theme.
+html_theme = 'bootstrap'
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -67,3 +69,43 @@ napoleon_use_param = False
 napoleon_use_ivar = True
 
 pdf_documents = [('index', u'rst2pdf', u'Sample rst2pdf doc', u'tequila documentation'),]
+
+### Theme oprtions
+
+html_theme_options = {
+    # Navigation bar title. (Default: ``project`` value)
+    'navbar_title': 'Tequila',
+
+    # Tab name for entire site. (Default: "Site")
+    'navbar_site_name': 'Documentation',
+
+    # A list of tuples containing pages or urls to link to.
+    # Valid tuples should be in the following forms:
+    #    (name, page)                 # a link to a page
+    #    (name, "/aa/bb", 1)          # a link to an arbitrary relative url
+    #    (name, "http://example.com", True) # arbitrary absolute url
+    # Note the "1" or "True" value above as the third argument to indicate
+    # an arbitrary url.
+    'navbar_links': [
+         ("Overview", "https://github.com/aspuru-guzik-group/tequila/blob/master/docs/tequila.pdf"),
+         ("Installation", "Intallation", True),
+         ("GitHub", "https://github.com/aspuru-guzik-group/tequila", True),
+    ],
+
+    # Render the next and previous page links in navbar. (Default: true)
+    'navbar_sidebarrel': True,
+
+    # Render the current pages TOC in the navbar. (Default: true)
+    'navbar_pagenav': True,
+
+    # Location of link to source.
+    # Options are "nav" (default), "footer" or anything else to exclude.
+    'source_link_position': 'none',
+
+    # Bootswatch (https://bootswatch.com/) theme.
+    'bootswatch_theme': 'Sandstone',
+
+    # Choose Bootstrap version.
+    # Values: "3" (default) or "2" (in quotes)
+    'bootstrap_version': '3',
+}
