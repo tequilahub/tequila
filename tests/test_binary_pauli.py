@@ -29,6 +29,7 @@ def test_binarypauli_conversion():
     word1 = H.paulistrings[0].binary(n_qubits)
     word2 = H.paulistrings[1].binary(n_qubits)
     word3 = H.paulistrings[2].binary(n_qubits)
+    word4 = paulis.I().paulistrings[0].binary(n_qubits)
 
     assert (word1.coeff == coeff_sol[0])
     assert (all(word1.binary == binary_sol[0, :]))
@@ -36,6 +37,7 @@ def test_binarypauli_conversion():
     assert (all(word2.binary == binary_sol[1, :]))
     assert (word3.coeff == coeff_sol[2])
     assert (all(word3.binary == binary_sol[2, :]))
+    assert (all(word4.binary == np.zeros(2 * n_qubits)))
 
 
 def test_binary_pauli():
