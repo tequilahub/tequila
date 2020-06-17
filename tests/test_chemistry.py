@@ -258,7 +258,8 @@ def test_rdms_psi4():
                             [[[0.0, 0.0], [0.0, 0.0]], [[-0.21275021, 0.0], [0.0, 0.02289338]]]])
     mol = qc.Molecule(geometry="data/h2.xyz", basis_set="sto-3g", backend="psi4", transformation="jw")
     # Check matrices by psi4
-    mol.compute_rdms(U=None, psi4_rdms=True)
+    mol.compute_rdms(U=None, psi4_method="detci", psi4_options={"detci__ex_level": 2,
+                                                                "detci__opdm": True, "detci__tpdm": True})
     rdm1, rdm2 = mol.rdm1, mol.rdm2
     assert (numpy.allclose(rdm1, rdm1_ref, atol=1e-8))
     assert (numpy.allclose(rdm2, rdm2_ref, atol=1e-8))

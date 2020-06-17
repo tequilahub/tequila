@@ -563,7 +563,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         return super().rdm2
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True, psi4_rdms: bool = False):
+                     get_rdm1: bool = True, get_rdm2: bool = True, psi4_method: str = None,
+                     psi4_options: dict = {}):
         """
         Same functionality as qc_base.compute_rdms (look there for more information),
         plus the additional option to compute 1- and 2-RDM using psi4 by the keyword psi4_rdms
@@ -579,28 +580,45 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         get_rdm1, get_rdm2 :
             Set whether either one or both rdm1, rdm2 should be computed. If both are needed at some point,
             it is recommended to compute them at once.
-        psi4_rdms :
-            Set whether to compute matrices via psi4 or not.
-            If this is set to True, specifying U is no longer mandatory.
+            Note that whatever is specified in psi4_options has priority.
+        psi4_method:
+            Method to be run, currently only methods returning a CIWavefuntion are supported
+            (e.g. "detci" + ex_level in options, or "fci", "cisdt", "casscf", but NOT "cisd")
+        psi4_options:
+           Options to be handed over to psi4, containing e.g. excitation level of "detci"-method.
+           If "detci__opdm" for 1-RDM and "detci__tpdm" for 2-RDM are not included, the keywords get_rdm1, get_rdm2 are
+           used (if both are specified, prioritizing psi4_options).
 
         Returns
         -------
         """
-        if not psi4_rdms:
+        if not psi4_method:
             super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
                                  get_rdm1=get_rdm1, get_rdm2=get_rdm2)
         else:
             # Get 1- and 2-particle reduced density matrix via Psi4 CISD computation
-            cisd = self.compute_energy("fci", options={"detci__ex_level": 2,
-                                                       'detci__opdm': get_rdm1,
-                                                       'detci__tpdm': get_rdm2})
-            wfn = self.logs["fci"].wfn
-            if get_rdm1:
+            # If "cisd" is chosen, change to "detci" (default is excitation level 2 anyhow) to obtain a CIWavefunction
+            if psi4_method == "cisd":
+                print("Changed psi4_method from 'cisd' to 'detci' with ex_level=2 s.th. psi4 returns a CIWavefunction.")
+                psi4_method = "detci"
+            # Set options if not handed over
+            if "detci__opdm" not in psi4_options.keys():
+                psi4_options.update({"detci__opdm": get_rdm1})
+            if "detci__tpdm" not in psi4_options.keys():
+                psi4_options.update({"detci__tpdm": get_rdm2})
+            if psi4_method == "detci" and "detci__ex_level" not in psi4_options.keys():
+                psi4_options.update({"detci__ex_level": 2})  # use CISD as default
+                print(psi4_options)
+
+            # Compute and set matrices
+            self.compute_energy(psi4_method, options=psi4_options)
+            wfn = self.logs[psi4_method].wfn
+            if psi4_options["detci__opdm"]:
                 rdm1 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_opdm(-1, -1, "SUM", False), dense=True)
                 self._rdm1 = rdm1
-            if get_rdm2:
+            if psi4_options["detci__tpdm"]:
                 rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
                 rdm2 = NBodyTensor(elems=rdm2, scheme='chem')
-                rdm2.reorder(to='openfermion')
+                rdm2.reorder(to='phys')  # RDMs in physics ordering (cp. to NBodyTensor in qc_base.py)
                 rdm2 = 2*rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
                 self._rdm2 = rdm2
