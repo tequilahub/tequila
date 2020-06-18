@@ -12,4 +12,5 @@ class BackendCircuitQulacsGpu(BackendCircuitQulacs):
 
 class BackendExpectationValueQulacsGpu(BackendExpectationValueQulacs):
     # avoid namespace confusion
+    BackendCircuitType = BackendCircuitQulacsGpu
     pass
