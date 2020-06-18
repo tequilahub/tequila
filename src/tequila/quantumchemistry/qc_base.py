@@ -329,7 +329,7 @@ class NBodyTensor:
             if scheme is None:
                 self.scheme = 'chem'
             else:
-                self.scheme = scheme
+                self.scheme = scheme.lower()
         else:
             if scheme is not None:
                 raise Exception("Ordering only implemented for tensors of order 4 / 2-body tensors.")
@@ -412,17 +412,17 @@ class NBodyTensor:
         idx_lists = []
         # Parse name as string of space indices
         for char in name:
-            if char == 'a':
+            if char.lower() == 'a':
                 idx_lists.append(self.active_indices)
-            elif char == 'p':
+            elif char.lower() == 'p':
                 idx_lists.append(self._passive_indices)
-            elif char == 'f':
+            elif char.lower() == 'f':
                 if self._size_full is None:
                     idx_lists.append(None)
                 else:
                     idx_lists.append(self._full_indices)
             else:
-                print('complaining...')
+                raise Exception("Need to specify a valid letter (a,p,f).")
 
         out = self.sub_lists(idx_lists)
 

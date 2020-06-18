@@ -591,15 +591,16 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         else:
             # Get 1- and 2-particle reduced density matrix via Psi4 CISD computation
             # If "cisd" is chosen, change to "detci" (default is excitation level 2 anyhow) to obtain a CIWavefunction
-            if psi4_method == "cisd":
+            if psi4_method.lower() == "cisd":
                 print("Changed psi4_method from 'cisd' to 'detci' with ex_level=2 s.th. psi4 returns a CIWavefunction.")
                 psi4_method = "detci"
             # Set options if not handed over
+            psi4_options = {k.lower(): v for k,v in psi4_options.items()}  # set to lower-case for string comparison
             if "detci__opdm" not in psi4_options.keys():
                 psi4_options.update({"detci__opdm": get_rdm1})
             if "detci__tpdm" not in psi4_options.keys():
                 psi4_options.update({"detci__tpdm": get_rdm2})
-            if psi4_method == "detci" and "detci__ex_level" not in psi4_options.keys():
+            if psi4_method.lower() == "detci" and "detci__ex_level" not in psi4_options.keys():
                 psi4_options.update({"detci__ex_level": 2})  # use CISD as default
                 print(psi4_options)
 
