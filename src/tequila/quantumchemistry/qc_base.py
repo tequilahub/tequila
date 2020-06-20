@@ -39,7 +39,8 @@ def prepare_product_state(state: BitString) -> QCircuit:
 class ParametersQC:
     """Specialization of ParametersHamiltonian"""
     basis_set: str = ''  # Quantum chemistry basis set
-    geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!), this can be a filename leading to an .xyz file or the geometry given as a string
+    geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!),
+                        # this can be a filename leading to an .xyz file or the geometry given as a string
     description: str = ''
     multiplicity: int = 1
     charge: int = 0
