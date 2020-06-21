@@ -105,7 +105,10 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
             if not isinstance(result, np.ndarray):
                 # this happens if the Objective is a scalar since that's usually more convenient for pure quantum stuff.
                 result = np.array(result)
-            r = torch.from_numpy(result)
+            if inputs.device == 'cuda':
+                r = torch.from_numpy(result).to(inputs.device)
+            else:
+                r = torch.from_numpy(result)
             r.requires_grad_(True)
             return r
 
