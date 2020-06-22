@@ -5,6 +5,7 @@ import os, glob
 
 import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
+from tequila.quantumchemistry import QuantumChemistryBase, ParametersQC
 from tequila.simulators.simulator_api import simulate
 
 HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
@@ -147,7 +148,7 @@ def do_test_mp2(qc_interface, parameters, result):
 @pytest.mark.parametrize("method", ["cc2", "ccsd", "cc3"])
 def test_amplitudes_psi4(method):
     results = {"mp2": -1.1279946983462537, "cc2": -1.1344484090805054, "ccsd": None, "cc3": None}
-    # the number might be wrong ... its definetely not what psi4 produces
+    # the number might be wrong ... its definitely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_amplitudes(method=method, qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc,
@@ -216,3 +217,63 @@ def test_active_spaces(active):
     assert (tq.numpy.isclose(hf, mol.energies["hf"], atol=1.e-4))
     qubits = 2*sum([len(v) for v in active.values()])
     assert (H.n_qubits == qubits)
+
+
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="no quantum chemistry backends installed")
+def test_rdms():
+    rdm1_ref = numpy.array([[1.99137832, -0.00532359], [-0.00532359, 0.00862168]])
+    rdm2_ref = numpy.array([[[[1.99136197e+00, -5.69817110e-03], [-5.69817110e-03, -1.30905760e-01]],
+                             [[-5.69817110e-03, 1.63522163e-05], [1.62577807e-05, 3.74579524e-04]]],
+                            [[[-5.69817110e-03, 1.62577807e-05], [1.63522163e-05, 3.74579524e-04]],
+                             [[-1.30905760e-01, 3.74579524e-04], [3.74579524e-04, 8.60532554e-03]]]])
+
+    def rdm_circuit(angles) -> tq.circuit.QCircuit:
+        # Handwritten circuit for Helium-atom in minimal basis
+        U = tq.gates.X(target=0)
+        U += tq.gates.X(target=1)
+        U += tq.gates.Ry(target=3, control=0, angle=-1 / 2 * angles[0])
+        U += tq.gates.X(target=0)
+        U += tq.gates.X(target=1, control=3)
+        U += tq.gates.Ry(target=2, control=1, angle=-1 / 2 * angles[1])
+        U += tq.gates.X(target=1)
+        U += tq.gates.Ry(target=2, control=1, angle=-1 / 2 * angles[2])
+        U += tq.gates.X(target=1)
+        U += tq.gates.X(target=2)
+        U += tq.gates.X(target=0, control=2)
+        U += tq.gates.X(target=2)
+        return U
+
+    mol = qc.Molecule(geometry="data/he.xyz", basis_set="6-31g", transformation="jw")
+    # Random angles - check consistency of spin-free, spin-ful matrices
+    ang = numpy.random.uniform(low=0, high=1, size=3)
+    U_random = rdm_circuit(angles=ang)
+    # Spin-free matrices
+    mol.compute_rdms(U=U_random, spin_free=True)
+    rdm1_sfree, rdm2_sfree = mol.rdm1, mol.rdm2
+    # Spin-orbital matrices
+    mol.compute_rdms(U=U_random, spin_free=False)
+    rdm1_spinsum, rdm2_spinsum = mol.rdm_spinsum(sum_rdm1=True, sum_rdm2=True)
+    assert (numpy.allclose(rdm1_sfree, rdm1_spinsum, atol=1e-8))
+    assert (numpy.allclose(rdm2_sfree, rdm2_spinsum, atol=1e-8))
+
+    # Fixed angles - check consistency of result
+    ang = [-0.26284376686921973, -0.010829810670240182, 6.466541685258823]
+    U_fixed = rdm_circuit(angles=ang)
+    mol.compute_rdms(U=U_fixed, spin_free=True)
+    rdm1_sfree, rdm2_sfree = mol.rdm1, mol.rdm2
+    assert (numpy.allclose(rdm1_sfree, rdm1_ref, atol=1e-8))
+    assert (numpy.allclose(rdm2_sfree, rdm2_ref, atol=1e-8))
+
+
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_rdms_psi4():
+    rdm1_ref = numpy.array([[1.97710662, 0.0], [0.0, 0.02289338]])
+    rdm2_ref = numpy.array([[[[1.97710662, 0.0], [0.0, -0.21275021]], [[0.0, 0.0], [0.0, 0.0]]],
+                            [[[0.0, 0.0], [0.0, 0.0]], [[-0.21275021, 0.0], [0.0, 0.02289338]]]])
+    mol = qc.Molecule(geometry="data/h2.xyz", basis_set="sto-3g", backend="psi4", transformation="jw")
+    # Check matrices by psi4
+    mol.compute_rdms(U=None, psi4_method="detci", psi4_options={"detci__ex_level": 2,
+                                                                "detci__opdm": True, "detci__tpdm": True})
+    rdm1, rdm2 = mol.rdm1, mol.rdm2
+    assert (numpy.allclose(rdm1, rdm1_ref, atol=1e-8))
+    assert (numpy.allclose(rdm2, rdm2_ref, atol=1e-8))

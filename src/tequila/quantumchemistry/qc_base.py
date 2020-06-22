@@ -3,10 +3,13 @@ from tequila import TequilaException, BitString, QubitWaveFunction
 from tequila.hamiltonian import QubitHamiltonian, paulis
 
 from tequila.circuit import QCircuit, gates
-from tequila.objective.objective import Variable
+from tequila.objective.objective import Variable, Variables, ExpectationValue
+from tequila.optimizers import minimize
+from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
 
 import typing, numpy, numbers
+from itertools import product
 
 import openfermion
 from openfermion.hamiltonians import MolecularData
@@ -299,14 +302,132 @@ class Amplitudes:
         return variables
 
 
-@dataclass
-class TwoBodyTensor:
-    """
-    Convenience class for reordering of two-body tensors
-    """
-    hPQrs: numpy.ndarray = None
-    # default ordering is 'chem', assumes that we get data from psi4
-    scheme: str = 'chem'
+class NBodyTensor:
+    """ Convenience class for handling N-body tensors """
+    def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, scheme: str = None,
+                 size_full: int = None):
+
+        # Set elements
+        self.elems = elems
+        # Active indices only as list of indices (e.g. spatial orbital indices), not as a dictionary of irreducible
+        # representations
+        if active_indices is not None:
+            self.active_indices = active_indices
+        self._passive_indices = None
+        self._full_indices = None
+        self._indices_set: bool = False
+
+        # Determine order of tensor
+        # Assume, that tensor is entered in desired shape, not as flat array.
+        self.order = len(self.elems.shape)
+        # Can use size_full < self.elems.shape[0] -> 'full' space is to be considered a subspace as well
+        if size_full is None:
+            self._size_full = self.elems.shape[0]
+        else:
+            self._size_full = size_full
+        # 2-body tensors (<=> order 4) currently allow reordering
+        if self.order == 4:
+            if scheme is None:
+                self.scheme = 'chem'
+            else:
+                self.scheme = scheme.lower()
+        else:
+            if scheme is not None:
+                raise Exception("Ordering only implemented for tensors of order 4 / 2-body tensors.")
+            self.scheme = None
+
+    def sub_lists(self, idx_lists: list = None) -> numpy.ndarray:
+        """
+        Get subspace of tensor by a set of index lists
+        according to hPQ.sub_lists(idx_lists=[p, q]) = [hPQ for P in p and Q in q]
+
+        This essentially is an implementation of a non-contiguous slicing using numpy.take
+
+        Parameters
+        ----------
+            idx_lists :
+                List of lists, each defining the desired subspace per axis
+                Size needs to match order of tensor, and lists successively correspond to axis=0,1,2,...,N
+
+        Returns
+        -------
+            out :
+                Sliced tensor as numpy.ndarray
+        """
+        # Check if index list has correct size
+        if len(idx_lists) != self.order:
+            raise Exception("Need to pass an index list for each dimension!" +
+                            " Length of idx_lists needs to match order of tensor.")
+
+        # Perform slicing via numpy.take
+        out = self.elems
+        for ax in range(self.order):
+            if idx_lists[ax] is not None:  # None means, we want the full space in this direction
+                out = numpy.take(out, idx_lists[ax], axis=ax)
+
+        return out
+
+    def set_index_lists(self):
+        """ Set passive and full index lists based on class inputs """
+        tmp_size = self._size_full
+        if self._size_full is None:
+            tmp_size = self.elems.shape[0]
+
+        self._passive_indices = [i for i in range(tmp_size)
+                                 if i not in self.active_indices]
+        self._full_indices = [i for i in range(tmp_size)]
+
+    def sub_str(self, name: str) -> numpy.ndarray:
+        """
+        Get subspace of tensor by a string
+        Currently is able to resolve an active space, named 'a', full space 'f', and the complement 'p' = 'f' - 'a'.
+        Full space in this context may also be smaller than actual tensor dimension.
+
+        The specification of active space in this context only allows to pick a set from a list of orbitals, and
+        is not able to resolve an active space from irreducible representations.
+
+        Example for one-body tensor:
+        hPQ.sub_lists(name='ap') = [hPQ for P in active_indices and Q in _passive_indices]
+
+        Parameters
+        ----------
+            name :
+                String specifying the desired subspace, elements need to be a (active), f (full), p (full - active)
+
+        Returns
+        -------
+            out :
+                Sliced tensor as numpy.ndarray
+        """
+        if not self._indices_set:
+            self.set_index_lists()
+            self._indices_set = True
+
+        if name is None:
+            raise Exception("No name specified.")
+        if len(name) != self.order:
+            raise Exception("Name does not match order of the tensor.")
+        if self.active_indices is None:
+            raise Exception("Need to set an active space in order to call this function.")
+
+        idx_lists = []
+        # Parse name as string of space indices
+        for char in name:
+            if char.lower() == 'a':
+                idx_lists.append(self.active_indices)
+            elif char.lower() == 'p':
+                idx_lists.append(self._passive_indices)
+            elif char.lower() == 'f':
+                if self._size_full is None:
+                    idx_lists.append(None)
+                else:
+                    idx_lists.append(self._full_indices)
+            else:
+                raise Exception("Need to specify a valid letter (a,p,f).")
+
+        out = self.sub_lists(idx_lists)
+
+        return out
 
     def is_openfermion(self) -> bool:
         """
@@ -337,11 +458,10 @@ class TwoBodyTensor:
 
     def reorder(self, to: str = 'of'):
         """
-        Function to reorder tensors according to some convention
+        Function to reorder tensors according to some convention.
 
         Parameters
         ----------
-
         to :
             Ordering scheme of choice.
             'openfermion', 'of' (default) :
@@ -361,42 +481,38 @@ class TwoBodyTensor:
 
             Returns
             -------
-            type
-                the two-body tensors in chosen ordering (openfermion per default)
         """
+        if self.order != 4:
+            raise Exception('Reordering currently only implemented for two-body tensors.')
         to = to.lower()
 
         if self.is_chem():
             if to == 'chem' or to == 'c':
                 pass
             elif to == 'openfermion' or to == 'of':
-                self.hPQrs = numpy.einsum("psqr -> pqrs", self.hPQrs, optimize='greedy')
+                self.elems = numpy.einsum("psqr -> pqrs", self.elems, optimize='greedy')
                 self.scheme = 'openfermion'
             elif to == 'phys' or to == 'p':
-                self.hPQrs = numpy.einsum("prqs -> pqrs", self.hPQrs, optimize='greedy')
+                self.elems = numpy.einsum("prqs -> pqrs", self.elems, optimize='greedy')
                 self.scheme = 'phys'
         elif self.is_openfermion():
             if to == 'chem' or to == 'c':
-                self.hPQrs = numpy.einsum("pqrs -> psqr", self.hPQrs, optimize='greedy')
+                self.elems = numpy.einsum("pqrs -> psqr", self.elems, optimize='greedy')
                 self.scheme = 'chem'
             elif to == 'openfermion' or to == 'of':
                 pass
             elif to == 'phys' or to == 'p':
-                self.hPQrs = numpy.einsum("pqrs -> pqsr", self.hPQrs, optimize='greedy')
+                self.elems = numpy.einsum("pqrs -> pqsr", self.elems, optimize='greedy')
                 self.scheme = 'phys'
         elif self.is_phys():
             if to == 'chem' or to == 'c':
-                self.hPQrs = numpy.einsum("pqrs -> prqs", self.hPQrs, optimize='greedy')
+                self.elems = numpy.einsum("pqrs -> prqs", self.elems, optimize='greedy')
                 self.scheme = 'chem'
             elif to == 'openfermion' or to == 'of':
-                self.hPQrs = numpy.einsum("pqsr -> pqrs", self.hPQrs, optimize='greedy')
+                self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
                 self.scheme = 'openfermion'
             elif to == 'phys' or to == 'p':
                 pass
-
-    def get_hPQrs(self) -> numpy.ndarray:
-        """ """
-        return self.hPQrs
 
 
 class QuantumChemistryBase:
@@ -440,6 +556,9 @@ class QuantumChemistryBase:
         self.active_space = None
         if active_orbitals is not None:
             self.active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
+
+        self._rdm1 = None
+        self._rdm2 = None
 
     def _make_active_space_data(self, active_orbitals, reference=None):
         """
@@ -940,6 +1059,296 @@ class QuantumChemistryBase:
             amplitudes.append(ClosedShellAmplitudes(tIA=t))
 
         return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
+
+    @property
+    def rdm1(self):
+        """ """
+        if self._rdm1 is not None:
+            return self._rdm1
+        else:
+            print("1-RDM has not been computed. Return None for 1-RDM.")
+            return None
+
+    @property
+    def rdm2(self):
+        """ """
+        if self._rdm2 is not None:
+            return self._rdm2
+        else:
+            print("2-RDM has not been computed. Return None for 2-RDM.")
+            return None
+
+    def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
+                     get_rdm1: bool = True, get_rdm2: bool = True):
+        """
+        Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
+        a unitary U. This method uses the standard ordering in physics as denoted below.
+        Note, that the representation of the density matrices depends on the qubit transformation
+        used. The Jordan-Wigner encoding corresponds to 'classical' second quantized density
+        matrices in the occupation picture.
+
+        We only consider real orbitals and thus real-valued RDMs.
+        The matrices are set as private members _rdm1, _rdm2 and can be accessed via the properties rdm1, rdm2.
+
+        .. math :
+            \\text{rdm1: } \\gamma^p_q = \\langle \\psi | a^p a_q | \\psi \\rangle
+                                     = \\langle U 0 | a^p a_q | U 0 \\rangle
+            \\text{rdm2: } \\gamma^{pq}_{rs} = \\langle \\psi | a^p a^q a_s a_r | \\psi \\rangle
+                                             = \\langle U 0 | a^p a^q a_s a_r | U 0 \\rangle
+
+        Parameters
+        ----------
+        U :
+            Quantum Circuit to achieve the desired state \\psi = U |0\\rangle, non-optional
+        variables :
+            If U is parametrized, then need to hand over a set of fixed variables
+        spin_free :
+            Set whether matrices should be spin-free (summation over spin) or defined by spin-orbitals
+        get_rdm1, get_rdm2 :
+            Set whether either one or both rdm1, rdm2 should be computed. If both are needed at some point,
+            it is recommended to compute them at once.
+
+        Returns
+        -------
+        """
+        # Set up number of spin-orbitals and molecular orbitals respectively
+        n_SOs = 2*self.n_orbitals
+        n_MOs =   self.n_orbitals
+
+        # Check whether unitary circuit is not 0
+        if U is None:
+            raise Exception('Need to specify a Quantum Circuit.')
+
+        def _get_qop_hermitian(operator_tuple) -> QubitHamiltonian:
+            """ Returns Hermitian part of Fermion operator as QubitHamiltonian """
+            op = openfermion.FermionOperator(operator_tuple)
+            qop = QubitHamiltonian(self.transformation(op))
+            real, imag = qop.split(hermitian=True)
+            return real
+
+        def _build_1bdy_operators_spinful() -> list:
+            """ Returns spinful one-body operators as a symmetry-reduced list of QubitHamiltonians """
+            # Exploit symmetry pq = qp
+            qops = []
+            for p in range(n_SOs):
+                for q in range(p + 1):
+                    op_string = ((p, 1), (q, 0))
+                    qop = _get_qop_hermitian(op_string)
+                    if qop:  # should always exist here
+                        qops += [qop]
+                    else: # should not happen
+                        qops += [QubitHamiltonian.zero()]
+
+            return qops
+
+        def _build_2bdy_operators_spinful() -> list:
+            """ Returns spinful two-body operators as a symmetry-reduced list of QubitHamiltonians """
+            # Exploit symmetries pqrs = -pqsr = -qprs = qpsr
+            #                and      =  rspq
+            qops = []
+            for p in range(n_SOs):
+                for q in range(p):
+                    for r in range(n_SOs):
+                        for s in range(r):
+                            if p*n_SOs + q >= r*n_SOs + s:
+                                op_string = ((p, 1), (q, 1), (s, 0), (r, 0))
+                                qop = _get_qop_hermitian(op_string)
+                                qops += [qop]
+
+            return qops
+
+        def _build_1bdy_operators_spinfree() -> list:
+            """ Returns spinfree one-body operators as a symmetry-reduced list of QubitHamiltonians """
+            # Exploit symmetry pq = qp (not changed by spin-summation)
+            qops = []
+            for p in range(n_MOs):
+                for q in range(p + 1):
+                    # Spin aa
+                    op_list = ((2 * p, 1), (2 * q, 0))
+                    qop = _get_qop_hermitian(op_list)
+                    # Spin bb
+                    op_list = ((2 * p + 1, 1), (2 * q + 1, 0))
+                    qop += _get_qop_hermitian(op_list)
+                    if qop:  # should always exist here
+                        qops += [qop]
+                    else:
+                        qops += [QubitHamiltonian.zero()]
+
+            return qops
+
+        def _build_2bdy_operators_spinfree() -> list:
+            """ Returns spinfree two-body operators as a symmetry-reduced list of QubitHamiltonians """
+            # Exploit symmetries pqrs = qpsr (due to spin summation, '-pqsr = -qprs' drops out)
+            #                and      = rspq
+            qops = []
+            for p, q, r, s in product(range(n_MOs), repeat=4):
+                if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
+                    # Spin aaaa
+                    op_string = ((2 * p, 1), (2 * q, 1), (2 * s, 0), (2 * r, 0))
+                    qop = _get_qop_hermitian(op_string)
+                    # Spin abab
+                    op_string = ((2 * p, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r, 0))
+                    qop += _get_qop_hermitian(op_string)
+                    # Spin baba
+                    op_string = ((2 * p + 1, 1), (2 * q, 1), (2 * s, 0), (2 * r + 1, 0))
+                    qop += _get_qop_hermitian(op_string)
+                    # Spin bbbb
+                    op_string = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0))
+                    qop += _get_qop_hermitian(op_string)
+
+                    qops += [qop]
+
+            return qops
+
+        def _assemble_rdm1(evals_1) -> numpy.ndarray:
+            """
+            Returns spin-ful or spin-free one-particle RDM built by symmetry conditions
+            Same symmetry with or without spin, so we can use the same function
+            """
+            N = n_MOs if spin_free else n_SOs
+            rdm1 = numpy.zeros([N, N])
+            ctr: int = 0
+            for p in range(N):
+                for q in range(p + 1):
+                    rdm1[p, q] = evals_1[ctr]
+                    # Symmetry pq = qp
+                    rdm1[q, p] = rdm1[p, q]
+                    ctr += 1
+
+            return rdm1
+
+        def _assemble_rdm2_spinful(evals_2) -> numpy.ndarray:
+            """ Returns spin-ful two-particle RDM built by symmetry conditions """
+            ctr: int = 0
+            rdm2 = numpy.zeros([n_SOs, n_SOs, n_SOs, n_SOs])
+            for p in range(n_SOs):
+                for q in range(p):
+                    for r in range(n_SOs):
+                        for s in range(r):
+                            if p * n_SOs + q >= r * n_SOs + s:
+                                rdm2[p, q, r, s] = evals_2[ctr]
+                                # Symmetry pqrs = rspq
+                                rdm2[r, s, p, q] = rdm2[p, q, r, s]
+                                ctr += 1
+
+            # Further permutational symmetries due to anticommutation relations
+            for p in range(n_SOs):
+                for q in range(p):
+                    for r in range(n_SOs):
+                        for s in range(r):
+                            rdm2[p, q, s, r] = -1 * rdm2[p, q, r, s] # pqrs = -pqsr
+                            rdm2[q, p, r, s] = -1 * rdm2[p, q, r, s] # pqrs = -qprs
+                            rdm2[q, p, s, r] = rdm2[p, q, r, s]      # pqrs =  qpsr
+
+            return rdm2
+
+        def _assemble_rdm2_spinfree(evals_2) -> numpy.ndarray:
+            """ Returns spin-free two-particle RDM built by symmetry conditions """
+            ctr: int = 0
+            rdm2 = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
+            for p, q, r, s in product(range(n_MOs), repeat=4):
+                if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
+                    rdm2[p, q, r, s] = evals_2[ctr]
+                    # Symmetry pqrs = rspq
+                    rdm2[r, s, p, q] = rdm2[p, q, r, s]
+                    ctr += 1
+
+            # Further permutational symmetry: pqrs = qpsr
+            for p, q, r, s in product(range(n_MOs), repeat=4):
+                if p >= q or r >= s:
+                    rdm2[q, p, s, r] = rdm2[p, q, r, s]
+
+            return rdm2
+
+        # Build operator lists
+        qops = []
+        if spin_free:
+            qops += _build_1bdy_operators_spinfree() if get_rdm1 else []
+            qops += _build_2bdy_operators_spinfree() if get_rdm2 else []
+        else:
+            qops += _build_1bdy_operators_spinful() if get_rdm1 else []
+            qops += _build_2bdy_operators_spinful() if get_rdm2 else []
+
+        # Compute expected values
+        evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+
+        # Assemble density matrices
+        # If self._rdm1, self._rdm2 exist, reset them if they are of the other spin-type
+        def _reset_rdm(rdm):
+            if rdm is not None:
+                if spin_free and rdm.shape[0] != n_MOs:
+                    return None
+                if not spin_free and rdm.shape[0] != n_SOs:
+                    return None
+            return rdm
+        self._rdm1 = _reset_rdm(self._rdm1)
+        self._rdm2 = _reset_rdm(self._rdm2)
+        # Split expectation values in 1- and 2-particle expectation values
+        if get_rdm1:
+            len_1 = n_MOs * (n_MOs + 1) // 2 if spin_free else n_SOs * (n_SOs + 1) // 2
+        else:
+            len_1 = 0
+        evals_1, evals_2 = evals[:len_1], evals[len_1:]
+        # Build matrices using the expectation values
+        self._rdm1 = _assemble_rdm1(evals_1) if get_rdm1 else self._rdm1
+        if spin_free:
+            self._rdm2 = _assemble_rdm2_spinfree(evals_2) if get_rdm2 else self._rdm2
+        else:
+            self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
+
+    def rdm_spinsum(self, sum_rdm1: bool = True, sum_rdm2: bool = True) -> tuple:
+        """
+        Given the spin-ful 1- and 2-particle reduced density matrices, compute the spin-free RDMs by spin summation.
+
+        Parameters
+        ----------
+            sum_rdm1, sum_rdm2 :
+               If set to true, perform spin summation on rdm1, rdm2
+
+        Returns
+        -------
+            rdm1_spinsum, rdm2_spinsum :
+                The desired spin-free matrices
+          """
+        n_MOs = self.n_orbitals
+        rdm1_spinsum = None
+        rdm2_spinsum = None
+
+        # Spin summation on rdm1
+        if sum_rdm1:
+            # Check whether spin-rdm2 exists
+            if self._rdm1 is None:
+                raise Exception("The spin-RDM for the 1-RDM does not exist!")
+            # Check whether existing rdm1 is in spin-orbital basis
+            if self._rdm1.shape[0] != 2*n_MOs:
+                raise Exception("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
+            # Do summation
+            rdm1_spinsum = numpy.zeros([n_MOs, n_MOs])
+            for p in range(n_MOs):
+                for q in range(p+1):
+                    rdm1_spinsum[p, q] += self._rdm1[2*p  , 2*q  ]
+                    rdm1_spinsum[p, q] += self._rdm1[2*p+1, 2*q+1]
+            for p in range(n_MOs):
+                for q in range(p):
+                    rdm1_spinsum[q, p] = rdm1_spinsum[p, q]
+
+        # Spin summation on rdm2
+        if sum_rdm2:
+            # Check whether spin-rdm2 exists
+            if self._rdm2 is None:
+                raise Exception("The spin-RDM for the 2-RDM does not exist!")
+            # Check whether existing rdm2 is in spin-orbital basis
+            if self._rdm2.shape[0] != 2*n_MOs:
+                raise Exception("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
+            # Do summation
+            rdm2_spinsum = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
+            for p, q, r, s in product(range(n_MOs), repeat=4):
+                rdm2_spinsum[p, q, r, s] += self._rdm2[2*p  , 2*q  , 2*r  , 2*s  ]
+                rdm2_spinsum[p, q, r, s] += self._rdm2[2*p+1, 2*q  , 2*r+1, 2*s  ]
+                rdm2_spinsum[p, q, r, s] += self._rdm2[2*p  , 2*q+1, 2*r  , 2*s+1]
+                rdm2_spinsum[p, q, r, s] += self._rdm2[2*p+1, 2*q+1, 2*r+1, 2*s+1]
+
+        return rdm1_spinsum, rdm2_spinsum
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
