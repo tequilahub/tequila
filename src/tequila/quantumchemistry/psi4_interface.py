@@ -1,22 +1,17 @@
 from tequila import TequilaException
 from openfermion import MolecularData
 
+from tequila.circuit import QCircuit
+from tequila.objective.objective import Variables
 from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase,\
-    ClosedShellAmplitudes, Amplitudes, TwoBodyTensor
+    ClosedShellAmplitudes, Amplitudes, NBodyTensor
 
 import copy
 import numpy
 import typing
+import psi4
 
 from dataclasses import dataclass
-
-__HAS_PSI4_PYTHON__ = False
-try:
-    import psi4
-
-    __HAS_PSI4_PYTHON__ = True
-except ModuleNotFoundError:
-    __HAS_PSI4_PYTHON__ = False
 
 
 class TequilaPsi4Exception(TequilaException):
@@ -85,11 +80,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             def __str__(self):
                 result = "Active Space Data:\n"
                 result += "{key:15} : {value:15} \n".format(key="active_orbitals", value=str(self.active_orbitals))
-                result += "{key:15} : {value:15} \n".format(key="reference_orbitals", value=str(self.reference_orbitals))
+                result += "{key:15} : {value:15} \n".format(key="reference_orbitals",
+                                                            value=str(self.reference_orbitals))
                 result += "{key:15} : {value:15} \n".format(key="frozen_docc", value=str(self.frozen_docc))
                 result += "{key:15} : {value:15} \n".format(key="frozen_uocc", value=str(self.frozen_uocc))
                 return result
-
 
             @property
             def frozen_reference_orbitals(self):
@@ -151,7 +146,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 frozen_uocc[i] = len(sorted_array)
                 last = self.orbitals_by_irrep[irrep][-1]
                 if len(sorted_array) > 0 and (
-                        sorted_array[-1] != last.idx_irrep or sorted_array[-1] != sorted_array[0] + len(sorted_array) - 1):
+                        sorted_array[-1] != last.idx_irrep or sorted_array[-1] != sorted_array[0] + len(
+                    sorted_array) - 1):
                     frozen_uocc = None
                     break
 
@@ -187,16 +183,23 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         args
         kwargs
         """
+        psi4.core.clean()
+        psi4.core.clean_options()
+        psi4.core.clean_variables()
 
         self.psi4_mol = psi4.geometry(parameters.get_geometry_string())
         psi4.activate(self.psi4_mol)
+        self._point_group = self.psi4_mol.point_group().symbol()
+        if "point_group" in kwargs:
+            self._point_group = kwargs["point_group"]
 
         self.energies = {}  # history to avoid recomputation
         self.logs = {}  # store full psi4 output
 
-        self.active_space = None # will be assigned in super
+        self.active_space = None  # will be assigned in super
         # active space will be formed later
-        super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None, reference=None, *args, **kwargs)
+        super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None, reference=None,
+                         *args, **kwargs)
         self.ref_energy = self.molecule.hf_energy
         self.ref_wfn = self.logs['hf'].wfn
         self.irreps = [self.psi4_mol.point_group().char_table().gamma(i).symbol().upper() for i in range(self.nirrep)]
@@ -230,7 +233,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     @property
     def point_group(self):
-        return self.psi4_mol.point_group().symbol()
+        return self._point_group
 
     @property
     def nirrep(self):
@@ -267,7 +270,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         else:
             tmp = psi4.driver.p4util.numpy_helper._to_array(self.ref_wfn.epsilon_a(), dense=False)
 
-        if irrep is None:
+        if irrep is None or self.point_group.lower() == "c1":
             result = []
             for x in tmp:
                 result += x
@@ -277,7 +280,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def make_molecular_hamiltonian(self):
         if self.active_space:
-            return self.molecule.get_molecular_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals, active_indices=self.active_space.active_orbitals)
+            return self.molecule.get_molecular_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals,
+                                                           active_indices=self.active_space.active_orbitals)
         else:
             return self.molecule.get_molecular_hamiltonian()
 
@@ -336,10 +340,10 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # Molecular orbitals (coeffs)
         Ca = wfn.Ca()
-        h = TwoBodyTensor(hPQrs=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), scheme='chem')
+        h = NBodyTensor(elems=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), scheme='chem')
         # Order tensor. default: meet openfermion conventions
         h.reorder(to=ordering)
-        return h.get_hPQrs()
+        return h.elems
 
     def compute_ccsd_amplitudes(self):
         return self.compute_amplitudes(method='ccsd')
@@ -347,6 +351,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
     def _run_psi4(self, options: dict, method=None, return_wfn=True, point_group=None, filename: str = None,
                   guess_wfn=None, ref_wfn=None, *args, **kwargs):
         psi4.core.clean()
+        psi4.core.clean_variables()
+        psi4.core.clean_options()
 
         if self.active_space and not self.active_space.psi4_representable:
             print("Warning: Active space is not Psi4 representable")
@@ -423,7 +429,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         assert self.n_electrons == len(aocc) * 2
 
         n_orb_total = len(self.orbitals)
-        n_electrons_total = self.n_electrons + 2*len(asd.frozen_reference_orbitals)
+        n_electrons_total = self.n_electrons + 2 * len(asd.frozen_reference_orbitals)
         nocc = n_electrons_total // 2
         nvirt = n_orb_total - nocc
         avir = [x - nocc for x in avir]
@@ -447,6 +453,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 active_sets.append(aocc + avir)
 
         final_shape = tuple(final_shape)
+
         def func(*args):
             result = 1
             for i in range(len(args)):
@@ -476,51 +483,44 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         if method.lower() == "mp2":
             return self.compute_mp2_amplitudes()
-        if __HAS_PSI4_PYTHON__:
-            try:
-                psi4.core.clean_options()
-                psi4.core.clean_variables()
-                energy, wfn = self._run_psi4(method=method,
-                                             options=options,
-                                             point_group='c1',
-                                             ref_wfn=self.ref_wfn.c1_deep_copy(self.ref_wfn.basisset()),
-                                             filename=filename,
-                                             *args,
-                                             **kwargs)
-                all_amplitudes = wfn.get_amplitudes()
-                closed_shell = isinstance(wfn.reference_wavefunction(), psi4.core.RHF)
-                if closed_shell:
-                    return self._extract_active_space(
-                        ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()}))
-                else:
-                    assert (self.active_space is None)  # only for closed-shell currently
-                    return Amplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
-            except Exception as err:
-                raise TequilaPsi4Exception("\nFailed to compute {} amplitudes.\n"\
-                                           "Make sure that you don't read in previous wavefunctions."
-                                           "Active spaces might get you in trouble.".format(method))
-
-        else:
-            raise TequilaPsi4Exception("Can't find the psi4 python module, let your environment know the path to psi4")
+        try:
+            psi4.core.clean_options()
+            psi4.core.clean_variables()
+            energy, wfn = self._run_psi4(method=method,
+                                         options=options,
+                                         point_group='c1',
+                                         ref_wfn=self.ref_wfn.c1_deep_copy(self.ref_wfn.basisset()),
+                                         filename=filename,
+                                         *args,
+                                         **kwargs)
+            all_amplitudes = wfn.get_amplitudes()
+            closed_shell = isinstance(wfn.reference_wavefunction(), psi4.core.RHF)
+            if closed_shell:
+                return self._extract_active_space(
+                    ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()}))
+            else:
+                assert (self.active_space is None)  # only for closed-shell currently
+                return Amplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
+        except Exception as err:
+            raise TequilaPsi4Exception("\nFailed to compute {} amplitudes.\n" \
+                                       "Make sure that you don't read in previous wavefunctions."
+                                       "Active spaces might get you in trouble.".format(method))
 
     def compute_energy(self, method: str = "fci", options=None, recompute: bool = True, *args, **kwargs):
         if not recompute and method.lower() in self.energies and not "point_group" in kwargs:
             return self.energies[method.lower()]
-        if __HAS_PSI4_PYTHON__:
 
-            if options is None:
-                options = {}
+        if options is None:
+            options = {}
 
-            options['basis'] = self.parameters.basis_set
-            if self.active_space is not None and self.active_space.psi4_representable:
-                options['frozen_docc'] = self.active_space.frozen_docc
-                if sum(self.active_space.frozen_uocc) > 0:
-                    print("There are known issues with some psi4 methods and frozen virtual orbitals. Proceed with fingers crossed for {}.".format(method))
-                options['frozen_uocc'] = self.active_space.frozen_uocc
+        options['basis'] = self.parameters.basis_set
+        if self.active_space is not None and self.active_space.psi4_representable:
+            options['frozen_docc'] = self.active_space.frozen_docc
+            if sum(self.active_space.frozen_uocc) > 0:
+                print("There are known issues with some psi4 methods and frozen virtual orbitals. Proceed with fingers crossed for {}.".format(method))
+            options['frozen_uocc'] = self.active_space.frozen_uocc
+        return self._run_psi4(method=method, options=options, *args, **kwargs)[0]
 
-            return self._run_psi4(method=method, options=options, *args, **kwargs)[0]
-        else:
-            raise TequilaPsi4Exception("Can't find the psi4 python module, let your environment know the path to psi4")
 
     def __str__(self):
         result = super().__str__()
@@ -536,7 +536,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             result += str(self.active_space)
         return result
 
-
     def prepare_reference(self, *args, **kwargs):
 
         if self.active_space is None:
@@ -548,3 +547,72 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             return super().prepare_reference(reference_orbitals=[i for i in range(len(active_reference_orbitals))],
                                              n_qubits=n_qubits, *args, **kwargs)
 
+    @property
+    def rdm1(self) -> tuple:
+        return super().rdm1
+
+    @property
+    def rdm2(self) -> tuple:
+        return super().rdm2
+
+    def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
+                     get_rdm1: bool = True, get_rdm2: bool = True, psi4_method: str = None,
+                     psi4_options: dict = {}):
+        """
+        Same functionality as qc_base.compute_rdms (look there for more information),
+        plus the additional option to compute 1- and 2-RDM using psi4 by the keyword psi4_rdms
+
+        Parameters
+        ----------
+        U :
+             Quantum Circuit to achieve the desired state \\psi = U |0\\rangle, optional if psi4_rdms is set to True
+        variables :
+            If U is parametrized, then need to hand over a set of fixed variables
+        spin_free :
+            Set whether matrices should be spin-free (summation over spin) or defined by spin-orbitals
+        get_rdm1, get_rdm2 :
+            Set whether either one or both rdm1, rdm2 should be computed. If both are needed at some point,
+            it is recommended to compute them at once.
+            Note that whatever is specified in psi4_options has priority.
+        psi4_method:
+            Method to be run, currently only methods returning a CIWavefuntion are supported
+            (e.g. "detci" + ex_level in options, or "fci", "cisdt", "casscf", but NOT "cisd")
+        psi4_options:
+           Options to be handed over to psi4, containing e.g. excitation level of "detci"-method.
+           If "detci__opdm" for 1-RDM and "detci__tpdm" for 2-RDM are not included, the keywords get_rdm1, get_rdm2 are
+           used (if both are specified, prioritizing psi4_options).
+
+        Returns
+        -------
+        """
+        if not psi4_method:
+            super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
+                                 get_rdm1=get_rdm1, get_rdm2=get_rdm2)
+        else:
+            # Get 1- and 2-particle reduced density matrix via Psi4 CISD computation
+            # If "cisd" is chosen, change to "detci" (default is excitation level 2 anyhow) to obtain a CIWavefunction
+            if psi4_method.lower() == "cisd":
+                print("Changed psi4_method from 'cisd' to 'detci' with ex_level=2 s.th. psi4 returns a CIWavefunction.")
+                psi4_method = "detci"
+            # Set options if not handed over
+            psi4_options = {k.lower(): v for k,v in psi4_options.items()}  # set to lower-case for string comparison
+            if "detci__opdm" not in psi4_options.keys():
+                psi4_options.update({"detci__opdm": get_rdm1})
+            if "detci__tpdm" not in psi4_options.keys():
+                psi4_options.update({"detci__tpdm": get_rdm2})
+            if psi4_method.lower() == "detci" and "detci__ex_level" not in psi4_options.keys():
+                psi4_options.update({"detci__ex_level": 2})  # use CISD as default
+                print(psi4_options)
+
+            # Compute and set matrices
+            self.compute_energy(psi4_method, options=psi4_options)
+            wfn = self.logs[psi4_method].wfn
+            if psi4_options["detci__opdm"]:
+                rdm1 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_opdm(-1, -1, "SUM", False), dense=True)
+                self._rdm1 = rdm1
+            if psi4_options["detci__tpdm"]:
+                rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
+                rdm2 = NBodyTensor(elems=rdm2, scheme='chem')
+                rdm2.reorder(to='phys')  # RDMs in physics ordering (cp. to NBodyTensor in qc_base.py)
+                rdm2 = 2*rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
+                self._rdm2 = rdm2
