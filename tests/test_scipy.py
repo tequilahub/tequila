@@ -105,8 +105,10 @@ def test_gradient_based_methods(simulator, method, use_gradient):
     if use_gradient is False:
         initial_values = {"a": 0.3, "b": 0.8}
 
+    # eps is absolute finite difference step of scipy (used only for gradient = False or scipy < 1.5)
+    # finite_diff_rel_step is relative step
     result = tq.optimizer_scipy.minimize(objective=-E, backend=simulator,gradient=use_gradient, method=method, tol=1.e-3,
-                                         method_options={"gtol":1.e-4, "eps":1.e-4},
+                                         method_options={"gtol":1.e-4, "eps":1.e-4, "finite_diff_rel_step":1.e-4},
                                          initial_values=initial_values,silent=True)
     assert(numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
@@ -151,6 +153,8 @@ def test_hessian_based_methods(simulator, method, use_hessian):
         method_options['eta'] = 0.1
         method_options['initial_trust_radius'] = 0.1
         method_options['max_trust_radius'] = 0.25
+        method_options["finite_diff_rel_step"] = 1.e-4
+        method_options["eps"] = 1.e-4
         initial_values = {"a": 0.3, "b": 0.8}
 
     # numerical hessian only works for this method
