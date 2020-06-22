@@ -39,7 +39,8 @@ def prepare_product_state(state: BitString) -> QCircuit:
 class ParametersQC:
     """Specialization of ParametersHamiltonian"""
     basis_set: str = ''  # Quantum chemistry basis set
-    geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!), this can be a filename leading to an .xyz file or the geometry given as a string
+    geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!),
+                        # this can be a filename leading to an .xyz file or the geometry given as a string
     description: str = ''
     multiplicity: int = 1
     charge: int = 0
@@ -62,7 +63,7 @@ class ParametersQC:
     def format_element_name(string):
         """OpenFermion uses case sensitive hash tables for chemical elements
         I.e. you need to name Lithium: 'Li' and 'li' or 'LI' will not work
-        this conenience function does the naming
+        this convenience function does the naming
         :return: first letter converted to upper rest to lower
 
         Parameters
@@ -86,12 +87,12 @@ class ParametersQC:
         Parameters
         ----------
         geometry :
-            a string specifing a mol. structure. E.g. geometry="h 0.0 0.0 0.0\n h 0.0 0.0 1.0"
+            a string specifying a mol. structure. E.g. geometry="h 0.0 0.0 0.0\n h 0.0 0.0 1.0"
 
         Returns
         -------
         type
-            A list with the correct format for openferion E.g return [ ['h',[0.0,0.0,0.0], [..]]
+            A list with the correct format for openfermion E.g return [ ['h',[0.0,0.0,0.0], [..]]
 
         """
         result = []
@@ -108,7 +109,7 @@ class ParametersQC:
 
     def get_geometry_string(self) -> str:
         """returns the geometry as a string
-        :return: geometrystring
+        :return: geometry string
 
         Parameters
         ----------
@@ -129,7 +130,7 @@ class ParametersQC:
         """Returns the geometry
         If a xyz filename was given the file is read out
         otherwise it is assumed that the geometry was given as string
-        which is then reformated as a list usable as input for openfermion
+        which is then reformatted as a list usable as input for openfermion
         :return: geometry as list
         e.g. [(h,(0.0,0.0,0.35)),(h,(0.0,0.0,-0.35))]
         Units: Angstrom!
@@ -435,7 +436,10 @@ class QuantumChemistryBase:
         assert (parameters.basis_set.lower() == self.molecule.basis.lower())
         assert (parameters.multiplicity == self.molecule.multiplicity)
         assert (parameters.charge == self.molecule.charge)
-        self.active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
+
+        self.active_space = None
+        if active_orbitals is not None:
+            self.active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
 
     def _make_active_space_data(self, active_orbitals, reference=None):
         """
@@ -850,7 +854,7 @@ class QuantumChemistryBase:
         -------
 
         """
-        raise TequilaException("compute amplitudes: Needs to be overwridden by backend")
+        raise TequilaException("compute amplitudes: Needs to be overwritten by backend")
 
     def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
         """
