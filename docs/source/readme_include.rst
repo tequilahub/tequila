@@ -2,4 +2,7 @@
 
 README
 ======
-  .. mdinclude:: ../../README.md
+
+.. toctree::
+
+   README

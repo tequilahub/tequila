@@ -1,5 +1,7 @@
-Tequila overview
-================
+.. _tequila_presentation:
+
+Designing Quantum Algorithms with Tequila
+================================================
 
 .. raw:: html
 

@@ -16,12 +16,14 @@ from recommonmark.parser import CommonMarkParser
 import sphinx_bootstrap_theme
 
 sys.path.insert(0, os.path.abspath('../src'))
+sys.path.insert(0, os.path.abspath('../../'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'tequila'
-copyright = '2019, Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo, Cyrille Lavigne, Abhinav Anand, Maha Kesebi'
+#copyright = '2019, Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo, Cyrille Lavigne, Abhinav Anand, Maha Kesebi'
+copyright = '2020, Matter Lab'
 author = 'Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo, Cyrille Lavigne, Abhinav Anand, Maha Kesebi'
 
 # The full version, including alpha/beta/rc tags
@@ -43,6 +45,7 @@ language = 'en'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
+html_static_path = ['_static','.']
 exclude_patterns = []
 
 
@@ -60,8 +63,19 @@ html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-extensions = ['sphinx.ext.napoleon','recommonmark','sphinx.ext.autodoc','sphinx.ext.autosummary'] ## For docstring syntax 
+extensions = ['sphinx.ext.napoleon',
+              'recommonmark',
+              'sphinx.ext.autodoc',
+              'sphinx.ext.doctest',
+              'sphinx.ext.autodoc',
+              'sphinx.ext.viewcode',
+              'matplotlib.sphinxext.plot_directive',
+              'sphinx.ext.mathjax', 
+              'sphinx.ext.autosummary'] ## For docstring syntax 
+
 source_suffix = ['.rst']
+
+autosectionlabel_prefix_document = True
 
 
 napoleon_google_docstring = True
@@ -76,8 +90,6 @@ html_theme_options = {
     # Navigation bar title. (Default: ``project`` value)
     'navbar_title': 'Tequila',
 
-    # Tab name for entire site. (Default: "Site")
-    'navbar_site_name': 'Documentation',
 
     # A list of tuples containing pages or urls to link to.
     # Valid tuples should be in the following forms:
@@ -87,8 +99,8 @@ html_theme_options = {
     # Note the "1" or "True" value above as the third argument to indicate
     # an arbitrary url.
     'navbar_links': [
-         ("Overview", "https://github.com/aspuru-guzik-group/tequila/blob/master/docs/tequila.pdf"),
-         ("Installation", "Intallation", True),
+         ("Overview", "./tequila_presentation"),
+         ("Installation", "./install", False),
          ("GitHub", "https://github.com/aspuru-guzik-group/tequila", True),
     ],
 
@@ -100,7 +112,7 @@ html_theme_options = {
 
     # Location of link to source.
     # Options are "nav" (default), "footer" or anything else to exclude.
-    'source_link_position': 'none',
+    'source_link_position': 'nav',
 
     # Bootswatch (https://bootswatch.com/) theme.
     'bootswatch_theme': 'Sandstone',
