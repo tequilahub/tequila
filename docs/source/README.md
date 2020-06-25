@@ -1,4 +1,4 @@
-![Image](docs/tequila_blackboard.svg)
+![Image](_static/tequila_blackboard.svg)
 
 # Tequila
 
@@ -6,9 +6,9 @@ Tequila is an Extensible Quantum Information and Learning Architecture where the
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
 Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.
 
-[You can get an overview from this presentation](/docs/tequila.pdf)  
+[You can get an overview from this presentation](tequila_presentation)  
 
-[Get started with our Tutorials](/tutorials/)
+[Get started with our Tutorials](https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials)
 
 # Quantum Backends
 Currently supported

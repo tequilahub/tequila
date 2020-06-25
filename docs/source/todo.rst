@@ -1,5 +1,0 @@
-.. _todo:
-
-Current features
-================
-
