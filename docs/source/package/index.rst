@@ -1,42 +1,24 @@
-.. _codedoc:
+.. _tequila:
 
-Code Documentation
-==================
+.. currentmodule:: tequila
 
-Abstract Gates
-------------------------
-.. automodule:: tequila.circuit.gates
-    :members:
-    :inherited-members:
-    :special-members:
+=========================
+Tequila Library Reference
+=========================
 
+Modules
+----------------
 
-Hamiltonian Operators
-------------------------
-.. automodule:: tequila.hamiltonian.paulis
-    :members:
+.. autosummary:: 
+    :toctree: generated
 
-
-Optimizers
-------------------------
-.. automodule:: tequila.optimizers.optimizer_scipy
-    :members: minimize, available_methods
-    :no-inherited-members:
-    :no-special-members:
-    
-Simulators
-------------------------
-.. automodule:: tequila.simulators.simulator_api
-    :members: simulate, compile, compile_to_function, draw, show_available_simulators
-
-Quantum chemistry
-------------------------
-.. automodule:: tequila.quantumchemistry.__init__
-    :members: Molecule
-.. automodule:: tequila.quantumchemistry.qc_base
-    :members: QuantumChemistryBase
-    :no-special-members: compute_cispd_amplitudes
+    tequila.hamiltonian.paulis
+    tequila.circuit
+    tequila.circuit.gates
+    tequila.quantumchemistry
+    tequila.optimizers.optimizer_scipy
+    tequila.simulators.simulator_api
     
 
 
-
+    

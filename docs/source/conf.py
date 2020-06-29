@@ -16,7 +16,7 @@ from recommonmark.parser import CommonMarkParser
 import sphinx_bootstrap_theme
 
 sys.path.insert(0, os.path.abspath('../src'))
-sys.path.insert(0, os.path.abspath('../../'))
+#sys.path.insert(0, os.path.abspath('../../'))
 
 
 # -- Project information -----------------------------------------------------
@@ -77,8 +77,11 @@ source_suffix = ['.rst']
 
 autosectionlabel_prefix_document = True
 
+## Allowing autosummary
+autosummary_generate = True
+autosummary_imported_members = True
 
-napoleon_google_docstring = True
+napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
 
@@ -101,6 +104,7 @@ html_theme_options = {
     'navbar_links': [
          ("Overview", "./tequila_presentation"),
          ("Installation", "./install", False),
+         ("Documentation", "./package/index", False),
          ("GitHub", "https://github.com/aspuru-guzik-group/tequila", True),
     ],
 
@@ -108,7 +112,7 @@ html_theme_options = {
     'navbar_sidebarrel': True,
 
     # Render the current pages TOC in the navbar. (Default: true)
-    'navbar_pagenav': True,
+    'navbar_pagenav': False,
 
     # Location of link to source.
     # Options are "nav" (default), "footer" or anything else to exclude.

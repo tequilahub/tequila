@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to tequila's documentation!
+Welcome to Tequila's documentation!
 ===================================
 
 Tequila is an Extensible Quantum Information and Learning Architecture where the main goal is to simplify and accelerate implementation of new ideas for quantum algorithms. It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives. Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.
@@ -14,17 +14,19 @@ Tequila is an Extensible Quantum Information and Learning Architecture where the
 Contents
 ========
         * :ref:`intro`: Introduction and installation
-        * :ref:`codedoc`: The code documentation of *Tequila*
+        * :ref:`package/index`: The code documentation of *Tequila*
+        * :ref:`tutorial`: List of tutorials of  *Tequila*
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
 
 
 Indices and tables
 ==================
 
+.. toctree::
+   :maxdepth: 1
+
+   package/index 
+
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
