@@ -2,7 +2,6 @@ from tequila.circuit._gates_impl import QGateImpl
 from tequila import TequilaException
 from tequila import BitNumbering
 import typing, copy
-import networkx as nx
 from collections import defaultdict
 
 
@@ -431,12 +430,14 @@ class QCircuit():
         else:
             return QCircuit(gates=[gate])
 
-    def to_NetworkX(self) -> nx.Graph:
+    def to_networkx(self):
         """
         Turn a given quantum circuit from tequila into graph form via NetworkX
         :param self: tq.gates.QCircuit
         :return: G, a graph in NetworkX with qubits as nodes and gate connections as edges
         """
+        # avoiding dependcies (only used here so far)
+        import networkx as nx
         G = nx.Graph()
         for q in self.qubits:
             G.add_node(q)
