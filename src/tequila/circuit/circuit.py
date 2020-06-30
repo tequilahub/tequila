@@ -2,6 +2,7 @@ from tequila.circuit._gates_impl import QGateImpl
 from tequila import TequilaException
 from tequila import BitNumbering
 import typing, copy
+import networkx as nx
 from collections import defaultdict
 
 
@@ -326,6 +327,47 @@ class QCircuit():
             return QCircuit(gates=gate)
         else:
             return QCircuit(gates=[gate])
+
+    def to_NetworkX(self) -> nx.Graph:
+        """
+        Turn a given quantum circuit from tequila into graph form via NetworkX
+        :param self: tq.gates.QCircuit
+        :return: G, a graph in NetworkX with qubits as nodes and gate connections as edges
+        """
+        G = nx.Graph()
+        for q in self.qubits:
+            G.add_node(q)
+        Gdict = {s: [] for s in self.qubits}
+        for gate in self.gates:
+            if gate.control:
+                for s in gate.control:
+                    for t in gate.target:
+                        tstr = ''
+                        tstr += str(t)
+                        target = int(tstr)
+                        Gdict[s].append(target)  # add target to key of correlated controls
+                for p in gate.target:
+                    for r in gate.control:
+                        cstr = ''
+                        cstr += str(r)
+                        control = int(cstr)
+                        Gdict[p].append(control)  # add control to key of correlated targets
+            else:
+               for s in gate.target:
+                    for t in gate.target:
+                        tstr2 = ''
+                        tstr2 += str(t)
+                        target2 = int(tstr2)
+                        Gdict[s].append(target2)
+        lConn = []  # List of connections between qubits
+        for a, b in Gdict.items():
+            for q in b:
+                lConn.append((a, q))
+        G.add_edges_from(lConn)
+        GPaths = list(nx.connected_components(
+            G))  # connections of various qubits, excluding repetitions (ex- (1,3) instead of (1,3) and (3,1))
+        GIso = [g for g in GPaths if len(g) == 1]  # list of Isolated qubits
+        return G
 
     @staticmethod
     def from_moments(moments: typing.List):
