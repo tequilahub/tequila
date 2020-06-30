@@ -6,9 +6,46 @@ from collections import defaultdict
 
 
 class QCircuit():
+    """
+    Fundamental class representing an abstract circuit.
+
+    Attributes
+    ----------
+    canonical_depth:
+        the depth of the circuit, if converted to alternating parametrized and unparametrized layers.
+    canonical_moments:
+        returns the circuit as a list of Moment objects alternating between parametrized and unparametrized layers.
+    depth:
+        returns the gate depth of the circuit.
+    gates:
+        returns the gates in the circuit, as a list.
+    moments:
+        returns the circuit as a list of Moment objects.
+    n_qubits:
+        the number of qubits on which the circuit operates.
+    numbering:
+        returns the numbering convention use by tequila circuits.
+    qubits:
+        returns a list of qubits acted upon by the circuit.
+
+
+    Methods
+    -------
+    make_parameter_map:
+
+
+    """
+
 
     @property
     def moments(self):
+        """
+        Divide self into subcircuits representing layers of simultaneous gates. Attempts to minimize gate depth.
+        Returns
+        -------
+        list:
+            list of Moment objects.
+        """
         table = {i: 0 for i in self.qubits}
         moms = []
         moms.append(Moment())
@@ -29,6 +66,12 @@ class QCircuit():
 
     @property
     def canonical_moments(self):
+        """
+        Divide self into subcircuits of alternating unparametrized and parametrized layers.
+        Returns
+        -------
+        list of Moment objects.
+        """
         table_u = {i: 0 for i in self.qubits}
         table_p = {i: 0 for i in self.qubits}
         moms = []
@@ -69,10 +112,23 @@ class QCircuit():
 
     @property
     def depth(self):
+        """
+        gate depth of the abstract circuit.
+        Returns
+        -------
+        int: the depth.
+
+        """
         return len(self.moments)
 
     @property
     def canonical_depth(self):
+        """
+        gate depth of the abstract circuit in alternating layer form.
+        Returns
+        -------
+        int: depth of the alternating layer form.
+        """
         return len(self.canonical_moments)
 
     @property
@@ -107,6 +163,17 @@ class QCircuit():
         return self
 
     def __init__(self, gates=None, parameter_map=None):
+        """
+        init
+        Parameters
+        ----------
+        gates:
+            (Default value = None)
+            the gates to include in the circuit.
+        parameter_map:
+            (Default value = None)
+            mapping to indicate where in the circuit certain parameters appear.
+        """
         self._n_qubits = None
         self._min_n_qubits = 0
         if gates is None:
@@ -145,6 +212,12 @@ class QCircuit():
         return len(self.gates) == 1
 
     def sort_gates(self):
+        """
+        sort self into subcircuits corresponding to all simultaneous operations, greedily; then reinitialize gates.
+        Returns
+        -------
+        None
+        """
         sl = []
         for m in self.moments:
             sd = {}
@@ -218,7 +291,10 @@ class QCircuit():
 
     def dagger(self):
         """
-        :return: Return adjoint of the circuit
+        Returns
+        ------
+        QCircuit:
+            The adjoint of the circuit
         """
         result = QCircuit()
         for g in reversed(self.gates):
@@ -228,7 +304,12 @@ class QCircuit():
     def extract_variables(self) -> list:
         """
         return a list containing all the variable objects contained in any of the gates within the unitary
-        including those nested within transforms.
+        including those nested within gates themselves.
+
+        Returns
+        -------
+        list:
+            the variables of the circuit
         """
         variables = []
         for i, g in enumerate(self.gates):
@@ -238,7 +319,9 @@ class QCircuit():
 
     def max_qubit(self):
         """
-        :return: Maximum index this circuit touches
+        Returns:
+        int:
+             Highest index of qubits in the circuit
         """
         qmax = 0
         for g in self.gates:
@@ -246,6 +329,12 @@ class QCircuit():
         return qmax
 
     def is_fully_parametrized(self):
+        """
+        Returns
+        -------
+        bool:
+            whether or not all gates in the circuit are paremtrized
+        """
         for gate in self.gates:
             if not gate.is_parametrized():
                 return False
@@ -260,6 +349,12 @@ class QCircuit():
         return True
 
     def is_fully_unparametrized(self):
+        """
+        Returns
+        -------
+        bool:
+            whether or not all gates in the circuit are unparametrized
+        """
         for gate in self.gates:
             if not gate.is_parametrized():
                 continue
@@ -317,8 +412,16 @@ class QCircuit():
     @staticmethod
     def wrap_gate(gate: QGateImpl):
         """
-        :param gate: Abstract Gate
-        :return: wrap gate in QCircuit structure (enable arithmetic operators)
+        take a gate and return a qcircuit containing only that gate.
+        Parameters
+        ----------
+        gate: QGateImpl
+            the gate to wrap in a circuit.
+
+        Returns
+        -------
+        QCircuit:
+            a one gate circuit.
         """
         if isinstance(gate, QCircuit):
             return gate
@@ -329,12 +432,31 @@ class QCircuit():
 
     @staticmethod
     def from_moments(moments: typing.List):
+        """
+        build a circuit from Moment objects.
+
+        Parameters
+        ----------
+        moments: list:
+            a list of Moment objects.
+
+        Returns
+        -------
+        """
         c = QCircuit()
         for m in moments:
             c += m.as_circuit()
         return c
 
     def verify(self) -> bool:
+        """
+        make sure self is built properly and of the correct types.
+        Returns
+        -------
+        bool:
+            whether or not the circuit is properly constructed.
+
+        """
         for k, v, in self._parameter_map.items():
             test = [self.gates[x[0]] == x[1] for x in v]
             test += [k in self._gates[x[0]].extract_variables() for x in v]
@@ -342,11 +464,17 @@ class QCircuit():
 
 
 class Moment(QCircuit):
-    '''
-    the class which represents all operations to be applied at once in a circuit.
-    wraps a list of gates with a list of occupied qubits.
-    Can be converted directly to a circuit.
-    '''
+    """
+    the class which represents a set of simultaneously applicable gates.
+
+    Methods
+    -------
+    with_gate:
+        attempt to add a gate to the moment, replacing any gate it may conflict with.
+    with_gates:
+        attempt to add multiple gates to the moment, replacing any gates they may conflict with.
+
+    """
 
     @property
     def moments(self):
@@ -354,6 +482,13 @@ class Moment(QCircuit):
 
     @property
     def canonical_moments(self):
+        """
+        Break self up into parametrized and unparametrized layers.
+        Returns
+        -------
+        list:
+            list of 2 Moments, one of which may be empty.
+        """
         mu = []
         mp = []
         for gate in self.gates:
@@ -378,6 +513,15 @@ class Moment(QCircuit):
         return 2
 
     def __init__(self, gates: typing.List[QGateImpl] = None, sort=False):
+        """
+        initialize a moment from gates.
+        Parameters
+        ----------
+        gates: list:
+            a list of gates. Can be None.
+        sort:
+            whether or not to sort the gates into order from lowest to highest qubit designate.
+        """
         super().__init__(gates=gates)
         occ = []
         if gates is not None:
@@ -392,6 +536,20 @@ class Moment(QCircuit):
             self.sort_gates()
 
     def with_gate(self, gate: typing.Union[QCircuit, QGateImpl]):
+        """
+        Add a gate, or else replace some gate with it.
+
+        Parameters
+        ----------
+        gate:
+            the gate to insert into the moment.
+
+        Returns
+        -------
+        Moment:
+            a New moment with the proper gates.
+
+        """
         prev = self.qubits
         newq = gate.qubits
         overlap = []
@@ -411,6 +569,20 @@ class Moment(QCircuit):
         return Moment(gates=gates)
 
     def with_gates(self, gates):
+        """
+        with gate, but on multiple gates.
+
+        Parameters
+        ----------
+        gates:
+            list of QGates
+
+        Returns
+        -------
+        Moment:
+            a new Moment, with the desired gates insert into self.
+
+        """
         gl = list(gates)
         first_overlap = []
         for g in gl:
@@ -427,6 +599,19 @@ class Moment(QCircuit):
         return new
 
     def add_gate(self, gate: typing.Union[QCircuit, QGateImpl]):
+        """
+        add a gate to the moment.
+
+        Parameters
+        ----------
+        gate:
+            the desired gate.
+
+        Returns
+        -------
+        Moment
+            a new moment, of self + a new gate
+        """
         prev = self.qubits
         newq = gate.qubits
         for n in newq:
@@ -439,6 +624,20 @@ class Moment(QCircuit):
         return self
 
     def replace_gate(self, position, gates):
+        """
+        substitute a gate at a given position with other gates.
+        Parameters
+        ----------
+        position:
+            where in the list of gates the gate to be replaced occurs.
+        gates:
+            the gates to replace the unwanted gate with.
+
+        Returns
+        -------
+        QCircuit or Moment:
+            self, with unwanted gate removed and new gates inserted. May not be a moment.
+        """
         if hasattr(gates, '__iter__'):
             gs = gates
         else:
@@ -453,9 +652,23 @@ class Moment(QCircuit):
             return QCircuit(gates=new)
 
     def as_circuit(self):
+        """
+        convert back into the unrestricted QCircuit.
+        Returns
+        -------
+        QCircuit:
+            a circuit with the same gates as self.
+        """
         return QCircuit(gates=self.gates)
 
     def fully_parametrized(self):
+        """
+        Todo: Why not just inherit from base?
+        Returns
+        -------
+        bool:
+            whether or not EVERY gate in self.gates is parameterized.
+        """
         for gate in self.gates:
             if not gate.is_parametrized():
                 return False
@@ -532,8 +745,15 @@ class Moment(QCircuit):
     @staticmethod
     def wrap_gate(gate: QGateImpl):
         """
-        :param gate: Abstract Gate
-        :return: wrap gate in QCircuit structure (enable arithmetic operators)
+        Parameters
+        ----------
+        gate: QGateImpl:
+            the gate, to wrap as a moment
+
+        Returns
+        -------
+        Moment:
+            a moment with one gate in it.
         """
         if isinstance(gate, QCircuit):
             return gate
@@ -542,5 +762,10 @@ class Moment(QCircuit):
 
     @staticmethod
     def from_moments(moments: typing.List):
+        """
+        Raises
+        ------
+        TequilaException
+        """
         raise TequilaException(
             'this method should never be called from Moment. Call from the QCircuit class itself instead.')
