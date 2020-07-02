@@ -1,0 +1,12 @@
+The inspiration and part of the code
+to include the tutorials as html files from
+the jupyter notebook tutorials from
+seaborn autodocumentation files:
+
+https://github.com/mwaskom/seaborn/blob/master/doc
+
+### Note:
+
+You might have troubles if with the kernel name,
+make sure you defined the env variable of your kernel:
+`export NB_KERNEL=<kernel_name>`

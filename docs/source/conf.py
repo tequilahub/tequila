@@ -79,7 +79,8 @@ autosectionlabel_prefix_document = True
 
 ## Allowing autosummary
 autosummary_generate = True
-autosummary_imported_members = True
+autosummary_imported_members = False
+numpydoc_show_class_members = False
 
 napoleon_google_docstring = False
 napoleon_use_param = False
