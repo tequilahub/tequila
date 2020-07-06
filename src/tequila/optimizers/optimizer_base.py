@@ -202,6 +202,19 @@ class OptimizerHistory:
             pickle.dump(fig, open(filename + ".pickle", "wb"))
             plt.savefig(fname=filename + ".pdf", **kwargs)
 
+@dataclass
+class OptimizerResults:
+
+    energy: float = None
+    history: OptimizerHistory = None
+    variables: dict = None
+
+
+    @property
+    def angles(self):
+        # allow backwards compatibility
+        return self.variables
+
 
 class Optimizer:
 
@@ -332,8 +345,7 @@ class Optimizer:
                  variables: typing.List[Variable],
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  *args,
-                 **kwargs) -> typing.Tuple[
-        numbers.Number, typing.Dict[str, numbers.Number]]:
+                 **kwargs) -> OptimizerResults:
         """
         Optimize some objective with the optimizer.
 
@@ -350,7 +362,8 @@ class Optimizer:
 
         Returns
         -------
-        see inheritors.
+        OptimizerResults instance with "energy" "history" and "variables" as attributes
+        see inheritors for more details.
         """
         raise TequilaOptimizerException("Tried to call BaseClass of Optimizer")
 
