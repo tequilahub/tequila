@@ -82,6 +82,25 @@ class PauliString:
 
         self._all_z = all([x.lower() == "z" for x in data.values()])
 
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        E.G.  X(1)Y(2) --> X(3)Y(1) with qubit_map = {1:3, 2:1}
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        the PauliString with mapped qubits
+
+        """
+
+        mapped = {qubit_map[k]: v for k, v in self._data.items()}
+        return PauliString(data=mapped, coeff=self.coeff)
+
     def items(self):
         return self._data.items()
 
@@ -162,9 +181,9 @@ class PauliString:
     def binary(self, n_qubits: int = None):
         if len(self._data.keys()) == 0:
             maxq = 1
-        else: 
+        else:
             maxq = max(self._data.keys()) + 1
-            
+
         if n_qubits is None:
             n_qubits = maxq
 
@@ -188,8 +207,6 @@ class PauliString:
 
     def is_all_z(self):
         return self._all_z
-
-
 
 
 class QubitHamiltonian:
