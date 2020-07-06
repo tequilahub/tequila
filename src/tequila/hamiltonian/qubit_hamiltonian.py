@@ -80,6 +80,8 @@ class PauliString:
             self._data = data
         self._coeff = coeff
 
+        self._all_z = all([x.lower() == "z" for x in data.values()])
+
     def items(self):
         return self._data.items()
 
@@ -158,7 +160,11 @@ class PauliString:
         return PauliString(data=self._data, coeff=None)
 
     def binary(self, n_qubits: int = None):
-        maxq = max(self._data.keys()) + 1
+        if len(self._data.keys()) == 0:
+            maxq = 1
+        else: 
+            maxq = max(self._data.keys()) + 1
+            
         if n_qubits is None:
             n_qubits = maxq
 
@@ -179,6 +185,11 @@ class PauliString:
             else:
                 raise TequilaException("Unknown Pauli: %" + str(v))
         return BinaryPauli(coeff=self.coeff, binary=binary)
+
+    def is_all_z(self):
+        return self._all_z
+
+
 
 
 class QubitHamiltonian:
@@ -539,8 +550,20 @@ class QubitHamiltonian:
 
         for k, v in self.qubit_operator.terms.items():
             mk = tuple([(qubit_map[x[0]], x[1]) for x in k])
-            mapped_terms[k] = v
+            mapped_terms[mk] = v
 
         mapped = QubitOperator.zero()
         mapped.terms = mapped_terms
-        return QubitHamiltonian(qubit_operator=mapped)
+        return QubitHamiltonian(qubit_hamiltonian=mapped)
+
+    def is_all_z(self):
+        """
+        Returns
+        -------
+            returns True if all non-unit paulis in the hamiltonian are Z
+        """
+        for p in self.paulistrings:
+            if not p.is_all_z():
+                return False
+        return True
+

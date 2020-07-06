@@ -1,47 +1,30 @@
-from shutil import which
 import typing
-
-SUPPORTED_QCHEMISTRY_BACKENDS = ["psi4", "pyscf"]
-INSTALLED_QCHEMISTRY_BACKENDS = {}
-
 from .qc_base import ParametersQC, QuantumChemistryBase
 
-has_psi4 = which("psi4") is not None
-if has_psi4:
+SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4"]
+INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase}
+
+
+
+try:
     from .psi4_interface import QuantumChemistryPsi4
-
     INSTALLED_QCHEMISTRY_BACKENDS["psi4"] = QuantumChemistryPsi4
-
-# import importlib
-has_pyscf = False
-
-
-# try:
-#     importlib.util.find_spec('pyscf')
-#     has_pyscf = True
-# except ImportError:
-#     has_pyscf = False
-#
-# if has_pyscf:
-#     from .pyscf_interface import QuantumChemistryPySCF
-#     INSTALLED_QCHEMISTRY_BACKENDS["pyscf"] = QuantumChemistryPySCF
+except ImportError:
+    pass
 
 def show_available_modules():
     print("Available QuantumChemistry Modules:")
     for k in INSTALLED_QCHEMISTRY_BACKENDS.keys():
         print(k)
 
-
 def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
-
 
 def Molecule(geometry: str,
              basis_set: str,
              transformation: typing.Union[str, typing.Callable] = None,
              backend: str = None,
              guess_wfn=None,
-             filename=None,
              *args,
              **kwargs) -> QuantumChemistryBase:
     """
@@ -59,8 +42,6 @@ def Molecule(geometry: str,
     guess_wfn
         pass down a psi4 guess wavefunction to start the scf cycle from
         can also be a filename leading to a stored wavefunction
-    filename
-        Filename root for the backend calculations
     args
     kwargs
 
@@ -84,7 +65,13 @@ def Molecule(geometry: str,
         else:
             raise Exception("No quantum chemistry backends installed on your system")
     elif backend == "base":
-        return QuantumChemistryBase(parameters=parameters, *args, **kwargs)
+            requirements = [key in kwargs for key in ["one_body_integrals", "two_body_integrals", "nuclear_repulsion", "n_orbitals"]]
+            if not all(requirements):
+                raise Exception("No quantum chemistry backends installed on your system\n"
+                            "To use the base functionality you need to pass the following tensors via keyword\n"
+                            "one_body_integrals, two_body_integrals, nuclear_repulsion, n_orbitals\n")
+            else:
+                backend = "base"
 
     if backend not in SUPPORTED_QCHEMISTRY_BACKENDS:
         raise Exception(str(backend) + " is not (yet) supported by tequila")
@@ -94,8 +81,8 @@ def Molecule(geometry: str,
 
     if guess_wfn is not None and backend != 'psi4':
         raise Exception("guess_wfn only works for psi4")
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend](parameters=parameters, transformation=transformation,
-                                                  guess_wfn=guess_wfn, *args, **kwargs)
+
+    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation, guess_wfn=guess_wfn, *args, **kwargs)
 
 
 def MoleculeFromOpenFermion(molecule,

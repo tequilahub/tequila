@@ -1,4 +1,4 @@
-![Image](docs/tequila_blackboard.svg)
+![Image](docs/all_in_one_example.png)
 
 # Tequila
 
@@ -101,17 +101,28 @@ You can build the documentation by navigating to `docs` and entering `make html`
 Open the documentation with a browser over like `firefox docs/build/html/index.html`
 
 # Troubleshooting
-If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need
-don't hesitate to contact us directly or raise an issue here on github
+If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need:  
+don't hesitate to contact us directly or raise an issue here on github  
+
+
+You will need cmake to install the qulacs simulator  
+`pip install cmake`  
+You don't need `qulacs` for tequila to run (although is is recommended)  
+To install without `qulacs` just remove the `qulacs` line from `requirements.txt`  
+It can be replaced by one (or many) of the other supported simulators.  
+Note that simulators can also be installed on a later point, they don't need to be installed with `tequila`.  
+As long as they are installed within the same python environment `tequila` can detect them.
 
 ## Windows
 You can in principle use tequila with windows as OS and have almost full functionality.  
-You will need to replace Jax with autograd for it to work.  
+You will need to replace `Jax` with `autograd` for it to work.  
 In order to do so: Remove `jax` and `jaxlib` from `setup.py` and `requirements.txt` and add `autograd` instead.
 
 In order to install qulacs you will need latest GNU compilers (at least gcc-7).  
 They can be installed for example over visual studio.
 
 ## Mac OS
-Tequila runs on Macs. You might get in trouble with the installing qulacs since it currently does not work with Apples clang compiler. You need to install latest GNU compilers and set them as default before installing qulacs over pip.
+Tequila runs on Macs OSX.  
+You might get in trouble with installing qulacs since it currently does not work with Apple's clang compiler.  
+You need to install latest GNU compile (at least gcc-7 and g++7) and set them as default before installing qulacs over pip.  
 

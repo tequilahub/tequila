@@ -297,7 +297,8 @@ def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = Fal
 
     Returns
     -------
-    a tequila QubitHamiltonian (not necessarily hermitian)
+    QubitHamiltonian:
+        a tequila QubitHamiltonian (not necessarily hermitian) representing the KetBra operator desired.
 
     """
     H = QubitHamiltonian.zero()

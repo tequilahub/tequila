@@ -1,5 +1,5 @@
 numpy
-scipy
+scipy == 1.5
 sympy
 jax
 jaxlib
@@ -7,10 +7,11 @@ jaxlib
 setuptools 
 pytest
 openfermion
-qulacs # default simulator
-cirq # default sampler (smaller than qiskit)
+qulacs # default simulator, remove if the installation gives you trouble
+cmake # needed by qulacs, can be removed otherwise
 
-#optional samplers
+#optional quantum backends
+#cirq
 #qiskit
-#pyquil # you need to install forest-sdk yourself
-
+#pyquil # you need to install the forest-sdk
+#qulacs-gpu
