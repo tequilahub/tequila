@@ -23,6 +23,26 @@ def test_non_quantum():
     E = E.apply(lambda x: x/3.0)
     assert E() == 2.0*2.0*(1.0 + 2.0)/3.0
 
+def test_qubit_maps():
+    qubit_map = {0:1, 1:2, 2:3}
+
+    H1 = tq.paulis.X(0) + tq.paulis.Z(0)*tq.paulis.Z(1) + tq.paulis.Y(2)
+    U1 = tq.gates.Ry(angle="a",target=0) + tq.gates.CNOT(0,1) + tq.gates.H(target=2)
+    E1 = tq.ExpectationValue(H=H1, U=U1)
+
+    H2 = tq.paulis.X(qubit_map[0]) + tq.paulis.Z(qubit_map[0]) * tq.paulis.Z(qubit_map[1]) + tq.paulis.Y(qubit_map[2])
+    U2 = tq.gates.Ry(angle="a", target=qubit_map[0]) + tq.gates.CNOT(qubit_map[0], qubit_map[1]) + tq.gates.H(target=qubit_map[2])
+    E2 = tq.ExpectationValue(H=H2, U=U2)
+
+    E3 = E1.map_qubits(qubit_map=qubit_map)
+
+    for angle in numpy.random.uniform(0.0, 10.0, 10):
+        variables = {"a":angle}
+        assert tq.simulate(E2, variables=variables) == tq.simulate(E3, variables=variables)
+
+
+
+
 @pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_compilation(backend):
     U = gates.X(target=[0,1,2,3,4,5])
