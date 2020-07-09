@@ -505,6 +505,26 @@ class QCircuit():
             test += [k in self._gates[x[0]].extract_variables() for x in v]
         return all(test)
 
+    def map_qubits(self, qubit_map):
+        """
+
+        E.G.  Rx(1)Ry(2) --> Rx(3)Ry(1) with qubit_map = {1:3, 2:1}
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        A new circuit with mapped qubits
+        """
+
+        new_gates = [gate.map_qubits(qubit_map) for gate in self.gates]
+        # could speed up by applying qubit_map to parameter_map here
+        # currently its recreated in the init function
+        return QCircuit(gates=new_gates)
+
 
 class Moment(QCircuit):
     """

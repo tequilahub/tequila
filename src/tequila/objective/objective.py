@@ -78,6 +78,24 @@ class ExpectationValueImpl:
         self._contraction = contraction
         self._shape = shape
 
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        Maps the qubit within the underlying Hamiltonians and Unitaries
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        the ExpectationValueImpl structure with mapped qubits
+
+        """
+        return ExpectationValueImpl(H=tuple([H.map_qubits(qubit_map=qubit_map) for H in self.H]), U=self.U.map_qubits(qubit_map=qubit_map), contraction=self._contraction, shape=self._shape)
+
+
     def __call__(self, *args, **kwargs):
         raise TequilaException(
             "Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")
@@ -111,6 +129,33 @@ class Objective:
         else:
             self._args = tuple(args)
             self._transformation = transformation
+
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        Maps qubits for all quantum circuits and hamiltonians in the objective
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+            keys and values should be integers
+
+        Returns
+        -------
+        the Objective with mapped qubits
+
+        """
+        mapped_args = []
+        for arg in self.args:
+            if hasattr(arg, "map_qubits"):
+                mapped_args.append(arg.map_qubits(qubit_map=qubit_map))
+            else:
+                assert not hasattr(arg, "U") # failsave
+                assert not hasattr(arg, "H") # failsave
+                mapped_args.append(arg) # for purely variable dependend arguments
+
+        return Objective(args=mapped_args, transformation=self.transformation)
 
     @property
     def backend(self) -> str:

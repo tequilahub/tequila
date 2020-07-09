@@ -1,20 +1,23 @@
 import scipy, numpy, typing, numbers
 from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
-from .optimizer_base import Optimizer
+from .optimizer_base import Optimizer, OptimizerResults
 from ._containers import _EvalContainer, _GradContainer, _HessContainer, _QngContainer
-from collections import namedtuple
 from tequila.utils.exceptions import TequilaException
 from tequila.circuit.noise import NoiseModel
 from tequila.tools.qng import get_qng_combos
 
+from dataclasses import dataclass
 
 class TequilaScipyException(TequilaException):
     """ """
     pass
 
+@dataclass
+class SciPyResults(OptimizerResults):
 
-SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
+    scipy_result: scipy.optimize.OptimizeResult = None
+
 
 
 class OptimizerSciPy(Optimizer):
@@ -102,7 +105,7 @@ class OptimizerSciPy(Optimizer):
                  hessian: typing.Dict[typing.Tuple[Variable, Variable], Objective] = None,
                  reset_history: bool = True,
                  *args,
-                 **kwargs) -> SciPyReturnType:
+                 **kwargs) -> SciPyResults:
 
         """
         Perform optimization using scipy optimizers.
@@ -293,8 +296,7 @@ class OptimizerSciPy(Optimizer):
         angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
         angles_final = {**angles_final, **passive_angles}
 
-        return SciPyReturnType(energy=E_final, angles=format_variable_dictionary(angles_final), history=self.history,
-                               scipy_output=res)
+        return SciPyResults(energy=E_final, history=self.history, variables=format_variable_dictionary(angles_final), scipy_result=res)
 
 
 def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[str]:
@@ -341,7 +343,7 @@ def minimize(objective: Objective,
              silent: bool = False,
              save_history: bool = True,
              *args,
-             **kwargs) -> SciPyReturnType:
+             **kwargs) -> SciPyResults:
     """
 
     Parameters

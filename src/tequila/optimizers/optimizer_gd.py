@@ -1,14 +1,15 @@
 import numpy, typing, numbers
 from tequila.objective import Objective
 from tequila.objective.objective import Variable, format_variable_dictionary
-from .optimizer_base import Optimizer
-from collections import namedtuple
+from .optimizer_base import Optimizer, OptimizerResults, dataclass
 from tequila.circuit.noise import NoiseModel
 from tequila.tools.qng import get_qng_combos, CallableVector, QNGVector
 from tequila.utils import TequilaException
 
-GDReturnType = namedtuple('GDReturnType', 'energy angles history moments')
+@dataclass
+class GDResults(OptimizerResults):
 
+    moments: dict = None
 
 class OptimizerGD(Optimizer):
     """
@@ -166,7 +167,7 @@ class OptimizerGD(Optimizer):
                  reset_history: bool = True,
                  method_options: dict = None,
                  gradient=None,
-                 *args, **kwargs) -> GDReturnType:
+                 *args, **kwargs) -> GDResults:
 
         """
         perform a gradient descent optimization of an objective.
@@ -196,7 +197,7 @@ class OptimizerGD(Optimizer):
 
         Returns
         -------
-        GDReturnType
+        GDResults
             all the results of optimization.
         """
 
@@ -248,7 +249,7 @@ class OptimizerGD(Optimizer):
             v = self.step(comp, v)
             last = e
         E_final, angles_final = best, best_angles
-        return GDReturnType(energy=E_final, angles=format_variable_dictionary(angles_final), history=self.history,
+        return GDResults(energy=E_final, variables=format_variable_dictionary(angles_final), history=self.history,
                             moments=self.moments_trajectory[id(comp)])
 
     def prepare(self, objective: Objective, initial_values: dict = None,
@@ -609,7 +610,7 @@ def minimize(objective: Objective,
              rho: float = 0.999,
              epsilon: float = 1. * 10 ** (-7),
              *args,
-             **kwargs) -> GDReturnType:
+             **kwargs) -> GDResults:
 
     """ Initialize and call the GD optimizer.
     Parameters
@@ -661,7 +662,7 @@ def minimize(objective: Objective,
 
     Returns
     -------
-    GDReturnType:
+    GDResults:
         the results of an optimization.
 
     """
