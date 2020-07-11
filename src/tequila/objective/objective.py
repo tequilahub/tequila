@@ -3,6 +3,7 @@ import typing, copy, numbers
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
 from tequila.hamiltonian import paulis
+from tequila.grouping.binary_rep import BinaryHamiltonian
 from tequila.autograd_imports import numpy
 
 import collections
@@ -10,12 +11,25 @@ import collections
 
 class ExpectationValueImpl:
     """
-    Internal Object, do not use from the outside
-    the implementation of Expectation Values as a class. Capable of being simulated, and differentiated.
+    Implements the (uncompiled) Expectation Value as a class. Should not be called directly.
+
     common arithmetical operations like addition, multiplication, etc. are defined, to return Objective objects.
-    :param U: a QCircuit, for preparing a state
-    :param H: a Hamiltonian, whose expectation value with the state prepared by U is to be determined.
-    '''
+
+    Attributes
+    ----------
+    U:
+        a QCircuit, for preparing a state
+    H:
+        a Hamiltonian, whose expectation value with the state prepared by U is to be determined.
+
+    Methods
+    -------
+    extract_variables:
+        wrapper over extract_variables for QCircuit.
+    update_variables:
+        wrapper over update_variables for QCircuit.
+    info:
+        return information about the ExpectationValue.
     """
 
     @property
@@ -32,7 +46,7 @@ class ExpectationValueImpl:
         else:
             return self._hamiltonian
 
-    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+    def extract_variables(self) -> list:
         result = []
         if self.U is not None:
             result = self.U.extract_variables()
@@ -43,6 +57,19 @@ class ExpectationValueImpl:
             self.U.update_variables(variables)
 
     def __init__(self, U=None, H=None, contraction=None, shape=None):
+        """
+
+        Parameters
+        ----------
+        U: QCircuit, Optional:
+            the unitary for state preparation in the expectation value.
+        H: optional:
+            the hamiltonian
+        contraction:
+            callable that should transform the output of calling the expectation value.
+        shape: optional:
+            the shape of the return value for the object
+        """
         self._unitary = copy.deepcopy(U)
         if hasattr(H, "paulistrings"):
             self._hamiltonian = tuple([copy.deepcopy(H)])
@@ -50,6 +77,24 @@ class ExpectationValueImpl:
             self._hamiltonian = tuple(H)
         self._contraction = contraction
         self._shape = shape
+
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        Maps the qubit within the underlying Hamiltonians and Unitaries
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        the ExpectationValueImpl structure with mapped qubits
+
+        """
+        return ExpectationValueImpl(H=tuple([H.map_qubits(qubit_map=qubit_map) for H in self.H]), U=self.U.map_qubits(qubit_map=qubit_map), contraction=self._contraction, shape=self._shape)
+
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
@@ -66,12 +111,14 @@ class ExpectationValueImpl:
 
 class Objective:
     """
-    the class which represents mathematical manipulation of ExpectationValue and Variable objects. Capable of being simulated,
-    and differentiated with respect to the Variables of its Expectationvalues or the Variables themselves
-    :param args: an iterable of ExpectationValue's.
-    :param transformation: a callable whose positional arguments (potentially, by nesting in a JoinedTransformation)
-        are args
-    :param simulator: a tequila simulator object. If provided, Objective is callable.
+    the class which represents mathematical manipulation of ExpectationValue and Variable objects. The core of tequila.
+
+    Todo: Jakob, wanna write some nice examples here?
+
+    Attributes:
+
+    backend: str:
+        a string; the backend to which the objective has been compiled, if any. If no expectationvalues, returns 'free'.
 
     """
 
@@ -82,6 +129,33 @@ class Objective:
         else:
             self._args = tuple(args)
             self._transformation = transformation
+
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        Maps qubits for all quantum circuits and hamiltonians in the objective
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+            keys and values should be integers
+
+        Returns
+        -------
+        the Objective with mapped qubits
+
+        """
+        mapped_args = []
+        for arg in self.args:
+            if hasattr(arg, "map_qubits"):
+                mapped_args.append(arg.map_qubits(qubit_map=qubit_map))
+            else:
+                assert not hasattr(arg, "U") # failsave
+                assert not hasattr(arg, "H") # failsave
+                mapped_args.append(arg) # for purely variable dependend arguments
+
+        return Objective(args=mapped_args, transformation=self.transformation)
 
     @property
     def backend(self) -> str:
@@ -97,7 +171,7 @@ class Objective:
         else:
             return "free"
 
-    def extract_variables(self):
+    def extract_variables(self) -> list:
         """
         Extract all variables on which the objective depends
         :return: List of all Variables
@@ -108,8 +182,14 @@ class Objective:
                 variables += arg.extract_variables()
             else:
                 variables += []
-
-        return list(set(variables))
+        # remove duplicates without affecting ordering
+        # allows better reproducibility for random initialization
+        # won't work with set
+        unique = []
+        for i in variables:
+            if i not in unique:
+                unique.append(i)
+        return unique
 
     def is_expectationvalue(self):
         """
@@ -141,22 +221,30 @@ class Objective:
 
     @property
     def args(self) -> typing.Tuple:
-        '''
-        :return: self.args
-        '''
+
         if self._args is None:
             return tuple()
         else:
             return self._args
 
-    def left_helper(self, op, other):
-        '''
+    def _left_helper(self, op, other):
+        """
         function for use by magic methods, which all have an identical structure, differing only by the
-        external operator they call. left helper is responsible for all 'self # other' operations
-        :param op: the operation to be performed
-        :param other: the right-hand argument of the operation to be performed
-        :return: an Objective, who transform is the joined_transform of self with op, acting on self and other
-        '''
+        external operator they call.
+        left helper is responsible for all 'self # other' operations; right helper, for "other # self".
+
+        Parameters
+        ----------
+        op: callable:
+            the operation to be performed
+        other:
+            the right-hand argument of the operation to be performed
+
+        Returns
+        -------
+        Objective:
+            an Objective, who transform is the joined_transform of self with op, acting on self and other.
+        """
         if isinstance(other, numbers.Number):
             t = lambda v: op(v, other)
             new = self.unary_operator(left=self, op=t)
@@ -170,10 +258,10 @@ class Objective:
             new = self.binary_operator(left=self, right=nother, op=t)
         return new
 
-    def right_helper(self, op, other):
-        '''
-        see the doc of left_helper above for explanation
-        '''
+    def _right_helper(self, op, other):
+        """
+        see the doc of _left_helper above for explanation
+        """
         if isinstance(other, numbers.Number):
             t = lambda v: op(other, v)
             new = self.unary_operator(left=self, op=t)
@@ -188,37 +276,37 @@ class Objective:
         return new
 
     def __mul__(self, other):
-        return self.left_helper(numpy.multiply, other)
+        return self._left_helper(numpy.multiply, other)
 
     def __add__(self, other):
-        return self.left_helper(numpy.add, other)
+        return self._left_helper(numpy.add, other)
 
     def __sub__(self, other):
-        return self.left_helper(numpy.subtract, other)
+        return self._left_helper(numpy.subtract, other)
 
     def __truediv__(self, other):
-        return self.left_helper(numpy.true_divide, other)
+        return self._left_helper(numpy.true_divide, other)
 
     def __neg__(self):
         return self.unary_operator(left=self, op=lambda v: numpy.multiply(v, -1))
 
     def __pow__(self, other):
-        return self.left_helper(numpy.float_power, other)
+        return self._left_helper(numpy.float_power, other)
 
     def __rpow__(self, other):
-        return self.right_helper(numpy.float_power, other)
+        return self._right_helper(numpy.float_power, other)
 
     def __rmul__(self, other):
-        return self.right_helper(numpy.multiply, other)
+        return self._right_helper(numpy.multiply, other)
 
     def __radd__(self, other):
-        return self.right_helper(numpy.add, other)
+        return self._right_helper(numpy.add, other)
 
     def __rsub__(self, other):
-        return self.right_helper(numpy.subtract, other)
+        return self._right_helper(numpy.subtract, other)
 
     def __rtruediv__(self, other):
-        return self.right_helper(numpy.true_divide, other)
+        return self._right_helper(numpy.true_divide, other)
 
     def __invert__(self):
         new = Objective(args=[self])
@@ -226,23 +314,50 @@ class Objective:
 
     @classmethod
     def unary_operator(cls, left, op):
+        """
+        Arithmetical function for unary operations.
+        Generally, called by the magic methods of Objective itself.
+        Parameters
+        ----------
+        left: Objective:
+            the objective to which op will be applied
+
+        op: Callable:
+            an operation to apply to left
+
+        Returns
+        -------
+        Objective:
+            Objective representing op applied to objective left.
+
+        """
         return Objective(args=left.args,
                          transformation=lambda *args: op(left.transformation(*args)))
 
     @classmethod
     def binary_operator(cls, left, right, op):
-        '''
+        """
+        Core arithmetical method for creating differentiable callables of two Tequila Objectives and or Variables.
+
         this function, usually called by the convenience magic-methods of Observable objects, constructs a new Objective
         whose Transformation  is the JoinedTransformation of the lower arguments and transformations
-        of the left and right objects, alongside op (if they are or can be rendered as objectives). In case one of left or right
-        is a number, calls unary_operator instead.
-        :param left: the left hand argument to op
-        :param right: the right hand argument to op.
-        :param op: an operation; a function object.
-        :return: an objective whose Transformation  is the JoinedTransformation of the lower arguments and transformations
-        of the left and right objects, alongside op (if they are or can be rendered as objectives). In case one of left or right
-        is a number, calls unary_operator instead.
-        '''
+        of the left and right objects, alongside op (if they are or can be rendered as objectives).
+        In case one of left or right is a number, calls unary_operator instead.
+
+        Parameters
+        ----------
+        left:
+            the left hand argument to op
+        right:
+            the right hand argument to op.
+        op: callable:
+            an operation; a function object.
+
+        Returns
+        -------
+        Objective:
+            an objective whose Transformation is op acting on left and right.
+        """
 
         if isinstance(right, numbers.Number):
             if isinstance(left, Objective):
@@ -263,21 +378,46 @@ class Objective:
                                                                  split=split_at, op=op))
 
     def wrap(self, op):
-        '''
+        """
         convenience function for doing unary_operator with non-arithmetical operations like sin, cosine, etc.
-        :param op: an operation to perform on the output of self
-        :return: an objective which is evaluated as op(self)
-        '''
+        Parameters
+        ----------
+        op: callable:
+            an operation to perform on the output of self
+
+        Returns
+        -------
+        Objective:
+            an objective which is evaluated as op(self)
+        """
         return self.unary_operator(self, op)
 
     def apply(self, op):
-        # same as wrap, might be more intuitive for some
+        """alias for wrap"""
         return self.wrap(op=op)
 
     def get_expectationvalues(self):
+        """
+        Returns
+        -------
+        list:
+            all the expectation values that make up the objective.
+        """
         return [arg for arg in self.args if hasattr(arg, "U")]
 
     def count_expectationvalues(self, unique=True):
+        """
+        Parameters
+        ----------
+        unique: bool:
+            whether or not to count identical expectationvalues as distinct.
+
+        Returns
+        -------
+        int:
+            how many (possibly, how many unique) expectationvalues are contained within the objective.
+
+        """
         if unique:
             return len(set(self.get_expectationvalues()))
         else:
@@ -303,6 +443,21 @@ class Objective:
                "types     = {}".format(unique, variables, types)
 
     def __call__(self, variables=None, *args, **kwargs):
+        """
+        Return the output of the calculation the objective represents.
+
+        Parameters
+        ----------
+        variables: dict:
+            dictionary instantiating all variables that may appear within the objective.
+        args
+        kwargs
+
+        Returns
+        -------
+        float:
+            the result of the calculation represented by this objective.
+        """
         variables = format_variable_dictionary(variables)
         # avoid multiple evaluations
         evaluated = {}
@@ -317,11 +472,21 @@ class Objective:
         return self.transformation(*ev_array)
 
 
-def ExpectationValue(U, H, *args, **kwargs) -> Objective:
+def ExpectationValue(U, H, optimize_measurements: bool=False, *args, **kwargs) -> Objective:
     """
     Initialize an Objective which is just a single expectationvalue
     """
-    return Objective.ExpectationValue(U=U, H=H, *args, **kwargs)
+    if optimize_measurements:
+        binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+        commuting_parts = binary_H.commuting_groups()
+        result = Objective()
+        for cH in commuting_parts:
+            qwc, Um = cH.get_qubit_wise()
+            Etmp = ExpectationValue(H=qwc, U=U + Um, optimize_measurements=False)
+            result += Etmp
+        return result
+    else:
+        return Objective.ExpectationValue(U=U, H=H, *args, **kwargs)
 
 
 class TequilaVariableException(TequilaException):
@@ -330,7 +495,26 @@ class TequilaVariableException(TequilaException):
 
 
 class Variable:
+    """
+    Hashable class representing generalized variables.
 
+    E.g, variables are the stand-in parameters of parametrized gates. We implement, here, the ability to manipulate
+    this class as if they were floats, in order to allow for symbolic and functional operations on this type.
+
+    Attributes
+    ----------
+    name:
+        the name, identifying the variable.
+
+    Methods
+    -------
+    extract_variables:
+        returns a list containing only self.
+    apply:
+        generate an objective which applies a callable to self.
+    wrap:
+        alias for apply.
+    """
     @property
     def name(self):
         return self._name
@@ -363,15 +547,26 @@ class Variable:
     def __eq__(self, other):
         return type(self) == type(other) and self.name == other.name
 
-    def left_helper(self, op, other):
-        '''
+    def _left_helper(self, op, other):
+        """
         function for use by magic methods, which all have an identical structure, differing only by the
-        external operator they call. left helper is responsible for all 'self # other' operations. Note similarity
+        external operator they call.
+
+        left helper is responsible for all 'self # other' operations. Note similarity
         to the same function in Objective.
-        :param op: the operation to be performed
-        :param other: the right-hand argument of the operation to be performed
-        :return: an Objective, who transform is op, acting on self and other
-        '''
+
+        Parameters
+        ----------
+        op: callable:
+            the operation to be performed
+        other:
+            the right-hand argument of the operation to be performed
+
+        Returns
+        -------
+        Objective:
+            an Objective, who transform is op, acting on self and other
+        """
         if isinstance(other, numbers.Number):
             t = lambda v: op(v, other)
             new = Objective(args=[self], transformation=t)
@@ -385,10 +580,10 @@ class Variable:
             new = Objective(args=[self, other], transformation=op)
         return new
 
-    def right_helper(self, op, other):
-        '''
-        see left helper above
-        '''
+    def _right_helper(self, op, other):
+        """
+        see _left_helper for details.
+        """
         if isinstance(other, numbers.Number):
             t = lambda v: op(other, v)
             new = Objective(args=[self], transformation=t)
@@ -403,34 +598,34 @@ class Variable:
         return new
 
     def __mul__(self, other):
-        return self.left_helper(numpy.multiply, other)
+        return self._left_helper(numpy.multiply, other)
 
     def __add__(self, other):
-        return self.left_helper(numpy.add, other)
+        return self._left_helper(numpy.add, other)
 
     def __sub__(self, other):
-        return self.left_helper(numpy.subtract, other)
+        return self._left_helper(numpy.subtract, other)
 
     def __truediv__(self, other):
-        return self.left_helper(numpy.true_divide, other)
+        return self._left_helper(numpy.true_divide, other)
 
     def __neg__(self):
         return Objective(args=[self], transformation=lambda v: numpy.multiply(v, -1))
 
     def __pow__(self, other):
-        return self.left_helper(numpy.float_power, other)
+        return self._left_helper(numpy.float_power, other)
 
     def __rpow__(self, other):
-        return self.right_helper(numpy.float_power, other)
+        return self._right_helper(numpy.float_power, other)
 
     def __rmul__(self, other):
-        return self.right_helper(numpy.multiply, other)
+        return self._right_helper(numpy.multiply, other)
 
     def __radd__(self, other):
-        return self.right_helper(numpy.add, other)
+        return self._right_helper(numpy.add, other)
 
     def __rtruediv__(self, other):
-        return self.right_helper(numpy.true_divide, other)
+        return self._right_helper(numpy.true_divide, other)
 
     def __invert__(self):
         new = Objective(args=[self])
@@ -454,6 +649,16 @@ class Variable:
 
 
 class FixedVariable(float):
+    """
+    Wrapper over floats, to allow them to mimic Variable objects, for 'duck typing' of gate parameters.
+
+    Methods
+    -------
+    apply:
+        generate an objective with one argument -- self -- and other as transformation.
+    wrap:
+        alias for apply.
+    """
 
     def __call__(self, *args, **kwargs):
         return self
@@ -468,9 +673,16 @@ class FixedVariable(float):
 
 def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List[Variable]:
     """
-    Convenience functions to assign tequila variables
-    :param variables: a list with Hashables as keys
-    :return: a list with tq.Variable types as keys
+    Convenience functions to assign tequila variables.
+    Parameters
+    ----------
+    variables:
+        a list with Hashables as elements.
+
+    Returns
+    -------
+    list:
+        a list with tq.Variable types as keys
     """
     if variables is None:
         return variables
@@ -481,9 +693,16 @@ def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List
 def format_variable_dictionary(variables: typing.Dict[typing.Hashable, typing.Any]) -> typing.Dict[
     Variable, typing.Any]:
     """
-    Convenience functions to assign tequila variables
-    :param variables: a dictionary with Hashables as keys
-    :return: a dictionary with tq.Variable types as keys
+    Convenience function to assign tequila variables.
+    Parameters
+    ----------
+    variables:
+        a dictionary with Hashables as keys
+
+    Returns
+    -------
+    dict:
+        a dictionary with tq.Variable types as keys
     """
     if variables is None:
         return variables
@@ -494,8 +713,22 @@ def format_variable_dictionary(variables: typing.Dict[typing.Hashable, typing.An
 def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[
     Variable, FixedVariable]:
     """
-    :param variable: a string, a number or a variable
-    :return: Variable or FixedVariable depending on the input
+    Convenience function; maps various objects into Variable, FixedVariable, or Variables, for easy duck-typing.
+
+    Parameters
+    ----------
+    variable:
+        a string, a number or a variable.
+
+    Raises
+    ------
+    TequilaVariableException
+
+
+    Returns
+    -------
+    Variable or FixedVariable:
+        A duck-typing adjusted version of the input. If hashable, a Variable. If a number, a FixedVariable.
     """
     if isinstance(variable, str):
         return Variable(name=variable)
@@ -519,8 +752,15 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
 
 class Variables(collections.abc.MutableMapping):
     """
-    Dictionary for tequila variables
+    Dictionary-like object for tequila variables.
+
     Allows hashable types and variable types as keys
+
+    Attributes
+    ----------
+    store: dict:
+        the internal dictionary around which this structure is built.
+
     """
 
     def __init__(self, *args, **kwargs):

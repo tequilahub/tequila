@@ -1,19 +1,73 @@
-import numpy, typing, numbers, copy
+import numpy, typing, numbers
 from tequila.objective import Objective
-from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
-from .optimizer_base import Optimizer
-from tequila.circuit.gradient import grad
-from collections import namedtuple
-from tequila.simulators.simulator_api import compile
+from tequila.objective.objective import Variable, format_variable_dictionary
+from .optimizer_base import Optimizer, OptimizerResults, dataclass
 from tequila.circuit.noise import NoiseModel
 from tequila.tools.qng import get_qng_combos, CallableVector, QNGVector
 from tequila.utils import TequilaException
 
-GDReturnType = namedtuple('GDReturnType', 'energy angles history moments')
+@dataclass
+class GDResults(OptimizerResults):
 
+    moments: dict = None
 
 class OptimizerGD(Optimizer):
+    """
+    The gradient descent optimizer for tequila.
 
+    OptimizerGD allows for two modalities: it can either function as a 'stepper', simply calculating updated
+    parameter values for a given object; or it can be called to perform an entire optimization. The former
+    is used to accomplish the latter, and can give users a more fine-grained control of the optimization.
+    See Optimizer for details on inherited attributes or methods; there are several.
+
+
+    Attributes
+    ---------
+    f:
+        function which performs an optimization step.
+    gradient_lookup:
+        dictionary mapping object ids as strings to said object's callable gradient
+    active_key_lookup:
+        dictionary mapping object ids as strings to said object's active keys, itself a dict, of variables to optimize.
+    moments_lookup:
+        dictionary mapping object ids as strings to said object's current stored moments; a pair of lists of floats,
+        namely running tallies of gradient momenta. said momenta are used to SCALE or REDIRECT gradient descent steps.
+    moments_trajectory:
+        dictionary mapping object ids as strings to said object's momenta at ALL steps; that is, a list of all
+        the moments of a given object, in order.
+    step_lookup:
+        dictionary mapping object ids as strings to an int; how many optimization steps have been performed for
+        a given object. Relevant only to the Adam optimizer.
+    lr:
+        a float. Hyperparameter: The learning rate (unscaled) to be used in each update;
+        in some literature, called a step size.
+    beta:
+        a float. Hyperparameter: scales (perhaps nonlinearly) all first moment terms in any relavant method.
+    rho:
+        a float. Hyperparameter: scales (perhaps nonlinearly) all second moment terms in any relavant method.
+        in some literature, may be referred to as 'beta_2'.
+    epsilon:
+        a float. Hyperparameter: used to prevent division by zero in some methods.
+    tol:
+        a float. If specified, __call__ aborts when the difference in energies between two steps is smaller than tol.
+
+
+    Methods
+    -------
+    prepare:
+        perform all necessary compilation and registration of a given objective. Must be called before step
+        is used on the given optimizer.
+    step:
+        perform a single optimization step on a compiled objective, starting from a given point.
+    reset_stepper:
+        wipe all stored information about all prepared objectives.
+    reset_momenta:
+        reset all moment information about all prepared objectives, but do not erase compiled gradients.
+    reset_momenta_for:
+        reset all moment information about a given objective, but do not erase compiled gradients.
+
+
+    """
     @classmethod
     def available_methods(cls):
         """:return: All tested available methods"""
@@ -22,23 +76,60 @@ class OptimizerGD(Optimizer):
     def __init__(self, maxiter=100,
                  method='sgd',
                  tol: numbers.Real = None,
-                 lr=0.1,
-                 beta=0.9,
-                 rho=0.999,
-                 epsilon=1.0 * 10 ** (-7),
-                 samples=None,
+                 lr: numbers.Real = 0.1,
+                 beta: numbers.Real = 0.9,
+                 rho: numbers.Real = 0.999,
+                 epsilon: numbers.Real = 1.0 * 10 ** (-7),
                  backend=None,
-                 backend_options=None,
+                 samples=None,
+                 device=None,
                  noise=None,
                  silent=True,
                  **kwargs):
-        """
-        Optimize a circuit to minimize a given objective using Adam
-        See the Optimizer class for all other parameters to initialize
+
         """
 
-        super().__init__(maxiter=maxiter, samples=samples,
-                         backend=backend, backend_options=backend_options,
+        Parameters
+        ----------
+        maxiter: int: Default = 100:
+            maximum number of iterations to perform, if using __call__ method.
+        method: str: Default = 'sgd':
+            string specifying which of the available methods to use for optimization. if not specified,
+            then unmodified, stochastic gradient descent will be used.
+        tol: numbers.Real, optional:
+            if specified a tolerance that specifies when to deem that an optimization has converged.
+            If None: no convergence criterion specified; __call__ runs till maxiter is reached. Must be positive, >0.
+        lr:  numbers.Real: Default = 0.1:
+            the learning rate to use. Rescales all steps; used by every optimizer.
+            Default value is 0.1; chosen by fiat.
+        beta: numbers.Real: Default = 0.9
+            rescaling parameter for first moments in a number of methods. Must obey 0<beta<1.
+            Default value suggested by original adam paper.
+        rho: numbers.Real: Default = 0.999
+            rescaling parameter for second moments in a number of methods. Must obey 0<beta<1.
+            Default value suggested by original adam paper.
+        epsilon: numbers.Real: Default = 10^-7:
+            a float for prevention of division by zero in methods like adam. Must be positive.
+            Default value suggested by original adam paper.
+        backend: str, optional:
+            a quantum backend to use. None means autopick.
+        samples: int, optional:
+            number of samples to simulate measurement of objectives with.
+            Default: none, i.e full wavefunction simulation.
+        device: optional:
+            changeable type. The device on which to perform (or, simulate performing) actual quantum computation.
+            Default None will use the basic, un-restricted simulators of backend.
+        noise: optional:
+            NoiseModel object or str 'device', being either a custom noisemodel or the instruction to use that of
+            the emulated device.
+            Default value none means: simulate without any noise.
+        silent: bool: Default = False:
+            suppresses printout during calls if True.
+        kwargs
+        """
+
+        super().__init__(maxiter=maxiter, samples=samples,device=device,
+                         backend=backend,silent=silent,
                          noise=noise,
                          **kwargs)
         method_dict = {
@@ -53,7 +144,6 @@ class OptimizerGD(Optimizer):
             'rmsprop-nesterov': self._rms_nesterov}
 
         self.f = method_dict[method.lower()]
-        self.silent = silent
         self.gradient_lookup = {}
         self.active_key_lookup = {}
         self.moments_lookup = {}
@@ -71,24 +161,46 @@ class OptimizerGD(Optimizer):
             self.tol = abs(float(tol))
 
     def __call__(self, objective: Objective,
-                 maxiter,
+                 maxiter: int = None,
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  variables: typing.List[Variable] = None,
                  reset_history: bool = True,
                  method_options: dict = None,
-                 gradient: str = None,
-                 *args, **kwargs) -> GDReturnType:
+                 gradient=None,
+                 *args, **kwargs) -> GDResults:
+
         """
-        Optimizes with a variation of gradient descent and gives back the optimized angles
-        Get the optimized energies over the history
-        :param objective: The tequila Objective to minimize
-        :param maxiter: how many iterations to run, at maximum.
-        :param qng: whether or not to use the QNG to calculate gradients.
-        :param initial_values: initial values for the objective
-        :param variables: which variables to optimize over. Default None: all the variables of the objective.
-        :param reset_history: reset the history before optimization starts (has no effect if self.save_history is False)
-        :return: tuple of optimized energy ,optimized angles and scipy output
+        perform a gradient descent optimization of an objective.
+
+        Parameters
+        ----------
+        objective: Objective:
+            the objective to optimize.
+        maxiter: int, optional:
+            Overrides the optimizer to specify maximum number of iterations to perform.
+            Default value: use the maxiter supplied to __init__.
+        initial_values: dict, optional:
+            initial point at which to begin optimization.
+            Default None: will be chosen randomly.
+        variables: list, optional:
+            which variables to optimize. Note that all variables not to be optimized must be specified in initial_values
+            Default: optimize all variables of objective.
+        reset_history: bool: Default = True:
+            whether or not to wipe the self.history object.
+        method_options: dict, optional:
+            dummy keyword to play well with tq.minimize. Does nothing.
+        gradient: optional:
+            how to calculate gradients. if str '2-point', will use 2-point numerical gradients;
+            if str 'qng' will use the default qng optimizer. Other more complex options possible.
+        args
+        kwargs
+
+        Returns
+        -------
+        GDResults
+            all the results of optimization.
         """
+
 
         if self.save_history and reset_history:
             self.reset_history()
@@ -115,7 +227,7 @@ class OptimizerGD(Optimizer):
             e = comp(v, samples=self.samples)
             self.history.energies.append(e)
             self.history.angles.append(v)
-            ### saving best performance and counting the stop tally.
+            ### saving best performance
             if e < best:
                 best = e
                 best_angles = v
@@ -137,12 +249,45 @@ class OptimizerGD(Optimizer):
             v = self.step(comp, v)
             last = e
         E_final, angles_final = best, best_angles
-        return GDReturnType(energy=E_final, angles=format_variable_dictionary(angles_final), history=self.history,
+        return GDResults(energy=E_final, variables=format_variable_dictionary(angles_final), history=self.history,
                             moments=self.moments_trajectory[id(comp)])
 
-    def prepare(self, objective, initial_values=None, variables=None, gradient=None):
+    def prepare(self, objective: Objective, initial_values: dict = None,
+                variables: list = None, gradient=None):
+        """
+        perform all initialization for an objective, register it with lookup tables, and return it compiled.
+        MUST be called before step is used.
+
+        Parameters
+        ----------
+        objective: Objective:
+            the objective to ready for optimization.
+        initial_values: dict, optional:
+            the initial values of to prepare the optimizer with.
+            Default: choose randomly.
+        variables: list, optional:
+            which variables to optimize over, and hence prepare gradients for.
+            Default value: optimize over all variables in objective.
+        gradient: optional:
+            extra keyword; information used to compile alternate gradients.
+            Default: prepare the standard, analytical gradient.
+
+        Returns
+        -------
+        Objective:
+            compiled version of objective.
+        """
+
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         comp = self.compile_objective(objective=objective)
+        for arg in comp.args:
+            if hasattr(arg,'U'):
+                if arg.U.device is not None:
+                    # don't retrieve computer 100 times; pyquil errors out if this happens!
+                    self.device = arg.U.device
+                    break
+
+
         compile_gradient = True
 
         dE = None
@@ -151,11 +296,21 @@ class OptimizerGD(Optimizer):
                 compile_gradient = False
 
                 combos = get_qng_combos(objective, initial_values=initial_values, backend=self.backend,
+                                        device=self.device,
                                         samples=self.samples, noise=self.noise,
-                                        backend_options=self.backend_options)
+                                        )
                 dE = QNGVector(combos)
             else:
                 gradient = {"method": gradient, "stepsize": 1.e-4}
+
+        elif isinstance(gradient,dict):
+            if gradient['method'] == 'qng':
+                func = gradient['function']
+                compile_gradient = False
+                combos = get_qng_combos(objective,func=func, initial_values=initial_values, backend=self.backend,
+                                        device=self.device,
+                                        samples=self.samples, noise=self.noise)
+                dE = QNGVector(combos)
 
         if compile_gradient:
             grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
@@ -181,7 +336,22 @@ class OptimizerGD(Optimizer):
         self.step_lookup[ostring] = 0
         return comp
 
-    def step(self, objective, parameters):
+    def step(self, objective: Objective, parameters: typing.Dict[Variable, numbers.Real]) -> \
+            typing.Dict[Variable, numbers.Real]:
+        """
+        perform a single optimization step and return suggested parameters.
+        Parameters
+        ----------
+        objective: Objective:
+            the compiled objective, to perform an optimization step for. MUST be one returned by prepare.
+        parameters: dict:
+            the parameters to use in performing the optimization step.
+
+        Returns
+        -------
+        dict
+            dict of new suggested parameters.
+        """
         s = id(objective)
         try:
             gradients = self.gradient_lookup[s]
@@ -207,6 +377,12 @@ class OptimizerGD(Optimizer):
         return back
 
     def reset_stepper(self):
+        """
+        reset all information about all prepared objectives.
+        Returns
+        -------
+        None
+        """
         self.moments_trajectory = {}
         self.moments_lookup = {}
         self.step_lookup = {}
@@ -214,6 +390,12 @@ class OptimizerGD(Optimizer):
         self.reset_history()
 
     def reset_momenta(self):
+        """
+        reset moment information about all prepared objectives.
+        Returns
+        -------
+        None
+        """
         for k in self.moments_lookup.keys():
             m = self.moments_lookup[k]
             vlen = len(m[0])
@@ -223,7 +405,18 @@ class OptimizerGD(Optimizer):
             self.moments_trajectory[k] = [(first, second)]
             self.step_lookup[k] = 0
 
-    def reset_momenta_for(self, objective):
+    def reset_momenta_for(self, objective: Objective):
+        """
+        reset moment information about a specific objective.
+        Parameters
+        ----------
+        objective: Objective:
+            the objective whose information should be reset.
+
+        Returns
+        -------
+        None
+        """
         k = id(objective)
         try:
             m = self.moments_lookup[k]
@@ -314,7 +507,6 @@ class OptimizerGD(Optimizer):
     def _sgd(self, gradients,
              v, moments, active_keys, **kwargs):
 
-        ### the sgd optimizer without momentum.
         grads = gradients(v, samples=self.samples)
         new = {}
         for i, k in enumerate(active_keys):
@@ -325,7 +517,6 @@ class OptimizerGD(Optimizer):
                   v, moments, active_keys, **kwargs):
 
         m = moments[0]
-        ### the sgd momentum optimizer. m is our moment tally
         grads = gradients(v, samples=self.samples)
 
         m = self.beta * m - self.lr * grads
@@ -410,8 +601,8 @@ def minimize(objective: Objective,
              samples: int = None,
              maxiter: int = 100,
              backend: str = None,
-             backend_options: typing.Dict = None,
              noise: NoiseModel = None,
+             device: str = None,
              tol: float = None,
              silent: bool = False,
              save_history: bool = True,
@@ -419,9 +610,9 @@ def minimize(objective: Objective,
              rho: float = 0.999,
              epsilon: float = 1. * 10 ** (-7),
              *args,
-             **kwargs) -> GDReturnType:
-    """
+             **kwargs) -> GDResults:
 
+    """ Initialize and call the GD optimizer.
     Parameters
     ----------
     objective: Objective :
@@ -435,51 +626,49 @@ def minimize(objective: Objective,
     epsilon: float>0:
         small float for stability of division. default 10^-7
 
-    method: string:
+    method: string: Default = 'sgd'
         which variation on Gradient Descent to use. Options include 'sgd','adam','nesterov','adagrad','rmsprop', etc.
-    initial_values: typing.Dict[typing.Hashable, numbers.Real]: (Default value = None):
-        Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero
-    variables: typing.List[typing.Hashable] :
-         (Default value = None)
+    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional:
+        Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None,
+         they will all be set to zero
+    variables: typing.List[typing.Hashable], optional:
          List of Variables to optimize
-    gradient:
-        the gradient to use. If None, calculated in the usual way. if str='qng', then the qng is calculated. if a dictionary of objectives, those objectives
-        are used. If another dictionary, an attempt will be made to interpret that dictionary to get, say, numerical gradients.
-    samples: int :
-         (Default value = None)
+    gradient: optional:
+        the gradient to use. If None, calculated in the usual way. if str='qng', then the qng is calculated.
+        If a dictionary of objectives, those objectives are used. If another dictionary,
+        an attempt will be made to interpret that dictionary to get, say, numerical gradients.
+    samples: int, optional:
          samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)
-    maxiter: int :
-         (Default value = 100)
-    backend: str :
-         (Default value = None)
-         Simulator backend, will be automatically chosen if set to None
-    backend_options: dict:
-        (Default value = None)
-        extra options, to be passed to the backend
-    noise: NoiseModel:
-         (Default value = None)
+    maxiter: int : Default = 100:
+         the maximum number of iterations to run.
+    backend: str, optional:
+         Simulation backend which will be automatically chosen if set to None
+    noise: NoiseModel, optional:
          a NoiseModel to apply to all expectation values in the objective.
-    tol: float :
-         (Default value = 10^-4)
+    device: optional:
+        the device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.
+    tol: float : Default = 10^-4
          Convergence tolerance for optimization; if abs(delta f) smaller than tol, stop.
-    silent: bool :
-         (Default value = False)
+    silent: bool : Default = False:
          No printout if True
-    save_history: bool:
-        (Default value = True)
+    save_history: bool: Default = True:
         Save the history throughout the optimization
 
+    Note
+    ----
 
-    optional kwargs may include beta, beta2, and rho, parameters which affect (but do not need to be altered) the various
-    method algorithms.
+    optional kwargs may include beta, beta2, and rho, parameters which affect
+    (but do not need to be altered) the various method algorithms.
+
     Returns
     -------
+    GDResults:
+        the results of an optimization.
 
     """
     if isinstance(gradient, dict) or hasattr(gradient, "items"):
         if all([isinstance(x, Objective) for x in gradient.values()]):
             gradient = format_variable_dictionary(gradient)
-
     optimizer = OptimizerGD(save_history=save_history,
                             method=method,
                             lr=lr,
@@ -488,7 +677,8 @@ def minimize(objective: Objective,
                             tol=tol,
                             epsilon=epsilon,
                             samples=samples, backend=backend,
-                            noise=noise, backend_options=backend_options,
+                            device=device,
+                            noise=noise,
                             maxiter=maxiter,
                             silent=silent)
     return optimizer(objective=objective,

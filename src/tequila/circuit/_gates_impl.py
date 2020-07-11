@@ -46,7 +46,7 @@ class QGateImpl:
             self._qubits = self.target + self.control
         else:
             self._qubits = self.target
-
+        self._qubits = sorted(tuple(set(self._qubits)))
         self._max_qubit = self.compute_max_qubit()
 
     def copy(self):
@@ -120,6 +120,18 @@ class QGateImpl:
         if self.control != other.control:
             return False
         return True
+
+    def map_qubits(self, qubit_map: dict):
+        mapped = copy.deepcopy(self)
+        mapped._target = tuple([qubit_map[i] for i in self.target])
+        qubits = mapped._target
+        if self.control is not None:
+            mapped._control = tuple([qubit_map[i] for i in self.control])
+            qubits += mapped._control
+        mapped._qubits = sorted(tuple(set(qubits)))
+        mapped._max_qubit = mapped.compute_max_qubit()
+        mapped.finalize()
+        return mapped
 
 
 class MeasurementImpl(QGateImpl):
@@ -306,8 +318,7 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
         return result
 
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None):
-        super().__init__(name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control,
-                         parameter=angle)
+        super().__init__(name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control, parameter=angle)
         self.paulistring = paulistring
         self.finalize()
 
@@ -325,6 +336,10 @@ class ExponentialPauliGateImpl(ParametrizedGateImpl):
     def shift(self):
         return 0.5
 
+    def map_qubits(self, qubit_map: dict):
+        mapped = super().map_qubits(qubit_map=qubit_map)
+        mapped.paulistring = self.paulistring.map_qubits(qubit_map)
+        return mapped
 
 @dataclass
 class TrotterParameters:
@@ -408,3 +423,8 @@ class TrotterizedGateImpl(QGateImpl):
             angles.append(-angle)
         result.angles = angles
         return result
+
+    def map_qubits(self, qubit_map: dict):
+        mapped = super().map_qubits(qubit_map=qubit_map)
+        mapped.generators = [generator.map_qubits(qubit_map=qubit_map) for generator in mapped.generators]
+        return mapped

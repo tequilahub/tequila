@@ -1,11 +1,49 @@
-from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase
+from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
-from tequila import assign_variable
+from tequila import assign_variable, paulis
 import numpy, sympy
 
+
+def test_qubit_map():
+
+    for gate in [Rx, Ry, Rz]:
+        U1 = gate(angle="a", target=0, control=1)
+        U2 = gate(angle="a", target=1, control=0)
+        mapped = U1.map_qubits(qubit_map={0:1, 1:0})
+        assert len(mapped.gates) == len(U2.gates)
+        for i in range(len(mapped.gates)):
+            for k, v in mapped.gates[i].__dict__.items():
+                assert U2.gates[i].__dict__[k] == v
+
+    for gate in [H, X, Y, Z]:
+        U1 = gate(target=0, control=1)
+        U2 = gate(target=1, control=0)
+        mapped = U1.map_qubits(qubit_map={0:1, 1:0})
+        assert len(mapped.gates) == len(U2.gates)
+        for i in range(len(mapped.gates)):
+            for k, v in mapped.gates[i].__dict__.items():
+                assert U2.gates[i].__dict__[k] == v
+
+    for gate in [ExpPauli]:
+        U1 = gate(angle="a", paulistring="X(0)Y(2)Z(3)", control=1)
+        U2 = gate(angle="a", paulistring="X(5)Y(6)Z(7)", control=0)
+        mapped = U1.map_qubits(qubit_map={0:5, 1:0, 2:6, 3:7})
+        assert len(mapped.gates) == len(U2.gates)
+        for i in range(len(mapped.gates)):
+            for k, v in mapped.gates[i].__dict__.items():
+                assert U2.gates[i].__dict__[k] == v
+
+    for gate in [Trotterized]:
+        U1 = gate(generators=[paulis.X(0) + paulis.Y(0)*paulis.Z(1), paulis.Z(3)*paulis.Z(4)], angles=["a", "b"], control=2, steps=1)
+        U2 = gate(generators=[paulis.X(1) + paulis.Y(1)*paulis.Z(2), paulis.Z(4)*paulis.Z(5)], angles=["a", "b"], control=0, steps=1)
+        mapped = U1.map_qubits(qubit_map={0:1, 1:2, 3:4, 4:5, 2:0})
+        assert len(mapped.gates) == len(U2.gates)
+        for i in range(len(mapped.gates)):
+            for k, v in mapped.gates[i].__dict__.items():
+                assert U2.gates[i].__dict__[k] == v
 
 def test_conventions():
     qubit = numpy.random.randint(0, 3)

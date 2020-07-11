@@ -26,12 +26,12 @@ INSTALLED_OPTIMIZERS['gd'] = _Optimizers(cls=OptimizerGD,
 
 has_gpyopt = False
 try:
-    from tequila.optimizers.optimizer_gpyopt import OptimizerGpyOpt
+    from tequila.optimizers.optimizer_gpyopt import OptimizerGPyOpt
     from tequila.optimizers.optimizer_gpyopt import minimize as minimize_gpyopt
 
-    INSTALLED_OPTIMIZERS['gpyopt'] = _Optimizers(cls=OptimizerGpyOpt,
+    INSTALLED_OPTIMIZERS['gpyopt'] = _Optimizers(cls=OptimizerGPyOpt,
                                                  minimize=minimize_gpyopt,
-                                                 methods=OptimizerGpyOpt.available_methods())
+                                                 methods=OptimizerGPyOpt.available_methods())
     has_gpyopt = True
 except ImportError:
     has_gpyopt = False
@@ -116,8 +116,9 @@ def minimize(method: str,
     """
     for k, v in INSTALLED_OPTIMIZERS.items():
         if method.lower() in v.methods or method.upper() in v.methods:
-            return v.minimize(method=method,
+            return v.minimize(
                               objective=objective,
+                              method=method,
                               variables=variables,
                               initial_values=initial_values,
                               maxiter=maxiter,

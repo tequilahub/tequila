@@ -1,6 +1,5 @@
 """
-BaseClss for Optimizers
-Suggestion, feel free to propose new things/changes
+Base class for Optimizers.
 """
 import typing, numbers, copy
 
@@ -19,6 +18,9 @@ class TequilaOptimizerException(TequilaException):
 
 @dataclass
 class OptimizerHistory:
+    """
+    A class representing the history of optimizers over time. Has a variety of convenience functions attached to it.
+    """
 
     @property
     def iterations(self):
@@ -38,6 +40,9 @@ class OptimizerHistory:
     angles_calls: typing.List[typing.Dict[str, numbers.Number]] = field(default_factory=list)
 
     def __add__(self, other):
+        """
+        magic method for convenient combination of history objects.
+        """
         result = OptimizerHistory()
         result.energies = self.energies + other.energies
         result.gradients = self.gradients + other.gradients
@@ -45,18 +50,32 @@ class OptimizerHistory:
         return result
 
     def __iadd__(self, other):
+        """
+        magic method for convenient in place combination of history objects.
+        """
         self.energies += other.energies
         self.gradients += other.gradients
         self.angles += other.angles
         return self
 
     def extract_energies(self, *args, **kwargs) -> typing.Dict[numbers.Integral, numbers.Real]:
+        """
+        convenience function to get the energies back as a dictionary.
+        """
         return {i: e for i, e in enumerate(self.energies)}
 
     def extract_gradients(self, key: str) -> typing.Dict[numbers.Integral, numbers.Real]:
         """
-        :param key: the key specifiying which gradient shall be extracted
-        :return: dictionary with dictionary_key=iteration, dictionary_value=gradient[key]
+        convenience function to get the gradients of some variable out of the history.
+        Parameters
+        ----------
+        key: str:
+            the name of the variable whose gradients are sought
+
+        Returns
+        -------
+        dict:
+            a dictionary, representing the gradient of variable 'key' over time.
         """
         gradients = {}
         for i, d in enumerate(self.gradients):
@@ -66,8 +85,17 @@ class OptimizerHistory:
 
     def extract_angles(self, key: str) -> typing.Dict[numbers.Integral, numbers.Real]:
         """
-        :param key: the key specifiying which angle shall be extracted
-        :return: dictionary with dictionary_key=iteration, dictionary_value=angle[key]
+        convenience function to get the value of some variable out of the history.
+
+        Parameters
+        ----------
+        key: str:
+            name of the variable whose values are sought
+
+        Returns
+        -------
+        dict:
+            a dictionary, representing the value of variable 'key' over time.
         """
         angles = {}
         for i, d in enumerate(self.angles):
@@ -81,14 +109,34 @@ class OptimizerHistory:
              filename=None,
              baselines: typing.Dict[str, float] = None,
              *args, **kwargs):
+
         """
-        Convenience function to plot the progress of the optimizer
-        :param filename: if given plot to file, otherwise plot to terminal
-        :param property: the property to plot, given as string
-        :param key: for properties like angles and gradients you can specifiy which one you want to plot
-        if set to none all keys are plotted. You can pass down single keys or lists of keys. DO NOT use tuples of keys or any other hashable list types
-        give key as list if you want to plot multiple properties with different keys
+        Convenience function to plot the progress of the optimizer over time.
+        Parameters
+        ----------
+        property: (list of) str: Default = 'energies'
+            which property (eg angles, energies, gradients) to plot.
+            Default: plot energies over time.
+        key: str, optional:
+            if property is 'angles' or 'gradients', key allows you to plot just an individual variables' property.
+            Default: plot everything
+        filename, optional:
+            if give, plot to this file; else, plot to terminal.
+            Default: plot to terminal.
+        baselines: dict, optional:
+            dictionary of plotting axis baseline information.
+            Default: use whatever matplotlib auto-generates.
+
+        args:
+            args.
+        kwargs:
+            kwargs.
+
+        Returns
+        -------
+        None
         """
+
         from matplotlib import pyplot as plt
         from matplotlib.ticker import MaxNLocator
         fig = plt.figure()
@@ -154,46 +202,106 @@ class OptimizerHistory:
             pickle.dump(fig, open(filename + ".pickle", "wb"))
             plt.savefig(fname=filename + ".pdf", **kwargs)
 
+@dataclass
+class OptimizerResults:
+
+    energy: float = None
+    history: OptimizerHistory = None
+    variables: dict = None
+
+
+    @property
+    def angles(self):
+        # allow backwards compatibility
+        return self.variables
+
 
 class Optimizer:
-    """
-    Base Class for Tequila Optimizers
-    """
 
+    """
+    The base optimizer class, from which other optimizers inherit.
+
+
+    Attributes
+    ----------
+
+    backend:
+        The quantum backend to use (None means autopick)
+    maxiter:
+        Maximum number of iterations to perform.
+    silent:
+        whether or not to print during call or on init.
+    samples:
+        number of samples to call objectives with during call.
+    print_level:
+        Allow customization of printout in derived classes, is set to 0 if silent==True.
+    save_history:
+        whether or not to save history.
+    history:
+        a history object, saving information during optimization.
+    noise:
+        what noise (e.g, a NoiseModel) to apply to simulations during optimization.
+    device:
+        the device that sampling (real or emulated) should be performed on.
+
+
+    Methods
+    -------
+    reset_history:
+        reset the optimizer history.
+    initialize_variables:
+        convenience: format variables of an objective and segregrate actives from passives.
+    compile_objective:
+        convenience: compile an objective.
+    compile_gradient:
+        convenience: build and compile (i.e render callable) the gradient of an objective.
+    compile_hessian:
+        convenience: build and compile (i.e render callable) the hessian of an objective.
+
+    """
     def __init__(self, backend: str = None,
-                 backend_options: dict = None,
                  maxiter: int = None,
                  samples: int = None,
+                 device: str= None,
                  noise=None,
                  save_history: bool = True,
                  silent: typing.Union[bool, int] = False,
                  print_level: int = 99, *args, **kwargs):
-        """
-        :param backend: The quantum backend to use (None means autopick)
-        :param backend_options: backend specific options can also be passed as keywords with `backend_optionname=...`
-        :param maxiter: Maximum number of iterations
-        :param samples: Number of Samples for the Quantum Backend takes (None means full wavefunction simulation)
-        :param print_level: Allow customization in derived classes, is set to 0 if silent==True
-        :param save_history: Save the optimization history in self.history
-        :silent: Silence printout
-        """
 
+        """
+        initialize an optimizer.
+
+        Parameters
+        ----------
+        backend: str, optional:
+            a quantum backend to use. None means autopick.
+        maxiter: int, optional:
+            maximum number of iterations to performed.
+            Note: overwrites attribute of same name to 100, not None, if default.
+        samples: int, optional:
+            number of samples to simulate measurement of objectives with.
+            Default: none, i.e full wavefunction simulation.
+        device: optional:
+            changeable type. The device on which to perform (or, simulate performing) actual quantum computation.
+            Default None will use the basic, un-restricted simulators of backend.
+        noise: optional:
+            NoiseModel object or str 'device', being either a custom noisemodel or the instruction to use that of
+            the emulated device.
+            Default value none means: simulate without any noise.
+        save_history: bool: Default = True:
+            whether or not to save history during optimization. Defaults to true.
+        silent: bool: Default = False:
+            whether or not to be verbose during iterations of optimization.
+            False indicates verbosity.
+        print_level: int: Default = 99:
+            The degree of verbosity during print. Meaningless on in base.
+        args
+        kwargs
+        """
         if backend is None:
-            self.backend = pick_backend(backend, samples=samples, noise=noise)
+            self.backend = pick_backend(backend, samples=samples, noise=noise,device=device)
         else:
             self.backend = backend
-
-        self.backend_options = {}
-        if backend_options is not None:
-            self.backend_options = backend_options
-
-        if backend is not None:
-            for k, v in kwargs.items():
-                # detect if backend specific options where passed
-                # as keyworks
-                # like e.g. `qiskit_backend=...'
-                if self.backend.lower() in k:
-                    self.backend_options[k] = v
 
         if maxiter is None:
             self.maxiter = 100
@@ -221,25 +329,64 @@ class Optimizer:
             self.history = None
 
         self.noise = noise
+        self.device = device
 
     def reset_history(self):
+        """
+        replace self.history with a blank history.
+
+        Returns
+        -------
+        None
+        """
         self.history = OptimizerHistory()
 
     def __call__(self, objective: Objective,
-                 variabeles: typing.List[Variable],
+                 variables: typing.List[Variable],
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  *args,
-                 **kwargs) -> typing.Tuple[
-        numbers.Number, typing.Dict[str, numbers.Number]]:
+                 **kwargs) -> OptimizerResults:
         """
-        Will try to solve and give back optimized parameters
-        :param objective: tequila Objective object
-        :param parameters: initial parameters, if none the optimizers uses what was set in the objective
-        :return: tuple of optimial energy and optimal parameters
+        Optimize some objective with the optimizer.
+
+        Parameters
+        ----------
+        objective: Objective:
+            The objective to optimize.
+        variables: list:
+            which variables to optimize over.
+        initial_values: dict, optional:
+            a starting point at which to begin optimization; a dict of variable, number pairs.
+        args
+        kwargs
+
+        Returns
+        -------
+        OptimizerResults instance with "energy" "history" and "variables" as attributes
+        see inheritors for more details.
         """
         raise TequilaOptimizerException("Tried to call BaseClass of Optimizer")
 
     def initialize_variables(self, objective, initial_values, variables):
+        """
+        Convenience function to format the variables of some objective recieved in calls to optimzers.
+
+        Parameters
+        ----------
+        objective: Objective:
+            the objective being optimized.
+        initial_values: dict:
+            initial values for the variables of objective, as a dictionary.
+        variables: list:
+            the variables being optimized over.
+
+        Returns
+        -------
+        tuple:
+            active_angles, a dict of those variables being optimized.
+            passive_angles, a dict of those variables NOT being optimized.
+            variables: formatted list of the variables being optimized.
+        """
         # bring into right format
         variables = format_variable_list(variables)
         initial_values = format_variable_dictionary(initial_values)
@@ -269,10 +416,25 @@ class Optimizer:
         return active_angles, passive_angles, variables
 
     def compile_objective(self, objective: Objective, *args, **kwargs):
+        """
+        convenience function to wrap over compile; for use by inheritors.
+        Parameters
+        ----------
+        objective: Objective:
+            an objective to compile.
+        args
+        kwargs
+
+        Returns
+        -------
+        Objective:
+            a compiled Objective. Types vary.
+        """
+
         return compile(objective=objective,
                        samples=self.samples,
                        backend=self.backend,
-                       backend_options=self.backend_options,
+                       device=self.device,
                        noise=self.noise,
                        *args, **kwargs)
 
@@ -281,7 +443,26 @@ class Optimizer:
                          gradient=None,
                          *args, **kwargs) -> typing.Tuple[
         typing.Dict, typing.Dict]:
+        """
+        convenience function to compile gradient objects and relavant types. For use by inheritors.
 
+        Parameters
+        ----------
+        objective: Objective:
+            the objective whose gradient is to be calculated.
+        variables: list:
+            the variables to take gradients with resepct to.
+        gradient, optional:
+            special argument to change what structure is used to calculate the gradient, like numerical, or QNG.
+            Default: use regular, analytic gradients.
+        args
+        kwargs
+
+        Returns
+        -------
+        tuple:
+            both the uncompiled and compiled gradients of objective, w.r.t variables.
+        """
         if gradient is None:
             dO = {k: grad(objective=objective, variable=k, *args, **kwargs) for k in variables}
             compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
@@ -307,7 +488,26 @@ class Optimizer:
                         hessian: dict = None,
                         *args,
                         **kwargs) -> tuple:
+        """
+        convenience function to compile hessians for optimizers which require it.
+        Parameters
+        ----------
+        variables:
+            the variables of the hessian.
+        grad_obj:
+            the gradient object, to be differentiated once more
+        comp_grad_obj:
+            the compiled gradient object, used for further compilation of the hessian.
+        hessian: optional:
+            extra information to modulate compilation of the hessian.
+        args
+        kwargs
 
+        Returns
+        -------
+        tuple:
+            uncompiled and compiled hessian objects, in that order
+        """
         dO = grad_obj
         cdO = comp_grad_obj
 
@@ -346,7 +546,6 @@ class Optimizer:
     def __repr__(self):
         infostring = "Optimizer: {} \n".format(str(type(self)))
         infostring += "{:15} : {}\n".format("backend", self.backend)
-        infostring += "{:15} : {}\n".format("backend_options", self.backend_options)
         infostring += "{:15} : {}\n".format("samples", self.samples)
         infostring += "{:15} : {}\n".format("save_history", self.save_history)
         infostring += "{:15} : {}\n".format("noise", self.noise)
@@ -354,13 +553,50 @@ class Optimizer:
 
 
 class _NumGrad:
-    """
-    Numerical Gradient
-    Should not be used outside of optimizers
-    Can't interact with the current tequila structures
+    """ Numerical Gradient object.
+
+    Should not be used outside of optimizers.
+    Can't interact with other tequila structures.
+
+    Attributes
+    ----------
+
+    objective:
+        the objective whose gradient is to be approximated.
+    variable:
+        the variable with respect to which the gradient is taken.
+    stepsize:
+        the size of the small constant for shifting.
+    method: how to approximate the gradient.
+
+
+    Methods
+    -------
+    symmetric_two_point_stencil:
+        get gradient by point + shift, point - shift
+    forward_two_point_stencil:
+        get gradient by point + shift, point.
+    backward_two_point_stencil:
+        get gradient by point, point -shift
+    count_expectaionvalues:
+        convenience; call the count_expectationvalues method of objective
+
     """
 
     def __init__(self, objective, variable, stepsize, method=None):
+        """
+
+        Parameters
+        ----------
+        objective: Objective:
+            the objective whose gradient is to be approximated.
+        variable:
+            the variable the gradient of objective with respect to which is taken.
+        stepsize:
+            the small shift by which to displace variable around a point.
+        method:
+            the method by which to approximate the gradient.
+        """
         self.objective = objective
         self.variable = variable
         self.stepsize = stepsize
@@ -375,6 +611,27 @@ class _NumGrad:
 
     @staticmethod
     def symmetric_two_point_stencil(obj, vars, key, step, *args, **kwargs):
+        """
+        calculate objective gradient by symmetric shifts about a point.
+        Parameters
+        ----------
+        obj: Objective:
+            objective to call.
+        vars:
+            variables to feed to the objective.
+        key:
+            which variable to shift, i.e, which variable's gradient is being called.
+        step:
+            the size of the shift; a small float.
+        args
+        kwargs
+
+        Returns
+        -------
+        float:
+            the approximated gradient of obj w.r.t var at point vars as a float.
+
+        """
         left = copy.deepcopy(vars)
         left[key] += step / 2
         right = copy.deepcopy(vars)
@@ -383,6 +640,28 @@ class _NumGrad:
 
     @staticmethod
     def forward_two_point_stencil(obj, vars, key, step, *args, **kwargs):
+        """
+        calculate objective gradient by asymmetric upward shfit relative to some point.
+        Parameters
+        ----------
+        obj: Objective:
+            objective to call.
+        vars:
+            variables to feed to the objective.
+        key:
+            which variable to shift, i.e, which variable's gradient is being called.
+        step:
+            the size of the shift; a small float.
+        args
+        kwargs
+
+        Returns
+        -------
+        float:
+            the approximated gradient of obj w.r.t var at point vars as a float.
+
+        """
+
         left = copy.deepcopy(vars)
         left[key] += step
         right = copy.deepcopy(vars)
@@ -390,13 +669,61 @@ class _NumGrad:
 
     @staticmethod
     def backward_two_point_stencil(obj, vars, key, step, *args, **kwargs):
+        """
+        calculate objective gradient by asymmetric downward shfit relative to some point.
+        Parameters
+        ----------
+        obj: Objective:
+            objective to call.
+        vars:
+            variables to feed to the objective.
+        key:
+            which variable to shift, i.e, which variable's gradient is being called.
+        step:
+            the size of the shift; a small float.
+        args
+        kwargs
+
+        Returns
+        -------
+        the approximated gradient of obj w.r.t var at point vars as a float.
+
+        """
+
         left = copy.deepcopy(vars)
         right = copy.deepcopy(vars)
         right[key] -= step
         return 1.0 / step * (obj(left, *args, **kwargs) - obj(right, *args, **kwargs))
 
     def __call__(self, variables, *args, **kwargs):
+        """
+        convenience function to call self.method, e.g one of the staticmethods of this class.
+
+        Parameters
+        ----------
+        variables:
+            the variables constitutive of the point at which numerical gradients of self.objective are to be taken
+        args
+        kwargs
+
+        Returns
+        -------
+        type:
+            generally, float, the result of the numerical gradient.
+        """
         return self.method(self.objective, variables, self.variable, self.stepsize, *args, **kwargs)
 
     def count_expectationvalues(self, *args, **kwargs):
+        """
+        how many expectationvalues are in self.objective?
+        Parameters
+        ----------
+        args
+        kwargs
+
+        Returns
+        -------
+        int:
+            how many expectationvalues are in self.objective
+        """
         return self.objective.count_expectationvalues(*args, **kwargs)

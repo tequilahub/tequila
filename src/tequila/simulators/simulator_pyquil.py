@@ -1,8 +1,6 @@
 from tequila.simulators.simulator_base import QCircuit, TequilaException, BackendCircuit, BackendExpectationValue
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import BitString, BitNumbering
-import subprocess
-import sys
 import numpy as np
 import pyquil
 from pyquil.api import get_qc
@@ -108,24 +106,76 @@ def amp_damp_map(p):
 
 
 def phase_damp_map(p):
+    """
+    returns the kraus operators for phase damping with probability p
+    Parameters
+    ----------
+    p: float:
+        a probability.
+
+    Returns
+    -------
+    list of numpy.ndarray:
+        the krauss maps for phase damping
+    """
     mat1 = np.array([[1, 0], [0, np.sqrt(1 - p)]])
     mat2 = np.array([[0, 0], [0, np.sqrt(p)]])
     return [mat1, mat2]
 
 
 def bit_flip_map(p):
+    """
+    returns the kraus operators for bit flip with probability p
+    Parameters
+    ----------
+    p: float:
+        a probability.
+
+    Returns
+    -------
+    list of numpy.ndarray:
+        the kraus maps for bit flip
+    """
+
     mat1 = np.array([[np.sqrt(1 - p), 0], [0, np.sqrt(1 - p)]])
     mat2 = np.array([[0, np.sqrt(p)], [np.sqrt(p), 0]])
     return [mat1, mat2]
 
 
 def phase_flip_map(p):
+    """
+    returns the kraus operators for phase flip with probability p
+    Parameters
+    ----------
+    p: float:
+        a probability.
+
+    Returns
+    -------
+    list of numpy.ndarray:
+        the kraus maps for phase flipping
+    """
     mat1 = np.array([[np.sqrt(1 - p), 0], [0, np.sqrt(1 - p)]])
     mat2 = np.array([[np.sqrt(p), 0], [0, -np.sqrt(p)]])
     return [mat1, mat2]
 
 
 def phase_amp_damp_map(a, b):
+    """
+    the kraus maps for combined phase amplitude damping
+    Parameters
+    ----------
+    a: float:
+        a probability.
+    b: float:
+        a probability.
+
+    Returns
+    -------
+    list of numpy.ndarray:
+        the kraus maps for combined phase amplitude damping.
+    """
+
     A0 = [[1, 0], [0, np.sqrt(1 - a - b)]]
     A1 = [[0, np.sqrt(a)], [0, 0]]
     A2 = [[0, 0], [0, np.sqrt(b)]]
@@ -133,6 +183,19 @@ def phase_amp_damp_map(a, b):
 
 
 def depolarizing_map(p):
+    """
+    the kraus maps for symmetric depolarizing
+    Parameters
+    ----------
+    p: float:
+        a probability.
+
+    Returns
+    -------
+    list of numpy.ndarray:
+        the depolarizing error kraus maps.
+
+    """
     mat1 = np.array([[np.sqrt(1 - 3 * p / 4), 0], [0, np.sqrt(1 - 3 * p / 4)]])
     mat2 = np.array([[np.sqrt(p / 4), 0], [0, -np.sqrt(p / 4)]])
     mat3 = np.array([[0, np.sqrt(p / 4)], [np.sqrt(p / 4), 0]])
@@ -143,6 +206,20 @@ def depolarizing_map(p):
 
 
 def kraus_tensor(klist, n):
+    """
+    Recursive function that produces every (n-fold) tensor product of a list of kraus operators.
+    Parameters
+    ----------
+    klist: list:
+        a list of numpy.ndarrays, to tensor together
+    n: int:
+        the number of terms that must ultimately be tensored together into a single term (the number of qubits acted on)
+    Returns
+    -------
+    list:
+        a list of kraus operators
+
+    """
     if n == 1:
         return klist
     if n == 2:
@@ -155,17 +232,40 @@ def kraus_tensor(klist, n):
 
 def append_kraus_to_gate(kraus_ops, g, level):
     """
-    Follow a gate `g` by a Kraus map described by `kraus_ops`.
+    Combines the unitary of some gate with the n-fold tensor product of a list of kraus operators
+    Parameters
+    ----------
+    kraus_ops: list:
+        a list of kraus operators to apply to a gate.
+    g:
+        a gate, more specifically a unitary.
+    level:
+        n, the number of terms that should occur in a given tensor-product of kraus operators.
 
-    :param list kraus_ops: The Kraus operators.
-    :param numpy.ndarray g: The unitary gate.
-    :return: A list of transformed Kraus operators.
+    Returns
+    -------
+    list:
+        a list of matrices corresponding to the action of a gate followed by kraus operations.
     """
 
     return [kj.dot(g) for kj in kraus_tensor(kraus_ops, level)]
 
 
 def add_controls(matrix, count):
+    """
+    Take a unitary matrix and return a controlled version thereof.
+    Parameters
+    ----------
+    matrix:
+        a unitary matrix.
+    count:
+        the number of control qubits to add.
+
+    Returns
+    -------
+    numpy.ndarray:
+        a matrix corresponding to the count-fold controlled version of the matrix 'matrix'.
+    """
     gc = np.log2(matrix.shape[0])
     controls = count - gc
     if int(controls) == 0:
@@ -176,6 +276,19 @@ def add_controls(matrix, count):
 
 
 def unitary_maker(gate):
+    """
+    Take a gate and return a unitary, potentially controlled.
+
+    Parameters
+    ----------
+    gate:
+        the gate whose matrix is sought
+
+    Returns
+    -------
+    numpy.ndarray:
+        the matrix corresponding to a given gate.
+    """
     return add_controls(name_unitary_dict[gate.name], len(gate.qubits))
 
 
@@ -184,11 +297,35 @@ class TequilaPyquilException(TequilaException):
         return "simulator_pyquil: " + self.message
 
 
-
-
-
 class BackendCircuitPyquil(BackendCircuit):
+    """
+    Class representing circuits compiled for execution in Pyquil.
 
+    See BackendCircuit for methods and attributes inherited therefrom.
+
+    Attributes
+    ----------
+    counter: int
+        an integer counting the number of distinct parameters (as seen by pyquil) that appear in the circuit.
+    match_dummy_to_value: dict:
+        a dictionary mapping pyquil variable instantiators to floats.
+    match_par_to_dummy: dict:
+        a dictionary mapping tequila Variables and Objectives to parameter instantiators for pyquil
+    noise_lookup:
+        dictionary matching strings to functions which return lists of kraus operators.
+    numbering:
+        a bitnumbering object, that informs tequila about the endianness of measurement.
+    op_lookup:
+        dictionary matching string to pyquil gates.
+    resolver:
+        dictionary resolving parameters for simulation.
+
+    Methods
+    -------
+    build_noisy_circuit:
+        takes in a noise model and a circuit and applies noise to it.
+
+    """
     compiler_arguments = {
         "trotterized": True,
         "swap": False,
@@ -209,7 +346,25 @@ class BackendCircuitPyquil(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None, *args, **kwargs):
+
+    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None,device=None, *args, **kwargs):
+        """
+        Parameters
+        ----------
+        abstract_circuit: QCircuit:
+            Tequila unitary to compile to Pyquil.
+        variables: dict:
+            values of all variables in the circuit, to compile with.
+        use_mapping: bool:
+            whether or not to use a mapping that eliminates unnecessary qubits from the circuit.
+        noise:
+            Noise to apply to the circuit.
+        device:
+            device on which to emulatedly execute all sampling.
+        args
+        kwargs
+        """
+
         self.op_lookup = {
             'I': (pyquil.gates.I),
             'X': (pyquil.gates.X, pyquil.gates.CNOT, pyquil.gates.CCNOT),
@@ -224,7 +379,9 @@ class BackendCircuitPyquil(BackendCircuit):
         }
         self.match_par_to_dummy = {}
         self.counter = 0
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise,
+        if device is not None:
+            self.compiler_arguments['cc_max'] = True
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device,
                          use_mapping=use_mapping, *args, **kwargs)
         if self.noise is not None:
             self.noise_lookup = {
@@ -236,7 +393,15 @@ class BackendCircuitPyquil(BackendCircuit):
                 'depolarizing': depolarizing_map
             }
 
-            self.circuit = self.build_noisy_circuit(self.circuit, self.noise)
+            if isinstance(self.noise,str):
+                if self.noise == 'device':
+                    pass
+                else:
+                    raise TequilaException('noise was a string: {}, which is not \'device\'. This is not allowed!'.format(self.noise))
+
+            else:
+                self.circuit = self.build_noisy_circuit(self.circuit, self.noise)
+
         if len(self.match_par_to_dummy.keys()) is None:
             self.match_dummy_to_value = None
             self.resolver = None
@@ -246,7 +411,24 @@ class BackendCircuitPyquil(BackendCircuit):
             self.resolver = {k: [to_float(v(variables))] for k, v in self.match_dummy_to_value.items()}
 
     def do_simulate(self, variables, initial_state, *args, **kwargs):
+        """
+        Internal helper function for performing wavefunction simulation.
 
+        Parameters
+        ----------
+        variables:
+            the variables of parameters in the circuit to use during simulation
+        initial_state:
+            indicates, in some fashion, the initial state to which the self.circuit is applied.
+        args
+        kwargs
+
+        Returns
+        -------
+        QubitWaveFunction:
+            The wave function resulting from simulation.
+
+        """
         simulator = pyquil.api.WavefunctionSimulator()
         n_qubits = self.n_qubits
         msb = BitString.from_int(initial_state, nbits=n_qubits)
@@ -258,24 +440,50 @@ class BackendCircuitPyquil(BackendCircuit):
         return QubitWaveFunction.from_array(arr=backend_result.amplitudes, numbering=self.numbering)
 
     def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
+        """
+        Helper function, sampling an individual circuit.
+
+        Parameters
+        ----------
+        samples: int:
+            the number of samples of measurement to make.
+        circuit:
+            the circuit to sample.
+        args
+        kwargs
+
+        Returns
+        -------
+        QubitWaveFunction:
+            the result of sampled measurement, as a tequila wavefunction.
+        """
+
         n_qubits = self.n_qubits
-        if "pyquil_backend" in kwargs:
-            pyquil_backend = kwargs["pyquil_backend"]
-            if isinstance(pyquil_backend, dict):
-                qc = get_qc(**pyquil_backend)
-            else:
-                qc = get_qc(pyquil_backend)
-        else:
-            qc = get_qc('{}q-qvm'.format(str(n_qubits)))
         p = circuit
-        p.wrap_in_numshots_loop(samples)
+
+        if self.device is None:
+            qc = get_qc('{}q-qvm'.format(str(n_qubits)))
+            p.wrap_in_numshots_loop(samples)
+        else:
+            qc=self.device
+            p=qc.compile(p)
+            p.attributes['num_shots']=samples
         stacked = qc.run(p, memory_map=self.resolver)
         return self.convert_measurements(stacked)
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
-        """0.
-        :param backend_result: array from pyquil as list of lists of integers.
-        :return: backend_result in Tequila format.
+        """
+        convert measurements from backend.
+
+        Parameters
+        ----------
+        backend_result: list of ints:
+            the result of measurement in pyquil.
+
+        Returns
+        -------
+        QubitWaveFunction:
+            measurement results translated into a QubitWaveFunction.
         """
 
         def string_to_array(s):
@@ -302,9 +510,38 @@ class BackendCircuitPyquil(BackendCircuit):
         return isinstance(abstract_circuit, pyquil.Program)
 
     def initialize_circuit(self, *args, **kwargs):
+        """
+        return an empty pyquil program.
+        Parameters
+        ----------
+        args
+        kwargs
+
+        Returns
+        -------
+        pyquil.Program:
+            an empty pyquil program.
+        """
         return pyquil.Program()
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        """
+       Add a parametrized gate to the circuit. Used in inherited method create_circuit.
+
+       Additionally, builds and updates mappings so that pyquil can resolve the parametrization of the gate at runtime.
+       Parameters
+       ----------
+       gate: QGateImpl:
+           the gate to translate to pyquil.
+       circuit:
+           the pyquil circuit, to which a new gate is to be added
+       args
+       kwargs
+
+       Returns
+       -------
+       None
+       """
         op = self.op_lookup[gate.name]
         if isinstance(gate.parameter, float):
             par = gate.parameter
@@ -322,12 +559,42 @@ class BackendCircuitPyquil(BackendCircuit):
         circuit += pyquil_gate
 
     def add_measurement(self, gate, circuit, *args, **kwargs):
+        """
+       Add a measurement to the circuit. Used in inherited method create_circuit.
+
+       ----------
+       gate: MeasurementGateImpl:
+           the measurement, to be translated to pyquil
+       circuit:
+           the pyquil circuit, to which measurement is to be added
+       args
+       kwargs
+
+       Returns
+       -------
+       None
+       """
         bits = len(gate.target)
         ro = circuit.declare('ro', 'BIT', bits)
         for i, t in enumerate(gate.target):
             circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        """
+        Add an unparametrized gate to a circuit. Used in inherited method create_circuit.
+        Parameters
+        ----------
+        gate: QGateImpl:
+            the gate, to be translated to pyquil.
+        circuit: pyquil.Program:
+            the pyquil circuit, to which the gate is to be added
+        args
+        kwargs
+
+        Returns
+        -------
+        None
+        """
         op = self.op_lookup[gate.name]
         try:
             g = op[len(gate.control)]
@@ -343,6 +610,20 @@ class BackendCircuitPyquil(BackendCircuit):
         circuit += pyquil_gate
 
     def build_noisy_circuit(self, py_prog, noise_model):
+        """
+        Take a pyquil program, and add noise from a tequila NoiseModel.
+        Parameters
+        ----------
+        py_prog: pyquil.Program:
+            the program, to which noise should be added.
+        noise_model: NoiseModel:
+            the noise model, from whence noise should be added to the circuit.
+
+        Returns
+        -------
+        pyquil.Program:
+            A program, with noise added to it.
+        """
         prog = py_prog
         new = pyquil.Program()
         collected = {}
@@ -373,7 +654,6 @@ class BackendCircuitPyquil(BackendCircuit):
                                                   gate.qubits,
                                                   append_kraus_to_gate(collected[level], k, int(level)))
                             done.append([gate.name, len(gate.qubits), gate.qubits])
-
                 else:
                     pass
             else:
@@ -382,7 +662,15 @@ class BackendCircuitPyquil(BackendCircuit):
 
     def update_variables(self, variables):
         """
-        overwriting the underlying code so that noise gets added when present
+        Update the variables for resolution in simulation or sampling.
+        Parameters
+        ----------
+        variables: dict:
+            dictionary of tequila variables and values to resolve for simulation.
+
+        Returns
+        -------
+        None
         """
 
         if self.match_dummy_to_value is not None:
@@ -390,6 +678,89 @@ class BackendCircuitPyquil(BackendCircuit):
         else:
             self.resolver = None
 
+    def check_device(self,device):
+        """
+        Verify if a device is valid.
+        Parameters
+        ----------
+        device:
+            a pyquil.api.QuantumComputer, a string which picks one out, or a dictionary that can pass to get_qc.
+        Returns
+        -------
+        None
+
+        """
+        if device is None:
+            return
+        if isinstance(device, str):
+            d = device
+            if '-qvm' in d.lower():
+                d = d[:-4]
+            if '-noisy' in d.lower():
+                d = d[:-6]
+            if d in pyquil.list_quantum_computers():
+                return
+            else:
+                try:
+                    get_qc(d)
+                    return
+                except:
+                    try:
+                        get_qc(d, as_qvm=True)
+                        return
+                    except:
+                        raise TequilaException('could not obtain device from string; received {}'.format(device))
+
+        elif isinstance(device, dict):
+            try:
+                get_qc(**device)
+                return
+            except:
+                raise TequilaException('could not initialize device from dict; received {}'.format(device))
+        elif isinstance(device, pyquil.api.QuantumComputer):
+            return
+
+        else:
+            raise TequilaException('Uninterpretable object {} of type {} passed to check_device!'.format(device,type(device)))
+
+    def retrieve_device(self,device):
+        """
+        return an initialized pyquil quantum computer (or None)
+        Parameters
+        ----------
+        device:
+            pyquil.api.QuantumComputer, or arguments that can pass to pyquil.get_qc
+
+        Returns
+        -------
+        pyquil.api.QuantumComputer
+            an instantiated device object for pyquil simulation or execution.
+        """
+        use_device_noise = (self.noise == 'device')
+        if device is None:
+            return None
+        if isinstance(device, str):
+            try:
+                back = get_qc(device, noisy=use_device_noise)
+                return back
+            except:
+                try:
+                    back = get_qc(device, as_qvm=True, noisy=use_device_noise)
+                    return back
+                except:
+                    raise TequilaException('could not obtain device from string; received {}'.format(device))
+        elif isinstance(device, pyquil.api.QuantumComputer):
+            return device
+        elif isinstance(device, dict):
+            try:
+                return get_qc(**device)
+            except:
+                raise TequilaException('could not initialize device from dict; received {}'.format(device))
+        else:
+            raise TequilaException('Uninterpretable object {} of type {} passed to check_device!'.format(device,type(device)))
 
 class BackendExpectationValuePyquil(BackendExpectationValue):
+    """
+    See BackendExpectationValue for information.
+    """
     BackendCircuitType = BackendCircuitPyquil
