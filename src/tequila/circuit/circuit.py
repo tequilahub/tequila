@@ -311,11 +311,7 @@ class QCircuit():
         list:
             the variables of the circuit
         """
-        variables = []
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized():
-                variables += g.extract_variables()
-        return list(set(variables))
+        return list(self._parameter_map.keys())
 
     def max_qubit(self):
         """
