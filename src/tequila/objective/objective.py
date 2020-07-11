@@ -46,7 +46,7 @@ class ExpectationValueImpl:
         else:
             return self._hamiltonian
 
-    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+    def extract_variables(self) -> list:
         result = []
         if self.U is not None:
             result = self.U.extract_variables()
@@ -171,7 +171,7 @@ class Objective:
         else:
             return "free"
 
-    def extract_variables(self):
+    def extract_variables(self) -> list:
         """
         Extract all variables on which the objective depends
         :return: List of all Variables
@@ -182,8 +182,14 @@ class Objective:
                 variables += arg.extract_variables()
             else:
                 variables += []
-
-        return list(set(variables))
+        # remove duplicates without affecting ordering
+        # allows better reproducibility for random initialization
+        # won't work with set
+        unique = []
+        for i in variables:
+            if i not in unique:
+                unique.append(i)
+        return unique
 
     def is_expectationvalue(self):
         """
