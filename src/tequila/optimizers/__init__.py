@@ -87,7 +87,8 @@ def minimize(method: str,
        Can be passed as list of names or list of tq variables
     initial_values: dict:
        Initial values for the optimization, passed as dictionary
-       with the variable names as keys
+       with the variable names as keys.
+       Alternatively `zero`, `random` or a single number are accepted
     maxiter:
        maximum number of iterations
     kwargs:

@@ -14,6 +14,8 @@ from itertools import product
 import openfermion
 from openfermion.hamiltonians import MolecularData
 
+import warnings
+
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
 
@@ -688,7 +690,7 @@ class QuantumChemistryBase:
         """
 
         if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
-            raise TequilaWarning("The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
+            raise TequilaException("The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
 
         # check indices and convert to list of tuples if necessary
         if len(indices) == 0:
@@ -725,7 +727,9 @@ class QuantumChemistryBase:
         qop = qop.simplify()
 
         if len(qop) == 0:
-            raise TequilaWarning("Excitation generator is a unit operator. Non-standard transformations might not work with general fermionic operators")
+            warnings.warn("Excitation generator is a unit operator.\n"
+                                 "Non-standard transformations might not work with general fermionic operators\n"
+                                 "indices = "+str(indices), category=TequilaWarning)
         return qop
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
@@ -967,12 +971,13 @@ class QuantumChemistryBase:
                     else:
                         spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
                         spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
-                        if key[0] != key[1] and key[2] != key[3]:
+                        if key[0] != key[2] and key[1] != key[3]:
                             spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
                             spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
                         partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
-
+                    print("sp = ", spin_indices)
                     for idx in spin_indices:
+                        print("idx = ", idx)
                         idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
                         generators.append(self.make_excitation_generator(indices=idx))
 
