@@ -43,7 +43,7 @@ class ParametersQC:
     """Specialization of ParametersHamiltonian"""
     basis_set: str = ''  # Quantum chemistry basis set
     geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!),
-                        # this can be a filename leading to an .xyz file or the geometry given as a string
+    # this can be a filename leading to an .xyz file or the geometry given as a string
     description: str = ''
     multiplicity: int = 1
     charge: int = 0
@@ -304,6 +304,7 @@ class Amplitudes:
 
 class NBodyTensor:
     """ Convenience class for handling N-body tensors """
+
     def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, scheme: str = None,
                  size_full: int = None):
 
@@ -518,6 +519,27 @@ class NBodyTensor:
 class QuantumChemistryBase:
     """ """
 
+    class _QubitEncoding:
+        """
+        Small wrapper class for the Qubit Transformation
+        Provides more controlled output
+        """
+        def __init__(self, transformation: typing.Callable, **kwargs):
+            self._trafo = transformation
+            self._kwargs = kwargs
+
+        def __call__(self, op):
+            return self._trafo(op, **self._kwargs)
+
+        def __repr__(self):
+            if len(self._kwargs) > 0:
+                return "transformation="+str(self._trafo) + "\nadditional keys: " + str(self._kwargs)
+            else:
+                return "transformation="+str(self._trafo)
+
+        def __str__(self):
+            return self.__repr__()
+
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
@@ -526,23 +548,29 @@ class QuantumChemistryBase:
                  **kwargs):
 
         self.parameters = parameters
+
+        # filter out arguments to the transformation
+        trafo_args = {k.split("__")[1]: v for k, v in kwargs.items() if
+                      (hasattr(k, "lower") and "transformation__" in k.lower())}
+        trafo = None
         if transformation is None:
-            self.transformation = openfermion.jordan_wigner
+            trafo = openfermion.jordan_wigner
         elif hasattr(transformation, "lower") and transformation.lower() in ["jordan-wigner", "jw", "j-w",
                                                                              "jordanwigner"]:
-            self.transformation = openfermion.jordan_wigner
+            trafo = openfermion.jordan_wigner
         elif hasattr(transformation, "lower") and transformation.lower() in ["bravyi-kitaev", "bk", "b-k",
                                                                              "bravyikitaev"]:
-            self.transformation = openfermion.bravyi_kitaev
+            trafo = openfermion.bravyi_kitaev
         elif hasattr(transformation, "lower") and transformation.lower() in ["bravyi-kitaev-tree", "bkt",
                                                                              "bravykitaevtree", "b-k-t"]:
-            self.transformation = openfermion.bravyi_kitaev_tree
+            trafo = openfermion.bravyi_kitaev_tree
         elif hasattr(transformation, "lower"):
             trafo = getattr(openfermion, transformation.lower())
-            self.transformation = lambda x: trafo(x, *args, **kwargs)
         else:
             assert (callable(transformation))
-            self.transformation = transformation
+            trafo = transformation
+
+        self.transformation = self._QubitEncoding(transformation=trafo, **trafo_args)
 
         if "molecule" in kwargs:
             self.molecule = kwargs["molecule"]
@@ -814,7 +842,11 @@ class QuantumChemistryBase:
 
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
-        return QubitHamiltonian(qubit_hamiltonian=self.transformation(fop))
+        try:
+            qop = self.transformation(fop)
+        except TypeError:
+            qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
+        return QubitHamiltonian(qubit_hamiltonian=qop)
 
     def compute_one_body_integrals(self):
         """ """
@@ -1112,8 +1144,8 @@ class QuantumChemistryBase:
         -------
         """
         # Set up number of spin-orbitals and molecular orbitals respectively
-        n_SOs = 2*self.n_orbitals
-        n_MOs =   self.n_orbitals
+        n_SOs = 2 * self.n_orbitals
+        n_MOs = self.n_orbitals
 
         # Check whether unitary circuit is not 0
         if U is None:
@@ -1136,7 +1168,7 @@ class QuantumChemistryBase:
                     qop = _get_qop_hermitian(op_string)
                     if qop:  # should always exist here
                         qops += [qop]
-                    else: # should not happen
+                    else:  # should not happen
                         qops += [QubitHamiltonian.zero()]
 
             return qops
@@ -1150,7 +1182,7 @@ class QuantumChemistryBase:
                 for q in range(p):
                     for r in range(n_SOs):
                         for s in range(r):
-                            if p*n_SOs + q >= r*n_SOs + s:
+                            if p * n_SOs + q >= r * n_SOs + s:
                                 op_string = ((p, 1), (q, 1), (s, 0), (r, 0))
                                 qop = _get_qop_hermitian(op_string)
                                 qops += [qop]
@@ -1236,9 +1268,9 @@ class QuantumChemistryBase:
                 for q in range(p):
                     for r in range(n_SOs):
                         for s in range(r):
-                            rdm2[p, q, s, r] = -1 * rdm2[p, q, r, s] # pqrs = -pqsr
-                            rdm2[q, p, r, s] = -1 * rdm2[p, q, r, s] # pqrs = -qprs
-                            rdm2[q, p, s, r] = rdm2[p, q, r, s]      # pqrs =  qpsr
+                            rdm2[p, q, s, r] = -1 * rdm2[p, q, r, s]  # pqrs = -pqsr
+                            rdm2[q, p, r, s] = -1 * rdm2[p, q, r, s]  # pqrs = -qprs
+                            rdm2[q, p, s, r] = rdm2[p, q, r, s]  # pqrs =  qpsr
 
             return rdm2
 
@@ -1281,6 +1313,7 @@ class QuantumChemistryBase:
                 if not spin_free and rdm.shape[0] != n_SOs:
                     return None
             return rdm
+
         self._rdm1 = _reset_rdm(self._rdm1)
         self._rdm2 = _reset_rdm(self._rdm2)
         # Split expectation values in 1- and 2-particle expectation values
@@ -1320,14 +1353,14 @@ class QuantumChemistryBase:
             if self._rdm1 is None:
                 raise Exception("The spin-RDM for the 1-RDM does not exist!")
             # Check whether existing rdm1 is in spin-orbital basis
-            if self._rdm1.shape[0] != 2*n_MOs:
+            if self._rdm1.shape[0] != 2 * n_MOs:
                 raise Exception("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
             # Do summation
             rdm1_spinsum = numpy.zeros([n_MOs, n_MOs])
             for p in range(n_MOs):
-                for q in range(p+1):
-                    rdm1_spinsum[p, q] += self._rdm1[2*p  , 2*q  ]
-                    rdm1_spinsum[p, q] += self._rdm1[2*p+1, 2*q+1]
+                for q in range(p + 1):
+                    rdm1_spinsum[p, q] += self._rdm1[2 * p, 2 * q]
+                    rdm1_spinsum[p, q] += self._rdm1[2 * p + 1, 2 * q + 1]
             for p in range(n_MOs):
                 for q in range(p):
                     rdm1_spinsum[q, p] = rdm1_spinsum[p, q]
@@ -1338,20 +1371,22 @@ class QuantumChemistryBase:
             if self._rdm2 is None:
                 raise Exception("The spin-RDM for the 2-RDM does not exist!")
             # Check whether existing rdm2 is in spin-orbital basis
-            if self._rdm2.shape[0] != 2*n_MOs:
+            if self._rdm2.shape[0] != 2 * n_MOs:
                 raise Exception("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
             # Do summation
             rdm2_spinsum = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
             for p, q, r, s in product(range(n_MOs), repeat=4):
-                rdm2_spinsum[p, q, r, s] += self._rdm2[2*p  , 2*q  , 2*r  , 2*s  ]
-                rdm2_spinsum[p, q, r, s] += self._rdm2[2*p+1, 2*q  , 2*r+1, 2*s  ]
-                rdm2_spinsum[p, q, r, s] += self._rdm2[2*p  , 2*q+1, 2*r  , 2*s+1]
-                rdm2_spinsum[p, q, r, s] += self._rdm2[2*p+1, 2*q+1, 2*r+1, 2*s+1]
+                rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p, 2 * q, 2 * r, 2 * s]
+                rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q, 2 * r + 1, 2 * s]
+                rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p, 2 * q + 1, 2 * r, 2 * s + 1]
+                rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q + 1, 2 * r + 1, 2 * s + 1]
 
         return rdm1_spinsum, rdm2_spinsum
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
+        result += "Qubit Encoding\n"
+        result += str(self.transformation) + "\n"
         for k, v in self.parameters.__dict__.items():
             result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
         return result
