@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from tequila import TequilaException, BitString, QubitWaveFunction
-from tequila.hamiltonian import QubitHamiltonian, paulis
+from tequila import TequilaException, BitString, TequilaWarning
+from tequila.hamiltonian import QubitHamiltonian
 
 from tequila.circuit import QCircuit, gates
 from tequila.objective.objective import Variable, Variables, ExpectationValue
-from tequila.optimizers import minimize
+
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
 
@@ -13,7 +13,6 @@ from itertools import product
 
 import openfermion
 from openfermion.hamiltonians import MolecularData
-
 
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
@@ -529,7 +528,13 @@ class QuantumChemistryBase:
             self._kwargs = kwargs
 
         def __call__(self, op):
-            return self._trafo(op, **self._kwargs)
+            try:
+                try:
+                    return self._trafo(op, **self._kwargs)
+                except TypeError:
+                    return self._trafo(openfermion.get_interaction_operator(op), **self._kwargs)
+            except:
+                raise TequilaException("Error in QubitEncoding " + str(self))
 
         def __repr__(self):
             if len(self._kwargs) > 0:
@@ -681,6 +686,10 @@ class QuantumChemistryBase:
         type
             1j*Transformed qubit excitation operator, depends on self.transformation
         """
+
+        if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
+            raise TequilaWarning("The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
+
         # check indices and convert to list of tuples if necessary
         if len(indices) == 0:
             raise TequilaException("make_excitation_operator: no indices given")
@@ -714,6 +723,9 @@ class QuantumChemistryBase:
             qop.qubit_operator.terms[k] = to_float(v)
 
         qop = qop.simplify()
+
+        if len(qop) == 0:
+            raise TequilaWarning("Excitation generator is a unit operator. Non-standard transformations might not work with general fermionic operators")
         return qop
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
