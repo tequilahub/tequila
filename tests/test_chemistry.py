@@ -36,6 +36,14 @@ def test_base(trafo):
     assert numpy.isclose(eigvals[-1], 7.10921141e-01)
     assert len(eigvals) == 16
 
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
+@pytest.mark.parametrize("trafo_args", [{"transformation":"jordan_wigner"}, {"transformation":"bravyi_kitaev"}, {"transformation":"bravyi_kitaev_fast"}, {"transformation":"symmetry_conserving_bravyi_kitaev", "transformation__active_orbitals":4, "transformation__active_fermions":2}])
+def test_transformations(trafo_args):
+    geomstring="H 0.0 0.0 0.0\nH 0.0 0.0 0.7"
+    molecule = tq.chemistry.Molecule(geometry=geomstring, basis_set="sto-3g", **trafo_args)
+    gs = numpy.linalg.eigvalsh(molecule.make_hamiltonian().to_matrix())[0]
+    assert numpy.isclose(gs,-1.1361894540879054)
+
 @pytest.mark.dependencies
 def test_dependencies():
     for key in qc.SUPPORTED_QCHEMISTRY_BACKENDS:
@@ -50,7 +58,7 @@ def test_interface():
                     reason="you don't have a quantum chemistry backend installed")
 @pytest.mark.parametrize("geom", [" H 0.0 0.0 1.0\n H 0.0 0.0 -1.0", " he 0.0 0.0 0.0", " be 0.0 0.0 0.0"])
 @pytest.mark.parametrize("basis", ["sto-3g"])
-@pytest.mark.parametrize("trafo", ["JW", "BK"])
+@pytest.mark.parametrize("trafo", ["JW", "BK", "bravyi_kitaev_fast"])
 def test_hamiltonian_consistency(geom: str, basis: str, trafo: str):
     parameters_qc = qc.ParametersQC(geometry=geom, basis_set=basis, outfile="asd")
     hqc1 = qc.QuantumChemistryPsi4(parameters=parameters_qc).make_hamiltonian(transformation=trafo)

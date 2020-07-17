@@ -1,9 +1,9 @@
 """
 Base class for Optimizers.
 """
-import typing, numbers, copy
+import typing, numbers, copy, warnings
 
-from tequila.utils.exceptions import TequilaException
+from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_api import compile, pick_backend
 from tequila.objective import Objective
 from tequila.circuit.gradient import grad
@@ -375,8 +375,11 @@ class Optimizer:
         ----------
         objective: Objective:
             the objective being optimized.
-        initial_values: dict:
+        initial_values: dict or string:
             initial values for the variables of objective, as a dictionary.
+            if string: can be `zero` or `random`
+            if callable: custom function that initializes when keys are passed
+            if None: random initialization between 0 and 2pi (not recommended)
         variables: list:
             the variables being optimized over.
 
@@ -395,6 +398,17 @@ class Optimizer:
             variables = all_variables
         if initial_values is None:
             initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
+        elif hasattr(initial_values, "lower"):
+            if initial_values.lower() == "zero":
+                initial_values = {k:0.0 for k in all_variables}
+            elif initial_values.lower() == "random":
+                initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
+            else:
+                raise TequilaOptimizerException("unknown initialization instruction: {}".format(initial_values))
+        elif callable(initial_values):
+            initial_values = {k: initial_values(k) for k in all_variables}
+        elif isinstance(initial_values, numbers.Number):
+            initial_values = {k: initial_values for k in all_variables}
         else:
             # autocomplete initial values, warn if you did
             detected = False
@@ -403,7 +417,7 @@ class Optimizer:
                     initial_values[k] = numpy.random.uniform(0, 2 * numpy.pi)
                     detected = True
             if detected and not self.silent:
-                print("WARNING: initial_variables given but not complete: Autocomplete with random number")
+                warnings.warn("initial_variables given but not complete: Autocompleted with random numbers", TequilaWarning)
 
         active_angles = {}
         for v in variables:
