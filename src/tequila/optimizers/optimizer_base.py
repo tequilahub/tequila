@@ -330,6 +330,8 @@ class Optimizer:
 
         self.noise = noise
         self.device = device
+        self.args = args
+        self.kwargs = kwargs
 
     def reset_history(self):
         """
