@@ -244,6 +244,7 @@ class OptimizerSciPy(Optimizer):
 
         Es = []
 
+        optimizer_instance = self
         class SciPyCallback:
             energies = []
             gradients = []
@@ -259,6 +260,8 @@ class OptimizerSciPy(Optimizer):
                 if ddE is not None and not isinstance(ddE, str):
                     self.hessians.append(ddE.history[-1])
                 self.real_iterations += 1
+                if 'callback' in optimizer_instance.kwargs:
+                    optimizer_instance.kwargs['callback'](E.history_angles[-1])
 
         callback = SciPyCallback()
         res = scipy.optimize.minimize(E, x0=param_values, jac=dE, hess=ddE,
