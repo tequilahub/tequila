@@ -3,9 +3,10 @@ from tequila.optimizers.optimizer_scipy import OptimizerSciPy
 from tequila.optimizers.optimizer_gd import OptimizerGD
 from tequila.optimizers.optimizer_scipy import minimize as minimize_scipy
 from tequila.optimizers.optimizer_gd import minimize as minimize_gd
+from tequila.objective.objective import assign_variable
 from dataclasses import dataclass
 
-import typing
+import typing, numbers
 
 
 @dataclass
@@ -117,6 +118,12 @@ def minimize(method: str,
     """
     for k, v in INSTALLED_OPTIMIZERS.items():
         if method.lower() in v.methods or method.upper() in v.methods:
+            if hasattr(initial_values, "lower") and initial_values.lower() == "zero":
+                initial_values = {assign_variable(k): 0.0 for k in objective.extract_variables()}
+            elif isinstance(initial_values, numbers.Number):
+                initial_values = {assign_variable(k): 0.0 for k in objective.extract_variables()}
+            if initial_values is not None:
+                initial_values = {assign_variable(k): v for k, v in initial_values.items()}
             return v.minimize(
                               objective=objective,
                               method=method,
