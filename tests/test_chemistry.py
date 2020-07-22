@@ -23,7 +23,7 @@ def teardown_function(function):
     [os.remove(x) for x in glob.glob("qvm.log")]
     [os.remove(x) for x in glob.glob("*.dat")]
 
-@pytest.mark.parametrize("trafo", ["JW", "BK"])
+@pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT", "bravyi_kitaev_fast"])
 def test_base(trafo):
     obt = numpy.asarray([[-1.94102524, -0.31651552], [-0.31651552, -0.0887454 ]])
     tbt = numpy.asarray([[[[1.02689005, 0.31648659], [0.31648659, 0.22767214]],[[0.31648659, 0.22767214],[0.85813498, 0.25556095]]],[[[0.31648659, 0.85813498],[0.22767214, 0.25556095]],[[0.22767214, 0.25556095],[0.25556095, 0.76637672]]]])
@@ -33,8 +33,17 @@ def test_base(trafo):
     H = molecule.make_hamiltonian()
     eigvals = numpy.linalg.eigvalsh(H.to_matrix())
     assert numpy.isclose(eigvals[0], -2.87016214e+00)
-    assert numpy.isclose(eigvals[-1], 7.10921141e-01)
-    assert len(eigvals) == 16
+    if "trafo" in ["JW", "BK", "bravyi_kitaev_fast", "BKT"]: # others change spectrum outside of the groundstate
+        assert numpy.isclose(eigvals[-1], 7.10921141e-01)
+        assert len(eigvals) == 16
+
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
+@pytest.mark.parametrize("trafo_args", [{"transformation":"jordan_wigner"}, {"transformation":"bravyi_kitaev"}, {"transformation":"bravyi_kitaev_fast"}, {"transformation":"symmetry_conserving_bravyi_kitaev", "transformation__active_orbitals":4, "transformation__active_fermions":2}])
+def test_transformations(trafo_args):
+    geomstring="H 0.0 0.0 0.0\nH 0.0 0.0 0.7"
+    molecule = tq.chemistry.Molecule(geometry=geomstring, basis_set="sto-3g", **trafo_args)
+    gs = numpy.linalg.eigvalsh(molecule.make_hamiltonian().to_matrix())[0]
+    assert numpy.isclose(gs,-1.1361894540879054)
 
 @pytest.mark.dependencies
 def test_dependencies():
@@ -50,7 +59,7 @@ def test_interface():
                     reason="you don't have a quantum chemistry backend installed")
 @pytest.mark.parametrize("geom", [" H 0.0 0.0 1.0\n H 0.0 0.0 -1.0", " he 0.0 0.0 0.0", " be 0.0 0.0 0.0"])
 @pytest.mark.parametrize("basis", ["sto-3g"])
-@pytest.mark.parametrize("trafo", ["JW", "BK"])
+@pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT", "bravyi_kitaev_fast"])
 def test_hamiltonian_consistency(geom: str, basis: str, trafo: str):
     parameters_qc = qc.ParametersQC(geometry=geom, basis_set=basis, outfile="asd")
     hqc1 = qc.QuantumChemistryPsi4(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
@@ -79,7 +88,7 @@ def do_test_h2_hamiltonian(qc_interface):
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
-@pytest.mark.parametrize("trafo", ["JW", "BK", "BKT"])
+@pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT"]) # bravyi_kitaev_fast not yet supported for ucc
 @pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
