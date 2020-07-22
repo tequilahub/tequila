@@ -562,6 +562,7 @@ class Optimizer:
     def __repr__(self):
         infostring = "Optimizer: {} \n".format(str(type(self)))
         infostring += "{:15} : {}\n".format("backend", self.backend)
+        infostring += "{:15} : {}\n".format("device", self.device)
         infostring += "{:15} : {}\n".format("samples", self.samples)
         infostring += "{:15} : {}\n".format("save_history", self.save_history)
         infostring += "{:15} : {}\n".format("noise", self.noise)
