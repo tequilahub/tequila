@@ -197,7 +197,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         self.logs = {}  # store full psi4 output
 
         self.active_space = None  # will be assigned in super
-        # active space will be formed later
+        # psi4 active space will be formed later
         super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None, reference=None,
                          *args, **kwargs)
         self.ref_energy = self.molecule.hf_energy
@@ -224,12 +224,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             self.compute_energy(method="hf", recompute=True)
             self.ref_wfn = self.logs["hf"].wfn
 
-    @property
-    def n_orbitals(self) -> int:
-        if self.active_space is not None:
-            return len(self.active_space.active_orbitals)
-        else:
-            return super().n_orbitals
+        self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
     @property
     def point_group(self):
