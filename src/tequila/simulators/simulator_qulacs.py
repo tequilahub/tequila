@@ -105,7 +105,7 @@ class BackendCircuitQulacs(BackendCircuit):
 
             self.circuit=self.add_noise_to_circuit(noise)
 
-    def initialize_state(n_qubits:int=None) -> qulacs.QuantumState:
+    def initialize_state(self, n_qubits:int=None) -> qulacs.QuantumState:
         if n_qubits is None:
             n_qubits = self.n_qubits
         return qulacs.QuantumState(n_qubits)
