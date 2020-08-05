@@ -436,6 +436,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
     Ovverrides some methods of BackendExpectationValue, which should be seen for details.
     """
     use_mapping = True
+    BackendCircuitType = BackendCircuitQulacs
 
     def simulate(self, variables, *args, **kwargs) -> numpy.array:
         """
