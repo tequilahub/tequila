@@ -385,10 +385,13 @@ def draw(objective, variables=None, backend: str = None):
     objective :
         the tequila objective to print out
     variables : optional:
-         Give variables if the objective is parametrized
+         Give variables if the objective is parametrized (not necesarry for displaying)
     backend: str, optional:
-         chose backend (of None it will be automatically picked)
+         chose preferred backend (of None or not found it will be automatically picked)
     """
+    if backend not in INSTALLED_SIMULATORS:
+        backend = None
+
     if backend is None:
         if "cirq" in INSTALLED_SIMULATORS:
             backend = "cirq"
@@ -406,7 +409,7 @@ def draw(objective, variables=None, backend: str = None):
                 print("Hamiltonian : ", E.H)
                 print("variables : ", E.U.extract_variables())
                 print("circuit:\n")
-                draw(E.U)
+                draw(E.U, backend=backend)
             drawn[E] = i
 
     else:

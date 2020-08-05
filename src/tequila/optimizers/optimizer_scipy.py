@@ -53,7 +53,6 @@ class OptimizerSciPy(Optimizer):
                  method_options=None,
                  method_bounds=None,
                  method_constraints=None,
-                 silent: bool = True,
                  **kwargs):
         """
         Parameters
@@ -82,7 +81,6 @@ class OptimizerSciPy(Optimizer):
         if method_bounds is not None:
             method_bounds = {assign_variable(k): v for k, v in method_bounds.items()}
         self.method_bounds = method_bounds
-        self.silent = silent
 
         if method_options is None:
             self.method_options = {'maxiter': self.maxiter}
@@ -91,7 +89,7 @@ class OptimizerSciPy(Optimizer):
             if 'maxiter' not in method_options:
                 self.method_options['maxiter'] = self.maxiter
 
-        self.method_options['disp'] = not silent
+        self.method_options['disp'] = self.print_level > 0
 
         if method_constraints is None:
             self.method_constraints = ()
