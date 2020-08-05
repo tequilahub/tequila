@@ -8,11 +8,9 @@ class TequilaQulacsGpuException(TequilaException):
 
 class BackendCircuitQulacsGpu(BackendCircuitQulacs):
 
-    def initialize_state(self, n_qubits = None):
-        if n_qubits is None:
-            n_qubits = self.n_qubits
-        return qulacs.QuantumStateGpu(n_qubits)
+    _STATE_TYPE_ = "QuantumStateGpu"
 
 class BackendExpectationValueQulacsGpu(BackendExpectationValueQulacs):
     # avoid namespace confusion
+    BackendCircuitType = BackendCircuitQulacsGpu
     pass
