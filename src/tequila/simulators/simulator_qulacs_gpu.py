@@ -7,10 +7,11 @@ class TequilaQulacsGpuException(TequilaException):
         return "Error in qulacs qpu backend:" + self.message
 
 class BackendCircuitQulacsGpu(BackendCircuitQulacs):
-
-    _STATE_TYPE_ = "QuantumStateGpu"
+    def initialize_state(self, n_qubits:int=None) -> qulacs.QuantumState:
+        if n_qubits is None:
+            n_qubits = self.n_qubits
+        return qulacs.QuantumStateGpu(n_qubits)
 
 class BackendExpectationValueQulacsGpu(BackendExpectationValueQulacs):
-    # avoid namespace confusion
     BackendCircuitType = BackendCircuitQulacsGpu
     pass

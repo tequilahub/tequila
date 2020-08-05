@@ -60,7 +60,6 @@ class BackendCircuitQulacs(BackendCircuit):
     }
 
     numbering = BitNumbering.LSB
-    _STATE_TYPE_ = "QuantumState"
 
     def __init__(self, abstract_circuit, noise=None, *args, **kwargs):
         """
@@ -106,6 +105,11 @@ class BackendCircuitQulacs(BackendCircuit):
 
             self.circuit=self.add_noise_to_circuit(noise)
 
+    def initialize_state(self, n_qubits:int=None) -> qulacs.QuantumState:
+        if n_qubits is None:
+            n_qubits = self.n_qubits
+        return qulacs.QuantumState(n_qubits)
+
     def update_variables(self, variables):
         """
         set new variable values for the circuit.
@@ -139,7 +143,7 @@ class BackendCircuitQulacs(BackendCircuit):
         QubitWaveFunction:
             QubitWaveFunction representing result of the simulation.
         """
-        state = getattr(qulacs, self._STATE_TYPE_)(self.n_qubits)
+        state = self.initialize_state(self.n_qubits)
         lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
         state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
         self.circuit.update_quantum_state(state)
@@ -200,7 +204,7 @@ class BackendCircuitQulacs(BackendCircuit):
         QubitWaveFunction:
             the results of sampling, as a Qubit Wave Function.
         """
-        state = getattr(qulacs, self._STATE_TYPE_)(self.n_qubits)
+        state = self.initialize_state(self.n_qubits)
         lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
         state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
         circuit.update_quantum_state(state)
@@ -436,6 +440,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
     Ovverrides some methods of BackendExpectationValue, which should be seen for details.
     """
     use_mapping = True
+    BackendCircuitType = BackendCircuitQulacs
 
     def simulate(self, variables, *args, **kwargs) -> numpy.array:
         """
@@ -461,7 +466,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             return numpy.asarray[self.H]
 
         self.U.update_variables(variables)
-        state = getattr(qulacs, self.U._STATE_TYPE_)(self.n_qubits)
+        state = self.U.initialize_state(self.n_qubits)
         self.U.circuit.update_quantum_state(state)
         result = []
         for H in self.H:
@@ -555,7 +560,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         """
         # todo: generalize in baseclass. Do Hamiltonian mapping on initialization
         self.update_variables(variables)
-        state = getattr(qulacs, self.U._STATE_TYPE_)(self.n_qubits)
+        state = self.U.initialize_state(self.n_qubits)
         self.U.circuit.update_quantum_state(state)
         result = []
         for H in self._abstract_hamiltonians:
@@ -585,7 +590,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                     Esamples = []
                     for sample in range(samples):
                         if self.U.has_noise:
-                            state = getattr(qulacs, self._STATE_TYPE_)(self.n_qubits)
+                            state = self.U.initialize_state(self.n_qubits)
                             self.U.circuit.update_quantum_state(state)
                             state_tmp = state
                         else:
