@@ -427,7 +427,7 @@ class BackendCircuitQulacs(BackendCircuit):
             n_samples = 0
             Etmp = 0.0
             for key, count in all_qubit_counts.items():
-                ps_support = [self.abstract_qubit_map[i] for i in paulistring._data.keys()]
+                ps_support = [self.abstract_qubit_map[i] for i in paulistring._data.keys() if i in self.abstract_qubit_map]
                 parity = [k for i, k in enumerate(key.array) if i in ps_support].count(1)
                 sign = (-1) ** parity
                 Etmp += sign * count
