@@ -180,7 +180,6 @@ class BackendCircuitQulacs(BackendCircuit):
             keymap = KeyMapRegisterToSubregister(subregister=mqubits, register=[i for i in range(self.n_qubits)])
             result = result.apply_keymap(keymap=keymap)
 
-        print(result)
         return result
 
     def do_sample(self, samples, circuit, noise_model=None, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
