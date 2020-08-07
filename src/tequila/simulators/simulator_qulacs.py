@@ -180,6 +180,7 @@ class BackendCircuitQulacs(BackendCircuit):
             keymap = KeyMapRegisterToSubregister(subregister=mqubits, register=[i for i in range(self.n_qubits)])
             result = result.apply_keymap(keymap=keymap)
 
+        print(result)
         return result
 
     def do_sample(self, samples, circuit, noise_model=None, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
@@ -415,7 +416,7 @@ class BackendCircuitQulacs(BackendCircuit):
         return circuit
 
     def sample_all_z_hamiltonian(self, samples, hamiltonian, *args, **kwargs):
-        qubits = [q for q in hamiltonian.qubits if q in self.abstract_qubit_map]
+        qubits = [q for q in self.abstract_qubit_map]
         if len(qubits) == 0:
             return sum([ps.coeff for ps in hamiltonian.paulistrings])
 
@@ -426,7 +427,8 @@ class BackendCircuitQulacs(BackendCircuit):
             n_samples = 0
             Etmp = 0.0
             for key, count in all_qubit_counts.items():
-                parity = [k for i,k in enumerate(key.array) if i in paulistring._data].count(1)
+                ps_support = [self.abstract_qubit_map[i] for i in paulistring._data.keys()]
+                parity = [k for i, k in enumerate(key.array) if i in ps_support].count(1)
                 sign = (-1) ** parity
                 Etmp += sign * count
                 n_samples += count
@@ -565,7 +567,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         result = []
         for H in self._abstract_hamiltonians:
             E = 0.0
-            if H.is_all_z():
+            if H.is_all_z() and not self.U.has_noise:
                 E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, *args, **kwargs)
             else:
                 for ps in H.paulistrings:

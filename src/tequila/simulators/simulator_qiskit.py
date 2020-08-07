@@ -318,6 +318,7 @@ class BackendCircuitQiskit(BackendCircuit):
         for k, v in qiskit_counts.items():
             converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
             result._state[converted_key] = v
+
         return result
 
     def fast_return(self, abstract_circuit):
