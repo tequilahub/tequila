@@ -82,6 +82,31 @@ class PauliString:
 
         self._all_z = all([x.lower() == "z" for x in data.values()])
 
+    def trace_out_qubits(self, qubits, states):
+        # tq convenion is that qubits that are not in the circuit are always in |0>
+        # so the reduced pauli string's coefficient gets multiplied with <0|op|0> factors
+        # where op are the Pauli operators on the additional qubits
+        # these factors are either one (if op=Z) or zero
+
+        # |psi> = a|0> + b|1>
+        # <psi|op|psi> = |a|**2<0|op|0> + (a*)*b<1|op|0> + (b*)*a<0|op|1> + |b|**2<1|op|1>
+
+        def make_coeff_vec(state_tuple):
+            return numpy.asarray([numpy.abs(state_tuple[0])**2, state_tuple[0].conjugate()*state_tuple[1], state_tuple[1].conjugate()*state_tuple[0] ,numpy.abs(state_tuple[1])**2])
+
+        factor=1.0
+        for q, state in zip(qubits, states):
+            if q in self.keys():
+                matrix = pauli_matrices[self[q].upper()].reshape([4])
+                vec = make_coeff_vec(state)
+                factor *= vec.dot(matrix)
+                if factor == 0.0:
+                    break
+
+        new_data = {k:v for k,v in self.items() if k not in qubits}
+        return PauliString(data=new_data, coeff=self.coeff*factor)
+
+
     def map_qubits(self, qubit_map: dict):
         """
 
@@ -271,6 +296,31 @@ class QubitHamiltonian:
             self._qubit_operator = qubit_hamiltonian
 
         assert (isinstance(self._qubit_operator, QubitOperator))
+
+    def trace_out_qubits(self, qubits, states: list=None):
+        """
+        Tracing out qubits with the assumption that they are in the |0> (default) or |1> state
+
+        Parameters
+        ----------
+        qubits
+            qubits to trace out
+        states
+            states of the qubits as list of individual tq.QubitWaveFunction (default is all in |0>)
+        Returns
+        -------
+            traced out Hamiltonian
+        """
+
+        if states is None:
+            states = [(1.0,0.0)]*len(qubits)
+        else:
+            assert len(states) == len(qubits)
+            # states should be given as list of individual tq.QubitWaveFunctions
+            states = [tuple(s.to_array()) for s in states]
+
+        reduced_ps = [ps.trace_out_qubits(qubits=qubits, states=states) for ps in self.paulistrings]
+        return self.from_paulistrings(ps=reduced_ps)
 
     def __len__(self):
         return len(self._qubit_operator.terms)
