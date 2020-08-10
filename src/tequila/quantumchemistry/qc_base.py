@@ -860,15 +860,28 @@ class QuantumChemistryBase:
         # integrals need to be passed in base class
         assert ("one_body_integrals" in kwargs)
         assert ("two_body_integrals" in kwargs)
-        assert ("nuclear_repulsion" in kwargs)
-        assert ("n_orbitals" in kwargs)
+        one_body_integrals = kwargs["one_body_integrals"]
+        two_body_integrals = kwargs["two_body_integrals"]
+        if "nuclear_repulsion" in kwargs:
+            nuclear_repulsion = kwargs["nuclear_repulsion"]
+        else:
+            nuclear_repulsion = 0.0
+            warnings.warn("No nuclear_repulsion given for custom molecule, setting to zero", category=TequilaWarning)
 
+
+        if ("n_orbitals" in kwargs):
+            n_orbitals = kwargs["n_orbitals"]
+        else:
+            n_orbitals = one_body_integrals.shape[0]
+            for i in [0,1,2,3]:
+                assert n_orbitals == two_body_integrals.shape[i]
+        
         molecule = MolecularData(**self.parameters.molecular_data_param)
 
-        molecule.one_body_integrals = kwargs["one_body_integrals"]
-        molecule.two_body_integrals = kwargs["two_body_integrals"]
-        molecule.nuclear_repulsion = kwargs["nuclear_repulsion"]
-        molecule.n_orbitals = kwargs["n_orbitals"]
+        molecule.one_body_integrals = one_body_integrals
+        molecule.two_body_integrals = two_body_integrals
+        molecule.nuclear_repulsion = nuclear_repulsion
+        molecule.n_orbitals = n_orbitals
         molecule.save()
         return molecule
 
