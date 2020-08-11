@@ -2,6 +2,8 @@ from tequila.simulators.simulator_base import BackendCircuit, QCircuit, BackendE
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering, BitStringLSB
+from tequila.utils.keymap import KeyMapRegisterToSubregister
+
 import qiskit, numpy
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
@@ -272,7 +274,7 @@ class BackendCircuitQiskit(BackendCircuit):
                                         backend_options=opts).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
-    def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, *args, **kwargs) -> QubitWaveFunction:
+    def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, *args, **kwargs) -> QubitWaveFunction:
         """
         Helper function for performing sampling.
         Parameters
@@ -301,7 +303,7 @@ class BackendCircuitQiskit(BackendCircuit):
                                                             basis_gates=full_basis,
                                                             optimization_level=optimization_level,
                                                             noise_model=self.noise_model,
-                                                            parameter_binds=[self.resolver]))
+                                                            parameter_binds=[self.resolver]), target_qubits=read_out_qubits)
         else:
             if isinstance(qiskit_backend, qiskit.test.mock.FakeBackend):
                 coupling_map = qiskit_backend.configuration().coupling_map
@@ -312,8 +314,8 @@ class BackendCircuitQiskit(BackendCircuit):
                                                                 coupling_map=coupling_map,
                                                                 noise_model=self.noise_model,
                                                                 optimization_level=optimization_level,
-                                                                parameter_binds=[self.resolver]
-                                                                ))
+                                                                parameter_binds=[self.resolver]),
+                                                                target_qubits=read_out_qubits)
             else:
                 if self.noise_model is not None:
                     print("WARNING: There are no noise models when running on real machines!")
@@ -321,7 +323,7 @@ class BackendCircuitQiskit(BackendCircuit):
                                                                 optimization_level=optimization_level,
                                                                 parameter_binds=[self.resolver]))
 
-    def convert_measurements(self, backend_result) -> QubitWaveFunction:
+    def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
         """
         map backend results to QubitWaveFunction
         Parameters
@@ -339,6 +341,12 @@ class BackendCircuitQiskit(BackendCircuit):
         for k, v in qiskit_counts.items():
             converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
             result._state[converted_key] = v
+
+        if target_qubits is not None:
+            mapped_target = [self.qubit_map[q].number for q in target_qubits]
+            mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
+            keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
+            result = result.apply_keymap(keymap=keymap)
 
         return result
 
@@ -417,8 +425,11 @@ class BackendCircuitQiskit(BackendCircuit):
         target_qubits = sorted(target_qubits)
         tq = [self.qubit(t) for t in target_qubits]
         tc = [self.classical_map[t] for t in target_qubits]
-        circuit.measure(tq, tc)
-        return circuit
+        measurement = self.initialize_circuit()
+        measurement.barrier(range(self.n_qubits))
+        measurement.measure(tq, tc)
+        result = circuit + measurement
+        return result
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         """
