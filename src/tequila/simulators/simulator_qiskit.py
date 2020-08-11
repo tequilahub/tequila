@@ -129,7 +129,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None,
+    def __init__(self, abstract_circuit: QCircuit, variables, qubit_map=None, noise=None,
                  device=None, *args, **kwargs):
         """
 
@@ -139,8 +139,11 @@ class BackendCircuitQiskit(BackendCircuit):
             the circuit to be compiled to qiskit.
         variables: dict:
             variables to compile the circuit with
-        use_mapping: bool:
-            whether or not to build mappings.
+        qubit_map: dictionary:
+            a qubit map which maps the abstract qubits in the abstract_circuit to the qubits on the backend
+            there is no need to initialize the corresponding backend types
+            the dictionary should simply be {int:int} (preferred) or {int:name}
+            if None the default will map to qubits 0 ... n_qubits -1 in the backend
         noise:
             noise to apply to the circuit.
         device:
@@ -161,22 +164,24 @@ class BackendCircuitQiskit(BackendCircuit):
             'SWAP': (lambda c: c.swap, lambda c: c.cswap),
         }
 
-        if use_mapping:
-            qubits = abstract_circuit.qubits
-        else:
-            qubits = range(abstract_circuit.n_qubits)
 
-        n_qubits = len(qubits)
-        self.q = qiskit.QuantumRegister(n_qubits, "q")
-        self.c = qiskit.ClassicalRegister(n_qubits, "c")
-        self.classical_map = {i: self.c[j] for j, i in enumerate(qubits)}
-        self.qubit_map = {i: self.q[j] for j, i in enumerate(qubits)}
+
         self.resolver = {}
         self.tq_to_pars = {}
         self.counter = 0
 
+        if qubit_map is None:
+            n_qubits = abstract_circuit.n_qubits
+        else:
+            n_qubits = max(qubit_map.values()) + 1
+
+        self.q = qiskit.QuantumRegister(n_qubits, "q")
+        self.c  = qiskit.ClassicalRegister(n_qubits, "c")
+
         super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device,
-                         use_mapping=use_mapping, *args, **kwargs)
+                         qubit_map=qubit_map, *args, **kwargs)
+
+        self.classical_map = self.make_classical_map(qubit_map=self.qubit_map)
 
         if noise != None:
             self.noise_lookup = {
@@ -210,6 +215,22 @@ class BackendCircuitQiskit(BackendCircuit):
         else:
             self.pars_to_tq = {v: k for k, v in self.tq_to_pars.items()}
             self.resolver = {k: to_float(v(variables)) for k, v in self.pars_to_tq.items()}
+
+    def make_qubit_map(self, qubits: dict = None):
+        qubit_map = super().make_qubit_map(qubits=qubits)
+        mapped_qubits = [q.number for q in qubit_map.values()]
+        for k, v in qubit_map.items():
+            qubit_map[k].instance = self.q [v.number]
+
+        return qubit_map
+
+    def make_classical_map(self, qubit_map: dict):
+        mapped_qubits = [q.number for q in qubit_map.values()]
+        classical_map = {}
+        for k, v in qubit_map.items():
+            classical_map[k] = self.c[v.number]
+
+        return classical_map
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         """
@@ -321,7 +342,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
         return result
 
-    def fast_return(self, abstract_circuit):
+    def no_translation(self, abstract_circuit):
         return isinstance(abstract_circuit, qiskit.QuantumCircuit)
 
     def initialize_circuit(self, *args, **kwargs):
@@ -372,18 +393,16 @@ class BackendCircuitQiskit(BackendCircuit):
             if len(gate.control) > 2:
                 pass
                 # raise TequilaQiskitException("multi-controls beyond 2 not yet supported for the qiskit backend. Gate was:\n{}".format(gate) )
-            ops[1](circuit)(par, q_controls=[self.qubit_map[c] for c in gate.control],
-                            q_target=self.qubit_map[gate.target[0]], q_ancillae=None, mode='noancilla')
+            ops[1](circuit)(par, q_controls=[self.qubit(c) for c in gate.control],
+                            q_target=self.qubit(gate.target[0]), q_ancillae=None, mode='noancilla')
         else:
-            ops[0](circuit)(par, self.qubit_map[gate.target[0]])
+            ops[0](circuit)(par, self.qubit(gate.target[0]))
 
-    def add_measurement(self, gate, circuit, *args, **kwargs):
+    def add_measurement(self, circuit, target_qubits, *args, **kwargs):
         """
         add a measurement to a circuit.
         Parameters
         ----------
-        gate: MeasurementGateImpl:
-            the measurement gate to apply to the circuit.
         circuit: qiskit.QuantumCircuit:
             the circuit, to apply measurement to.
 
@@ -395,9 +414,11 @@ class BackendCircuitQiskit(BackendCircuit):
         None
 
         """
-        tq = [self.qubit_map[t] for t in gate.target]
-        tc = [self.classical_map[t] for t in gate.target]
+        target_qubits = sorted(target_qubits)
+        tq = [self.qubit(t) for t in target_qubits]
+        tc = [self.classical_map[t] for t in target_qubits]
         circuit.measure(tq, tc)
+        return circuit
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         """
@@ -421,20 +442,9 @@ class BackendCircuitQiskit(BackendCircuit):
             if len(gate.control) > 2:
                 raise TequilaQiskitException(
                     "multi-controls beyond 2 not yet supported for the qiskit backend. Gate was:\n{}".format(gate))
-            ops[len(gate.control)](circuit)(*[self.qubit_map[q] for q in gate.control + gate.target])
+            ops[len(gate.control)](circuit)(*[self.qubit(q) for q in gate.control + gate.target])
         else:
-            ops[0](circuit)(*[self.qubit_map[q] for q in gate.target])
-
-    def make_map(self, qubits):
-        """
-        Todo: Not really sure what this is doing here at all?
-        """
-        # for qiskit this is done in init
-        assert (self.q is not None)
-        assert (self.c is not None)
-        assert (len(self.qubit_map) == len(qubits))
-        assert (len(self.abstract_qubit_map) == len(qubits))
-        return self.qubit_map
+            ops[0](circuit)(*[self.qubit(q) for q in gate.target])
 
     def noise_model_converter(self, nm):
         """

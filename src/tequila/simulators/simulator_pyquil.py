@@ -203,8 +203,6 @@ def depolarizing_map(p):
     return [mat1, mat2, mat3, mat4]
 
 
-
-
 def kraus_tensor(klist, n):
     """
     Recursive function that produces every (n-fold) tensor product of a list of kraus operators.
@@ -346,8 +344,8 @@ class BackendCircuitPyquil(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
-
-    def __init__(self, abstract_circuit: QCircuit, variables, use_mapping=True, noise=None,device=None, *args, **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables, qubit_map=None, noise=None, device=None, *args,
+                 **kwargs):
         """
         Parameters
         ----------
@@ -355,8 +353,11 @@ class BackendCircuitPyquil(BackendCircuit):
             Tequila unitary to compile to Pyquil.
         variables: dict:
             values of all variables in the circuit, to compile with.
-        use_mapping: bool:
-            whether or not to use a mapping that eliminates unnecessary qubits from the circuit.
+        qubit_map: dictionary:
+            a qubit map which maps the abstract qubits in the abstract_circuit to the qubits on the backend
+            there is no need to initialize the corresponding backend types
+            the dictionary should simply be {int:int} (preferred) or {int:name}
+            if None the default will map to qubits 0 ... n_qubits -1 in the backend
         noise:
             Noise to apply to the circuit.
         device:
@@ -382,7 +383,7 @@ class BackendCircuitPyquil(BackendCircuit):
         if device is not None:
             self.compiler_arguments['cc_max'] = True
         super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device,
-                         use_mapping=use_mapping, *args, **kwargs)
+                         qubit_map=qubit_map, *args, **kwargs)
         if self.noise is not None:
             self.noise_lookup = {
                 'amplitude damp': amp_damp_map,
@@ -393,11 +394,12 @@ class BackendCircuitPyquil(BackendCircuit):
                 'depolarizing': depolarizing_map
             }
 
-            if isinstance(self.noise,str):
+            if isinstance(self.noise, str):
                 if self.noise == 'device':
                     pass
                 else:
-                    raise TequilaException('noise was a string: {}, which is not \'device\'. This is not allowed!'.format(self.noise))
+                    raise TequilaException(
+                        'noise was a string: {}, which is not \'device\'. This is not allowed!'.format(self.noise))
 
             else:
                 self.circuit = self.build_noisy_circuit(self.circuit, self.noise)
@@ -465,9 +467,9 @@ class BackendCircuitPyquil(BackendCircuit):
             qc = get_qc('{}q-qvm'.format(str(n_qubits)))
             p.wrap_in_numshots_loop(samples)
         else:
-            qc=self.device
-            p=qc.compile(p)
-            p.attributes['num_shots']=samples
+            qc = self.device
+            p = qc.compile(p)
+            p.attributes['num_shots'] = samples
         stacked = qc.run(p, memory_map=self.resolver)
         return self.convert_measurements(stacked)
 
@@ -506,7 +508,7 @@ class BackendCircuitPyquil(BackendCircuit):
             result._state[BitString.from_array(arr)] = v
         return result
 
-    def fast_return(self, abstract_circuit):
+    def no_translation(self, abstract_circuit):
         return isinstance(abstract_circuit, pyquil.Program)
 
     def initialize_circuit(self, *args, **kwargs):
@@ -552,13 +554,13 @@ class BackendCircuitPyquil(BackendCircuit):
                 par = circuit.declare('theta_{}'.format(str(self.counter)), 'REAL')
                 self.match_par_to_dummy[gate.parameter] = par
                 self.counter += 1
-        pyquil_gate = op(angle=par, qubit=self.qubit_map[gate.target[0]])
+        pyquil_gate = op(angle=par, qubit=self.qubit(gate.target[0]))
         if gate.is_controlled():
             for c in gate.control:
-                pyquil_gate = pyquil_gate.controlled(self.qubit_map[c])
+                pyquil_gate = pyquil_gate.controlled(self.qubit(c))
         circuit += pyquil_gate
 
-    def add_measurement(self, gate, circuit, *args, **kwargs):
+    def add_measurement(self, circuit, target_qubits, *args, **kwargs):
         """
        Add a measurement to the circuit. Used in inherited method create_circuit.
 
@@ -574,10 +576,11 @@ class BackendCircuitPyquil(BackendCircuit):
        -------
        None
        """
-        bits = len(gate.target)
+        bits = len(target_qubits)
         ro = circuit.declare('ro', 'BIT', bits)
-        for i, t in enumerate(gate.target):
-            circuit += pyquil.gates.MEASURE(self.qubit_map[t], ro[i])
+        for i, t in enumerate(sorted(target_qubits)):
+            circuit += pyquil.gates.MEASURE(self.qubit(t), ro[i])
+        return circuit
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         """
@@ -599,13 +602,13 @@ class BackendCircuitPyquil(BackendCircuit):
         try:
             g = op[len(gate.control)]
             if gate.is_controlled():
-                pyquil_gate = g(*[self.qubit_map[q] for q in gate.control + gate.target])
+                pyquil_gate = g(*[self.qubit(q) for q in gate.control + gate.target])
             else:
-                pyquil_gate = g(*[self.qubit_map[t] for t in gate.target])
+                pyquil_gate = g(*[self.qubit(t) for t in gate.target])
         except:
             g = op[0]
             for c in gate.control:
-                pyquil_gate = g(*[self.qubit_map[t] for t in gate.target]).controlled(self.qubit_map[c])
+                pyquil_gate = g(*[self.qubit(t) for t in gate.target]).controlled(self.qubit(c))
 
         circuit += pyquil_gate
 
@@ -678,7 +681,7 @@ class BackendCircuitPyquil(BackendCircuit):
         else:
             self.resolver = None
 
-    def check_device(self,device):
+    def check_device(self, device):
         """
         Verify if a device is valid.
         Parameters
@@ -721,9 +724,10 @@ class BackendCircuitPyquil(BackendCircuit):
             return
 
         else:
-            raise TequilaException('Uninterpretable object {} of type {} passed to check_device!'.format(device,type(device)))
+            raise TequilaException(
+                'Uninterpretable object {} of type {} passed to check_device!'.format(device, type(device)))
 
-    def retrieve_device(self,device):
+    def retrieve_device(self, device):
         """
         return an initialized pyquil quantum computer (or None)
         Parameters
@@ -757,7 +761,9 @@ class BackendCircuitPyquil(BackendCircuit):
             except:
                 raise TequilaException('could not initialize device from dict; received {}'.format(device))
         else:
-            raise TequilaException('Uninterpretable object {} of type {} passed to check_device!'.format(device,type(device)))
+            raise TequilaException(
+                'Uninterpretable object {} of type {} passed to check_device!'.format(device, type(device)))
+
 
 class BackendExpectationValuePyquil(BackendExpectationValue):
     """

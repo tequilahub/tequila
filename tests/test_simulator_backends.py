@@ -24,7 +24,8 @@ def teardown_function(function):
 @pytest.mark.dependencies
 def test_dependencies():
     for package in tequila.simulators.simulator_api.SUPPORTED_BACKENDS:
-        assert (package in tq.simulators.simulator_api.INSTALLED_BACKENDS)
+        if package is not "qulacs_gpu":
+            assert (package in tq.simulators.simulator_api.INSTALLED_BACKENDS)
 
 
 @pytest.mark.parametrize("backend", list(set(
@@ -213,8 +214,10 @@ def test_shot_simple_execution(simulator):
     ac = tq.gates.X(0)
     ac += tq.gates.Ry(target=1, control=0, angle=1.2 / 2)
     ac += tq.gates.H(target=1, control=None)
-    ac += tq.gates.Measurement([0, 1])
-    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1, pyquil_backend="2q-qvm", additional_keyword="Andreas-Dorn")
+    tequila.simulators.simulator_api.simulate(ac,backend=simulator,
+                                              samples=1, pyquil_backend="2q-qvm",
+                                              additional_keyword="Andreas-Dorn",
+                                              read_out_qubits=[0,1])
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
@@ -222,8 +225,7 @@ def test_shot_multitarget(simulator):
     ac = tq.gates.X([0, 1, 2])
     ac += tq.gates.Ry(target=[1, 2], control=0, angle=2.3 / 2)
     ac += tq.gates.H(target=[1], control=None)
-    ac += tq.gates.Measurement([0, 1])
-    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1)
+    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1, read_out_qubits=[0,1])
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
@@ -233,25 +235,20 @@ def test_shot_multi_control(simulator):
     ac += tq.gates.Ry(target=[0], control=[1, 2], angle=2.3 / 2)
     ac += tq.gates.Rz(target=[0], control=[1, 2], angle=2.3 / 2)
     ac += tq.gates.Rx(target=[0], control=[1, 2], angle=2.3 / 2)
-    ac += tq.gates.Measurement([0, 1])
-    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1)
+    tequila.simulators.simulator_api.simulate(ac,backend=simulator, samples=1, read_out_qubits=[0,1])
 
 
 @pytest.mark.skipif(condition='cirq' not in tq.INSTALLED_SAMPLERS or 'qiskit' not in tq.INSTALLED_SAMPLERS,
-                    reason="need qiskit and cirq")
+                    reason="need at least two samplers")
 def test_shot_simple_consistency():
+    samplers = tq.INSTALLED_SAMPLERS.keys()
     ac = create_random_circuit()
-    ac += tq.gates.Measurement([0, 1, 2, 3, 4, 5])
-    print(ac)
-    wfn0 = tequila.simulators.simulator_api.simulate(ac, backend="cirq",samples=1000)
-    wfn1 = tequila.simulators.simulator_api.simulate(ac, backend="qiskit",samples=1000)
-    assert (wfn0 == wfn1)
-    if 'pyquil' in tq.INSTALLED_SAMPLERS:
-        wfn2 = tequila.simulators.simulator_api.simulate(ac, backend='pyquil',samples=1000)
-        print(wfn0)
-        print(wfn1)
-        print(wfn2)
-        assert (wfn0 == wfn2)
+    reference = tequila.simulate(ac, backend=None,samples=1000)
+    for sampler in samplers:
+        wfn = tequila.simulate(ac, backend=sampler,samples=1000)
+        if reference != wfn:
+            raise Exception("failed for {}\n{} vs \n{}".format(sampler, reference, wfn))
+        assert reference == wfn
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())

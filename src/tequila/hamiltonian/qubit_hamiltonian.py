@@ -82,14 +82,24 @@ class PauliString:
 
         self._all_z = all([x.lower() == "z" for x in data.values()])
 
-    def trace_out_qubits(self, qubits, states):
-        # tq convenion is that qubits that are not in the circuit are always in |0>
-        # so the reduced pauli string's coefficient gets multiplied with <0|op|0> factors
-        # where op are the Pauli operators on the additional qubits
-        # these factors are either one (if op=Z) or zero
-
+    def trace_out_qubits(self, qubits, states=None):
+        """
+        See trace_out_qubits in QubitHamiltonian
+        Parameters
+        ----------
+        qubits
+            qubits to trace out
+        states
+            states a|0> + b|1> as list of tuples of the a,b coefficients. Default is just |0>.
+        Returns
+        -------
+            traced out PauliString
+        """
         # |psi> = a|0> + b|1>
         # <psi|op|psi> = |a|**2<0|op|0> + (a*)*b<1|op|0> + (b*)*a<0|op|1> + |b|**2<1|op|1>
+
+        if states is None:
+            states = [(1.0, 0.0)]*len(qubits)
 
         def make_coeff_vec(state_tuple):
             return numpy.asarray([numpy.abs(state_tuple[0])**2, state_tuple[0].conjugate()*state_tuple[1], state_tuple[1].conjugate()*state_tuple[0] ,numpy.abs(state_tuple[1])**2])
@@ -297,7 +307,7 @@ class QubitHamiltonian:
 
         assert (isinstance(self._qubit_operator, QubitOperator))
 
-    def trace_out_qubits(self, qubits, states: list=None):
+    def trace_out_qubits(self, qubits, states: list=None, *args, **kwargs):
         """
         Tracing out qubits with the assumption that they are in the |0> (default) or |1> state
 
@@ -320,7 +330,7 @@ class QubitHamiltonian:
             states = [tuple(s.to_array()) for s in states]
 
         reduced_ps = [ps.trace_out_qubits(qubits=qubits, states=states) for ps in self.paulistrings]
-        return self.from_paulistrings(ps=reduced_ps)
+        return self.from_paulistrings(ps=reduced_ps).simplify(*args, **kwargs)
 
     def __len__(self):
         return len(self._qubit_operator.terms)

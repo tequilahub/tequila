@@ -1,6 +1,6 @@
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
-from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
+from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, GaussianGateImpl, PhaseGateImpl, TrotterParameters
 import typing, numbers
 from tequila.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
@@ -324,11 +324,6 @@ def _initialize_power_gate(name: str, target: typing.Union[list, int], control: 
         return QCircuit.wrap_gate(QGateImpl(name=name, target=target, control=control))
     else:
         return QCircuit.wrap_gate(PowerGateImpl(name=name, power=power, target=target, control=control))
-
-
-@wrap_gate
-def Measurement(target):
-    return MeasurementImpl(name='Measure', target=target)
 
 
 def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None):
