@@ -4,19 +4,20 @@ from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila.utils.misc import to_float
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit.compiler import change_basis
-from tequila.circuit.gates import Measurement
 from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
 
 import numbers, typing, numpy
 
+from dataclasses import dataclass
+
 """
 Todo: Classes are now immutable: 
-       - Map the hamiltonian in the very beginning
        - Add additional features from Skylars project
        - Maybe only keep paulistrings and not full hamiltonian types
 """
+
 
 class BackendCircuit():
     """
@@ -24,11 +25,12 @@ class BackendCircuit():
 
     Attributes
     ----------
+    no_translation:
+        set this attribute in the derived __init__ to prevent translation of abstract_circuits
+        needed for simulators that use native tequila types.
+        Default is false
     abstract_circuit:
         the tequila circuit from which the backend circuit is built.
-    abstract_qubit_map:
-        a dictionary mapping the tequila qubits to a consecutive set.
-        eg: {0:0,3:1,53:2}, if the only qubits in the abstract circuit are 0, 3, and 53.
     circuit:
         the compiled circuit in the backend language.
     compiler_arguments:
@@ -41,6 +43,9 @@ class BackendCircuit():
         the NoiseModel applied to this circuit when sampled.
     qubit_map:
         the mapping from tequila qubits to the qubits of the backend circuit.
+        Dicationary with keys being integers that enumerate the abstract qubits of the abstract_circuit
+        and values being data-structures holding `number` and `instance` where number enumerates the
+        backend qubits and instance is the instance of a backend qubit
     qubits:
         a list of the qubits operated on by the circuit.
 
@@ -67,15 +72,13 @@ class BackendCircuit():
     sample_paulistring:
         sample a circuit with one paulistring of a larger hamiltonian
     sample:
-        same a circuit, measuring an entire hamiltonian.
+        sample a circuit, measuring an entire hamiltonian.
     do_sample:
         subroutine for sampling. must be overwritten by inheritors.
     do_simulate:
         subroutine for wavefunction simulation. must be overwritten by inheritors.
     convert_measurements:
         transform the result of simulation from the backend return type.
-    fast_return:
-        Todo: Jakob what is this?
     make_qubit_map:
         create a dictionary to map the tequila qubit ordering to the backend qubits.
     optimize_circuit:
@@ -83,7 +86,6 @@ class BackendCircuit():
     extract_variables:
         return a list of the variables in the abstract tequila circuit this backend circuit corresponds to.
     """
-
 
     # compiler instructions, override in backends
     # try to reduce True statements as much as possible for new backends
@@ -110,11 +112,25 @@ class BackendCircuit():
         return len(self.qubit_map)
 
     @property
-    def qubits(self) -> typing.Iterable[numbers.Integral]:
-        return tuple(self._qubits)
+    def abstract_qubits(self) -> typing.Iterable[numbers.Integral]:
+        return tuple(list(self.qubit_map.keys()))
 
-    def __init__(self, abstract_circuit: QCircuit, variables, noise=None,device=None,
-                 use_mapping=True, optimize_circuit=True, *args, **kwargs):
+    def qubit(self, abstract_qubit):
+        """
+        Convenience. Gives back a qubit instance of the corresponding backend
+        Parameters
+        ----------
+        abstract_qubit
+            the abstract tequila qubit
+
+        Returns
+        -------
+            instance of backend qubit
+        """
+        return self.qubit_map[abstract_qubit].instance
+
+    def __init__(self, abstract_circuit: QCircuit, variables, noise=None, device=None,
+                 qubit_map=None, optimize_circuit=True, *args, **kwargs):
         """
 
         Parameters
@@ -127,15 +143,18 @@ class BackendCircuit():
             noise to apply to abstract circuit.
         device: optional:
             device on which to sample (or emulate sampling) abstract circuit.
-        use_mapping: bool:
-            whether or not to use qubit mapping. Defaults to true.
+        qubit_map: dictionary:
+            a qubit map which maps the abstract qubits in the abstract_circuit to the qubits on the backend
+            there is no need to initialize the corresponding backend types
+            the dictionary should simply be {int:int} (preferred) or {int:name}
+            if None the default will map to qubits 0 ... n_qubits -1 in the backend
         optimize_circuit: bool:
             whether or not to attempt backend depth optimization. Defaults to true.
         args
         kwargs
         """
+        self.no_translation = False
         self._variables = tuple(abstract_circuit.extract_variables())
-        self.use_mapping = use_mapping
 
         compiler_arguments = self.compiler_arguments
         if noise is not None:
@@ -147,21 +166,20 @@ class BackendCircuit():
         # compile the abstract_circuit
         c = compiler.Compiler(**compiler_arguments)
 
-        if self.use_mapping:
-            qubits = abstract_circuit.qubits
-        else:
-            qubits = range(abstract_circuit.n_qubits)
+        if qubit_map is None:
+            qubit_map = {q: i for i, q in enumerate(abstract_circuit.qubits)}
 
-        self._qubits = qubits
-        self.abstract_qubit_map = {q: i for i, q in enumerate(qubits)}
-        self.qubit_map = self.make_qubit_map(qubits)
+        # qubit map is initialized to have BackendQubits as values (they carry number and instance attributes)
+        self.qubit_map = self.make_qubit_map(qubit_map)
 
+        # pre-compilation (still an abstract ciruit, but with gates decomposed depending on backend requirements)
         compiled = c(abstract_circuit)
         self.abstract_circuit = compiled
+
         # translate into the backend object
         self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
 
-        if optimize_circuit and noise ==None:
+        if optimize_circuit and noise is None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
         self.noise = noise
@@ -195,13 +213,15 @@ class BackendCircuit():
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
             if variables is None or set(self._variables) != set(variables.keys()):
-                raise TequilaException("BackendCircuit received not all variables. Circuit depends on variables {}, you gave {}".format(self._variables, variables))
+                raise TequilaException(
+                    "BackendCircuit received not all variables. Circuit depends on variables {}, you gave {}".format(
+                        self._variables, variables))
         if samples is None:
             return self.simulate(variables=variables, noise=self.noise, *args, **kwargs)
         else:
             return self.sample(variables=variables, samples=samples, noise=self.noise, *args, **kwargs)
 
-    def create_circuit(self, abstract_circuit: QCircuit, *args, **kwargs):
+    def create_circuit(self, abstract_circuit: QCircuit, circuit=None, *args, **kwargs):
         """
         build the backend specific circuit from the abstract tequila circuit.
 
@@ -209,6 +229,8 @@ class BackendCircuit():
         ----------
         abstract_circuit: QCircuit:
             the circuit to build in the backend
+        circuit: BackendCircuitType (optional):
+            Add to this already initialized circuit (not all backends support + operation)
         args
         kwargs
 
@@ -218,22 +240,23 @@ class BackendCircuit():
             The circuit, compiled to the backend.
         """
 
-        if self.fast_return(abstract_circuit):
+        # Backend uses native tequila structures
+        if self.no_translation:
             return abstract_circuit
 
-        result = self.initialize_circuit(*args,**kwargs)
+        result = circuit
+        if result is None:
+            result = self.initialize_circuit(*args, **kwargs)
 
         for g in abstract_circuit.gates:
             if g.is_parametrized():
-                self.add_parametrized_gate(g, result, *args,**kwargs)
+                self.add_parametrized_gate(g, result, *args, **kwargs)
             else:
-                if not g.name == 'Measure':
-                    self.add_basic_gate(g, result, *args, **kwargs)
-                else:
-                    self.add_measurement(g, result, *args, **kwargs)
+                self.add_basic_gate(g, result, *args, **kwargs)
+
         return result
 
-    def check_device(self,device):
+    def check_device(self, device):
         """
         Verify if a device can be used in the selected backend. Overwritten by inheritors.
         Parameters
@@ -251,7 +274,7 @@ class BackendCircuit():
         if device is not None:
             TequilaException('Devices not enabled for {}'.format(str(type(self))))
 
-    def retrieve_device(self,device):
+    def retrieve_device(self, device):
         """
         get the instantiated backend device object, from user provided object (e.g, a string).
 
@@ -278,7 +301,7 @@ class BackendCircuit():
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
-    def add_measurement(self,gate, circuit, *args, **kwargs):
+    def add_measurement(self, circuit, target_qubits, *args, **kwargs):
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def initialize_circuit(self, *args, **kwargs):
@@ -320,19 +343,16 @@ class BackendCircuit():
             initial_state = list(initial_state.keys())[0].integer
 
         all_qubits = [i for i in range(self.abstract_circuit.n_qubits)]
-        if self.use_mapping:
-            active_qubits = self.abstract_circuit.qubits
-            # maps from reduced register to full register
-            keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
-        else:
-            keymap = KeyMapSubregisterToRegister(subregister=all_qubits, register=all_qubits)
+        active_qubits = self.abstract_circuit.qubits
+        # maps from reduced register to full register
+        keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
 
         result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args,
                                   **kwargs)
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
-    def sample(self, variables, samples, *args, **kwargs):
+    def sample(self, variables, samples, read_out_qubits=None, circuit=None, *args, **kwargs):
         """
         Sample the circuit. If circuit natively equips paulistrings, sample therefrom.
         Parameters
@@ -341,6 +361,8 @@ class BackendCircuit():
             the variables with which to sample the circuit.
         samples: int:
             the number of samples to take.
+        read_out_qubits: int:
+            target qubits to measure (default is all)
         args
         kwargs
 
@@ -351,32 +373,69 @@ class BackendCircuit():
 
         """
         self.update_variables(variables)
-        return self.do_sample(samples=samples, circuit=self.circuit, *args, **kwargs)
+        if read_out_qubits is None:
+            read_out_qubits = self.abstract_qubits
 
-    def sample_all_z_hamiltonian(self, samples: int, hamiltonian, *args, **kwargs):
-        # make measurement instruction
-        qubits = [q for q in self.abstract_qubit_map]
-        if len(qubits) == 0:
-            return sum([ps.coeff for ps in hamiltonian.paulistrings])
-        measure = Measurement(target=qubits)
-        circuit = self.circuit + self.create_circuit(measure)
+        if len(read_out_qubits) == 0:
+            raise Exception("read_out_qubits are empty")
+
+        if circuit is None:
+            circuit = self.add_measurement(circuit=self.circuit, target_qubits=read_out_qubits)
+        else:
+            circuit = self.add_measurement(circuit=circuit, target_qubits=read_out_qubits)
+        return self.do_sample(samples=samples, circuit=circuit, read_out_qubits=read_out_qubits, *args, **kwargs)
+
+    def sample_all_z_hamiltonian(self, samples: int, hamiltonian, variables, *args, **kwargs):
+        """
+        Sample from a Hamiltonian which only consists of Pauli-Z and unit operators
+        Parameters
+        ----------
+        samples
+            number of samples to take
+        hamiltonian
+            the tequila hamiltonian
+        args
+            arguments for do_sample
+        kwargs
+            keyword arguments for do_sample
+        Returns
+        -------
+            samples, evaluated and summed Hamiltonian expectationvalue
+        """
+        # make measurement instruction (measure all qubits in the Hamiltonian that are also in the circuit)
+        abstract_qubits_H = hamiltonian.qubits
+        assert len(abstract_qubits_H) != 0 # this case should be filtered out before
+        # assert that the Hamiltonian was mapped before
+        if not all(q in self.qubit_map.keys() for q in abstract_qubits_H):
+            raise TequilaException(
+                "Qubits in {}-qubit Hamiltonian were not traced out for {}-qubit circuit".format(hamiltonian.n_qubits,
+                                                                                                 self.n_qubits))
+
         # run simulators
-        counts = self.do_sample(samples=samples, circuit=circuit, *args, **kwargs)
+        counts = self.sample(samples=samples, read_out_qubits=abstract_qubits_H, variables=variables, *args, **kwargs)
+        read_out_map = {q: i for i, q in enumerate(abstract_qubits_H)}
+
         # compute energy
         E = 0.0
         for paulistring in hamiltonian.paulistrings:
             n_samples = 0
             Etmp = 0.0
             for key, count in counts.items():
-                ps_support = [self.abstract_qubit_map[i] for i in paulistring._data.keys() if i in self.abstract_qubit_map]
-                parity = [k for i, k in enumerate(key.array) if i in ps_support].count(1)
+                # get all the non-trivial qubits of the current PauliString (meaning all Z operators)
+                # and mapp them to the backend qubits
+                mapped_ps_support = [read_out_map[i] for i in paulistring._data.keys()]
+                # count all measurements that resulted in |1> for those qubits
+                parity = [k for i, k in enumerate(key.array) if i in mapped_ps_support].count(1)
+                # evaluate the PauliString
                 sign = (-1) ** parity
                 Etmp += sign * count
                 n_samples += count
-            E += (Etmp /samples) * paulistring.coeff
+            E += (Etmp / samples) * paulistring.coeff
+            # small failsafe
+            assert n_samples == samples
         return E
 
-    def sample_paulistring(self, samples: int, paulistring, *args,
+    def sample_paulistring(self, samples: int, paulistring, variables, *args,
                            **kwargs) -> numbers.Real:
         """
         Sample an individual pauli word (pauli string) and return the average result thereof.
@@ -395,48 +454,38 @@ class BackendCircuit():
             the average result of sampling the chosen paulistring
         """
 
+        not_in_u = [q for q in paulistring.qubits if q not in self.abstract_qubits]
+        reduced_ps = paulistring.trace_out_qubits(qubits=not_in_u)
+        if reduced_ps.coeff == 0.0:
+            return 0.0
+        if len(reduced_ps._data.keys()) == 0:
+            return reduced_ps.coeff
+
         # make basis change and translate to backend
         basis_change = QCircuit()
-        not_in_u = []
-        # all indices of the paulistring which are not part of the circuit i.e. will always have the same outcome
         qubits = []
-        for idx, p in paulistring.items():
-            if idx not in self.abstract_qubit_map:
-                not_in_u.append(idx)
-            else:
-                qubits.append(idx)
-                basis_change += change_basis(target=idx, axis=p)
+        for idx, p in reduced_ps.items():
+            qubits.append(idx)
+            basis_change += change_basis(target=idx, axis=p)
 
-        # check the constant parts as <0|pauli|0>, can only be 0 or 1
-        # so we can do a fast return of one of them is not Z
-        for i in not_in_u:
-            pauli = paulistring[i]
-            if pauli.upper() != "Z":
-                return 0.0
+        # add basis change to the circuit
+        circuit = self.create_circuit(circuit=self.circuit, abstract_circuit=basis_change)
+        # run simulators
+        counts = self.sample(samples=samples, circuit=circuit, read_out_qubits=qubits, variables=variables, *args,
+                             **kwargs)
+        # compute energy
+        E = 0.0
+        n_samples = 0
+        for key, count in counts.items():
+            parity = key.array.count(1)
+            sign = (-1) ** parity
+            E += sign * count
+            n_samples += count
+        assert n_samples == samples
+        E = E / samples * paulistring.coeff
+        return E
 
-        # make measurement instruction
-        measure = QCircuit()
-        if len(qubits) == 0:
-            # no measurement instructions for a constant term as paulistring
-            return paulistring.coeff
-        else:
-            measure += Measurement(target=qubits)
-            circuit = self.circuit + self.create_circuit(basis_change + measure)
-            # run simulators
-            counts = self.do_sample(samples=samples, circuit=circuit, *args, **kwargs)
-            # compute energy
-            E = 0.0
-            n_samples = 0
-            for key, count in counts.items():
-                parity = key.array.count(1)
-                sign = (-1) ** parity
-                E += sign * count
-                n_samples += count
-            assert n_samples == samples
-            E = E / samples * paulistring.coeff
-            return E
-
-    def do_sample(self, samples, circuit, noise, *args, **kwargs) -> QubitWaveFunction:
+    def do_sample(self, samples, circuit, noise, abstract_qubits=None, *args, **kwargs) -> QubitWaveFunction:
         """
         helper function for sampling. MUST be overwritten by inheritors.
 
@@ -450,6 +499,8 @@ class BackendCircuit():
             Not necessarily self.circuit!
         noise:
             the noise to apply to the sampled circuit.
+        abstract_qubits:
+            specify which qubits to measure. Default is all
         args
         kwargs
 
@@ -460,7 +511,6 @@ class BackendCircuit():
 
         """
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
-
 
     def do_simulate(self, variables, initial_state, *args, **kwargs) -> QubitWaveFunction:
         """
@@ -486,20 +536,25 @@ class BackendCircuit():
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
         TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
-    def fast_return(self, abstract_circuit):
+    def initialize_qubit(self, number: int):
         """
-        Todo: Jakob, what is this?
+
+        In case the backend has its own Qubit Types,
+        this function should be overwritten by inheritors.
+
         Parameters
         ----------
-        abstract_circuit
+        number
+            the qubit number
 
         Returns
         -------
+            Initialized backend qubit type
 
         """
-        return True
+        return number
 
-    def make_qubit_map(self, qubits):
+    def make_qubit_map(self, qubits: dict):
         """
         Build the mapping between abstract qubits.
 
@@ -508,14 +563,36 @@ class BackendCircuit():
         ----------
         qubits:
             the qubits to map onto.
-
+            If given as a dictionary, the map is already defined
+            If given as a list the map will be those qubits mapped to 0 .... n_qubit-1 of the backend
         Returns
         -------
         Dict
             the dictionary that maps the qubits of the abstract circuits to an ordered sequence of integers.
+            keys are the abstract qubit integers
+            values are the backend qubits
+            those are data structures which contain name and instance
+            where number is the qubit identifier and instance the instance of the backend qubit
+            if the backend does not require a special object for qubits the instance should be the same as number
         """
-        assert (len(self.abstract_qubit_map) == len(qubits))
-        return self.abstract_qubit_map
+
+        @dataclass
+        class BackendQubit:
+            number: int = None
+            instance: object = None
+
+        if qubits is None:
+            qubits = range(self.abstract_circuit.n_qubits)
+
+        abstract_map = qubits
+        if not hasattr(qubits, "keys") or not hasattr(qubits, "values"):
+            abstract_map = {q: i for i, q in enumerate(qubits)}
+
+        if all([hasattr(i, "number") and hasattr(i, "instance") for i in abstract_map.values()]):
+            # qubit_map already initialized backend_types
+            return qubits
+
+        return {k: BackendQubit(number=v, instance=self.initialize_qubit(v)) for k, v in abstract_map.items()}
 
     def optimize_circuit(self, circuit, *args, **kwargs):
         """
@@ -568,7 +645,11 @@ class BackendExpectationValue:
     Attributes
     ----------
     H:
-        the tequila Hamiltonian of the expectationvalue
+        the reduced tequila Hamiltonian(s) of the expectationvalue
+        reduction procedure is tracing out all qubits that are not part of the unitary U
+        stored as a tuple to evaluate multiple Hamiltonians over the same circuit faster in pure simulations
+    abstract_H:
+        the original (non-reduced) Hamiltonian(s)
     n_qubits:
         how many qubits appear in the expectationvalue.
     U:
@@ -638,8 +719,11 @@ class BackendExpectationValue:
             device for compilation of circuit
         """
         self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device)
-        self._H = self.initialize_hamiltonian(E.H)
+        self._abstract_H = E.H
         self._abstract_hamiltonians = E.H
+        self._reduced_hamiltonians = self.reduce_hamiltonians(self._abstract_hamiltonians)
+        self._H = self.initialize_hamiltonian(self._reduced_hamiltonians)
+
         self._variables = E.extract_variables()
         self._contraction = E._contraction
         self._shape = E._shape
@@ -669,13 +753,33 @@ class BackendExpectationValue:
         else:
             return self._contraction(data)
 
-    def initialize_hamiltonian(self, H):
-        """return a tuple with one member, H"""
-        return tuple(H)
+    def reduce_hamiltonians(self, abstract_hamiltonians: tuple) -> tuple:
+        """
+
+        Parameters
+        ----------
+        abstract_hamiltonians
+            tuple of abstract tequila Hamiltonians
+        Returns
+        -------
+            reduces Hamiltonians where the qubits that are not defined in self.U are traced out
+        """
+        abstract_qubits_of_u = self.U.qubit_map.keys()
+        reduced = []
+        for H in abstract_hamiltonians:
+            abstract_qubits_of_h = H.qubits
+            not_in_u = [q for q in abstract_qubits_of_h if q not in abstract_qubits_of_u]
+            reduced.append(H.trace_out_qubits(qubits=not_in_u))
+
+        return tuple(reduced)
+
+    def initialize_hamiltonian(self, hamiltonians: tuple) -> tuple:
+        return hamiltonians
 
     def initialize_unitary(self, U, variables, noise, device):
         """return a compiled unitary"""
-        return self.BackendCircuitType(abstract_circuit=U, variables=variables, device=device, use_mapping=self.use_mapping,
+        return self.BackendCircuitType(abstract_circuit=U, variables=variables, device=device,
+                                       use_mapping=self.use_mapping,
                                        noise=noise)
 
     def update_variables(self, variables):
@@ -703,13 +807,17 @@ class BackendExpectationValue:
         self.update_variables(variables)
 
         result = []
-        for H in self._abstract_hamiltonians:
+        for H in self._reduced_hamiltonians:
             E = 0.0
-            if H.is_all_z():
-               E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, *args, **kwargs)
+            if len(H.qubits) == 0:
+                E = sum([ps.coeff for ps in H.paulistrings])
+            elif H.is_all_z():
+                E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, variables=variables, *args,
+                                                    **kwargs)
             else:
                 for ps in H.paulistrings:
-                    E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
+                    E += self.U.sample_paulistring(samples=samples, paulistring=ps, variables=variables, *args,
+                                                   **kwargs)
             result.append(to_float(E))
         return numpy.asarray(result)
 
@@ -733,20 +841,11 @@ class BackendExpectationValue:
         result = []
         for H in self.H:
             final_E = 0.0
-            if self.use_mapping:
-                # The hamiltonian can be defined on more qubits as the unitaries
-                qubits_h = H.qubits
-                qubits_u = self.U.qubits
-                all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit() + 1)))
-                keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
-            else:
-                if H.qubits != self.U.qubits:
-                    raise TequilaException(
-                        "Can not compute expectation value without using qubit mappings."
-                        " Your Hamiltonian and your Unitary do not act on the same set of qubits. "
-                        "Hamiltonian acts on {}, Unitary acts on {}".format(
-                            H.qubits, self.U.qubits))
-                keymap = KeyMapSubregisterToRegister(subregister=self.U.qubits, register=self.U.qubits)
+            # The hamiltonian can be defined on more qubits as the unitaries
+            qubits_h = H.qubits
+            qubits_u = self.U.abstract_qubits
+            all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit() + 1)))
+            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
             # TODO inefficient, let the backend do it if possible or interface some library
             simresult = self.U.simulate(variables=variables, *args, **kwargs)
             wfn = simresult.apply_keymap(keymap=keymap)
@@ -754,24 +853,3 @@ class BackendExpectationValue:
 
             result.append(to_float(final_E))
         return numpy.asarray(result)
-
-    def sample_paulistring(self, samples: int,
-                           paulistring,*args,**kwargs) -> numbers.Real:
-        """
-        wrapper over the sample_paulistring method of BackendCircuit
-        Parameters
-        ----------
-        samples: int:
-            the number of samples to take
-        paulistring:
-            the paulistring to be sampled
-        args
-        kwargs
-
-        Returns
-        -------
-        number:
-            the result of simulating a single paulistring
-        """
-
-        return self.U.sample_paulistring(samples=samples, paulistring=paulistring,*args,**kwargs)

@@ -1,7 +1,7 @@
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, Y
-from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, MeasurementImpl, \
+from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
 from tequila import Variable
@@ -388,9 +388,6 @@ def compile_multitarget(gate, variables=None) -> QCircuit:
         return QCircuit.wrap_gate(gate)
 
     if len(targets) == 1:
-        return QCircuit.wrap_gate(gate)
-
-    if isinstance(gate, MeasurementImpl):
         return QCircuit.wrap_gate(gate)
 
     if gate.name.lower() in ["swap", "iswap"]:
