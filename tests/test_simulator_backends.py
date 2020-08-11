@@ -24,7 +24,7 @@ def teardown_function(function):
 @pytest.mark.dependencies
 def test_dependencies():
     for package in tequila.simulators.simulator_api.SUPPORTED_BACKENDS:
-        if package is not "qulacs_gpu":
+        if package != "qulacs_gpu":
             assert (package in tq.simulators.simulator_api.INSTALLED_BACKENDS)
 
 
