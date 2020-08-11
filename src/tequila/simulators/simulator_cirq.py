@@ -216,8 +216,8 @@ class BackendCircuitCirq(BackendCircuit):
         QubitWaveFunction:
             the result of sampled measurement, as a tequila wavefunction.
         """
-        return self.convert_measurements(
-            cirq.sample(program=circuit, param_resolver=self.resolver, repetitions=samples))
+        print("samples=", samples)
+        return self.convert_measurements(cirq.sample(program=circuit, param_resolver=self.resolver, repetitions=samples))
 
     def no_translation(self, abstract_circuit):
         return isinstance(abstract_circuit, cirq.Circuit)
@@ -310,8 +310,7 @@ class BackendCircuitCirq(BackendCircuit):
         """
         target_qubits = sorted(target_qubits)
         cirq_gate = cirq.MeasurementGate(len(target_qubits)).on(*[self.qubit(t) for t in target_qubits])
-        circuit.append(cirq_gate)
-        return circuit
+        return circuit + cirq_gate # avoid inplace operations for measurements
 
     def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
         """
