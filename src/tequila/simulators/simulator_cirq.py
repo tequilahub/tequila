@@ -216,7 +216,6 @@ class BackendCircuitCirq(BackendCircuit):
         QubitWaveFunction:
             the result of sampled measurement, as a tequila wavefunction.
         """
-        print("samples=", samples)
         return self.convert_measurements(cirq.sample(program=circuit, param_resolver=self.resolver, repetitions=samples))
 
     def no_translation(self, abstract_circuit):
@@ -370,26 +369,10 @@ class BackendCircuitCirq(BackendCircuit):
                         line = None
                         pass
                 if circuit is None:
-                    print(device)
-                    raise TequilaException('could not optimize for the device above')
-            ### under construction
+                    raise TequilaCirqException('could not optimize for device={}'.format(device))
+
             else:
-                '''
-                if isinstance(device,cirq.NeutralAtomDevice):
-                    line = cirq.google.line_on_device(device, length=len(self.abstract_circuit.qubits))
-                    circuit = cirq.ConvertToNeutralAtomGates(ignore_failures=ignore_failures)(c)
-                elif isinstance(device,cirq.IonDevice):
-                    circuit = cirq.ConvertToIonGates(ignore_failures=ignore_failures)(c)
-                else:
-                    raise TequilaException('sorry, I have not idea what to do with this device.')
-                if circuit is None:
-                    if ignore_failures is False:
-                        print('could not optimize circuit for device ', device, '; will ignore failures this time.')
-                        return self.build_device_circuit(ignore_failures=True)
-                    else:
-                        print(device)
-                        raise TequilaException('could not optimize for above device')
-                '''
+                ### under construction (potentially on other branches)
                 raise TequilaException('Only known and Xmon devices currently functional. Sorry!')
         else:
             raise TequilaException(

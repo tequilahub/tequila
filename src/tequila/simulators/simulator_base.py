@@ -14,7 +14,6 @@ from dataclasses import dataclass
 
 """
 Todo: Classes are now immutable: 
-       - Map the hamiltonian in the very beginning
        - Add additional features from Skylars project
        - Maybe only keep paulistrings and not full hamiltonian types
 """
@@ -32,9 +31,6 @@ class BackendCircuit():
         Default is false
     abstract_circuit:
         the tequila circuit from which the backend circuit is built.
-    abstract_qubit_map:
-        a dictionary mapping the tequila qubits to a consecutive set.
-        eg: {0:0,3:1,53:2}, if the only qubits in the abstract circuit are 0, 3, and 53.
     circuit:
         the compiled circuit in the backend language.
     compiler_arguments:
@@ -76,7 +72,7 @@ class BackendCircuit():
     sample_paulistring:
         sample a circuit with one paulistring of a larger hamiltonian
     sample:
-        same a circuit, measuring an entire hamiltonian.
+        sample a circuit, measuring an entire hamiltonian.
     do_sample:
         subroutine for sampling. must be overwritten by inheritors.
     do_simulate:
@@ -427,8 +423,7 @@ class BackendCircuit():
                 n_samples += count
             E += (Etmp / samples) * paulistring.coeff
             # small failsafe
-            print(n_samples, " vs ", samples, " wfn = ", counts)
-            #assert n_samples == samples
+            assert n_samples == samples
         return E
 
     def sample_paulistring(self, samples: int, paulistring, *args,
