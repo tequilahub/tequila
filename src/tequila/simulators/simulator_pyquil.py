@@ -577,10 +577,11 @@ class BackendCircuitPyquil(BackendCircuit):
        None
        """
         bits = len(target_qubits)
-        ro = circuit.declare('ro', 'BIT', bits)
+        measurements = self.initialize_circuit()
+        ro = measurements.declare('ro', 'BIT', bits)
         for i, t in enumerate(sorted(target_qubits)):
-            circuit += pyquil.gates.MEASURE(self.qubit(t), ro[i])
-        return circuit
+            measurements += pyquil.gates.MEASURE(self.qubit(t), ro[i])
+        return circuit + measurements # avoid inplace operations
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         """

@@ -14,7 +14,6 @@ from dataclasses import dataclass
 
 """
 Todo: Classes are now immutable: 
-       - Map the hamiltonian in the very beginning
        - Add additional features from Skylars project
        - Maybe only keep paulistrings and not full hamiltonian types
 """
@@ -32,9 +31,6 @@ class BackendCircuit():
         Default is false
     abstract_circuit:
         the tequila circuit from which the backend circuit is built.
-    abstract_qubit_map:
-        a dictionary mapping the tequila qubits to a consecutive set.
-        eg: {0:0,3:1,53:2}, if the only qubits in the abstract circuit are 0, 3, and 53.
     circuit:
         the compiled circuit in the backend language.
     compiler_arguments:
@@ -76,7 +72,7 @@ class BackendCircuit():
     sample_paulistring:
         sample a circuit with one paulistring of a larger hamiltonian
     sample:
-        same a circuit, measuring an entire hamiltonian.
+        sample a circuit, measuring an entire hamiltonian.
     do_sample:
         subroutine for sampling. must be overwritten by inheritors.
     do_simulate:
@@ -132,7 +128,6 @@ class BackendCircuit():
             instance of backend qubit
         """
         return self.qubit_map[abstract_qubit].instance
-
 
     def __init__(self, abstract_circuit: QCircuit, variables, noise=None, device=None,
                  qubit_map=None, optimize_circuit=True, *args, **kwargs):
@@ -357,7 +352,7 @@ class BackendCircuit():
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
-    def sample(self, variables, samples, read_out_qubits=None, *args, **kwargs):
+    def sample(self, variables, samples, read_out_qubits=None, circuit=None, *args, **kwargs):
         """
         Sample the circuit. If circuit natively equips paulistrings, sample therefrom.
         Parameters
@@ -381,8 +376,14 @@ class BackendCircuit():
         if read_out_qubits is None:
             read_out_qubits = self.abstract_qubits
 
-        circuit = self.add_measurement(circuit=self.circuit, target_qubits=read_out_qubits)
-        return self.do_sample(samples=samples, circuit=circuit, *args, **kwargs)
+        if len(read_out_qubits) == 0:
+            raise Exception("read_out_qubits are empty")
+
+        if circuit is None:
+            circuit = self.add_measurement(circuit=self.circuit, target_qubits=read_out_qubits)
+        else:
+            circuit = self.add_measurement(circuit=circuit, target_qubits=read_out_qubits)
+        return self.do_sample(samples=samples, circuit=circuit, read_out_qubits=read_out_qubits, *args, **kwargs)
 
     def sample_all_z_hamiltonian(self, samples: int, hamiltonian, variables, *args, **kwargs):
         """
@@ -403,12 +404,16 @@ class BackendCircuit():
         """
         # make measurement instruction (measure all qubits in the Hamiltonian that are also in the circuit)
         abstract_qubits_H = hamiltonian.qubits
+        assert len(abstract_qubits_H) != 0 # this case should be filtered out before
         # assert that the Hamiltonian was mapped before
         if not all(q in self.qubit_map.keys() for q in abstract_qubits_H):
-            raise TequilaException("Qubits in {}-qubit Hamiltonian were not traced out for {}-qubit circuit".format(hamiltonian.n_qubits, self.n_qubits))
+            raise TequilaException(
+                "Qubits in {}-qubit Hamiltonian were not traced out for {}-qubit circuit".format(hamiltonian.n_qubits,
+                                                                                                 self.n_qubits))
 
         # run simulators
         counts = self.sample(samples=samples, read_out_qubits=abstract_qubits_H, variables=variables, *args, **kwargs)
+        read_out_map = {q: i for i, q in enumerate(abstract_qubits_H)}
 
         # compute energy
         E = 0.0
@@ -418,7 +423,7 @@ class BackendCircuit():
             for key, count in counts.items():
                 # get all the non-trivial qubits of the current PauliString (meaning all Z operators)
                 # and mapp them to the backend qubits
-                mapped_ps_support = [self.qubit_map[i].number for i in paulistring._data.keys()]
+                mapped_ps_support = [read_out_map[i] for i in paulistring._data.keys()]
                 # count all measurements that resulted in |1> for those qubits
                 parity = [k for i, k in enumerate(key.array) if i in mapped_ps_support].count(1)
                 # evaluate the PauliString
@@ -430,7 +435,7 @@ class BackendCircuit():
             assert n_samples == samples
         return E
 
-    def sample_paulistring(self, samples: int, paulistring, *args,
+    def sample_paulistring(self, samples: int, paulistring, variables, *args,
                            **kwargs) -> numbers.Real:
         """
         Sample an individual pauli word (pauli string) and return the average result thereof.
@@ -449,7 +454,8 @@ class BackendCircuit():
             the average result of sampling the chosen paulistring
         """
 
-        reduced_ps = paulistring.trace_out_qubits(qubits=self.abstract_qubits)
+        not_in_u = [q for q in paulistring.qubits if q not in self.abstract_qubits]
+        reduced_ps = paulistring.trace_out_qubits(qubits=not_in_u)
         if reduced_ps.coeff == 0.0:
             return 0.0
         if len(reduced_ps._data.keys()) == 0:
@@ -463,9 +469,10 @@ class BackendCircuit():
             basis_change += change_basis(target=idx, axis=p)
 
         # add basis change to the circuit
-        circuit =  self.create_circuit(circuit=self.circuit, abstract_circuit=basis_change)
+        circuit = self.create_circuit(circuit=self.circuit, abstract_circuit=basis_change)
         # run simulators
-        counts = self.do_sample(samples=samples, circuit=circuit, abstract_qubits=qubits, *args, **kwargs)
+        counts = self.sample(samples=samples, circuit=circuit, read_out_qubits=qubits, variables=variables, *args,
+                             **kwargs)
         # compute energy
         E = 0.0
         n_samples = 0
@@ -581,11 +588,11 @@ class BackendCircuit():
         if not hasattr(qubits, "keys") or not hasattr(qubits, "values"):
             abstract_map = {q: i for i, q in enumerate(qubits)}
 
-        if all([hasattr(i,"number") and hasattr(i, "instance") for i in abstract_map.values()]):
-            #qubit_map already initialized backend_types
+        if all([hasattr(i, "number") and hasattr(i, "instance") for i in abstract_map.values()]):
+            # qubit_map already initialized backend_types
             return qubits
 
-        return {k:BackendQubit(number=v,instance=self.initialize_qubit(v)) for k,v in abstract_map.items()}
+        return {k: BackendQubit(number=v, instance=self.initialize_qubit(v)) for k, v in abstract_map.items()}
 
     def optimize_circuit(self, circuit, *args, **kwargs):
         """
@@ -802,11 +809,15 @@ class BackendExpectationValue:
         result = []
         for H in self._reduced_hamiltonians:
             E = 0.0
-            if H.is_all_z():
-                E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, variables=variables, *args, **kwargs)
+            if len(H.qubits) == 0:
+                E = sum([ps.coeff for ps in H.paulistrings])
+            elif H.is_all_z():
+                E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, variables=variables, *args,
+                                                    **kwargs)
             else:
                 for ps in H.paulistrings:
-                    E += self.sample_paulistring(samples=samples, paulistring=ps, *args, **kwargs)
+                    E += self.U.sample_paulistring(samples=samples, paulistring=ps, variables=variables, *args,
+                                                   **kwargs)
             result.append(to_float(E))
         return numpy.asarray(result)
 
@@ -842,24 +853,3 @@ class BackendExpectationValue:
 
             result.append(to_float(final_E))
         return numpy.asarray(result)
-
-    def sample_paulistring(self, samples: int,
-                           paulistring, *args, **kwargs) -> numbers.Real:
-        """
-        wrapper over the sample_paulistring method of BackendCircuit
-        Parameters
-        ----------
-        samples: int:
-            the number of samples to take
-        paulistring:
-            the paulistring to be sampled
-        args
-        kwargs
-
-        Returns
-        -------
-        number:
-            the result of simulating a single paulistring
-        """
-
-        return self.U.sample_paulistring(samples=samples, paulistring=paulistring, *args, **kwargs)

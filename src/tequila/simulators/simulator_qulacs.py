@@ -504,7 +504,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         for H in self._reduced_hamiltonians: # those are the hamiltonians which where non-used qubits are already traced out
             E = 0.0
             if H.is_all_z() and not self.U.has_noise:
-                E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, variables=variables, *args, **kwargs)
+                E = super().sample(samples=samples, variables=variables, *args, **kwargs)
             else:
                 for ps in H.paulistrings:
                     # change basis, measurement is destructive so the state will be copied

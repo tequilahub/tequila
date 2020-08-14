@@ -291,11 +291,11 @@ class OptimizerSciPy(Optimizer):
                 self.history.energies = E.history
                 self.history.angles = E.history_angles
 
-        # get the global minimum of all visited points
-        data = zip(E.history, E.history_angles)
-        data = sorted(data, key=lambda x: x[0])
-        E_final = data[0][0]
-        angles_final = data[0][1]
+        # some scipy methods always give back the last value and not the minimum (e.g. cobyla)
+        ea = sorted(zip(E.history, E.history_angles), key=lambda x: x[0])
+        E_final = ea[0][0]
+        angles_final = ea[0][1] #dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
+        angles_final = {**angles_final, **passive_angles}
 
         return SciPyResults(energy=E_final, history=self.history, variables=format_variable_dictionary(angles_final), scipy_result=res)
 
