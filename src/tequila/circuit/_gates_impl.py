@@ -133,13 +133,6 @@ class QGateImpl:
         mapped.finalize()
         return mapped
 
-
-class MeasurementImpl(QGateImpl):
-
-    def __init__(self, name, target):
-        super().__init__(name=name, target=tuple(sorted(list_assignement(target))))
-
-
 class ParametrizedGateImpl(QGateImpl, ABC):
     '''
     the base class from which all parametrized gates inherit. User defined gates, when implemented, are liable to be members of this class directly.

@@ -318,7 +318,7 @@ class Optimizer:
         else:
             self.print_level = print_level
 
-        if self.silent:
+        if silent:
             self.print_level = 0
 
         self.samples = samples
