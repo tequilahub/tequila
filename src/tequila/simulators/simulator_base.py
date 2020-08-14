@@ -217,7 +217,7 @@ class BackendCircuit():
 
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
-            if variables is None or set(self._variables) != set(variables.keys()):
+            if variables is None or set(self._variables) > set(variables.keys()):
                 raise TequilaException(
                     "BackendCircuit received not all variables. Circuit depends on variables {}, you gave {}".format(
                         self._variables, variables))
