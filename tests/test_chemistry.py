@@ -13,6 +13,7 @@ HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 import tequila as tq
 
+
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
     [os.remove(x) for x in glob.glob("data/*.out")]
@@ -23,34 +24,45 @@ def teardown_function(function):
     [os.remove(x) for x in glob.glob("qvm.log")]
     [os.remove(x) for x in glob.glob("*.dat")]
 
+
 @pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT", "bravyi_kitaev_fast"])
 def test_base(trafo):
-    obt = numpy.asarray([[-1.94102524, -0.31651552], [-0.31651552, -0.0887454 ]])
-    tbt = numpy.asarray([[[[1.02689005, 0.31648659], [0.31648659, 0.22767214]],[[0.31648659, 0.22767214],[0.85813498, 0.25556095]]],[[[0.31648659, 0.85813498],[0.22767214, 0.25556095]],[[0.22767214, 0.25556095],[0.25556095, 0.76637672]]]])
+    obt = numpy.asarray([[-1.94102524, -0.31651552], [-0.31651552, -0.0887454]])
+    tbt = numpy.asarray(
+        [[[[1.02689005, 0.31648659], [0.31648659, 0.22767214]], [[0.31648659, 0.22767214], [0.85813498, 0.25556095]]],
+         [[[0.31648659, 0.85813498], [0.22767214, 0.25556095]], [[0.22767214, 0.25556095], [0.25556095, 0.76637672]]]])
     np = 0.0
     n = 2
-    molecule = tq.chemistry.Molecule(backend="base", geometry="he 0.0 0.0 0.0", basis_set="whatever", transformation=trafo, one_body_integrals=obt, two_body_integrals=tbt, nuclear_repulsion=np, n_orbitals=2)
+    molecule = tq.chemistry.Molecule(backend="base", geometry="he 0.0 0.0 0.0", basis_set="whatever",
+                                     transformation=trafo, one_body_integrals=obt, two_body_integrals=tbt,
+                                     nuclear_repulsion=np, n_orbitals=2)
     H = molecule.make_hamiltonian()
     eigvals = numpy.linalg.eigvalsh(H.to_matrix())
     assert numpy.isclose(eigvals[0], -2.87016214e+00)
-    if "trafo" in ["JW", "BK", "bravyi_kitaev_fast", "BKT"]: # others change spectrum outside of the groundstate
+    if "trafo" in ["JW", "BK", "bravyi_kitaev_fast", "BKT"]:  # others change spectrum outside of the groundstate
         assert numpy.isclose(eigvals[-1], 7.10921141e-01)
         assert len(eigvals) == 16
 
+
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
-@pytest.mark.parametrize("trafo_args", [{"transformation":"jordan_wigner"}, {"transformation":"bravyi_kitaev"}, {"transformation":"bravyi_kitaev_fast"}, {"transformation":"symmetry_conserving_bravyi_kitaev", "transformation__active_orbitals":4, "transformation__active_fermions":2}])
+@pytest.mark.parametrize("trafo_args", [{"transformation": "jordan_wigner"}, {"transformation": "bravyi_kitaev"},
+                                        {"transformation": "bravyi_kitaev_fast"},
+                                        {"transformation": "symmetry_conserving_bravyi_kitaev",
+                                         "transformation__active_orbitals": 4, "transformation__active_fermions": 2}])
 def test_transformations(trafo_args):
-    geomstring="H 0.0 0.0 0.0\nH 0.0 0.0 0.7"
+    geomstring = "H 0.0 0.0 0.0\nH 0.0 0.0 0.7"
     molecule = tq.chemistry.Molecule(geometry=geomstring, basis_set="sto-3g", **trafo_args)
     gs = numpy.linalg.eigvalsh(molecule.make_hamiltonian().to_matrix())[0]
-    assert numpy.isclose(gs,-1.1361894540879054)
+    assert numpy.isclose(gs, -1.1361894540879054)
+
 
 @pytest.mark.dependencies
 def test_dependencies():
     for key in qc.SUPPORTED_QCHEMISTRY_BACKENDS:
         assert key in qc.INSTALLED_QCHEMISTRY_BACKENDS.keys()
 
-@pytest.mark.skipif(condition=not HAS_PYSCF or not HAS_PSI4,reason="no quantum chemistry backends installed")
+
+@pytest.mark.skipif(condition=not HAS_PYSCF or not HAS_PSI4, reason="no quantum chemistry backends installed")
 def test_interface():
     molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JW")
 
@@ -88,8 +100,9 @@ def do_test_h2_hamiltonian(qc_interface):
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
-@pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT"]) # bravyi_kitaev_fast not yet supported for ucc
-@pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT"])  # bravyi_kitaev_fast not yet supported for ucc
+@pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"),
+                                     tequila.simulators.simulator_api.pick_backend()])
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
         pytest.skip("skipping for symbolic simulator  ... way too slow")
@@ -216,15 +229,16 @@ def test_restart_psi4():
                 break
         assert found
 
+
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
-@pytest.mark.parametrize("active", [{"A1": [2, 3]}, {"B2": [0], "B1": [0]}, {"A1":[0,1,2,3]}, {"B1":[0]}])
+@pytest.mark.parametrize("active", [{"A1": [2, 3]}, {"B2": [0], "B1": [0]}, {"A1": [0, 1, 2, 3]}, {"B1": [0]}])
 def test_active_spaces(active):
     mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g", active_orbitals=active)
     H = mol.make_hamiltonian()
     Uhf = mol.prepare_reference()
     hf = tequila.simulators.simulator_api.simulate(tq.ExpectationValue(U=Uhf, H=H))
     assert (tq.numpy.isclose(hf, mol.energies["hf"], atol=1.e-4))
-    qubits = 2*sum([len(v) for v in active.values()])
+    qubits = 2 * sum([len(v) for v in active.values()])
     assert (H.n_qubits == qubits)
 
 
@@ -286,3 +300,23 @@ def test_rdms_psi4():
     rdm1, rdm2 = mol.rdm1, mol.rdm2
     assert (numpy.allclose(rdm1, rdm1_ref, atol=1e-8))
     assert (numpy.allclose(rdm2, rdm2_ref, atol=1e-8))
+
+
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 0.7"])
+@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "symmetry_conserving_bravyi_kitaev"])
+def test_upccgsd(geometry, trafo):
+    molecule = tq.chemistry.Molecule(geometry=geometry, basis_set="sto-3g", transformation=trafo)
+    energy = do_test_upccgsd(molecule)
+    fci = molecule.compute_energy("fci")
+    assert numpy.isclose(fci, energy, atol=1.e-3)
+    energy2 = do_test_upccgsd(molecule, label="asd", order=2)
+    assert numpy.isclose(fci, energy2, atol=1.e-3)
+
+
+def do_test_upccgsd(molecule, *args, **kwargs):
+    U = molecule.make_upccgsd_ansatz(*args, **kwargs)
+    H = molecule.make_hamiltonian()
+    E = tq.ExpectationValue(U=U, H=H)
+    result = tq.minimize(objective=E, initial_values=0.0, gradient="2-point", method="bfgs", method_options={"finite_diff_rel_step": 1.e-4, "eps": 1.e-4})
+    return result.energy
