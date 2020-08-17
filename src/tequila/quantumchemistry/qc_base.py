@@ -940,10 +940,11 @@ class QuantumChemistryBase:
 
         return prepare_product_state(self.reference_state(*args, **kwargs))
 
-    def make_upgccsd_ansatz(self,
+    def make_upccgsd_ansatz(self,
                             include_singles:bool=True,
                             include_reference:bool=True,
                             indices:list=None,
+                            label: str=None,
                             order:int =1,
                             *args, **kwargs):
         """
@@ -958,6 +959,12 @@ class QuantumChemistryBase:
         indices
             pass custom defined set of indices from which the ansatz will be created
             List of tuples of tuples spin-indices e.g. [((2*p,2*q),(2*p+1,2*q+1)), ...]
+        label
+            An additional label that is set with the variables
+            default is None and no label will be set: variables names will be
+            (x, (p,q)) for x in range(order)
+            with a label the variables will be named
+            (label, (x, (p,q))) 
         order
             Order of the ansatz (default is 1)
             determines how often the ordering gets repeated
@@ -985,7 +992,11 @@ class QuantumChemistryBase:
 
         for k in range(order):
             idx = [(k,i) for i in indices]
-            U += gates.Trotterized(generators=generators, angles=idx, steps=1)
+            prefix = order
+            if label is not None:
+                prefix = (label, order)
+            names = [(prefix, i) for i in idx]
+            U += gates.Trotterized(generators=generators, angles=names, steps=1)
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int,
