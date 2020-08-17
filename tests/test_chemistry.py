@@ -229,7 +229,8 @@ def test_active_spaces(active):
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="no quantum chemistry backends installed")
-def test_rdms():
+@pytest.mark.parametrize("trafo", ["JW", "BK", "BKT", "symmetry_conserving_bravyi_kitaev"])  # BKSF not working currently
+def test_rdms(trafo):
     rdm1_ref = numpy.array([[1.99137832, -0.00532359], [-0.00532359, 0.00862168]])
     rdm2_ref = numpy.array([[[[1.99136197e+00, -5.69817110e-03], [-5.69817110e-03, -1.30905760e-01]],
                              [[-5.69817110e-03, 1.63522163e-05], [1.62577807e-05, 3.74579524e-04]]],
@@ -252,7 +253,7 @@ def test_rdms():
         U += tq.gates.X(target=2)
         return U
 
-    mol = qc.Molecule(geometry="data/he.xyz", basis_set="6-31g", transformation="jw")
+    mol = qc.Molecule(geometry="data/he.xyz", basis_set="6-31g", transformation=trafo)
     # Random angles - check consistency of spin-free, spin-ful matrices
     ang = numpy.random.uniform(low=0, high=1, size=3)
     U_random = rdm_circuit(angles=ang)

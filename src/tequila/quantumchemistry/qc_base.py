@@ -608,8 +608,10 @@ class QuantumChemistryBase:
             if "active_fermions" not in trafo_args:
                 trafo_args["active_fermions"] = self.n_electrons
             print("trafo_args = ", trafo_args)
-            trafo = openfermion.symmetry_conserving_bravyi_kitaev
-
+            # trafo = openfermion.symmetry_conserving_bravyi_kitaev
+            # Current hotfix
+            from ._openfermion_symmetry_conserving_bk_hotfix import symmetry_conserving_bravyi_kitaev_HOTFIX
+            trafo = symmetry_conserving_bravyi_kitaev_HOTFIX
         elif hasattr(transformation, "lower"):
             trafo = getattr(openfermion, transformation.lower())
         else:
@@ -712,9 +714,9 @@ class QuantumChemistryBase:
             1j*Transformed qubit excitation operator, depends on self.transformation
         """
 
-        if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
-            raise TequilaException(
-                "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
+        # if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
+        #     raise TequilaException(
+        #         "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
 
         # check indices and convert to list of tuples if necessary
         if len(indices) == 0:
@@ -728,6 +730,7 @@ class QuantumChemistryBase:
             converted = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
         else:
             converted = indices
+        print(converted) # todo
 
         # convert to openfermion input format
         ofi = []
@@ -737,11 +740,26 @@ class QuantumChemistryBase:
             ofi += [(int(pair[0]), 1),
                     (int(pair[1]), 0)]  # openfermion does not take other types of integers like numpy.int64
             dag += [(int(pair[0]), 0), (int(pair[1]), 1)]
+        print(ofi, dag)
+        if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
+            if len(converted) in (0, 1, 2):
+                print("yes1")
+                if len(converted) == 2:
+                    a, b, c, d = ofi
+                    ofi = [a, c, d, b]
+                    a, b, c, d = dag
+                    dag = [a, c, d, b]
+                else:
+                    pass
+            else:
+                raise TequilaException(
+                    "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
 
         op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
+        print(op)  # todo
         qop = QubitHamiltonian(qubit_hamiltonian=self.transformation(op))
-
+        print(qop, qop.is_hermitian())
         # check if the operator is hermitian and cast coefficients to floats
         # in order to avoid trouble with the simulation backends
         assert qop.is_hermitian()
@@ -784,6 +802,10 @@ class QuantumChemistryBase:
                 return qubit_hamiltonian
 
             transformation = tapering
+        elif self.transformation._trafo == openfermion.bravyi_kitaev_fast:
+            raise TequilaException(
+                "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
+
         else:
             transformation = self.transformation
 
@@ -1253,88 +1275,89 @@ class QuantumChemistryBase:
         if U is None:
             raise Exception('Need to specify a Quantum Circuit.')
 
-        def _get_qop_hermitian(operator_tuple) -> QubitHamiltonian:
-            """ Returns Hermitian part of Fermion operator as QubitHamiltonian """
+        def _get_of_op(operator_tuple):
+            """ Returns operator given by a operator tuple as OpenFermion - Fermion operator """
             op = openfermion.FermionOperator(operator_tuple)
-            qop = QubitHamiltonian(self.transformation(op))
+            return op
+
+        def _get_qop_hermitian(of_operator) -> QubitHamiltonian:
+            """ Returns Hermitian part of Fermion operator as QubitHamiltonian """
+            qop = QubitHamiltonian(self.transformation(of_operator))
             real, imag = qop.split(hermitian=True)
-            return real
+            if real:
+                return real
+            elif not real:
+                raise Exception("Qubit Hamiltonian does not have a Hermitian part. Check this...")
 
         def _build_1bdy_operators_spinful() -> list:
             """ Returns spinful one-body operators as a symmetry-reduced list of QubitHamiltonians """
             # Exploit symmetry pq = qp
-            qops = []
+            ops = []
             for p in range(n_SOs):
                 for q in range(p + 1):
-                    op_string = ((p, 1), (q, 0))
-                    qop = _get_qop_hermitian(op_string)
-                    if qop:  # should always exist here
-                        qops += [qop]
-                    else:  # should not happen
-                        qops += [QubitHamiltonian.zero()]
+                    op_tuple = ((p, 1), (q, 0))
+                    op = _get_of_op(op_tuple)
+                    ops += [op]
 
-            return qops
+            return ops
 
         def _build_2bdy_operators_spinful() -> list:
             """ Returns spinful two-body operators as a symmetry-reduced list of QubitHamiltonians """
             # Exploit symmetries pqrs = -pqsr = -qprs = qpsr
             #                and      =  rspq
-            qops = []
+            ops = []
             for p in range(n_SOs):
                 for q in range(p):
                     for r in range(n_SOs):
                         for s in range(r):
                             if p * n_SOs + q >= r * n_SOs + s:
-                                op_string = ((p, 1), (q, 1), (s, 0), (r, 0))
-                                qop = _get_qop_hermitian(op_string)
-                                qops += [qop]
+                                op_tuple = ((p, 1), (q, 1), (s, 0), (r, 0))
+                                op = _get_of_op(op_tuple)
+                                ops += [op]
 
-            return qops
+            return ops
 
         def _build_1bdy_operators_spinfree() -> list:
             """ Returns spinfree one-body operators as a symmetry-reduced list of QubitHamiltonians """
             # Exploit symmetry pq = qp (not changed by spin-summation)
-            qops = []
+            ops = []
             for p in range(n_MOs):
                 for q in range(p + 1):
                     # Spin aa
-                    op_list = ((2 * p, 1), (2 * q, 0))
-                    qop = _get_qop_hermitian(op_list)
+                    op_tuple = ((2 * p, 1), (2 * q, 0))
+                    op = _get_of_op(op_tuple)
                     # Spin bb
-                    op_list = ((2 * p + 1, 1), (2 * q + 1, 0))
-                    qop += _get_qop_hermitian(op_list)
-                    if qop:  # should always exist here
-                        qops += [qop]
-                    else:
-                        qops += [QubitHamiltonian.zero()]
+                    op_tuple = ((2 * p + 1, 1), (2 * q + 1, 0))
+                    op += _get_of_op(op_tuple)
+                    ops += [op]
 
-            return qops
+            return ops
 
         def _build_2bdy_operators_spinfree() -> list:
             """ Returns spinfree two-body operators as a symmetry-reduced list of QubitHamiltonians """
             # Exploit symmetries pqrs = qpsr (due to spin summation, '-pqsr = -qprs' drops out)
             #                and      = rspq
-            qops = []
+            ops = []
             for p, q, r, s in product(range(n_MOs), repeat=4):
                 if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
                     # Spin aaaa
-                    op_string = ((2 * p, 1), (2 * q, 1), (2 * s, 0), (2 * r, 0))
-                    qop = _get_qop_hermitian(op_string)
+                    op_tuple = ((2 * p, 1), (2 * q, 1), (2 * s, 0), (2 * r, 0)) if (p!=q and r!=s) else '0.0 []'
+                    op = _get_of_op(op_tuple)
                     # Spin abab
-                    op_string = ((2 * p, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r, 0))
-                    qop += _get_qop_hermitian(op_string)
+                    op_tuple = ((2 * p, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r, 0)) if (2*p!=2*q+1 and 2*r!=2*s+1) else '0.0 []'
+                    op += _get_of_op(op_tuple)
                     # Spin baba
-                    op_string = ((2 * p + 1, 1), (2 * q, 1), (2 * s, 0), (2 * r + 1, 0))
-                    qop += _get_qop_hermitian(op_string)
+                    op_tuple = ((2 * p + 1, 1), (2 * q, 1), (2 * s, 0), (2 * r + 1, 0)) if (2*p+1!=2*q and 2*r+1!=2*s) else '0.0 []'
+                    op += _get_of_op(op_tuple)
                     # Spin bbbb
-                    op_string = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0))
-                    qop += _get_qop_hermitian(op_string)
+                    op_tuple = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0)) if (p!=q and r!=s) else '0.0 []'
+                    op += _get_of_op(op_tuple)
 
-                    qops += [qop]
+                    ops += [op]
 
-            return qops
+            return ops
 
-        def _assemble_rdm1(evals_1) -> numpy.ndarray:
+        def _assemble_rdm1(evals) -> numpy.ndarray:
             """
             Returns spin-ful or spin-free one-particle RDM built by symmetry conditions
             Same symmetry with or without spin, so we can use the same function
@@ -1344,14 +1367,14 @@ class QuantumChemistryBase:
             ctr: int = 0
             for p in range(N):
                 for q in range(p + 1):
-                    rdm1[p, q] = evals_1[ctr]
+                    rdm1[p, q] = evals[ctr]
                     # Symmetry pq = qp
                     rdm1[q, p] = rdm1[p, q]
                     ctr += 1
 
             return rdm1
 
-        def _assemble_rdm2_spinful(evals_2) -> numpy.ndarray:
+        def _assemble_rdm2_spinful(evals) -> numpy.ndarray:
             """ Returns spin-ful two-particle RDM built by symmetry conditions """
             ctr: int = 0
             rdm2 = numpy.zeros([n_SOs, n_SOs, n_SOs, n_SOs])
@@ -1360,7 +1383,7 @@ class QuantumChemistryBase:
                     for r in range(n_SOs):
                         for s in range(r):
                             if p * n_SOs + q >= r * n_SOs + s:
-                                rdm2[p, q, r, s] = evals_2[ctr]
+                                rdm2[p, q, r, s] = evals[ctr]
                                 # Symmetry pqrs = rspq
                                 rdm2[r, s, p, q] = rdm2[p, q, r, s]
                                 ctr += 1
@@ -1376,13 +1399,13 @@ class QuantumChemistryBase:
 
             return rdm2
 
-        def _assemble_rdm2_spinfree(evals_2) -> numpy.ndarray:
+        def _assemble_rdm2_spinfree(evals) -> numpy.ndarray:
             """ Returns spin-free two-particle RDM built by symmetry conditions """
             ctr: int = 0
             rdm2 = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
             for p, q, r, s in product(range(n_MOs), repeat=4):
                 if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
-                    rdm2[p, q, r, s] = evals_2[ctr]
+                    rdm2[p, q, r, s] = evals[ctr]
                     # Symmetry pqrs = rspq
                     rdm2[r, s, p, q] = rdm2[p, q, r, s]
                     ctr += 1
@@ -1403,6 +1426,8 @@ class QuantumChemistryBase:
             qops += _build_1bdy_operators_spinful() if get_rdm1 else []
             qops += _build_2bdy_operators_spinful() if get_rdm2 else []
 
+        # Transform operator lists to QubitHamiltonians
+        qops = [_get_qop_hermitian(op) for op in qops]
         # Compute expected values
         evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
 
@@ -1444,7 +1469,7 @@ class QuantumChemistryBase:
         -------
             rdm1_spinsum, rdm2_spinsum :
                 The desired spin-free matrices
-          """
+        """
         n_MOs = self.n_orbitals
         rdm1_spinsum = None
         rdm2_spinsum = None
