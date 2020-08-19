@@ -57,14 +57,13 @@ def test_endianness_simulators():
              "111100101000010"]
 
     for string in tests:
-        number = int(string, 2)
         binary = BitString.from_binary(binary=string)
         c = QCircuit()
         for i, v in enumerate(binary):
             if v == 1:
                 c += gates.X(target=i)
-
-        c += gates.Measurement(target=[x for x in range(len(string))])
+            if v == 0:
+                c += gates.Z(target=i)
 
         wfn_cirq = simulate(c, initial_state=0, backend="cirq")
         counts_cirq = simulate(c, samples=1, backend="cirq")
@@ -78,14 +77,14 @@ def test_endianness_simulators():
 
 
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
-@pytest.mark.parametrize("case",
-                         [("X(0)Y(1)Z(4)", 0.0), ("Z(0)", 1.0), ("Z(0)Z(1)Z(3)", 1.0), ("Z(0)Z(1)Z(2)Z(3)Z(5)", -1.0)])
+@pytest.mark.parametrize("case", [("X(0)Y(1)Z(4)", 0.0), ("Z(0)", 1.0), ("Z(0)Z(1)Z(3)", 1.0), ("Z(0)Z(1)Z(2)Z(3)Z(5)", -1.0)])
 def test_paulistring_sampling(backend, case):
+    print(case)
     H = QubitHamiltonian.from_paulistrings(PauliString.from_string(case[0]))
     U = gates.X(target=1) + gates.X(target=3) + gates.X(target=5)
     E = ExpectationValue(H=H, U=U)
     result = simulate(E,backend=backend, samples=1)
-    assert (isclose(result, case[1], 1.e-4))
+    assert isclose(result, case[1], 1.e-4)
 
 
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)

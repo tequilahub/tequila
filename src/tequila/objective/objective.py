@@ -545,7 +545,10 @@ class Variable:
         return [self]
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name == other.name
+        if hasattr(other, "name"):
+            return self.name == other.name
+        else:
+            return self.name == other
 
     def _left_helper(self, op, other):
         """

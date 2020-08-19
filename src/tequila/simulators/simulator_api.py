@@ -355,7 +355,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
     *args :
 
     **kwargs :
-
+        read_out_qubits = list[int] (define the qubits which shall be measured, has only effect on pure QCircuit simulation with samples)
 
     Returns
     -------
