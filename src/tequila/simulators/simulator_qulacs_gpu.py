@@ -4,15 +4,14 @@ from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExp
 
 class TequilaQulacsGpuException(TequilaException):
     def __str__(self):
-        return "Error in qulacs qpu backend:" + self.message
+        return "Error in qulacs gpu backend:" + self.message
 
 class BackendCircuitQulacsGpu(BackendCircuitQulacs):
-
-    def initialize_state(self, n_qubits = None):
+    def initialize_state(self, n_qubits:int=None) -> qulacs.QuantumState:
         if n_qubits is None:
             n_qubits = self.n_qubits
         return qulacs.QuantumStateGpu(n_qubits)
 
 class BackendExpectationValueQulacsGpu(BackendExpectationValueQulacs):
-    # avoid namespace confusion
+    BackendCircuitType = BackendCircuitQulacsGpu
     pass

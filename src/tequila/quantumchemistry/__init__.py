@@ -21,7 +21,7 @@ def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
 
 def Molecule(geometry: str,
-             basis_set: str,
+             basis_set: str = None,
              transformation: typing.Union[str, typing.Callable] = None,
              backend: str = None,
              guess_wfn=None,
@@ -81,6 +81,12 @@ def Molecule(geometry: str,
 
     if guess_wfn is not None and backend != 'psi4':
         raise Exception("guess_wfn only works for psi4")
+
+    if basis_set is None and backend != "base":
+        raise Exception("no basis_set provided for backend={}".format(backend))
+    elif basis_set is None:
+        basis_set = "custom"
+        parameters.basis_set=basis_set
 
     return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation, guess_wfn=guess_wfn, *args, **kwargs)
 

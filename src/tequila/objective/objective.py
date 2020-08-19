@@ -46,7 +46,7 @@ class ExpectationValueImpl:
         else:
             return self._hamiltonian
 
-    def extract_variables(self) -> typing.Dict[str, numbers.Real]:
+    def extract_variables(self) -> list:
         result = []
         if self.U is not None:
             result = self.U.extract_variables()
@@ -77,6 +77,24 @@ class ExpectationValueImpl:
             self._hamiltonian = tuple(H)
         self._contraction = contraction
         self._shape = shape
+
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        Maps the qubit within the underlying Hamiltonians and Unitaries
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        the ExpectationValueImpl structure with mapped qubits
+
+        """
+        return ExpectationValueImpl(H=tuple([H.map_qubits(qubit_map=qubit_map) for H in self.H]), U=self.U.map_qubits(qubit_map=qubit_map), contraction=self._contraction, shape=self._shape)
+
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
@@ -112,6 +130,33 @@ class Objective:
             self._args = tuple(args)
             self._transformation = transformation
 
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        Maps qubits for all quantum circuits and hamiltonians in the objective
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+            keys and values should be integers
+
+        Returns
+        -------
+        the Objective with mapped qubits
+
+        """
+        mapped_args = []
+        for arg in self.args:
+            if hasattr(arg, "map_qubits"):
+                mapped_args.append(arg.map_qubits(qubit_map=qubit_map))
+            else:
+                assert not hasattr(arg, "U") # failsave
+                assert not hasattr(arg, "H") # failsave
+                mapped_args.append(arg) # for purely variable dependend arguments
+
+        return Objective(args=mapped_args, transformation=self.transformation)
+
     @property
     def backend(self) -> str:
         """
@@ -126,7 +171,7 @@ class Objective:
         else:
             return "free"
 
-    def extract_variables(self):
+    def extract_variables(self) -> list:
         """
         Extract all variables on which the objective depends
         :return: List of all Variables
@@ -137,8 +182,14 @@ class Objective:
                 variables += arg.extract_variables()
             else:
                 variables += []
-
-        return list(set(variables))
+        # remove duplicates without affecting ordering
+        # allows better reproducibility for random initialization
+        # won't work with set
+        unique = []
+        for i in variables:
+            if i not in unique:
+                unique.append(i)
+        return unique
 
     def is_expectationvalue(self):
         """
@@ -494,7 +545,10 @@ class Variable:
         return [self]
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name == other.name
+        if hasattr(other, "name"):
+            return self.name == other.name
+        else:
+            return self.name == other
 
     def _left_helper(self, op, other):
         """
