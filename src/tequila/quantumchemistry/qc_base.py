@@ -744,7 +744,6 @@ class QuantumChemistryBase:
         op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
         qop = QubitHamiltonian(qubit_hamiltonian=self.transformation(op))
-        print(qop, qop.is_hermitian()) # todo
         # check if the operator is hermitian and cast coefficients to floats
         # in order to avoid trouble with the simulation backends
         assert qop.is_hermitian()
