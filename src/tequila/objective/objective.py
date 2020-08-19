@@ -459,6 +459,17 @@ class Objective:
             the result of the calculation represented by this objective.
         """
         variables = format_variable_dictionary(variables)
+        # failsafe
+        check_variables = {k: k in variables for k in self.extract_variables()}
+        if not all(list(check_variables.values())):
+            raise TequilaException("Objective did not receive all variables:\n"
+                                   "You gave\n"
+                                   " {}\n"
+                                   " but the objective depends on\n"
+                                   " {}\n"
+                                   " missing values for\n"
+                                   " {}".format(variables, self.extract_variables(), [k for k,v in check_variables.items() if not v]))
+
         # avoid multiple evaluations
         evaluated = {}
         ev_array = []
