@@ -610,7 +610,7 @@ class QuantumChemistryBase:
                 trafo_args["active_fermions"] = self.n_electrons
             print("trafo_args = ", trafo_args)
             # trafo = openfermion.symmetry_conserving_bravyi_kitaev
-            # Current hotfix
+            # Current hotfix, to be changed once it works again straightforward with OpenFermion
             from ._openfermion_symmetry_conserving_bk_hotfix import symmetry_conserving_bravyi_kitaev_HOTFIX
             trafo = symmetry_conserving_bravyi_kitaev_HOTFIX
         elif hasattr(transformation, "lower"):
