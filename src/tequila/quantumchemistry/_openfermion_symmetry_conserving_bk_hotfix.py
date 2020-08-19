@@ -1,10 +1,12 @@
 """
-This file serves as a hotfix for a few issues with tequila
-uses OpenFermion 0.11.0 (currently available as pip install)
+This file serves as a hotfix for a few issues with tequila,
+using OpenFermion 0.11.0 (currently available as pip install, Aug 2020)
+The following code resembles exactly the code from OpenFermion, except from
+a minor change, that is marked as such by a comment 'MODIFIED'
 """
 
 # --------------------------------------------------------------------------------------------------------
-# BKSF Hotfix
+# Symmetry Conserving Bravyi Kitaev Hotfix
 # --------------------------------------------------------------------------------------------------------
 
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,11 +80,11 @@ def symmetry_conserving_bravyi_kitaev_HOTFIX(fermion_hamiltonian, active_orbital
         raise ValueError('Number of active fermions should be an integer.')
 
     # Arrange spins up then down, then BK map to qubit Hamiltonian.
-    ''' modified -- to make sure, that single operators of a Hamiltonian also give valid results '''
+    ''' MODIFIED -- to make sure, that single operators of a Hamiltonian also give valid results '''
     fermion_hamiltonian_reorder = reorder(fermion_hamiltonian, up_then_down,
                                           num_modes=active_orbitals)  # added num_modes info
     qubit_hamiltonian = bravyi_kitaev_tree(fermion_hamiltonian_reorder, n_qubits=active_orbitals)  # added n_qubits info
-    ''' end modified '''
+    ''' END MODIFIED '''
     qubit_hamiltonian.compress()
 
     # Allocates the parity factors for the orbitals as in arXiv:1704.05018.

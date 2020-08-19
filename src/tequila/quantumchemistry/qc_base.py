@@ -535,6 +535,7 @@ class QuantumChemistryBase:
             errlog = ""
             try:
                 try:
+                    # return self._trafo(op, **self._kwargs)
                     return self._trafo(op, **self._kwargs)
                 except TypeError as E:
                     print("converting to interaction operator")
@@ -714,9 +715,9 @@ class QuantumChemistryBase:
             1j*Transformed qubit excitation operator, depends on self.transformation
         """
 
-        # if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
-        #     raise TequilaException(
-        #         "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
+        if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
+            raise TequilaException(
+                "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
 
         # check indices and convert to list of tuples if necessary
         if len(indices) == 0:
@@ -730,7 +731,6 @@ class QuantumChemistryBase:
             converted = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
         else:
             converted = indices
-        print(converted) # todo
 
         # convert to openfermion input format
         ofi = []
@@ -740,26 +740,11 @@ class QuantumChemistryBase:
             ofi += [(int(pair[0]), 1),
                     (int(pair[1]), 0)]  # openfermion does not take other types of integers like numpy.int64
             dag += [(int(pair[0]), 0), (int(pair[1]), 1)]
-        print(ofi, dag)
-        if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
-            if len(converted) in (0, 1, 2):
-                print("yes1")
-                if len(converted) == 2:
-                    a, b, c, d = ofi
-                    ofi = [a, c, d, b]
-                    a, b, c, d = dag
-                    dag = [a, c, d, b]
-                else:
-                    pass
-            else:
-                raise TequilaException(
-                    "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
 
         op = openfermion.FermionOperator(tuple(ofi), 1.j)  # 1j makes it hermitian
         op += openfermion.FermionOperator(tuple(reversed(dag)), -1.j)
-        print(op)  # todo
         qop = QubitHamiltonian(qubit_hamiltonian=self.transformation(op))
-        print(qop, qop.is_hermitian())
+        print(qop, qop.is_hermitian()) # todo
         # check if the operator is hermitian and cast coefficients to floats
         # in order to avoid trouble with the simulation backends
         assert qop.is_hermitian()
@@ -1267,13 +1252,25 @@ class QuantumChemistryBase:
         Returns
         -------
         """
+        # Check whether unitary circuit is not 0
+        if U is None:
+            raise TequilaException('Need to specify a Quantum Circuit.')
+
+        # Check whether transformation is BKSF.
+        # Issue here: when a single operator acts only on a subset of qubits, BKSF might not yield the correct
+        # transformation, because it computes the number of qubits incorrectly in this case.
+        # A hotfix such as for symmetry_conserving_bravyi_kitaev would require deeper changes, thus omitted for now
+        if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
+            raise TequilaException(
+                "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet.")
+
         # Set up number of spin-orbitals and molecular orbitals respectively
         n_SOs = 2 * self.n_orbitals
         n_MOs = self.n_orbitals
 
         # Check whether unitary circuit is not 0
         if U is None:
-            raise Exception('Need to specify a Quantum Circuit.')
+            raise TequilaException('Need to specify a Quantum Circuit.')
 
         def _get_of_op(operator_tuple):
             """ Returns operator given by a operator tuple as OpenFermion - Fermion operator """
@@ -1287,7 +1284,8 @@ class QuantumChemistryBase:
             if real:
                 return real
             elif not real:
-                raise Exception("Qubit Hamiltonian does not have a Hermitian part. Check this...")
+                print(of_operator)
+                raise TequilaException("Qubit Hamiltonian does not have a Hermitian part. Check this...")
 
         def _build_1bdy_operators_spinful() -> list:
             """ Returns spinful one-body operators as a symmetry-reduced list of QubitHamiltonians """
@@ -1478,10 +1476,10 @@ class QuantumChemistryBase:
         if sum_rdm1:
             # Check whether spin-rdm2 exists
             if self._rdm1 is None:
-                raise Exception("The spin-RDM for the 1-RDM does not exist!")
+                raise TequilaException("The spin-RDM for the 1-RDM does not exist!")
             # Check whether existing rdm1 is in spin-orbital basis
             if self._rdm1.shape[0] != 2 * n_MOs:
-                raise Exception("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
+                raise TequilaException("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
             # Do summation
             rdm1_spinsum = numpy.zeros([n_MOs, n_MOs])
             for p in range(n_MOs):
@@ -1496,10 +1494,10 @@ class QuantumChemistryBase:
         if sum_rdm2:
             # Check whether spin-rdm2 exists
             if self._rdm2 is None:
-                raise Exception("The spin-RDM for the 2-RDM does not exist!")
+                raise TequilaException("The spin-RDM for the 2-RDM does not exist!")
             # Check whether existing rdm2 is in spin-orbital basis
             if self._rdm2.shape[0] != 2 * n_MOs:
-                raise Exception("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
+                raise TequilaException("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
             # Do summation
             rdm2_spinsum = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
             for p, q, r, s in product(range(n_MOs), repeat=4):
