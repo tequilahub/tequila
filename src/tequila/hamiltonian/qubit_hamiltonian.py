@@ -288,7 +288,7 @@ class QubitHamiltonian:
     def pauli(selfs, ituple):
         return ituple[1]
 
-    def __init__(self, qubit_hamiltonian: typing.Union[QubitOperator, str, numbers.Number] = None):
+    def __init__(self, qubit_operator: typing.Union[QubitOperator, str, numbers.Number] = None):
         """
         Initialize from string or from a preexisting OpenFermion QubitOperator instance
         :param qubit_operator: string or openfermion.QubitOperator
@@ -296,14 +296,14 @@ class QubitHamiltonian:
         if None: The Hamiltonian is initialized as identity operator
         if Number: initialized as scaled unit operator
         """
-        if isinstance(qubit_hamiltonian, str):
-            self._qubit_operator = self.from_string(string=qubit_hamiltonian)._qubit_operator
-        elif qubit_hamiltonian is None:
+        if isinstance(qubit_operator, str):
+            self._qubit_operator = self.from_string(string=qubit_operator)._qubit_operator
+        elif qubit_operator is None:
             self._qubit_operator = QubitOperator.zero()
-        elif isinstance(qubit_hamiltonian, numbers.Number):
+        elif isinstance(qubit_operator, numbers.Number):
             self._qubit_operator = qubit_operator * QubitOperator.identity()
         else:
-            self._qubit_operator = qubit_hamiltonian
+            self._qubit_operator = qubit_operator
 
         assert (isinstance(self._qubit_operator, QubitOperator))
 
@@ -631,7 +631,7 @@ class QubitHamiltonian:
 
         mapped = QubitOperator.zero()
         mapped.terms = mapped_terms
-        return QubitHamiltonian(qubit_hamiltonian=mapped)
+        return QubitHamiltonian(qubit_operator=mapped)
 
     def is_all_z(self):
         """

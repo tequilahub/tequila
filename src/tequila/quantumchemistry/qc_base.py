@@ -817,9 +817,9 @@ class QuantumChemistryBase:
             def tapering(fop):
                 fermion_hamiltonian_reorder = openfermion.utils.reorder(fop, openfermion.utils.up_then_down,
                                                                         num_modes=n_qubits)
-                qubit_hamiltonian = openfermion.bravyi_kitaev_tree(fermion_hamiltonian_reorder, n_qubits=n_qubits)
-                qubit_hamiltonian.compress()
-                return qubit_hamiltonian
+                qubit_operator = openfermion.bravyi_kitaev_tree(fermion_hamiltonian_reorder, n_qubits=n_qubits)
+                qubit_operator.compress()
+                return qubit_operator
 
             transformation = tapering
         else:
@@ -836,7 +836,7 @@ class QuantumChemistryBase:
         string += "]"
 
         fop = openfermion.FermionOperator(string, 1.0)
-        op = QubitHamiltonian(qubit_hamiltonian=transformation(fop))
+        op = QubitHamiltonian(qubit_operator=transformation(fop))
         from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
         wfn = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
         wfn = wfn.apply_qubitoperator(operator=op)
@@ -952,7 +952,7 @@ class QuantumChemistryBase:
             qop = self.transformation(fop)
         except TypeError:
             qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
-        return QubitHamiltonian(qubit_hamiltonian=qop)
+        return QubitHamiltonian(qubit_operator=qop)
 
 
     def make_molecular_hamiltonian(self):
