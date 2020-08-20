@@ -991,6 +991,7 @@ class QuantumChemistryBase:
                             indices:list=None,
                             label: str=None,
                             order:int =1,
+                            form:str = None,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1033,7 +1034,7 @@ class QuantumChemistryBase:
         if include_reference:
             U = self.prepare_reference()
 
-        generators = [self.make_excitation_generator(i, *args, **kwargs) for i in indices]
+        generators = [self.make_excitation_generator(i, form=form, *args, **kwargs) for i in indices]
 
         for k in range(order):
             idx = [(k,i) for i in indices]
@@ -1041,7 +1042,11 @@ class QuantumChemistryBase:
             if label is not None:
                 prefix = (label, order)
             names = [(prefix, i) for i in idx]
-            U += gates.Trotterized(generators=generators, angles=names, steps=1)
+            if form is not None and form.lower() in ["involution", "projector"]:
+                for angle, g in zip(names,generators):
+                    U += gates.GeneralizedRotation(generator=g, angle=angle)
+            else:
+                U += gates.Trotterized(generators=generators, angles=names, steps=1)
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int,
