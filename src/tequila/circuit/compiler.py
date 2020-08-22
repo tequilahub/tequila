@@ -192,10 +192,14 @@ class Compiler:
         the arg, compiled
         """
 
-        if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
+        if isinstance(arg, ExpectationValueImpl):
             return ExpectationValueImpl(H=arg.H,
                                         U=self.compile_circuit(abstract_circuit=arg.U, variables=variables, *args,
                                                                **kwargs))
+        elif hasattr(arg, "abstract_expectationvalue"):
+            E = arg.abstract_expectationvalue
+            E._U = self.compile_circuit(abstract_circuit=E.U, variables=variables, *args, **kwargs)
+            return type(arg)(E, **arg._input_args)
         elif isinstance(arg, Variable) or hasattr(arg, "name"):
             return arg
         else:

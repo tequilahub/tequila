@@ -727,10 +727,10 @@ class BackendExpectationValue:
         device:
             device for compilation of circuit
         """
-        self._abstract_E = E
-        self._input_args = {"E":E, "variables":variables, "device":device, "noise":noise, **kwargs}
+        self.abstract_expectationvalue = E
+        self._input_args = {"variables":variables, "device":device, "noise":noise, **kwargs}
         self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device)
-        self._reduced_hamiltonians = self.reduce_hamiltonians(self._input_args["E"].H)
+        self._reduced_hamiltonians = self.reduce_hamiltonians(self.abstract_expectationvalue.H)
         self._H = self.initialize_hamiltonian(self._reduced_hamiltonians)
 
         self._variables = E.extract_variables()
@@ -741,7 +741,7 @@ class BackendExpectationValue:
         return self.__deepcopy__()
 
     def __deepcopy__(self, memodict={}):
-        return type(self)(**self._input_args)
+        return type(self)(self.abstract_expectationvalue, **self._input_args)
 
     def __call__(self, variables, samples: int = None, *args, **kwargs):
 
