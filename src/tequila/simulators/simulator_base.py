@@ -153,6 +153,9 @@ class BackendCircuit():
         args
         kwargs
         """
+
+        self._input_args = {"abstract_circuit":abstract_circuit, "variables":variables, "noise":noise, "qubit_map":qubit_map, "optimize_circuits":optimize_circuit, "device":device, **kwargs}
+
         self.no_translation = False
         self._variables = tuple(abstract_circuit.extract_variables())
 
@@ -637,6 +640,12 @@ class BackendCircuit():
             variables = tuple(variables)
             return "f({})".format(variables)
 
+    def __copy__(self):
+        return self.__deepcopy__()
+
+    def __deepcopy__(self, memodict={}):
+        return type(self)(**self._input_args)
+
 
 class BackendExpectationValue:
     """
@@ -704,7 +713,7 @@ class BackendExpectationValue:
             result = self.U.extract_variables()
         return result
 
-    def __init__(self, E, variables, noise, device):
+    def __init__(self, E, variables, noise, device, *args, **kwargs):
         """
 
         Parameters
@@ -718,15 +727,21 @@ class BackendExpectationValue:
         device:
             device for compilation of circuit
         """
+        self._abstract_E = E
+        self._input_args = {"E":E, "variables":variables, "device":device, "noise":noise, **kwargs}
         self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device)
-        self._abstract_H = E.H
-        self._abstract_hamiltonians = E.H
-        self._reduced_hamiltonians = self.reduce_hamiltonians(self._abstract_hamiltonians)
+        self._reduced_hamiltonians = self.reduce_hamiltonians(self._input_args["E"].H)
         self._H = self.initialize_hamiltonian(self._reduced_hamiltonians)
 
         self._variables = E.extract_variables()
         self._contraction = E._contraction
         self._shape = E._shape
+
+    def __copy__(self):
+        return self.__deepcopy__()
+
+    def __deepcopy__(self, memodict={}):
+        return type(self)(**self._input_args)
 
     def __call__(self, variables, samples: int = None, *args, **kwargs):
 
