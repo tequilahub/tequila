@@ -856,15 +856,9 @@ class BackendExpectationValue:
         result = []
         for H in self.H:
             final_E = 0.0
-            # The hamiltonian can be defined on more qubits as the unitaries
-            qubits_h = H.qubits
-            qubits_u = self.U.abstract_qubits
-            all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit() + 1)))
-            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
-            # TODO inefficient, let the backend do it if possible or interface some library
-            simresult = self.U.simulate(variables=variables, *args, **kwargs)
-            wfn = simresult.apply_keymap(keymap=keymap)
+            # TODO inefficient,
+            # Always better to overwrite this function
+            wfn = self.U.simulate(variables=variables, *args, **kwargs)
             final_E += wfn.compute_expectationvalue(operator=H)
-
             result.append(to_float(final_E))
         return numpy.asarray(result)

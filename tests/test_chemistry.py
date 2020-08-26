@@ -321,3 +321,17 @@ def do_test_upccgsd(molecule, *args, **kwargs):
     E = tq.ExpectationValue(U=U, H=H)
     result = tq.minimize(objective=E, initial_values=0.0, gradient="2-point", method="bfgs", method_options={"finite_diff_rel_step": 1.e-4, "eps": 1.e-4})
     return result.energy
+
+@pytest.mark.parametrize("backend", tq.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_hamiltonian_reduction(backend):
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nH 0.0 0.0 0.7", basis_set="6-31G")
+    hf = mol.energies["hf"]
+    U = mol.prepare_reference()
+    H = mol.make_hamiltonian()
+    E = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend)
+    assert numpy.isclose(E, hf, atol=1.e-4)
+    for q in range(8):
+        U2 = U + tq.gates.X(target=q) + tq.gates.Y(target=q)+ tq.gates.Y(target=q)+ tq.gates.X(target=q)
+        E = tq.simulate(tq.ExpectationValue(H=H, U=U2), backend=backend)
+        assert numpy.isclose(E, hf, atol=1.e-4)
