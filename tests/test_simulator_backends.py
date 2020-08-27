@@ -317,3 +317,14 @@ def test_initial_state_from_integer(simulator, initial_state):
     wfn = tq.simulate(U, initial_state=initial_state, backend=simulator)
     assert (initial_state in wfn)
     assert (numpy.isclose(wfn[initial_state], 1.0))
+
+@pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
+def test_hamiltonian_reductions(backend):
+    for q in [0,1,2,3,4]:
+        H = tq.paulis.Z(qubit=[0,1,2,3,4])
+        U = tq.gates.X(target=q)
+        U2 = tq.gates.X(target=q) + tq.gates.X(target=[0,1,2,3,4]) + tq.gates.X(target=[0,1,2,3,4])
+        E1 = tq.compile(tq.ExpectationValue(H=H, U=U), backend=backend)
+        E2 = tq.compile(tq.ExpectationValue(H=H, U=U2), backend=backend)
+        assert E1.get_expectationvalues()[0]._reduced_hamiltonians[0] == tq.paulis.Z(q)
+        assert numpy.isclose(E1(), E2())

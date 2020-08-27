@@ -592,6 +592,8 @@ class Variable:
             new = new.binary_operator(left=new, right=other, op=op)
         elif isinstance(other, ExpectationValueImpl):
             new = Objective(args=[self, other], transformation=op)
+        else:
+            raise TequilaException("unknown type in left_helper of objective arithmetics with operation {}: {}".format(type(op), type(other)))
         return new
 
     def _right_helper(self, op, other):
@@ -609,6 +611,8 @@ class Variable:
             new = new.binary_operator(right=new, left=other, op=op)
         elif isinstance(other, ExpectationValueImpl):
             new = Objective(args=[other, self], transformation=op)
+        else:
+            raise TequilaException("unknown type in left_helper of objective arithmetics with operation {}: {}".format(type(op),type(other)))
         return new
 
     def __mul__(self, other):
