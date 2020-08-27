@@ -243,7 +243,8 @@ def test_active_spaces(active):
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="no quantum chemistry backends installed")
-def test_rdms():
+@pytest.mark.parametrize("trafo", ["JW", "BK", "BKT", "symmetry_conserving_bravyi_kitaev"])  # BKSF not working currently
+def test_rdms(trafo):
     rdm1_ref = numpy.array([[1.99137832, -0.00532359], [-0.00532359, 0.00862168]])
     rdm2_ref = numpy.array([[[[1.99136197e+00, -5.69817110e-03], [-5.69817110e-03, -1.30905760e-01]],
                              [[-5.69817110e-03, 1.63522163e-05], [1.62577807e-05, 3.74579524e-04]]],
@@ -266,7 +267,7 @@ def test_rdms():
         U += tq.gates.X(target=2)
         return U
 
-    mol = qc.Molecule(geometry="data/he.xyz", basis_set="6-31g", transformation="jw")
+    mol = qc.Molecule(geometry="data/he.xyz", basis_set="6-31g", transformation=trafo)
     # Random angles - check consistency of spin-free, spin-ful matrices
     ang = numpy.random.uniform(low=0, high=1, size=3)
     U_random = rdm_circuit(angles=ang)
@@ -320,3 +321,17 @@ def do_test_upccgsd(molecule, *args, **kwargs):
     E = tq.ExpectationValue(U=U, H=H)
     result = tq.minimize(objective=E, initial_values=0.0, gradient="2-point", method="bfgs", method_options={"finite_diff_rel_step": 1.e-4, "eps": 1.e-4})
     return result.energy
+
+@pytest.mark.parametrize("backend", tq.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_hamiltonian_reduction(backend):
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nH 0.0 0.0 0.7", basis_set="6-31G")
+    hf = mol.energies["hf"]
+    U = mol.prepare_reference()
+    H = mol.make_hamiltonian()
+    E = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend)
+    assert numpy.isclose(E, hf, atol=1.e-4)
+    for q in range(8):
+        U2 = U + tq.gates.X(target=q) + tq.gates.Y(target=q)+ tq.gates.Y(target=q)+ tq.gates.X(target=q)
+        E = tq.simulate(tq.ExpectationValue(H=H, U=U2), backend=backend)
+        assert numpy.isclose(E, hf, atol=1.e-4)

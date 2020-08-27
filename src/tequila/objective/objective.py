@@ -459,6 +459,17 @@ class Objective:
             the result of the calculation represented by this objective.
         """
         variables = format_variable_dictionary(variables)
+        # failsafe
+        check_variables = {k: k in variables for k in self.extract_variables()}
+        if not all(list(check_variables.values())):
+            raise TequilaException("Objective did not receive all variables:\n"
+                                   "You gave\n"
+                                   " {}\n"
+                                   " but the objective depends on\n"
+                                   " {}\n"
+                                   " missing values for\n"
+                                   " {}".format(variables, self.extract_variables(), [k for k,v in check_variables.items() if not v]))
+
         # avoid multiple evaluations
         evaluated = {}
         ev_array = []
@@ -581,6 +592,8 @@ class Variable:
             new = new.binary_operator(left=new, right=other, op=op)
         elif isinstance(other, ExpectationValueImpl):
             new = Objective(args=[self, other], transformation=op)
+        else:
+            raise TequilaException("unknown type in left_helper of objective arithmetics with operation {}: {}".format(type(op), type(other)))
         return new
 
     def _right_helper(self, op, other):
@@ -598,6 +611,8 @@ class Variable:
             new = new.binary_operator(right=new, left=other, op=op)
         elif isinstance(other, ExpectationValueImpl):
             new = Objective(args=[other, self], transformation=op)
+        else:
+            raise TequilaException("unknown type in left_helper of objective arithmetics with operation {}: {}".format(type(op),type(other)))
         return new
 
     def __mul__(self, other):

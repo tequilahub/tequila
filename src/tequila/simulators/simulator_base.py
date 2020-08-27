@@ -153,6 +153,9 @@ class BackendCircuit():
         args
         kwargs
         """
+
+        self._input_args = {"abstract_circuit":abstract_circuit, "variables":variables, "noise":noise, "qubit_map":qubit_map, "optimize_circuits":optimize_circuit, "device":device, **kwargs}
+
         self.no_translation = False
         self._variables = tuple(abstract_circuit.extract_variables())
 
@@ -637,6 +640,12 @@ class BackendCircuit():
             variables = tuple(variables)
             return "f({})".format(variables)
 
+    def __copy__(self):
+        return self.__deepcopy__()
+
+    def __deepcopy__(self, memodict={}):
+        return type(self)(**self._input_args)
+
 
 class BackendExpectationValue:
     """
@@ -704,7 +713,7 @@ class BackendExpectationValue:
             result = self.U.extract_variables()
         return result
 
-    def __init__(self, E, variables, noise, device):
+    def __init__(self, E, variables, noise, device, *args, **kwargs):
         """
 
         Parameters
@@ -718,15 +727,21 @@ class BackendExpectationValue:
         device:
             device for compilation of circuit
         """
+        self.abstract_expectationvalue = E
+        self._input_args = {"variables":variables, "device":device, "noise":noise, **kwargs}
         self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device)
-        self._abstract_H = E.H
-        self._abstract_hamiltonians = E.H
-        self._reduced_hamiltonians = self.reduce_hamiltonians(self._abstract_hamiltonians)
+        self._reduced_hamiltonians = self.reduce_hamiltonians(self.abstract_expectationvalue.H)
         self._H = self.initialize_hamiltonian(self._reduced_hamiltonians)
 
         self._variables = E.extract_variables()
         self._contraction = E._contraction
         self._shape = E._shape
+
+    def __copy__(self):
+        return self.__deepcopy__()
+
+    def __deepcopy__(self, memodict={}):
+        return type(self)(self.abstract_expectationvalue, **self._input_args)
 
     def __call__(self, variables, samples: int = None, *args, **kwargs):
 
@@ -841,15 +856,9 @@ class BackendExpectationValue:
         result = []
         for H in self.H:
             final_E = 0.0
-            # The hamiltonian can be defined on more qubits as the unitaries
-            qubits_h = H.qubits
-            qubits_u = self.U.abstract_qubits
-            all_qubits = list(set(qubits_h) | set(qubits_u) | set(range(self.U.abstract_circuit.max_qubit() + 1)))
-            keymap = KeyMapSubregisterToRegister(subregister=qubits_u, register=all_qubits)
-            # TODO inefficient, let the backend do it if possible or interface some library
-            simresult = self.U.simulate(variables=variables, *args, **kwargs)
-            wfn = simresult.apply_keymap(keymap=keymap)
+            # TODO inefficient,
+            # Always better to overwrite this function
+            wfn = self.U.simulate(variables=variables, *args, **kwargs)
             final_E += wfn.compute_expectationvalue(operator=H)
-
             result.append(to_float(final_E))
         return numpy.asarray(result)
