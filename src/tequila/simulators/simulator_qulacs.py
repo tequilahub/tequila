@@ -456,7 +456,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
 
     def initialize_hamiltonian(self, hamiltonians):
         """
-        Convert hamiltonian to native Qulacs types for efficient expectation value evaluation.
+        Convert reduced hamiltonians to native Qulacs types for efficient expectation value evaluation.
         Parameters
         ----------
         hamiltonians:
@@ -469,13 +469,18 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
 
         """
 
+        # map the reduced operators to the potentially smaller qubit system
+        qubit_map = {}
+        for i,q in enumerate(self.U.abstract_circuit.qubits):
+            qubit_map[q] = i
+
         result = []
         for H in hamiltonians:
             qulacs_H = qulacs.Observable(self.n_qubits)
             for ps in H.paulistrings:
                 string = ""
                 for k, v in ps.items():
-                    string += v.upper() + " " + str(k)
+                    string += v.upper() + " " + str(qubit_map[k])
                 qulacs_H.add_operator(ps.coeff, string)
             result.append(qulacs_H)
         return result

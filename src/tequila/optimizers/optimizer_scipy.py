@@ -291,7 +291,6 @@ class OptimizerSciPy(Optimizer):
                 self.history.energies = E.history
                 self.history.angles = E.history_angles
 
-
         # some scipy methods always give back the last value and not the minimum (e.g. cobyla)
         ea = sorted(zip(E.history, E.history_angles), key=lambda x: x[0])
         E_final = ea[0][0]
