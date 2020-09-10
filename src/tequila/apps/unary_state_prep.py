@@ -126,7 +126,7 @@ class UnaryStatePrep:
 
     def _evaluate_angles(self, wfn: QubitWaveFunction) -> typing.Dict[sympy.Symbol, float]:
         # coeffs need to be normalized
-        wfn = wfn.normalize()
+        #wfn = wfn.normalize()
 
         # initialize the map that will substitute the abstract_coefficients with the QubitWaveFunction coefficients
         subs = dict()
@@ -168,7 +168,7 @@ class UnaryStatePrep:
 
         return result
 
-    def __call__(self, wfn: QubitWaveFunction) -> QCircuit:
+    def __call__(self, wfn: QubitWaveFunction, variational: bool = False) -> QCircuit:
         """
         :param coeffs: The QubitWaveFunction you want to initialize
         :return:
@@ -186,8 +186,11 @@ class UnaryStatePrep:
                                                               "But the target_space is " + str(
                 [k.binary for k in self._target_space]) + "\n")
 
+        """ if variational == True:
+            self._use_symbolic_solver = True """
         angles = self._evaluate_angles(wfn=wfn)
 
+        MRamp = {}
         # construct new circuit with evaluated angles
         result = QCircuit()
         for g in self._abstract_circuit.gates:
@@ -195,10 +198,14 @@ class UnaryStatePrep:
             if hasattr(g, "parameter"):
                 symbol = g.parameter
                 # the module needs repairing ....
-                g2._parameter = assign_variable(-angles[-symbol()])  # the minus follows mahas convention since the circuits are daggered in the end
+                if not variational:
+                    g2._parameter = assign_variable(-angles[-symbol()])  # the minus follows mahas convention since the circuits are daggered in the end
+                else:    
+                    g2._parameter = assign_variable(-symbol())
+                MRamp.update({-symbol(): -angles[-symbol()]})
             result += g2
-
-        return result
+            
+        return result, MRamp
 
     def get_circuit(self):
         """
