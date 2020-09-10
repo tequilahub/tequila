@@ -769,10 +769,20 @@ class QuantumChemistryBase:
                 op *= 0.5
                 op += openfermion.FermionOperator(Na+Mi, 0.5)
                 op += openfermion.FermionOperator(Ni+Ma, 0.5)
+            elif form.lower() == "complementary_projector":
+                op *= 0.5
+                op += openfermion.FermionOperator(Na+Mi, -0.5)
+                op += openfermion.FermionOperator(Ni+Ma, -0.5)
+
             elif form.lower() == "involution":
                 op += openfermion.FermionOperator([], 1.0) # Just for clarity will be subtracted anyway
                 op += openfermion.FermionOperator(Na+Mi, -1.0)
                 op += openfermion.FermionOperator(Ni+Ma, -1.0)
+            elif form.lower() == "complementary_involution":
+                op += openfermion.FermionOperator([], -1.0) # Just for clarity will be subtracted anyway
+                op += openfermion.FermionOperator(Na+Mi, 1.0)
+                op += openfermion.FermionOperator(Ni+Ma, 1.0)
+
             else:
                 raise TequilaException("Unknown generator form {}, supported are fermionic, involution and projector".format(form))
 
