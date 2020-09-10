@@ -416,14 +416,6 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
     -------
     The gate wrapped in a circuit
     """
-    for ps in generator.paulistrings:
-        X = QubitHamiltonian.from_paulistrings([ps])
-        comm= X*generator - generator*X
-        print("[X,G] = ", comm)
-        for ps2 in generator.paulistrings:
-            Y = QubitHamiltonian.from_paulistrings([ps2])
-            comm2= X*Y - Y*X
-            print("[X,Y] = ", comm2)
 
     return QCircuit.wrap_gate(
         GeneralizedRotationImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
