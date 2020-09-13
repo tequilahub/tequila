@@ -53,14 +53,17 @@ class FermionicGateImpl(_gates_impl.ParametrizedGateImpl):
 
     def shifted_gates(self):
         s = 0.5 * numpy.pi
-        Up1 = gates.QCircuit.wrap_gate(FermionicGateImpl(angle=self.angle + s, generator=self.generator, p0=self.p0, control=self.control))
+        Up1 = gates.QCircuit.wrap_gate(
+            FermionicGateImpl(angle=self.angle + s, generator=self.generator, p0=self.p0, control=self.control))
         Up2 = gates.GeneralizedRotation(angle=s, generator=self.p0, shift=self.shift, steps=1, control=self.control)
-        Um1 = gates.QCircuit.wrap_gate(FermionicGateImpl(angle=self.angle - s, generator=self.generator, p0=self.p0, control=self.control))
+        Um1 = gates.QCircuit.wrap_gate(
+            FermionicGateImpl(angle=self.angle - s, generator=self.generator, p0=self.p0, control=self.control))
         Um2 = gates.GeneralizedRotation(angle=-s, generator=self.p0, shift=self.shift, steps=1, control=self.control)
         if self.exact:
-            return [(self.shift, Up1 + Up2), (-self.shift, Um1 + Um2), (self.shift, Up1 + Up2), (-self.shift, Um1 + Um2)]
+            return [(self.shift, Up1 + Up2), (-self.shift, Um1 + Um2), (self.shift, Up1 + Up2),
+                    (-self.shift, Um1 + Um2)]
         else:
-            return [(2.0*self.shift, Up1 + Up2), (-2.0*self.shift, Um1 + Um2)]
+            return [(2.0 * self.shift, Up1 + Up2), (-2.0 * self.shift, Um1 + Um2)]
 
 
 def prepare_product_state(state: BitString) -> QCircuit:
@@ -1112,7 +1115,7 @@ class QuantumChemistryBase:
 
         for k in range(order):
             for idx in indices:
-                angle =(order, idx, label)
+                angle = (k, idx, label)
                 U += self.make_excitation_gate(angle=angle, indices=idx, exact=exact_gradient)
         return U
 
@@ -1477,15 +1480,15 @@ class QuantumChemistryBase:
                     op = _get_of_op(op_tuple)
                     # Spin abab
                     op_tuple = ((2 * p, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r, 0)) if (
-                                2 * p != 2 * q + 1 and 2 * r != 2 * s + 1) else '0.0 []'
+                            2 * p != 2 * q + 1 and 2 * r != 2 * s + 1) else '0.0 []'
                     op += _get_of_op(op_tuple)
                     # Spin baba
                     op_tuple = ((2 * p + 1, 1), (2 * q, 1), (2 * s, 0), (2 * r + 1, 0)) if (
-                                2 * p + 1 != 2 * q and 2 * r + 1 != 2 * s) else '0.0 []'
+                            2 * p + 1 != 2 * q and 2 * r + 1 != 2 * s) else '0.0 []'
                     op += _get_of_op(op_tuple)
                     # Spin bbbb
                     op_tuple = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0)) if (
-                                p != q and r != s) else '0.0 []'
+                            p != q and r != s) else '0.0 []'
                     op += _get_of_op(op_tuple)
 
                     ops += [op]
