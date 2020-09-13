@@ -174,6 +174,19 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     :return: an Objective, whose calculation yields the gradient of g w.r.t variable
     '''
 
+    if hasattr(g, "shifted_gates"):
+        inner_grad=__grad_inner(g.parameter, variable)
+        shifted = g.shifted_gates()
+        dOinc = Objective()
+        for x in shifted:
+            w,g = x
+            Ux = unitary.replace_gates(position=[i], circuits=[g])
+            wx = w*inner_grad
+            Ex = ExpectationValueImpl(U=Ux, H=hamiltonian)
+            dOinc += wx*Ex
+        return dOinc
+
+
     if not hasattr(g, "shift"):
         raise TequilaException("No shift found for gate {}".format(g))
 

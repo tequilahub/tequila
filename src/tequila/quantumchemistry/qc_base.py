@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from tequila import TequilaException, BitString, TequilaWarning
 from tequila.hamiltonian import QubitHamiltonian
 
-from tequila.circuit import QCircuit, gates
+from tequila.circuit import QCircuit, gates, _gates_impl
 from tequila.objective.objective import Variable, Variables, ExpectationValue
 
 from tequila.simulators.simulator_api import simulate
@@ -15,6 +15,45 @@ import openfermion
 from openfermion.hamiltonians import MolecularData
 
 import warnings
+
+
+class FermionicGateImpl(_gates_impl.ParametrizedGateImpl):
+
+    @property
+    def parameter(self):
+        return self.angle
+
+    @staticmethod
+    def extract_targets(generator):
+        targets = []
+        for ps in generator.paulistrings:
+            targets += [k for k in ps.keys()]
+        return tuple(set(targets))
+
+    def __init__(self, angle, generator, p0, exact=True, control=None):
+        super().__init__(name="FermionicEx", parameter=angle, target=self.extract_targets(generator), control=control)
+        self.angle = angle
+        self.generator = generator
+        self.p0 = p0
+        self.exact = exact
+        self.shift = 0.25  # this is "r" actually
+        if exact:
+            self.Gp = generator + p0
+            self.Gm = generator - p0
+
+    def compile(self):
+        return gates.Trotterized(angles=[self.angle], generators=[self.generator], steps=1)
+
+    def shifted_gates(self):
+        s = 0.5 * numpy.pi
+        Up1 = gates.wrap_gate(FermionicGateImpl(angle=self.angle + s, generator=self.generator, p0=self.p0))
+        Up2 = gates.GeneralizedRotationImpl(angle=s, generator=self.P0, shift=self.shift, steps=1)
+        Um1 = gates.wrap_gate(FermionicGateImpl(angle=self.angle - s, generator=self.generator, p0=self.p0))
+        Um2 = gates.GeneralizedRotationImpl(angle=-s, generator=self.P0, shift=self.shift, steps=1)
+        if self.exact:
+            return [(1.0, Up1 + Up2), (-1.0, Um1 + Um2), (1.0, Up1 + Up2), (-1.0, Um1 + Um2)]
+        else:
+            return [(1.0, Up1 + Up2), (-1.0, Um1 + Um2)]
 
 
 def prepare_product_state(state: BitString) -> QCircuit:
@@ -696,6 +735,36 @@ class QuantumChemistryBase:
                                   charge=molecule.charge)
         return cls(parameters=parameters, transformation=transformation, molecule=molecule, *args, **kwargs)
 
+    def make_p0_projector(self, indices: typing.Iterable[typing.Tuple[int, int]]):
+        # check indices and convert to list of tuples if necessary
+        if len(indices) == 0:
+            raise TequilaException("make_excitation_operator: no indices given")
+        elif not isinstance(indices[0], typing.Iterable):
+            if len(indices) % 2 != 0:
+                raise TequilaException("make_excitation_generator: unexpected input format of indices\n"
+                                       "use list of tuples as [(a_0, i_0),(a_1, i_1) ...]\n"
+                                       "or list as [a_0, i_0, a_1, i_1, ... ]\n"
+                                       "you gave: {}".format(indices))
+            converted = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
+        else:
+            converted = indices
+        # indices for all the Na operators
+        Na = [x for pair in converted for x in [(pair[0], 1), (pair[0], 0)]]
+        # indices for all the Ma operators (Ma = 1 - Na)
+        Ma = [x for pair in converted for x in [(pair[0], 0), (pair[0], 1)]]
+        # indices for all the Ni operators
+        Ni = [x for pair in converted for x in [(pair[1], 1), (pair[1], 0)]]
+        # indices for all the Mi operators
+        Mi = [x for pair in converted for x in [(pair[1], 0), (pair[1], 1)]]
+
+        op = openfermion.FermionOperator([], 1.0)  # Just for clarity will be subtracted anyway
+        op += openfermion.FermionOperator(Na + Mi, -1.0)
+        op += openfermion.FermionOperator(Ni + Ma, -1.0)
+
+        qop = QubitHamiltonian(qubit_operator=self.transformation(op))
+
+        return qop
+
     def make_excitation_generator(self,
                                   indices: typing.Iterable[typing.Tuple[int, int]],
                                   form: str = None,
@@ -767,24 +836,25 @@ class QuantumChemistryBase:
             # can gaussianize as projector or as involution (last is default)
             if form.lower() == "projector":
                 op *= 0.5
-                op += openfermion.FermionOperator(Na+Mi, 0.5)
-                op += openfermion.FermionOperator(Ni+Ma, 0.5)
+                op += openfermion.FermionOperator(Na + Mi, 0.5)
+                op += openfermion.FermionOperator(Ni + Ma, 0.5)
             elif form.lower() == "complementary_projector":
                 op *= 0.5
-                op += openfermion.FermionOperator(Na+Mi, -0.5)
-                op += openfermion.FermionOperator(Ni+Ma, -0.5)
+                op += openfermion.FermionOperator(Na + Mi, -0.5)
+                op += openfermion.FermionOperator(Ni + Ma, -0.5)
 
             elif form.lower() == "involution":
-                op += openfermion.FermionOperator([], 1.0) # Just for clarity will be subtracted anyway
-                op += openfermion.FermionOperator(Na+Mi, -1.0)
-                op += openfermion.FermionOperator(Ni+Ma, -1.0)
+                op += openfermion.FermionOperator([], 1.0)  # Just for clarity will be subtracted anyway
+                op += openfermion.FermionOperator(Na + Mi, -1.0)
+                op += openfermion.FermionOperator(Ni + Ma, -1.0)
             elif form.lower() == "complementary_involution":
-                op += openfermion.FermionOperator([], -1.0) # Just for clarity will be subtracted anyway
-                op += openfermion.FermionOperator(Na+Mi, 1.0)
-                op += openfermion.FermionOperator(Ni+Ma, 1.0)
+                op += openfermion.FermionOperator([], -1.0)  # Just for clarity will be subtracted anyway
+                op += openfermion.FermionOperator(Na + Mi, 1.0)
+                op += openfermion.FermionOperator(Ni + Ma, 1.0)
 
             else:
-                raise TequilaException("Unknown generator form {}, supported are fermionic, involution and projector".format(form))
+                raise TequilaException(
+                    "Unknown generator form {}, supported are fermionic, involution and projector".format(form))
 
         qop = QubitHamiltonian(qubit_operator=self.transformation(op))
 
@@ -806,6 +876,11 @@ class QuantumChemistryBase:
                           "Non-standard transformations might not work with general fermionic operators\n"
                           "indices = " + str(indices), category=TequilaWarning)
         return qop
+
+    def make_excitation_gate(self, indices, angle, control=None, exact=True):
+        generator = self.make_excitation_generator(indices=indices)
+        p0 = self.make_p0_projector()
+        return FermionicGateImpl(angle=angle, generator=generator, p0=p0, exact=exact, control=control)
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
         """Does a really lazy workaround ... but it works
@@ -923,14 +998,13 @@ class QuantumChemistryBase:
             nuclear_repulsion = 0.0
             warnings.warn("No nuclear_repulsion given for custom molecule, setting to zero", category=TequilaWarning)
 
-
         if ("n_orbitals" in kwargs):
             n_orbitals = kwargs["n_orbitals"]
         else:
             n_orbitals = one_body_integrals.shape[0]
-            for i in [0,1,2,3]:
+            for i in [0, 1, 2, 3]:
                 assert n_orbitals == two_body_integrals.shape[i]
-        
+
         molecule = MolecularData(**self.parameters.molecular_data_param)
 
         molecule.one_body_integrals = one_body_integrals
@@ -971,10 +1045,10 @@ class QuantumChemistryBase:
             qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
         return QubitHamiltonian(qubit_operator=qop)
 
-
     def make_molecular_hamiltonian(self):
         if self.active_space:
-            return self.molecule.get_molecular_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals, active_indices=self.active_space.active_orbitals)
+            return self.molecule.get_molecular_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals,
+                                                           active_indices=self.active_space.active_orbitals)
         else:
             return self.molecule.get_molecular_hamiltonian()
 
@@ -1003,12 +1077,12 @@ class QuantumChemistryBase:
         return prepare_product_state(self.reference_state(*args, **kwargs))
 
     def make_upccgsd_ansatz(self,
-                            include_singles:bool=True,
-                            include_reference:bool=True,
-                            indices:list=None,
-                            label: str=None,
-                            order:int =1,
-                            form:str = None,
+                            include_singles: bool = True,
+                            include_reference: bool = True,
+                            indices: list = None,
+                            label: str = None,
+                            order: int = 1,
+                            form: str = None,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1054,13 +1128,13 @@ class QuantumChemistryBase:
         generators = [self.make_excitation_generator(i, form=form, *args, **kwargs) for i in indices]
 
         for k in range(order):
-            idx = [(k,i) for i in indices]
+            idx = [(k, i) for i in indices]
             prefix = order
             if label is not None:
                 prefix = (label, order)
             names = [(prefix, i) for i in idx]
             if form is not None and form.lower() in ["involution", "projector"]:
-                for angle, g in zip(names,generators):
+                for angle, g in zip(names, generators):
                     U += gates.GeneralizedRotation(generator=g, angle=angle)
             else:
                 U += gates.Trotterized(generators=generators, angles=names, steps=1)
@@ -1423,16 +1497,19 @@ class QuantumChemistryBase:
             for p, q, r, s in product(range(n_MOs), repeat=4):
                 if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
                     # Spin aaaa
-                    op_tuple = ((2 * p, 1), (2 * q, 1), (2 * s, 0), (2 * r, 0)) if (p!=q and r!=s) else '0.0 []'
+                    op_tuple = ((2 * p, 1), (2 * q, 1), (2 * s, 0), (2 * r, 0)) if (p != q and r != s) else '0.0 []'
                     op = _get_of_op(op_tuple)
                     # Spin abab
-                    op_tuple = ((2 * p, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r, 0)) if (2*p!=2*q+1 and 2*r!=2*s+1) else '0.0 []'
+                    op_tuple = ((2 * p, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r, 0)) if (
+                                2 * p != 2 * q + 1 and 2 * r != 2 * s + 1) else '0.0 []'
                     op += _get_of_op(op_tuple)
                     # Spin baba
-                    op_tuple = ((2 * p + 1, 1), (2 * q, 1), (2 * s, 0), (2 * r + 1, 0)) if (2*p+1!=2*q and 2*r+1!=2*s) else '0.0 []'
+                    op_tuple = ((2 * p + 1, 1), (2 * q, 1), (2 * s, 0), (2 * r + 1, 0)) if (
+                                2 * p + 1 != 2 * q and 2 * r + 1 != 2 * s) else '0.0 []'
                     op += _get_of_op(op_tuple)
                     # Spin bbbb
-                    op_tuple = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0)) if (p!=q and r!=s) else '0.0 []'
+                    op_tuple = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0)) if (
+                                p != q and r != s) else '0.0 []'
                     op += _get_of_op(op_tuple)
 
                     ops += [op]
