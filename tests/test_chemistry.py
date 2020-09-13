@@ -335,3 +335,44 @@ def test_hamiltonian_reduction(backend):
         U2 = U + tq.gates.X(target=q) + tq.gates.Y(target=q)+ tq.gates.Y(target=q)+ tq.gates.X(target=q)
         E = tq.simulate(tq.ExpectationValue(H=H, U=U2), backend=backend)
         assert numpy.isclose(E, hf, atol=1.e-4)
+
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.parametrize("exact", [True, False])
+@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "symmetry_conserving_bravyi_kitaev"])
+def test_fermionic_gates(exact, trafo):
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.7\nLi 0.0 0.0 0.0", basis_set="sto-3g")
+    U1 = mol.prepare_reference()
+    U2 = mol.prepare_reference()
+    variable_count = {}
+    for i in [0,1,0]:
+        for a in numpy.random.randint(2, 5, 3):
+            idx = [(2 * i, 2 * a), (2 * i + 1, 2 * a + 1)]
+            U1 += mol.make_excitation_gate(indices=idx, angle=(i, a), exact=exact)
+            g = mol.make_excitation_generator(indices=idx)
+            U2    += tq.gates.Trotterized(generators=[g], angles=[(i, a)], steps=1)
+            if (i,a) in variable_count:
+                variable_count[(i,a)] += 1
+            else:
+                variable_count[(i,a)] = 1
+
+    a = numpy.random.choice(U1.extract_variables(), 1)[0]
+
+    H = mol.make_hamiltonian()
+    E = tq.ExpectationValue(H=H, U=U1)
+    dE = tq.grad(E, a)
+    if exact:
+        assert dE.count_expectationvalues() == 4*variable_count[a.name]
+    else:
+        assert dE.count_expectationvalues() == 2*variable_count[a.name]
+
+    E2 = tq.ExpectationValue(H=H, U=U2)
+    dE2 = tq.grad(E2, a)
+
+    variables = {k:numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0] for k in E.extract_variables()}
+    test1=tq.simulate(E, variables=variables)
+    test1x=tq.simulate(E2, variables=variables)
+    test2=tq.simulate(dE, variables=variables)
+    test2x=tq.simulate(dE2, variables=variables)
+
+    assert numpy.isclose(test1, test1x, atol=1.e-6)
+    assert numpy.isclose(test2, test2x, atol=1.e-6)
