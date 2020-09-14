@@ -21,10 +21,6 @@ import warnings
 
 class FermionicGateImpl(_gates_impl.ParametrizedGateImpl):
 
-    @property
-    def parameter(self):
-        return self.angle
-
     @staticmethod
     def extract_targets(generator):
         targets = []
@@ -39,14 +35,10 @@ class FermionicGateImpl(_gates_impl.ParametrizedGateImpl):
     def __init__(self, angle, generator, p0, exact=True, control=None):
         angle = assign_variable(angle)
         super().__init__(name="FermionicEx", parameter=angle, target=self.extract_targets(generator), control=control)
-        self.angle = angle
         self.generator = generator
         self.p0 = p0
         self.exact = exact
         self.shift = 0.25  # this is "r" actually
-        if exact:
-            self.Gp = generator + p0
-            self.Gm = generator - p0
 
     def compile(self):
         return gates.Trotterized(angles=[self.angle], generators=[self.generator], steps=1)
@@ -54,10 +46,10 @@ class FermionicGateImpl(_gates_impl.ParametrizedGateImpl):
     def shifted_gates(self):
         s = 0.5 * numpy.pi
         Up1 = gates.QCircuit.wrap_gate(
-            FermionicGateImpl(angle=self.angle + s, generator=self.generator, p0=self.p0, control=self.control))
+            FermionicGateImpl(angle=self._parameter + s, generator=self.generator, p0=self.p0, control=self.control))
         Up2 = gates.GeneralizedRotation(angle=s, generator=self.p0, shift=self.shift, steps=1, control=self.control)
         Um1 = gates.QCircuit.wrap_gate(
-            FermionicGateImpl(angle=self.angle - s, generator=self.generator, p0=self.p0, control=self.control))
+            FermionicGateImpl(angle=self._parameter - s, generator=self.generator, p0=self.p0, control=self.control))
         Um2 = gates.GeneralizedRotation(angle=-s, generator=self.p0, shift=self.shift, steps=1, control=self.control)
         if self.exact:
             return [(self.shift, Up1 + Up2), (-self.shift, Um1 + Um2), (self.shift, Up1 + Up2),
@@ -65,6 +57,8 @@ class FermionicGateImpl(_gates_impl.ParametrizedGateImpl):
         else:
             return [(2.0 * self.shift, Up1 + Up2), (-2.0 * self.shift, Um1 + Um2)]
 
+    def dagger(self):
+        return FermionicGateImpl(angle=-self._parameter, generator=self.generator, p0=self.p0, control=self.control)
 
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
@@ -868,7 +862,7 @@ class QuantumChemistryBase:
     def make_excitation_gate(self, indices, angle, control=None, exact=False):
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
-        return FermionicGateImpl(angle=angle, generator=generator, p0=p0, exact=exact, control=control)
+        return QCircuit.wrap_gate(FermionicGateImpl(angle=angle, generator=generator, p0=p0, exact=exact, control=control))
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
         """Does a really lazy workaround ... but it works
