@@ -52,8 +52,8 @@ class FermionicGateImpl(_gates_impl.ParametrizedGateImpl):
             FermionicGateImpl(angle=self._parameter - s, generator=self.generator, p0=self.p0, control=self.control))
         Um2 = gates.GeneralizedRotation(angle=-s, generator=self.p0, shift=self.shift, steps=1, control=self.control)
         if self.exact:
-            return [(self.shift, Up1 + Up2), (-self.shift, Um1 + Um2), (self.shift, Up1 + Up2),
-                    (-self.shift, Um1 + Um2)]
+            return [(self.shift, Up1 + Up2), (-self.shift, Um1 + Um2), (self.shift, Up1 + Um2),
+                    (-self.shift, Um1 + Up2)]
         else:
             return [(2.0 * self.shift, Up1 + Up2), (-2.0 * self.shift, Um1 + Um2)]
 
