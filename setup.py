@@ -19,14 +19,14 @@ requirements = read_requirements('requirements.txt')
 setup(
     name='tequila',
     version="1.0",
-    author='Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo-Mendoza, Cyrille Lavigne, Alba Cervera-Lierta, Abhinav Anand, Maha Kesebi',
+    author='Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo-Mendoza, Cyrille Lavigne, Alba Cervera-Lierta, Abhinav Anand, Maha Kesebi, and others',
     author_email='jakob.kottmann@gmail.com',
     install_requires=requirements + additional,
     extras_require={
         ':python_version < "3.7"': extras_3_6,
         ':python_version == "3.7"': extras_3_7
     },
-    packages=find_packages(include=['src','src/tequila',"src/tequila."]),
+    packages=find_packages(where='src'),
     package_dir={'': 'src'},
     include_package_data=True,
     package_data={
