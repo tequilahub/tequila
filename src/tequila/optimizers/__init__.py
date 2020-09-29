@@ -3,9 +3,10 @@ from tequila.optimizers.optimizer_scipy import OptimizerSciPy
 from tequila.optimizers.optimizer_gd import OptimizerGD
 from tequila.optimizers.optimizer_scipy import minimize as minimize_scipy
 from tequila.optimizers.optimizer_gd import minimize as minimize_gd
+from tequila.objective.objective import assign_variable
 from dataclasses import dataclass
 
-import typing
+import typing, numbers
 
 
 @dataclass
@@ -26,12 +27,12 @@ INSTALLED_OPTIMIZERS['gd'] = _Optimizers(cls=OptimizerGD,
 
 has_gpyopt = False
 try:
-    from tequila.optimizers.optimizer_gpyopt import OptimizerGpyOpt
+    from tequila.optimizers.optimizer_gpyopt import OptimizerGPyOpt
     from tequila.optimizers.optimizer_gpyopt import minimize as minimize_gpyopt
 
-    INSTALLED_OPTIMIZERS['gpyopt'] = _Optimizers(cls=OptimizerGpyOpt,
+    INSTALLED_OPTIMIZERS['gpyopt'] = _Optimizers(cls=OptimizerGPyOpt,
                                                  minimize=minimize_gpyopt,
-                                                 methods=OptimizerGpyOpt.available_methods())
+                                                 methods=OptimizerGPyOpt.available_methods())
     has_gpyopt = True
 except ImportError:
     has_gpyopt = False
@@ -49,22 +50,32 @@ except ImportError:
     has_phoenics = False
 
 
-def show_available_optimizers():
+def show_available_optimizers(module=None):
     """
     Returns
     -------
         A list of available optimization methods
         The list depends on optimization packages installed in your system
     """
-    print("available methods for optimizer modules found on your system:")
+    if module is None:
+        print("available methods for optimizer modules found on your system:")
+    else:
+        print("available methods for optimizer module {}".format(module))
+        if module not in INSTALLED_OPTIMIZERS:
+            print("module {} not found!".format(module))
+            module = None 
+
     print("{:20} | {}".format("method", "optimizer module"))
     print("--------------------------")
     for k, v in INSTALLED_OPTIMIZERS.items():
+        if module is not None and module != k:
+            continue
         for method in v.methods:
             print("{:20} | {}".format(method, k))
-
-    print("Supported optimizer modules: ", SUPPORTED_OPTIMIZERS)
-    print("Installed optimizer modules: ", list(INSTALLED_OPTIMIZERS.keys()))
+    
+    if module is None:
+        print("Supported optimizer modules: ", SUPPORTED_OPTIMIZERS)
+        print("Installed optimizer modules: ", list(INSTALLED_OPTIMIZERS.keys()))
 
 def minimize(method: str,
              objective,
@@ -87,7 +98,8 @@ def minimize(method: str,
        Can be passed as list of names or list of tq variables
     initial_values: dict:
        Initial values for the optimization, passed as dictionary
-       with the variable names as keys
+       with the variable names as keys.
+       Alternatively `zero`, `random` or a single number are accepted
     maxiter:
        maximum number of iterations
     kwargs:
@@ -116,8 +128,15 @@ def minimize(method: str,
     """
     for k, v in INSTALLED_OPTIMIZERS.items():
         if method.lower() in v.methods or method.upper() in v.methods:
-            return v.minimize(method=method,
+            if hasattr(initial_values, "lower") and initial_values.lower() == "zero":
+                initial_values = {assign_variable(k): 0.0 for k in objective.extract_variables()}
+            elif isinstance(initial_values, numbers.Number):
+                initial_values = {assign_variable(k): initial_values for k in objective.extract_variables()}
+            if initial_values is not None:
+                initial_values = {assign_variable(k): v for k, v in initial_values.items()}
+            return v.minimize(
                               objective=objective,
+                              method=method,
                               variables=variables,
                               initial_values=initial_values,
                               maxiter=maxiter,

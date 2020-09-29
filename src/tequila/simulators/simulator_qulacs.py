@@ -4,6 +4,7 @@ from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, QCircuit, change_basis
+from tequila.utils.keymap import KeyMapRegisterToSubregister
 
 """
 Developer Note:
@@ -12,16 +13,33 @@ Developer Note:
     The angles are scaled with -1.0 to keep things consistent with the rest of tequila
 """
 
-
 class TequilaQulacsException(TequilaException):
     def __str__(self):
         return "Error in qulacs backend:" + self.message
 
-
-
-
-
 class BackendCircuitQulacs(BackendCircuit):
+    """
+    Class representing circuits compiled to qulacs.
+    See BackendCircuit for documentation of features and methods inherited therefrom
+
+    Attributes
+    ----------
+    counter:
+        counts how many distinct sympy.Symbol objects are employed in the circuit.
+    has_noise:
+        whether or not the circuit is noisy. needed by the expectationvalue to do sampling properly.
+    noise_lookup: dict:
+        dict mapping strings to lists of constructors for cirq noise channel objects.
+    op_lookup: dict:
+        dictionary mapping strings (tequila gate names) to cirq.ops objects.
+    variables: list:
+        a list of the qulacs variables of the circuit.
+
+    Methods
+    -------
+    add_noise_to_circuit:
+        apply a tequila NoiseModel to a qulacs circuit, by translating the NoiseModel's instructions into noise gates.
+    """
 
     compiler_arguments = {
         "trotterized": True,
@@ -44,6 +62,17 @@ class BackendCircuitQulacs(BackendCircuit):
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit, noise=None, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        abstract_circuit: QCircuit:
+            the circuit to compile to qulacs
+        noise: optional:
+            noise to apply to the circuit.
+        args
+        kwargs
+        """
         self.op_lookup = {
             'I': qulacs.gate.Identity,
             'X': qulacs.gate.X,
@@ -57,7 +86,7 @@ class BackendCircuitQulacs(BackendCircuit):
             'Measure': qulacs.gate.Measurement,
             'Exp-Pauli': None
         }
-
+        self.measurements = None
         self.variables = []
         super().__init__(abstract_circuit=abstract_circuit, noise=noise, *args, **kwargs)
         self.has_noise=False
@@ -76,12 +105,45 @@ class BackendCircuitQulacs(BackendCircuit):
 
             self.circuit=self.add_noise_to_circuit(noise)
 
+    def initialize_state(self, n_qubits:int=None) -> qulacs.QuantumState:
+        if n_qubits is None:
+            n_qubits = self.n_qubits
+        return qulacs.QuantumState(n_qubits)
+
     def update_variables(self, variables):
+        """
+        set new variable values for the circuit.
+        Parameters
+        ----------
+        variables: dict:
+            the variables to supply to the circuit.
+
+        Returns
+        -------
+        None
+        """
         for k, angle in enumerate(self.variables):
             self.circuit.set_parameter(k, angle(variables))
 
     def do_simulate(self, variables, initial_state, *args, **kwargs):
-        state = qulacs.QuantumState(self.n_qubits)
+        """
+        Helper function to perform simulation.
+
+        Parameters
+        ----------
+        variables: dict:
+            variables to supply to the circuit.
+        initial_state:
+            information indicating the initial state on which the circuit should act.
+        args
+        kwargs
+
+        Returns
+        -------
+        QubitWaveFunction:
+            QubitWaveFunction representing result of the simulation.
+        """
+        state = self.initialize_state(self.n_qubits)
         lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
         state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
         self.circuit.update_quantum_state(state)
@@ -89,55 +151,117 @@ class BackendCircuitQulacs(BackendCircuit):
         wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
         return wfn
 
-    def convert_measurements(self, backend_result) -> QubitWaveFunction:
+    def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
+        """
+        Transform backend evaluation results into QubitWaveFunction
+        Parameters
+        ----------
+        backend_result:
+            the return value of backend simulation.
+
+        Returns
+        -------
+        QubitWaveFunction
+            results transformed to tequila native QubitWaveFunction
+        """
+
         result = QubitWaveFunction()
         # todo there are faster ways
+
+
         for k in backend_result:
             converted_key = BitString.from_binary(BitStringLSB.from_int(integer=k, nbits=self.n_qubits).binary)
             if converted_key in result._state:
                 result._state[converted_key] += 1
             else:
                 result._state[converted_key] = 1
+
+        if target_qubits is not None:
+            mapped_target = [self.qubit_map[q].number for q in target_qubits]
+            mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
+            keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
+            result = result.apply_keymap(keymap=keymap)
+
         return result
 
     def do_sample(self, samples, circuit, noise_model=None, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
-        state = qulacs.QuantumState(self.n_qubits)
+        """
+        Helper function for performing sampling.
+
+        Parameters
+        ----------
+        samples: int:
+            the number of samples to be taken.
+        circuit:
+            the circuit to sample from.
+        noise_model: optional:
+            noise model to be applied to the circuit.
+        initial_state:
+            sampling supports initial states for qulacs. Indicates the initial state to which circuit is applied.
+        args
+        kwargs
+
+        Returns
+        -------
+        QubitWaveFunction:
+            the results of sampling, as a Qubit Wave Function.
+        """
+        state = self.initialize_state(self.n_qubits)
         lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
         state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
-        self.circuit.update_quantum_state(state)
-        if hasattr(self, "measurements"):
-            result = {}
-            for sample in range(samples):
-                sample_result = {}
-                for t, m in self.measurements.items():
-                    m.update_quantum_state(state)
-                    sample_result[t] = state.get_classical_value(t)
+        circuit.update_quantum_state(state)
+        sampled = state.sampling(samples)
+        return self.convert_measurements(backend_result=sampled, target_qubits=self.measurements)
 
-                sample_result = dict(sorted(sample_result.items(), key=lambda x: x[0]))
-                binary = BitString.from_array(sample_result.values())
-                if binary in result:
-                    result[binary] += 1
-                else:
-                    result[binary] = 1
+    def no_translation(self, abstract_circuit):
+        """
+        Todo: what is this for?
+        Parameters
+        ----------
+        abstract_circuit
 
-            return QubitWaveFunction(state=result)
-        else:
-            # sample from the whole wavefunction (all-Z measurement)
-            result = state.sampling(samples)
-        return self.convert_measurements(backend_result=result)
+        Returns
+        -------
 
-    def fast_return(self, abstract_circuit):
+        """
         return False
 
     def initialize_circuit(self, *args, **kwargs):
-        n_qubits = len(self.qubit_map)
-        return qulacs.ParametricQuantumCircuit(n_qubits)
+        """
+        return an empty circuit.
+        Parameters
+        ----------
+        args
+        kwargs
+
+        Returns
+        -------
+        qulacs.ParametricQuantumCircuit
+        """
+        return qulacs.ParametricQuantumCircuit(self.n_qubits)
 
     def add_exponential_pauli_gate(self, gate, circuit, variables, *args, **kwargs):
+        """
+        Add a native qulacs Exponential Pauli gate to a circuit.
+        Parameters
+        ----------
+        gate: ExpPauliGateImpl:
+            the gate to add
+        circuit:
+            the qulacs circuit, to which the gate is to be added.
+        variables:
+            dict containing values of the parameters appearing in the pauli gate.
+        args
+        kwargs
+
+        Returns
+        -------
+        None
+        """
         assert not gate.is_controlled()
         convert = {'x': 1, 'y': 2, 'z': 3}
         pind = [convert[x.lower()] for x in gate.paulistring.values()]
-        qind = [self.qubit_map[x] for x in gate.paulistring.keys()]
+        qind = [self.qubit(x) for x in gate.paulistring.keys()]
         if len(gate.extract_variables()) > 0:
             self.variables.append(-gate.parameter * gate.paulistring.coeff)
             circuit.add_parametric_multi_Pauli_rotation_gate(qind, pind,
@@ -146,6 +270,23 @@ class BackendCircuitQulacs(BackendCircuit):
             circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.parameter(variables) * gate.paulistring.coeff)
 
     def add_parametrized_gate(self, gate, circuit, variables, *args, **kwargs):
+        """
+        add a parametrized gate.
+        Parameters
+        ----------
+        gate: QGateImpl:
+            the gate to add to the circuit.
+        circuit:
+            the circuit to which the gate is to be added
+        variables:
+            dict that tells values of variables; needed IFF the gate is an ExpPauli gate.
+        args
+        kwargs
+
+        Returns
+        -------
+        None
+        """
         op = self.op_lookup[gate.name]
         if gate.name == 'Exp-Pauli':
             self.add_exponential_pauli_gate(gate, circuit, variables)
@@ -154,41 +295,77 @@ class BackendCircuitQulacs(BackendCircuit):
             if len(gate.extract_variables()) > 0:
                 op = op[0]
                 self.variables.append(-gate.parameter)
-                op(circuit)(self.qubit_map[gate.target[0]], -gate.parameter(variables=variables))
+                op(circuit)(self.qubit(gate.target[0]), -gate.parameter(variables=variables))
                 if gate.is_controlled():
                     raise TequilaQulacsException("Gates which depend on variables can not be controlled! Gate was:\n{}".format(gate))
                 return
             else:
                 op = op[1]
-                qulacs_gate = op(self.qubit_map[gate.target[0]], -gate.parameter(variables=variables))
+                qulacs_gate = op(self.qubit(gate.target[0]), -gate.parameter(variables=variables))
         if gate.is_controlled():
             qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
             for c in gate.control:
-                qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
+                qulacs_gate.add_control_qubit(self.qubit(c), 1)
         circuit.add_gate(qulacs_gate)
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        """
+        add an unparametrized gate to the circuit.
+        Parameters
+        ----------
+        gate: QGateImpl:
+            the gate to be added to the circuit.
+        circuit:
+            the circuit, to which a gate is to be added.
+        args
+        kwargs
+
+        Returns
+        -------
+        None
+        """
         op = self.op_lookup[gate.name]
-        qulacs_gate = op(*[self.qubit_map[t] for t in gate.target])
+        qulacs_gate = op(*[self.qubit(t) for t in gate.target])
         if gate.is_controlled():
             qulacs_gate = qulacs.gate.to_matrix_gate(qulacs_gate)
             for c in gate.control:
-                qulacs_gate.add_control_qubit(self.qubit_map[c], 1)
+                qulacs_gate.add_control_qubit(self.qubit(c), 1)
 
         circuit.add_gate(qulacs_gate)
 
-    def add_measurement(self, gate, circuit, *args, **kwargs):
-        measurements = {t: qulacs.gate.Measurement(t, t) for t in gate.target}
-        if hasattr(self, "measurements"):
-            for key in measurements:
-                if key in self.measurements:
-                    raise TequilaQulacsException("Measurement on qubit {} was given twice".format(key))
-            self.measurements = {**self.measurements, **measurements}
-        else:
-            self.measurements = measurements
+    def add_measurement(self, circuit, target_qubits, *args, **kwargs):
+        """
+        Add a measurement operation to a circuit.
+        Parameters
+        ----------
+        circuit:
+            a circuit, to which the measurement is to be added.
+        target_qubits: List[int]
+            abstract target qubits
+        args
+        kwargs
+
+        Returns
+        -------
+        None
+        """
+        self.measurements = sorted(target_qubits)
+        return circuit
 
 
     def add_noise_to_circuit(self,noise_model):
+        """
+        Apply noise from a NoiseModel to a circuit.
+        Parameters
+        ----------
+        noise_model: NoiseModel:
+            the noisemodel to apply to the circuit.
+
+        Returns
+        -------
+        qulacs.ParametrizedQuantumCircuit:
+            self.circuit, with noise added on.
+        """
         c=self.circuit
         n=noise_model
         g_count=c.get_gate_count()
@@ -207,10 +384,22 @@ class BackendCircuitQulacs(BackendCircuit):
 
     def optimize_circuit(self, circuit, max_block_size: int = 4, silent: bool = True, *args, **kwargs):
         """
-        Can be overwritten if the backend supports its own circuit optimization
-        To be clear: Optimization means optimizing the compiled circuit w.r.t depth not
-        optimizing parameters
-        :return: Optimized circuit
+        reduce circuit depth using the native qulacs optimizer.
+        Parameters
+        ----------
+        circuit
+        max_block_size: int: Default = 4:
+            the maximum block size for use by the qulacs internal optimizer.
+        silent: bool:
+            whether or not to print the resullt of having optimized.
+        args
+        kwargs
+
+        Returns
+        -------
+        qulacs.QuantumCircuit:
+            optimized qulacs circuit.
+
         """
         old = circuit.calculate_depth()
         opt = qulacs.circuit.QuantumCircuitOptimizer()
@@ -221,12 +410,30 @@ class BackendCircuitQulacs(BackendCircuit):
                                                                                                 max_block_size))
         return circuit
 
-
 class BackendExpectationValueQulacs(BackendExpectationValue):
-    BackendCircuitType = BackendCircuitQulacs
+    """
+    Class representing Expectation Values compiled for Qulacs.
+
+    Ovverrides some methods of BackendExpectationValue, which should be seen for details.
+    """
     use_mapping = True
+    BackendCircuitType = BackendCircuitQulacs
 
     def simulate(self, variables, *args, **kwargs) -> numpy.array:
+        """
+        Perform simulation of this expectationvalue.
+        Parameters
+        ----------
+        variables:
+            variables, to be supplied to the underlying circuit.
+        args
+        kwargs
+
+        Returns
+        -------
+        numpy.array:
+            the result of simulation as an array.
+        """
         # fast return if possible
         if self.H is None:
             return numpy.asarray([0.0])
@@ -236,7 +443,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             return numpy.asarray[self.H]
 
         self.U.update_variables(variables)
-        state = qulacs.QuantumState(self.U.n_qubits)
+        state = self.U.initialize_state(self.n_qubits)
         self.U.circuit.update_quantum_state(state)
         result = []
         for H in self.H:
@@ -248,103 +455,87 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         return numpy.asarray(result)
 
     def initialize_hamiltonian(self, hamiltonians):
+        """
+        Convert reduced hamiltonians to native Qulacs types for efficient expectation value evaluation.
+        Parameters
+        ----------
+        hamiltonians:
+            an interable set of hamiltonian objects.
+
+        Returns
+        -------
+        list:
+            initialized hamiltonian objects.
+
+        """
+
+        # map the reduced operators to the potentially smaller qubit system
+        qubit_map = {}
+        for i,q in enumerate(self.U.abstract_circuit.qubits):
+            qubit_map[q] = i
+
         result = []
         for H in hamiltonians:
-            if self.use_mapping:
-                # initialize only the active parts of the Hamiltonian and pre-evaluate the passive ones
-                # passive parts are the components of each individual pauli string which act on qubits where the circuit does not act on
-                # if the circuit does not act on those qubits the passive parts are always evaluating to 1 (if the pauli operator is Z) or 0 (otherwise)
-                # since those qubits are always in state |0>
-                non_zero_strings = []
-                unit_strings = []
-                for ps in H.paulistrings:
-                    string = ""
-                    for k, v in ps.items():
-                        if k in self.U.qubit_map:
-                            string += v.upper() + " " + str(self.U.qubit_map[k]) + " "
-                        elif v.upper() != "Z":
-                            string = "ZERO"
-                            break
-                    string = string.strip()
-                    if string != "ZERO":
-                        non_zero_strings.append((ps.coeff, string))
-                    elif string == "":
-                        unit_strings.append((ps.coeff, string))
-
-                # accumulate unit strings
-                if len(unit_strings) > 0:
-                    coeffs = [x[0] for x in unit_strings]
-                    result.append(sum(coeffs))
-
-                if len(non_zero_strings) > 0:
-                    qulacs_H = qulacs.Observable(self.n_qubits)
-                    for coeff, string in non_zero_strings:
-                        qulacs_H.add_operator(coeff, string)
-                    result.append(qulacs_H)
-
-
-
-            else:
-                if self.U.n_qubits < H.n_qubits:
-                    raise TequilaQulacsException(
-                        "Hamiltonian has more qubits as the Unitary. Mapped expectationvalues are switched off")
-
-                qulacs_H = qulacs.Observable(self.n_qubits)
-                for ps in H.paulistrings:
-                    string = ""
-                    for k, v in ps.items():
-                        string += v.upper() + " " + str(k)
-                    qulacs_H.add_operator(ps.coeff, string)
-                result.append(qulacs_H)
+            qulacs_H = qulacs.Observable(self.n_qubits)
+            for ps in H.paulistrings:
+                string = ""
+                for k, v in ps.items():
+                    string += v.upper() + " " + str(qubit_map[k])
+                qulacs_H.add_operator(ps.coeff, string)
+            result.append(qulacs_H)
         return result
 
     def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
-        # todo: generalize in baseclass. Do Hamiltonian mapping on initialization
+        """
+        Sample this Expectation Value.
+        Parameters
+        ----------
+        variables:
+            variables, to supply to the underlying circuit.
+        samples: int:
+            the number of samples to take.
+        args
+        kwargs
+
+        Returns
+        -------
+        numpy.ndarray:
+            the result of sampling as a number.
+        """
         self.update_variables(variables)
-        state = qulacs.QuantumState(self.U.n_qubits)
+        state = self.U.initialize_state(self.n_qubits)
         self.U.circuit.update_quantum_state(state)
         result = []
-        for H in self._abstract_hamiltonians:
+        for H in self._reduced_hamiltonians: # those are the hamiltonians which where non-used qubits are already traced out
             E = 0.0
-            for ps in H.paulistrings:
-                # change basis, measurement is destructive so copy the state
-                # to avoid recomputation
-                bc = QCircuit()
-                zero_string = False
-                for idx, p in ps.items():
-                    if idx not in self.U.qubit_map:
-                        # circuit does not act on the qubit
-                        # case1: paulimatrix is 'Z' -> unit factor: ignore that part
-                        # case2: zero factor -> continue with next ps
-                        if p.upper() != "Z":
-                            zero_string = True
-                    else:
+            if H.is_all_z() and not self.U.has_noise:
+                E = super().sample(samples=samples, variables=variables, *args, **kwargs)
+            else:
+                for ps in H.paulistrings:
+                    # change basis, measurement is destructive so the state will be copied
+                    # to avoid recomputation (except when noise was required)
+                    bc = QCircuit()
+                    for idx, p in ps.items():
                         bc += change_basis(target=idx, axis=p)
-
-                if zero_string:
-                    continue
-
-                qbc = self.U.create_circuit(abstract_circuit=bc, variables=None)
-                Esamples = []
-                for sample in range(samples):
-                    if self.U.has_noise:
-                        state = qulacs.QuantumState(self.U.n_qubits)
-                        self.U.circuit.update_quantum_state(state)
-                        state_tmp = state
-                    else:
-                        state_tmp = state.copy()
-                    if len(bc.gates) > 0:  # otherwise there is no basis change (empty qulacs circuit does not work out)
-                        qbc.update_quantum_state(state_tmp)
-                    ps_measure = 1.0
-                    for idx in ps.keys():
-                        if idx not in self.U.qubit_map:
-                            continue  # means its 1 or Z and <0|Z|0> = 1 anyway
+                    qbc = self.U.create_circuit(abstract_circuit=bc, variables=None)
+                    Esamples = []
+                    for sample in range(samples):
+                        if self.U.has_noise and sample>0:
+                            state = self.U.initialize_state(self.n_qubits)
+                            self.U.circuit.update_quantum_state(state)
+                            state_tmp = state
                         else:
-                            M = qulacs.gate.Measurement(self.U.qubit_map[idx], self.U.qubit_map[idx])
+                            state_tmp = state.copy()
+                        if len(bc.gates) > 0:  # otherwise there is no basis change (empty qulacs circuit does not work out)
+                            qbc.update_quantum_state(state_tmp)
+                        ps_measure = 1.0
+                        for idx in ps.keys():
+                            assert idx in self.U.abstract_qubits # assert that the hamiltonian was really reduced
+                            M = qulacs.gate.Measurement(self.U.qubit(idx), self.U.qubit(idx))
                             M.update_quantum_state(state_tmp)
-                            measured = state_tmp.get_classical_value(self.U.qubit_map[idx])
+                            measured = state_tmp.get_classical_value(self.U.qubit(idx))
                             ps_measure *= (-2.0 * measured + 1.0)  # 0 becomes 1 and 1 becomes -1
-                    Esamples.append(ps_measure)
-                E += ps.coeff * sum(Esamples) / len(Esamples)
+                        Esamples.append(ps_measure)
+                    E += ps.coeff * sum(Esamples) / len(Esamples)
             result.append(E)
         return numpy.asarray(result)

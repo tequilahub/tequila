@@ -1,11 +1,7 @@
-"""
-Primitive Compiler from Qubit-Operators to evolution operators
-Replace with fancier external packages at some point
-"""
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, Y
-from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, MeasurementImpl, \
+from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
 from tequila import Variable
@@ -24,6 +20,22 @@ class TequilaCompilerException(TequilaException):
 
 
 class Compiler:
+    """
+    an object that performs abstract compilation of QCircuits and Objectives.
+
+    Note
+    ----
+        see init for attributes, since all are specified there
+
+    Methods
+    -------
+    compile_objective
+        perform compilation on an entire objective
+    compile_objective_argument
+        perform compilation on a single arg of objective
+    compile_circuit:
+        perform compilation on a circuit.
+    """
 
     def __init__(self,
                  multitarget=False,
@@ -43,6 +55,44 @@ class Compiler:
                  swap=False,
                  cc_max=False
                  ):
+
+        """
+        all parameters are booleans.
+        Parameters
+        ----------
+        multitarget:
+            whether or not to split multitarget gates into single target (if gate isn't inherently multitarget)
+        multicontrol:
+            whether or not to split gates into single controlled gates.
+        trotterized:
+            whether or not to break down TrotterizedGateImpl into other types
+        gaussian:
+            whether or not to break down GaussianGateImpl into other types
+        exponential_pauli:
+            whether or not to break down ExponentialPauliGateImpl into other types
+        controlled_exponential_pauli
+            whether or not to break down controlled exponential pauli gates.
+        hadamard_power:
+            whether or not to break down Hadamard gates, raised to a power, into other rotation gates.
+        controlled_power:
+            whether or not to break down controlled power gates into CNOT and other gates.
+        power:
+            whether or not to break down parametrized power gates into rotation gates
+        toffoli:
+            whether or not to break down the toffoli gate into CNOTs and other single qubit gates.
+        controlled_phase:
+            whether or not to break down controlled phase gates into CNOTs and phase gates.
+        phase:
+            whether to replace phase gates
+        phase_to_z:
+            specifically, whether to replace phase gates with the z gate
+        controlled_rotation:
+            whether or not to break down controlled rotation gates into CNot and single qubit gates
+        swap:
+            whether or not to break down swap gates into CNOT gates.
+        cc_max:
+            whether or not to break down all controlled gates with 2 or more controls.
+        """
         self.multitarget = multitarget
         self.multicontrol = multicontrol
         self.gaussian = gaussian
@@ -62,6 +112,22 @@ class Compiler:
 
     def __call__(self, objective: typing.Union[Objective, QCircuit, ExpectationValueImpl], variables=None, *args,
                  **kwargs):
+
+        """
+        Perform compilation
+        Parameters
+        ----------
+        objective:
+            the object (not necessarily an objective) to compile.
+        variables: optional:
+            Todo: Jakob, what is this for?
+        args
+        kwargs
+
+        Returns
+        -------
+        a compiled version of objective
+        """
         start = time.time()
         if isinstance(objective, Objective) or hasattr(objective, "args"):
             result = self.compile_objective(objective=objective, variables=variables, *args, **kwargs)
@@ -76,6 +142,22 @@ class Compiler:
         return result
 
     def compile_objective(self, objective, variables=None, *args, **kwargs):
+        """
+        Compile an objective.
+
+        Parameters
+        ----------
+        objective: Objective:
+            the objective.
+        variables:
+            Todo: jakob, what is this for?
+        args
+        kwargs
+
+        Returns
+        -------
+        the objective, compiled
+        """
         compiled_args = []
         already_processed = {}
         for arg in objective.args:
@@ -93,10 +175,31 @@ class Compiler:
         return type(objective)(args=compiled_args, transformation=objective._transformation)
 
     def compile_objective_argument(self, arg, variables=None, *args, **kwargs):
-        if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
+        """
+        Compile an argument of an objective.
+
+        Parameters
+        ----------
+        arg:
+            the term to compile
+        variables:
+            Todo: jakob, what is this for?
+        args
+        kwargs
+
+        Returns
+        -------
+        the arg, compiled
+        """
+
+        if isinstance(arg, ExpectationValueImpl):
             return ExpectationValueImpl(H=arg.H,
                                         U=self.compile_circuit(abstract_circuit=arg.U, variables=variables, *args,
                                                                **kwargs))
+        elif hasattr(arg, "abstract_expectationvalue"):
+            E = arg.abstract_expectationvalue
+            E._U = self.compile_circuit(abstract_circuit=E.U, variables=variables, *args, **kwargs)
+            return type(arg)(E, **arg._input_args)
         elif isinstance(arg, Variable) or hasattr(arg, "name"):
             return arg
         else:
@@ -104,6 +207,25 @@ class Compiler:
                 "Unknown argument type for objectives: {arg} or type {type}".format(arg=arg, type=type(arg)))
 
     def compile_circuit(self, abstract_circuit: QCircuit, variables=None, *args, **kwargs) -> QCircuit:
+        """
+        compile a circuit.
+        Parameters
+        ----------
+        abstract_circuit: QCircuit
+            the circuit to compile.
+        variables:
+            (Default value = None):
+            list of the variables whose gates, specifically, must compile.
+            Used to prevent excess compilation in gates whose parameters are fixed.
+            Default: compile every single gate.
+        args
+        kwargs
+
+        Returns
+        -------
+            QCircuit; a compiled circuit.
+        """
+
         n_qubits = abstract_circuit.n_qubits
         compiled = QCircuit(abstract_circuit.gates)
 
@@ -180,7 +302,8 @@ class Compiler:
 
 def compiler(f):
     """
-    Decorator for compile functions
+    Decorator for compile functions.
+
     Make them applicable for single gates as well as for whole circuits
     Note that all arguments need to be passed as keyword arguments
     """
@@ -196,7 +319,6 @@ def compiler(f):
             cU = QCircuit()
             for g in gate.U.gates:
                 cU += f(gate=g, **kwargs)
-            inkwargs = {'H': gate.H, 'U': cU}
             return type(gate)(U=cU, H=gate.H)
         elif hasattr(gate, 'transformation'):
             compiled = []
@@ -207,9 +329,7 @@ def compiler(f):
                     cU = QCircuit()
                     for g in E.U.gates:
                         cU += f(gate=g, **kwargs)
-                    # inkwargs={'U':cU,'H':E.H}
                     compiled.append(type(E)(U=cU, H=E.H))
-            # nukwargs={'args':compiled,'transformation':gate._transformation}
             return type(gate)(args=compiled, transformation=gate._transformation)
         else:
             return f(gate=gate, **kwargs)
@@ -218,6 +338,22 @@ def compiler(f):
 
 
 def change_basis(target, axis, daggered=False):
+    """
+    helper function; returns circuit that performs change of basis.
+    Parameters
+    ----------
+    target:
+        the qubit having its basis changed
+    axis:
+        The axis of rotation to shift into.
+    daggered: bool:
+        adjusts the sign of the gate if axis = 1, I.E, change of basis about Y axis.
+
+    Returns
+    -------
+    QCircuit that performs change of basis on target qubit onto desired axis
+
+    """
     if isinstance(axis, str):
         axis = RotationGateImpl.string_to_axis[axis.lower()]
 
@@ -233,6 +369,19 @@ def change_basis(target, axis, daggered=False):
 
 @compiler
 def compile_multitarget(gate, variables=None) -> QCircuit:
+    """
+    If a gate is 'trivially' multitarget, split it into single target gates.
+    Parameters
+    ----------
+    gate:
+        the gate in question
+    variables:
+        Todo: Jakob plz write
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
     targets = gate.target
 
     # don't compile real multitarget gates
@@ -243,9 +392,6 @@ def compile_multitarget(gate, variables=None) -> QCircuit:
         return QCircuit.wrap_gate(gate)
 
     if len(targets) == 1:
-        return QCircuit.wrap_gate(gate)
-
-    if isinstance(gate, MeasurementImpl):
         return QCircuit.wrap_gate(gate)
 
     if gate.name.lower() in ["swap", "iswap"]:
@@ -298,6 +444,17 @@ def compile_controlled_rotation(gate: RotationGateImpl, angles: list = None) -> 
 
 @compiler
 def compile_to_cc(gate) -> QCircuit:
+    """
+    break down a gate into a sequence with no more than double-controlled gates.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+        A QCircuit; the result of compilation.
+    """
     if not gate.is_controlled:
         return QCircuit.wrap_gate(gate)
     cl = len(gate.control)
@@ -328,6 +485,18 @@ def compile_to_cc(gate) -> QCircuit:
 
 @compiler
 def compile_toffoli(gate) -> QCircuit:
+    """
+    break down a toffoli gate into a sequence of CNOT and single qubit gates.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+        A QCircuit; the result of compilation.
+    """
+
     if gate.name.lower != 'x':
         return QCircuit.wrap_gate(gate)
     control = gate.control
@@ -356,6 +525,17 @@ def compile_toffoli(gate) -> QCircuit:
 
 @compiler
 def compile_power_gate(gate, cut=False) -> QCircuit:
+    """
+    break down power gates into the rotation gates.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+        A QCircuit; the result of compilation.
+    """
     if not isinstance(gate, PowerGateImpl):
         return QCircuit.wrap_gate(gate)
     if gate.name.lower() in ['h', 'hadamard']:
@@ -368,10 +548,20 @@ def compile_power_gate(gate, cut=False) -> QCircuit:
 
 @compiler
 def power_recursor(gate, cut=False) -> QCircuit:
-    '''
-    if not hasattr(gate,'power'):
-        return QCircuit.wrap_gate(gate)
-    '''
+    """
+    recursive function for decomposing parametrized, possibly controlled, power gates.
+    Parameters
+    ----------
+    gate:
+        the gate.
+    cut: bool:
+        whether or not to stop recursion at 2 controls maximum.
+        Default: False.
+    Returns
+    -------
+        A QCircuit; the result of compilation.
+    """
+
     result = QCircuit()
     cl = 0
     if gate.is_controlled():
@@ -423,6 +613,17 @@ def power_recursor(gate, cut=False) -> QCircuit:
 
 @compiler
 def compile_power_base(gate):
+    """
+    Base case of power_recursor: convert a 1-qubit parametrized power gate into rotation gates.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+        A QCircuit; the result of compilation.
+    """
     if not isinstance(gate, PowerGateImpl):
         return QCircuit.wrap_gate(gate)
     power = gate.parameter
@@ -462,6 +663,18 @@ def compile_power_base(gate):
 
 @compiler
 def get_axbxc_decomp(gate):
+    """
+    Break down single controlled parametrized power gates into CNOT and rotations.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+    QCircuit; the result of compilation.
+    """
+
     if not isinstance(gate, PowerGateImpl) or gate.name not in ['X', 'Y', 'Z']:
         return QCircuit.wrap_gate(gate)
     power = gate.parameter
@@ -544,6 +757,17 @@ def get_axbxc_decomp(gate):
 
 @compiler
 def compile_h_power(gate) -> QCircuit:
+    """
+    compile hadamard to some power.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
     if not isinstance(gate, PowerGateImpl) or gate.name not in ['H', 'h', 'hadamard']:
         return QCircuit.wrap_gate(gate)
 
@@ -554,6 +778,17 @@ def compile_h_power(gate) -> QCircuit:
 
 @compiler
 def hadamard_base(gate) -> QCircuit:
+    """
+    base case for hadamard compilation; returns powers of hadamard as sequence of single qubit rotations.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+        A QCircuit; the result of compilation.
+    """
     if not isinstance(gate, PowerGateImpl) or gate.name not in ['H', 'h', 'hadamard']:
         return QCircuit.wrap_gate(gate)
     power = gate.parameter
@@ -572,6 +807,17 @@ def hadamard_base(gate) -> QCircuit:
 
 @compiler
 def hadamard_axbxc(gate) -> QCircuit:
+    """
+    Decompose 1 control parametrized hadamard into single qubit rotation and CNOT.
+    Parameters
+    ----------
+    gate:
+        the gate
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
     if not isinstance(gate, PowerGateImpl) or gate.name not in ['H', 'h', 'hadamard']:
         return QCircuit.wrap_gate(gate)
     power = gate.parameter
@@ -597,6 +843,19 @@ def hadamard_axbxc(gate) -> QCircuit:
 
 @compiler
 def hadamard_recursor(gate) -> QCircuit:
+    """
+    recursive function for decomposing parametrized hadamard, potentially with controls.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+
+    """
+
     if not isinstance(gate, PowerGateImpl) or gate.name not in ['H', 'h', 'hadamard']:
         return QCircuit.wrap_gate(gate)
     result = QCircuit()
@@ -634,79 +893,144 @@ def hadamard_recursor(gate) -> QCircuit:
 
 
 def exp(x):
+    """
+    helper for hadamard decomp.
+    """
     return jnp.exp(1j * pi * x)
 
 
 def root_exp(x):
+    """
+    helper for hadamard decomp.
+    """
     return jnp.sqrt(exp(x))
 
 
 def neg_half_exp(x):
+    """
+    helper for hadamard decomp.
+    """
     return jnp.exp(-1j * pi * x / 2)
 
 
 def exp_min_1(x):
+    """
+    helper for hadamard decomp.
+    """
     return exp(x) - 1
 
 
 def top_a(x):
+    """
+    helper for hadamard decomp.
+    """
     return root_exp(x) * exp_min_1(x) * neg_half_exp(x)
 
 
 def under_right(x):
+    """
+    helper for hadamard decomp.
+    """
     return 3 + 2 * jnp.sqrt(2) + exp(x)
 
 
 def bottom(x):
+    """
+    helper for hadamard decomp.
+    """
     return jnp.sqrt(exp_min_1(x) * under_right(x))
 
 
 def my_cosecant(x):
+    """
+    helper for hadamard decomp.
+    """
     return 1 / jnp.sin(pi * x / 2)
 
 
 def back_log_in(x):
+    """
+    helper for hadamard decomp.
+    """
     return -1 + 2 * (my_cosecant(x) ** 2)
 
 
 def first_log_a(x):
+    """
+    helper for hadamard decomp.
+    """
     return 4 * jnp.log(top_a(x) / bottom(x))
 
 
 def second_log_a(x):
+    """
+    helper for hadamard decomp.
+    """
     return jnp.log(back_log_in(x))
 
 
 def a_calc(x):
+    """
+    helper for hadamard decomp.
+    """
     return jnp.real((-(0.5) * 1j * (2 * jnp.arcsinh(1) + first_log_a(x) + second_log_a(x))))
 
 
 def top_right_in(x):
+    """
+    helper for hadamard decomp.
+    """
     return ((3 + jnp.cos(pi * x)) * (jnp.sin(pi * x / 2) ** 2)) ** (1 / 4)
 
 
 def top_b(x):
+    """
+    helper for hadamard decomp.
+    """
     return -(2 ** (3 / 4)) * root_exp(x) * top_right_in(x)
 
 
 def log_b(x):
+    """
+    helper for hadamard decomp.
+    """
     return 2 * jnp.log(top_b(x) / bottom(x))
 
 
 def b_calc(x):
+    """
+    helper for hadamard decomp.
+    """
     return jnp.real((-1j * (jnp.arcsinh(1) + log_b(x))))
 
 
 def in_the_arc(x):
+    """
+    helper for hadamard decomp.
+    """
     return -2 / (jnp.sqrt(3 + jnp.cos(pi * x)))
 
 
 def theta_calc(x):
+    """
+    helper for hadamard decomp.
+    """
     return jnp.real(2 * jnp.arccos(1 / in_the_arc(x)))
 
 
 @compiler
 def compile_phase(gate) -> QCircuit:
+    """
+    Compile phase gates into Rz gates and cnots, if controlled
+    Parameters
+    ----------
+    gate:
+        the gate
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     phase = gate.parameter
@@ -724,6 +1048,18 @@ def compile_phase(gate) -> QCircuit:
 
 @compiler
 def compile_phase_to_z(gate) -> QCircuit:
+    """
+    Compile phase gate to parametrized Z gate.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+
+    """
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     phase = gate.parameter
@@ -732,6 +1068,17 @@ def compile_phase_to_z(gate) -> QCircuit:
 
 @compiler
 def compile_controlled_phase(gate) -> QCircuit:
+    """
+    Compile multi-controlled phase gates.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     if len(gate.control) == 0:
@@ -760,6 +1107,17 @@ def compile_controlled_phase(gate) -> QCircuit:
 
 @compiler
 def compile_swap(gate) -> QCircuit:
+    """
+    Compile swap gates into CNOT.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
     if gate.name.lower() == "swap":
         if len(gate.target) != 2:
             raise TequilaCompilerException("SWAP gates needs two targets")
@@ -840,6 +1198,9 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
 
 
 def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
+    """
+    Todo: Jakob, plz write
+    """
     assert (generator.is_hermitian())
     circuit = QCircuit()
     factor = factor / steps
@@ -859,6 +1220,17 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
 
 @compiler
 def compile_gaussian_gate(gate, compile_exponential_pauli: bool = False):
+    """
+    Todo: Jakob, plz write
+    Parameters
+    ----------
+    gate
+    compile_exponential_pauli
+
+    Returns
+    -------
+
+    """
     if not hasattr(gate, "generator"):
         return QCircuit.wrap_gate(gate)
     if not hasattr(gate, "shift"):
@@ -870,6 +1242,17 @@ def compile_gaussian_gate(gate, compile_exponential_pauli: bool = False):
 
 @compiler
 def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
+    """
+    Todo: Jakob, plz write
+    Parameters
+    ----------
+    gate
+    compile_exponential_pauli
+
+    Returns
+    -------
+
+    """
     if not hasattr(gate, "generators") or not hasattr(gate, "steps"):
         return QCircuit.wrap_gate(gate)
 
