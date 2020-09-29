@@ -14,6 +14,7 @@ import os
 import sys
 from recommonmark.parser import CommonMarkParser
 import sphinx_bootstrap_theme
+import sphinx_automodapi
 
 sys.path.insert(0, os.path.abspath('../src'))
 #sys.path.insert(0, os.path.abspath('../../'))
@@ -71,6 +72,7 @@ extensions = ['sphinx.ext.napoleon',
               'sphinx.ext.viewcode',
               'matplotlib.sphinxext.plot_directive',
               'sphinx.ext.mathjax', 
+               'sphinx_automodapi.automodapi',
               'sphinx.ext.autosummary'] ## For docstring syntax 
 
 source_suffix = ['.rst']
@@ -105,8 +107,9 @@ html_theme_options = {
     'navbar_links': [
          ("Overview", "./tequila_presentation"),
          ("Installation", "./install", False),
-         ("Documentation", "./package/index", False),
+         ("API", "./api", False),
          ("GitHub", "https://github.com/aspuru-guzik-group/tequila", True),
+         ("Tutorials", "./tutorials", False),
     ],
 
     # Render the next and previous page links in navbar. (Default: true)

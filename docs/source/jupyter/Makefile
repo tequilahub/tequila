@@ -1,5 +1,3 @@
-TUTORIALS_PATH="../tutorials" 
-
 rst_files := $(patsubst %.ipynb,%.rst,$(wildcard *.ipynb))
 
 tutorial: ${rst_files}

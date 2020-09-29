@@ -13,7 +13,6 @@ help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  clean      to remove genrated output"
 	@echo "  html       to make standalone HTML files"
-	@echo "  notebooks  to make the Jupyter notebook-based tutorials"
  #@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 .PHONY: help Makefile
@@ -24,8 +23,6 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 
-.PHONY: tutorials
-tutorials:
-	make -C source/tutorials
+#tutorials:
+#	make -C source/tutorials
 
-notebooks: tutorials 

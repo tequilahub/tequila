@@ -13,11 +13,13 @@ Modules
     :toctree: generated
 
     tequila.hamiltonian.paulis
+    tequila.hamiltonian
     tequila.circuit
-    tequila.circuit.gates
     tequila.quantumchemistry
-    tequila.optimizers.optimizer_scipy
-    tequila.simulators.simulator_api
+    .. tequila.optimizers.optimizer_scipy
+    tequila.optimizers
+    .. tequila.simulators.simulator_api
+    tequila.simulators
     
 
 

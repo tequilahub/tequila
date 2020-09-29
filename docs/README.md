@@ -7,6 +7,7 @@ pip install sphinxcontrib-napoleon
 pip install sphinx &recommonmark 
 pip install sphinx-bootstrap-theme
 pip install sphinx-rst-builder
+pip install sphinx_automodapi
 ```
 
 ## Compilation

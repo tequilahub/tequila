@@ -9,13 +9,13 @@ Welcome to Tequila's documentation!
 Tequila is an Extensible Quantum Information and Learning Architecture where the main goal is to simplify and accelerate implementation of new ideas for quantum algorithms. It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives. Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.
 
 * Get an overview from this presentation: :ref:`tequila_presentation`.
-* Get started with our `install <./install.html>`_ and our `tutorials <https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials>`_.
+* Get started with our `install <./install.html>`_ and our :ref:`tutorials`
 
 Contents
 ========
         * :ref:`intro`: Introduction and installation
-        * :ref:`package/index`: The code documentation of *Tequila*
-        * :ref:`tutorial`: List of tutorials of  *Tequila*
+        * :ref:`api`: The code documentation of *Tequila*
+        * :ref:`tutorials`: List of tutorials of  *Tequila*
 
 
 
