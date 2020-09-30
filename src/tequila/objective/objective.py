@@ -665,6 +665,9 @@ class Variable:
     def __repr__(self):
         return str(self.name)
 
+    def toJson(self):
+        import json
+        return json.dumps(self, default=lambda o: o.__dict__)
 
 class FixedVariable(float):
     """
