@@ -1058,7 +1058,7 @@ class QuantumChemistryBase:
 
         return prepare_product_state(self.reference_state(*args, **kwargs))
 
-    def set_pair_specific_indices(self,
+    def get_pair_specific_indices(self,
                                   pair_info: str = None,
                                   include_singles: bool = True,
                                   general_excitations: bool = True) -> list:
