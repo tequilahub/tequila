@@ -272,7 +272,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if irrep is None or self.point_group.lower() == "c1":
             result = []
             for x in tmp:
-                result += x
+                result += [x]
             return result
         else:
             return tmp[irrep]

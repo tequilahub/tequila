@@ -1058,6 +1058,67 @@ class QuantumChemistryBase:
 
         return prepare_product_state(self.reference_state(*args, **kwargs))
 
+    def set_pair_specific_indices(self,
+                                  pair_info: str = None,
+                                  include_singles: bool = True,
+                                  general_excitations: bool = True) -> list:
+        """
+        Assuming a pair-specific model, create a pair-specific index list 
+        to be used in make_upccgsd_ansatz(indices = ... ) 
+        Excite from a set of references (i) to any pair coming from (i),
+        i.e. any (i,j)/(j,i). If general excitations are allowed, also 
+        allow excitations from pairs to appendant pairs and reference.
+
+        Parameters
+        ----------
+        pair_info
+            file or list including information about pair structure
+            example: as file: "ref,ref,11,11,00,10" (hand over file name)
+                     as list:['ref','ref','11','11','00','10']
+                     ~> 2 reference orbitals, 
+                     then two orbitals from pair 11, one from 00, one mixed 10
+        include_singles
+            include single excitations
+        general_excitations
+            allow general excitations 
+       Returns
+        -------
+            list of indices with pair-specific ansatz 
+        """
+
+        if pair_info is None:
+            raise TequilaException("Need to provide some pair information.")
+        # If pair-information given on file, load (layout see above) 
+        if isinstance(pair_info, str):
+            pairs = numpy.loadtxt(pair_info, dtype=str, delimiter=",")
+        elif isinstance(pair_info, list):
+            pairs = pair_info
+        elif not isinstance(pair_info, list):
+            raise TequilaException("Pair information needs to be contained in a list or filename.")
+        
+        connect = [[]]*len(pairs)
+        # determine "connectivity"
+        generalized = 0 
+        for idx, p in enumerate(pairs):
+            if p == "ref":
+                connect[idx] = [i for i in range(len(pairs)) 
+                                if ( (not pairs[i]=='ref') and (str(idx) in pairs[i]) )]
+            elif (p!="ref") and general_excitations:
+                connect[idx] = [i for i in range(len(pairs)) 
+                                if ( ((p[0] in  pairs[i]) or (p[1] in pairs[i]) or str(i) in p)
+                                     and not(i==idx) )]
+            
+        # create generating indices from connectivity
+        indices = []
+        for i, to in enumerate(connect):
+            for a in to:
+                indices.append(( (2*i, 2*a), (2*i+1, 2*a+1) ))  
+                if include_singles:
+                    indices.append(((2*i, 2*a)))  
+                    indices.append(((2*i+1, 2*a+1)))  
+        
+        return indices 
+
     def make_upccgsd_ansatz(self,
                             include_singles: bool = True,
                             include_reference: bool = True,
