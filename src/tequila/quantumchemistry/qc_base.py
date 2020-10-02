@@ -1073,9 +1073,11 @@ class QuantumChemistryBase:
         ----------
         pair_info
             file or list including information about pair structure
-            example: as file: "ref,ref,11,11,00,10" (hand over file name)
-                     as list:['ref','ref','11','11','00','10']
-                     ~> 2 reference orbitals, 
+            references single number, pair double
+            example: as file: "0,1,11,11,00,10" (hand over file name)
+                     in file, skip first row assuming some text with information
+                     as list:['0','1`','11','11','00','10']
+                     ~> two reference orbitals 0 and 1, 
                      then two orbitals from pair 11, one from 00, one mixed 10
         include_singles
             include single excitations
@@ -1088,9 +1090,9 @@ class QuantumChemistryBase:
 
         if pair_info is None:
             raise TequilaException("Need to provide some pair information.")
-        # If pair-information given on file, load (layout see above) 
+        # If pair-information given on file, load (layout see above)
         if isinstance(pair_info, str):
-            pairs = numpy.loadtxt(pair_info, dtype=str, delimiter=",")
+            pairs = numpy.loadtxt(pair_info, dtype=str, delimiter=",", skiprows=1)
         elif isinstance(pair_info, list):
             pairs = pair_info
         elif not isinstance(pair_info, list):
@@ -1100,13 +1102,15 @@ class QuantumChemistryBase:
         # determine "connectivity"
         generalized = 0 
         for idx, p in enumerate(pairs):
-            if p == "ref":
+            if len(p)==1:
                 connect[idx] = [i for i in range(len(pairs)) 
-                                if ( (not pairs[i]=='ref') and (str(idx) in pairs[i]) )]
-            elif (p!="ref") and general_excitations:
+                                if ( (len(pairs[i])==2) and (str(idx) in pairs[i]) )]
+            elif (len(p)==2) and general_excitations:
                 connect[idx] = [i for i in range(len(pairs)) 
                                 if ( ((p[0] in  pairs[i]) or (p[1] in pairs[i]) or str(i) in p)
                                      and not(i==idx) )]
+            elif len(p)>2:
+                raise TequilaException("Invalid reference of pair id.")
             
         # create generating indices from connectivity
         indices = []
