@@ -62,11 +62,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             status = "found {}_htensor.npy={}\n".format(name, h!="failed")
             status += "found {}_gtensor.npy={}\n".format(name, h!="failed")
             if h=="failed" or g=="failed":
-                raise TequilaException("Could not initialize the madness interface\n"
+                raise TequilaException("{status}\n\nCould not initialize the madness interface\n"
                                         "either provide {name}_gtensor.npy and {name}_htensor.npy files\n"
                                         "or provide the number of pnos over by giving the n_pnos keyword to run madness\n"
                                         "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
-                                        "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness")
+                                        "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness\n".format(name=name, status=status))
 
 
         # get additional information from madness file
