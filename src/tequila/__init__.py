@@ -11,6 +11,7 @@ from tequila.simulators.simulator_api import simulate, compile, compile_to_funct
     INSTALLED_SIMULATORS, SUPPORTED_BACKENDS, INSTALLED_BACKENDS, show_available_simulators
 from tequila.wavefunction import QubitWaveFunction
 import tequila.quantumchemistry as chemistry # shortcut
+from tequila.quantumchemistry import Molecule, MoleculeFromOpenFermion
 
 # make sure to use the jax/autograd numpy for objectives
 from tequila.circuit.gradient import grad

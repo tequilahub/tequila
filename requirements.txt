@@ -1,5 +1,5 @@
 numpy
-scipy == 1.5
+scipy >= 1.5
 sympy
 jax
 jaxlib
@@ -7,8 +7,8 @@ jaxlib
 setuptools 
 pytest
 openfermion
-qulacs # default simulator, remove if the installation gives you trouble
 cmake # needed by qulacs, can be removed otherwise
+qulacs # default simulator, remove if the installation gives you trouble
 
 #optional quantum backends
 #cirq

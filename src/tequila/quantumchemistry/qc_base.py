@@ -1012,7 +1012,7 @@ class QuantumChemistryBase:
         else:
             return 2 * len(self.active_space.active_reference_orbitals)
 
-    def make_hamiltonian(self, occupied_indices=None, active_indices=None) -> QubitHamiltonian:
+    def make_hamiltonian(self, occupied_indices=None, active_indices=None, threshold=1.e-8) -> QubitHamiltonian:
         """ """
         if occupied_indices is None and self.active_space is not None:
             occupied_indices = self.active_space.frozen_reference_orbitals
@@ -1025,7 +1025,10 @@ class QuantumChemistryBase:
             qop = self.transformation(fop)
         except TypeError:
             qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
-        return QubitHamiltonian(qubit_operator=qop)
+
+        result=QubitHamiltonian(qubit_operator=qop).simplify(threshold)
+        result.is_hermitian()
+        return result
 
     def make_molecular_hamiltonian(self):
         if self.active_space:
@@ -1064,7 +1067,7 @@ class QuantumChemistryBase:
                             indices: list = None,
                             label: str = None,
                             order: int = 1,
-                            exact_gradient: bool = False,
+                            assume_real: bool = True,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1095,13 +1098,16 @@ class QuantumChemistryBase:
 
         # indices defining the UpCCD ansatz
         if indices is None:
+            singles = []
             indices = []
             for i in range(self.n_orbitals):
                 for a in range(i + 1, self.n_orbitals):
                     indices.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
-                    if include_singles:
-                        indices.append(((2 * i, 2 * a)))
-                        indices.append(((2 * i + 1, 2 * a + 1)))
+                    singles.append(((2 * i, 2 * a)))
+                    singles.append(((2 * i + 1, 2 * a + 1)))
+
+            if include_singles:
+                indices += singles
 
         U = QCircuit()
         if include_reference:
@@ -1110,7 +1116,7 @@ class QuantumChemistryBase:
         for k in range(order):
             for idx in indices:
                 angle = (k, idx, label)
-                U += self.make_excitation_gate(angle=angle, indices=idx, exact=exact_gradient)
+                U += self.make_excitation_gate(angle=angle, indices=idx, exact=not assume_real)
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int,

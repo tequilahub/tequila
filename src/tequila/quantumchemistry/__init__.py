@@ -1,10 +1,9 @@
 import typing
 from .qc_base import ParametersQC, QuantumChemistryBase
+from .madness_interface import QuantumChemistryMadness
 
-SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4"]
-INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase}
-
-
+SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness"]
+INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase, "madness": QuantumChemistryMadness}
 
 try:
     from .psi4_interface import QuantumChemistryPsi4
@@ -58,18 +57,20 @@ def Molecule(geometry: str,
     parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
     if backend is None:
-        if "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
+        if basis_set.lower() == "madness":
+            backend = "madness"
+        elif "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
             backend = "psi4"
         elif "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
             backend = "pyscf"
         else:
             raise Exception("No quantum chemistry backends installed on your system")
     elif backend == "base":
-            requirements = [key in kwargs for key in ["one_body_integrals", "two_body_integrals", "nuclear_repulsion", "n_orbitals"]]
+            requirements = [key in kwargs for key in ["one_body_integrals", "two_body_integrals"]]
             if not all(requirements):
                 raise Exception("No quantum chemistry backends installed on your system\n"
                             "To use the base functionality you need to pass the following tensors via keyword\n"
-                            "one_body_integrals, two_body_integrals, nuclear_repulsion, n_orbitals\n")
+                            "one_body_integrals, two_body_integrals\n")
             else:
                 backend = "base"
 
