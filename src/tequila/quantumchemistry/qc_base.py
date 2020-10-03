@@ -1716,7 +1716,9 @@ class QuantumChemistryBase:
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
         result += "Qubit Encoding\n"
-        result += str(self.transformation) + "\n"
+        result += str(self.transformation) + "\n\n"
+        result += "Parameters\n"
         for k, v in self.parameters.__dict__.items():
             result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
+        result += "\n"
         return result

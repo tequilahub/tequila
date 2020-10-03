@@ -523,7 +523,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def __str__(self):
         result = super().__str__()
-        result += "\nPsi4 Data\n"
+        result += "Psi4 Data\n"
         result += "{key:15} : {value:15} \n".format(key="Point Group (full)",
                                                     value=self.psi4_mol.get_full_point_group().lower())
         result += "{key:15} : {value:15} \n".format(key="Point Group (used)", value=self.point_group)
@@ -533,6 +533,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             [len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)]))
         if self.active_space is not None:
             result += str(self.active_space)
+
+        result += "\nOrbitals:\n"
+        for orb in self.orbitals:
+            result += "{}\n".format(orb)
+
         return result
 
     def prepare_reference(self, *args, **kwargs):

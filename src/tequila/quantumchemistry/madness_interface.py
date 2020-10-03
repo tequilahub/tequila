@@ -1,7 +1,8 @@
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException
+from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning
 
 import typing
 import numpy
+import warnings
 
 from dataclasses import dataclass
 
@@ -38,8 +39,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         h, g = self.read_tensors(name=name)
 
         if h == "failed" or g == "failed":
-            status = "found {}_htensor.npy={}\n".format(name, h!="failed")
-            status += "found {}_gtensor.npy={}\n".format(name, h!="failed")
+            # try if madness was run manually without conversion before
+            h, g = self.convert_madness_output_from_bin_to_npy(name=name)
+
+        if h == "failed" or g == "failed":
+            status = "found {}_htensor.npy={}\n".format(name, h != "failed")
+            status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
             try:
                 # try to run madness
                 executable = "pno_integrals"
@@ -51,23 +56,25 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 import time
                 start = time.time()
                 print("Starting madness calculation with executable: ", executable)
-                with open("{}_pno.out".format(parameters.filename)) as logfile:
-                    subprocess.call([executable], stdout=logfile)
-                print("finished after {}s".format(time.time()-start))
-                status += "madness_run=success\n"
+                with open("{}_pno.out".format(parameters.filename), "w") as logfile:
+                    madout = subprocess.call([executable], stdout=logfile)
+                print("finished after {}s".format(time.time() - start))
+                status += "madness_run={}\n".format(madout)
             except Exception as E:
                 status += "madness_run={}\n".format(str(E))
 
-            h,g = self.read_tensors(name=name)
-            status = "found {}_htensor.npy={}\n".format(name, h!="failed")
-            status += "found {}_gtensor.npy={}\n".format(name, h!="failed")
-            if h=="failed" or g=="failed":
-                raise TequilaException("{status}\n\nCould not initialize the madness interface\n"
-                                        "either provide {name}_gtensor.npy and {name}_htensor.npy files\n"
-                                        "or provide the number of pnos over by giving the n_pnos keyword to run madness\n"
-                                        "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
-                                        "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness\n".format(name=name, status=status))
-
+            # will read the binary files, convert them and save them with the right name
+            h, g = self.convert_madness_output_from_bin_to_npy(name=name)
+            status += "found {}_htensor.npy={}\n".format(name, h != "failed")
+            status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
+            if h == "failed" or g == "failed":
+                raise TequilaException("Could not initialize the madness interface\n"
+                                       "{status}\n\n"
+                                       "either provide {name}_gtensor.npy and {name}_htensor.npy files\n"
+                                       "or provide the number of pnos over by giving the n_pnos keyword to run madness\n"
+                                       "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
+                                       "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness\n".format(
+                    name=name, status=status))
 
         # get additional information from madness file
         nuclear_repulsion = 0.0
@@ -114,18 +121,26 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             raise TequilaException("No pairinfo given")
         self.orbitals = tuple(orbitals)
 
-    def read_tensors(self, name="gs"):
+        # print warning if read data does not match expectations
+        if n_pnos is not None:
+            nrefs = len(self.get_reference_orbitals())
+            if n_pnos+nrefs != self.n_orbitals:
+                warnings.warn(
+                    "read in data was from {} pnos, but n_pnos was set to {}".format(self.n_orbitals-nrefs, n_pnos), TequilaWarning)
+
+
+    def read_tensors(self, name="gs", filetype=".npy"):
         """
         Try to read files "name_htensor.npy" and "name_gtensor.npy"
         """
 
         try:
-            h = numpy.load("{}_htensor.npy".format(name))
+            h = numpy.load("{}_htensor.{}".format(name, filetype))
         except:
             h = "failed"
 
         try:
-            g = numpy.load("{}_gtensor.npy".format(name))
+            g = numpy.load("{}_gtensor.{}".format(name, filetype))
         except:
             g = "failed"
 
@@ -174,13 +189,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         print("indidces=", indices)
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def make_madness_input(self, n_pnos, filename="input", *args, **kwargs):
+    def make_madness_input(self, n_pnos, frozen_core=False, filename="input", *args, **kwargs):
         if n_pnos is None:
             raise TequilaException("Can't write madness input without n_pnos")
         data = {}
         data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
-        data["pno"] = {"maxrank": n_pnos}
-        data["pnoint"] = {"basis_size": n_pnos // 2 - len(self.get_reference_orbitals())}
+        data["pno"] = {"maxrank": n_pnos, "f12": "false", "thresh":1.e-4}
+        if not frozen_core:
+            data["pno"]["freeze"] = 0
+        data["pnoint"] = {"basis_size": n_pnos}
         data["plot"] = {}
         data["f12"] = {}
         for key in data.keys():
@@ -189,10 +206,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         if filename is not None:
             with open(filename, "w") as f:
-                for k, v in data.items():
-                    print(key, file=f)
-                    for k, v in v.items():
-                        print("{} {}".format(k, v), file=f)
+                for k1, v1 in data.items():
+                    print(k1, file=f)
+                    for k2, v2 in v1.items():
+                        print("{} {}".format(k2, v2), file=f)
                     print("end\n", file=f)
 
                 print("geometry", file=f)
@@ -201,3 +218,36 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 print("end", file=f)
 
         return data
+
+    def convert_madness_output_from_bin_to_npy(self, name="gs"):
+        try:
+            g_data = numpy.fromfile("gs_gtensor.bin")
+            sd = int(numpy.power(g_data.size, 0.25))
+            assert (sd ** 4 == g_data.size)
+            sds = [sd] * 4
+            g = g_data.reshape(sds)
+            numpy.save("{}_gtensor.npy".format(name), arr=g)
+        except:
+            g = "failed"
+
+        try:
+            h_data = numpy.fromfile("gs_htensor.bin")
+            sd = int(numpy.sqrt(h_data.size))
+            assert (sd ** 2 == h_data.size)
+            sds = [sd] * 2
+            h = h_data.reshape(sds)
+            numpy.save("{}_htensor.npy".format(name), arr=h)
+        except:
+            h = "failed"
+
+        return h, g
+
+    def __str__(self):
+        info=super().__str__()
+        info+="{key:15} :\n".format(key="MRA Orbitals")
+        for orb in self.orbitals:
+            info+="{}\n".format(orb)
+        return info
+
+    def __repr__(self):
+        return self.__str__()
