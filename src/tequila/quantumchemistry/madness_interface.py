@@ -103,6 +103,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         assert len(g.shape) == 4
         assert len(h.shape) == 2
 
+        # openfermion conventions
+        g = numpy.einsum("psqr", g, optimize='optimize')
         super().__init__(parameters=parameters,
                          transformation=transformation,
                          active_orbitals=active_orbitals,
