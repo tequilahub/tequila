@@ -29,6 +29,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  active_orbitals: list = None,
                  madness_root_dir: str = None,
                  n_pnos: int = None,
+                 frozen_core = False,
                  *args,
                  **kwargs):
 
@@ -51,7 +52,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if madness_root_dir is not None:
                     executable = "{}/src/apps/pno/pno_integrals".format(madness_root_dir)
                 self.parameters = parameters
-                self.make_madness_input(n_pnos=n_pnos)
+                self.make_madness_input(n_pnos=n_pnos, frozen_core=frozen_core)
                 import subprocess
                 import time
                 start = time.time()
