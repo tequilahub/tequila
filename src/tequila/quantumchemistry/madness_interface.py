@@ -12,14 +12,16 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     class OrbitalData:
         idx: int = None  # active index
         idx_total: int = None  # total index
-        pno_pair: tuple = None  # pno origin
-        occ: float = None  # original MP2 occupation number
+        pno_pair: tuple = None  # pno origin if tuple of len 2, otherwise occupied or virtual orbital
+        occ: float = None  # original MP2 occupation number, or orbital energies
 
         def __str__(self):
             if len(self.pno_pair) == 2:
-                return "orbital {} from pno pair {} ".format(self.idx_total, self.pno_pair)
+                return "orbital {}, pno from pair {}, MP2 occ {} ".format(self.idx_total, self.pno_pair, self.occ)
+            elif self.pno_pair[0] < 0:
+                return "orbital {}, virtual orbital {}, energy {} ".format(self.idx_total, self.pno_pair, self.occ)
             else:
-                return "orbital {} from reference orbital {} ".format(self.idx_total, self.pno_pair)
+                return "orbital {}, occupied reference orbital {}, energy {} ".format(self.idx_total, self.pno_pair, self.occ)
 
         def __repr__(self):
             return self.__str__()
@@ -30,6 +32,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  madness_root_dir: str = None,
                  n_pnos: int = None,
                  frozen_core = False,
+                 n_virt: int = 0,
                  *args,
                  **kwargs):
 
@@ -52,7 +55,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if madness_root_dir is not None:
                     executable = "{}/src/apps/pno/pno_integrals".format(madness_root_dir)
                 self.parameters = parameters
-                self.make_madness_input(n_pnos=n_pnos, frozen_core=frozen_core)
+                self.make_madness_input(n_pnos=n_pnos, frozen_core=frozen_core, n_virt=n_virt, *args, **kwargs)
                 import subprocess
                 import time
                 start = time.time()
@@ -89,6 +92,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         elif "pairinfo" in line:
                             pairinfo = line.split("=")[1].split(",")
                             pairinfo = [tuple([int(i) for i in x.split(".")]) for x in pairinfo]
+                        elif "occinfo" in line:
+                            occinfo = line.split("=")[1].split(",")
+                            occinfo = [float(x) for x in occinfo]
             except:
                 continue
 
@@ -119,7 +125,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if pairinfo is not None:
             for i, p in enumerate(pairinfo):
                 if active_orbitals is None or i in active_orbitals:
-                    orbitals.append(self.OrbitalData(idx_total=i, idx=len(orbitals), pno_pair=p))
+                    orbitals.append(self.OrbitalData(idx_total=i, idx=len(orbitals), pno_pair=p, occ=occinfo[i]))
         else:
             raise TequilaException("No pairinfo given")
         self.orbitals = tuple(orbitals)
@@ -160,7 +166,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         return [x for x in self.orbitals if (i) == x.pno_pair]
 
     def get_reference_orbitals(self):
-        return [x for x in self.orbitals if len(x.pno_pair) == 1]
+        return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] >= 0]
+
+    def get_virtual_orbitals(self):
+        return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
 
     def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, **kwargs):
         indices_d = []
@@ -192,7 +201,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         print("indidces=", indices)
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def make_madness_input(self, n_pnos, frozen_core=False, filename="input", *args, **kwargs):
+    def make_madness_input(self, n_pnos, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
         if n_pnos is None:
             raise TequilaException("Can't write madness input without n_pnos")
         data = {}
@@ -200,7 +209,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         data["pno"] = {"maxrank": n_pnos, "f12": "false", "thresh":1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
-        data["pnoint"] = {"basis_size": n_pnos}
+        data["pnoint"] = {"n_pnos": n_pnos, "n_virt": n_virt}
         data["plot"] = {}
         data["f12"] = {}
         for key in data.keys():
