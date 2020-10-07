@@ -30,7 +30,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
                  madness_root_dir: str = None,
-                 n_pnos: int = None,
+                 n_pno: int = None,
                  frozen_core = False,
                  n_virt: int = 0,
                  *args,
@@ -55,7 +55,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if madness_root_dir is not None:
                     executable = "{}/src/apps/pno/pno_integrals".format(madness_root_dir)
                 self.parameters = parameters
-                self.make_madness_input(n_pnos=n_pnos, frozen_core=frozen_core, n_virt=n_virt, *args, **kwargs)
+                self.make_madness_input(n_pno=n_pno, frozen_core=frozen_core, n_virt=n_virt, *args, **kwargs)
                 import subprocess
                 import time
                 start = time.time()
@@ -131,11 +131,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.orbitals = tuple(orbitals)
 
         # print warning if read data does not match expectations
-        if n_pnos is not None:
+        if n_pno is not None:
             nrefs = len(self.get_reference_orbitals())
-            if n_pnos+nrefs != self.n_orbitals:
+            if n_pno+nrefs != self.n_orbitals:
                 warnings.warn(
-                    "read in data was from {} pnos, but n_pnos was set to {}".format(self.n_orbitals-nrefs, n_pnos), TequilaWarning)
+                    "read in data was from {} pnos, but n_pnos was set to {}".format(self.n_orbitals - nrefs, n_pno), TequilaWarning)
 
 
     def read_tensors(self, name="gs", filetype=".npy"):
@@ -201,15 +201,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         print("indidces=", indices)
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def make_madness_input(self, n_pnos, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
-        if n_pnos is None:
+    def make_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
+        if n_pno is None:
             raise TequilaException("Can't write madness input without n_pnos")
         data = {}
         data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
-        data["pno"] = {"maxrank": n_pnos, "f12": "false", "thresh":1.e-4}
+        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh":1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
-        data["pnoint"] = {"n_pnos": n_pnos, "n_virt": n_virt}
+        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt}
         data["plot"] = {}
         data["f12"] = {}
         for key in data.keys():
