@@ -36,34 +36,34 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  *args,
                  **kwargs):
 
-        # look for MRA data (default)
+        self.madness_root_dir = madness_root_dir
+        self.n_pno = n_pno
+        self.n_virt = n_virt
+        self.frozen_core = frozen_core
+
+        # if no n_pno is given, look for MRA data (default)
         name = "gs"
         if parameters.name != "molecule":
             name = parameters.name
-        h, g = self.read_tensors(name=name)
 
-        if h == "failed" or g == "failed":
-            # try if madness was run manually without conversion before
-            h, g = self.convert_madness_output_from_bin_to_npy(name=name)
+        if n_pno is None:
+            h, g = self.read_tensors(name=name)
+
+            if h == "failed" or g == "failed":
+                # try if madness was run manually without conversion before
+                h, g = self.convert_madness_output_from_bin_to_npy(name=name)
+        else:
+            h = "failed"
+            g = "failed"
 
         if h == "failed" or g == "failed":
             status = "found {}_htensor.npy={}\n".format(name, h != "failed")
             status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
             try:
                 # try to run madness
-                executable = "pno_integrals"
-                if madness_root_dir is not None:
-                    executable = "{}/src/apps/pno/pno_integrals".format(madness_root_dir)
                 self.parameters = parameters
-                self.make_madness_input(n_pno=n_pno, frozen_core=frozen_core, n_virt=n_virt, *args, **kwargs)
-                import subprocess
-                import time
-                start = time.time()
-                print("Starting madness calculation with executable: ", executable)
-                with open("{}_pno.out".format(parameters.filename), "w") as logfile:
-                    madout = subprocess.call([executable], stdout=logfile)
-                print("finished after {}s".format(time.time() - start))
-                status += "madness_run={}\n".format(madout)
+                status += "madness="
+                status += self.run_madness()
             except Exception as E:
                 status += "madness_run={}\n".format(str(E))
 
@@ -73,7 +73,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
             if h == "failed" or g == "failed":
                 raise TequilaException("Could not initialize the madness interface\n"
-                                       "{status}\n\n"
+                                       "Status report is\n"
+                                       "{status}\n"
                                        "either provide {name}_gtensor.npy and {name}_htensor.npy files\n"
                                        "or provide the number of pnos over by giving the n_pnos keyword to run madness\n"
                                        "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
@@ -133,10 +134,23 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         # print warning if read data does not match expectations
         if n_pno is not None:
             nrefs = len(self.get_reference_orbitals())
-            if n_pno+nrefs != self.n_orbitals:
+            if n_pno+nrefs+n_virt != self.n_orbitals:
                 warnings.warn(
-                    "read in data was from {} pnos, but n_pnos was set to {}".format(self.n_orbitals - nrefs, n_pno), TequilaWarning)
+                    "read in data was from {} pnos, but n_pno and n_virt where set to {} and {}".format(self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
 
+    def run_madness(self, *args, **kwargs):
+        executable = "pno_integrals"
+        if self.madness_root_dir is not None:
+            executable = "{}/src/apps/pno/pno_integrals".format(self.madness_root_dir)
+        self.make_madness_input(n_pno=self.n_pno, frozen_core=self.frozen_core, n_virt=self.n_virt, *args, **kwargs)
+        import subprocess
+        import time
+        start = time.time()
+        print("Starting madness calculation with executable: ", executable)
+        with open("{}_pno.out".format(self.parameters.filename), "w") as logfile:
+            madout = subprocess.call([executable], stdout=logfile)
+        print("finished after {}s".format(time.time() - start))
+        return madout
 
     def read_tensors(self, name="gs", filetype=".npy"):
         """
