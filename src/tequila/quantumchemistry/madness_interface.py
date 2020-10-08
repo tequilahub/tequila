@@ -63,7 +63,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 # try to run madness
                 self.parameters = parameters
                 status += "madness="
-                status += self.run_madness()
+                madness_status = self.run_madness()
+                if int(madness_status) != 0:
+                    warnings.warn("MADNESS did not terminate as expected! status = {}".format(status), TequilaWarning)
+                status += str(madness_status)
             except Exception as E:
                 status += "madness_run={}\n".format(str(E))
 
@@ -136,7 +139,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             nrefs = len(self.get_reference_orbitals())
             if n_pno+nrefs+n_virt != self.n_orbitals:
                 warnings.warn(
-                    "read in data was from {} pnos, but n_pno and n_virt where set to {} and {}".format(self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
+                    "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
 
     def run_madness(self, *args, **kwargs):
         executable = "pno_integrals"
