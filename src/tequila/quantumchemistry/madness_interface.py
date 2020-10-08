@@ -40,6 +40,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.n_pno = n_pno
         self.n_virt = n_virt
         self.frozen_core = frozen_core
+        self.kwargs=kwargs
 
         # if no n_pno is given, look for MRA data (default)
         name = "gs"
@@ -63,7 +64,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 # try to run madness
                 self.parameters = parameters
                 status += "madness="
-                madness_status = self.run_madness()
+                madness_status = self.run_madness(*args, **kwargs)
                 if int(madness_status) != 0:
                     warnings.warn("MADNESS did not terminate as expected! status = {}".format(status), TequilaWarning)
                 status += str(madness_status)
@@ -87,6 +88,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         # get additional information from madness file
         nuclear_repulsion = 0.0
         pairinfo = None
+        occinfo = None
         for name in ["pnoinfo.txt", parameters.name + "_pairinfo.txt"]:
             try:
                 with open(name, "r") as f:
