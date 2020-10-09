@@ -190,7 +190,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
 
-    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, **kwargs):
+    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False, **kwargs):
         indices_d = []
         indices_s = []
         refs = self.get_reference_orbitals()
@@ -212,6 +212,32 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         indices_d.append(u, d)
                         indices_s.append(u)
                         indices_s.append(d)
+
+        if include_offdiagonals:
+            for i in self.get_reference_orbitals():
+                for j in self.get_reference_orbitals():
+                    if i.idx<=j.idx:
+                        continue
+                    for a in self.get_pno_indices(i,j):
+                        ui = (2 * i.idx, 2 * a.idx)
+                        di = (2 * i.idx + 1, 2 * a.idx + 1)
+                        uj = (2 * j.idx, 2 * a.idx)
+                        dj = (2 * j.idx + 1, 2 * a.idx + 1)
+                        indices_d.append(ui,dj)
+                        indices_d.append(uj,di)
+                        indices_s.append(ui)
+                        indices_s.append(uj)
+                        indices_s.append(di)
+                        indices_s.append(dj)
+
+                    if generalized:
+                        for a in self.get_pno_indices(i, j):
+                            for b in self.get_pno_indices(i, j):
+                                u = (2 * a.idx, 2 * b.idx)
+                                d = (2 * a.idx + 1, 2 * b.idx + 1)
+                                indices_d.append(u, d)
+                                indices_s.append(u)
+                                indices_s.append(d)
 
         indices = indices_d
         if include_singles:
