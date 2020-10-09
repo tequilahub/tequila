@@ -209,9 +209,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                             continue
                         u = (2 * a.idx, 2 * b.idx)
                         d = (2 * a.idx + 1, 2 * b.idx + 1)
-                        indices_d.append(u, d)
-                        indices_s.append(u)
-                        indices_s.append(d)
+                        indices_d.append((u, d))
+                        indices_s.append((u))
+                        indices_s.append((d))
 
         if include_offdiagonals:
             for i in self.get_reference_orbitals():
@@ -223,21 +223,21 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         di = (2 * i.idx + 1, 2 * a.idx + 1)
                         uj = (2 * j.idx, 2 * a.idx)
                         dj = (2 * j.idx + 1, 2 * a.idx + 1)
-                        indices_d.append(ui,dj)
-                        indices_d.append(uj,di)
-                        indices_s.append(ui)
-                        indices_s.append(uj)
-                        indices_s.append(di)
-                        indices_s.append(dj)
+                        indices_d.append((ui,dj))
+                        indices_d.append((uj,di))
+                        indices_s.append((ui))
+                        indices_s.append((uj))
+                        indices_s.append((di))
+                        indices_s.append((dj))
 
                     if generalized:
                         for a in self.get_pno_indices(i, j):
                             for b in self.get_pno_indices(i, j):
                                 u = (2 * a.idx, 2 * b.idx)
                                 d = (2 * a.idx + 1, 2 * b.idx + 1)
-                                indices_d.append(u, d)
-                                indices_s.append(u)
-                                indices_s.append(d)
+                                indices_d.append((u, d))
+                                indices_s.append((u))
+                                indices_s.append((d))
 
         indices = indices_d
         if include_singles:
