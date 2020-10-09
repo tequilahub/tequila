@@ -233,6 +233,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     if generalized:
                         for a in self.get_pno_indices(i, j):
                             for b in self.get_pno_indices(i, j):
+                                if a.idx <=b.idx:
+                                    continue
                                 u = (2 * a.idx, 2 * b.idx)
                                 d = (2 * a.idx + 1, 2 * b.idx + 1)
                                 indices_d.append((u, d))
