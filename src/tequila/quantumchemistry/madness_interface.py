@@ -157,7 +157,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         print("finished after {}s".format(time.time() - start))
         return madout
 
-    def read_tensors(self, name="gs", filetype=".npy"):
+    def read_tensors(self, name="gs", filetype="npy"):
         """
         Try to read files "name_htensor.npy" and "name_gtensor.npy"
         """
