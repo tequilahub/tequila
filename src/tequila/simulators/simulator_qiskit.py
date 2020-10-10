@@ -173,7 +173,7 @@ class BackendCircuitQiskit(BackendCircuit):
         self.counter = 0
 
         if qubit_map is None:
-            n_qubits = abstract_circuit.n_qubits
+            n_qubits = len(abstract_circuit.qubits)
         else:
             n_qubits = max(qubit_map.values()) + 1
 
