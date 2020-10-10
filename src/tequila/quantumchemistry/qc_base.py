@@ -524,7 +524,7 @@ class NBodyTensor:
         elif self.ordering.is_phys():
             if to.is_chem():
                 self.elems = numpy.einsum("pqrs -> prqs", self.elems, optimize='greedy')
-            elif to.is_of()
+            elif to.is_of():
                 self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
 
         return self
