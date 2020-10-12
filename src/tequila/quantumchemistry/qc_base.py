@@ -307,8 +307,57 @@ class Amplitudes:
 class NBodyTensor:
     """ Convenience class for handling N-body tensors """
 
-    def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, scheme: str = None,
+    class Ordering:
+        def __init__(self, scheme):
+            if hasattr(scheme, "_scheme"):
+                scheme = scheme._scheme
+            elif hasattr(scheme, "scheme"):
+                scheme = scheme.scheme
+            self._scheme=self.assign_scheme(scheme)
+
+        def assign_scheme(self, scheme):
+            if scheme is None:
+                return "chem"
+            else:
+                scheme = str(scheme)
+
+            if scheme.lower() in ["mulliken", "chem", "c", "1122"]:
+                return "chem"
+            elif scheme.lower() in ["dirac", "phys", "p", "1212"]:
+                return "phys"
+            elif scheme.lower() in ["openfermion", "of", "o", "1221"]:
+                return "of"
+            else:
+                raise TequilaException("Unknown two-body tensor scheme {}. Supported are dirac, mulliken, and openfermion".format(scheme))
+
+        def is_phys(self):
+            return self._scheme == "phys"
+        def is_chem(self):
+            return self._scheme == "chem"
+        def is_of(self):
+            return self._scheme == "of"
+
+
+    def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, ordering: str = None,
                  size_full: int = None):
+        """
+        Parameters
+        ----------
+        elems: Tensor data as numpy array
+        active_indices: List of active indices in total ordering
+        ordering: Ordering scheme for two body tensors
+        "dirac" or "phys": <12|g|12>
+            .. math::
+                g_{pqrs} = \\int d1 d2 p(1)q(2) g(1,2) r(1)s(2)
+        "mulliken" or "chem": (11|g|22)
+            .. math::
+                g_{pqrs} = \\int d1 d2 p(1)r(2) g(1,2) q(1)s(2)
+        "openfermion":
+            .. math:: [12|g|21]
+                g_{gqprs} = \\int d1 d2 p(1)q(2) g(1,2) s(1)r(2)
+
+        size_full
+        """
 
         # Set elements
         self.elems = elems
@@ -330,14 +379,11 @@ class NBodyTensor:
             self._size_full = size_full
         # 2-body tensors (<=> order 4) currently allow reordering
         if self.order == 4:
-            if scheme is None:
-                self.scheme = 'chem'
-            else:
-                self.scheme = scheme.lower()
+            self.ordering=self.Ordering(ordering)
         else:
-            if scheme is not None:
+            if ordering is not None:
                 raise Exception("Ordering only implemented for tensors of order 4 / 2-body tensors.")
-            self.scheme = None
+            self.ordering = None
 
     def sub_lists(self, idx_lists: list = None) -> numpy.ndarray:
         """
@@ -432,33 +478,6 @@ class NBodyTensor:
 
         return out
 
-    def is_openfermion(self) -> bool:
-        """
-        Checks whether current ordering scheme is 'openfermion'
-        """
-        if self.scheme == 'openfermion' or self.scheme == 'of':
-            return True
-        else:
-            return False
-
-    def is_chem(self) -> bool:
-        """
-        Checks whether current ordering scheme is 'chem'
-        """
-        if self.scheme == 'chem' or self.scheme == 'c':
-            return True
-        else:
-            return False
-
-    def is_phys(self) -> bool:
-        """
-        Checks whether current ordering scheme is 'phys'
-        """
-        if self.scheme == 'phys' or self.scheme == 'p':
-            return True
-        else:
-            return False
-
     def reorder(self, to: str = 'of'):
         """
         Function to reorder tensors according to some convention.
@@ -487,36 +506,28 @@ class NBodyTensor:
         """
         if self.order != 4:
             raise Exception('Reordering currently only implemented for two-body tensors.')
-        to = to.lower()
 
-        if self.is_chem():
-            if to == 'chem' or to == 'c':
-                pass
-            elif to == 'openfermion' or to == 'of':
+        to = self.Ordering(to)
+
+        if self.ordering == to:
+            return self
+        elif self.ordering.is_chem():
+            if to.is_of():
                 self.elems = numpy.einsum("psqr -> pqrs", self.elems, optimize='greedy')
-                self.scheme = 'openfermion'
-            elif to == 'phys' or to == 'p':
+            elif to.is_phys():
                 self.elems = numpy.einsum("prqs -> pqrs", self.elems, optimize='greedy')
-                self.scheme = 'phys'
-        elif self.is_openfermion():
-            if to == 'chem' or to == 'c':
+        elif self.ordering.is_of():
+            if to.is_chem():
                 self.elems = numpy.einsum("pqrs -> psqr", self.elems, optimize='greedy')
-                self.scheme = 'chem'
-            elif to == 'openfermion' or to == 'of':
-                pass
-            elif to == 'phys' or to == 'p':
+            elif to.is_phys():
                 self.elems = numpy.einsum("pqrs -> pqsr", self.elems, optimize='greedy')
-                self.scheme = 'phys'
-        elif self.is_phys():
-            if to == 'chem' or to == 'c':
+        elif self.ordering.is_phys():
+            if to.is_chem():
                 self.elems = numpy.einsum("pqrs -> prqs", self.elems, optimize='greedy')
-                self.scheme = 'chem'
-            elif to == 'openfermion' or to == 'of':
+            elif to.is_of():
                 self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
-                self.scheme = 'openfermion'
-            elif to == 'phys' or to == 'p':
-                pass
 
+        return self
 
 class QuantumChemistryBase:
     """ """
