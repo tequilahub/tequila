@@ -9,6 +9,7 @@ import numpy as np
 import qibo
 from qibo.models import Circuit
 from qibo import gates
+import tensorflow as tf
 
 class TequilaQiboException(TequilaException):
     def __str__(self):
@@ -251,8 +252,7 @@ class BackendCircuitQibo(BackendCircuit):
         assert type(device) in [str,dict] or device is None
         if isinstance(device,str):
             d=device.upper()
-            print(d[:3])
-            if d[:3] not in ["/GPU","/CPU"]:
+            if d[:5] not in ["/GPU:","/CPU:"]:
                 raise TequilaQiboException("Device names must begin with either /GPU: or /CPU:; received {}".format(d))
         elif isinstance(device,dict):
             if 'memory_device' in device.keys(): #full spec paralellism
@@ -323,7 +323,7 @@ class BackendCircuitQibo(BackendCircuit):
                 state[0] = 1
             elif initial_state == 1:
                 state[-1] = 1
-            result = self.circuit(state)
+                result = self.circuit(state)
         else:
             result = self.circuit()
         back= QubitWaveFunction.from_array(arr=result.numpy())
@@ -420,12 +420,16 @@ class BackendCircuitQibo(BackendCircuit):
 
         Returns
         -------
-        Fill this in sumner
+        qibo.tensorflow.circuit.TensorflowCircuit
+            an empty, though initialized, circuit that can be executed or manipulated.
         """
         if self.device is None:
             return Circuit(self.n_qubits)
         else:
             if isinstance(self.device, str):
+                if not self.flag:
+                    qibo.set_device(self.device)
+                    self.flag = True  # don't reset the device every time; such as during measurement.
                 return Circuit(self.n_qubits)
             elif isinstance(self.device, dict):
                 acc = self.device['accelerators']
