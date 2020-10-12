@@ -10,8 +10,8 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 
-SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs", "qiskit", "cirq", "pyquil", "symbolic"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil', 'qulacs', "qulacs_gpu"]
+SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic"]
+SUPPORTED_NOISE_BACKENDS = ["qiskit",'qibo', 'cirq', 'pyquil', 'qulacs', "qulacs_gpu"]
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -39,6 +39,16 @@ try:
     INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
 except ImportError:
     HAS_QISKIT = False
+
+HAS_QIBO = True
+try:
+    from tequila.simulators.simulator_qibo import BackendCircuitQibo, BackendExpectationValueQibo
+    HAS_QIBO = True
+    INSTALLED_SIMULATORS["qibo"] = BackendTypes(BackendCircuitQibo, BackendExpectationValueQibo)
+    INSTALLED_SAMPLERS["qibo"] = BackendTypes(BackendCircuitQibo, BackendExpectationValueQibo)
+    INSTALLED_NOISE_SAMPLERS["qibo"] = BackendTypes(BackendCircuitQibo, BackendExpectationValueQibo)
+except ImportError:
+    HAS_QIBO = False
 
 HAS_CIRQ = True
 try:
@@ -195,11 +205,11 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
     if backend not in SUPPORTED_BACKENDS:
         raise TequilaException("Backend {backend} not supported ".format(backend=backend))
 
-    elif noise is False and samples is None and backend not in INSTALLED_SIMULATORS.keys():
+    elif noise is None and samples is None and backend not in INSTALLED_SIMULATORS.keys():
         raise TequilaException("Backend {backend} not installed ".format(backend=backend))
-    elif noise is False and samples is not None and backend not in INSTALLED_SAMPLERS.keys():
+    elif noise is None and samples is not None and backend not in INSTALLED_SAMPLERS.keys():
         raise TequilaException("Backend {backend} not installed or sampling not supported".format(backend=backend))
-    elif noise is not False and samples is not None and backend not in INSTALLED_NOISE_SAMPLERS.keys():
+    elif noise is not None and samples is not None and backend not in INSTALLED_NOISE_SAMPLERS.keys():
         raise TequilaException(
             "Backend {backend} not installed or else Noise has not been implemented".format(backend=backend))
 
