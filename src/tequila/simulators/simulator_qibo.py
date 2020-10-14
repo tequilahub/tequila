@@ -17,6 +17,29 @@ class TequilaQiboException(TequilaException):
     def __str__(self):
         return "Error in qibo backend:" + self.message
 
+def kraus_tensor(klist, n):
+    """
+    Recursive function that produces every (n-fold) tensor product of a list of kraus operators.
+    Parameters
+    ----------
+    klist: list:
+        a list of numpy.ndarrays, to tensor together
+    n: int:
+        the number of terms that must ultimately be tensored together into a single term (the number of qubits acted on)
+    Returns
+    -------
+    list:
+        a list of kraus operators
+
+    """
+    if n == 1:
+        return klist
+    if n == 2:
+        return [np.kron(k1, k2) for k1 in klist for k2 in klist]
+    elif n >= 3:
+        return [np.kron(k1, k2) for k1 in kraus_tensor(klist, n - 1) for k2 in klist]
+    else:
+        raise TequilaQiboException('wtf, you gave me n={}'.format(str(n)))
 
 def bit_flip_map(qs,p):
     """
@@ -34,9 +57,10 @@ def bit_flip_map(qs,p):
     mat1 = np.array([[np.sqrt(1 - p), 0], [0, np.sqrt(1 - p)]])
     mat2 = np.array([[0, np.sqrt(p)], [np.sqrt(p), 0]])
     back= []
-    for i in qs:
-        for mat in [mat1,mat2]:
-            back.append(((i,), mat))
+    matlist = [mat1, mat2]
+    newmats = kraus_tensor(matlist,len(qs))
+    for mat in newmats:
+        back.append((tuple(qs), mat))
 
     return back
 
@@ -57,9 +81,10 @@ def phase_flip_map(qs,p):
     mat1 = np.array([[np.sqrt(1 - p), 0], [0, np.sqrt(1 - p)]])
     mat2 = np.array([[np.sqrt(p), 0], [0, -np.sqrt(p)]])
     back= []
-    for i in qs:
-        for mat in [mat1,mat2]:
-            back.append(((i,), mat))
+    matlist = [mat1, mat2]
+    newmats = kraus_tensor(matlist, len(qs))
+    for mat in newmats:
+        back.append((tuple(qs), mat))
     return back
 
 
@@ -76,9 +101,10 @@ def amp_damp_map(qs,p):
                                         [0, 0]])
     mat2 = np.diag([1, np.sqrt(1 - p)])
     back= []
-    for i in qs:
-        for mat in [mat1,mat2]:
-            back.append(((i,), mat))
+    matlist = [mat1, mat2]
+    newmats = kraus_tensor(matlist, len(qs))
+    for mat in newmats:
+        back.append((tuple(qs), mat))
     return back
 
 
@@ -99,9 +125,10 @@ def phase_damp_map(qs,p):
     mat2 = np.array([[0, 0], [0, np.sqrt(p)]])
 
     back = []
-    for i in qs:
-        for mat in [mat1, mat2]:
-            back.append(((i,), mat))
+    matlist = [mat1, mat2]
+    newmats = kraus_tensor(matlist, len(qs))
+    for mat in newmats:
+        back.append((tuple(qs), mat))
     return back
 
 def phase_amp_damp_map(qs, a, b):
@@ -124,11 +151,11 @@ def phase_amp_damp_map(qs, a, b):
     A1 = [[0, np.sqrt(a)], [0, 0]]
     A2 = [[0, 0], [0, np.sqrt(b)]]
 
-    mats= [np.array(k) for k in [A0, A1, A2]]
     back = []
-    for i in qs:
-        for mat in mats:
-            back.append(((i,), mat))
+    matlist = [np.array(k) for k in [A0, A1, A2]]
+    newmats = kraus_tensor(matlist,len(qs))
+    for mat in newmats:
+        back.append((tuple(qs), mat))
     return back
 
 def depolarizing_map(qs,p):
@@ -149,11 +176,11 @@ def depolarizing_map(qs,p):
     mat2 = np.array([[np.sqrt(p / 4), 0], [0, -np.sqrt(p / 4)]])
     mat3 = np.array([[0, np.sqrt(p / 4)], [np.sqrt(p / 4), 0]])
     mat4 = np.array([[0., -1.j * np.sqrt(p / 4)], [1.j * np.sqrt(p / 4), .0]])
-    mats= [k for k in [mat1,mat2,mat3,mat4]]
     back = []
-    for i in qs:
-        for mat in mats:
-            back.append(((i,), mat))
+    matlist= [mat1,mat2,mat3,mat4]
+    newmats = kraus_tensor(matlist, len(qs))
+    for mat in newmats:
+        back.append((tuple(qs), mat))
     return back
 
 class BackendCircuitQibo(BackendCircuit):
@@ -337,6 +364,7 @@ class BackendCircuitQibo(BackendCircuit):
         else:
             result = self.circuit()
         back= QubitWaveFunction.from_array(arr=result.numpy())
+        print('printing the return object for simulate', back)
         return back
 
     def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
@@ -394,6 +422,7 @@ class BackendCircuitQibo(BackendCircuit):
         if reduced_ps.coeff == 0.0:
             return 0.0
         if len(reduced_ps._data.keys()) == 0:
+            print('tracing out and done')
             return reduced_ps.coeff
 
         # make basis change and translate to backend
@@ -412,6 +441,8 @@ class BackendCircuitQibo(BackendCircuit):
         # compute energy
         E = 0.0
         n_samples = 0
+        print('printing the counts')
+        print(counts)
         for key, count in counts.items():
             parity = key.array.count(1)
             sign = (-1) ** parity
@@ -456,7 +487,10 @@ class BackendCircuitQibo(BackendCircuit):
         else:
             result = self.circuit(nshots=samples)
 
-        return self.convert_measurements(backend_result=result)
+
+        back = self.convert_measurements(backend_result=result)
+        print('printing the return object',back)
+        return back
 
     def initialize_circuit(self, *args, **kwargs):
         """
@@ -610,7 +644,7 @@ class BackendCircuitQibo(BackendCircuit):
 
         """
 
-        print('rebuild for sample called with instruct, highest, self.n = ',highest_qubit,self.highest_qubit,self.n_qubits)
+        #print('rebuild for sample called with instruct, highest, self.n = ',highest_qubit,self.highest_qubit,self.n_qubits)
 
         new = BackendCircuitQibo(self.abstract_circuit+abstract_circuit,variables=variables,noise=self.noise,
                                  device=self.device,highest_qubit=highest_qubit)
