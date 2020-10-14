@@ -3,13 +3,15 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
+from tequila.circuit.compiler import change_basis
+import copy
 
 
 import numpy as np
 import qibo
 from qibo.models import Circuit
 from qibo import gates
-import tensorflow as tf
+
 
 class TequilaQiboException(TequilaException):
     def __str__(self):
@@ -197,7 +199,7 @@ class BackendCircuitQibo(BackendCircuit):
     }
 
 
-    def __init__(self, abstract_circuit, noise=None, device=None, *args, **kwargs):
+    def __init__(self, abstract_circuit, noise=None, device=None,highest_qubit=None, *args, **kwargs):
         """
 
         Parameters
@@ -232,7 +234,10 @@ class BackendCircuitQibo(BackendCircuit):
             qibo.set_backend("defaulteinsum")  # necessary for Qibo to do density matrices!
         else:
             qibo.set_backend('custom')
-
+        if highest_qubit is None:
+            self.highest_qubit=0
+        else:
+            self.highest_qubit=highest_qubit
         super().__init__(abstract_circuit=abstract_circuit, noise=noise,device=device, *args, **kwargs)
 
         if noise is not None:
@@ -247,6 +252,7 @@ class BackendCircuitQibo(BackendCircuit):
                 'depolarizing': lambda qs,p: gates.GeneralChannel(depolarizing_map(qs,p))
             }
             self.circuit = self.add_noise_to_circuit(noise) # see this function for details
+        self.baseline_variables = self.variables
 
     def check_device(self, device):
         assert type(device) in [str,dict] or device is None
@@ -317,13 +323,17 @@ class BackendCircuitQibo(BackendCircuit):
         QubitWaveFunction:
             QubitWaveFunction representing result of the simulation.
         """
+
+        n_qubits = max(self.highest_qubit + 1, self.n_qubits, self.abstract_circuit.max_qubit() + 1)
         if initial_state is not None:
-            state = np.zeros(2**self.n_qubits)
-            if initial_state == 0:
-                state[0] = 1
-            elif initial_state == 1:
-                state[-1] = 1
-                result = self.circuit(state)
+            if isinstance(initial_state, int):
+                wave = QubitWaveFunction.from_int(i=initial_state, n_qubits=n_qubits)
+            elif isinstance(initial_state, str):
+                wave = QubitWaveFunction.from_string(string=initial_state).to_array()
+            elif isinstance(initial_state, QubitWaveFunction):
+                wave = initial_state
+            state = wave.to_array()
+            result = self.circuit(state)
         else:
             result = self.circuit()
         back= QubitWaveFunction.from_array(arr=result.numpy())
@@ -359,6 +369,58 @@ class BackendCircuitQibo(BackendCircuit):
 
         return result
 
+    def sample_paulistring(self, samples: int, paulistring, variables, *args,
+                           **kwargs):
+        """
+        Has to be rewritten because of the pro-scription in qibo against calling already executed circuits.
+
+        Parameters
+        ----------
+        samples: int:
+            how many samples to take.
+        paulistring: QubitHamiltonian:
+            the paulistring to sample.
+        variables: dict:
+            the variables to instantiate upon sampling.
+        args
+        kwargs
+
+        Returns
+        -------
+
+        """
+        not_in_u = [q for q in paulistring.qubits if q not in self.abstract_qubits]
+        reduced_ps = paulistring.trace_out_qubits(qubits=not_in_u)
+        if reduced_ps.coeff == 0.0:
+            return 0.0
+        if len(reduced_ps._data.keys()) == 0:
+            return reduced_ps.coeff
+
+        # make basis change and translate to backend
+        basis_change = QCircuit()
+        qubits = []
+        for idx, p in reduced_ps.items():
+            qubits.append(idx)
+            basis_change += change_basis(target=idx, axis=p)
+
+        highest_qubit = max(paulistring.qubits)
+        new=self.rebuild_for_sample(abstract_circuit=basis_change,variables=variables,highest_qubit=highest_qubit)
+
+        # run simulators
+        counts = new.sample(samples=samples, circuit=new.circuit, read_out_qubits=qubits, variables=variables, *args,
+                             **kwargs)
+        # compute energy
+        E = 0.0
+        n_samples = 0
+        for key, count in counts.items():
+            parity = key.array.count(1)
+            sign = (-1) ** parity
+            E += sign * count
+            n_samples += count
+        assert n_samples == samples
+        E = E / samples * paulistring.coeff
+        return E
+
     def do_sample(self, samples, circuit, noise_model=None, initial_state=None, *args, **kwargs) -> QubitWaveFunction:
         """
         Helper function for performing sampling.
@@ -381,40 +443,28 @@ class BackendCircuitQibo(BackendCircuit):
         QubitWaveFunction:
             the results of sampling, as a Qubit Wave Function.
         """
-
+        n_qubits = max(self.highest_qubit + 1, self.n_qubits, self.abstract_circuit.max_qubit() + 1)
         if initial_state is not None:
-            state = np.zeros(2**self.n_qubits)
-            if initial_state == 0:
-                state[0] = 1
-            elif initial_state == 1:
-                state[-1] = 1
-            else:
-                if isinstance(initial_state,np.ndarray):
-                    state=initial_state
+            if isinstance(initial_state, int):
+                wave=QubitWaveFunction.from_int(i=initial_state, n_qubits=n_qubits)
+            elif isinstance(initial_state, str):
+                wave = QubitWaveFunction.from_string(string=initial_state).to_array()
+            elif isinstance(initial_state, QubitWaveFunction):
+                wave = initial_state
+            state=wave.to_array()
             result = self.circuit(state,nshots=samples)
         else:
             result = self.circuit(nshots=samples)
 
         return self.convert_measurements(backend_result=result)
 
-    def no_translation(self, abstract_circuit):
-        """
-        Todo: what is this for?
-        Parameters
-        ----------
-        abstract_circuit
-
-        Returns
-        -------
-
-        """
-        return False
-
     def initialize_circuit(self, *args, **kwargs):
         """
         return an empty circuit.
         Parameters
         ----------
+        n_qubits: int, optional:
+            an override parameter to decide how many qubits should be present in the initialized circuit
         args
         kwargs
 
@@ -423,18 +473,19 @@ class BackendCircuitQibo(BackendCircuit):
         qibo.tensorflow.circuit.TensorflowCircuit
             an empty, though initialized, circuit that can be executed or manipulated.
         """
+        n_qubits=max(self.highest_qubit+1,self.n_qubits,self.abstract_circuit.max_qubit()+1)
         if self.device is None:
-            return Circuit(self.n_qubits)
+            return Circuit(n_qubits)
         else:
             if isinstance(self.device, str):
                 if not self.flag:
                     qibo.set_device(self.device)
                     self.flag = True  # don't reset the device every time; such as during measurement.
-                return Circuit(self.n_qubits)
+                return Circuit(n_qubits)
             elif isinstance(self.device, dict):
                 acc = self.device['accelerators']
                 mem = self.device['memory device']
-                return Circuit(self.n_qubits, accelerators=acc, memory_device=mem)
+                return Circuit(n_qubits, accelerators=acc, memory_device=mem)
 
     def add_parametrized_gate(self, gate, circuit, variables, *args, **kwargs):
         """
@@ -463,8 +514,9 @@ class BackendCircuitQibo(BackendCircuit):
             inst= op(t[0], theta=value).controlled_by(c[0])
         else:
             inst = op(t[0],theta=value)
-        self.inst_list.append(inst)
+        self.inst_list.append(copy.deepcopy(inst))
         circuit.add(inst)
+
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         """
@@ -492,7 +544,7 @@ class BackendCircuitQibo(BackendCircuit):
                 inst = op(t[0], t[1])
             else:
                 inst = op(t[0])
-        self.inst_list.append(inst)
+        self.inst_list.append(copy.deepcopy(inst))
         circuit.add(inst)
 
     def add_measurement(self, circuit, target_qubits, *args, **kwargs):
@@ -512,7 +564,7 @@ class BackendCircuitQibo(BackendCircuit):
         None
         """
         for t in target_qubits:
-            self.inst_list.append(gates.M(t))
+            self.inst_list.append(copy.deepcopy(gates.M(t)))
             circuit.add(gates.M(t))
 
     def add_noise_to_circuit(self,noise_model):
@@ -528,9 +580,9 @@ class BackendCircuitQibo(BackendCircuit):
         qibo.tensorflow.circuit.TensorflowCircuit
             self.circuit, with noise added on.
         """
-
         n = noise_model
         new=self.initialize_circuit()
+        temp_list = []
         for g in self.inst_list:
             new.add(g)
             qubits=g.qubits
@@ -541,9 +593,29 @@ class BackendCircuitQibo(BackendCircuit):
                     for p in noise.probs:
                         chargs.append(p)
                     chan = ch(*chargs)
+                    temp_list.append(copy.deepcopy(chan))
                     new.add(chan)
+        self.inst_list.extend(temp_list)
         return new
 
+    def rebuild_for_sample(self,abstract_circuit,variables,highest_qubit):
+        """
+        restructures the compiled circuit to that necessary for sampling
+        Parameters
+        ----------
+        abstract_circuit:
+            the abstract circuit needed for measurement.
+        variables:
+            variables.
+
+        """
+
+        print('rebuild for sample called with instruct, highest, self.n = ',highest_qubit,self.highest_qubit,self.n_qubits)
+
+        new = BackendCircuitQibo(self.abstract_circuit+abstract_circuit,variables=variables,noise=self.noise,
+                                 device=self.device,highest_qubit=highest_qubit)
+        return new
 
 class BackendExpectationValueQibo(BackendExpectationValue):
     BackendCircuitType = BackendCircuitQibo
+
