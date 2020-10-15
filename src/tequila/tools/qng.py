@@ -271,7 +271,7 @@ def qng_circuit_grad(E: ExpectationValueImpl) -> typing.List[Objective]:
         if g.is_parametrized():
             if g.is_controlled():
                 raise TequilaException("controlled gate in qng circuit gradient: Compiler was not called")
-            if hasattr(g, "shift"):
+            if hasattr(g, "eigenvalues_magnitude"):
                 if hasattr(g._parameter,'extract_variables'):
                     shifter = qng_grad_gaussian(unitary, g, i, hamiltonian)
                     out.append(shifter)
@@ -309,7 +309,7 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian) -> Objective:
     ### unlike grad_gaussian, this doesn't dig below, into a gate's underlying parametrization.
     ### In other words, if a gate is Rx(y), y=f(x), this gives you back d Rx / dy.
 
-    if not hasattr(g, "shift"):
+    if not hasattr(g, "eigenvalues_magnitude"):
         raise TequilaException("No shift found for gate {}".format(g))
 
     # neo_a and neo_b are the shifted versions of gate g needed to evaluate its gradient
