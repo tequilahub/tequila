@@ -4,8 +4,12 @@ import multiprocessing as mp
 from tequila.simulators.simulator_api import simulate
 from tequila.optimizers.optimizer_gd import minimize
 
+# Get QC backends for parametrized testing
+import select_backends
+simulators = select_backends.get()
+samplers = select_backends.get(sampler=True)
 
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('method', numpy.random.choice(tq.optimizers.optimizer_gd.OptimizerGD.available_methods(),1))
 @pytest.mark.parametrize('options', [None, '2-point', {"method":"2-point", "stepsize": 1.e-4}, {"method":"2-point-forward", "stepsize": 1.e-4}, {"method":"2-point-backward", "stepsize": 1.e-4} ])
 def test_execution(simulator,method, options):
@@ -22,7 +26,7 @@ def test_execution(simulator,method, options):
     O = tq.ExpectationValue(U=U, H=H)
     result = minimize(objective=O,method=method, maxiter=1, backend=simulator, gradient=options)
 
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize('options', [None, '2-point', {"method":"2-point", "stepsize": 1.e-4}, {"method":"2-point-forward", "stepsize": 1.e-4}, {"method":"2-point-backward", "stepsize": 1.e-4} ])
 def test_execution_shot(simulator, options):
     U = tq.gates.Rz(angle="a", target=0) \
@@ -38,7 +42,7 @@ def test_execution_shot(simulator, options):
     mi=2
     result = minimize(objective=O, maxiter=mi, backend=simulator,samples=10, gradient=options)
 
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('method', tq.optimizers.optimizer_gd.OptimizerGD.available_methods())
 def test_method_convergence(simulator,method):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
@@ -49,7 +53,7 @@ def test_method_convergence(simulator,method):
     result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,maxiter=200, backend=simulator)
     assert (numpy.isclose(result.energy, -1.0,atol=3.e-2))
 
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("method", tq.optimizers.optimizer_gd.OptimizerGD.available_methods())
 def test_methods_qng(simulator, method):
     ### please note! I am finely tuned to always pass! don't get cocky and change lr, maxiter, etc.

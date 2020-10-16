@@ -35,7 +35,7 @@ jobs:
               pip install --upgrade -r requirements_gpyopt.txt
               pip install -e .
 
-              pytest tests/test_gpyopt.py
+              pytest tests/test_gpyopt.py --slow
     - name: Install and test phoenics interface
       run: |
               ver=$(python -c"import sys; print(sys.version_info.minor)")
@@ -45,7 +45,7 @@ jobs:
                 #pytest tests/test_phoenics.py
               elif [ $ver -eq 7 ]; then
                 pip install --upgrade -r requirements_phoenics.txt
-                pytest tests/test_phoenics.py
+                pytest tests/test_phoenics.py --slow
               fi
 
 
