@@ -13,6 +13,10 @@ HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 import tequila as tq
 
+# Get QC backends for parametrized testing
+import setup_backends
+backends = setup_backends.get()
+
 
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
@@ -101,8 +105,7 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT"])  # bravyi_kitaev_fast not yet supported for ucc
-@pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"),
-                                     tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("backend", backends)
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
         pytest.skip("skipping for symbolic simulator  ... way too slow")

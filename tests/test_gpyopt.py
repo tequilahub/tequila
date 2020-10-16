@@ -4,6 +4,11 @@ from tequila.simulators.simulator_api import simulate
 
 has_gpyopt = 'gpyopt' in tq.INSTALLED_OPTIMIZERS
 
+# Get QC backends for parametrized testing
+import setup_backends
+simulators = setup_backends.get()
+samplers = setup_backends.get(sampler=True)
+
 @pytest.mark.dependencies
 def test_dependencies():
     print(tq.INSTALLED_OPTIMIZERS)
@@ -11,7 +16,7 @@ def test_dependencies():
 
 
 @pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 def test_execution(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -27,7 +32,7 @@ def test_execution(simulator):
     result = tq.minimize(method="lbfgs", objective=O, maxiter=1, backend=simulator)
 
 @pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
+@pytest.mark.parametrize("simulator", samplers)
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -44,7 +49,7 @@ def test_execution_shot(simulator):
     print(result.history.energies)
 
 @pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('method',['lbfgs','DIRECT','CMA'])
 def test_one_qubit_wfn(simulator,method):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
@@ -55,7 +60,7 @@ def test_one_qubit_wfn(simulator,method):
 
 
 @pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 def test_one_qubit_wfn_really_works(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
@@ -65,7 +70,7 @@ def test_one_qubit_wfn_really_works(simulator):
     assert (numpy.isclose(result.energy,simulate(objective=O,variables=result.angles)))
 
 @pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
+@pytest.mark.parametrize("simulator", samplers)
 def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)

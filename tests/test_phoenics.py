@@ -2,6 +2,11 @@ import pytest, numpy
 import tequila as tq
 import multiprocessing as mp
 
+# Get QC backends for parametrized testing
+import setup_backends
+simulators = setup_backends.get()
+samplers = setup_backends.get(sampler=True)
+
 has_phoenics = 'phoenics' in tq.INSTALLED_OPTIMIZERS
 
 @pytest.mark.dependencies
@@ -10,7 +15,7 @@ def test_dependencies():
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 def test_execution(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -27,7 +32,7 @@ def test_execution(simulator):
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
+@pytest.mark.parametrize("simulator", samplers)
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -44,7 +49,7 @@ def test_execution_shot(simulator):
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
@@ -54,7 +59,7 @@ def test_one_qubit_wfn(simulator):
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
+@pytest.mark.parametrize("simulator", samplers)
 def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
