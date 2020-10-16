@@ -35,10 +35,10 @@ jobs:
         docker pull rigetti/quilc
         docker run --rm -itd -p 5555:5555 rigetti/quilc -R
         docker run --rm -itd -p 5000:5000 rigetti/qvm -S
-        pytest -m "not dependencies" tests/test_simulator_backends.py
-        pytest tests/test_recompilation_routines.py
-        pytest -m "not dependencies" tests/test_noise.py
-        pytest tests/test_gradient.py
-        pytest tests/test_scipy.py
-        pytest tests/test_mappings.py
+        pytest -m "not dependencies" tests/test_simulator_backends.py --slow
+        pytest tests/test_recompilation_routines.py --slow
+        pytest -m "not dependencies" tests/test_noise.py --slow
+        pytest tests/test_gradient.py --slow
+        pytest tests/test_scipy.py --slow
+        pytest tests/test_mappings.py --slow
 
