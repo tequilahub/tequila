@@ -151,10 +151,10 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
         # failsafe
         if g.is_controlled():
             raise TequilaException("controlled gate in gradient: Compiler was not called. Gate is {}".format(g))
-        if not hasattr(g, "shift"):
+        if not hasattr(g, "eigenvalues_magnitude"):
             raise TequilaException('No shift found for gate {}'.format(g))
 
-        dOinc = __grad_gaussian(unitary, g, idx, variable, hamiltonian)
+        dOinc = __grad_shift_rule(unitary, g, idx, variable, hamiltonian)
 
         dO += dOinc
 
@@ -162,9 +162,9 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     return dO
 
 
-def __grad_gaussian(unitary, g, i, variable, hamiltonian):
+def __grad_shift_rule(unitary, g, i, variable, hamiltonian):
     '''
-    function for getting the gradients of gaussian gates. NOTE: you had better compile first.
+    function for getting the gradients of directly differentiable gates. Expects precompiled circuits.
     :param unitary: QCircuit: the QCircuit object containing the gate to be differentiated
     :param g: a parametrized: the gate being differentiated
     :param i: Int: the position in unitary at which g appears
@@ -174,22 +174,35 @@ def __grad_gaussian(unitary, g, i, variable, hamiltonian):
     :return: an Objective, whose calculation yields the gradient of g w.r.t variable
     '''
 
-    if not hasattr(g, "shift"):
+    # possibility for overwride in custom gate construction
+    if hasattr(g, "shifted_gates"):
+        inner_grad=__grad_inner(g.parameter, variable)
+        shifted = g.shifted_gates()
+        dOinc = Objective()
+        for x in shifted:
+            w,g = x
+            Ux = unitary.replace_gates(positions=[i], circuits=[g])
+            wx = w*inner_grad
+            Ex = Objective.ExpectationValue(U=Ux, H=hamiltonian)
+            dOinc += wx*Ex
+        return dOinc
+
+    if not hasattr(g, "eigenvalues_magnitude"):
         raise TequilaException("No shift found for gate {}".format(g))
 
     # neo_a and neo_b are the shifted versions of gate g needed to evaluate its gradient
-    shift_a = g._parameter + np.pi / (4 * g.shift)
-    shift_b = g._parameter - np.pi / (4 * g.shift)
+    shift_a = g._parameter + np.pi / (4 * g.eigenvalues_magnitude)
+    shift_b = g._parameter - np.pi / (4 * g.eigenvalues_magnitude)
     neo_a = copy.deepcopy(g)
     neo_a._parameter = shift_a
     neo_b = copy.deepcopy(g)
     neo_b._parameter = shift_b
 
     U1 = unitary.replace_gates(positions=[i], circuits=[neo_a])
-    w1 = g.shift * __grad_inner(g.parameter, variable)
+    w1 = g.eigenvalues_magnitude * __grad_inner(g.parameter, variable)
 
     U2 = unitary.replace_gates(positions=[i], circuits=[neo_b])
-    w2 = -g.shift * __grad_inner(g.parameter, variable)
+    w2 = -g.eigenvalues_magnitude * __grad_inner(g.parameter, variable)
 
     Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
     Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)

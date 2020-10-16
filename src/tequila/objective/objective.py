@@ -52,9 +52,9 @@ class ExpectationValueImpl:
             result = self.U.extract_variables()
         return result
 
-    def update_variables(self, variables: typing.Dict[str, numbers.Real]):
+    def replace_variables(self, replacement):
         if self.U is not None:
-            self.U.update_variables(variables)
+            self.U.replace_variables(replacement)
 
     def __init__(self, U=None, H=None, contraction=None, shape=None):
         """
