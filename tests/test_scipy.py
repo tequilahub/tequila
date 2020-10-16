@@ -20,7 +20,7 @@ def test_execution(simulator):
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
 
-    result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, silent=False)
+    result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, silent=True)
 
 
 @pytest.mark.parametrize("simulator", samplers)
@@ -37,7 +37,7 @@ def test_execution_shot(simulator):
     O = tq.ExpectationValue(U=U, H=H)
 
     result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, samples=3,
-                                         silent=False)
+                                         silent=True)
     assert (len(result.history.energies) <= 3)
 
 
@@ -46,7 +46,7 @@ def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, backend=simulator, silent=False)
+    result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, backend=simulator, silent=True)
     assert (numpy.isclose(result.energy, -1.0))
 
 
@@ -56,7 +56,7 @@ def test_one_qubit_shot(simulator):
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
     samples = 1000
-    result = tq.minimize(objective=O, method="cobyla", backend=simulator, samples=samples, silent=False,
+    result = tq.minimize(objective=O, method="cobyla", backend=simulator, samples=samples, silent=True,
                          initial_values=-0.5)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
@@ -75,7 +75,7 @@ def test_gradient_free_methods(simulator, method):
         return True
 
     result = tq.optimizer_scipy.minimize(objective=-E, method=method, tol=1.e-4, backend=simulator,
-                                         initial_values=initial_values, silent=False)
+                                         initial_values=initial_values, silent=True)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
 
@@ -98,7 +98,7 @@ def test_gradient_based_methods(simulator, method, use_gradient):
     result = tq.optimizer_scipy.minimize(objective=-E, backend=simulator, gradient=use_gradient, method=method,
                                          tol=1.e-3,
                                          method_options={"gtol": 1.e-4, "eps": 1.e-4, "finite_diff_rel_step": 1.e-4},
-                                         initial_values=initial_values, silent=False)
+                                         initial_values=initial_values, silent=True)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))
 
 
@@ -117,7 +117,7 @@ def test_gradient_based_methods_qng(simulator, method):
     result = tq.optimizer_scipy.minimize(objective=-E, gradient='qng', backend=simulator,
                                          method=method, tol=1.e-3,
                                          method_options={"gtol": 1.e-3, "eps": 1.e-4},
-                                         initial_values=initial_values, silent=False)
+                                         initial_values=initial_values, silent=True)
     assert (numpy.isclose(result.energy, -0.612, atol=1.e-1))
 
 
@@ -147,5 +147,5 @@ def test_hessian_based_methods(simulator, method, use_hessian):
             return
 
     result = tq.optimizer_scipy.minimize(objective=-E, backend=simulator, hessian=use_hessian, method=method, tol=1.e-4,
-                                         method_options=method_options, initial_values=initial_values, silent=False)
+                                         method_options=method_options, initial_values=initial_values, silent=True)
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))

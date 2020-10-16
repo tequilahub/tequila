@@ -52,7 +52,7 @@ def test_method_convergence(simulator,method):
     angles={'a':-1.15}
     result = minimize(objective=O, method=method,
                       initial_values=angles, samples=samples,
-                      lr=0.1,maxiter=20, backend=simulator, silent=False)
+                      lr=0.1,maxiter=20, backend=simulator, silent=True)
     assert (numpy.isclose(result.energy, -1.0,atol=3.e-2))
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -71,6 +71,6 @@ def test_methods_qng(simulator, method):
     lr=0.1
     result = minimize(objective=-E,gradient='qng',backend=simulator,
                                          method=method, maxiter=20,lr=lr,
-                                         initial_values=initial_values, silent=False)
+                                         initial_values=initial_values, silent=True)
     assert(numpy.isclose(result.energy, -0.612, atol=2.e-2))
 
