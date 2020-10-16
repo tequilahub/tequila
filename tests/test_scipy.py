@@ -14,8 +14,7 @@ for k in tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys():
         samplers.append(k)
 
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"),
-                                       tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", simulators)
 def test_execution(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
