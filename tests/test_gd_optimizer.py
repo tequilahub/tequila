@@ -5,9 +5,9 @@ from tequila.simulators.simulator_api import simulate
 from tequila.optimizers.optimizer_gd import minimize
 
 # Get QC backends for parametrized testing
-import setup_backends
-simulators = setup_backends.get()
-samplers = setup_backends.get(sampler=True)
+import select_backends
+simulators = select_backends.get()
+samplers = select_backends.get(sampler=True)
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('method', numpy.random.choice(tq.optimizers.optimizer_gd.OptimizerGD.available_methods(),1))

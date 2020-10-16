@@ -14,8 +14,8 @@ HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 import tequila as tq
 
 # Get QC backends for parametrized testing
-import setup_backends
-backends = setup_backends.get()
+import select_backends
+backends = select_backends.get()
 
 
 def teardown_function(function):

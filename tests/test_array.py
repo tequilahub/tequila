@@ -2,8 +2,8 @@ import tequila as tq
 import pytest, numpy
 
 # Backends
-import setup_backends
-backends = setup_backends.get()
+import select_backends
+backends = select_backends.get()
 
 
 @pytest.mark.parametrize("backend", backends)

@@ -11,9 +11,9 @@ import tequila as tq
 from tequila.simulators.simulator_api import simulate
 
 # Get QC backends for parametrized testing
-import setup_backends
-simulators = setup_backends.get()
-samplers = setup_backends.get(sampler=True)
+import select_backends
+simulators = select_backends.get()
+samplers = select_backends.get(sampler=True)
 
 def test_non_quantum():
     E = tq.Objective()

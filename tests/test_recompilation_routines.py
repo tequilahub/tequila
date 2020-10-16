@@ -11,9 +11,9 @@ import pytest
 import numpy
 
 # Get QC backends for parametrized testing
-import setup_backends
-simulators = setup_backends.get()
-samplers = setup_backends.get(sampler=True)
+import select_backends
+simulators = select_backends.get()
+samplers = select_backends.get(sampler=True)
 
 PX = paulis.X
 PY = paulis.Y

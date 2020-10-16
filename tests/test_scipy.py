@@ -1,10 +1,10 @@
 import pytest, numpy
 import tequila as tq
 import copy
-import setup_backends
 
-simulators = setup_backends.get()
-samplers = setup_backends.get(sampler = True)
+import select_backends
+simulators = select_backends.get()
+samplers = select_backends.get(sampler = True)
 
 @pytest.mark.parametrize("simulator", simulators)
 def test_execution(simulator):
