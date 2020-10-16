@@ -38,6 +38,8 @@ class OptimizerGD(Optimizer):
     step_lookup:
         dictionary mapping object ids as strings to an int; how many optimization steps have been performed for
         a given object. Relevant only to the Adam optimizer.
+    diis:
+        Number of steps before starting diis acceleration.
     lr:
         a float. Hyperparameter: The learning rate (unscaled) to be used in each update;
         in some literature, called a step size.
@@ -80,6 +82,7 @@ class OptimizerGD(Optimizer):
                  beta: numbers.Real = 0.9,
                  rho: numbers.Real = 0.999,
                  epsilon: numbers.Real = 1.0 * 10 ** (-7),
+                 diis: int = None,
                  backend=None,
                  samples=None,
                  device=None,
@@ -111,6 +114,8 @@ class OptimizerGD(Optimizer):
         epsilon: numbers.Real: Default = 10^-7:
             a float for prevention of division by zero in methods like adam. Must be positive.
             Default value suggested by original adam paper.
+        diis: integer, optional:
+            Number of steps before initiating DIIS acceleration.
         backend: str, optional:
             a quantum backend to use. None means autopick.
         samples: int, optional:
@@ -155,6 +160,9 @@ class OptimizerGD(Optimizer):
         self.beta = beta
         self.rho = rho
         self.epsilon = epsilon
+        self.diis = diis
+        self.__diis_errors = []
+        self.__diis_v = []
         assert all([k > .0 for k in [lr, beta, rho, epsilon]])
         self.tol = tol
         if self.tol is not None:
@@ -247,6 +255,38 @@ class OptimizerGD(Optimizer):
 
             ### get new parameters with self.step!
             v = self.step(comp, v)
+
+            if self.diis:
+                if len(self.__diis_errors) == self.diis:
+                    if not self.silent:
+                        print("DIIS Iteration")
+                
+                    # Making the B matrix
+                    B = numpy.zeros((self.diis+1, self.diis+1))
+                    for i in range(self.diis):
+                        for j in range(i,self.diis):
+                            B[i,j] = self.__diis_errors[i].dot(self.__diis_errors[j])
+                            B[j,i] = B[i,j]
+
+                    B[self.diis,:] = -1
+                    B[:,self.diis] = -1
+                    B[self.diis, self.diis] = 0
+                    K = numpy.zeros((self.diis+1,))
+                    K[-1] = -1.0
+
+                    # Solve DIIS for great convergence!
+                    diis_v = numpy.linalg.solve(B,K)
+
+                    for i, k in enumerate(active_angles):
+                        v[k] = diis_v[:-1].dot([el[k] for el in self.__diis_v])
+
+                    # Truncate DIIS list
+                    largest_error = numpy.argmax(numpy.diag(B)[:-1])
+                    del self.__diis_errors[largest_error]
+                    del self.__diis_v[largest_error]
+                    
+
+
             last = e
         E_final, angles_final = best, best_angles
         return GDResults(energy=E_final, variables=format_variable_dictionary(angles_final), history=self.history,
@@ -364,6 +404,10 @@ class OptimizerGD(Optimizer):
         new, moments, grads = self.f(step=adam_step, gradients=gradients, active_keys=active_keys, moments=last_moment,
                                      v=parameters)
         back = {**parameters}
+        if self.diis:
+            self.__diis_errors += [grads]
+            self.__diis_v += [parameters.copy()]
+
         for k in new.keys():
             back[k] = new[k]
         save_grad = {}
@@ -600,6 +644,7 @@ def minimize(objective: Objective,
              gradient: str = None,
              samples: int = None,
              maxiter: int = 100,
+             diis: int = None,
              backend: str = None,
              noise: NoiseModel = None,
              device: str = None,
@@ -641,6 +686,8 @@ def minimize(objective: Objective,
          samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)
     maxiter: int : Default = 100:
          the maximum number of iterations to run.
+    diis: int, optional:
+         Number of iteration before starting DIIS acceleration.
     backend: str, optional:
          Simulation backend which will be automatically chosen if set to None
     noise: NoiseModel, optional:
@@ -675,6 +722,7 @@ def minimize(objective: Objective,
                             beta=beta,
                             rho=rho,
                             tol=tol,
+                            diis=diis,
                             epsilon=epsilon,
                             samples=samples, backend=backend,
                             device=device,
