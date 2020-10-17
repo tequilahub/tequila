@@ -79,7 +79,7 @@ class OptimizerGD(Optimizer):
     @classmethod
     def available_diis(cls):
         """:return: All available methods that can be diis accelerated"""
-        return ['adam', 'adagrad', 'adamax', 'nadam', 'sgd', 'momentum', 'rmsprop']
+        return ['adam', 'adagrad', 'nadam', 'sgd', 'momentum',]
 
     def __init__(self, maxiter=100,
                  method='sgd',
@@ -169,7 +169,7 @@ class OptimizerGD(Optimizer):
 
         # DIIS quantities
         if diis is None:
-            pass
+            self.__diis = None
         elif type(diis) is dict:
             if method.lower() in OptimizerGD.available_diis():
                 self.__diis = DIIS(**diis)
@@ -276,6 +276,7 @@ class OptimizerGD(Optimizer):
 
                 new = self.__diis.update()
                 if new is not None:
+                    self.reset_momenta()
                     comment = "DIIS"
                     for i,k in enumerate(active_angles):
                         vn[k] = new[i]
@@ -641,12 +642,50 @@ class OptimizerGD(Optimizer):
         return new, back_moments, grads
 
 class DIIS:
-    def __init__(self,
+    def __init__(self: 'DIIS',
                  ndiis: int =8,
                  min_vectors: int = 3,
                  tol: float = 5e-2,
                  drop: str='error',
                  ) -> None:
+        """DIIS accelerator for gradient descent methods.
+        
+        Setup a DIIS accelerator. Every gradient step, the optimizer should
+        call the push() method to update the DIIS internal list of error
+        vectors (i.e. gradients) and parameter vectors. A DIIS parameter
+        vector can be requested using the update() method. update() returns
+        None if DIIS is not yet active.
+
+        DIIS activates when max(error) falls below tol and the number of
+        push() has been called more than min_vectors. When the number of DIIS
+        vectors exceed ndiis, older vectors are dropped according to,
+        - Age, if drop == 'first'
+        - Error magnitude if drop == 'error' (the default).
+        
+        Note: DIIS only works when the optimizer is fairly close to the sought
+        value. If initiated too far, the DIIS iteration will often start
+        oscillating wildly and generally not converge at all. However, if DIIS
+        is initiated close to the true solution, the acceleration can be
+        massive, and will often yields the last few sig figs way faster than
+        GD on its own.
+        
+        
+        Parameters
+        ----------
+        ndiis: int:
+            Maximum number of vectors to use in DIIS calculations.
+        min_vectors: int:
+            Minimum number of vectors before DIIS iteration starts.
+        tol: float:
+            DIIS iteration activates when |d<O>| < tol.
+        drop: string:
+            Strategy for dropping old vectors. One of {'error', 'first'}.
+
+        Returns
+        -------
+        None
+
+        """
         self.ndiis = ndiis
         self.min_vectors = min_vectors
         self.tol = tol
@@ -660,21 +699,30 @@ class DIIS:
         else:
             raise NotImplementedError("Drop type %s not implemented" % drop)
 
-    def reset():
+    def reset(self: 'DIIS') -> None:
         """Reset containers."""
         self.P = []
         self.error = []
 
-    def drop_first(self, p, e):
+    def drop_first(self: 'DIIS',
+                   p: typing.Sequence[numpy.ndarray],
+                   e: typing.Sequence[numpy.ndarray]
+                   ) -> typing.Tuple[typing.List[numpy.ndarray], typing.List[numpy.ndarray]]:
         """Return P,E with the first element removed."""
         return p[1:], e[1:]
 
-    def drop_error(self, p, e):
+    def drop_error(self: 'DIIS',
+                   p: typing.Sequence[numpy.ndarray],
+                   e: typing.Sequence[numpy.ndarray]
+                   ) -> typing.Tuple[typing.List[numpy.ndarray], typing.List[numpy.ndarray]]:
         """Return P,E with the largest magnitude error vector removed."""
         i = numpy.argmax([v.dot(v) for v in e])
         return p[:i] + p[i+1:], e[:i] + e[i+1:]
 
-    def push(self, param_vector, error_vector):
+    def push(self: 'DIIS',
+             param_vector: numpy.ndarray,
+             error_vector: numpy.ndarray
+             ) -> None:
         """Update DIIS calculator with parameter and error vectors."""
         if len(self.error) == self.ndiis:
             self.drop(self.P, self.error)
@@ -682,7 +730,7 @@ class DIIS:
         self.error += [error_vector]
         self.P += [param_vector]
 
-    def do_diis(self):
+    def do_diis(self: 'DIIS') -> bool:
         """Return with DIIS should be performed."""
         if len(self.error) < self.min_vectors:
             # No point in DIIS with less than 2 vectors!
@@ -693,7 +741,7 @@ class DIIS:
 
         return True
 
-    def update(self) -> typing.Optional[numpy.ndarray]:
+    def update(self:'DIIS') -> typing.Optional[numpy.ndarray]:
         """Get update parameter from DIIS iteration, or None if DIIS is not doable."""
         # Check if we should do DIIS
         if not self.do_diis():
@@ -717,15 +765,13 @@ class DIIS:
 
         # Solve DIIS for great convergence!
         try:
-            diis_v, res, rank, s = numpy.linalg.lstsq(B,K)
+            diis_v, res, rank, s = numpy.linalg.lstsq(B,K,rcond=None)
         except numpy.linalg.LinAlgError:
             self.reset()
             return None
 
         new = diis_v[:-1].dot(self.P)
         return new
-
-
 
 
 def minimize(objective: Objective,

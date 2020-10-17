@@ -76,7 +76,8 @@ def test_methods_qng(simulator, method):
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_methods_diis(simulator):
+@pytest.mark.parametrize("method", tq.optimizers.optimizer_gd.OptimizerGD.available_diis())
+def test_methods_diis(simulator, method):
     H = tq.paulis.Y(0)
     U = tq.gates.Ry(numpy.pi/4,0) +tq.gates.Ry(numpy.pi/3,1)+tq.gates.Ry(numpy.pi/7,2)
     U += tq.gates.Rz('a',0)+tq.gates.Rz('b',1)
@@ -86,11 +87,12 @@ def test_methods_diis(simulator):
     E = tq.ExpectationValue(H=H, U=U)
     initial_values = {"a": -0.03, "b": 1.65, 'c': 1.4, 'd': -0.53}
 
-    lr=0.03
-    result = minimize(objective=-E, diis=4,
+    lr=0.1
+    result = minimize(objective=-E,
+                      diis={},
                       backend=simulator,
-                      tol = 1e-6,
-                      method='sgd', maxiter=20,lr=lr,
-                      initial_values=initial_values, silent=False)
+                      tol = 1e-7,
+                      method=method, maxiter=100,lr=lr,
+                      initial_values=initial_values, silent=True)
     assert(numpy.isclose(result.energy, -0.612, atol=2.e-2))
 
