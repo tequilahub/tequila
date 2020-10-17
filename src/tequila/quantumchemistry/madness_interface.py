@@ -255,7 +255,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh":1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
-        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt}
+        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog":"cholesky"}
         data["plot"] = {}
         data["f12"] = {}
         for key in data.keys():
