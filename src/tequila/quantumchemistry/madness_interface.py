@@ -245,7 +245,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if include_singles:
             indices += indices_s
 
-        print("indidces=", indices)
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
     def make_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):

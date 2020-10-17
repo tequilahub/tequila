@@ -225,7 +225,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             self.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals, reference=reference)
             # need to recompute
             # (psi4 won't take over active space information otherwise)
-            self.compute_energy(method="hf", recompute=True)
+            self.compute_energy(method="hf", recompute=True, *args, **kwargs)
             self.ref_wfn = self.logs["hf"].wfn
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
