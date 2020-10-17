@@ -39,7 +39,7 @@ class OptimizerGD(Optimizer):
         dictionary mapping object ids as strings to an int; how many optimization steps have been performed for
         a given object. Relevant only to the Adam optimizer.
     diis:
-        Number of steps before starting diis acceleration.
+        Dictionary of parameters for the DIIS accelerator.
     lr:
         a float. Hyperparameter: The learning rate (unscaled) to be used in each update;
         in some literature, called a step size.
@@ -75,6 +75,12 @@ class OptimizerGD(Optimizer):
         """:return: All tested available methods"""
         return ['adam', 'adagrad', 'adamax', 'nadam', 'sgd', 'momentum', 'nesterov', 'rmsprop', 'rmsprop-nesterov']
 
+
+    @classmethod
+    def available_diis(cls):
+        """:return: All available methods that can be diis accelerated"""
+        return ['adam', 'adagrad', 'adamax', 'nadam', 'sgd', 'momentum', 'rmsprop']
+
     def __init__(self, maxiter=100,
                  method='sgd',
                  tol: numbers.Real = None,
@@ -82,7 +88,7 @@ class OptimizerGD(Optimizer):
                  beta: numbers.Real = 0.9,
                  rho: numbers.Real = 0.999,
                  epsilon: numbers.Real = 1.0 * 10 ** (-7),
-                 diis: int = None,
+                 diis: typing.Optional[dict] = None,
                  backend=None,
                  samples=None,
                  device=None,
@@ -114,8 +120,8 @@ class OptimizerGD(Optimizer):
         epsilon: numbers.Real: Default = 10^-7:
             a float for prevention of division by zero in methods like adam. Must be positive.
             Default value suggested by original adam paper.
-        diis: integer, optional:
-            Number of steps before initiating DIIS acceleration.
+        diis: dict, optional:
+            Dictionary of parameters for DIIS accelerator.
         backend: str, optional:
             a quantum backend to use. None means autopick.
         samples: int, optional:
@@ -160,9 +166,18 @@ class OptimizerGD(Optimizer):
         self.beta = beta
         self.rho = rho
         self.epsilon = epsilon
-        self.diis = diis
-        self.__diis_errors = []
-        self.__diis_v = []
+
+        # DIIS quantities
+        if diis is None:
+            pass
+        elif type(diis) is dict:
+            if method.lower() in OptimizerGD.available_diis():
+                self.__diis = DIIS(**diis)
+            else:
+                raise AttributeError("DIIS not compatible with method %s" % method)
+        else:
+            raise TypeError("Type of DIIS is not dict")
+
         assert all([k > .0 for k in [lr, beta, rho, epsilon]])
         self.tol = tol
         if self.tol is not None:
@@ -231,7 +246,12 @@ class OptimizerGD(Optimizer):
         best_angles = v
         v = self.step(comp, v)
         last = e
+
+        if not self.silent:
+            print("iter.        <O>          Δ<O>      max(d<O>)   rms(d<O>)")   
+
         for step in range(1, maxiter):
+            comment = ""
             e = comp(v, samples=self.samples)
             self.history.energies.append(e)
             self.history.angles.append(v)
@@ -240,13 +260,6 @@ class OptimizerGD(Optimizer):
                 best = e
                 best_angles = v
 
-            if not self.silent:
-                if self.print_level > 2:
-                    string = "Iteration: {} , Energy: {:+2.8f}, angles: {}".format(str(step), e, v)
-                else:
-                    string = "Iteration: {} , Energy: {:+2.8f}".format(str(step), e)
-                print(string)
-
             if self.tol != None:
                 if numpy.abs(e - last) <= self.tol:
                     if not self.silent:
@@ -254,40 +267,32 @@ class OptimizerGD(Optimizer):
                     break
 
             ### get new parameters with self.step!
-            v = self.step(comp, v)
+            vn = self.step(comp, v)
 
-            if self.diis:
-                if len(self.__diis_errors) == self.diis:
-                    if not self.silent:
-                        print("DIIS Iteration")
-                
-                    # Making the B matrix
-                    B = numpy.zeros((self.diis+1, self.diis+1))
-                    for i in range(self.diis):
-                        for j in range(i,self.diis):
-                            B[i,j] = self.__diis_errors[i].dot(self.__diis_errors[j])
-                            B[j,i] = B[i,j]
+            if self.__diis:
+                self.__diis.push(
+                    numpy.array([v[k] for k in active_angles]),
+                    self.__dx)
 
-                    B[self.diis,:] = -1
-                    B[:,self.diis] = -1
-                    B[self.diis, self.diis] = 0
-                    K = numpy.zeros((self.diis+1,))
-                    K[-1] = -1.0
+                new = self.__diis.update()
+                if new is not None:
+                    comment = "DIIS"
+                    for i,k in enumerate(active_angles):
+                        vn[k] = new[i]
 
-                    # Solve DIIS for great convergence!
-                    diis_v = numpy.linalg.solve(B,K)
 
-                    for i, k in enumerate(active_angles):
-                        v[k] = diis_v[:-1].dot([el[k] for el in self.__diis_v])
-
-                    # Truncate DIIS list
-                    largest_error = numpy.argmax(numpy.diag(B)[:-1])
-                    del self.__diis_errors[largest_error]
-                    del self.__diis_v[largest_error]
-                    
+            if not self.silent:
+                print("%3i   %+15.8f   %+7.2e   %7.3e   %7.3e    %s"
+                      % (step,
+                         e,
+                         e-last,
+                         numpy.max(abs(self.__dx)),
+                         numpy.sqrt(numpy.average(self.__dx**2)),
+                         comment))
 
 
             last = e
+            v = vn
         E_final, angles_final = best, best_angles
         return GDResults(energy=E_final, variables=format_variable_dictionary(angles_final), history=self.history,
                             moments=self.moments_trajectory[id(comp)])
@@ -401,13 +406,12 @@ class OptimizerGD(Optimizer):
         except:
             raise TequilaException(
                 'Could not retrieve necessary information. Please use the prepare function before optimizing!')
-        new, moments, grads = self.f(step=adam_step, gradients=gradients, active_keys=active_keys, moments=last_moment,
+        new, moments, grads = self.f(step=adam_step,
+                                     gradients=gradients,
+                                     active_keys=active_keys,
+                                     moments=last_moment,
                                      v=parameters)
         back = {**parameters}
-        if self.diis:
-            self.__diis_errors += [grads]
-            self.__diis_v += [parameters.copy()]
-
         for k in new.keys():
             back[k] = new[k]
         save_grad = {}
@@ -418,6 +422,7 @@ class OptimizerGD(Optimizer):
                 save_grad[k] = grads[i]
             self.history.gradients.append(save_grad)
         self.step_lookup[s] += 1
+        self.__dx = grads       # most recent gradient
         return back
 
     def reset_stepper(self):
@@ -634,6 +639,93 @@ class OptimizerGD(Optimizer):
 
         back_moments = [m, r]
         return new, back_moments, grads
+
+class DIIS:
+    def __init__(self,
+                 ndiis: int =8,
+                 min_vectors: int = 3,
+                 tol: float = 5e-2,
+                 drop: str='error',
+                 ) -> None:
+        self.ndiis = ndiis
+        self.min_vectors = min_vectors
+        self.tol = tol
+        self.error = []
+        self.P = []
+
+        if drop == 'error':
+            self.drop = self.drop_error
+        elif drop == 'first':
+            self.drop = self.drop_first
+        else:
+            raise NotImplementedError("Drop type %s not implemented" % drop)
+
+    def reset():
+        """Reset containers."""
+        self.P = []
+        self.error = []
+
+    def drop_first(self, p, e):
+        """Return P,E with the first element removed."""
+        return p[1:], e[1:]
+
+    def drop_error(self, p, e):
+        """Return P,E with the largest magnitude error vector removed."""
+        i = numpy.argmax([v.dot(v) for v in e])
+        return p[:i] + p[i+1:], e[:i] + e[i+1:]
+
+    def push(self, param_vector, error_vector):
+        """Update DIIS calculator with parameter and error vectors."""
+        if len(self.error) == self.ndiis:
+            self.drop(self.P, self.error)
+            
+        self.error += [error_vector]
+        self.P += [param_vector]
+
+    def do_diis(self):
+        """Return with DIIS should be performed."""
+        if len(self.error) < self.min_vectors:
+            # No point in DIIS with less than 2 vectors!
+            return False
+
+        if max(numpy.abs(self.error[-1])) > self.tol:
+            return False
+
+        return True
+
+    def update(self) -> typing.Optional[numpy.ndarray]:
+        """Get update parameter from DIIS iteration, or None if DIIS is not doable."""
+        # Check if we should do DIIS
+        if not self.do_diis():
+            return None
+
+        # Making the B matrix
+        N = len(self.error)
+        B = numpy.zeros((N+1, N+1))
+        for i in range(N):
+            for j in range(i,N):
+                B[i,j] = self.error[i].dot(self.error[j])
+                B[j,i] = B[i,j]
+
+        B[N,:] = -1
+        B[:,N] = -1
+        B[N,N] = 0
+
+        # Making the K vector
+        K = numpy.zeros((N+1,))
+        K[-1] = -1.0
+
+        # Solve DIIS for great convergence!
+        try:
+            diis_v, res, rank, s = numpy.linalg.lstsq(B,K)
+        except numpy.linalg.LinAlgError:
+            self.reset()
+            return None
+
+        new = diis_v[:-1].dot(self.P)
+        return new
+
+
 
 
 def minimize(objective: Objective,
