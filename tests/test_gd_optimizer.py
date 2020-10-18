@@ -89,7 +89,7 @@ def test_methods_diis(simulator, method):
 
     lr=0.1
     result = minimize(objective=-E,
-                      diis={},
+                      diis=True,
                       backend=simulator,
                       tol = 1e-7,
                       method=method, maxiter=100,lr=lr,

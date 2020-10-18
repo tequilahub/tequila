@@ -168,9 +168,15 @@ class OptimizerGD(Optimizer):
         self.epsilon = epsilon
 
         # DIIS quantities
+        if diis is True:
+            # Use default parameters
+            diis = {}
+
         if diis is None:
+            # DOn't do DIIS
             self.__diis = None
         elif type(diis) is dict:
+            # User parameters
             if method.lower() in OptimizerGD.available_diis():
                 self.__diis = DIIS(**diis)
             else:
