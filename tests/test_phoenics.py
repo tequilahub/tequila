@@ -1,6 +1,5 @@
 import pytest, numpy
 import tequila as tq
-import multiprocessing as mp
 
 has_phoenics = 'phoenics' in tq.INSTALLED_OPTIMIZERS
 
@@ -8,9 +7,12 @@ has_phoenics = 'phoenics' in tq.INSTALLED_OPTIMIZERS
 def test_dependencies():
     assert 'phoenics' in tq.INSTALLED_OPTIMIZERS
 
+simulators=tq.INSTALLED_SIMULATORS
+if 'qibo' in simulators:
+    simulators.remove('qibo')
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", [numpy.random.choice(simulators)])
 def test_execution(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -27,7 +29,7 @@ def test_execution(simulator):
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
+@pytest.mark.parametrize("simulator", [numpy.random.choice(simulators)])
 def test_execution_shot(simulator):
     U = tq.gates.Rz(angle="a", target=0) \
         + tq.gates.X(target=2) \
@@ -44,7 +46,7 @@ def test_execution_shot(simulator):
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", [numpy.random.choice(simulators)])
 def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
@@ -54,7 +56,7 @@ def test_one_qubit_wfn(simulator):
 
 
 @pytest.mark.skipif(condition=not has_phoenics, reason="you don't have phoenics")
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
+@pytest.mark.parametrize("simulator", [numpy.random.choice(simulators)])
 def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)

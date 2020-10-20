@@ -26,7 +26,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install quantum backends
       run: |
-              pip install --upgrade cirq qiskit qulacs
+              pip install --upgrade cirq qiskit qulacs qibo
               
     - name: Install and test GPyOpt interface
       run: |  
@@ -36,16 +36,6 @@ jobs:
               pip install -e .
 
               pytest tests/test_gpyopt.py
-    - name: Install and test phoenics interface
-      run: |
-              ver=$(python -c"import sys; print(sys.version_info.minor)")
-              if [ $ver -eq 6 ]; then
-                echo "skipping python 3.6"
-                #pip install --upgrade -r requirements_phoenics_36.txt
-                #pytest tests/test_phoenics.py
-              elif [ $ver -eq 7 ]; then
-                pip install --upgrade -r requirements_phoenics.txt
-                pytest tests/test_phoenics.py
-              fi
+
 
 

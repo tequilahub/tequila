@@ -315,7 +315,7 @@ class BackendCircuitQibo(BackendCircuit):
         else:
             raise TequilaQiboException('Invalid device of type {}'.format(type(device)))
 
-    def update_variables(self, variables):
+    def update_variables(self, variables, circuit=None):
         """
         set new variable values for the circuit.
         Parameters
@@ -327,11 +327,13 @@ class BackendCircuitQibo(BackendCircuit):
         -------
         None
         """
+        if circuit is None:
+            circuit = self.circuit
         if variables is not None:
             loaded = []
             for v in self.variables:
                 loaded.append(v(variables))
-            self.circuit.set_parameters(loaded)
+            circuit.set_parameters(loaded)
 
     def do_simulate(self, variables, initial_state=None, *args, **kwargs):
         """
@@ -527,7 +529,7 @@ class BackendCircuitQibo(BackendCircuit):
             elif isinstance(initial_state,np.ndarray):
                 wave = QubitWaveFunction.from_array(arr=initial_state, n_qubits=n_qubits)  # silly but necessary
             else:
-                raise TequilaQiboException('received an initial state of type ')
+                raise TequilaQiboException('received an unusable initial state of type {}'.format(type(initial_state)))
             state=wave.to_array()
             result = circuit(state,nshots=samples)
         else:
@@ -536,6 +538,39 @@ class BackendCircuitQibo(BackendCircuit):
 
         back = self.convert_measurements(backend_result=result)
         return back
+
+    def sample(self, variables, samples, read_out_qubits=None, circuit=None, *args, **kwargs):
+        """
+        Sample the circuit. If circuit natively equips paulistrings, sample therefrom.
+        Parameters
+        ----------
+        variables:
+            the variables with which to sample the circuit.
+        samples: int:
+            the number of samples to take.
+        read_out_qubits: int:
+            target qubits to measure (default is all)
+        args
+        kwargs
+
+        Returns
+        -------
+        QubitWaveFunction
+            The result of sampling, a recreated QubitWaveFunction in the sampled basis.
+
+        """
+        self.update_variables(variables)
+        if read_out_qubits is None:
+            read_out_qubits = self.abstract_qubits
+
+        if len(read_out_qubits) == 0:
+            raise Exception("read_out_qubits are empty")
+
+        if circuit is None:
+            circuit = self.add_measurement(circuit=self.circuit.copy(deep=True), target_qubits=read_out_qubits)
+        else:
+            circuit = self.add_measurement(circuit=circuit.copy(deep=True), target_qubits=read_out_qubits)
+        return self.do_sample(samples=samples, circuit=circuit, read_out_qubits=read_out_qubits, *args, **kwargs)
 
     def initialize_circuit(self, *args, **kwargs):
         """
@@ -681,7 +716,7 @@ class BackendCircuitQibo(BackendCircuit):
         self.inst_list.extend(temp_list)
         return new
 
-    def rebuild_for_sample(self,abstract_circuit,variables=None,highest_qubit=None):
+    def rebuild_for_sample(self,abstract_circuit=None,variables=None,highest_qubit=None):
         """
         restructures the compiled circuit to that necessary for sampling
         Parameters
@@ -692,9 +727,12 @@ class BackendCircuitQibo(BackendCircuit):
             variables.
 
         """
+        if abstract_circuit is None:
+            abstract_circuit = QCircuit()
         new = BackendCircuitQibo(self.abstract_circuit+abstract_circuit,variables=variables,noise=self.noise,
                                  device=self.device,highest_qubit=highest_qubit)
         return new
+
 
 class BackendExpectationValueQibo(BackendExpectationValue):
     BackendCircuitType = BackendCircuitQibo
