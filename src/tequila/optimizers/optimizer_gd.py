@@ -275,10 +275,11 @@ class OptimizerGD(Optimizer):
             ### get new parameters with self.step!
             vn = self.step(comp, v)
 
+            # From http://vergil.chemistry.gatech.edu/notes/diis/node3.html
             if self.__diis:
                 self.__diis.push(
-                    numpy.array([v[k] for k in active_angles]),
-                    self.__dx)
+                    numpy.array([vn[k] for k in active_angles]),
+                    numpy.array([vn[k]-v[k] for k in active_angles]))
 
                 new = self.__diis.update()
                 if new is not None:
