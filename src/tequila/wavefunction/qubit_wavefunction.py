@@ -213,7 +213,11 @@ class QubitWaveFunction:
                 rtol : float=1e-5,
                 atol : float=1e-8) -> bool:
         """Return whether this wavefunction is similar to the target wavefunction."""
-        return np.isclose(self.inner(other), 1.0 + 0.0j, rtol=rtol, atol=atol)
+        # Normalized overlap
+        over = self.inner(other) / numpy.sqrt(self.inner(self) * other.inner(other))
+
+        # Check if its 1
+        return numpy.isclose(over, 1.0 + 0.0j, rtol=rtol, atol=atol)
 
     def __add__(self, other):
         result = QubitWaveFunction(state=copy.deepcopy(self._state))
