@@ -213,13 +213,13 @@ class QubitWaveFunction:
                 rtol : float=1e-5,
                 atol : float=1e-8) -> bool:
         """Return whether this wavefunction is similar to the target wavefunction."""
-        # Normalized overlap
-        over = complex(self.inner(other)) / numpy.sqrt(complex(self.inner(self) * other.inner(other)))
+        over1 = complex(self.inner(other))
+        over2 = numpy.sqrt(complex(self.inner(self) * other.inner(other)))
         # Explicit casts to complex() is required if self or other are sympy
         # wavefunction with sympy-typed amplitudes
 
-        # Check if its 1
-        return numpy.isclose(over, 1.0 + 0.0j, rtol=rtol, atol=atol)
+        # Check if the two numbers are equal.
+        return numpy.isclose(over1, over2, rtol=rtol, atol=atol)
 
     def __add__(self, other):
         result = QubitWaveFunction(state=copy.deepcopy(self._state))
