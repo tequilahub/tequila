@@ -39,13 +39,13 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test quantum backends
       run: | 
-        pytest -m "not dependencies" tests/test_simulator_backends.py
-        pytest -m "not dependencies" tests/test_recompilation_routines.py
-        pytest -m "not dependencies" tests/test_noise.py
-        pytest -m "not dependencies" tests/test_noise_opt.py
-        pytest -m "not dependencies" tests/test_gradient.py
-        pytest -m "not dependencies" tests/test_objectives.py
-        pytest -m "not dependencies" tests/test_scipy.py
-        pytest -m "not dependencies" tests/test_gd_optimizer.py
-        pytest -m "not dependencies" tests/test_mappings.py
+        pytest -m "not dependencies" tests/test_simulator_backends.py --slow
+        pytest -m "not dependencies" tests/test_recompilation_routines.py --slow
+        pytest -m "not dependencies" tests/test_noise.py --slow
+        pytest -m "not dependencies" tests/test_noise_opt.py --slow
+        pytest -m "not dependencies" tests/test_gradient.py --slow
+        pytest -m "not dependencies" tests/test_objectives.py --slow
+        pytest -m "not dependencies" tests/test_scipy.py --slow
+        pytest -m "not dependencies" tests/test_gd_optimizer.py --slow
+        pytest -m "not dependencies" tests/test_mappings.py --slow
 

@@ -4,8 +4,12 @@ import multiprocessing as mp
 from tequila.simulators.simulator_api import simulate
 from tequila.optimizers.optimizer_gd import minimize
 
+# Get QC backends for parametrized testing
+import select_backends
+simulators = select_backends.get()
+samplers = select_backends.get(sampler=True)
 
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('method', numpy.random.choice(tq.optimizers.optimizer_gd.OptimizerGD.available_methods(),1))
 @pytest.mark.parametrize('options', [None, '2-point', {"method":"2-point", "stepsize": 1.e-4}, {"method":"2-point-forward", "stepsize": 1.e-4}, {"method":"2-point-backward", "stepsize": 1.e-4} ])
 def test_execution(simulator,method, options):
@@ -22,7 +26,7 @@ def test_execution(simulator,method, options):
     O = tq.ExpectationValue(U=U, H=H)
     result = minimize(objective=O,method=method, maxiter=1, backend=simulator, gradient=options)
 
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random", samples=1)])
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize('options', [None, '2-point', {"method":"2-point", "stepsize": 1.e-4}, {"method":"2-point-forward", "stepsize": 1.e-4}, {"method":"2-point-backward", "stepsize": 1.e-4} ])
 def test_execution_shot(simulator, options):
     U = tq.gates.Rz(angle="a", target=0) \
@@ -38,18 +42,20 @@ def test_execution_shot(simulator, options):
     mi=2
     result = minimize(objective=O, maxiter=mi, backend=simulator,samples=10, gradient=options)
 
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend("random")])
+@pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('method', tq.optimizers.optimizer_gd.OptimizerGD.available_methods())
 def test_method_convergence(simulator,method):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
     samples=None
-    angles={'a':numpy.pi/3}
-    result = minimize(objective=O, method=method,initial_values=angles, samples=samples, lr=0.1,maxiter=200, backend=simulator)
+    angles={'a':-1.15}
+    result = minimize(objective=O, method=method,
+                      initial_values=angles, samples=samples,
+                      lr=0.1,maxiter=20, backend=simulator, silent=True)
     assert (numpy.isclose(result.energy, -1.0,atol=3.e-2))
 
-@pytest.mark.parametrize("simulator", [tq.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("method", tq.optimizers.optimizer_gd.OptimizerGD.available_methods())
 def test_methods_qng(simulator, method):
     ### please note! I am finely tuned to always pass! don't get cocky and change lr, maxiter, etc.
@@ -60,13 +66,11 @@ def test_methods_qng(simulator, method):
     U += tq.gates.Ry('c',1) +tq.gates.Rx('d',2)
     U += tq.gates.CNOT(control=0,target=1)+tq.gates.CNOT(control=1,target=2)
     E = tq.ExpectationValue(H=H, U=U)
-    # just equal to the original circuit, but i'm checking that all the sub-division works
-    O=E
-    initial_values = {"a": 0.432, "b": -0.123, 'c':0.543,'d':0.233}
+    initial_values = {"a": -0.01, "b": 1.60, 'c': 1.4, 'd': -0.53}
 
     lr=0.1
-    result = minimize(objective=-O,gradient='qng',backend=simulator,
-                                         method=method, maxiter=200,lr=lr,
-                                         initial_values=initial_values, silent=False)
+    result = minimize(objective=-E,gradient='qng',backend=simulator,
+                                         method=method, maxiter=20,lr=lr,
+                                         initial_values=initial_values, silent=True)
     assert(numpy.isclose(result.energy, -0.612, atol=2.e-2))
 
