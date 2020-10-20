@@ -347,7 +347,7 @@ def test_fermionic_gates(exact, trafo):
     for i in [0,1,0]:
         for a in numpy.random.randint(2, 5, 3):
             idx = [(2 * i, 2 * a), (2 * i + 1, 2 * a + 1)]
-            U1 += mol.make_excitation_gate(indices=idx, angle=(i, a), exact=exact)
+            U1 += mol.make_excitation_gate(indices=idx, angle=(i, a), complex_wfn=exact)
             g = mol.make_excitation_generator(indices=idx)
             U2    += tq.gates.Trotterized(generators=[g], angles=[(i, a)], steps=1)
             if (i,a) in variable_count:

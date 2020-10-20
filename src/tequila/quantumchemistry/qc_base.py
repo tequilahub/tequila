@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from tequila import TequilaException, BitString, TequilaWarning
 from tequila.hamiltonian import QubitHamiltonian
+from tequila.hamiltonian.paulis import Sp, Sm, Qp, Qm
 
 from tequila.circuit import QCircuit, gates, _gates_impl
 from tequila.objective.objective import Variable, Variables, ExpectationValue
@@ -59,6 +60,7 @@ class FermionicGateImpl(_gates_impl.ParametrizedGateImpl):
 
     def dagger(self):
         return FermionicGateImpl(angle=-self._parameter, generator=self.generator, p0=self.p0, control=self.control)
+
 
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
@@ -859,10 +861,25 @@ class QuantumChemistryBase:
                           "indices = " + str(indices), category=TequilaWarning)
         return qop
 
-    def make_excitation_gate(self, indices, angle, control=None, exact=False):
+    def make_excitation_gate(self, indices, angle, control=None, complex_wfn=False):
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
-        return QCircuit.wrap_gate(FermionicGateImpl(angle=angle, generator=generator, p0=p0, exact=exact, control=control))
+        return QCircuit.wrap_gate(
+            FermionicGateImpl(angle=angle, generator=generator, p0=p0, exact=complex_wfn, control=control))
+
+    def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, complex_wfn=False):
+        # todo: integrate with transformation
+        G = QubitHamiltonian()
+        P0 = QubitHamiltonian()
+        for pair in indices:
+            G += Sp(pair[0]) * Sm(pair[1])
+            P0 += Qp(pair[0]) * Qm(pair[1])
+        G = 1.0j * (G - G.dagger())
+        P0 = 0.5 * (P0 + P0.dagger())
+        assert P0.is_hermitian()
+        assert G.is_hermitian()
+        return QCircuit.wrap_gate(
+            FermionicGateImpl(angle=angle, generator=G, p0=P0, exact=complex_wfn, control=control))
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
         """Does a really lazy workaround ... but it works
@@ -1026,9 +1043,33 @@ class QuantumChemistryBase:
         except TypeError:
             qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
 
-        result=QubitHamiltonian(qubit_operator=qop).simplify(threshold)
+        result = QubitHamiltonian(qubit_operator=qop).simplify(threshold)
         result.is_hermitian()
         return result
+
+    def make_hardcore_boson_hamiltonian(self):
+        # integrate with QubitEncoding at some point
+        if self.active_space is not None:
+            # need integrals in active space ordering and the constant
+            # can in principle be obtained from the standard Hamiltonian in JW ordering
+            raise NotImplemented("Not yet supported with active spaces")
+        obt = self.compute_one_body_integrals()
+        tbt = self.compute_two_body_integrals()
+        h = numpy.zeros(shape=[self.n_orbitals] * 2)
+        g = numpy.zeros(shape=[self.n_orbitals] * 2)
+        for p in range(self.n_orbitals):
+            h[p, p] += 2 * obt[p, p]
+            for q in range(self.n_orbitals):
+                h[p, q] += + tbt[p, p, q, q]
+                if p != q:
+                    g[p, q] += 2 * tbt[p, q, q, p] - tbt[p, q, p, q]
+
+        H = self.molecule.nuclear_repulsion
+        for p in range(self.n_orbitals):
+            for q in range(self.n_orbitals):
+                H += h[p, q] * Sp(p) * Sm(q) + g[p, q] * Sp(p) * Sm(p) * Sp(q) * Sm(q)
+
+        return H
 
     def make_molecular_hamiltonian(self):
         if self.active_space:
@@ -1060,6 +1101,10 @@ class QuantumChemistryBase:
         """
 
         return prepare_product_state(self.reference_state(*args, **kwargs))
+
+    def prepare_hardcore_boson_reference(self):
+        # todo: integrate with transformation
+        return gates.X(target=[i for i in range(self.n_orbitals)])
 
     def get_pair_specific_indices(self,
                                   pair_info: str = None,
@@ -1100,31 +1145,31 @@ class QuantumChemistryBase:
             pairs = pair_info
         elif not isinstance(pair_info, list):
             raise TequilaException("Pair information needs to be contained in a list or filename.")
-        
-        connect = [[]]*len(pairs)
+
+        connect = [[]] * len(pairs)
         # determine "connectivity"
-        generalized = 0 
+        generalized = 0
         for idx, p in enumerate(pairs):
-            if len(p)==1:
-                connect[idx] = [i for i in range(len(pairs)) 
-                                if ( (len(pairs[i])==2) and (str(idx) in pairs[i]) )]
-            elif (len(p)==2) and general_excitations:
-                connect[idx] = [i for i in range(len(pairs)) 
-                                if ( ((p[0] in  pairs[i]) or (p[1] in pairs[i]) or str(i) in p)
-                                     and not(i==idx) )]
-            elif len(p)>2:
+            if len(p) == 1:
+                connect[idx] = [i for i in range(len(pairs))
+                                if ((len(pairs[i]) == 2) and (str(idx) in pairs[i]))]
+            elif (len(p) == 2) and general_excitations:
+                connect[idx] = [i for i in range(len(pairs))
+                                if (((p[0] in pairs[i]) or (p[1] in pairs[i]) or str(i) in p)
+                                    and not (i == idx))]
+            elif len(p) > 2:
                 raise TequilaException("Invalid reference of pair id.")
-            
+
         # create generating indices from connectivity
         indices = []
         for i, to in enumerate(connect):
             for a in to:
-                indices.append(( (2*i, 2*a), (2*i+1, 2*a+1) ))  
+                indices.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
                 if include_singles:
-                    indices.append(((2*i, 2*a)))  
-                    indices.append(((2*i+1, 2*a+1)))  
-        
-        return indices 
+                    indices.append(((2 * i, 2 * a)))
+                    indices.append(((2 * i + 1, 2 * a + 1)))
+
+        return indices
 
     def make_upccgsd_ansatz(self,
                             include_singles: bool = True,
@@ -1181,7 +1226,7 @@ class QuantumChemistryBase:
         for k in range(order):
             for idx in indices:
                 angle = (k, idx, label)
-                U += self.make_excitation_gate(angle=angle, indices=idx, exact=not assume_real)
+                U += self.make_excitation_gate(angle=angle, indices=idx, complex_wfn=not assume_real)
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int,
