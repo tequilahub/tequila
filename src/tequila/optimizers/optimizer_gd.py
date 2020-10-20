@@ -78,8 +78,8 @@ class OptimizerGD(Optimizer):
 
     @classmethod
     def available_diis(cls):
-        """:return: All available methods that can be diis accelerated"""
-        return ['adam', 'adagrad', 'nadam', 'sgd', 'momentum',]
+        """:return: All tested methods that can be diis accelerated"""
+        return ['sgd']
 
     def __init__(self, maxiter=100,
                  method='sgd',
