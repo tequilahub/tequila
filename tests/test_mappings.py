@@ -20,7 +20,7 @@ def test_keymaps():
 
     keymap = KeyMapSubregisterToRegister(register=[0, 1, 2, 3, 4, 5, 6, 7], subregister=[1, 3, 5, 7])
 
-    assert (small.apply_keymap(keymap=keymap, initial_state=initial_state) == large)
+    assert (small.apply_keymap(keymap=keymap, initial_state=initial_state).isclose(large))
 
 
 def test_endianness():

@@ -102,7 +102,7 @@ def test_basic_gates():
     ]
     for i, g in enumerate(gates):
         wfn = simulate(g, backend="symbolic", variables={angle: sympy.pi})
-        assert (wfn == strip_sympy_zeros(results[i]))
+        assert wfn.isclose(strip_sympy_zeros(results[i]))
 
 
 def test_consistency():
