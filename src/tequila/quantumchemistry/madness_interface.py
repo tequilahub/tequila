@@ -1,4 +1,6 @@
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning
+from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning, \
+    QCircuit, gates
+from tequila import ExpectationValue, PauliString, QubitHamiltonian
 
 import typing
 import numpy
@@ -21,7 +23,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             elif self.pno_pair[0] < 0:
                 return "orbital {}, virtual orbital {}, energy {} ".format(self.idx_total, self.pno_pair, self.occ)
             else:
-                return "orbital {}, occupied reference orbital {}, energy {} ".format(self.idx_total, self.pno_pair, self.occ)
+                return "orbital {}, occupied reference orbital {}, energy {} ".format(self.idx_total, self.pno_pair,
+                                                                                      self.occ)
 
         def __repr__(self):
             return self.__str__()
@@ -31,7 +34,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  active_orbitals: list = None,
                  madness_root_dir: str = None,
                  n_pno: int = None,
-                 frozen_core = False,
+                 frozen_core=False,
                  n_virt: int = 0,
                  *args,
                  **kwargs):
@@ -40,7 +43,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.n_pno = n_pno
         self.n_virt = n_virt
         self.frozen_core = frozen_core
-        self.kwargs=kwargs
+        self.kwargs = kwargs
 
         # if no n_pno is given, look for MRA data (default)
         name = "gs"
@@ -139,9 +142,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         # print warning if read data does not match expectations
         if n_pno is not None:
             nrefs = len(self.get_reference_orbitals())
-            if n_pno+nrefs+n_virt != self.n_orbitals:
+            if n_pno + nrefs + n_virt != self.n_orbitals:
                 warnings.warn(
-                    "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
+                    "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(
+                        self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
 
     def run_madness(self, *args, **kwargs):
         executable = "pno_integrals"
@@ -190,7 +194,68 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
 
-    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False, **kwargs):
+    def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True):
+        if pairs is None:
+            pairs = [i for i in range(self.n_electrons//2)]
+
+        U = QCircuit()
+        for i in pairs:
+            if include_reference:
+                U += gates.X(i)
+            for a in self.get_pno_indices(i=i, j=i):
+                U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
+        return U
+
+    def make_separated_objective(self, pairs=None, label=None, neglect_coupling=False):
+        if pairs is None:
+            pairs = [i for i in range(self.n_electrons//2)]
+
+        H = self.make_hardcore_boson_hamiltonian()
+
+        # objective = self.molecule.nuclear_repulsion
+        # for i in pairs:
+        #     Ui = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[i], label=label)
+        #     # tq will trace out automatically
+        #     # but will also count constant part multiple times
+        #     objective += ExpectationValue(H=H, U=Ui) - self.molecule.nuclear_repulsion
+
+        def assign_pair(k):
+            if len(self.orbitals[k].pno_pair)==1:
+                return self.orbitals[k].pno_pair[0]
+            else:
+                assert(self.orbitals[k].pno_pair[0] == self.orbitals[k].pno_pair[1])
+                return self.orbitals[k].pno_pair[0]
+        if neglect_coupling:
+            pass
+            #return objective
+        else:
+            objective = 0.0
+            pair_terms = {}
+            for ps in H.paulistrings:
+                ops = {}
+                for k,v in ps.items():
+                    pair = assign_pair(k)
+                    if pair in ops:
+                        ops[pair][k] = v
+                    else:
+                        ops[pair] = {k:v}
+
+                if len(ops) < 1:
+                    objective += float(ps.coeff.real)
+                else:
+                    assert len(ops) > 0
+                    tmp = float(ps.coeff.real)
+                    for pair, ps1 in ops.items():
+                        Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
+                        Hp = QubitHamiltonian.from_paulistrings([PauliString(data=ps1)])
+                        tmp*=ExpectationValue(H=Hp, U=Up)
+                    objective += tmp
+
+        return objective
+
+
+    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False,
+                                **kwargs):
         indices_d = []
         indices_s = []
         refs = self.get_reference_orbitals()
@@ -216,15 +281,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if include_offdiagonals:
             for i in self.get_reference_orbitals():
                 for j in self.get_reference_orbitals():
-                    if i.idx<=j.idx:
+                    if i.idx <= j.idx:
                         continue
-                    for a in self.get_pno_indices(i,j):
+                    for a in self.get_pno_indices(i, j):
                         ui = (2 * i.idx, 2 * a.idx)
                         di = (2 * i.idx + 1, 2 * a.idx + 1)
                         uj = (2 * j.idx, 2 * a.idx)
                         dj = (2 * j.idx + 1, 2 * a.idx + 1)
-                        indices_d.append((ui,dj))
-                        indices_d.append((uj,di))
+                        indices_d.append((ui, dj))
+                        indices_d.append((uj, di))
                         indices_s.append((ui))
                         indices_s.append((uj))
                         indices_s.append((di))
@@ -233,7 +298,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     if generalized:
                         for a in self.get_pno_indices(i, j):
                             for b in self.get_pno_indices(i, j):
-                                if a.idx <=b.idx:
+                                if a.idx <= b.idx:
                                     continue
                                 u = (2 * a.idx, 2 * b.idx)
                                 d = (2 * a.idx + 1, 2 * b.idx + 1)
@@ -252,10 +317,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             raise TequilaException("Can't write madness input without n_pnos")
         data = {}
         data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
-        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh":1.e-4}
+        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
-        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog":"cholesky"}
+        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "cholesky"}
         data["plot"] = {}
         data["f12"] = {}
         for key in data.keys():
@@ -302,10 +367,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         return h, g
 
     def __str__(self):
-        info=super().__str__()
-        info+="{key:15} :\n".format(key="MRA Orbitals")
+        info = super().__str__()
+        info += "{key:15} :\n".format(key="MRA Orbitals")
         for orb in self.orbitals:
-            info+="{}\n".format(orb)
+            info += "{}\n".format(orb)
         return info
 
     def __repr__(self):

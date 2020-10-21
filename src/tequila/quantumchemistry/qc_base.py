@@ -868,7 +868,6 @@ class QuantumChemistryBase:
             FermionicGateImpl(angle=angle, generator=generator, p0=p0, exact=complex_wfn, control=control))
 
     def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, complex_wfn=False):
-        # todo: integrate with transformation
         G = QubitHamiltonian()
         P0 = QubitHamiltonian()
         for pair in indices:
@@ -1067,7 +1066,7 @@ class QuantumChemistryBase:
         H = self.molecule.nuclear_repulsion
         for p in range(self.n_orbitals):
             for q in range(self.n_orbitals):
-                H += h[p, q] * Sp(p) * Sm(q) + g[p, q] * Sp(p) * Sm(p) * Sp(q) * Sm(q)
+                H += h[p, q] * Sm(p) * Sp(q) + g[p, q] * Sm(p) * Sp(p) * Sm(q) * Sp(q)
 
         return H
 
