@@ -34,6 +34,7 @@ jobs:
                 #pip install --upgrade -r requirements_phoenics_36.txt
                 #pytest tests/test_phoenics.py
               elif [ $ver -eq 7 ]; then
+                pip install --upgrade -r requirements.txt
                 pip install --upgrade -r requirements_phoenics.txt
                 pytest tests/test_phoenics.py
               fi
