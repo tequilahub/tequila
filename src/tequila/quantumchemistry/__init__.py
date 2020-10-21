@@ -57,7 +57,7 @@ def Molecule(geometry: str,
     parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
     if backend is None:
-        if basis_set.lower() == "madness":
+        if basis_set is None or basis_set.lower() in ["madness", "mra", "pno"]:
             backend = "madness"
         elif "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
             backend = "psi4"
@@ -83,7 +83,7 @@ def Molecule(geometry: str,
     if guess_wfn is not None and backend != 'psi4':
         raise Exception("guess_wfn only works for psi4")
 
-    if basis_set is None and backend != "base":
+    if basis_set is None and backend.lower() not in  ["base", "madness"]:
         raise Exception("no basis_set provided for backend={}".format(backend))
     elif basis_set is None:
         basis_set = "custom"
