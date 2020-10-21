@@ -66,7 +66,7 @@ def test_ketbra():
     ket = QubitWaveFunction.from_string("1.0*|00> + 1.0*|11>").normalize()
     operator = paulis.KetBra(ket=ket, bra="|00>")
     result = operator*QubitWaveFunction.from_int(0, n_qubits=2)
-    assert(result == ket)
+    assert(result.isclose(ket))
 
 @pytest.mark.parametrize("n_qubits", [1,2,3,5])
 def test_ketbra_random(n_qubits):
@@ -74,7 +74,7 @@ def test_ketbra_random(n_qubits):
     bra = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
     operator = paulis.KetBra(ket=ket, bra=bra)
     result = operator * bra
-    assert result == QubitWaveFunction.from_array(ket)
+    assert(result.isclose(QubitWaveFunction.from_array(ket)))
 
 def test_paulistring_conversion():
     X1 = QubitHamiltonian.from_string("X0", openfermion_format=True)
@@ -180,7 +180,7 @@ def test_projectors(qubits):
     wfn = QubitWaveFunction.from_array(arr=array)
     P = paulis.Projector(wfn=wfn.normalize())
     assert(P.is_hermitian())
-    assert(wfn.apply_qubitoperator(P) == wfn)
+    assert(wfn.apply_qubitoperator(P).isclose(wfn))
     PM = P.to_matrix()
     assert((PM.dot(PM) == PM).all)
 

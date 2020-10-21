@@ -42,7 +42,7 @@ def test_qubit_maps():
 
     for angle in numpy.random.uniform(0.0, 10.0, 10):
         variables = {"a":angle}
-        assert tq.simulate(E2, variables=variables) == tq.simulate(E3, variables=variables)
+        assert np.isclose(tq.simulate(E2, variables=variables), tq.simulate(E3, variables=variables))
 
 
 
