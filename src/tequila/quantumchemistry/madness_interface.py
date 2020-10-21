@@ -331,7 +331,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 print("geometry", file=f)
                 print("units angstrom", file=f)
                 print("eprec 1.e-6", file=f)
-                print(self.parameters.get_geometry_string(), file=f)
+                for line in self.parameters.get_geometry_string().split("\n"):
+                    line=line.strip()
+                    if line!="":
+                        print(line, file=f)
                 print("end", file=f)
 
         return data
