@@ -224,6 +224,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             ops = {}
             for k, v in ps.items():
                 pair = assign_pair(k)
+                if pair not in pairs:
+                    continue
                 if pair in ops:
                     ops[pair][k] = v
                 else:
