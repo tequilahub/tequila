@@ -302,9 +302,9 @@ def test_shot_simple_consistency():
     reference = tequila.simulate(ac, backend=None, samples=1000)
     for sampler in samplers:
         wfn = tequila.simulate(ac, backend=sampler, samples=1000)
-        if reference != wfn:
+        if not reference.isclose(wfn):
             raise Exception("failed for {}\n{} vs \n{}".format(sampler, reference, wfn))
-        assert reference == wfn
+        assert reference.isclose(wfn)
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
