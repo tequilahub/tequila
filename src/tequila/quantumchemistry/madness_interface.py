@@ -196,7 +196,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True):
         if pairs is None:
-            pairs = [i for i in range(self.n_electrons//2)]
+            pairs = [i for i in range(self.n_electrons // 2)]
 
         U = QCircuit()
         for i in pairs:
@@ -208,170 +208,166 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
     def make_separated_objective(self, pairs=None, label=None, neglect_coupling=False):
         if pairs is None:
-            pairs = [i for i in range(self.n_electrons//2)]
+            pairs = [i for i in range(self.n_electrons // 2)]
 
         H = self.make_hardcore_boson_hamiltonian()
 
-        # objective = self.molecule.nuclear_repulsion
-        # for i in pairs:
-        #     Ui = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[i], label=label)
-        #     # tq will trace out automatically
-        #     # but will also count constant part multiple times
-        #     objective += ExpectationValue(H=H, U=Ui) - self.molecule.nuclear_repulsion
-
         def assign_pair(k):
-            if len(self.orbitals[k].pno_pair)==1:
+            if len(self.orbitals[k].pno_pair) == 1:
                 return self.orbitals[k].pno_pair[0]
             else:
-                assert(self.orbitals[k].pno_pair[0] == self.orbitals[k].pno_pair[1])
+                assert (self.orbitals[k].pno_pair[0] == self.orbitals[k].pno_pair[1])
                 return self.orbitals[k].pno_pair[0]
-        if neglect_coupling:
-            pass
-            #return objective
-        else:
-            objective = 0.0
-            pair_terms = {}
-            for ps in H.paulistrings:
-                ops = {}
-                for k,v in ps.items():
-                    pair = assign_pair(k)
-                    if pair in ops:
-                        ops[pair][k] = v
-                    else:
-                        ops[pair] = {k:v}
 
-                if len(ops) < 1:
-                    objective += float(ps.coeff.real)
+        objective = 0.0
+        for ps in H.paulistrings:
+            ops = {}
+            for k, v in ps.items():
+                pair = assign_pair(k)
+                if pair in ops:
+                    ops[pair][k] = v
                 else:
-                    assert len(ops) > 0
-                    tmp = float(ps.coeff.real)
-                    for pair, ps1 in ops.items():
-                        Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
-                        Hp = QubitHamiltonian.from_paulistrings([PauliString(data=ps1)])
-                        tmp*=ExpectationValue(H=Hp, U=Up)
-                    objective += tmp
+                    ops[pair] = {k: v}
+            if len(ops) == 0:
+                objective += float(ps.coeff.real)
+            elif len(ops) <= 2:
+                assert len(ops) > 0
+                if neglect_coupling and len(ops) == 2:
+                    continue
+                tmp = float(ps.coeff.real)
+                for pair, ps1 in ops.items():
+                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
+                    Hp = QubitHamiltonian.from_paulistrings([PauliString(data=ps1)])
+                    tmp *= ExpectationValue(H=Hp, U=Up)
+                objective += tmp
+            else:
+                raise Exception("don't know how to handle paulistring: {}".format(ps))
 
         return objective
 
 
-    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False,
-                                **kwargs):
-        indices_d = []
-        indices_s = []
-        refs = self.get_reference_orbitals()
-        print("refs=", refs)
-        for i in self.get_reference_orbitals():
-            for a in self.get_pno_indices(i=i, j=i):
-                u = (2 * i.idx, 2 * a.idx)
-                d = (2 * i.idx + 1, 2 * a.idx + 1)
-                indices_d.append((u, d))
-                indices_s.append((u))
-                indices_s.append((d))
-            if generalized:
-                for a in self.get_pno_indices(i, i):
-                    for b in self.get_pno_indices(i, i):
-                        if b.idx_total <= a.idx_total:
-                            continue
-                        u = (2 * a.idx, 2 * b.idx)
-                        d = (2 * a.idx + 1, 2 * b.idx + 1)
-                        indices_d.append((u, d))
-                        indices_s.append((u))
-                        indices_s.append((d))
-
-        if include_offdiagonals:
-            for i in self.get_reference_orbitals():
-                for j in self.get_reference_orbitals():
-                    if i.idx <= j.idx:
+def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False,
+                            **kwargs):
+    indices_d = []
+    indices_s = []
+    refs = self.get_reference_orbitals()
+    print("refs=", refs)
+    for i in self.get_reference_orbitals():
+        for a in self.get_pno_indices(i=i, j=i):
+            u = (2 * i.idx, 2 * a.idx)
+            d = (2 * i.idx + 1, 2 * a.idx + 1)
+            indices_d.append((u, d))
+            indices_s.append((u))
+            indices_s.append((d))
+        if generalized:
+            for a in self.get_pno_indices(i, i):
+                for b in self.get_pno_indices(i, i):
+                    if b.idx_total <= a.idx_total:
                         continue
+                    u = (2 * a.idx, 2 * b.idx)
+                    d = (2 * a.idx + 1, 2 * b.idx + 1)
+                    indices_d.append((u, d))
+                    indices_s.append((u))
+                    indices_s.append((d))
+
+    if include_offdiagonals:
+        for i in self.get_reference_orbitals():
+            for j in self.get_reference_orbitals():
+                if i.idx <= j.idx:
+                    continue
+                for a in self.get_pno_indices(i, j):
+                    ui = (2 * i.idx, 2 * a.idx)
+                    di = (2 * i.idx + 1, 2 * a.idx + 1)
+                    uj = (2 * j.idx, 2 * a.idx)
+                    dj = (2 * j.idx + 1, 2 * a.idx + 1)
+                    indices_d.append((ui, dj))
+                    indices_d.append((uj, di))
+                    indices_s.append((ui))
+                    indices_s.append((uj))
+                    indices_s.append((di))
+                    indices_s.append((dj))
+
+                if generalized:
                     for a in self.get_pno_indices(i, j):
-                        ui = (2 * i.idx, 2 * a.idx)
-                        di = (2 * i.idx + 1, 2 * a.idx + 1)
-                        uj = (2 * j.idx, 2 * a.idx)
-                        dj = (2 * j.idx + 1, 2 * a.idx + 1)
-                        indices_d.append((ui, dj))
-                        indices_d.append((uj, di))
-                        indices_s.append((ui))
-                        indices_s.append((uj))
-                        indices_s.append((di))
-                        indices_s.append((dj))
+                        for b in self.get_pno_indices(i, j):
+                            if a.idx <= b.idx:
+                                continue
+                            u = (2 * a.idx, 2 * b.idx)
+                            d = (2 * a.idx + 1, 2 * b.idx + 1)
+                            indices_d.append((u, d))
+                            indices_s.append((u))
+                            indices_s.append((d))
 
-                    if generalized:
-                        for a in self.get_pno_indices(i, j):
-                            for b in self.get_pno_indices(i, j):
-                                if a.idx <= b.idx:
-                                    continue
-                                u = (2 * a.idx, 2 * b.idx)
-                                d = (2 * a.idx + 1, 2 * b.idx + 1)
-                                indices_d.append((u, d))
-                                indices_s.append((u))
-                                indices_s.append((d))
+    indices = indices_d
+    if include_singles:
+        indices += indices_s
 
-        indices = indices_d
-        if include_singles:
-            indices += indices_s
+    return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-        return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def make_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
-        if n_pno is None:
-            raise TequilaException("Can't write madness input without n_pnos")
-        data = {}
-        data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
-        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
-        if not frozen_core:
-            data["pno"]["freeze"] = 0
-        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "cholesky"}
-        data["plot"] = {}
-        data["f12"] = {}
-        for key in data.keys():
-            if key in kwargs:
-                data[key] = {**data[key], **kwargs[key]}
+def make_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
+    if n_pno is None:
+        raise TequilaException("Can't write madness input without n_pnos")
+    data = {}
+    data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
+    data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
+    if not frozen_core:
+        data["pno"]["freeze"] = 0
+    data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "cholesky"}
+    data["plot"] = {}
+    data["f12"] = {}
+    for key in data.keys():
+        if key in kwargs:
+            data[key] = {**data[key], **kwargs[key]}
 
-        if filename is not None:
-            with open(filename, "w") as f:
-                for k1, v1 in data.items():
-                    print(k1, file=f)
-                    for k2, v2 in v1.items():
-                        print("{} {}".format(k2, v2), file=f)
-                    print("end\n", file=f)
+    if filename is not None:
+        with open(filename, "w") as f:
+            for k1, v1 in data.items():
+                print(k1, file=f)
+                for k2, v2 in v1.items():
+                    print("{} {}".format(k2, v2), file=f)
+                print("end\n", file=f)
 
-                print("geometry", file=f)
-                print("units angstrom", file=f)
-                print("eprec 1.e-6", file=f)
-                print(self.parameters.get_geometry_string(), file=f)
-                print("end", file=f)
+            print("geometry", file=f)
+            print("units angstrom", file=f)
+            print("eprec 1.e-6", file=f)
+            print(self.parameters.get_geometry_string(), file=f)
+            print("end", file=f)
 
-        return data
+    return data
 
-    def convert_madness_output_from_bin_to_npy(self, name="gs"):
-        try:
-            g_data = numpy.fromfile("gs_gtensor.bin")
-            sd = int(numpy.power(g_data.size, 0.25))
-            assert (sd ** 4 == g_data.size)
-            sds = [sd] * 4
-            g = g_data.reshape(sds)
-            numpy.save("{}_gtensor.npy".format(name), arr=g)
-        except:
-            g = "failed"
 
-        try:
-            h_data = numpy.fromfile("gs_htensor.bin")
-            sd = int(numpy.sqrt(h_data.size))
-            assert (sd ** 2 == h_data.size)
-            sds = [sd] * 2
-            h = h_data.reshape(sds)
-            numpy.save("{}_htensor.npy".format(name), arr=h)
-        except:
-            h = "failed"
+def convert_madness_output_from_bin_to_npy(self, name="gs"):
+    try:
+        g_data = numpy.fromfile("gs_gtensor.bin")
+        sd = int(numpy.power(g_data.size, 0.25))
+        assert (sd ** 4 == g_data.size)
+        sds = [sd] * 4
+        g = g_data.reshape(sds)
+        numpy.save("{}_gtensor.npy".format(name), arr=g)
+    except:
+        g = "failed"
 
-        return h, g
+    try:
+        h_data = numpy.fromfile("gs_htensor.bin")
+        sd = int(numpy.sqrt(h_data.size))
+        assert (sd ** 2 == h_data.size)
+        sds = [sd] * 2
+        h = h_data.reshape(sds)
+        numpy.save("{}_htensor.npy".format(name), arr=h)
+    except:
+        h = "failed"
 
-    def __str__(self):
-        info = super().__str__()
-        info += "{key:15} :\n".format(key="MRA Orbitals")
-        for orb in self.orbitals:
-            info += "{}\n".format(orb)
-        return info
+    return h, g
 
-    def __repr__(self):
-        return self.__str__()
+
+def __str__(self):
+    info = super().__str__()
+    info += "{key:15} :\n".format(key="MRA Orbitals")
+    for orb in self.orbitals:
+        info += "{}\n".format(orb)
+    return info
+
+
+def __repr__(self):
+    return self.__str__()
