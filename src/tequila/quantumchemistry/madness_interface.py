@@ -246,128 +246,128 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         return objective
 
 
-def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False,
-                            **kwargs):
-    indices_d = []
-    indices_s = []
-    refs = self.get_reference_orbitals()
-    print("refs=", refs)
-    for i in self.get_reference_orbitals():
-        for a in self.get_pno_indices(i=i, j=i):
-            u = (2 * i.idx, 2 * a.idx)
-            d = (2 * i.idx + 1, 2 * a.idx + 1)
-            indices_d.append((u, d))
-            indices_s.append((u))
-            indices_s.append((d))
-        if generalized:
-            for a in self.get_pno_indices(i, i):
-                for b in self.get_pno_indices(i, i):
-                    if b.idx_total <= a.idx_total:
-                        continue
-                    u = (2 * a.idx, 2 * b.idx)
-                    d = (2 * a.idx + 1, 2 * b.idx + 1)
-                    indices_d.append((u, d))
-                    indices_s.append((u))
-                    indices_s.append((d))
-
-    if include_offdiagonals:
+    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False,
+                                **kwargs):
+        indices_d = []
+        indices_s = []
+        refs = self.get_reference_orbitals()
+        print("refs=", refs)
         for i in self.get_reference_orbitals():
-            for j in self.get_reference_orbitals():
-                if i.idx <= j.idx:
-                    continue
-                for a in self.get_pno_indices(i, j):
-                    ui = (2 * i.idx, 2 * a.idx)
-                    di = (2 * i.idx + 1, 2 * a.idx + 1)
-                    uj = (2 * j.idx, 2 * a.idx)
-                    dj = (2 * j.idx + 1, 2 * a.idx + 1)
-                    indices_d.append((ui, dj))
-                    indices_d.append((uj, di))
-                    indices_s.append((ui))
-                    indices_s.append((uj))
-                    indices_s.append((di))
-                    indices_s.append((dj))
+            for a in self.get_pno_indices(i=i, j=i):
+                u = (2 * i.idx, 2 * a.idx)
+                d = (2 * i.idx + 1, 2 * a.idx + 1)
+                indices_d.append((u, d))
+                indices_s.append((u))
+                indices_s.append((d))
+            if generalized:
+                for a in self.get_pno_indices(i, i):
+                    for b in self.get_pno_indices(i, i):
+                        if b.idx_total <= a.idx_total:
+                            continue
+                        u = (2 * a.idx, 2 * b.idx)
+                        d = (2 * a.idx + 1, 2 * b.idx + 1)
+                        indices_d.append((u, d))
+                        indices_s.append((u))
+                        indices_s.append((d))
 
-                if generalized:
+        if include_offdiagonals:
+            for i in self.get_reference_orbitals():
+                for j in self.get_reference_orbitals():
+                    if i.idx <= j.idx:
+                        continue
                     for a in self.get_pno_indices(i, j):
-                        for b in self.get_pno_indices(i, j):
-                            if a.idx <= b.idx:
-                                continue
-                            u = (2 * a.idx, 2 * b.idx)
-                            d = (2 * a.idx + 1, 2 * b.idx + 1)
-                            indices_d.append((u, d))
-                            indices_s.append((u))
-                            indices_s.append((d))
+                        ui = (2 * i.idx, 2 * a.idx)
+                        di = (2 * i.idx + 1, 2 * a.idx + 1)
+                        uj = (2 * j.idx, 2 * a.idx)
+                        dj = (2 * j.idx + 1, 2 * a.idx + 1)
+                        indices_d.append((ui, dj))
+                        indices_d.append((uj, di))
+                        indices_s.append((ui))
+                        indices_s.append((uj))
+                        indices_s.append((di))
+                        indices_s.append((dj))
 
-    indices = indices_d
-    if include_singles:
-        indices += indices_s
+                    if generalized:
+                        for a in self.get_pno_indices(i, j):
+                            for b in self.get_pno_indices(i, j):
+                                if a.idx <= b.idx:
+                                    continue
+                                u = (2 * a.idx, 2 * b.idx)
+                                d = (2 * a.idx + 1, 2 * b.idx + 1)
+                                indices_d.append((u, d))
+                                indices_s.append((u))
+                                indices_s.append((d))
 
-    return self.make_upccgsd_ansatz(indices=indices, **kwargs)
+        indices = indices_d
+        if include_singles:
+            indices += indices_s
 
-
-def make_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
-    if n_pno is None:
-        raise TequilaException("Can't write madness input without n_pnos")
-    data = {}
-    data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
-    data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
-    if not frozen_core:
-        data["pno"]["freeze"] = 0
-    data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "cholesky"}
-    data["plot"] = {}
-    data["f12"] = {}
-    for key in data.keys():
-        if key in kwargs:
-            data[key] = {**data[key], **kwargs[key]}
-
-    if filename is not None:
-        with open(filename, "w") as f:
-            for k1, v1 in data.items():
-                print(k1, file=f)
-                for k2, v2 in v1.items():
-                    print("{} {}".format(k2, v2), file=f)
-                print("end\n", file=f)
-
-            print("geometry", file=f)
-            print("units angstrom", file=f)
-            print("eprec 1.e-6", file=f)
-            print(self.parameters.get_geometry_string(), file=f)
-            print("end", file=f)
-
-    return data
+        return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
 
-def convert_madness_output_from_bin_to_npy(self, name="gs"):
-    try:
-        g_data = numpy.fromfile("gs_gtensor.bin")
-        sd = int(numpy.power(g_data.size, 0.25))
-        assert (sd ** 4 == g_data.size)
-        sds = [sd] * 4
-        g = g_data.reshape(sds)
-        numpy.save("{}_gtensor.npy".format(name), arr=g)
-    except:
-        g = "failed"
+    def make_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
+        if n_pno is None:
+            raise TequilaException("Can't write madness input without n_pnos")
+        data = {}
+        data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
+        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
+        if not frozen_core:
+            data["pno"]["freeze"] = 0
+        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "cholesky"}
+        data["plot"] = {}
+        data["f12"] = {}
+        for key in data.keys():
+            if key in kwargs:
+                data[key] = {**data[key], **kwargs[key]}
 
-    try:
-        h_data = numpy.fromfile("gs_htensor.bin")
-        sd = int(numpy.sqrt(h_data.size))
-        assert (sd ** 2 == h_data.size)
-        sds = [sd] * 2
-        h = h_data.reshape(sds)
-        numpy.save("{}_htensor.npy".format(name), arr=h)
-    except:
-        h = "failed"
+        if filename is not None:
+            with open(filename, "w") as f:
+                for k1, v1 in data.items():
+                    print(k1, file=f)
+                    for k2, v2 in v1.items():
+                        print("{} {}".format(k2, v2), file=f)
+                    print("end\n", file=f)
 
-    return h, g
+                print("geometry", file=f)
+                print("units angstrom", file=f)
+                print("eprec 1.e-6", file=f)
+                print(self.parameters.get_geometry_string(), file=f)
+                print("end", file=f)
 
-
-def __str__(self):
-    info = super().__str__()
-    info += "{key:15} :\n".format(key="MRA Orbitals")
-    for orb in self.orbitals:
-        info += "{}\n".format(orb)
-    return info
+        return data
 
 
-def __repr__(self):
-    return self.__str__()
+    def convert_madness_output_from_bin_to_npy(self, name="gs"):
+        try:
+            g_data = numpy.fromfile("gs_gtensor.bin")
+            sd = int(numpy.power(g_data.size, 0.25))
+            assert (sd ** 4 == g_data.size)
+            sds = [sd] * 4
+            g = g_data.reshape(sds)
+            numpy.save("{}_gtensor.npy".format(name), arr=g)
+        except:
+            g = "failed"
+
+        try:
+            h_data = numpy.fromfile("gs_htensor.bin")
+            sd = int(numpy.sqrt(h_data.size))
+            assert (sd ** 2 == h_data.size)
+            sds = [sd] * 2
+            h = h_data.reshape(sds)
+            numpy.save("{}_htensor.npy".format(name), arr=h)
+        except:
+            h = "failed"
+
+        return h, g
+
+
+    def __str__(self):
+        info = super().__str__()
+        info += "{key:15} :\n".format(key="MRA Orbitals")
+        for orb in self.orbitals:
+            info += "{}\n".format(orb)
+        return info
+    
+
+    def __repr__(self):
+        return self.__str__()
