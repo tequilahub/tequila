@@ -72,7 +72,7 @@ def test_endianness_simulators():
         print("counts_qiskit=", type(counts_qiskit))
         print("counts_cirq  =", counts_cirq)
         print("counts_qiskit=", counts_qiskit)
-        assert (counts_cirq == counts_qiskit)
+        assert (counts_cirq.isclose(counts_qiskit))
         assert (wfn_cirq.state == counts_cirq.state)
 
 
@@ -101,4 +101,4 @@ def test_qubitwavefunction_array(array):
     print(array)
     wfn = QubitWaveFunction.from_array(arr=array)
     array2 = wfn.to_array()
-    assert (array == array2).all()
+    assert numpy.allclose(array,array2)
