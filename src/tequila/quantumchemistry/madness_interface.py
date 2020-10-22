@@ -311,7 +311,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if n_pno is None:
             raise TequilaException("Can't write madness input without n_pnos")
         data = {}
-        data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
+        data["dft"] = {"xc": "hf", "k": 7, "econv": "3.e-4", "dconv": "1.e-4", "localize":"new"}
         data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
