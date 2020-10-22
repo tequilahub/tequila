@@ -221,6 +221,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         objective = 0.0
         for ps in H.paulistrings:
+            c = float(ps.coeff.real)
+            if numpy.isclose(c, 0.0):
+                continue
             ops = {}
             for k, v in ps.items():
                 pair = assign_pair(k)
@@ -231,18 +234,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 else:
                     ops[pair] = {k: v}
             if len(ops) == 0:
-                objective += float(ps.coeff.real)
+                objective += c
             elif len(ops) <= 2:
                 assert len(ops) > 0
                 if neglect_coupling and len(ops) == 2:
                     continue
-                tmp = float(ps.coeff.real)
+
+                tmp = c
                 for pair, ps1 in ops.items():
                     Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
                     Hp = QubitHamiltonian.from_paulistrings([PauliString(data=ps1)])
                     Ep = ExpectationValue(H=Hp, U=Up)
-                    if (Ep.extract_variables())==0:
-                        Ep = simulate(Ep)
+                    if len(Ep.extract_variables())==0:
+                        Ep = float(simulate(Ep))
                     tmp *= Ep
                 objective += tmp
             else:
