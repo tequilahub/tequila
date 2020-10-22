@@ -1,0 +1,6 @@
+../tools/nb_to_doc.py Chemistry.ipynb
+Executing Chemistry.ipynb ... 
+   Normal return from subroutine COBYLA
+
+   NFVALS =   20   F =-7.862689E+00    MAXCV = 0.000000E+00
+   X = 3.211937E+00

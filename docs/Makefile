@@ -23,6 +23,10 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 
+clean:
+	@rm -rf $(BUILDDIR)/*
+	@rm -rf source/packages/autogen/tequila.*
+
 #tutorials:
 #	make -C source/tutorials
 

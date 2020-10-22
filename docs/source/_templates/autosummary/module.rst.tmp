@@ -1,0 +1,33 @@
+{{ fullname | escape | underline}}
+
+.. currentmodule:: {{ module }}
+
+.. auto{{ objtype }}:: {{ fullname }}
+
+   {% block functions %}
+   {% if functions %}
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree: generated
+      :nosignatures:
+      :recursive:
+   {% for item in functions %}
+      {{ item }}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
+
+
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree: generated
+      :nosignatures:
+      :recursive:
+   {% for item in classes %}
+      {{ item }}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
+

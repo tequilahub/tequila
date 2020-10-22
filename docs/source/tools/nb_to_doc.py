@@ -161,18 +161,7 @@ def strip_output(nb, keep_output=False, keep_count=False, extra_keys=''):
     return nb
 
 
-if __name__ == "__main__":
-
-    # Get the desired ipynb file path and parse into components
-    _, fpath = sys.argv
-    basedir, fname = os.path.split(fpath)
-    fstem = fname[:-6]
-
-    # Read the notebook
-    print(f"Executing {fpath} ...", end=" ", flush=True)
-    with open(fpath) as f:
-        nb = nbformat.read(f, as_version=4)
-
+def run_notebook(allow_errors=False):
     # Run the notebook
     kernel = os.environ.get("NB_KERNEL", None)
     if kernel is None:
@@ -180,9 +169,28 @@ if __name__ == "__main__":
     ep = ExecutePreprocessor(
         timeout=600,
         kernel_name=kernel,
-        extra_arguments=["--InlineBackend.rc={'figure.dpi': 96}"]
+        extra_arguments=["--InlineBackend.rc={'figure.dpi': 96}"],
+        allow_errors=allow_errors
     )
     ep.preprocess(nb, {"metadata": {"path": basedir}})
+    return
+
+
+if __name__ == "__main__":
+
+    # Get the desired ipynb file path and parse into components
+    _, fpath = sys.argv
+    basedir, fname = os.path.split(fpath)
+    fstem = fname[:-6]
+    
+    run_jupyter = False
+    if run_jupyter:
+       run_notebook(allow_errors=True)
+
+    # Read the notebook
+    print(f"Executing {fpath} ...", end=" ", flush=True)
+    with open(fpath) as f:
+        nb = nbformat.read(f, as_version=4)
 
     # Remove the execution result outputs
     for cell in nb.get("cells", {}):

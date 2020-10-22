@@ -1,57 +1,53 @@
-# Building html documentation
+# Tequila Documentation
 
-## Libraries
+Please note that README.md is a copy of the main README.
+Make sure to update it.
 
-```
-pip install sphinxcontrib-napoleon
-pip install sphinx &recommonmark 
-pip install sphinx-bootstrap-theme
-pip install sphinx-rst-builder
-pip install sphinx_automodapi
-```
 
-## Compilation
+## Dependencies
+TODO
 
-### HTML
+## Build
 
-To build documentation from doc
+build documentation from specs in source directory:
 
-```
 make html
-```
 
-It will be made from the configuration file and rst files in `source` directory, and it will create a set of html files on a new folder called `build`.
-
-
-### Tutorials
-
-To convert tutorials to html and including them in the documentation:
+## Include a new module
+ 
+Include the appropriate path to `package/index` 
+make sure to include a new folder to include automatically
+the set of autodoc files and the toctree in
 
 ```
-export NB_KERNEL=<ipython kernel with tequila>
-```
-It will indicate which kernel it will be used to run the notebook.
+<Module name>
+===========
 
+.. rubric:: Modules
+.. autosummary::
+   :toctree: <module>
+   :nosignatures:
+   
+   <set of modules or classes>
 ```
-make html
-```
-It will create an html in the `source/tutorials` directory.
-Next, you will need to include the path of the newily created 
-html into `source/tutorials/index.rst` as a new `.. raw: html`
 
-## Doc references:
+If you want to custumize, e.g. include or exclude some modules/classes/functions/attributes/etc.
+You can go ahead and modifiy the `.rst` file located in the appropriate folder.
+Make sure you commit the changes the file.
+
+The set of rst files are not overwritten, if you want to create another template, you will need to
+erase that file, and in the next build, it will be built.
+
+## Build tutorials
+
+Check the readme file in jupyter.
+
+## Syntax
+
+Some useful links:
+
+* Examples of themes:
 
 https://sphinx-themes.org/
-
-### Examples
-
-The style and code was done with inspiration on the 
-documentation
-
-* https://docs.obspy.org
-* https://seaborn.pydata.org/
-
-
-
 
 

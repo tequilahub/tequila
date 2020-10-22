@@ -1,3 +1,5 @@
+:orphan:
+
 .. _tequila_presentation:
 
 Designing Quantum Algorithms with Tequila
