@@ -1,6 +1,6 @@
 from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning, \
     QCircuit, gates
-from tequila import ExpectationValue, PauliString, QubitHamiltonian
+from tequila import ExpectationValue, PauliString, QubitHamiltonian, simulate
 
 import typing
 import numpy
@@ -240,7 +240,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 for pair, ps1 in ops.items():
                     Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
                     Hp = QubitHamiltonian.from_paulistrings([PauliString(data=ps1)])
-                    tmp *= ExpectationValue(H=Hp, U=Up)
+                    Ep = ExpectationValue(H=Hp, U=Up)
+                    if (Ep.extract_variables())==0:
+                        Ep = simulate(Ep)
+                    tmp *= Ep
                 objective += tmp
             else:
                 raise Exception("don't know how to handle paulistring: {}".format(ps))
