@@ -873,8 +873,10 @@ class QuantumChemistryBase:
         for pair in indices:
             G += Sp(pair[0]) * Sm(pair[1])
             P0 += Qp(pair[0]) * Qm(pair[1])
+            P0 += Qm(pair[0]) * Qp(pair[1])
+
         G = 1.0j * (G - G.dagger())
-        P0 = 0.5 * (P0 + P0.dagger())
+        P0 = 1.0 - P0
         assert P0.is_hermitian()
         assert G.is_hermitian()
         return QCircuit.wrap_gate(
