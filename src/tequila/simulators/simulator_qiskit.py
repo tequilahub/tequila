@@ -166,8 +166,6 @@ class BackendCircuitQiskit(BackendCircuit):
             'SWAP': (lambda c: c.swap, lambda c: c.cswap),
         }
 
-
-
         self.resolver = {}
         self.tq_to_pars = {}
         self.counter = 0
