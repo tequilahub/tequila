@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tequila Basic Usage &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Frequently Asked Questions:" href="FAQ.html" />
+    <link rel="prev" title="Tutorials" href="../tutorials.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href=".././tequila_presentation.html">Overview</a></li>
+                <li><a href=".././install.html">Installation</a></li>
+                <li><a href=".././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href=".././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../package/index.html">Tequila Library Reference</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+  <li>
+    <a href="../tutorials.html" title="Previous Chapter: Tutorials"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; Tutorials</span>
+    </a>
+  </li>
+  <li>
+    <a href="FAQ.html" title="Next Chapter: Frequently Asked Questions:"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">Frequently As... &raquo;</span>
+    </a>
+  </li>
+              
+            
+            
+            
+            
+              <li class="hidden-sm">
+<div id="sourcelink">
+  <a href="../_sources/jupyter/BasicUsage.rst.txt"
+     rel="nofollow">Source</a>
+</div></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <div class="section" id="tequila-basic-usage">
+<h1>Tequila Basic Usage<a class="headerlink" href="#tequila-basic-usage" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="create-and-simulate-quantum-circuits">
+<h2>Create and Simulate Quantum Circuits<a class="headerlink" href="#create-and-simulate-quantum-circuits" title="Permalink to this headline">¶</a></h2>
+<div class="line-block">
+<div class="line">Tequila operators on abstract data types which can be translated and
+executed on various backends.</div>
+<div class="line">In this part of the tutorial we show how to initialize and execute
+those.</div>
+</div>
+<div class="line-block">
+<div class="line">First import tequila and check which backends are installed on your
+system.</div>
+<div class="line">If supported backends are not installed you can for most of them just
+install them with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">--upgrade</span> <span class="pre">name</span></code> in your command line</div>
+<div class="line">If you have old versions of supported backends installed that might
+get you in trouble.</div>
+<div class="line">You can upgrade them with the same command.</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tequila</span> <span class="k">as</span> <span class="nn">tq</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">show_available_simulators</span><span class="p">()</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">pi</span>
+</pre></div>
+</div>
+<div class="section" id="create-simple-circuits">
+<h3>Create Simple Circuits<a class="headerlink" href="#create-simple-circuits" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line">Lets create some simple unparametrized circutis.</div>
+<div class="line">With unparametrized we mean here, that possible angles in the circuits
+are fixed.</div>
+<div class="line">You can create tequila circuits and gates over the <code class="docutils literal notranslate"><span class="pre">tq.gates</span></code>
+module.</div>
+<div class="line">Gates and circuits can be glued together with the <code class="docutils literal notranslate"><span class="pre">+</span></code> operation.</div>
+</div>
+<p>Gates can receive the keyword arguments <code class="docutils literal notranslate"><span class="pre">target</span></code> and <code class="docutils literal notranslate"><span class="pre">control</span></code> which
+defines qubit(s) on which the gates act</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">H</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">CNOT</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">control</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Circuits can be printed out in list-type form or can be drawn by the
+backends.</div>
+<div class="line">The result of tq.draw will depend which backends you have installed.</div>
+<div class="line">If you want to draw with a specific backend, just pass the <code class="docutils literal notranslate"><span class="pre">backend</span></code>
+keyword, e.g. tq.draw(circuit,<code class="docutils literal notranslate"><span class="pre">backend='cirq'</span></code>)</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">circuit</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">tq</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">circuit</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Lets do the same with a list of qubits and see what happens</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">H</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">circuit</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Some gates have to be parametrized by <code class="docutils literal notranslate"><span class="pre">angle</span></code> and some can be
+parametrized by <code class="docutils literal notranslate"><span class="pre">power</span></code>.</div>
+<div class="line">Note that if you use cirq to draw circuits, it will display those in
+different units. This does not affect the simulation.</div>
+</div>
+<p>Tequila uses the standard convention for qubit rotations:</p>
+<div class="math notranslate nohighlight">
+\[R_i(\theta) = e^{-i\frac{\theta}{2} \sigma_i}, \qquad i \in \left\{ X, Y, Z \right\}\]</div>
+<p>which is carried over for multi-qubit rotations</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}  R_P(\theta) = e^{-i\frac{\theta}{2} P}\\where :math:`P` is a paulistring like e.g. :math:`X(0)Y(1)`\end{aligned}\end{align} \]</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Some further examples</span>
+<span class="n">circuit0</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">circuit1</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Y</span><span class="p">(</span><span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">circuit2</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Rp</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">paulistring</span><span class="o">=</span><span class="s2">&quot;Y(0)&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># acts the same as circuit0</span>
+<span class="n">circuit3</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Rp</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">paulistring</span><span class="o">=</span><span class="s2">&quot;X(0)Y(1)&quot;</span><span class="p">)</span>
+
+<span class="n">generator</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Y</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">circuit4</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Trotterized</span><span class="p">(</span><span class="n">generators</span><span class="o">=</span><span class="p">[</span><span class="n">generator</span><span class="p">],</span> <span class="n">angles</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="n">steps</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># acts the same as circuit0</span>
+<span class="n">generator</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">*</span><span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Y</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">circuit5</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Trotterized</span><span class="p">(</span><span class="n">generators</span><span class="o">=</span><span class="p">[</span><span class="n">generator</span><span class="p">],</span> <span class="n">angles</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="n">steps</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># acts the same as circuit3</span>
+
+<span class="n">tq</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">circuit3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="simulate-and-sample-simple-circuits">
+<h3>Simulate and Sample Simple Circuits<a class="headerlink" href="#simulate-and-sample-simple-circuits" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line">Lets simulate our last created circuit.</div>
+<div class="line">This can be done by the <code class="docutils literal notranslate"><span class="pre">tq.simulate</span></code> function.</div>
+<div class="line">The return type is a <code class="docutils literal notranslate"><span class="pre">QubitWaveFunction</span></code></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can control on which backend the simulation is executed with the
+<code class="docutils literal notranslate"><span class="pre">backend=name</span></code> keyword where name is one of the backends that are
+installed on your system (see first cell)</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># simulate on &#39;qulacs&#39; backend (which is the default)</span>
+<span class="c1"># Note that this cell will crash if qulacs is not installed</span>
+<span class="c1"># just switch the name with something that is installed on your system (check the first cell)</span>
+<span class="n">wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;qulacs&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you don’t want to simulate a full wavefunction but rather simulate
+individual samples from it you can pass down the <code class="docutils literal notranslate"><span class="pre">samples=integer</span></code>
+keyword</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">measurements</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can access the individual measurements either by integers in binary
+notation or by binary strings</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">measurements</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">measurements</span><span class="p">(</span><span class="s2">&quot;00&quot;</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">measurements</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">measurements</span><span class="p">(</span><span class="s2">&quot;10&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Individual Measurement instructions can be added to the circuit via
+<code class="docutils literal notranslate"><span class="pre">tq.gates.Measurement</span></code></p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">measurements</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="o">+</span><span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Measurement</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">samples</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-parametrized-circuits">
+<h3>Create Parametrized Circuits<a class="headerlink" href="#create-parametrized-circuits" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line">Now we will explore how to create parametrized circuits.</div>
+<div class="line">This works analogue to the simple circuits before, just that <code class="docutils literal notranslate"><span class="pre">angle</span></code>
+and <code class="docutils literal notranslate"><span class="pre">power</span></code> can be set to hashable types.</div>
+<div class="line">You can either initialize the variable directly or you can create a
+tequila variable object and use that.</div>
+<div class="line">The latter is only important if you intend to pass down a manipulated
+variable (like for example <span class="math notranslate nohighlight">\(a^2\)</span> instead of just <span class="math notranslate nohighlight">\(a\)</span>)</div>
+</div>
+<div class="line-block">
+<div class="line">Lets start with something simple: A parametrized rotation on a single
+qubit.</div>
+<div class="line">We will call the variable <span class="math notranslate nohighlight">\(a\)</span>.</div>
+<div class="line">If the circuit gets simulated the value of the variable has to be
+specified.</div>
+<div class="line">This is done by passing down a dictionary holding the names and values
+of all variables.</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># initialize the parametrized circuit</span>
+<span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">pi</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">pi</span>
+<span class="c1"># set the value we want to simulate</span>
+<span class="n">variables</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;a&quot;</span> <span class="p">:</span> <span class="n">pi</span><span class="o">**</span><span class="mi">2</span><span class="p">}</span>
+<span class="n">wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">You can see if a circuit is parametrized by calling
+<code class="docutils literal notranslate"><span class="pre">extract_variables</span></code> from the circuit.</div>
+<div class="line">Note that if you use the cirq backend to draw the circuit</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;circuit has variables: &quot;</span><span class="p">,</span> <span class="n">circuit</span><span class="o">.</span><span class="n">extract_variables</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Now the same thing a little more sophisticated.</div>
+<div class="line">We will parametrized the gate by <span class="math notranslate nohighlight">\(a^2\)</span> and also we want the
+<span class="math notranslate nohighlight">\(a\)</span> to be in units of <span class="math notranslate nohighlight">\(\pi\)</span></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+
+<span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="p">(</span><span class="n">a</span><span class="o">*</span><span class="n">pi</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># set the value we want to simulate</span>
+<span class="n">variables</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;a&quot;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+<span class="n">wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Now the same again with a stronger transformation on the variables:</div>
+<div class="line">In general, if you want to apply transformations on Variables (and
+later on Objectives) this can be done with</div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">variable.apply(your_function)</span></code>.</div>
+<div class="line">Here we will take the exponential function of numpy. Note that it is
+adviced to take those functions from <code class="docutils literal notranslate"><span class="pre">tq.numpy</span></code> since this will be
+the <code class="docutils literal notranslate"><span class="pre">jax</span></code> numpy used for automaticl differentiation.</div>
+<div class="line">By doing so consistently you will avoid potential problems with
+gradients later.</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+
+<span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="p">((</span><span class="n">a</span><span class="o">*</span><span class="n">pi</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">),</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># set the value we want to simulate</span>
+<span class="n">variables</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;a&quot;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+<span class="n">wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Lets do the same thing once more, but this time with a customized
+transformation (which will do the same as in the last cell)</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define your own transformation</span>
+<span class="k">def</span> <span class="nf">my_trafo</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+
+<span class="c1"># we will put the variable manipulation here for more overview</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">*</span><span class="n">pi</span> <span class="c1"># a is now in a*pi</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">my_trafo</span><span class="p">)</span> <span class="c1"># a is now exp((a*pi)**2)</span>
+
+<span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="n">a</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># set the value we want to simulate</span>
+<span class="n">variables</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;a&quot;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+<span class="n">wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Note that you don’t have to use strings as variable names.</div>
+<div class="line">You can use any hashable type except numeric types since those will be
+interpeted as fixed numbers. Here is one example using a combination
+of strings and tuples</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;its a stupid example&quot;</span><span class="p">),</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">circuit</span><span class="o">.</span><span class="n">extract_variables</span><span class="p">())</span>
+<span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">circuit</span><span class="o">.</span><span class="n">extract_variables</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="create-and-simulate-objectives-expectationvalues">
+<h2>Create and Simulate Objectives/Expectationvalues<a class="headerlink" href="#create-and-simulate-objectives-expectationvalues" title="Permalink to this headline">¶</a></h2>
+<p>Within tequila you can define qubit operators which can either be used
+to generate gates and circuits over <code class="docutils literal notranslate"><span class="pre">tq.gates.Rp</span></code>,
+<code class="docutils literal notranslate"><span class="pre">tq.gates.Trotterized</span></code> or <code class="docutils literal notranslate"><span class="pre">tq.gates.GeneralizedRotation</span></code> or as
+Hamiltonians defining the measurements on the quantum experiments.</p>
+<p><code class="docutils literal notranslate"><span class="pre">QCircuit</span></code> and <code class="docutils literal notranslate"><span class="pre">QubitHamiltonian</span></code> objects can be combined to
+expectation values which can be combined and transformed to become more
+general <code class="docutils literal notranslate"><span class="pre">Objectives</span></code> (in tequila an expectation value is already
+objective in its simplest form).</p>
+<div class="line-block">
+<div class="line">We will start by demonstrating this with a simple one qubit example.</div>
+<div class="line">We will take the one qubit rotation gate from previous sections and
+use a simple pauli operator as hamiltonian. So our expectation value
+will be:</div>
+</div>
+<div class="math notranslate nohighlight">
+\[E = \langle\Psi(a)\rvert H \lvert\Psi(a) \rangle = \langle0\rvert U^\dagger\left(a\right) H  U\left(a\right) \lvert 0\rangle = \langle H \rangle_{ U\left(a\right)}\]</div>
+<p>where <span class="math notranslate nohighlight">\(H=\sigma_x=X\)</span> and <span class="math notranslate nohighlight">\(U\left(a\right)=Ry(a)\)</span></p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># the circuit</span>
+<span class="n">U</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="c1"># the Hamiltonian</span>
+<span class="n">H</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="c1"># the Objective (a single expectation value)</span>
+<span class="n">E</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">ExpectationValue</span><span class="p">(</span><span class="n">H</span><span class="o">=</span><span class="n">H</span><span class="p">,</span> <span class="n">U</span><span class="o">=</span><span class="n">U</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hamiltonian &quot;</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># better not use it for large objectives</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Lets simulate the objective for some choices of our variable.</div>
+<div class="line">Note that the simulate function is the same as before for the
+circuits, you can use the <code class="docutils literal notranslate"><span class="pre">backend</span></code> and <code class="docutils literal notranslate"><span class="pre">sample</span></code> key in the same
+way.</div>
+</div>
+<p>Since the objective is defined with parametrized quantum circuits, the
+values of the variables have to be passed down in the same way as
+before.</p>
+<p>Note that not all expectationvalues in the objective need to be
+parametrized and that the parameters don’t need to be the same.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">variables</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+<span class="n">value</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">E</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Objective(</span><span class="si">{}</span><span class="s2">) = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">variables</span><span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">],</span> <span class="n">value</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Here are some more intuitive examples of Hamiltonians.</div>
+<div class="line">Note that those operators are not automatically hermitian.</div>
+<div class="line">You can use the <code class="docutils literal notranslate"><span class="pre">split</span></code> function to get the hermitian and/or
+antihermitian part</div>
+<div class="line">Check also the <code class="docutils literal notranslate"><span class="pre">FAQ</span></code> notebook for some more information.</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pauli Operators can be initialilzed and added/multipled</span>
+<span class="n">H</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span> <span class="o">+</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Y</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Z</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="s2">&quot; is hermitian = &quot;</span><span class="p">,</span> <span class="n">H</span><span class="o">.</span><span class="n">is_hermitian</span><span class="p">())</span>
+
+<span class="n">H</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Z</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">*</span><span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Y</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="s2">&quot; is hermitian = &quot;</span><span class="p">,</span> <span class="n">H</span><span class="o">.</span><span class="n">is_hermitian</span><span class="p">())</span>
+
+<span class="n">hermitian_part</span><span class="p">,</span> <span class="n">anti_hermitian_part</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;hermitian part      = &quot;</span><span class="p">,</span> <span class="n">hermitian_part</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;anti-hermitian part = &quot;</span><span class="p">,</span> <span class="n">anti_hermitian_part</span><span class="p">)</span>
+
+<span class="n">H</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Projector</span><span class="p">(</span><span class="s2">&quot;|00&gt;&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="s2">&quot; is hermitian = &quot;</span><span class="p">,</span> <span class="n">H</span><span class="o">.</span><span class="n">is_hermitian</span><span class="p">())</span>
+
+<span class="n">H</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Projector</span><span class="p">(</span><span class="s2">&quot;1.0*|00&gt; + 1.0*|11&gt;&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="s2">&quot; is hermitian = &quot;</span><span class="p">,</span> <span class="n">H</span><span class="o">.</span><span class="n">is_hermitian</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Lets proceed with our previous simple example of a single qubit rotation
+and a single X as Hamiltonian.</p>
+<p>If you intent to evaluate the objective with lots of different choices
+of the variables it is useful to compile it. A compiled objective is
+tied to a specific backend and can be used like a function taking a
+dictionary of variables.</p>
+<p>The compile function takes also the <code class="docutils literal notranslate"><span class="pre">backend</span></code> and <code class="docutils literal notranslate"><span class="pre">sample</span></code> keyword.
+If no backend is chosen tequila will pick automatically from the
+installed ones. If you intent to sample your objective instead of fully
+simulate it you can give a dummy integer of samples to <code class="docutils literal notranslate"><span class="pre">compile</span></code>. This
+will help tequila pick the best available backend but will not fix the
+number of samples for future evaluations.</p>
+<p>Compiling first will make your code faster since then the abstract
+circuits do not need to be re-translated to the backend every time.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">compiled_objective</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+
+<span class="c1"># the compiled objective can now be used like a function</span>
+<span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]:</span>
+    <span class="n">evaluated</span> <span class="o">=</span> <span class="n">compiled_objective</span><span class="p">(</span><span class="n">variables</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">})</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;objective(</span><span class="si">{}</span><span class="s2">) = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">evaluated</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Lets simulate our compiled objetive and plot the results</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">compile_and_evaluate</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="mi">2</span><span class="o">*</span><span class="n">pi</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+    <span class="n">compiled_objective</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">)</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">start</span> <span class="o">+</span> <span class="p">(</span><span class="n">stop</span><span class="o">-</span><span class="n">start</span><span class="p">)</span><span class="o">*</span><span class="n">step</span><span class="o">/</span><span class="n">steps</span> <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">steps</span><span class="p">)]</span>
+    <span class="n">evaluated</span> <span class="o">=</span> <span class="p">[</span><span class="n">compiled_objective</span><span class="p">(</span><span class="n">variables</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">},</span> <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">evaluated</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">values</span><span class="p">,</span> <span class="n">evaluated</span>
+
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">E</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Lets do the same again with a more complicated objective.</div>
+<div class="line">Lets take the square of our original expectation value and shift it by
+1</div>
+</div>
+<div class="math notranslate nohighlight">
+\[L = E^2 + 1\]</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># this is the new objective</span>
+<span class="n">L</span> <span class="o">=</span> <span class="n">E</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">L</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>And the same, but shifted by <span class="math notranslate nohighlight">\(e^{-a^2}\)</span>, so the shift is not
+constant and will only affect <span class="math notranslate nohighlight">\(L\)</span> for small values of <span class="math notranslate nohighlight">\(a\)</span>.</p>
+<div class="math notranslate nohighlight">
+\[L = E^2 + e^{-a^2}\]</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># For completeness we initialize the variable again here</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="c1"># to be sure that the variable is the same as the one from the objective we could also do</span>
+<span class="c1"># a = objective.extract_variables()[0]</span>
+
+<span class="c1"># this is the new objective</span>
+<span class="n">L</span> <span class="o">=</span> <span class="n">E</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">)</span>
+
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">L</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Now we also transform the expectation value in a more complicated way.
+It works the same way as it works for variables</p>
+<div class="math notranslate nohighlight">
+\[L = exp(-E^2) + exp(-a^2)E\]</div>
+<div class="line-block">
+<div class="line">Note that the original expectation value now enters two times into the
+objective.</div>
+<div class="line">But tequila will only evaluate it once per run.</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># For completeness we initialize the variable again here</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="c1"># to be sure that the variable is the same as the one from the objective we could also do</span>
+<span class="c1"># a = objective.extract_variables()[0]</span>
+
+<span class="c1"># this is the new objective</span>
+<span class="n">L</span> <span class="o">=</span> <span class="n">E</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">)</span><span class="o">*</span><span class="n">E</span>
+
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">L</span><span class="p">);</span>
+
+<span class="c1"># check how many (unique) expectation values are in the objective</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">At last, lets take our last objective but sample from it. This means
+that in the evaluation of the expectation value the measurements on
+the underlying circuit are sampled.</div>
+<div class="line">Feel free to play with the number of samples.</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># For completeness we initialize the variable again here</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="c1"># to be sure that the variable is the same as the one from the objective we could also do</span>
+<span class="c1"># a = objective.extract_variables()[0]</span>
+
+<span class="c1"># this is the new objective</span>
+<span class="n">L</span> <span class="o">=</span> <span class="n">E</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">)</span><span class="o">*</span><span class="n">E</span>
+
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">);</span>
+
+<span class="c1"># check how many (unique) expectation values are in the objective</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="derivatives-of-objectives">
+<h3>Derivatives of Objectives<a class="headerlink" href="#derivatives-of-objectives" title="Permalink to this headline">¶</a></h3>
+<p>Derivatives of objectives are objectives themselves. They can be simply
+created by applying <code class="docutils literal notranslate"><span class="pre">tq.grad</span></code> on a objective.</p>
+<p>Lets take first objective and plot its derivative. The first is easy to
+check since the derivative should just be the shifted sinus curve. Feel
+free to change the objective and play around.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">L</span> <span class="o">=</span> <span class="n">E</span>
+
+<span class="n">dLda</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="n">d2Ld2a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">dLda</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Objective:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">L</span><span class="p">)</span>
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">L</span><span class="p">);</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;First Derivative:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="n">dLda</span><span class="p">)</span>
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">dLda</span><span class="p">);</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Second Derivative:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="n">d2Ld2a</span><span class="p">)</span>
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">d2Ld2a</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># another example</span>
+<span class="n">L</span> <span class="o">=</span> <span class="n">E</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">)</span><span class="o">*</span><span class="n">E</span>
+<span class="n">dLda</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="n">d2Ld2a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">dLda</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Objective:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">L</span><span class="p">)</span>
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">L</span><span class="p">);</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;First Derivative:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="n">dLda</span><span class="p">)</span>
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">dLda</span><span class="p">);</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Second Derivative:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="n">d2Ld2a</span><span class="p">)</span>
+<span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">d2Ld2a</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="optimization-example">
+<h2>Optimization example<a class="headerlink" href="#optimization-example" title="Permalink to this headline">¶</a></h2>
+<p>At last we will create a small toy objective and use the phoenics
+optimizer to find local minima.</p>
+<p>As expectation value we will use an entangled circuit with one CNOT gate
+and one Ry rotation and an arbitrary chosen Hamiltonian.</p>
+<p>Our objective is defined as</p>
+<div class="math notranslate nohighlight">
+\[\displaystyle
+L = \langle H \rangle_{U(a)} + e^{-\left(\frac{\partial}{\partial a} \langle H \rangle_{U_{a}}\right)^2 }\]</div>
+<p>with</p>
+<div class="math notranslate nohighlight">
+\[H = -X(0)X(1) + \frac{1}{2}Z(0) + Y(1)\]</div>
+<p>and</p>
+<div class="math notranslate nohighlight">
+\[U = e^{-\frac{e^{-a^2}}{2} Y(0)} \text{CNOT}(0,1)\]</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># All in one</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="n">U</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">)</span><span class="o">*</span><span class="n">pi</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">U</span> <span class="o">+=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">H</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="s2">&quot;-1.0*X(0)X(1)+0.5Z(0)+Y(1)&quot;</span><span class="p">)</span>
+
+<span class="n">E</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">ExpectationValue</span><span class="p">(</span><span class="n">H</span><span class="o">=</span><span class="n">H</span><span class="p">,</span> <span class="n">U</span><span class="o">=</span><span class="n">U</span><span class="p">)</span>
+<span class="n">dE</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">E</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span>
+
+<span class="n">objective</span> <span class="o">=</span> <span class="n">E</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="n">dE</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">)</span>
+
+<span class="n">param</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">compile_and_evaluate</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">start</span> <span class="o">=-</span><span class="mi">5</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="mi">5</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We need to specify the phoenics config here</span>
+<span class="c1"># the only change is that we are changing the interval for periodic boundary conditions to [-3,3] istead df [0, 2pi]</span>
+<span class="c1"># not that the original interval would also work here</span>
+<span class="c1"># we are restricting the search to 10 iterations here</span>
+<span class="c1"># check out the notebook on phoenics for more information</span>
+<span class="n">phoenics_config</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;general&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;auto_desc_gen&#39;</span><span class="p">:</span> <span class="s1">&#39;False&#39;</span><span class="p">,</span> <span class="s1">&#39;batches&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;boosted&#39;</span><span class="p">:</span> <span class="s1">&#39;False&#39;</span><span class="p">,</span> <span class="s1">&#39;parallel&#39;</span><span class="p">:</span> <span class="s1">&#39;False&#39;</span><span class="p">},</span> <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="p">[{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">a</span><span class="p">,</span> <span class="s1">&#39;periodic&#39;</span><span class="p">:</span> <span class="s1">&#39;True&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;continuous&#39;</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">3.</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">3.</span><span class="p">}],</span> <span class="s1">&#39;objectives&#39;</span><span class="p">:</span> <span class="p">[{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Energy&#39;</span><span class="p">,</span> <span class="s1">&#39;goal&#39;</span><span class="p">:</span> <span class="s1">&#39;minimize&#39;</span><span class="p">}]}</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;phoenics&#39;</span><span class="p">,</span> <span class="n">objective</span> <span class="o">=</span> <span class="n">objective</span><span class="p">,</span> <span class="n">phoenics_config</span> <span class="o">=</span> <span class="n">phoenics_config</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># plot the points phoenics visited</span>
+<span class="c1"># the information is in the optimizer history</span>
+<span class="c1"># we have &#39;angles&#39; and `energies&#39; giving us information about every evaluation</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="n">points</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">energies</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">energies</span>
+<span class="n">angles</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">angles</span>
+<span class="k">for</span> <span class="n">it</span><span class="p">,</span> <span class="n">energy</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">energies</span><span class="p">):</span>
+    <span class="n">angle</span> <span class="o">=</span> <span class="n">angles</span><span class="p">[</span><span class="n">it</span><span class="p">][</span><span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)]</span>
+    <span class="n">points</span><span class="p">[</span><span class="n">angle</span><span class="p">]</span> <span class="o">=</span> <span class="n">energy</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">points</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">points</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">marker</span> <span class="o">=</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;phoenics&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>In case you want to play with different optimizers (see also the
+SciPyOptimizers and FAQ notebooks)</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">tq</span><span class="o">.</span><span class="n">show_available_optimizers</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

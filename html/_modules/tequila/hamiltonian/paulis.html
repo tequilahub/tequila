@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tequila.hamiltonian.paulis &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../../../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../../../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="../../.././tequila_presentation.html">Overview</a></li>
+                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href="../../.././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../package/index.html">Tequila Library Reference</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+              
+            
+            
+            
+            
+              <li class="hidden-sm"></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <h1>Source code for tequila.hamiltonian.paulis</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Convenience initialization</span>
+<span class="sd">of Pauli Operators. Resulting structures can be added and multiplied together.</span>
+<span class="sd">Currently uses OpenFermion as backend (QubitOperators)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+<span class="kn">from</span> <span class="nn">tequila.hamiltonian</span> <span class="kn">import</span> <span class="n">QubitHamiltonian</span>
+<span class="kn">from</span> <span class="nn">tequila</span> <span class="kn">import</span> <span class="n">BitString</span><span class="p">,</span> <span class="n">TequilaException</span>
+<span class="kn">from</span> <span class="nn">tequila.wavefunction.qubit_wavefunction</span> <span class="kn">import</span> <span class="n">QubitWaveFunction</span>
+<span class="kn">from</span> <span class="nn">tequila.tools</span> <span class="kn">import</span> <span class="n">list_assignement</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+
+<div class="viewcode-block" id="pauli"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.pauli.html#tequila.hamiltonian.paulis.pauli">[docs]</a><span class="k">def</span> <span class="nf">pauli</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    qubit: int or list of ints</span>
+
+<span class="sd">    type: str or int or list of string or int:</span>
+<span class="sd">        define if X, Y or Z (0,1,2)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">assign_axis</span><span class="p">(</span><span class="n">axis</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">axis_to_string</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">axis_to_string</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="s2">&quot;upper&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">axis</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TequilaException</span><span class="p">(</span><span class="s2">&quot;unknown initialization for pauli operator: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">axis</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">):</span>
+        <span class="n">qubit</span> <span class="o">=</span> <span class="p">[</span><span class="n">qubit</span><span class="p">]</span>
+        <span class="nb">type</span> <span class="o">=</span> <span class="p">[</span><span class="nb">type</span><span class="p">]</span>
+
+    <span class="nb">type</span> <span class="o">=</span> <span class="p">[</span><span class="n">assign_axis</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">type</span><span class="p">]</span>
+
+    <span class="n">init_string</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}{}</span><span class="s2"> &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">q</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">qubit</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="n">string</span><span class="o">=</span><span class="n">init_string</span><span class="p">,</span> <span class="n">openfermion_format</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="X"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.X.html#tequila.hamiltonian.paulis.X">[docs]</a><span class="k">def</span> <span class="nf">X</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize a single Pauli X Operator</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    qubit: int or list of ints</span>
+<span class="sd">        qubit(s) on which the operator should act</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qubit</span> <span class="o">=</span> <span class="n">list_assignement</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pauli</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">qubit</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;X&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">qubit</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Y"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.Y.html#tequila.hamiltonian.paulis.Y">[docs]</a><span class="k">def</span> <span class="nf">Y</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize a single Pauli Y Operator</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    qubit: int or list of ints</span>
+<span class="sd">        qubit(s) on which the operator should act</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qubit</span> <span class="o">=</span> <span class="n">list_assignement</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pauli</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">qubit</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Y&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">qubit</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Z"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.Z.html#tequila.hamiltonian.paulis.Z">[docs]</a><span class="k">def</span> <span class="nf">Z</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize a single Pauli Z Operator</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    qubit: int or list of ints</span>
+<span class="sd">        qubit(s) on which the operator should act</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qubit</span> <span class="o">=</span> <span class="n">list_assignement</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pauli</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">qubit</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Z&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">qubit</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="I"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.I.html#tequila.hamiltonian.paulis.I">[docs]</a><span class="k">def</span> <span class="nf">I</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize unit Operator</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">unit</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Zero"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.Zero.html#tequila.hamiltonian.paulis.Zero">[docs]</a><span class="k">def</span> <span class="nf">Zero</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize 0 Operator</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Qp"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.Qp.html#tequila.hamiltonian.paulis.Qp">[docs]</a><span class="k">def</span> <span class="nf">Qp</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Initialize</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \\frac{1}{2} \\left( 1 - \\sigma_z \\right)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    qubit: int or list of ints</span>
+<span class="sd">        qubit(s) on which the operator should act</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qubit</span> <span class="o">=</span> <span class="n">list_assignement</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">I</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">qubit</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">*=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">I</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">q</span><span class="p">)</span> <span class="o">+</span> <span class="n">Z</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">q</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Qm"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.Qm.html#tequila.hamiltonian.paulis.Qm">[docs]</a><span class="k">def</span> <span class="nf">Qm</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Initialize</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \\frac{1}{2} \\left( 1 + \\sigma_z \\right)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    qubit: int or list of ints</span>
+<span class="sd">        qubit(s) on which the operator should act</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qubit</span> <span class="o">=</span> <span class="n">list_assignement</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">I</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">qubit</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">*=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">I</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">q</span><span class="p">)</span> <span class="o">-</span> <span class="n">Z</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">q</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Sp"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.Sp.html#tequila.hamiltonian.paulis.Sp">[docs]</a><span class="k">def</span> <span class="nf">Sp</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Initialize</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \\frac{1}{2} \\left( \\sigma_x + i\\sigma_y \\right)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    qubit: int or list of ints</span>
+<span class="sd">        qubit(s) on which the operator should act</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qubit</span> <span class="o">=</span> <span class="n">list_assignement</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">I</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">qubit</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">*=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">q</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.</span><span class="n">j</span> <span class="o">*</span> <span class="n">Y</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">q</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Sm"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.Sm.html#tequila.hamiltonian.paulis.Sm">[docs]</a><span class="k">def</span> <span class="nf">Sm</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Initialize</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \\frac{1}{2} \\left( \\sigma_x + i \\sigma_y \\right)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    qubit: int or list of ints</span>
+<span class="sd">        qubit(s) on which the operator should act</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qubit</span> <span class="o">=</span> <span class="n">list_assignement</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">I</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">qubit</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">*=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">q</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.</span><span class="n">j</span> <span class="o">*</span> <span class="n">Y</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">q</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Projector"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.Projector.html#tequila.hamiltonian.paulis.Projector">[docs]</a><span class="k">def</span> <span class="nf">Projector</span><span class="p">(</span><span class="n">wfn</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">n_qubits</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Initialize a projector given by</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        H = \\lvert \\Psi \\rangle \\langle \\Psi \\rvert</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    wfn: QubitWaveFunction or int, or string, or array :</span>
+<span class="sd">        The wavefunction onto which the projector projects</span>
+<span class="sd">        Needs to be passed down as tequilas QubitWaveFunction type</span>
+<span class="sd">        See the documentation on how to initialize a QubitWaveFunction from</span>
+<span class="sd">        integer, string or array (can also be passed down diretly as one of those types)</span>
+
+
+<span class="sd">    threshold: float: (Default value = 0.0)</span>
+<span class="sd">        neglect small parts of the operator</span>
+
+<span class="sd">    n_qubits: only needed when an integer is given as wavefunction</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">wfn</span> <span class="o">=</span> <span class="n">QubitWaveFunction</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">wfn</span><span class="p">,</span> <span class="n">n_qubits</span><span class="o">=</span><span class="n">n_qubits</span><span class="p">)</span>
+
+    <span class="n">H</span> <span class="o">=</span> <span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k1</span><span class="p">,</span> <span class="n">v1</span> <span class="ow">in</span> <span class="n">wfn</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">k2</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="n">wfn</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">conjugate</span><span class="p">()</span> <span class="o">*</span> <span class="n">v2</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="n">threshold</span><span class="p">):</span>
+                <span class="n">H</span> <span class="o">+=</span> <span class="n">c</span> <span class="o">*</span> <span class="n">decompose_transfer_operator</span><span class="p">(</span><span class="n">bra</span><span class="o">=</span><span class="n">k1</span><span class="p">,</span> <span class="n">ket</span><span class="o">=</span><span class="n">k2</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="p">(</span><span class="n">H</span><span class="o">.</span><span class="n">is_hermitian</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">H</span></div>
+
+
+<div class="viewcode-block" id="KetBra"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.KetBra.html#tequila.hamiltonian.paulis.KetBra">[docs]</a><span class="k">def</span> <span class="nf">KetBra</span><span class="p">(</span><span class="n">ket</span><span class="p">:</span> <span class="n">QubitWaveFunction</span><span class="p">,</span> <span class="n">bra</span><span class="p">:</span> <span class="n">QubitWaveFunction</span><span class="p">,</span> <span class="n">hermitian</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.e-6</span><span class="p">,</span>
+           <span class="n">n_qubits</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Initialize the general KetBra operator</span>
+<span class="sd">    .. math::</span>
+
+<span class="sd">       H = \\lvert ket \\rangle \\langle bra \\rvert</span>
+
+<span class="sd">    e.g.</span>
+<span class="sd">    wfn1 = tq.QubitWaveFunction.from_string(&quot;1.0*|00&gt; + 1.0*|11&gt;&quot;).normalize()</span>
+<span class="sd">    wfn2 = tq.QubitWaveFunction.from_string(&quot;1.0*|00&gt;&quot;)</span>
+<span class="sd">    operator = tq.paulis.KetBra(ket=wfn1, bra=wfn1)</span>
+<span class="sd">    initializes the transfer operator from the all-zero state to a Bell state</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ket: QubitWaveFunction:</span>
+<span class="sd">         QubitWaveFunction which defines the ket element</span>
+<span class="sd">         can also be given as string or array or integer</span>
+<span class="sd">    bra: QubitWaveFunction:</span>
+<span class="sd">         QubitWaveFunction which defines the bra element</span>
+<span class="sd">         can also be given as string or array or integer</span>
+<span class="sd">    hermitian: bool: (Default False)</span>
+<span class="sd">         if True the hermitian version H + H^\dagger is returned</span>
+<span class="sd">    threshold: float: (Default 1.e-6)</span>
+<span class="sd">         elements smaller than the threshold will be ignored</span>
+<span class="sd">    n_qubits: only needed if ket and/or bra are passed down as integers</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QubitHamiltonian:</span>
+<span class="sd">        a tequila QubitHamiltonian (not necessarily hermitian) representing the KetBra operator desired.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
+    <span class="n">ket</span> <span class="o">=</span> <span class="n">QubitWaveFunction</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">ket</span><span class="p">,</span> <span class="n">n_qubits</span><span class="o">=</span><span class="n">n_qubits</span><span class="p">)</span>
+    <span class="n">bra</span> <span class="o">=</span> <span class="n">QubitWaveFunction</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">bra</span><span class="p">,</span> <span class="n">n_qubits</span><span class="o">=</span><span class="n">n_qubits</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k1</span><span class="p">,</span> <span class="n">v1</span> <span class="ow">in</span> <span class="n">bra</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">k2</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="n">ket</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">conjugate</span><span class="p">()</span> <span class="o">*</span> <span class="n">v2</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="n">threshold</span><span class="p">):</span>
+                <span class="n">H</span> <span class="o">+=</span> <span class="n">c</span> <span class="o">*</span> <span class="n">decompose_transfer_operator</span><span class="p">(</span><span class="n">bra</span><span class="o">=</span><span class="n">k1</span><span class="p">,</span> <span class="n">ket</span><span class="o">=</span><span class="n">k2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">hermitian</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">H</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">H</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="decompose_transfer_operator"><a class="viewcode-back" href="../../../package/hamiltonian/paulis/tequila.hamiltonian.paulis.decompose_transfer_operator.html#tequila.hamiltonian.paulis.decompose_transfer_operator">[docs]</a><span class="k">def</span> <span class="nf">decompose_transfer_operator</span><span class="p">(</span><span class="n">ket</span><span class="p">:</span> <span class="n">BitString</span><span class="p">,</span> <span class="n">bra</span><span class="p">:</span> <span class="n">BitString</span><span class="p">,</span> <span class="n">qubits</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitHamiltonian</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Create the operator</span>
+
+<span class="sd">    Note that this is operator is not necessarily hermitian</span>
+<span class="sd">    So be careful when using it as a generator for gates</span>
+
+<span class="sd">    e.g.</span>
+<span class="sd">    decompose_transfer_operator(ket=&quot;01&quot;, bra=&quot;10&quot;, qubits=[2,3])</span>
+<span class="sd">    gives the operator</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \\lvert 01 \\rangle \\langle 10 \\rvert_{2,3}</span>
+
+<span class="sd">    acting on qubits 2 and 3</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ket: pass an integer, string, or tequila BitString</span>
+<span class="sd">    bra: pass an integer, string, or tequila BitString</span>
+<span class="sd">    qubits: pass the qubits onto which the operator acts</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">opmap</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="n">Qp</span><span class="p">,</span>
+        <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="n">Sp</span><span class="p">,</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="n">Sm</span><span class="p">,</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="n">Qm</span>
+    <span class="p">}</span>
+
+    <span class="n">nbits</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">qubits</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">nbits</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">qubits</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bra</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">bra</span> <span class="o">=</span> <span class="n">BitString</span><span class="o">.</span><span class="n">from_int</span><span class="p">(</span><span class="n">integer</span><span class="o">=</span><span class="n">bra</span><span class="p">,</span> <span class="n">nbits</span><span class="o">=</span><span class="n">nbits</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ket</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">ket</span> <span class="o">=</span> <span class="n">BitString</span><span class="o">.</span><span class="n">from_int</span><span class="p">(</span><span class="n">integer</span><span class="o">=</span><span class="n">ket</span><span class="p">,</span> <span class="n">nbits</span><span class="o">=</span><span class="n">nbits</span><span class="p">)</span>
+
+    <span class="n">b_arr</span> <span class="o">=</span> <span class="n">bra</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">k_arr</span> <span class="o">=</span> <span class="n">ket</span><span class="o">.</span><span class="n">array</span>
+    <span class="k">assert</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">b_arr</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">k_arr</span><span class="p">))</span>
+    <span class="n">n_qubits</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">k_arr</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">qubits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">qubits</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_qubits</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="p">(</span><span class="n">n_qubits</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">qubits</span><span class="p">))</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">QubitHamiltonian</span><span class="o">.</span><span class="n">unit</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">b_arr</span><span class="p">):</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">k_arr</span><span class="p">[</span><span class="n">q</span><span class="p">]</span>
+        <span class="n">result</span> <span class="o">*=</span> <span class="n">opmap</span><span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">b</span><span class="p">)](</span><span class="n">qubit</span><span class="o">=</span><span class="n">qubits</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+</pre></div>
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

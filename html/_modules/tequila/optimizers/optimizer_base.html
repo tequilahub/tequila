@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tequila.optimizers.optimizer_base &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../../../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../../../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="../../.././tequila_presentation.html">Overview</a></li>
+                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href="../../.././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../package/index.html">Tequila Library Reference</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+              
+            
+            
+            
+            
+              <li class="hidden-sm"></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <h1>Source code for tequila.optimizers.optimizer_base</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Base class for Optimizers.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">typing</span><span class="o">,</span> <span class="nn">numbers</span><span class="o">,</span> <span class="nn">copy</span><span class="o">,</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">tequila.utils.exceptions</span> <span class="kn">import</span> <span class="n">TequilaException</span><span class="p">,</span> <span class="n">TequilaWarning</span>
+<span class="kn">from</span> <span class="nn">tequila.simulators.simulator_api</span> <span class="kn">import</span> <span class="nb">compile</span><span class="p">,</span> <span class="n">pick_backend</span>
+<span class="kn">from</span> <span class="nn">tequila.objective</span> <span class="kn">import</span> <span class="n">Objective</span>
+<span class="kn">from</span> <span class="nn">tequila.circuit.gradient</span> <span class="kn">import</span> <span class="n">grad</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span> <span class="nn">tequila.objective.objective</span> <span class="kn">import</span> <span class="n">assign_variable</span><span class="p">,</span> <span class="n">Variable</span><span class="p">,</span> <span class="n">format_variable_dictionary</span><span class="p">,</span> <span class="n">format_variable_list</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+
+<span class="k">class</span> <span class="nc">TequilaOptimizerException</span><span class="p">(</span><span class="n">TequilaException</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">OptimizerHistory</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class representing the history of optimizers over time. Has a variety of convenience functions attached to it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">iterations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">energies</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energies</span><span class="p">)</span>
+
+    <span class="c1"># history of all true iterations (epochs)</span>
+    <span class="n">energies</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">gradients</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">angles</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="c1"># history of all function evaluations</span>
+    <span class="n">energies_calls</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">gradients_calls</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">angles_calls</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        magic method for convenient combination of history objects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">OptimizerHistory</span><span class="p">()</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">energies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">energies</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">energies</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">gradients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gradients</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">gradients</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">angles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">angles</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">angles</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="fm">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        magic method for convenient in place combination of history objects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energies</span> <span class="o">+=</span> <span class="n">other</span><span class="o">.</span><span class="n">energies</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gradients</span> <span class="o">+=</span> <span class="n">other</span><span class="o">.</span><span class="n">gradients</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angles</span> <span class="o">+=</span> <span class="n">other</span><span class="o">.</span><span class="n">angles</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">extract_energies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        convenience function to get the energies back as a dictionary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">e</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energies</span><span class="p">)}</span>
+
+    <span class="k">def</span> <span class="nf">extract_gradients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        convenience function to get the gradients of some variable out of the history.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        key: str:</span>
+<span class="sd">            the name of the variable whose gradients are sought</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict:</span>
+<span class="sd">            a dictionary, representing the gradient of variable &#39;key&#39; over time.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">gradients</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gradients</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+                <span class="n">gradients</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">key</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">gradients</span>
+
+    <span class="k">def</span> <span class="nf">extract_angles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        convenience function to get the value of some variable out of the history.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        key: str:</span>
+<span class="sd">            name of the variable whose values are sought</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict:</span>
+<span class="sd">            a dictionary, representing the value of variable &#39;key&#39; over time.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">angles</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angles</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+                <span class="n">angles</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">key</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">angles</span>
+
+    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+             <span class="nb">property</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s1">&#39;energies&#39;</span><span class="p">,</span>
+             <span class="n">key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">baselines</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience function to plot the progress of the optimizer over time.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        property: (list of) str: Default = &#39;energies&#39;</span>
+<span class="sd">            which property (eg angles, energies, gradients) to plot.</span>
+<span class="sd">            Default: plot energies over time.</span>
+<span class="sd">        key: str, optional:</span>
+<span class="sd">            if property is &#39;angles&#39; or &#39;gradients&#39;, key allows you to plot just an individual variables&#39; property.</span>
+<span class="sd">            Default: plot everything</span>
+<span class="sd">        filename, optional:</span>
+<span class="sd">            if give, plot to this file; else, plot to terminal.</span>
+<span class="sd">            Default: plot to terminal.</span>
+<span class="sd">        baselines: dict, optional:</span>
+<span class="sd">            dictionary of plotting axis baseline information.</span>
+<span class="sd">            Default: use whatever matplotlib auto-generates.</span>
+
+<span class="sd">        args:</span>
+<span class="sd">            args.</span>
+<span class="sd">        kwargs:</span>
+<span class="sd">            kwargs.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+        <span class="kn">from</span> <span class="nn">matplotlib.ticker</span> <span class="kn">import</span> <span class="n">MaxNLocator</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="n">integer</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="kn">import</span> <span class="nn">pickle</span>
+
+        <span class="k">if</span> <span class="n">baselines</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">baselines</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">property</span><span class="p">,</span> <span class="s2">&quot;lower&quot;</span><span class="p">):</span>
+            <span class="n">properties</span> <span class="o">=</span> <span class="p">[</span><span class="nb">property</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">properties</span> <span class="o">=</span> <span class="nb">property</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="s1">&#39;labels&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="s1">&#39;label&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="s2">&quot;lower&quot;</span><span class="p">):</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">labels</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">plt</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">plt</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                    <span class="n">f</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">f</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="p">[[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">angles</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()]]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Hashable</span><span class="p">):</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="p">[[</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">key</span><span class="p">)]]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="p">[</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">key</span><span class="p">]</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">properties</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">p</span>
+
+            <span class="k">if</span> <span class="n">p</span> <span class="o">==</span> <span class="s2">&quot;energies&quot;</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;extract_&quot;</span> <span class="o">+</span> <span class="n">p</span><span class="p">)()</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">label</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">label</span><span class="p">),</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;extract_&quot;</span> <span class="o">+</span> <span class="n">p</span><span class="p">)(</span><span class="n">key</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">label</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span>
+                             <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+
+        <span class="n">loc</span> <span class="o">=</span> <span class="s1">&#39;best&#39;</span>
+        <span class="k">if</span> <span class="s1">&#39;loc&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;loc&#39;</span><span class="p">]</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">loc</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span> <span class="o">+</span> <span class="s2">&quot;.pickle&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">))</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="n">filename</span> <span class="o">+</span> <span class="s2">&quot;.pdf&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">OptimizerResults</span><span class="p">:</span>
+
+    <span class="n">energy</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">history</span><span class="p">:</span> <span class="n">OptimizerHistory</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">variables</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">angles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># allow backwards compatibility</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">variables</span>
+
+
+<span class="k">class</span> <span class="nc">Optimizer</span><span class="p">:</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The base optimizer class, from which other optimizers inherit.</span>
+
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    backend:</span>
+<span class="sd">        The quantum backend to use (None means autopick)</span>
+<span class="sd">    maxiter:</span>
+<span class="sd">        Maximum number of iterations to perform.</span>
+<span class="sd">    silent:</span>
+<span class="sd">        whether or not to print during call or on init.</span>
+<span class="sd">    samples:</span>
+<span class="sd">        number of samples to call objectives with during call.</span>
+<span class="sd">    print_level:</span>
+<span class="sd">        Allow customization of printout in derived classes, is set to 0 if silent==True.</span>
+<span class="sd">    save_history:</span>
+<span class="sd">        whether or not to save history.</span>
+<span class="sd">    history:</span>
+<span class="sd">        a history object, saving information during optimization.</span>
+<span class="sd">    noise:</span>
+<span class="sd">        what noise (e.g, a NoiseModel) to apply to simulations during optimization.</span>
+<span class="sd">    device:</span>
+<span class="sd">        the device that sampling (real or emulated) should be performed on.</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">maxiter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">device</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">noise</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">save_history</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                 <span class="n">silent</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">print_level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">99</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        initialize an optimizer.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        backend: str, optional:</span>
+<span class="sd">            a quantum backend to use. None means autopick.</span>
+<span class="sd">        maxiter: int, optional:</span>
+<span class="sd">            maximum number of iterations to performed.</span>
+<span class="sd">            Note: overwrites attribute of same name to 100, not None, if default.</span>
+<span class="sd">        samples: int, optional:</span>
+<span class="sd">            number of samples to simulate measurement of objectives with.</span>
+<span class="sd">            Default: none, i.e full wavefunction simulation.</span>
+<span class="sd">        device: optional:</span>
+<span class="sd">            changeable type. The device on which to perform (or, simulate performing) actual quantum computation.</span>
+<span class="sd">            Default None will use the basic, un-restricted simulators of backend.</span>
+<span class="sd">        noise: optional:</span>
+<span class="sd">            NoiseModel object or str &#39;device&#39;, being either a custom noisemodel or the instruction to use that of</span>
+<span class="sd">            the emulated device.</span>
+<span class="sd">            Default value none means: simulate without any noise.</span>
+<span class="sd">        save_history: bool: Default = True:</span>
+<span class="sd">            whether or not to save history during optimization. Defaults to true.</span>
+<span class="sd">        silent: bool: Default = False:</span>
+<span class="sd">            whether or not to be verbose during iterations of optimization.</span>
+<span class="sd">            False indicates verbosity.</span>
+<span class="sd">        print_level: int: Default = 99:</span>
+<span class="sd">            The degree of verbosity during print. Meaningless on in base.</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">backend</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="n">pick_backend</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span> <span class="n">noise</span><span class="o">=</span><span class="n">noise</span><span class="p">,</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="n">backend</span>
+
+        <span class="k">if</span> <span class="n">maxiter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maxiter</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maxiter</span> <span class="o">=</span> <span class="n">maxiter</span>
+
+        <span class="k">if</span> <span class="n">silent</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">silent</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">silent</span> <span class="o">=</span> <span class="n">silent</span>
+
+        <span class="k">if</span> <span class="n">print_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_level</span> <span class="o">=</span> <span class="mi">99</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_level</span> <span class="o">=</span> <span class="n">print_level</span>
+
+        <span class="k">if</span> <span class="n">silent</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_level</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="n">samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_history</span> <span class="o">=</span> <span class="n">save_history</span>
+        <span class="k">if</span> <span class="n">save_history</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">OptimizerHistory</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">noise</span> <span class="o">=</span> <span class="n">noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+
+    <span class="k">def</span> <span class="nf">reset_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reset the optimizer history.</span>
+
+<span class="sd">        Replace self.history with a blank history.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">OptimizerHistory</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="n">Objective</span><span class="p">,</span>
+                 <span class="n">variables</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Variable</span><span class="p">],</span>
+                 <span class="n">initial_values</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Variable</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizerResults</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize some objective with the optimizer.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        objective: Objective:</span>
+<span class="sd">            The objective to optimize.</span>
+<span class="sd">        variables: list:</span>
+<span class="sd">            which variables to optimize over.</span>
+<span class="sd">        initial_values: dict, optional:</span>
+<span class="sd">            a starting point at which to begin optimization; a dict of variable, number pairs.</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        OptimizerResults instance with &quot;energy&quot; &quot;history&quot; and &quot;variables&quot; as attributes</span>
+<span class="sd">        see inheritors for more details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="n">TequilaOptimizerException</span><span class="p">(</span><span class="s2">&quot;Tried to call BaseClass of Optimizer&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">initialize_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective</span><span class="p">,</span> <span class="n">initial_values</span><span class="p">,</span> <span class="n">variables</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience function to format the variables of some objective recieved in calls to optimizers.</span>
+
+<span class="sd">        Convenience: format variables of an objective and segregrate actives from passives.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        objective: Objective:</span>
+<span class="sd">            the objective being optimized.</span>
+<span class="sd">        initial_values: dict or string:</span>
+<span class="sd">            initial values for the variables of objective, as a dictionary.</span>
+<span class="sd">            if string: can be `zero` or `random`</span>
+<span class="sd">            if callable: custom function that initializes when keys are passed</span>
+<span class="sd">            if None: random initialization between 0 and 2pi (not recommended)</span>
+<span class="sd">        variables: list:</span>
+<span class="sd">            the variables being optimized over.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple:</span>
+<span class="sd">            active_angles, a dict of those variables being optimized.</span>
+<span class="sd">            passive_angles, a dict of those variables NOT being optimized.</span>
+<span class="sd">            variables: formatted list of the variables being optimized.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># bring into right format</span>
+        <span class="n">variables</span> <span class="o">=</span> <span class="n">format_variable_list</span><span class="p">(</span><span class="n">variables</span><span class="p">)</span>
+        <span class="n">initial_values</span> <span class="o">=</span> <span class="n">format_variable_dictionary</span><span class="p">(</span><span class="n">initial_values</span><span class="p">)</span>
+        <span class="n">all_variables</span> <span class="o">=</span> <span class="n">objective</span><span class="o">.</span><span class="n">extract_variables</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">variables</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">variables</span> <span class="o">=</span> <span class="n">all_variables</span>
+        <span class="k">if</span> <span class="n">initial_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">initial_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">all_variables</span><span class="p">}</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">initial_values</span><span class="p">,</span> <span class="s2">&quot;lower&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">initial_values</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;zero&quot;</span><span class="p">:</span>
+                <span class="n">initial_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="mf">0.0</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">all_variables</span><span class="p">}</span>
+            <span class="k">elif</span> <span class="n">initial_values</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;random&quot;</span><span class="p">:</span>
+                <span class="n">initial_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">all_variables</span><span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">TequilaOptimizerException</span><span class="p">(</span><span class="s2">&quot;unknown initialization instruction: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">initial_values</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">callable</span><span class="p">(</span><span class="n">initial_values</span><span class="p">):</span>
+            <span class="n">initial_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">initial_values</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">all_variables</span><span class="p">}</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_values</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">):</span>
+            <span class="n">initial_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">initial_values</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">all_variables</span><span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># autocomplete initial values, warn if you did</span>
+            <span class="n">detected</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">all_variables</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">initial_values</span><span class="p">:</span>
+                    <span class="n">initial_values</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+                    <span class="n">detected</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">detected</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">silent</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;initial_variables given but not complete: Autocompleted with random numbers&quot;</span><span class="p">,</span> <span class="n">TequilaWarning</span><span class="p">)</span>
+
+        <span class="n">active_angles</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">:</span>
+            <span class="n">active_angles</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">initial_values</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
+
+        <span class="n">passive_angles</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">initial_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">active_angles</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">passive_angles</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="k">return</span> <span class="n">active_angles</span><span class="p">,</span> <span class="n">passive_angles</span><span class="p">,</span> <span class="n">variables</span>
+
+    <span class="k">def</span> <span class="nf">compile_objective</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="n">Objective</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience function to wrap over compile; for use by inheritors.</span>
+
+<span class="sd">        Convenience: compile an objective.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        objective: Objective:</span>
+<span class="sd">            an objective to compile.</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Objective:</span>
+<span class="sd">            a compiled Objective. Types vary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="nb">compile</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">,</span>
+                       <span class="n">samples</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">,</span>
+                       <span class="n">backend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span>
+                       <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                       <span class="n">noise</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">noise</span><span class="p">,</span>
+                       <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">compile_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="n">Objective</span><span class="p">,</span>
+                         <span class="n">variables</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Variable</span><span class="p">],</span>
+                         <span class="n">gradient</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span>
+        <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience function to compile gradient objects and relavant types. For use by inheritors.</span>
+
+<span class="sd">        Convenience: build and compile (i.e render callable) the gradient of an objective.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        objective: Objective:</span>
+<span class="sd">            the objective whose gradient is to be calculated.</span>
+<span class="sd">        variables: list:</span>
+<span class="sd">            the variables to take gradients with resepct to.</span>
+<span class="sd">        gradient, optional:</span>
+<span class="sd">            special argument to change what structure is used to calculate the gradient, like numerical, or QNG.</span>
+<span class="sd">            Default: use regular, analytic gradients.</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple:</span>
+<span class="sd">            both the uncompiled and compiled gradients of objective, w.r.t variables.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">gradient</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dO</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">grad</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">,</span> <span class="n">variable</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">}</span>
+            <span class="n">compiled_grad</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compile_objective</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">dO</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">}</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gradient</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Objective</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">gradient</span><span class="o">.</span><span class="n">values</span><span class="p">()]):</span>
+                <span class="n">dO</span> <span class="o">=</span> <span class="n">gradient</span>
+                <span class="n">compiled_grad</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compile_objective</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">dO</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dO</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">compiled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compile_objective</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">)</span>
+                <span class="n">compiled_grad</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">_NumGrad</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">compiled</span><span class="p">,</span> <span class="n">variable</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="o">**</span><span class="n">gradient</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TequilaOptimizerException</span><span class="p">(</span>
+                <span class="s2">&quot;unknown gradient instruction of type </span><span class="si">{}</span><span class="s2"> : </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">gradient</span><span class="p">),</span> <span class="n">gradient</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">dO</span><span class="p">,</span> <span class="n">compiled_grad</span>
+
+    <span class="k">def</span> <span class="nf">compile_hessian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                        <span class="n">variables</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Variable</span><span class="p">],</span>
+                        <span class="n">grad_obj</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Variable</span><span class="p">,</span> <span class="n">Objective</span><span class="p">],</span>
+                        <span class="n">comp_grad_obj</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Variable</span><span class="p">,</span> <span class="n">Objective</span><span class="p">],</span>
+                        <span class="n">hessian</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                        <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience function to compile hessians for optimizers which require it.</span>
+
+<span class="sd">        Convenience: build and compile (i.e render callable) the hessian of an objective.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        variables:</span>
+<span class="sd">            the variables of the hessian.</span>
+<span class="sd">        grad_obj:</span>
+<span class="sd">            the gradient object, to be differentiated once more</span>
+<span class="sd">        comp_grad_obj:</span>
+<span class="sd">            the compiled gradient object, used for further compilation of the hessian.</span>
+<span class="sd">        hessian: optional:</span>
+<span class="sd">            extra information to modulate compilation of the hessian.</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple:</span>
+<span class="sd">            uncompiled and compiled hessian objects, in that order</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dO</span> <span class="o">=</span> <span class="n">grad_obj</span>
+        <span class="n">cdO</span> <span class="o">=</span> <span class="n">comp_grad_obj</span>
+
+        <span class="k">if</span> <span class="n">hessian</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">dO</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">TequilaOptimizerException</span><span class="p">(</span><span class="s2">&quot;Can not combine analytical Hessian with numerical Gradient</span><span class="se">\n</span><span class="s2">&quot;</span>
+                                                <span class="s2">&quot;hessian instruction was: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">hessian</span><span class="p">))</span>
+
+            <span class="n">compiled_hessian</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">ddO</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">:</span>
+                <span class="n">dOk</span> <span class="o">=</span> <span class="n">dO</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">:</span>
+                    <span class="n">ddO</span><span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">)]</span> <span class="o">=</span> <span class="n">grad</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">dOk</span><span class="p">,</span> <span class="n">variable</span><span class="o">=</span><span class="n">l</span><span class="p">)</span>
+                    <span class="n">compiled_hessian</span><span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compile_objective</span><span class="p">(</span><span class="n">ddO</span><span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">)])</span>
+                    <span class="n">ddO</span><span class="p">[(</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span> <span class="o">=</span> <span class="n">ddO</span><span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">)]</span>
+                    <span class="n">compiled_hessian</span><span class="p">[(</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span> <span class="o">=</span> <span class="n">compiled_hessian</span><span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">)]</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hessian</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Objective</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">hessian</span><span class="o">.</span><span class="n">values</span><span class="p">()]):</span>
+                <span class="n">ddO</span> <span class="o">=</span> <span class="n">hessian</span>
+                <span class="n">compiled_hessian</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compile_objective</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">ddO</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span>
+                                    <span class="n">hessian</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ddO</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">compiled_hessian</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">:</span>
+                        <span class="n">compiled_hessian</span><span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">)]</span> <span class="o">=</span> <span class="n">_NumGrad</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">cdO</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">variable</span><span class="o">=</span><span class="n">l</span><span class="p">,</span> <span class="o">**</span><span class="n">hessian</span><span class="p">)</span>
+                        <span class="n">compiled_hessian</span><span class="p">[(</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span> <span class="o">=</span> <span class="n">_NumGrad</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">cdO</span><span class="p">[</span><span class="n">l</span><span class="p">],</span> <span class="n">variable</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="o">**</span><span class="n">hessian</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TequilaOptimizerException</span><span class="p">(</span><span class="s2">&quot;unknown hessian instruction: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">hessian</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">ddO</span><span class="p">,</span> <span class="n">compiled_hessian</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">infostring</span> <span class="o">=</span> <span class="s2">&quot;Optimizer: </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)))</span>
+        <span class="n">infostring</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="si">{:15}</span><span class="s2"> : </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;backend&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">)</span>
+        <span class="n">infostring</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="si">{:15}</span><span class="s2"> : </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;device&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">infostring</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="si">{:15}</span><span class="s2"> : </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;samples&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span>
+        <span class="n">infostring</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="si">{:15}</span><span class="s2"> : </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;save_history&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_history</span><span class="p">)</span>
+        <span class="n">infostring</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="si">{:15}</span><span class="s2"> : </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;noise&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">infostring</span>
+
+
+<span class="k">class</span> <span class="nc">_NumGrad</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; Numerical Gradient object.</span>
+
+<span class="sd">    Should not be used outside of optimizers.</span>
+<span class="sd">    Can&#39;t interact with other tequila structures.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    objective:</span>
+<span class="sd">        the objective whose gradient is to be approximated.</span>
+<span class="sd">    variable:</span>
+<span class="sd">        the variable with respect to which the gradient is taken.</span>
+<span class="sd">    stepsize:</span>
+<span class="sd">        the size of the small constant for shifting.</span>
+<span class="sd">    method: how to approximate the gradient.</span>
+
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    symmetric_two_point_stencil:</span>
+<span class="sd">        get gradient by point + shift, point - shift</span>
+<span class="sd">    forward_two_point_stencil:</span>
+<span class="sd">        get gradient by point + shift, point.</span>
+<span class="sd">    backward_two_point_stencil:</span>
+<span class="sd">        get gradient by point, point -shift</span>
+<span class="sd">    count_expectaionvalues:</span>
+<span class="sd">        convenience; call the count_expectationvalues method of objective</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective</span><span class="p">,</span> <span class="n">variable</span><span class="p">,</span> <span class="n">stepsize</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        objective: Objective:</span>
+<span class="sd">            the objective whose gradient is to be approximated.</span>
+<span class="sd">        variable:</span>
+<span class="sd">            the variable the gradient of objective with respect to which is taken.</span>
+<span class="sd">        stepsize:</span>
+<span class="sd">            the small shift by which to displace variable around a point.</span>
+<span class="sd">        method:</span>
+<span class="sd">            the method by which to approximate the gradient.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objective</span> <span class="o">=</span> <span class="n">objective</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">variable</span> <span class="o">=</span> <span class="n">variable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stepsize</span> <span class="o">=</span> <span class="n">stepsize</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;2-point&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric_two_point_stencil</span>
+        <span class="k">elif</span> <span class="n">method</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;2-point-forward&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward_two_point_stencil</span>
+        <span class="k">elif</span> <span class="n">method</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;2-point-backward&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backward_two_point_stencil</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">symmetric_two_point_stencil</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">vars</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        calculate objective gradient by symmetric shifts about a point.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        obj: Objective:</span>
+<span class="sd">            objective to call.</span>
+<span class="sd">        vars:</span>
+<span class="sd">            variables to feed to the objective.</span>
+<span class="sd">        key:</span>
+<span class="sd">            which variable to shift, i.e, which variable&#39;s gradient is being called.</span>
+<span class="sd">        step:</span>
+<span class="sd">            the size of the shift; a small float.</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float:</span>
+<span class="sd">            the approximated gradient of obj w.r.t var at point vars as a float.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">left</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span>
+        <span class="n">left</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">+=</span> <span class="n">step</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span>
+        <span class="n">right</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">-=</span> <span class="n">step</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">step</span> <span class="o">*</span> <span class="p">(</span><span class="n">obj</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-</span> <span class="n">obj</span><span class="p">(</span><span class="n">right</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">forward_two_point_stencil</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">vars</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        calculate objective gradient by asymmetric upward shfit relative to some point.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        obj: Objective:</span>
+<span class="sd">            objective to call.</span>
+<span class="sd">        vars:</span>
+<span class="sd">            variables to feed to the objective.</span>
+<span class="sd">        key:</span>
+<span class="sd">            which variable to shift, i.e, which variable&#39;s gradient is being called.</span>
+<span class="sd">        step:</span>
+<span class="sd">            the size of the shift; a small float.</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float:</span>
+<span class="sd">            the approximated gradient of obj w.r.t var at point vars as a float.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">left</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span>
+        <span class="n">left</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">+=</span> <span class="n">step</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">step</span> <span class="o">*</span> <span class="p">(</span><span class="n">obj</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-</span> <span class="n">obj</span><span class="p">(</span><span class="n">right</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">backward_two_point_stencil</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">vars</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        calculate objective gradient by asymmetric downward shfit relative to some point.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        obj: Objective:</span>
+<span class="sd">            objective to call.</span>
+<span class="sd">        vars:</span>
+<span class="sd">            variables to feed to the objective.</span>
+<span class="sd">        key:</span>
+<span class="sd">            which variable to shift, i.e, which variable&#39;s gradient is being called.</span>
+<span class="sd">        step:</span>
+<span class="sd">            the size of the shift; a small float.</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        the approximated gradient of obj w.r.t var at point vars as a float.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">left</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span>
+        <span class="n">right</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">-=</span> <span class="n">step</span>
+        <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">step</span> <span class="o">*</span> <span class="p">(</span><span class="n">obj</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-</span> <span class="n">obj</span><span class="p">(</span><span class="n">right</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        convenience function to call self.method, e.g one of the staticmethods of this class.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        variables:</span>
+<span class="sd">            the variables constitutive of the point at which numerical gradients of self.objective are to be taken</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        type:</span>
+<span class="sd">            generally, float, the result of the numerical gradient.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objective</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">variable</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stepsize</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">count_expectationvalues</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        how many expectationvalues are in self.objective?</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int:</span>
+<span class="sd">            how many expectationvalues are in self.objective</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective</span><span class="o">.</span><span class="n">count_expectationvalues</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

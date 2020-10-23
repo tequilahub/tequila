@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tequila.circuit.gates &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../../../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../../../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="../../.././tequila_presentation.html">Overview</a></li>
+                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href="../../.././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../package/index.html">Tequila Library Reference</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+              
+            
+            
+            
+            
+              <li class="hidden-sm"></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <h1>Source code for tequila.circuit.gates</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">tequila.circuit.circuit</span> <span class="kn">import</span> <span class="n">QCircuit</span>
+<span class="kn">from</span> <span class="nn">tequila.objective.objective</span> <span class="kn">import</span> <span class="n">Variable</span><span class="p">,</span> <span class="n">assign_variable</span>
+<span class="kn">from</span> <span class="nn">tequila.circuit._gates_impl</span> <span class="kn">import</span> <span class="n">RotationGateImpl</span><span class="p">,</span> <span class="n">PowerGateImpl</span><span class="p">,</span> <span class="n">QGateImpl</span><span class="p">,</span> \
+    <span class="n">ExponentialPauliGateImpl</span><span class="p">,</span> <span class="n">TrotterizedGateImpl</span><span class="p">,</span> <span class="n">GaussianGateImpl</span><span class="p">,</span> <span class="n">PhaseGateImpl</span><span class="p">,</span> <span class="n">TrotterParameters</span>
+<span class="kn">import</span> <span class="nn">typing</span><span class="o">,</span> <span class="nn">numbers</span>
+<span class="kn">from</span> <span class="nn">tequila.hamiltonian.qubit_hamiltonian</span> <span class="kn">import</span> <span class="n">PauliString</span><span class="p">,</span> <span class="n">QubitHamiltonian</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+
+
+<div class="viewcode-block" id="wrap_gate"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.wrap_gate.html#tequila.circuit.gates.wrap_gate">[docs]</a><span class="k">def</span> <span class="nf">wrap_gate</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">doit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">doit</span></div>
+
+
+<div class="viewcode-block" id="RotationGate"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.RotationGate.html#tequila.circuit.gates.RotationGate">[docs]</a><span class="k">def</span> <span class="nf">RotationGate</span><span class="p">(</span><span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">angle</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Hashable</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">],</span> <span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+                 <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize an abstract rotation gate.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Initialize an abstract rotation gate of the form</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        R_{\\text{axis}}(\\text{angle}) = e^{-i\\frac{\\text{angle}}{2} \\sigma_{\\text{axis}}}</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    axis</span>
+<span class="sd">        integer 1 for x, 2 for y, 3 for z</span>
+<span class="sd">    angle</span>
+<span class="sd">        Hashable type (will be treated as Variable) or Numeric type (static angle)</span>
+<span class="sd">    target</span>
+<span class="sd">        integer or list of integers</span>
+<span class="sd">    control</span>
+<span class="sd">        integer or list of integers</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object with this RotationGate</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">RotationGateImpl</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="PowerGate"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.PowerGate.html#tequila.circuit.gates.PowerGate">[docs]</a><span class="k">def</span> <span class="nf">PowerGate</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">power</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize a (potentially parametrized) gate which is supported on the backend.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name: str</span>
+<span class="sd">        name of the gate on the backend</span>
+<span class="sd">    target</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    power</span>
+<span class="sd">        numeric type (fixed exponent) or hashable type (parametrized exponent)</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of int</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">PowerGateImpl</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Phase"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Phase.html#tequila.circuit.gates.Phase">[docs]</a><span class="k">def</span> <span class="nf">Phase</span><span class="p">(</span><span class="n">phi</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Hashable</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">],</span> <span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+          <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize an abstract phase gate.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Initialize an abstract phase gate which acts as</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        S(\\phi) = \\begin{pmatrix} 1 &amp; 0 \\\\ 0 &amp; e^{i\\phi} \\end{pmatrix}</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    phi</span>
+<span class="sd">        defines the phase, can be numeric type (static gate) or hashable non-numeric type (parametrized gate)</span>
+<span class="sd">    target</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of int</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">PhaseGateImpl</span><span class="p">(</span><span class="n">phase</span><span class="o">=</span><span class="n">phi</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="S"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.S.html#tequila.circuit.gates.S">[docs]</a><span class="k">def</span> <span class="nf">S</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        S = \\begin{pmatrix} 1 &amp; 0 \\\\ 0 &amp; e^{i\\frac{\\pi}{2}} \\end{pmatrix}</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    target</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of int</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Phase</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="T"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.T.html#tequila.circuit.gates.T">[docs]</a><span class="k">def</span> <span class="nf">T</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Fixed phase gate</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        T = \\begin{pmatrix} 1 &amp; 0 \\\\ 0 &amp; e^{i\\frac{\\pi}{4}} \\end{pmatrix}</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    target</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of int</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Phase</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">4</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="QGate"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.QGate.html#tequila.circuit.gates.QGate">[docs]</a><span class="nd">@wrap_gate</span>
+<span class="k">def</span> <span class="nf">QGate</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">QGateImpl</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Rx"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Rx.html#tequila.circuit.gates.Rx">[docs]</a><span class="k">def</span> <span class="nf">Rx</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rx gate</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Rx gate of the form</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        R_{x}(\\text{angle}) = e^{-i\\frac{\\text{angle}}{2} \\sigma_{x}}</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    angle</span>
+<span class="sd">        Hashable type (will be treated as Variable) or Numeric type (static angle)</span>
+<span class="sd">    target</span>
+<span class="sd">        integer or list of integers</span>
+<span class="sd">    control</span>
+<span class="sd">        integer or list of integers</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object with this RotationGate</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">RotationGateImpl</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Ry"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Ry.html#tequila.circuit.gates.Ry">[docs]</a><span class="nd">@wrap_gate</span>
+<span class="k">def</span> <span class="nf">Ry</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ry gate </span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Ry gate of the form</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        R_{y}(\\text{angle}) = e^{-i\\frac{\\text{angle}}{2} \\sigma_{y}}</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    angle</span>
+<span class="sd">        Hashable type (will be treated as Variable) or Numeric type (static angle)</span>
+<span class="sd">    target</span>
+<span class="sd">        integer or list of integers</span>
+<span class="sd">    control</span>
+<span class="sd">        integer or list of integers</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object with this RotationGate</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">RotationGateImpl</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Rz"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Rz.html#tequila.circuit.gates.Rz">[docs]</a><span class="nd">@wrap_gate</span>
+<span class="k">def</span> <span class="nf">Rz</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rz gate</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Rz gate of the form</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        R_{z}(\\text{angle}) = e^{-i\\frac{\\text{angle}}{2} \\sigma_{z}}</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    angle</span>
+<span class="sd">        Hashable type (will be treated as Variable) or Numeric type (static angle)</span>
+<span class="sd">    target</span>
+<span class="sd">        integer or list of integers</span>
+<span class="sd">    control</span>
+<span class="sd">        integer or list of integers</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    QCircuit object with this RotationGate</span>
+<span class="sd">    -------</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">RotationGateImpl</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="X"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.X.html#tequila.circuit.gates.X">[docs]</a><span class="k">def</span> <span class="nf">X</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Pauli X Gate</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    target</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    power</span>
+<span class="sd">        numeric type (fixed exponent) or hashable type (parametrized exponent)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_initialize_power_gate</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;X&quot;</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="H"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.H.html#tequila.circuit.gates.H">[docs]</a><span class="nd">@wrap_gate</span>
+<span class="k">def</span> <span class="nf">H</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Hadamard gate</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    target</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    power</span>
+<span class="sd">        numeric type (fixed exponent) or hashable type (parametrized exponent)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_initialize_power_gate</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Y"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Y.html#tequila.circuit.gates.Y">[docs]</a><span class="k">def</span> <span class="nf">Y</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Pauli Y Gate</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    target:</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    power</span>
+<span class="sd">        numeric type (fixed exponent) or hashable type (parametrized exponent)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_initialize_power_gate</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Y&quot;</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Z"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Z.html#tequila.circuit.gates.Z">[docs]</a><span class="k">def</span> <span class="nf">Z</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Notes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Pauli Z Gate</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    target</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of int</span>
+<span class="sd">    power</span>
+<span class="sd">        numeric type (fixed exponent) or hashable type (parametrized exponent)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_initialize_power_gate</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Z&quot;</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_initialize_power_gate</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">power</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">power</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">power</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">QGateImpl</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">PowerGateImpl</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="ExpPauli"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.ExpPauli.html#tequila.circuit.gates.ExpPauli">[docs]</a><span class="k">def</span> <span class="nf">ExpPauli</span><span class="p">(</span><span class="n">paulistring</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">PauliString</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">angle</span><span class="p">,</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Exponentiated Pauligate:</span>
+<span class="sd">    </span>
+<span class="sd">    ExpPauli(PauliString, angle) = exp(-i* angle/2* PauliString)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    paulistring :</span>
+<span class="sd">        given as PauliString structure or as string or dict or list</span>
+<span class="sd">        if given as string: Format should be like X(0)Y(3)Z(2)</span>
+<span class="sd">        if given as list: Format should be like [(0,&#39;X&#39;),(3,&#39;Y&#39;),(2,&#39;Z&#39;)]</span>
+<span class="sd">        if given as dict: Format should be like { 0:&#39;X&#39;, 3:&#39;Y&#39;, 2:&#39;Z&#39; }</span>
+<span class="sd">    angle :</span>
+<span class="sd">        the angle (will be multiplied by paulistring coefficient if there is one)</span>
+<span class="sd">    control :</span>
+<span class="sd">        control qubits</span>
+<span class="sd">    paulistring: typing.Union[PauliString :</span>
+<span class="sd">        </span>
+<span class="sd">    str] :</span>
+<span class="sd">        </span>
+<span class="sd">    control: typing.Union[list :</span>
+<span class="sd">        </span>
+<span class="sd">    int] :</span>
+<span class="sd">         (Default value = None)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    type</span>
+<span class="sd">        Gate wrapped in circuit</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paulistring</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">ps</span> <span class="o">=</span> <span class="n">PauliString</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="n">string</span><span class="o">=</span><span class="n">paulistring</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paulistring</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">ps</span> <span class="o">=</span> <span class="n">PauliString</span><span class="o">.</span><span class="n">from_openfermion</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paulistring</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">ps</span> <span class="o">=</span> <span class="n">PauliString</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">paulistring</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ps</span> <span class="o">=</span> <span class="n">paulistring</span>
+
+    <span class="c1"># Failsave: If the paulistring contains just one pauli matrix</span>
+    <span class="c1"># it is better to initialize a rotational gate due to strange conventions in some simulators</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">items</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">target</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">items</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span>
+            <span class="n">RotationGateImpl</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">coeff</span> <span class="o">*</span> <span class="n">assign_variable</span><span class="p">(</span><span class="n">angle</span><span class="p">),</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">ExponentialPauliGateImpl</span><span class="p">(</span><span class="n">paulistring</span><span class="o">=</span><span class="n">ps</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Rp"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Rp.html#tequila.circuit.gates.Rp">[docs]</a><span class="k">def</span> <span class="nf">Rp</span><span class="p">(</span><span class="n">paulistring</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">PauliString</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">angle</span><span class="p">,</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Same as ExpPauli</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ExpPauli</span><span class="p">(</span><span class="n">paulistring</span><span class="o">=</span><span class="n">paulistring</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GeneralizedRotation"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.GeneralizedRotation.html#tequila.circuit.gates.GeneralizedRotation">[docs]</a><span class="k">def</span> <span class="nf">GeneralizedRotation</span><span class="p">(</span><span class="n">angle</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Hashable</span><span class="p">],</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">]],</span>
+                        <span class="n">generator</span><span class="p">:</span> <span class="n">QubitHamiltonian</span><span class="p">,</span>
+                        <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="n">shift</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+                        <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience rotation gate.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+
+<span class="sd">    A gates which is shift-rule differentiable</span>
+<span class="sd">     * its generator only has two distinguishable eigenvalues</span>
+<span class="sd">     * it is then differentiable by the shift rule</span>
+<span class="sd">     * shift needs to be given upon initialization (otherwise its default is 1/2)</span>
+<span class="sd">     * the generator will not be verified to fullfill the properties</span>
+
+<span class="sd">    Compiling will be done in analogy to a trotterized gate with steps=1 as default</span>
+
+<span class="sd">    The gate will act in the same way as rotations and exppauli gates</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        U_{G}(\\text{angle}) = e^{-i\\frac{\\text{angle}}{2} G}</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    angle</span>
+<span class="sd">    generator</span>
+<span class="sd">    control</span>
+<span class="sd">    shift</span>
+<span class="sd">    steps</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    The gate wrapped in a circuit</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span>
+        <span class="n">GaussianGateImpl</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">angle</span><span class="p">),</span> <span class="n">generator</span><span class="o">=</span><span class="n">generator</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="n">steps</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Trotterized"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Trotterized.html#tequila.circuit.gates.Trotterized">[docs]</a><span class="k">def</span> <span class="nf">Trotterized</span><span class="p">(</span><span class="n">generators</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">QubitHamiltonian</span><span class="p">],</span>
+                <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                <span class="n">angles</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span>
+                    <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Hashable</span><span class="p">],</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Real</span><span class="p">],</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Variable</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">parameters</span><span class="p">:</span> <span class="n">TrotterParameters</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    generators :</span>
+<span class="sd">        list of generators</span>
+<span class="sd">    angles :</span>
+<span class="sd">        coefficients for each generator</span>
+<span class="sd">    steps :</span>
+<span class="sd">        trotter steps</span>
+<span class="sd">    control :</span>
+<span class="sd">        control qubits</span>
+<span class="sd">    parameters :</span>
+<span class="sd">        Additional Trotter parameters, if None then defaults are used</span>
+<span class="sd">    generators: typing.List[QubitHamiltonian] :</span>
+<span class="sd">        </span>
+<span class="sd">    steps: int :</span>
+<span class="sd">        </span>
+<span class="sd">    angles: typing.Union[typing.List[typing.Hashable] :</span>
+<span class="sd">        </span>
+<span class="sd">    typing.List[numbers.Real] :</span>
+<span class="sd">        </span>
+<span class="sd">    typing.List[Variable]] :</span>
+<span class="sd">         (Default value = None)</span>
+<span class="sd">    control: typing.Union[list :</span>
+<span class="sd">        </span>
+<span class="sd">    int] :</span>
+<span class="sd">         (Default value = None)</span>
+<span class="sd">    parameters: TrotterParameters :</span>
+<span class="sd">         (Default value = None)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">TrotterParameters</span><span class="p">()</span>
+
+    <span class="n">assigned_angles</span> <span class="o">=</span> <span class="p">[</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="k">for</span> <span class="n">angle</span> <span class="ow">in</span> <span class="n">angles</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span>
+        <span class="n">TrotterizedGateImpl</span><span class="p">(</span><span class="n">generators</span><span class="o">=</span><span class="n">generators</span><span class="p">,</span> <span class="n">angles</span><span class="o">=</span><span class="n">assigned_angles</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="n">steps</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span>
+                            <span class="o">**</span><span class="n">parameters</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">))</span></div>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Convenience for Two Qubit Gates</span>
+<span class="sd">iSWAP will only work with cirq, the others will be recompiled</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="SWAP"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.SWAP.html#tequila.circuit.gates.SWAP">[docs]</a><span class="nd">@wrap_gate</span>
+<span class="k">def</span> <span class="nf">SWAP</span><span class="p">(</span><span class="n">first</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">second</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">power</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    SWAP gate, order of targets does not matter.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    first: int</span>
+<span class="sd">        target qubit</span>
+<span class="sd">    second: int</span>
+<span class="sd">        target qubit</span>
+<span class="sd">    control</span>
+<span class="sd">        int or list of ints</span>
+<span class="sd">    power</span>
+<span class="sd">        numeric type (fixed exponent) or hashable type (parametrized exponent)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_initialize_power_gate</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;SWAP&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="p">[</span><span class="n">first</span><span class="p">,</span> <span class="n">second</span><span class="p">],</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">)</span></div>
+
+
+<span class="c1"># @wrap_gate</span>
+<span class="c1"># def iSWAP(q0: int, q1: int, control: typing.Union[int, list] = None):</span>
+<span class="c1">#     return initialize_power_gate(name=&quot;ISWAP&quot;, target=[q0, q1], control=control)</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Convenience Initialization Routines for controlled gates</span>
+<span class="sd">All following the patern: Gate(control_qubit, target_qubit, possible_parameter)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="CNOT"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.CNOT.html#tequila.circuit.gates.CNOT">[docs]</a><span class="k">def</span> <span class="nf">CNOT</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience CNOT initialization</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    control: int</span>
+<span class="sd">        control qubit</span>
+<span class="sd">    target: int</span>
+<span class="sd">        target qubit</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Toffoli"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Toffoli.html#tequila.circuit.gates.Toffoli">[docs]</a><span class="k">def</span> <span class="nf">Toffoli</span><span class="p">(</span><span class="n">first</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">second</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience Toffoli initialization</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    first: int</span>
+<span class="sd">        first control qubit</span>
+<span class="sd">    second: int</span>
+<span class="sd">        second control qubit</span>
+<span class="sd">    target: int</span>
+<span class="sd">        target qubit</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="p">[</span><span class="n">first</span><span class="p">,</span> <span class="n">second</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="CX"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.CX.html#tequila.circuit.gates.CX">[docs]</a><span class="k">def</span> <span class="nf">CX</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience initialization CX (CNOT)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    control: int</span>
+<span class="sd">        control qubit</span>
+<span class="sd">    target: int</span>
+<span class="sd">        target qubit</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CY"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.CY.html#tequila.circuit.gates.CY">[docs]</a><span class="k">def</span> <span class="nf">CY</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience initialization CY (controlled Pauli Y)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    control: int</span>
+<span class="sd">        control qubit</span>
+<span class="sd">    target: int</span>
+<span class="sd">        target qubit</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Y</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CZ"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.CZ.html#tequila.circuit.gates.CZ">[docs]</a><span class="k">def</span> <span class="nf">CZ</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience initialization CZ (controlled Pauli Z)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    control: int</span>
+<span class="sd">        control qubit</span>
+<span class="sd">    target: int</span>
+<span class="sd">        target qubit</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Z</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CRx"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.CRx.html#tequila.circuit.gates.CRx">[docs]</a><span class="k">def</span> <span class="nf">CRx</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">angle</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience initialization CRx (controlled Pauli X Rotation)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    control: int</span>
+<span class="sd">        control qubit</span>
+<span class="sd">    target: int</span>
+<span class="sd">        target qubit</span>
+<span class="sd">    angle:</span>
+<span class="sd">        Hashable type (will be treated as Variable) or Numeric type (static angle)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Rx</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CRy"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.CRy.html#tequila.circuit.gates.CRy">[docs]</a><span class="k">def</span> <span class="nf">CRy</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">angle</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience initialization CRy (controlled Pauli Y Rotation)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    control: int</span>
+<span class="sd">        control qubit</span>
+<span class="sd">    target: int</span>
+<span class="sd">        target qubit</span>
+<span class="sd">    angle:</span>
+<span class="sd">        Hashable type (will be treated as Variable) or Numeric type (static angle)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Ry</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CRz"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.CRz.html#tequila.circuit.gates.CRz">[docs]</a><span class="k">def</span> <span class="nf">CRz</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">angle</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience initialization CRz (controlled Pauli Z Rotation)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    control: int</span>
+<span class="sd">        control qubit</span>
+<span class="sd">    target: int</span>
+<span class="sd">        target qubit</span>
+<span class="sd">    angle:</span>
+<span class="sd">        Hashable type (will be treated as Variable) or Numeric type (static angle)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QCircuit object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Rz</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">CRx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>
