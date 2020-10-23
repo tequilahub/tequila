@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exploring the application of quantum circuits in convolutional neural networks &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Reduced Density Matrices in Tequila" href="ReducedDensityMatrices.html" />
+    <link rel="prev" title="Optimize Measurements by grouping into commuting cliques" href="MeasurementGroups.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href=".././tequila_presentation.html">Overview</a></li>
+                <li><a href=".././install.html">Installation</a></li>
+                <li><a href=".././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href=".././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../package/index.html">Tequila Library Reference</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+  <li>
+    <a href="MeasurementGroups.html" title="Previous Chapter: Optimize Measurements by grouping into commuting cliques"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; Optimize Meas...</span>
+    </a>
+  </li>
+  <li>
+    <a href="ReducedDensityMatrices.html" title="Next Chapter: Reduced Density Matrices in Tequila"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">Reduced Densi... &raquo;</span>
+    </a>
+  </li>
+              
+            
+            
+            
+            
+              <li class="hidden-sm">
+<div id="sourcelink">
+  <a href="../_sources/jupyter/Quanvolutional_Neural_Networks.rst.txt"
+     rel="nofollow">Source</a>
+</div></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <div class="section" id="exploring-the-application-of-quantum-circuits-in-convolutional-neural-networks">
+<h1>Exploring the application of quantum circuits in convolutional neural networks<a class="headerlink" href="#exploring-the-application-of-quantum-circuits-in-convolutional-neural-networks" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial will guide you through implementing a hybrid
+quantum-classical convolutional neural network using Tequila along with
+other packages such as Tensorflow. We will then train the model on the
+MNIST dataset, which contains images of handwritten numbers classifed
+according to the digit they represent. Finally, we will compare the
+accuracy and loss of models with and without the quantum preprocessing.</p>
+<p>Inspriation for this tutorial comes from <a class="reference external" href="https://pennylane.ai/qml/demos/tutorial_quanvolution.html">Pennylane: Quanvolutional
+Neural
+Networks</a>.
+We will similarly follow the method proposed in the reference paper used
+for this tutorial, <a class="reference external" href="https://doi.org/10.1007/s42484-020-00012-y">Henderson at al
+(2020)</a>.</p>
+<div class="section" id="background">
+<h2>Background<a class="headerlink" href="#background" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="convolutional-neural-nets">
+<h3>Convolutional Neural Nets<a class="headerlink" href="#convolutional-neural-nets" title="Permalink to this headline">¶</a></h3>
+<p>An excellent high-level explanation of convolutional neural networks can
+be found <a class="reference external" href="https://www.youtube.com/watch?v=FmpDIaiMIeA">here</a>.
+Alternatively, an excellent written explanation can be found
+<a class="reference external" href="http://neuralnetworksanddeeplearning.com/chap6.html">here</a> and for
+more information, the wikipedia article can be found
+<a class="reference external" href="https://en.wikipedia.org/wiki/Convolutional_neural_network">here</a>.</p>
+<p>In summary, a convolutional neural network includes preprocessing layers
+prior to optimisation layers so that features in the input (which are
+often images) are extracted and amplified. The result is a model with
+greater predictive power. This processing also improves classification
+of images as it extracts features even if they are translocated between
+images. This means that searching for a particular pixel distribution
+(for example the shape of a curve or line may be a useful feature when
+classifying digits) is not dependant on the distribution being in an
+identical location in each image where it is present. The convolutional
+process extracts this information even if it is slightly rotated or
+translocated.</p>
+<p>The implementation of the convolutional layer involves a grid for each
+feature being passed over the entire image. At each location, a score is
+calculated representing how well the feature and the section of the
+image match, and this becomes the value of the corresponding pixel in
+the output image. As a guide, a large score represents a close match,
+generally meaning that the feature is present at that location of the
+image, and a low score represents the absence of a match.</p>
+</div>
+<div class="section" id="our-approach">
+<h3>Our Approach<a class="headerlink" href="#our-approach" title="Permalink to this headline">¶</a></h3>
+<p>Our general approach is similar to that used in a conventional
+convolutional neural network however the initial processing occurs by
+running the images through a quantum circuit instead of a convolutional
+filter. Each simulation of a circuit represents one 3x3 filter being
+applied to one 3x3 region of one image. The construction of the circuit
+is randomised (see below), however this construction only occurs once
+per filter such that each region of the image being transformed by the
+same filter gets run through the same circuit. A single, scalar output
+is generated from the circuit which is used as the pixel strength of the
+output image, and the remainder of the neural net uses only classical
+processing, specifically two further convolutional layers, max pooling
+and two fully connected layers. This architecture has been chosen to
+closely mimic the structure used in our reference paper (Henderson et
+al, 2020), however as they note, “The QNN topology chosen in this work
+is not fixed by nature … the QNN framework was designed to give users
+complete control over the number and order of quanvolutional layers in
+the architecture. The topology explored in this work was chosen because
+it was the simplest QNN architecture to use as a baseline for comparison
+against other purely classical networks. Future work would focus on
+exploring the impact of more complex architectural variations.”</p>
+</div>
+<div class="section" id="quantum-processing">
+<h3>Quantum Processing<a class="headerlink" href="#quantum-processing" title="Permalink to this headline">¶</a></h3>
+<p>Henderson et al summarise the use of quantum circuits as convolutional
+layers: “Quanvolutional layers are made up of a group of N quantum
+filters which operate much like their classical convolutional layer
+counterparts, producing feature maps by locally transforming input data.
+The key difference is that quanvolutional filters extract features from
+input data by transforming spatially local subsections of data using
+quantum circuits.” Our approach to the circuit design is based on the
+paper and is as follows:</p>
+<ol class="arabic">
+<li><p>The input images are iterated over and each 3x3 region is embedded
+into the quantum circuit using the threshold function:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}|\psi \rangle = \begin{cases}
+                  |0\rangle &amp; if &amp; strength\leq 0 \\
+                  |1\rangle &amp; if &amp; strength &gt; 0
+               \end{cases}\end{split}\]</div>
+</li>
+</ol>
+<p>As the pixel strengths are normalised to values between -0.5 and 0.5, it
+is expected that brighter regions of the image will intialise their
+corresponding qubit in the state <span class="math notranslate nohighlight">\(|1\rangle\)</span> and darker regions
+will intitialise the state <span class="math notranslate nohighlight">\(|0\rangle\)</span>. Each pixel is represented
+by one qubit, such that 9 qubits are used in total, and this quantum
+circuit is reused for each 3x3 square in the filter.</p>
+<ol class="arabic simple" start="2">
+<li><p>We next apply a random circuit to the qubits. To implement this, a
+random choice from Rx, Ry and Rz gates is applied to a random qubit,
+and the total number of gates applied in each layer is equal to the
+number of qubits. With a set probability (which we set to 0.3), a
+CNOT gate will be applied instead of the rotation to two random
+qubits. We have chosen to set the parameters of rotation with random
+numbers between (0,2π) however futher optimisation of the model could
+be found from using a variational circuit and optimising these
+parameters.</p></li>
+<li><p>Further layers could be applied of the random gates. To simplify, we
+only apply one layer.</p></li>
+<li><p>A scalar is outputted from the circuit and used as the corresponding
+pixel in the output image. We generate this number using the
+following method. The state vector of the final state of the circuit
+is simulated and the state corresponding to the most likely output
+(largest modulus) is selected. We then calculate the number of qubits
+for this state which are measured as a <span class="math notranslate nohighlight">\(|1\rangle\)</span>.</p></li>
+<li><p>A total of four filters are applied to each image, and for each
+filter steps 1-3 are repeated with a different randomised circuit.
+The output image therefore contains a third dimension with four
+channels representing the four different outputted values which each
+filters produced.</p></li>
+</ol>
+</div>
+</div>
+<div class="section" id="code-and-running-the-program">
+<h2>Code and Running the Program<a class="headerlink" href="#code-and-running-the-program" title="Permalink to this headline">¶</a></h2>
+<p>The following code cell is used to import the necessary packages and to
+set parameters.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tequila</span> <span class="k">as</span> <span class="nn">tq</span>
+
+<span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">itemgetter</span>
+<span class="kn">from</span> <span class="nn">tensorflow</span> <span class="kn">import</span> <span class="n">keras</span>
+
+<span class="n">n_filters</span> <span class="o">=</span> <span class="mi">4</span>               <span class="c1"># Number of convolutional filters</span>
+<span class="n">filter_size</span> <span class="o">=</span> <span class="mi">3</span>             <span class="c1"># Size of filter = nxn (here 3x3)</span>
+<span class="n">pool_size</span> <span class="o">=</span> <span class="mi">2</span>               <span class="c1"># Used for the pooling layer</span>
+<span class="n">n_qubits</span> <span class="o">=</span> <span class="n">filter_size</span> <span class="o">**</span> <span class="mi">2</span> <span class="c1"># Number of qubits</span>
+<span class="n">n_layers</span> <span class="o">=</span> <span class="mi">1</span>                <span class="c1"># Number of quantum circuit layers</span>
+<span class="n">n_train</span> <span class="o">=</span> <span class="mi">1000</span>              <span class="c1"># Size of the training dataset</span>
+<span class="n">n_test</span> <span class="o">=</span> <span class="mi">200</span>                <span class="c1"># Size of the testing dataset</span>
+<span class="n">n_epochs</span> <span class="o">=</span> <span class="mi">100</span>              <span class="c1"># Number of optimization epochs</span>
+
+<span class="n">SAVE_PATH</span> <span class="o">=</span> <span class="s2">&quot;quanvolution/&quot;</span> <span class="c1"># Data saving folder</span>
+<span class="n">PREPROCESS</span> <span class="o">=</span> <span class="kc">False</span>          <span class="c1"># If False, skip quantum processing and load data from SAVE_PATH</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>       <span class="c1"># Seed for TensorFlow random number generator</span>
+</pre></div>
+</div>
+<p>We start by creating the Dataset class. Here, we load the images and
+labels of handwritten digits from the MNIST dataset. We then reduce the
+number of images from 60,000 and 10,000 (for the training and testing
+sets respectively) down to the variables n_train and n_test, normalise
+the pixel values to within the range (-0.5,0.5) and reshape the images
+by adding a third dimension. Each image’s shape is therefore transformed
+from (28, 28) to (28, 28, 1) as this is necessary for the convolutional
+layer.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Dataset</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Loading the full dataset of images from keras</span>
+        <span class="c1"># Shape of self.train_images is (60000, 28, 28), shape of self.train_labels is (60000,)</span>
+        <span class="c1"># For self.test_images and self.test_labels, shapes are (10000, 28, 28) and (10000,)</span>
+        <span class="n">mnist_dataset</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">mnist</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_images</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_labels</span><span class="p">),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_images</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_labels</span><span class="p">)</span> <span class="o">=</span> <span class="n">mnist_dataset</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
+
+        <span class="c1"># Reduce dataset size to n_train and n_test</span>
+        <span class="c1"># First dimension of shapes are reduced to n_train and n_test</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_images</span><span class="p">[:</span><span class="n">n_train</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_labels</span><span class="p">[:</span><span class="n">n_train</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_images</span><span class="p">[:</span><span class="n">n_test</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_labels</span><span class="p">[:</span><span class="n">n_test</span><span class="p">]</span>
+
+        <span class="c1"># Normalize pixel values within -0.5 and +0.5</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_images</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_images</span> <span class="o">/</span> <span class="mi">255</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_images</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_images</span> <span class="o">/</span> <span class="mi">255</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+
+        <span class="c1"># Add extra dimension for convolution channels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_images</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_images</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The next code cell contains the class used to generate the quantum
+circuit. In theory, the circuit could be either structured or random. We
+form a randomised circuit to match the reference paper (Henderson et al,
+2020), however for simplicity, our implementation differs in some ways.
+We choose to use only use single qubit Rx(<span class="math notranslate nohighlight">\(\theta\)</span>),
+Ry(<span class="math notranslate nohighlight">\(\theta\)</span>) and Rz(<span class="math notranslate nohighlight">\(\theta\)</span>) gates and the two qubit
+CNOT gate compared to the choice of single qubit X(<span class="math notranslate nohighlight">\(\theta\)</span>),
+Y(<span class="math notranslate nohighlight">\(\theta\)</span>), Z(<span class="math notranslate nohighlight">\(\theta\)</span>), U(<span class="math notranslate nohighlight">\(\theta\)</span>), P, T, H
+and two qubit CNOT, SWAP, SQRTSWAP, or CU gates used in the paper.
+Furthermore, we chose to assign a two qubit gate to any random qubits
+with a certain probability (labelled ratio_imprim, set to 0.3) rather
+than setting a connection probabiltiy between each pair of qubits (this
+approach follows the Pennylane tutorial). The seed is used for
+reproducability and its value is set depending on which filter the
+circuit represents (see QuantumModel below).</p>
+<p>The parameters used for the rotation gates have the potential to be
+optimised using a cost function. For simplicity, and to mirror the
+paper, here we will use random parameters and we will not include these
+in the optimisation of the model. This means that the quantum processing
+only needs to happen once, prior to creating the neural net.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">QuantumCircuit</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># Set random seed for reproducability</span>
+        <span class="k">if</span> <span class="n">seed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="c1"># Encode classical information into quantum circuit</span>
+        <span class="c1"># Bit flip gate is applied if the pixel strength &gt; 0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">circ</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">QCircuit</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_qubits</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">circ</span> <span class="o">+=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">X</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="s1">&#39;input_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+        <span class="c1"># Add random layers to the circuit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">circ</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_layers</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">random_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ratio_imprim</span><span class="o">=</span><span class="mf">0.3</span><span class="p">):</span>
+        <span class="c1"># Initialise circuit</span>
+        <span class="n">circuit</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">QCircuit</span><span class="p">()</span>
+
+        <span class="c1"># Iterate over the number of layers, adding rotational and CNOT gates</span>
+        <span class="c1"># The number of rotational gates added per layer is equal to the number of qubits in the circuit</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_layers</span><span class="p">):</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">j</span> <span class="o">&lt;</span> <span class="n">n_qubits</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">ratio_imprim</span><span class="p">:</span>
+                    <span class="c1"># Applies a random rotation gate to a random qubit with probability (1 - ratio_imprim)</span>
+                    <span class="n">rnd_qubit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">n_qubits</span><span class="p">)</span>
+                    <span class="n">circuit</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Rx</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="s1">&#39;l_</span><span class="si">{}</span><span class="s1">,th_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">),</span> <span class="n">target</span><span class="o">=</span><span class="n">rnd_qubit</span><span class="p">),</span>
+                         <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Ry</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="s1">&#39;l_</span><span class="si">{}</span><span class="s1">,th_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">),</span> <span class="n">target</span><span class="o">=</span><span class="n">rnd_qubit</span><span class="p">),</span>
+                         <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Rz</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="s1">&#39;l_</span><span class="si">{}</span><span class="s1">,th_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">),</span> <span class="n">target</span><span class="o">=</span><span class="n">rnd_qubit</span><span class="p">)])</span>
+                    <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Applies the CNOT gate to 2 random qubits with probability ratio_imprim</span>
+                    <span class="k">if</span> <span class="n">n_qubits</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">rnd_qubits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_qubits</span><span class="p">),</span> <span class="mi">2</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                        <span class="n">circuit</span> <span class="o">+=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">CNOT</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">rnd_qubits</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">control</span><span class="o">=</span><span class="n">rnd_qubits</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">circuit</span>
+</pre></div>
+</div>
+<p>As an example to show the circuit used in this program, an instance of a
+circuit is drawn below. This will differ between calls if you remove the
+seed variable due to the random nature of forming the circuit.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">circuit</span> <span class="o">=</span> <span class="n">QuantumCircuit</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">circuit</span><span class="o">.</span><span class="n">circ</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;qiskit&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We next show the QuantumModel class, used to generate the neural network
+for the images which undergo pre-processing through the quantum
+convolutional layer. If PREPROCESSING is set to True, each image from
+the dataset undergoes processing through a number of quantum circuits,
+determined by n_filters. The embedding used, the structure of the
+circuit and the method of extracting the output are described in the
+background of this tutorial.</p>
+<p>We use tensorflow to construct the neural net. The implementation we use
+contains two conventional convolutional layers, each followed by max
+pooling, and then one fully connected with 1024 nodes before the softmax
+output layer. We use a Relu activation function for the convolutional
+and fully connected layers. See the background section of this tutorial
+for some context on this choice of neural net.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">QuantumModel</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+        <span class="c1"># Initialize dataset and parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">parameters</span>
+
+        <span class="c1"># The images are run through the quantum convolutional layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">convolutional_layer</span><span class="p">()</span>
+
+        <span class="c1"># The model is initialized</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Sequential</span><span class="p">([</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Conv2D</span><span class="p">(</span><span class="n">n_filters</span><span class="p">,</span> <span class="n">filter_size</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">MaxPooling2D</span><span class="p">(</span><span class="n">pool_size</span><span class="o">=</span><span class="n">pool_size</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Conv2D</span><span class="p">(</span><span class="n">n_filters</span><span class="p">,</span> <span class="n">filter_size</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">MaxPooling2D</span><span class="p">(</span><span class="n">pool_size</span><span class="o">=</span><span class="n">pool_size</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Flatten</span><span class="p">(),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;softmax&quot;</span><span class="p">)</span>
+        <span class="p">])</span>
+
+        <span class="c1"># Compile model using the Adam optimiser</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+            <span class="n">optimizer</span><span class="o">=</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.00001</span><span class="p">),</span>
+            <span class="n">loss</span><span class="o">=</span><span class="s2">&quot;sparse_categorical_crossentropy&quot;</span><span class="p">,</span>
+            <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;accuracy&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">convolutional_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">PREPROCESS</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Initate arrays to store processed images</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">q_train_images</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">28</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">28</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_filters</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">train_images</span><span class="p">))]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">q_test_images</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">28</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">28</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_filters</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">test_images</span><span class="p">))]</span>
+
+            <span class="c1"># Loop over the number of filters, applying a different randomised quantum circuit for each</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_filters</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Filter </span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_filters</span><span class="p">))</span>
+
+                <span class="c1"># Construct circuit</span>
+                <span class="c1"># We set the seed to be i+1 so that the circuits are reproducable but the design differs between filters</span>
+                <span class="c1"># We use i+1 not i to avoid setting the seed as 0 which sometimes produces random behaviour</span>
+                <span class="n">circuit</span> <span class="o">=</span> <span class="n">QuantumCircuit</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="c1"># Apply the quantum processing to the train_images, analogous to a convolutional layer</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Quantum pre-processing of train images:&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">train_images</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">        &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_train</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">q_train_images</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="o">...</span><span class="p">,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filter_</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">circuit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+                <span class="c1"># Similarly for the test_images</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Quantum pre-processing of test images:&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">test_images</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">        &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_test</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">q_test_images</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="o">...</span><span class="p">,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filter_</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">circuit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Transform images to numpy array</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">q_train_images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">q_train_images</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">q_test_images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">q_test_images</span><span class="p">)</span>
+
+            <span class="c1"># Save pre-processed images</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">SAVE_PATH</span> <span class="o">+</span> <span class="s2">&quot;q_train_images.npy&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_train_images</span><span class="p">)</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">SAVE_PATH</span> <span class="o">+</span> <span class="s2">&quot;q_test_images.npy&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_test_images</span><span class="p">)</span>
+
+        <span class="c1"># Load pre-processed images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_train_images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">SAVE_PATH</span> <span class="o">+</span> <span class="s2">&quot;q_train_images.npy&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_test_images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">SAVE_PATH</span> <span class="o">+</span> <span class="s2">&quot;q_test_images.npy&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">filter_</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">circuit</span><span class="p">,</span> <span class="n">variables</span><span class="p">):</span>
+        <span class="c1"># Initialize output image</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">28</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">28</span><span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+
+        <span class="c1"># Loop over the image co-ordinates (i,j) using a 3x3 square filter</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">28</span><span class="o">-</span><span class="mi">2</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">28</span><span class="o">-</span><span class="mi">2</span><span class="p">):</span>
+
+                <span class="c1"># Extract the value of each pixel in the 3x3 filter grid</span>
+                <span class="n">image_pixels</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">j</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="n">j</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+                <span class="p">]</span>
+
+                <span class="c1"># Construct parameters used to embed the pixel strength into the circuit</span>
+                <span class="n">input_variables</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">strength</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">image_pixels</span><span class="p">):</span>
+                    <span class="c1"># If strength &gt; 0, the power of the bit flip gate is 1</span>
+                    <span class="c1"># Therefore this qubit starts in state |1&gt;</span>
+                    <span class="k">if</span> <span class="n">strength</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">input_variables</span><span class="p">[</span><span class="s1">&#39;input_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">idx</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="c1"># Otherwise the gate is not applied and the initial state is |0&gt;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">input_variables</span><span class="p">[</span><span class="s1">&#39;input_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">idx</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="c1"># Find the statevector of the circuit and determine the state which is most likely to be measured</span>
+                <span class="n">wavefunction</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">circuit</span><span class="o">.</span><span class="n">circ</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="p">{</span><span class="o">**</span><span class="n">variables</span><span class="p">,</span> <span class="o">**</span><span class="n">input_variables</span><span class="p">})</span>
+                <span class="n">amplitudes</span> <span class="o">=</span> <span class="p">[(</span><span class="n">k</span><span class="p">,(</span><span class="nb">abs</span><span class="p">(</span><span class="n">wavefunction</span><span class="p">(</span><span class="n">k</span><span class="p">))))</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">n_qubits</span><span class="p">)</span> <span class="k">if</span> <span class="n">wavefunction</span><span class="p">(</span><span class="n">k</span><span class="p">)]</span>
+                <span class="n">max_idx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">amplitudes</span><span class="p">,</span><span class="n">key</span><span class="o">=</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">1</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+
+                <span class="c1"># Count the number of qubits which output &#39;1&#39; in this state</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="nb">len</span><span class="p">([</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="nb">bin</span><span class="p">(</span><span class="n">max_idx</span><span class="p">))[</span><span class="mi">2</span><span class="p">::]</span> <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s1">&#39;1&#39;</span><span class="p">])</span>
+                <span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">output</span>
+
+    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Train the model on the dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">q_train_images</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">train_labels</span><span class="p">,</span>
+            <span class="n">validation_data</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">q_test_images</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">test_labels</span><span class="p">),</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+            <span class="n">epochs</span><span class="o">=</span><span class="n">n_epochs</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="mi">2</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+<p>We also create a ClassicalModel class to run the images through a
+conventional convolutional neural network. The design of the neural net
+used here is identical to the QuantumModel class, however the images
+used are directly from the dataset and therefore have not been processed
+through the quantum layer. We include this as a control to compare the
+results from the quantum model.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ClassicalModel</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="c1"># Initialize dataset and parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">dataset</span>
+
+        <span class="c1"># The model is initialized</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Sequential</span><span class="p">([</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Conv2D</span><span class="p">(</span><span class="n">n_filters</span><span class="p">,</span> <span class="n">filter_size</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">MaxPooling2D</span><span class="p">(</span><span class="n">pool_size</span><span class="o">=</span><span class="n">pool_size</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Conv2D</span><span class="p">(</span><span class="n">n_filters</span><span class="p">,</span> <span class="n">filter_size</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">MaxPooling2D</span><span class="p">(</span><span class="n">pool_size</span><span class="o">=</span><span class="n">pool_size</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Flatten</span><span class="p">(),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">),</span>
+            <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;softmax&quot;</span><span class="p">)</span>
+        <span class="p">])</span>
+
+        <span class="c1"># Compile model using the Adam optimiser</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+            <span class="n">optimizer</span><span class="o">=</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.00005</span><span class="p">),</span>
+            <span class="n">loss</span><span class="o">=</span><span class="s2">&quot;sparse_categorical_crossentropy&quot;</span><span class="p">,</span>
+            <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;accuracy&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Train the model on the dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">train_images</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">train_labels</span><span class="p">,</span>
+            <span class="n">validation_data</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">test_images</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">test_labels</span><span class="p">),</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+            <span class="n">epochs</span><span class="o">=</span><span class="n">n_epochs</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="mi">2</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+<p>We are now able to run our program! The following code does this using
+the quantum_model and classical_model functions. Although the
+implementations are similar, quantum_model additionally defines the
+parameters used for the rotational gates in the circuit. We have limited
+the value of each parameter to the range (0,2π).</p>
+<p>Running the program takes some time. Our results are plotted below, so
+if you would rather not wait, either reduce the numbers in n_train and
+n_test or skip ahead!</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">quantum_model</span><span class="p">():</span>
+    <span class="c1"># Generating parameters, each maps to a random number between 0 and 2*π</span>
+    <span class="c1"># parameters is a list of dictionaries, where each dictionary represents the parameter</span>
+    <span class="c1"># mapping for one filter</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_filters</span><span class="p">):</span>
+        <span class="n">filter_params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_layers</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_qubits</span><span class="p">):</span>
+                <span class="n">filter_params</span><span class="p">[</span><span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l_</span><span class="si">{}</span><span class="s1">,th_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">j</span><span class="p">,</span><span class="n">k</span><span class="p">))]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        <span class="n">parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filter_params</span><span class="p">)</span>
+
+    <span class="c1"># Initalise the dataset</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">()</span>
+
+    <span class="c1"># Initialise and train the model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">QuantumModel</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+
+    <span class="c1"># Store the loss and accuracy of the model to return</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span>
+    <span class="n">accuracy</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;val_accuracy&#39;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">model</span>
+
+<span class="k">def</span> <span class="nf">classical_model</span><span class="p">():</span>
+    <span class="c1"># Initialise the dataset</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">()</span>
+
+    <span class="c1"># Initialise and train the model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">ClassicalModel</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+
+    <span class="c1"># Store the loss and accuracy of the model to return</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span>
+    <span class="n">accuracy</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;val_accuracy&#39;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">model</span>
+
+<span class="n">model_q</span> <span class="o">=</span> <span class="n">quantum_model</span><span class="p">()</span>
+<span class="n">model_c</span> <span class="o">=</span> <span class="n">classical_model</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="plotting-the-results">
+<h2>Plotting the Results<a class="headerlink" href="#plotting-the-results" title="Permalink to this headline">¶</a></h2>
+<p>The graphs showing the accuracy and loss of our models are included in
+this text box. These were generated using the function plot, available
+below. As shown, the results from the quantum processing lead to a model
+comparable to the classical control in both accuracy and loss. After
+running for 100 epochs, the quantum model results in a validation set
+accuracy of 0.9350, compared to the fully classical model which has a
+validation set accuracy of 0.9150.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="n">model_q</span><span class="p">,</span> <span class="n">model_c</span><span class="p">):</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s2">&quot;seaborn&quot;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>
+
+    <span class="c1"># Plotting the graph for accuracy</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">model_q</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;val_accuracy&#39;</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Quantum&quot;</span><span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">model_c</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;val_accuracy&#39;</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:green&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Classical&quot;</span><span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Accuracy&quot;</span><span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="c1"># Plotting the graph for loss</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">model_q</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Quantum&quot;</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">model_c</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:green&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Classical&quot;</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="n">plot</span><span class="p">(</span><span class="n">model_q</span><span class="p">,</span> <span class="n">model_c</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="evaluating-the-model">
+<h2>Evaluating the Model<a class="headerlink" href="#evaluating-the-model" title="Permalink to this headline">¶</a></h2>
+<p>Let us now compare the behaviour of the two models. We do this by
+running the test images through each with the optimised weights and
+biases and seeing the results of the classification. This process is
+implemented using the Classification class, shown below.</p>
+<p>Overall, our quantum model misclassified images 34, 37, 42, 54, 67, 74,
+120, 127, 143, 150, 152, 166, and 185. The classical model misclassified
+images 8, 16, 21, 23, 54, 60, 61, 67, 74, 93, 113, 125, 134, 160, 168,
+178, and 196. This means that in total, the quantum model misclassified
+13 images and the classical model misclassified 17 images. Of these,
+only images 54, 67, and 74 were misclassified by both.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">termcolor</span> <span class="kn">import</span> <span class="n">colored</span>
+
+<span class="k">class</span> <span class="nc">Classification</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">test_images</span><span class="p">):</span>
+        <span class="c1"># Initialising parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_images</span> <span class="o">=</span> <span class="n">test_images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_labels</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">test_labels</span>
+
+    <span class="k">def</span> <span class="nf">classify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Create predictions on the test set</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">predictions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_images</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Keep track of the indices of images which were classified correctly and incorrectly</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">correct_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predictions</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_labels</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">incorrect_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predictions</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_labels</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">print_</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Printing the total number of correctly and incorrectly classified images</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">correct_indices</span><span class="p">),</span><span class="s2">&quot; classified correctly&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">incorrect_indices</span><span class="p">),</span><span class="s2">&quot; classified incorrectly&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Printing the classification of each image</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_test</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Image </span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_test</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">correct_indices</span><span class="p">:</span>
+                <span class="c1"># The image was correctly classified</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;model predicts: </span><span class="si">{}</span><span class="s1"> - true classification: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_labels</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># The image was not classified correctly</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="s1">&#39;model predicts: </span><span class="si">{}</span><span class="s1"> - true classification: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_labels</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="s1">&#39;red&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Quantum Model&#39;</span><span class="p">)</span>
+<span class="n">q_class</span> <span class="o">=</span> <span class="n">Classification</span><span class="p">(</span><span class="n">model_q</span><span class="p">,</span> <span class="n">model_q</span><span class="o">.</span><span class="n">q_test_images</span><span class="p">)</span>
+<span class="n">q_class</span><span class="o">.</span><span class="n">classify</span><span class="p">()</span>
+<span class="n">q_class</span><span class="o">.</span><span class="n">print_</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Classical Model&#39;</span><span class="p">)</span>
+<span class="n">c_class</span> <span class="o">=</span> <span class="n">Classification</span><span class="p">(</span><span class="n">model_c</span><span class="p">,</span> <span class="n">model_c</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">test_images</span><span class="p">)</span>
+<span class="n">c_class</span><span class="o">.</span><span class="n">classify</span><span class="p">()</span>
+<span class="n">c_class</span><span class="o">.</span><span class="n">print_</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Lastly, we can see the effect that the quantum convolutional layer
+actually has on the images by plotting images after they have been run
+through the quantum filters, and to do this we use the function
+visualise, shown below. Included in this text box is a plot showing four
+images which have been run through our filters. The top row shows images
+from the original dataset, and each subsequent row shows the result from
+each of the four filters on that original image. It can be seen that the
+processing preserves the global shape of the digit while introducing
+local distortion.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">visualise</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+    <span class="c1"># Setting n_samples to be the number of images to print</span>
+    <span class="n">n_samples</span> <span class="o">=</span> <span class="mi">4</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">n_filters</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+    <span class="c1"># Iterate over each image</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_samples</span><span class="p">):</span>
+
+        <span class="c1"># Plot the original image from the dataset</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Input&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">train_images</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Plot the images generated by each filter</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_filters</span><span class="p">):</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Output [ch. </span><span class="si">{}</span><span class="s2">]&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">axes</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">q_train_images</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">c</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="n">visualise</span><span class="p">(</span><span class="n">model_q</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="resources-used-to-make-this-tutorial">
+<h3>Resources used to make this tutorial:<a class="headerlink" href="#resources-used-to-make-this-tutorial" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li><p><a class="reference external" href="https://pennylane.ai/qml/demos/tutorial_quanvolution.html">Pennylane: Quanvolutional Neural
+Networks</a></p></li>
+<li><p>Henderson, M., Shakya, S., Pradhan, S. et al. Quanvolutional neural
+networks: powering image recognition with quantum circuits. Quantum
+Mach. Intell. 2, 1–9 (2020).
+<a class="reference external" href="https://doi.org/10.1007/s42484-020-00012-y">https://doi.org/10.1007/s42484-020-00012-y</a></p></li>
+<li><p><a class="reference external" href="https://victorzhou.com/blog/keras-cnn-tutorial/">Keras for Beginners: Implementing a Convolutional Neural Network.
+Victor Zhou</a>.</p></li>
+<li><p><a class="reference external" href="https://victorzhou.com/blog/intro-to-cnns-part-1/">CNNs, Part 1: An Introduction to Convolutional Neural Networks.
+Victor Zhou</a>.</p></li>
+<li><p><a class="reference external" href="https://www.youtube.com/watch?v=FmpDIaiMIeA">How Convolutional Neural Networks
+work</a></p></li>
+<li><p><a class="reference external" href="http://neuralnetworksanddeeplearning.com/chap6.html">Neural Networks and Deep Learning, chapter 6. Michael
+Nielsen</a></p></li>
+</ol>
+</div>
+</div>
+</div>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

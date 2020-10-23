@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_hessian &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../../../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_objective" href="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_objective.html" />
+    <link rel="prev" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_gradient" href="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_gradient.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../../../../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../../../../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../../../../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../../../../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="../../../.././tequila_presentation.html">Overview</a></li>
+                <li><a href="../../../.././install.html">Installation</a></li>
+                <li><a href="../../../.././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href="../../../.././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">Tequila Library Reference</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+  <li>
+    <a href="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_gradient.html" title="Previous Chapter: tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_gradient"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; tequila.optim...</span>
+    </a>
+  </li>
+  <li>
+    <a href="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_objective.html" title="Next Chapter: tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_objective"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">tequila.optim... &raquo;</span>
+    </a>
+  </li>
+              
+            
+            
+            
+            
+              <li class="hidden-sm">
+<div id="sourcelink">
+  <a href="../../../../_sources/package/optimizers/optimizer_phoenics/OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_hessian.rst.txt"
+     rel="nofollow">Source</a>
+</div></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <div class="section" id="tequila-optimizers-optimizer-phoenics-optimizerphoenics-compile-hessian">
+<h1>tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_hessian<a class="headerlink" href="#tequila-optimizers-optimizer-phoenics-optimizerphoenics-compile-hessian" title="Permalink to this headline">¶</a></h1>
+<dl class="py method">
+<dt id="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_hessian">
+<code class="sig-prename descclassname">OptimizerPhoenics.</code><code class="sig-name descname">compile_hessian</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">variables</span><span class="p">:</span> <span class="n">List<span class="p">[</span>tequila.objective.objective.Variable<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">grad_obj</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>tequila.objective.objective.Variable<span class="p">, </span>tequila.objective.objective.Objective<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">comp_grad_obj</span><span class="p">:</span> <span class="n">Dict<span class="p">[</span>tequila.objective.objective.Variable<span class="p">, </span>tequila.objective.objective.Objective<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">hessian</span><span class="p">:</span> <span class="n">dict</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; tuple<a class="headerlink" href="#tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_hessian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function to compile hessians for optimizers which require it.</p>
+<p>Convenience: build and compile (i.e render callable) the hessian of an objective.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>variables</strong> – the variables of the hessian.</p></li>
+<li><p><strong>grad_obj</strong> – the gradient object, to be differentiated once more</p></li>
+<li><p><strong>comp_grad_obj</strong> – the compiled gradient object, used for further compilation of the hessian.</p></li>
+<li><p><strong>hessian</strong> (<em>optional:</em>) – extra information to modulate compilation of the hessian.</p></li>
+<li><p><strong>args</strong> – </p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>uncompiled and compiled hessian objects, in that order</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

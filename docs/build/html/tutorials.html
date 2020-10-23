@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tutorials &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tequila Basic Usage" href="jupyter/BasicUsage.html" />
+    <link rel="prev" title="tequila.quantumchemistry.QuantumChemistryPsi4.reference_state" href="package/quantumchemistry/QuantumChemistryPsi4/tequila.quantumchemistry.QuantumChemistryPsi4.reference_state.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="./tequila_presentation.html">Overview</a></li>
+                <li><a href="./install.html">Installation</a></li>
+                <li><a href="./package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href="./tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="package/index.html">Tequila Library Reference</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+  <li>
+    <a href="package/quantumchemistry/QuantumChemistryPsi4/tequila.quantumchemistry.QuantumChemistryPsi4.reference_state.html" title="Previous Chapter: tequila.quantumchemistry.QuantumChemistryPsi4.reference_state"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; tequila.quant...</span>
+    </a>
+  </li>
+  <li>
+    <a href="jupyter/BasicUsage.html" title="Next Chapter: Tequila Basic Usage"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">Tequila Basic Usage &raquo;</span>
+    </a>
+  </li>
+              
+            
+            
+            
+            
+              <li class="hidden-sm">
+<div id="sourcelink">
+  <a href="_sources/tutorials.rst.txt"
+     rel="nofollow">Source</a>
+</div></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <div class="section" id="tutorials">
+<span id="id1"></span><h1>Tutorials<a class="headerlink" href="#tutorials" title="Permalink to this headline">¶</a></h1>
+<p>List of jupyter notebooks in: <a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials">GitHub</a>.</p>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title">Basic Usage</h3>
+        </div>
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-md-4">
+              <a href=./jupyter/BasicUsage.html>
+                <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+              </a>
+            </div>
+            <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/BasicUsage.html">Tequila Basic Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/BasicUsage.html#create-and-simulate-quantum-circuits">Create and Simulate Quantum Circuits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/BasicUsage.html#create-and-simulate-objectives-expectationvalues">Create and Simulate Objectives/Expectationvalues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/BasicUsage.html#optimization-example">Optimization example</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/BasicUsage.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/FAQ.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/FAQ.html">Frequently Asked Questions:</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#it-is-recommended-to-take-a-look-at-the-basicusage-notebook-before-looking-at-this">It is recommended to take a look at the <code class="docutils literal notranslate"><span class="pre">BasicUsage</span></code> notebook before looking at this</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#which-optimization-methods-can-i-use">Which optimization methods can I use?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#which-simulators-quantum-backends-can-i-use">Which simulators/Quantum-Backends can I use?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#can-i-avoid-re-translation-compilation-on-my-objectives-circuits">Can I avoid re-translation/compilation on my objectives/circuits?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#how-can-i-run-on-a-real-quantum-computer">How can I run on a real quantum computer?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#how-can-i-emulate-a-real-quantum-computer">How can I emulate a real quantum computer?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#can-i-compile-objectives-into-different-backends">Can I compile Objectives into different backends?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#how-do-i-transform-measurements-into-hamiltonians">How do I transform Measurements into Hamiltonians?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#can-i-do-basic-operations-on-wavefunctions-and-operators-without-quantum-backends">Can I do basic operations on wavefunctions and operators without quantum backends?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#can-i-import-an-hamiltonian-from-openfermion">Can I import an Hamiltonian from OpenFermion?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#can-i-compile-into-a-regular-function-instead-of-one-which-takes-dictionaries">Can I compile into a regular function instead of one which takes dictionaries?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#how-do-numerical-gradients-work">How do numerical gradients work?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/FAQ.html#can-i-use-the-numerical-gradient-protocols-from-scipy">Can I use the numerical gradient protocols from SciPy?</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/FAQ.ipynb">Source (GitHub)</a></p></li>
+</ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><div class="col-md-12">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">Chemistry</h3>
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-4">
+          <a href=./jupyter/Chemistry.html>
+            <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+          </a>
+        </div>
+        <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/Chemistry.html">Tequila Chemistry Basics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Chemistry.html#initialize-molecules">Initialize Molecules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Chemistry.html#using-different-qubit-encodings-of-openfermion">Using different Qubit Encodings of OpenFermion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Chemistry.html#setting-active-spaces">Setting active spaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Chemistry.html#computing-classical-methods-with-psi4">Computing classical methods with Psi4</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Chemistry.html#hello-world-h2-optimization-with-lih-in-an-active-space">Hello World “H2” optimization with LiH in an active space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Chemistry.html#unitary-coupled-cluster-style-construction">Unitary Coupled-Cluster Style Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Chemistry.html#noisy-optimization-of-an-active-space-molecule-with-tapered-qubit-embeding">Noisy optimization of an active space molecule with tapered qubit embeding</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/Chemistry.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/ChemistryExcitedState.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/ChemistryExcitedState.html">Excited state calculation</a></li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryExcitedState.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/ChemistryBasisSetFreeVQE.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/ChemistryBasisSetFreeVQE.html">Basis Set Free VQE calculations with Tequila</a></li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryBasisSetFreeVQE.ipynb">Source (GitHub)</a></p></li>
+</ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><div class="col-md-12">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">Optimization</h3>
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-4">
+          <a href=./jupyter/Optimizer_Tutorial.html>
+            <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+          </a>
+        </div>
+        <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/Optimizer_Tutorial.html">Optimization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Optimizer_Tutorial.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Optimizer_Tutorial.html#local-optimizers">Local Optimizers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Optimizer_Tutorial.html#numerical-and-customized-gradients">Numerical and Customized Gradients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Optimizer_Tutorial.html#bayesian-optimization">Bayesian optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Optimizer_Tutorial.html#this-concludes-our-tutorial-hope-you-had-fun-happy-optimizing">This concludes our tutorial. Hope you had fun! Happy optimizing!</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/Optimizer_Tutorial.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/SciPyOptimizers.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/SciPyOptimizers.html">Tequila Tutorial:</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#handling-optimizers-initializing-parametrized-circuits">Handling Optimizers, Initializing parametrized circuits</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/SciPyOptimizers.html#faq">FAQ</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#how-can-i-extract-the-parameters-from-a-given-circuit">1: How can I extract the parameters from a given circuit?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#how-can-i-do-measurement-based-simulation">2: How can I do measurement based simulation?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#which-simulator-was-used-and-how-can-i-choose-the-simulator">3: Which Simulator was used and how can I choose the simulator?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#can-i-use-numerical-evaluation-of-gradients">4: Can I use numerical evaluation of gradients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#can-i-use-hessian-based-optimizations-and-can-i-evaluate-hessians-numerically">5: Can I use Hessian based optimizations, and can I evaluate Hessians numerically?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/SciPyOptimizers.html#exercises">Exercises</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#exercise-1">Exercise 1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#exercise-2">Exercise 2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#exercise-3">Exercise 3</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/SciPyOptimizers.html#solutions">Solutions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#exercise-1-2">Exercise 1 &amp; 2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SciPyOptimizers.html#id1">Exercise 3</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/SciPyOptimizers.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/OptimizeDistributions.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/OptimizeDistributions.html">Training Distributions with KM Divergence</a></li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/OptimizeDistributions.ipynb">Source (GitHub)</a></p></li>
+</ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><div class="col-md-12">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">Miscellaneous</h3>
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-4">
+          <a href=./jupyter/MeasurementGroups.html>
+            <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+          </a>
+        </div>
+        <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/MeasurementGroups.html">Optimize Measurements by grouping into commuting cliques</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/MeasurementGroups.html#how-to-use">How to Use:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/MeasurementGroups.html#behind-the-scenes">Behind the Scenes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/MeasurementGroups.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/Quanvolutional_Neural_Networks.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/Quanvolutional_Neural_Networks.html">Exploring the application of quantum circuits in convolutional neural networks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Quanvolutional_Neural_Networks.html#background">Background</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Quanvolutional_Neural_Networks.html#code-and-running-the-program">Code and Running the Program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Quanvolutional_Neural_Networks.html#plotting-the-results">Plotting the Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Quanvolutional_Neural_Networks.html#evaluating-the-model">Evaluating the Model</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/Quanvolutional_Neural_Networks.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/ReducedDensityMatrices.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/ReducedDensityMatrices.html">Reduced Density Matrices in Tequila</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/ReducedDensityMatrices.html#the-1-and-2-rdm">The 1- and 2-RDM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/ReducedDensityMatrices.html#consistency-checks">Consistency checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/ReducedDensityMatrices.html#references">References</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/ReducedDensityMatrices.html#possible-applications">Possible applications</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ReducedDensityMatrices.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/SingleQubitClassifier.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/SingleQubitClassifier.html">Tequila Tutorial:</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier.html#single-qubit-classifier-with-data-re-uploading">Single-qubit classifier with data re-uploading</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/SingleQubitClassifier.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/SingleQubitClassifier_tutorial.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html">Single-qubit classifier with data re-uploading tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html#model">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html#target-states">Target states</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html#single-qubit-classifier-circuit">Single-qubit classifier circuit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html#cost-function">Cost function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html#training">Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html#test">Test</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/SingleQubitClassifier_tutorial.html#improvements-and-customization">Improvements and customization</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/SingleQubitClassifier_tutorial.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/Tutorial_state_prep.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/Tutorial_state_prep.html">Tequila tutorial: raw state preparation algorithm</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Tutorial_state_prep.html#quantum-gate-construction">Quantum gate construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Tutorial_state_prep.html#compute-the-fidelity">Compute the fidelity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Tutorial_state_prep.html#construct-a-parametrized-quantum-circuit">Construct a parametrized quantum circuit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/Tutorial_state_prep.html#state-preparation-algorithm">State preparation algorithm</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/Tutorial_state_prep.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/StatePreparation_tutorial.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/StatePreparation_tutorial.html">State preparation algorithm tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/StatePreparation_tutorial.html#quantum-gate-construction">Quantum gate construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/StatePreparation_tutorial.html#compute-the-fidelity">Compute the fidelity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/StatePreparation_tutorial.html#construct-a-parametrized-quantum-circuit">Construct a parametrized quantum circuit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jupyter/StatePreparation_tutorial.html#state-preparation-algorithm">State preparation algorithm</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/StatePreparation_tutorial.ipynb">Source (GitHub)</a></p></li>
+</ul>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-4">
+    <a href=./jupyter/Quanvolutional_Neural_Networks.html>
+      <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+    </a>
+  </div>
+  <div class="col-md-8"><div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="jupyter/Noise_tutorial.html">This concludes our brief tutorial on Noise. Stay tuned (and up to date) for more exciting noise features in the future!</a></li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/Noise_tutorial.ipynb">Source (GitHub)</a></p></li>
+</ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

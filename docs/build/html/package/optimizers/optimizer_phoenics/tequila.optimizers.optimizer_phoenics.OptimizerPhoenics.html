@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tequila.optimizers.optimizer_phoenics.OptimizerPhoenics &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.available_methods" href="OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.available_methods.html" />
+    <link rel="prev" title="tequila.optimizers.optimizer_phoenics.minimize" href="tequila.optimizers.optimizer_phoenics.minimize.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../../../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../../../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="../../.././tequila_presentation.html">Overview</a></li>
+                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href="../../.././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">Tequila Library Reference</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+  <li>
+    <a href="tequila.optimizers.optimizer_phoenics.minimize.html" title="Previous Chapter: tequila.optimizers.optimizer_phoenics.minimize"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; tequila.optim...</span>
+    </a>
+  </li>
+  <li>
+    <a href="OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.available_methods.html" title="Next Chapter: tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.available_methods"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">tequila.optim... &raquo;</span>
+    </a>
+  </li>
+              
+            
+            
+            
+            
+              <li class="hidden-sm">
+<div id="sourcelink">
+  <a href="../../../_sources/package/optimizers/optimizer_phoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.rst.txt"
+     rel="nofollow">Source</a>
+</div></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <div class="section" id="tequila-optimizers-optimizer-phoenics-optimizerphoenics">
+<h1>tequila.optimizers.optimizer_phoenics.OptimizerPhoenics<a class="headerlink" href="#tequila-optimizers-optimizer-phoenics-optimizerphoenics" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics">
+<em class="property">class </em><code class="sig-prename descclassname">tequila.optimizers.optimizer_phoenics.</code><code class="sig-name descname">OptimizerPhoenics</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maxiter</span></em>, <em class="sig-param"><span class="n">backend</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">save_history</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">minimize</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">samples</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">silent</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">noise</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/tequila/optimizers/optimizer_phoenics.html#OptimizerPhoenics"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tequila.optimizers.optimizer_phoenics.OptimizerPhoenics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tequila.optimizers.optimizer_base.Optimizer</span></code></p>
+<p>Wrapper to allow optimization of objectives with Phoenics, a bayesian optimizer.</p>
+<p>See: <a class="reference external" href="https://github.com/aspuru-guzik-group/phoenics">https://github.com/aspuru-guzik-group/phoenics</a></p>
+<dl class="py method">
+<dt>
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maxiter</span></em>, <em class="sig-param"><span class="n">backend</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">save_history</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">minimize</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">samples</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">silent</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">noise</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/tequila/optimizers/optimizer_phoenics.html#OptimizerPhoenics.__init__"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>initialize an optimizer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>backend</strong> (<em>str</em><em>, </em><em>optional:</em>) – a quantum backend to use. None means autopick.</p></li>
+<li><p><strong>maxiter</strong> (<em>int</em><em>, </em><em>optional:</em>) – maximum number of iterations to performed.
+Note: overwrites attribute of same name to 100, not None, if default.</p></li>
+<li><p><strong>samples</strong> (<em>int</em><em>, </em><em>optional:</em>) – number of samples to simulate measurement of objectives with.
+Default: none, i.e full wavefunction simulation.</p></li>
+<li><p><strong>device</strong> (<em>optional:</em>) – changeable type. The device on which to perform (or, simulate performing) actual quantum computation.
+Default None will use the basic, un-restricted simulators of backend.</p></li>
+<li><p><strong>noise</strong> (<em>optional:</em>) – NoiseModel object or str ‘device’, being either a custom noisemodel or the instruction to use that of
+the emulated device.
+Default value none means: simulate without any noise.</p></li>
+<li><p><strong>save_history</strong> (<em>bool: Default = True:</em>) – whether or not to save history during optimization. Defaults to true.</p></li>
+<li><p><strong>silent</strong> (<em>bool: Default = False:</em>) – whether or not to be verbose during iterations of optimization.
+False indicates verbosity.</p></li>
+<li><p><strong>print_level</strong> (<em>int: Default = 99:</em>) – The degree of verbosity during print. Meaningless on in base.</p></li>
+<li><p><strong>args</strong> – </p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.available_methods.html#tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.available_methods" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.available_methods"><code class="xref py py-obj docutils literal notranslate"><span class="pre">available_methods</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_gradient.html#tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_gradient" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compile_gradient</span></code></a></p></td>
+<td><p>Convenience function to compile gradient objects and relavant types.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_hessian.html#tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_hessian" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_hessian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compile_hessian</span></code></a></p></td>
+<td><p>Convenience function to compile hessians for optimizers which require it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_objective.html#tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_objective" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.compile_objective"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compile_objective</span></code></a></p></td>
+<td><p>Convenience function to wrap over compile; for use by inheritors.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.initialize_variables.html#tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.initialize_variables" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.initialize_variables"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_variables</span></code></a></p></td>
+<td><p>Convenience function to format the variables of some objective recieved in calls to optimizers.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="OptimizerPhoenics/tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.reset_history.html#tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.reset_history" title="tequila.optimizers.optimizer_phoenics.OptimizerPhoenics.reset_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reset_history</span></code></a></p></td>
+<td><p>Reset the optimizer history.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

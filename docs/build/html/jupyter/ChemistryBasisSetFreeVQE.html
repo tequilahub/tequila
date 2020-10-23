@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basis Set Free VQE calculations with Tequila &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Optimization" href="Optimizer_Tutorial.html" />
+    <link rel="prev" title="Excited state calculation" href="ChemistryExcitedState.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href=".././tequila_presentation.html">Overview</a></li>
+                <li><a href=".././install.html">Installation</a></li>
+                <li><a href=".././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href=".././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../package/index.html">Tequila Library Reference</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+  <li>
+    <a href="ChemistryExcitedState.html" title="Previous Chapter: Excited state calculation"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; Excited state...</span>
+    </a>
+  </li>
+  <li>
+    <a href="Optimizer_Tutorial.html" title="Next Chapter: Optimization"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">Optimization &raquo;</span>
+    </a>
+  </li>
+              
+            
+            
+            
+            
+              <li class="hidden-sm">
+<div id="sourcelink">
+  <a href="../_sources/jupyter/ChemistryBasisSetFreeVQE.rst.txt"
+     rel="nofollow">Source</a>
+</div></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <div class="section" id="basis-set-free-vqe-calculations-with-tequila">
+<h1>Basis Set Free VQE calculations with Tequila<a class="headerlink" href="#basis-set-free-vqe-calculations-with-tequila" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tequila</span> <span class="k">as</span> <span class="nn">tq</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="c1"># global variables</span>
+<span class="c1"># symmetry_conserving_bravyi_kitaev will result in a underlying 2-qubit simulation instead of 4 (for all vqe calculations)</span>
+<span class="n">transformation</span> <span class="o">=</span> <span class="s2">&quot;jordan_wigner&quot;</span> <span class="c1"># alternatives: bravyi_kitaev, symmetry_conserving_bravyi_kitaev (will taper 2 qubits), bravyi_kitaev_tree</span>
+<span class="n">data_directory</span><span class="o">=</span><span class="s2">&quot;data/h2_pnos/&quot;</span>
+</pre></div>
+</div>
+<p>This tutorial illustrates one of the explicit calculations of
+<a class="reference external" href="https://arxiv.org/abs/2008.02819">arxiv.org/abs/2008.02819</a>. We
+restrict ourselves to a minimal calculation of the Hydrogen molecule
+since this will execute within a jupyter environment without taking to
+much resources.</p>
+<p>In this notebook we will compute the Hydrogen molecule in a minimal
+representation (2 spatial orbitals i.e. 4 spin-orbitals) using standard
+Gaussian basis sets (GBS) and the basis-set-free MRA-PNO representation.
+In the end we will show a comparisson with a large GBS computation that
+would require around 120 qubits.</p>
+<p>This notebook illustrates how to: - define custom molecules from
+integral values - use the in-build UpGCCSD ansatz in <code class="docutils literal notranslate"><span class="pre">tequila</span></code> -
+compare to classical methods like FCI - manually diagonalize a qubit
+Hamiltonian</p>
+<p>The Hamiltonians are computed with a modified pno code of
+<code class="docutils literal notranslate"><span class="pre">`madness</span></code> &lt;<a class="reference external" href="https://github.com/m-a-d-n-e-s-s/madness">https://github.com/m-a-d-n-e-s-s/madness</a>&gt;`__ which will be
+public soon (feel free to contact
+<a class="reference external" href="mailto:jakob&#46;kottmann&#37;&#52;&#48;utoronto&#46;ca">me</a> for early access or more
+information). The <code class="docutils literal notranslate"><span class="pre">madness</span></code> PNO-Code is described in more detail here
+<a class="reference external" href="https://doi.org/10.1063/1.5141880">/doi.org/10.1063/1.5141880</a>.</p>
+<p>The main difference in usage will be, that we will create the
+Hamiltonians directly from integral files that were originally obtained
+with <code class="docutils literal notranslate"><span class="pre">madness</span></code> and are for this tutorial provided in the <code class="docutils literal notranslate"><span class="pre">data</span></code>
+directory. Those integrals can be used to create <code class="docutils literal notranslate"><span class="pre">tequila</span></code> molecule
+objects which can then be handeled in the same way as other <code class="docutils literal notranslate"><span class="pre">tequila</span></code>
+molecules - for example obtained with the <code class="docutils literal notranslate"><span class="pre">psi4</span></code> backend. See the
+general <a class="reference external" href="https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/Chemistry.ipynb">chemistry
+tutorial</a>.
+Note however, that access to the classical <code class="docutils literal notranslate"><span class="pre">psi4</span></code> methods is not
+possible.</p>
+<p>We begin with reading in the <code class="docutils literal notranslate"><span class="pre">.npy</span></code> files which hold the molecular
+integrals obtained from the direct-determined PNOs that are stored in
+the <code class="docutils literal notranslate"><span class="pre">data/h2_pnos</span></code> directory for Hydrogen molecules in minimal
+representation (2 spatial-orbitals i.e. 4 spin-orbitals) and different
+bond lengths R in the directories <code class="docutils literal notranslate"><span class="pre">h2_R_4so</span></code>. Theese integral files
+can be passed to the <code class="docutils literal notranslate"><span class="pre">tequila</span></code> molecule object.</p>
+<p>We define a function here to reuse it later when we compute the whole
+potential energy surface (PES).</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">initialize_molecule</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
+    <span class="n">geomstring</span> <span class="o">=</span> <span class="s2">&quot;H 0.0 0.0 0.0</span><span class="se">\n</span><span class="s2">H 0.0 0.0 </span><span class="si">{R}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">R</span><span class="o">=</span><span class="n">R</span><span class="p">)</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">data_directory</span> <span class="o">+</span> <span class="s2">&quot;h2_</span><span class="si">{:1.1f}</span><span class="s2">_4so/&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+
+    <span class="c1"># load the integral files</span>
+    <span class="n">one_body_integrals</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="s2">&quot;one_body_integrals.npy&quot;</span><span class="p">)</span>
+    <span class="n">two_body_integrals</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="s2">&quot;two_body_integrals.npy&quot;</span><span class="p">)</span>
+    <span class="c1"># resort from Mulliken notation to openfermion convetions</span>
+    <span class="n">two_body_integrals</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;psqr&quot;</span><span class="p">,</span> <span class="n">two_body_integrals</span><span class="p">)</span>
+
+    <span class="c1"># compute the nuclear repulsion (optional)</span>
+    <span class="n">angstrom_to_bohr</span><span class="o">=</span><span class="mf">1.8897</span>
+    <span class="n">nuclear_repulsion</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="n">angstrom_to_bohr</span><span class="o">*</span><span class="n">R</span><span class="p">)</span>
+
+
+    <span class="n">molecule</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">chemistry</span><span class="o">.</span><span class="n">Molecule</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">geomstring</span><span class="p">,</span>
+                                     <span class="n">one_body_integrals</span><span class="o">=</span><span class="n">one_body_integrals</span><span class="p">,</span>
+                                     <span class="n">two_body_integrals</span><span class="o">=</span><span class="n">two_body_integrals</span><span class="p">,</span>
+                                     <span class="n">nuclear_repulsion</span><span class="o">=</span><span class="n">nuclear_repulsion</span><span class="p">,</span>
+                                     <span class="n">transformation</span><span class="o">=</span><span class="n">transformation</span><span class="p">,</span>
+                                     <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;base&quot;</span><span class="p">)</span> <span class="c1"># necessary if psi4 or others are installed</span>
+
+    <span class="k">return</span> <span class="n">molecule</span>
+</pre></div>
+</div>
+<p>Next we define the 1-UpCCGSD calculation used in
+<a class="reference external" href="https://arxiv.org/abs/2008.02819">arxiv.org/abs/2008.02819</a> as a
+function to be called later for the whole PES</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">compute_upgccsd_energy</span><span class="p">(</span><span class="n">molecule</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;BFGS&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">U</span> <span class="o">=</span> <span class="n">molecule</span><span class="o">.</span><span class="n">make_upccgsd_ansatz</span><span class="p">()</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">molecule</span><span class="o">.</span><span class="n">make_hamiltonian</span><span class="p">()</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">ExpectationValue</span><span class="p">(</span><span class="n">H</span><span class="o">=</span><span class="n">H</span><span class="p">,</span> <span class="n">U</span><span class="o">=</span><span class="n">U</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">E</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">initial_values</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">energy</span>
+</pre></div>
+</div>
+<p>Now lets compute all MRA datapoints in two simple lines (remove the
+<code class="docutils literal notranslate"><span class="pre">silent=True</span></code> key to get live updates about the individual VQE
+simulatins)</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">points</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]</span>
+<span class="n">mra_vqe</span> <span class="o">=</span> <span class="p">{</span><span class="n">R</span><span class="p">:</span><span class="n">compute_upgccsd_energy</span><span class="p">(</span><span class="n">initialize_molecule</span><span class="p">(</span><span class="n">R</span><span class="p">),</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">R</span> <span class="ow">in</span> <span class="n">points</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Here are the results of our basis-set-free calculations</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">mra_vqe</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">mra_vqe</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;UpCCGSD(2,4)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>For the case that psi4 is installed within your environment we can
+compute also the STO-3G energies in exact diagonalization (or with the
+VQE using the function above, but for this size the results will be the
+same, we compute both to illustrate that). See the
+<a class="reference external" href="https://arxiv.org/abs/2008.02819">paper</a> for the numbers close to
+the complete basis set limit (CBS), which is the exact solution with
+respect to electron correlation (FCI) and one-particle basis and larger
+MRA caluclations. Set <code class="docutils literal notranslate"><span class="pre">no_compute=True</span></code> to avoid recomputing and save
+time.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">no_compute</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="c1"># in case you have psi4 installed you can compute the reference values here</span>
+<span class="k">if</span> <span class="s2">&quot;psi4&quot;</span> <span class="ow">in</span> <span class="n">tq</span><span class="o">.</span><span class="n">quantumchemistry</span><span class="o">.</span><span class="n">INSTALLED_QCHEMISTRY_BACKENDS</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">no_compute</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">initialize_psi4_molecule</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
+        <span class="n">geomstring</span> <span class="o">=</span> <span class="s2">&quot;H 0.0 0.0 0.0</span><span class="se">\n</span><span class="s2">H 0.0 0.0 </span><span class="si">{R}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">R</span><span class="o">=</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">molecule</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">chemistry</span><span class="o">.</span><span class="n">Molecule</span><span class="p">(</span><span class="n">basis_set</span><span class="o">=</span><span class="s2">&quot;sto-3g&quot;</span><span class="p">,</span> <span class="n">geometry</span><span class="o">=</span><span class="n">geomstring</span><span class="p">,</span> <span class="n">transformation</span><span class="o">=</span><span class="n">transformation</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">molecule</span>
+    <span class="n">gbs_fci</span> <span class="o">=</span> <span class="p">{</span><span class="n">R</span><span class="p">:</span><span class="n">initialize_psi4_molecule</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">.</span><span class="n">compute_energy</span><span class="p">(</span><span class="s2">&quot;fci&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">R</span> <span class="ow">in</span> <span class="n">points</span><span class="p">}</span>
+    <span class="n">gbs_vqe</span> <span class="o">=</span> <span class="p">{</span><span class="n">R</span><span class="p">:</span><span class="n">compute_upgccsd_energy</span><span class="p">(</span><span class="n">initialize_psi4_molecule</span><span class="p">(</span><span class="n">R</span><span class="p">),</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">R</span> <span class="ow">in</span> <span class="n">points</span><span class="p">}</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># otherwise, here they are</span>
+    <span class="n">gbs_vqe</span> <span class="o">=</span> <span class="p">{</span><span class="mf">0.5</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.05515979168155</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1162859536932939</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1361894250426225</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1341473711383794</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.120560281221029</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1011503300331484</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0791929437201784</span><span class="p">,</span><span class="mf">1.2</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0567407365989585</span><span class="p">,</span><span class="mf">1.3</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0351862019508562</span><span class="p">,</span><span class="mf">1.4</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.015467897671673</span><span class="p">,</span><span class="mf">2.0</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.9486410371613808</span><span class="p">,</span><span class="mf">3.0</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.9336318373138941</span><span class="p">,</span><span class="mf">4.0</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.9331713618417009</span><span class="p">}</span>
+    <span class="n">gbs_fci</span> <span class="o">=</span> <span class="p">{</span><span class="mf">0.5</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0551597946880178</span><span class="p">,</span><span class="mf">0.6</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1162860069722242</span><span class="p">,</span><span class="mf">0.7</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1361894540879063</span><span class="p">,</span><span class="mf">0.8</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1341476666428472</span><span class="p">,</span><span class="mf">0.9</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1205602812268745</span><span class="p">,</span><span class="mf">1.0</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.1011503301329566</span><span class="p">,</span><span class="mf">1.1</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.079192944852247</span><span class="p">,</span><span class="mf">1.2</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.05674074617943</span><span class="p">,</span><span class="mf">1.3</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.035186266306758</span><span class="p">,</span><span class="mf">1.4</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0154682491653277</span><span class="p">,</span><span class="mf">2.0</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.9486411121296501</span><span class="p">,</span><span class="mf">3.0</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.933631844555985</span><span class="p">,</span><span class="mf">4.0</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.9331713618435854</span><span class="p">}</span>
+
+<span class="c1"># close to CBS: FCI/cc-pVQZ calculation</span>
+<span class="c1"># can be computed with the tequila psi4 interface in the same way as STO-3G (but takes time)</span>
+<span class="n">close_to_cbs</span> <span class="o">=</span> <span class="p">{</span><span class="mf">0.5</span><span class="p">:</span><span class="o">-</span><span class="mf">1.10338122</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">:</span><span class="o">-</span><span class="mf">1.15531049</span><span class="p">,</span><span class="mf">0.7</span><span class="p">:</span><span class="o">-</span><span class="mf">1.1725277</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">:</span><span class="o">-</span><span class="mf">1.17182109</span><span class="p">,</span><span class="mf">0.9</span><span class="p">:</span><span class="o">-</span><span class="mf">1.16178264</span><span class="p">,</span><span class="mf">1.0</span><span class="p">:</span><span class="o">-</span><span class="mf">1.14710242</span><span class="p">,</span><span class="mf">1.1</span><span class="p">:</span><span class="o">-</span><span class="mf">1.13045400</span><span class="p">,</span><span class="mf">1.2</span><span class="p">:</span><span class="o">-</span><span class="mf">1.11340654</span><span class="p">,</span><span class="mf">1.3</span><span class="p">:</span><span class="o">-</span><span class="mf">1.09689852</span><span class="p">,</span><span class="mf">1.4</span><span class="p">:</span><span class="o">-</span><span class="mf">1.08149165</span><span class="p">,</span><span class="mf">2.0</span><span class="p">:</span><span class="o">-</span><span class="mf">1.02143838</span><span class="p">,</span><span class="mf">3.0</span><span class="p">:</span><span class="o">-</span><span class="mf">1.00109047</span><span class="p">,</span><span class="mf">4.0</span><span class="p">:</span><span class="o">-</span><span class="mf">0.99995503</span><span class="p">}</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Here are the comparisson plots. We use the notation
+(number_of_electrons, number_of_spin_orbitals) to indicate the
+sizes of the Hamiltonians.</div>
+<div class="line">In this case we have minimal sizes (the smallest size where a
+treatment beyond mean-field is possible) which results in 4
+spin-orbitals (and usually 4 qubits).</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">mra_vqe</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">mra_vqe</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;UpCCGSD/MRA(2,4)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">gbs_vqe</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">gbs_vqe</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;UpCCGSD/STO-3G(2,4)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">gbs_fci</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">gbs_fci</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;FCI/STO-3G(2,4)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">close_to_cbs</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">close_to_cbs</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;FCI/cc-pVQZ(2,120)&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To provide a complete picutre here are the values from the exact
+diagonalization of the Hamiltonian in MRA reprentation (we initialize
+the <code class="docutils literal notranslate"><span class="pre">tequila</span></code> molecule, create the hamiltonian, export it as matrix
+and diagonalize with <code class="docutils literal notranslate"><span class="pre">numpy</span></code>). The UpGCCSD is as good for MRA as it is
+for GBS (compared with exact diagonalization within those
+representations).</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mra_diag</span> <span class="o">=</span> <span class="p">{</span><span class="n">R</span><span class="p">:</span><span class="n">numpy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigvalsh</span><span class="p">(</span><span class="n">initialize_molecule</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">.</span><span class="n">make_hamiltonian</span><span class="p">()</span><span class="o">.</span><span class="n">to_matrix</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">R</span> <span class="ow">in</span> <span class="n">points</span><span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">mra_vqe</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">mra_vqe</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;UpGCCGSD/MRA(2,4)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">mra_diag</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">mra_vqe</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Exact/MRA(2,4)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

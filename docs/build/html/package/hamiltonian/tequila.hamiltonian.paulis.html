@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tequila.hamiltonian.paulis &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="tequila.hamiltonian.paulis.I" href="paulis/tequila.hamiltonian.paulis.I.html" />
+    <link rel="prev" title="Tequila Library Reference" href="../index.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="../.././tequila_presentation.html">Overview</a></li>
+                <li><a href="../.././install.html">Installation</a></li>
+                <li><a href="../.././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href="../.././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Tequila Library Reference</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+  <li>
+    <a href="../index.html" title="Previous Chapter: Tequila Library Reference"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; Tequila Libra...</span>
+    </a>
+  </li>
+  <li>
+    <a href="paulis/tequila.hamiltonian.paulis.I.html" title="Next Chapter: tequila.hamiltonian.paulis.I"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">tequila.hamil... &raquo;</span>
+    </a>
+  </li>
+              
+            
+            
+            
+            
+              <li class="hidden-sm">
+<div id="sourcelink">
+  <a href="../../_sources/package/hamiltonian/tequila.hamiltonian.paulis.rst.txt"
+     rel="nofollow">Source</a>
+</div></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <div class="section" id="module-tequila.hamiltonian.paulis">
+<span id="tequila-hamiltonian-paulis"></span><h1>tequila.hamiltonian.paulis<a class="headerlink" href="#module-tequila.hamiltonian.paulis" title="Permalink to this headline">¶</a></h1>
+<p>Convenience initialization
+of Pauli Operators. Resulting structures can be added and multiplied together.
+Currently uses OpenFermion as backend (QubitOperators)</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.I.html#tequila.hamiltonian.paulis.I" title="tequila.hamiltonian.paulis.I"><code class="xref py py-obj docutils literal notranslate"><span class="pre">I</span></code></a></p></td>
+<td><p>Initialize unit Operator</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.KetBra.html#tequila.hamiltonian.paulis.KetBra" title="tequila.hamiltonian.paulis.KetBra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">KetBra</span></code></a></p></td>
+<td><p><p class="rubric">Notes</p>
+</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Projector.html#tequila.hamiltonian.paulis.Projector" title="tequila.hamiltonian.paulis.Projector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Projector</span></code></a></p></td>
+<td><p><p class="rubric">Notes</p>
+</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Qm.html#tequila.hamiltonian.paulis.Qm" title="tequila.hamiltonian.paulis.Qm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Qm</span></code></a></p></td>
+<td><p><p class="rubric">Notes</p>
+</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Qp.html#tequila.hamiltonian.paulis.Qp" title="tequila.hamiltonian.paulis.Qp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Qp</span></code></a></p></td>
+<td><p><p class="rubric">Notes</p>
+</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Sm.html#tequila.hamiltonian.paulis.Sm" title="tequila.hamiltonian.paulis.Sm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Sm</span></code></a></p></td>
+<td><p><p class="rubric">Notes</p>
+</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Sp.html#tequila.hamiltonian.paulis.Sp" title="tequila.hamiltonian.paulis.Sp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Sp</span></code></a></p></td>
+<td><p><p class="rubric">Notes</p>
+</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.X.html#tequila.hamiltonian.paulis.X" title="tequila.hamiltonian.paulis.X"><code class="xref py py-obj docutils literal notranslate"><span class="pre">X</span></code></a></p></td>
+<td><p>Initialize a single Pauli X Operator</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Y.html#tequila.hamiltonian.paulis.Y" title="tequila.hamiltonian.paulis.Y"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Y</span></code></a></p></td>
+<td><p>Initialize a single Pauli Y Operator</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Z.html#tequila.hamiltonian.paulis.Z" title="tequila.hamiltonian.paulis.Z"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Z</span></code></a></p></td>
+<td><p>Initialize a single Pauli Z Operator</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Zero.html#tequila.hamiltonian.paulis.Zero" title="tequila.hamiltonian.paulis.Zero"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Zero</span></code></a></p></td>
+<td><p>Initialize 0 Operator</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.decompose_transfer_operator.html#tequila.hamiltonian.paulis.decompose_transfer_operator" title="tequila.hamiltonian.paulis.decompose_transfer_operator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decompose_transfer_operator</span></code></a></p></td>
+<td><p><p class="rubric">Notes</p>
+</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.pauli.html#tequila.hamiltonian.paulis.pauli" title="tequila.hamiltonian.paulis.pauli"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pauli</span></code></a></p></td>
+<td><p><dl class="field-list simple">
+<dt class="field-odd">param qubit</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

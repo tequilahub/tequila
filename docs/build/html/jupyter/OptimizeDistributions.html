@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Training Distributions with KM Divergence &#8212; tequila XXXXX documentation</title>
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Optimize Measurements by grouping into commuting cliques" href="MeasurementGroups.html" />
+    <link rel="prev" title="Tequila Tutorial:" href="SciPyOptimizers.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../index.html">
+          Tequila</a>
+        <span class="navbar-text navbar-version pull-left"><b></b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href=".././tequila_presentation.html">Overview</a></li>
+                <li><a href=".././install.html">Installation</a></li>
+                <li><a href=".././package/index.html">API</a></li>
+                <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
+                <li><a href=".././tutorials.html">Tutorials</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../README.html">Tequila</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#quantum-backends">Quantum Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#quantumchemistry">QuantumChemistry:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#getting-started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../README.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../package/index.html">Tequila Library Reference</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+</ul>
+</ul>
+</li>
+              
+            
+            
+              
+                
+  <li>
+    <a href="SciPyOptimizers.html" title="Previous Chapter: Tequila Tutorial:"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; Tequila Tutorial:</span>
+    </a>
+  </li>
+  <li>
+    <a href="MeasurementGroups.html" title="Next Chapter: Optimize Measurements by grouping into commuting cliques"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">Optimize Meas... &raquo;</span>
+    </a>
+  </li>
+              
+            
+            
+            
+            
+              <li class="hidden-sm">
+<div id="sourcelink">
+  <a href="../_sources/jupyter/OptimizeDistributions.rst.txt"
+     rel="nofollow">Source</a>
+</div></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <div class="section" id="training-distributions-with-km-divergence">
+<h1>Training Distributions with KM Divergence<a class="headerlink" href="#training-distributions-with-km-divergence" title="Permalink to this headline">¶</a></h1>
+<div class="line-block">
+<div class="line">Short tutorial on how to form objectives like in this paper</div>
+<div class="line"><a class="reference external" href="https://arxiv.org/pdf/1801.07686.pdf">https://arxiv.org/pdf/1801.07686.pdf</a></div>
+</div>
+<p>First some imports and the advice to use <code class="docutils literal notranslate"><span class="pre">tq.numpy</span></code> for functions in
+objectives (avoid issues in automatic differentiations and use the
+regular <code class="docutils literal notranslate"><span class="pre">numpy</span></code> for everything else (avoid issues with jax where you
+don’t want them)</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tequila</span> <span class="k">as</span> <span class="nn">tq</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+</pre></div>
+</div>
+<p>First we define the <span class="math notranslate nohighlight">\(\max(x,\epsilon)\)</span> function we will need
+further down the road and some global variables for this example</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># global variables, change here if you want</span>
+<span class="n">eps</span> <span class="o">=</span> <span class="mf">1.e-8</span>
+<span class="n">n_qubits</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">n_layers</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="k">def</span> <span class="nf">my_max</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">x</span><span class="o">&lt;</span><span class="n">eps</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">eps</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">In this example we will train for the generation of GHZ state (as in
+the paper above).</div>
+<div class="line">The ansatz template consists of <code class="docutils literal notranslate"><span class="pre">Rx</span></code> gates and Mølmer-Sørensen gates
+which are just rotations around XX.</div>
+<div class="line">We give here the option of using multiple layers, but one layer
+actually suffices for this example</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># create ansatz</span>
+<span class="n">U</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">QCircuit</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_layers</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_qubits</span><span class="p">):</span>
+        <span class="c1"># name can be any non-numeric hashable type</span>
+        <span class="c1"># scaling variables with pi in this example</span>
+        <span class="n">variable</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">q</span><span class="p">))</span>
+        <span class="n">U</span> <span class="o">+=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">Rx</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="n">variable</span><span class="o">*</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">q</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_qubits</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">q</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_qubits</span><span class="p">):</span>
+            <span class="n">U</span> <span class="o">+=</span> <span class="n">tq</span><span class="o">.</span><span class="n">gates</span><span class="o">.</span><span class="n">ExpPauli</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">paulistring</span><span class="o">=</span><span class="s2">&quot;X(</span><span class="si">{}</span><span class="s2">)X(</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Here are some demonstrations on how to extract informations from your
+template circuit U</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Circuit depends on variables: &quot;</span><span class="p">,</span> <span class="n">U</span><span class="o">.</span><span class="n">extract_variables</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">The circuit is parametrized by variables, so if we want to simulate it
+we will have to choose for which values we want to simulate the
+wavefunction. Here is an example where we set all variables to
+<span class="math notranslate nohighlight">\(\pi\)</span>.</div>
+<div class="line">Variables are passed down to the simulator as a dictionary holding the
+variable names and values</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">variables</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span> <span class="p">:</span> <span class="mf">1.0</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">U</span><span class="o">.</span><span class="n">extract_variables</span><span class="p">()}</span>
+<span class="n">wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;wfn with variables = &quot;</span><span class="p">,</span> <span class="n">variables</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Instead of simulating directly the circuit can also be compiled and
+afterwards be used like a function</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">compiledU</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+<span class="n">wfn</span> <span class="o">=</span> <span class="n">compiledU</span><span class="p">(</span><span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Next we will define the target distribution which we want to optimize
+for. It is the distribution of a GHZ state, i.e. <span class="math notranslate nohighlight">\(P(00..0) = 0.5\)</span>
+and <span class="math notranslate nohighlight">\(P(11..1)=0.5\)</span> where in the following we will use binary
+notation for easier coding i.e <span class="math notranslate nohighlight">\(00...0=0\)</span> and
+<span class="math notranslate nohighlight">\(11..1=2^{n-1}+2^{n-2}+..+1\)</span></p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">one</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="mi">2</span><span class="o">**</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_qubits</span><span class="p">)])</span>
+<span class="n">target_distribution</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">one</span><span class="p">:</span><span class="mf">0.5</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For the tequila objective Born’s rule will be used. In order to make
+this work we need to reformulate this as an expectation value. This can
+be achieved as</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}\displaystyle \lvert\langle ijk..l \rvert \Psi \rangle\rvert^2 = \langle \Psi \rvert H \lvert \Psi \rangle\\where :math:`i,j,k..,l \in \left\{0,1 \right\}` and the Hamiltonian is\end{aligned}\end{align} \]</div>
+<div class="math notranslate nohighlight">
+\[\displaystyle H = \lvert ijk..l \rangle \langle ijk..l \rvert = \otimes_{m \in (ijk..l)} \frac{1}{n}\left( 1 + (-1)^{m}\sigma_Z \right)\]</div>
+<p>Tequila has a convenience shortcut for the operator</p>
+<div class="math notranslate nohighlight">
+\[Q_{\pm} = \frac{1}{2}\left( 1 \pm \sigma_Z \right)\]</div>
+<p>Lets build the Kullback–Leibler divergence of the distribution P
+generated by our template U and the target distribution Q</p>
+<div class="math notranslate nohighlight">
+\[\displaystyle D(P,Q) = -\frac{1}{2^n} \sum_{x} P(x) \ln\left(\frac{P(x)}{Q(x)}\right)\]</div>
+<p>where we use the same safety barrier as in the paper to prevent taking
+logarithms of zero (this is where the mymax function fron above is
+needed). In the end we will square the objective to avoid negative
+values and assure that zero is the minimum.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">objective</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">Objective</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">Q</span> <span class="ow">in</span> <span class="n">target_distribution</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">my_max</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span> <span class="c1"># here we apply the mymax function to avoid having zeros</span>
+    <span class="n">wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">QubitWaveFunction</span><span class="o">.</span><span class="n">from_int</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">n_qubits</span><span class="o">=</span><span class="n">n_qubits</span><span class="p">)</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">Projector</span><span class="p">(</span><span class="n">wfn</span><span class="o">=</span><span class="n">wfn</span><span class="p">)</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">ExpectationValue</span><span class="p">(</span><span class="n">H</span><span class="o">=</span><span class="n">H</span><span class="p">,</span> <span class="n">U</span><span class="o">=</span><span class="n">U</span><span class="p">)</span>  <span class="c1"># this is the born rule expectation value from above</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">P</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">my_max</span><span class="p">)</span> <span class="c1"># here we apply the mymax function to avoid having zeros</span>
+    <span class="n">objective</span> <span class="o">+=</span> <span class="n">Q</span><span class="o">*</span><span class="p">(</span><span class="n">Q</span> <span class="o">/</span> <span class="n">P</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tq</span><span class="o">.</span><span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">)</span> <span class="c1"># here we take the logarithm and sum up</span>
+
+<span class="n">objective</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="mf">2.0</span><span class="o">**</span><span class="n">n_qubits</span> <span class="o">*</span><span class="n">objective</span>
+<span class="n">objective</span> <span class="o">=</span> <span class="n">objective</span><span class="o">**</span><span class="mi">2</span> <span class="c1"># here we take the square</span>
+</pre></div>
+</div>
+<p>Lets see what we created here. Tequila created an objective with 4
+expectationvalues (we had 2 values in the target_distribution, and P
+entered twice each) but only 2 unique expectationvalues (meaning the
+simulator will only evaluate those two)</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">objective</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Objectives can be compiled and simulated in the same way as the
+circuits above. Here is a small demonstration.</div>
+<div class="line">Since our objective is parametrized we need to pass the variables down
+again. We will use the same as in the example above.</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">value1</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="n">compiled</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">objective</span><span class="p">)</span>
+<span class="n">value2</span> <span class="o">=</span> <span class="n">compiled</span><span class="p">(</span><span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+<span class="n">variables2</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="mf">1.1</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">objective</span><span class="o">.</span><span class="n">extract_variables</span><span class="p">()}</span>
+<span class="n">value3</span> <span class="o">=</span> <span class="n">compiled</span><span class="p">(</span><span class="n">variables</span><span class="o">=</span><span class="n">variables2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;value1 = &quot;</span><span class="p">,</span> <span class="n">value1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;value2 = &quot;</span><span class="p">,</span> <span class="n">value2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;value3 = &quot;</span><span class="p">,</span> <span class="n">value3</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Lets optimize our objective with one of the inbuildt optimizers in
+tequila.</div>
+<div class="line">If no initial_values are passed down, random initialization will be
+used.</div>
+<div class="line">Check the OptimizerSciPy Tutorial for more information</div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">optimizer_scipy</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">objective</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;Cobyla&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Lets compute our wavefunction with the optimized angles</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">final_wfn</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">angles</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">final_wfn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And plot some information about the optimization</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">result</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s2">&quot;energies&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">result</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s2">&quot;angles&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2020, Matter Lab.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.2.1.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>
