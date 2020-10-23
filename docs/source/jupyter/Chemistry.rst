@@ -1,5 +1,5 @@
-Tequila Chemistry Basics
-========================
+Chemistry basics with Tequila
+=============================
 
 | Here we show the basics of the tequila chemistry module.
 | In order for this to work you need to have psi4 installed in the same

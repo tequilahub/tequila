@@ -1,3 +1,6 @@
+Noise in Tequila
+================
+
 Hello, and welcome to this tutorial on simulating circuit noise in
 Tequila! In this tutorial, we will briefly detail what quantum noise is,
 its mathematical modeling, and how specific popular simulation packages

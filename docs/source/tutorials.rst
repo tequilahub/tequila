@@ -176,27 +176,6 @@ List of jupyter notebooks in: `GitHub <https://github.com/aspuru-guzik-group/teq
 
 * `Source (GitHub) <https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/SciPyOptimizers.ipynb>`__
 
-
-.. raw:: html
-
-              </div>
-            </div>
-            <hr>
-            <div class="row">
-              <div class="col-md-4">
-                <a href=./jupyter/OptimizeDistributions.html>
-                  <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
-                </a>
-              </div>
-              <div class="col-md-8">
-
-.. toctree::
-   :maxdepth: 2
-
-   jupyter/OptimizeDistributions
-
-* `Source (GitHub) <https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/OptimizeDistributions.ipynb>`__
-
 .. raw:: html
 
               </div>
@@ -229,6 +208,27 @@ List of jupyter notebooks in: `GitHub <https://github.com/aspuru-guzik-group/teq
    jupyter/MeasurementGroups
 
 * `Source (GitHub) <https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/MeasurementGroups.ipynb>`__
+
+.. raw:: html
+
+              </div>
+            </div>
+            <hr>
+            <div class="row">
+              <div class="col-md-4">
+                <a href=./jupyter/OptimizeDistributions.html>
+                  <img src="./_static/BasicUsage_logo.png" class="img-responsive center-block">
+                </a>
+              </div>
+              <div class="col-md-8">
+
+.. toctree::
+   :maxdepth: 2
+
+   jupyter/OptimizeDistributions
+
+* `Source (GitHub) <https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/OptimizeDistributions.ipynb>`__
+
 
 .. raw:: html
 

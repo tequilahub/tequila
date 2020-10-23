@@ -29,12 +29,11 @@ from sphinx.domains.python import PythonDomain
 # -- Project information -----------------------------------------------------
 
 project = 'tequila'
-#copyright = '2019, Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo, Cyrille Lavigne, Abhinav Anand, Maha Kesebi'
 copyright = '2020, Matter Lab'
-author = 'Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo, Cyrille Lavigne, Abhinav Anand, Maha Kesebi'
+author = 'Sumner Alperin-Lea, Teresa Tamayo-Mendoza, Cyrille Lavigne, Abhinav Anand, Alba Cervera-Lierta, and Alan Aspuru-Guzik'
 
 # The full version, including alpha/beta/rc tags
-release = 'XXXXX'
+release = '0.0.3'
 
 
 # -- General configuration ---------------------------------------------------
@@ -72,7 +71,6 @@ html_static_path = ['_static']
 
 extensions = ['sphinx.ext.napoleon',
               'recommonmark',
-              #'numpydoc',
               'sphinx.ext.autodoc',
               'sphinx.ext.doctest',
               'sphinx.ext.autodoc',
