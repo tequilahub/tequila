@@ -75,6 +75,6 @@ def test_one_qubit_shot(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = tq.minimize(method="lbfgs",objective=O, maxiter=20, backend=simulator,
-                         samples=10000, initial_values=numpy.pi/2)
+    result = tq.minimize(method="lbfgs",objective=O, maxiter=20, backend=simulator, samples=10000, initial_values=numpy.pi/2)
+
     assert (numpy.isclose(result.energy, -1.0, atol=1.e-1))
