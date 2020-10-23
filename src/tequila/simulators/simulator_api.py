@@ -31,6 +31,10 @@ We are distinguishing two classes of simulators: Samplers and full wavefunction 
 
 
 HAS_QISKIT = True
+from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit
+INSTALLED_SIMULATORS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
+INSTALLED_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
+INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
 try:
     from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit
     HAS_QISKIT = True
@@ -104,7 +108,9 @@ HAS_SYMBOLIC = True
 
 
 def show_available_simulators():
-    """ """
+    """ 
+    Display and supported backends, simulators and noise samplers.
+    """
     print("{:15} | {:10} | {:10} | {:10} | {:10}".format("backend", "wfn", "sampling", "noise", "installed"))
     print("--------------------------------------------------------------------")
     for k in SUPPORTED_BACKENDS:
@@ -119,7 +125,8 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
                  exclude_symbolic: bool = True) -> str:
 
     """
-    choose, or verify, a backend for the user.
+    Choose, or verify, a backend for the user.
+
     Parameters
     ----------
     backend: str, optional:
@@ -214,7 +221,8 @@ def compile_objective(objective: 'Objective',
                       *args,
                       **kwargs) -> Objective:
     """
-    compile an objective to render it callable and return it.
+    Compile an objective to render it callable and return it.
+
     Parameters
     ----------
     objective: Objective:
@@ -238,6 +246,7 @@ def compile_objective(objective: 'Objective',
         the compiled objective.
     """
 
+    print("---",backend,noise)
     backend = pick_backend(backend=backend, samples=samples, noise=noise, device=device)
 
     # dummy variables
@@ -284,7 +293,8 @@ def compile_circuit(abstract_circuit: 'QCircuit',
                     *args,
                     **kwargs) -> BackendCircuit:
     """
-    compile a circuit to render it callable and return it.
+    Compile a circuit to render it callable and return it.
+
     Parameters
     ----------
     abstract_circuit: QCircuit:
@@ -335,7 +345,8 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
              device: str = None,
              *args,
              **kwargs) -> Union[RealNumber, 'QubitWaveFunction']:
-    """Simulate a tequila objective or circuit
+    """
+    Simulate a tequila objective or circuit.
 
     Parameters
     ----------
@@ -378,7 +389,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
 
 def draw(objective, variables=None, backend: str = None):
     """
-    Pretty output (depends on installed backends)
+    Pretty output (depends on installed backends).
 
     Parameters
     ----------
@@ -435,7 +446,8 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
             device: str = None,
             *args,
             **kwargs) -> typing.Union['BackendCircuit', 'Objective']:
-    """Compile a tequila objective or circuit to a backend
+    """
+    Compile a tequila objective or circuit to a backend.
 
     Parameters
     ----------
@@ -481,20 +493,24 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
 def compile_to_function(objective: typing.Union['Objective', 'QCircuit'], *args,
                         **kwargs) -> typing.Union['BackendCircuit', 'Objective']:
     """
-    Notes
-    ----------
-    Same as compile but gives back callable wrapper
-    where parameters are passed down as arguments instead of dictionaries
-    the order of those arguments is the order of the parameter dictionary
-    given here. If not given it is the order returned by objective.extract_variables()
-
-    See compile for more information on the parameters of this function
+    
+    Compile a tequila objective or circuit with parameters are passed down as ordered arguments.
 
     Returns
     -------
     BackendCircuit or Objective:
         wrapper over a compiled objective/circuit
         can be called like: function(0.0,1.0,...,samples=None)
+
+    Notes
+    -----
+    Same as compile but gives back callable wrapper
+    where parameters are passed down as arguments instead of dictionaries
+    the order of those arguments is the order of the parameter dictionary
+    given here. If not given it is the order returned by objective.extract_variables()
+
+    See compile for more information on the parameters of this function.
+
     """
 
     compiled_objective = compile(objective, *args, **kwargs)

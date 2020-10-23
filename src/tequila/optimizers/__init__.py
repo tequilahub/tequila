@@ -52,6 +52,9 @@ except ImportError:
 
 def show_available_optimizers(module=None):
     """
+
+    Display a list of installed optimization methods.
+
     Returns
     -------
         A list of available optimization methods
@@ -85,7 +88,8 @@ def minimize(method: str,
              *args,
              **kwargs):
     """
-
+    Minimization function with a given optimization method.
+   
     Parameters
     ----------
     method: str:
@@ -108,22 +112,27 @@ def minimize(method: str,
        e.g. tq.minimize_scipy
        See their documentation for more details
 
-       example: gradient keyword:
-       gradient (Default Value: None):
-       instructions for gradient compilation
-       can be a dictionary of tequila objectives representing the gradients
-       or a string/dictionary giving instructions for numerical gradients
-       examples are
-            gradient = '2-point'
-            gradient = {'method':'2-point', 'stepsize': 1.e-4}
-            gradient = {'method':Callable, 'stepsize': 1.e-4}
-            see optimizer_base.py for method examples
-
-        gradient = None: analytical gradients are compiled
-
-
     Returns
     -------
+    minimize: object
+       
+
+    Examples
+    ---------
+    example: gradient <keyword>
+
+    gradient (Default Value: None):
+
+    Instructions for gradient compilation
+    can be a dictionary of tequila objectives representing the gradients
+    or a string/dictionary giving instructions for numerical gradients
+
+    >>> gradient = '2-point'
+    >>> gradient = {'method':'2-point', 'stepsize': 1.e-4}
+    >>> gradient = {'method':Callable, 'stepsize': 1.e-4}
+    >>> gradient = None # Analytical gradients are compiled
+
+    see ``optimizer_base.py`` for method examples.
 
     """
     for k, v in INSTALLED_OPTIMIZERS.items():

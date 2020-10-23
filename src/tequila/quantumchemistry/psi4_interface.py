@@ -225,6 +225,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             self.ref_wfn = self.logs["hf"].wfn
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
+        pass
 
     @property
     def point_group(self):
@@ -341,6 +342,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         return h.elems
 
     def compute_ccsd_amplitudes(self):
+        """
+        Compute the CCSD amplitudes
+        """
         return self.compute_amplitudes(method='ccsd')
 
     def _run_psi4(self, options: dict, method=None, return_wfn=True, point_group=None, filename: str = None,
@@ -502,6 +506,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                                        "Active spaces might get you in trouble.".format(method))
 
     def compute_energy(self, method: str = "fci", options=None, recompute: bool = True, *args, **kwargs):
+        """
+        Compute energy given a method.
+        """
         if not recompute and method.lower() in self.energies and not "point_group" in kwargs:
             return self.energies[method.lower()]
 
@@ -560,7 +567,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         Parameters
         ----------
         U :
-             Quantum Circuit to achieve the desired state \\psi = U |0\\rangle, optional if psi4_rdms is set to True
+            Quantum Circuit to achieve the desired state :math:`\\psi = U |0\\rangle`, optional if psi4_rdms is set to True
         variables :
             If U is parametrized, then need to hand over a set of fixed variables
         spin_free :

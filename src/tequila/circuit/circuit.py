@@ -28,12 +28,6 @@ class QCircuit():
     qubits:
         returns a list of qubits acted upon by the circuit.
 
-
-    Methods
-    -------
-    make_parameter_map:
-
-
     """
 
 
@@ -164,7 +158,8 @@ class QCircuit():
 
     def __init__(self, gates=None, parameter_map=None):
         """
-        init
+        Initialize abstract circuit.
+
         Parameters
         ----------
         gates:
@@ -173,6 +168,7 @@ class QCircuit():
         parameter_map:
             (Default value = None)
             mapping to indicate where in the circuit certain parameters appear.
+
         """
         self._n_qubits = None
         self._min_n_qubits = 0
@@ -188,6 +184,8 @@ class QCircuit():
 
     def make_parameter_map(self) -> dict:
         """
+        Creates a dictionary with the gates and their positions in the circuit.
+
         Returns
         -------
             ParameterMap of the circuit: A dictionary with
@@ -315,7 +313,8 @@ class QCircuit():
 
     def max_qubit(self):
         """
-        Returns:
+        Returns
+        -------
         int:
              Highest index of qubits in the circuit
         """
@@ -573,7 +572,8 @@ class Moment(QCircuit):
 
     def __init__(self, gates: typing.List[QGateImpl] = None, sort=False):
         """
-        initialize a moment from gates.
+        Initialize a moment from gates.
+
         Parameters
         ----------
         gates: list:

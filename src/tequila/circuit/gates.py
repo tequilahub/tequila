@@ -19,6 +19,8 @@ def wrap_gate(func):
 def RotationGate(axis: int, angle: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
                  control: typing.Union[list, int] = None):
     """
+    Initialize an abstract rotation gate.
+
     Notes
     ----------
     Initialize an abstract rotation gate of the form
@@ -47,7 +49,7 @@ def RotationGate(axis: int, angle: typing.Union[typing.Hashable, numbers.Number]
 
 def PowerGate(name: str, target: typing.Union[list, int], power: bool = None, control: typing.Union[list, int] = None):
     """
-    Initialize a (potentially parametrized) gate which is supported on the backend
+    Initialize a (potentially parametrized) gate which is supported on the backend.
 
     Parameters
     ----------
@@ -70,6 +72,8 @@ def PowerGate(name: str, target: typing.Union[list, int], power: bool = None, co
 def Phase(phi: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
           control: typing.Union[list, int] = None) -> QCircuit:
     """
+    Initialize an abstract phase gate.
+
     Notes
     ----------
     Initialize an abstract phase gate which acts as
@@ -88,7 +92,8 @@ def Phase(phi: typing.Union[typing.Hashable, numbers.Number], target: typing.Uni
 
     Returns
     -------
-    QCircuit object
+    QCircuit
+         object
 
     """
     return QCircuit.wrap_gate(PhaseGateImpl(phase=phi, target=target, control=control))
@@ -96,6 +101,8 @@ def Phase(phi: typing.Union[typing.Hashable, numbers.Number], target: typing.Uni
 
 def S(target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
+    :math:`S = \\begin{pmatrix} 1 & 0 \\\\ 0 & e^{i\\frac{\\pi}{2}} \\end{pmatrix}`
+
     Notes
     ----------
 
@@ -111,13 +118,15 @@ def S(target: typing.Union[list, int], control: typing.Union[list, int] = None) 
 
     Returns
     -------
-    QCircuit object
+    QCircuit: object
     """
     return Phase(np.pi / 2, target=target, control=control)
 
 
 def T(target: typing.Union[list, int], control: typing.Union[list, int] = None):
     """
+    :math:`T = \\begin{pmatrix} 1 & 0 \\\\ 0 & e^{i\\frac{\\pi}{4}} \\end{pmatrix}`
+
     Notes
     ----------
     Fixed phase gate
@@ -147,6 +156,8 @@ def QGate(name, target: typing.Union[list, int], control: typing.Union[list, int
 
 def Rx(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
+    Rx gate
+
     Notes
     ----------
     Rx gate of the form
@@ -175,6 +186,8 @@ def Rx(angle, target: typing.Union[list, int], control: typing.Union[list, int] 
 @wrap_gate
 def Ry(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
+    Ry gate 
+
     Notes
     ----------
     Ry gate of the form
@@ -202,6 +215,8 @@ def Ry(angle, target: typing.Union[list, int], control: typing.Union[list, int] 
 @wrap_gate
 def Rz(angle, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
+    Rz gate
+
     Notes
     ----------
     Rz gate of the form
@@ -228,8 +243,6 @@ def Rz(angle, target: typing.Union[list, int], control: typing.Union[list, int] 
 
 def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
     """
-    Notes
-    ----------
     Pauli X Gate
 
     Parameters
@@ -251,8 +264,6 @@ def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
 @wrap_gate
 def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
     """
-    Notes
-    ----------
     Hadamard gate
 
     Parameters
@@ -274,8 +285,6 @@ def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
 
 def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
     """
-    Notes
-    ----------
     Pauli Y Gate
 
     Parameters
@@ -297,6 +306,8 @@ def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
 
 def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
     """
+    Pauli Z Gate
+
     Notes
     ----------
     Pauli Z Gate
@@ -388,16 +399,18 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
                         shift: float = 0.5,
                         steps: int = 1) -> QCircuit:
     """
+    Convenience rotation gate.
 
     Notes
-    --------
-    
+    -----
+
     A gates which is shift-rule differentiable
-     - its generator only has two distinguishable eigenvalues
-     - it is then differentiable by the shift rule
-     - shift needs to be given upon initialization (otherwise its default is 1/2)
-     - the generator will not be verified to fullfill the properties
-     Compiling will be done in analogy to a trotterized gate with steps=1 as default
+     * its generator only has two distinguishable eigenvalues
+     * it is then differentiable by the shift rule
+     * shift needs to be given upon initialization (otherwise its default is 1/2)
+     * the generator will not be verified to fullfill the properties
+
+    Compiling will be done in analogy to a trotterized gate with steps=1 as default
 
     The gate will act in the same way as rotations and exppauli gates
 
@@ -415,6 +428,7 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
     Returns
     -------
     The gate wrapped in a circuit
+
     """
     return QCircuit.wrap_gate(
         GaussianGateImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
@@ -460,6 +474,7 @@ def Trotterized(generators: typing.List[QubitHamiltonian],
     Returns
     -------
     QCircuit
+        object
 
     """
 
@@ -482,9 +497,7 @@ iSWAP will only work with cirq, the others will be recompiled
 @wrap_gate
 def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None) -> QCircuit:
     """
-    Notes
-    ----------
-    SWAP gate, order of targets does not matter
+    SWAP gate, order of targets does not matter.
 
     Parameters
     ----------
@@ -500,6 +513,7 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     Returns
     -------
     QCircuit
+        object
 
     """
     return _initialize_power_gate(name="SWAP", target=[first, second], control=control, power=power)
@@ -529,7 +543,9 @@ def CNOT(control: int, target: int) -> QCircuit:
 
     Returns
     -------
-    QCircuit object
+    QCircuit
+        object
+
     """
     return X(target=target, control=control)
 
@@ -568,7 +584,8 @@ def CX(control: int, target: int) -> QCircuit:
 
     Returns
     -------
-    QCircuit object
+    QCircuit
+        object
     """
     return X(target=target, control=control)
 
@@ -586,7 +603,8 @@ def CY(control: int, target: int) -> QCircuit:
 
     Returns
     -------
-    QCircuit object
+    QCircuit 
+       object
     """
     return Y(target=target, control=control)
 
@@ -604,7 +622,8 @@ def CZ(control: int, target: int) -> QCircuit:
 
     Returns
     -------
-    QCircuit object
+    QCircuit
+       object
     """
     return Z(target=target, control=control)
 
@@ -624,7 +643,8 @@ def CRx(control: int, target: int, angle: float) -> QCircuit:
 
     Returns
     -------
-    QCircuit object
+    QCircuit
+       object
     """
     return Rx(target=target, control=control, angle=angle)
 
@@ -644,7 +664,8 @@ def CRy(control: int, target: int, angle: float) -> QCircuit:
 
     Returns
     -------
-    QCircuit object
+    QCircuit
+        object
     """
     return Ry(target=target, control=control, angle=angle)
 
@@ -664,7 +685,8 @@ def CRz(control: int, target: int, angle: float) -> QCircuit:
 
     Returns
     -------
-    QCircuit object
+    QCircuit 
+       object
     """
     return Rz(target=target, control=control, angle=angle)
 

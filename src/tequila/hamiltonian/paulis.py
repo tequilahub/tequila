@@ -1,6 +1,6 @@
 """
-Convenience initialization
-of Pauli Operators. Resulting structures can be added and multiplied together.
+Convenience initialization of Pauli Operators. 
+Resulting structures can be added and multiplied together.
 Currently uses OpenFermion as backend (QubitOperators)
 """
 import typing
@@ -13,11 +13,11 @@ import numpy
 
 def pauli(qubit, type) -> QubitHamiltonian:
     """
+
     Parameters
     ----------
     qubit: int or list of ints
-
-    type: str or int or list of string or int:
+    type: str or int or list of string or int
         define if X, Y or Z (0,1,2)
 
     Returns
@@ -124,6 +124,8 @@ def Zero(*args, **kwargs) -> QubitHamiltonian:
 
 def Qp(qubit) -> QubitHamiltonian:
     """
+    :math:`\\frac{1}{2} \\left( 1 - \\sigma_z \\right)`
+
     Notes
     ----------
     Initialize
@@ -150,6 +152,8 @@ def Qp(qubit) -> QubitHamiltonian:
 
 def Qm(qubit) -> QubitHamiltonian:
     """
+    :math:`\\frac{1}{2} \\left( 1 + \\sigma_z \\right)`
+    
     Notes
     ----------
     Initialize
@@ -176,6 +180,8 @@ def Qm(qubit) -> QubitHamiltonian:
 
 def Sp(qubit) -> QubitHamiltonian:
     """
+    :math:`\\frac{1}{2} \\left( \\sigma_x + i \\sigma_y \\right)`
+
     Notes
     ----------
     Initialize
@@ -202,6 +208,8 @@ def Sp(qubit) -> QubitHamiltonian:
 
 def Sm(qubit) -> QubitHamiltonian:
     """
+    :math:`\\frac{1}{2} \\left( \\sigma_x + i \\sigma_y \\right)`
+
     Notes
     ----------
     Initialize
@@ -228,30 +236,29 @@ def Sm(qubit) -> QubitHamiltonian:
 
 def Projector(wfn, threshold=0.0, n_qubits=None) -> QubitHamiltonian:
     """
+    Initialize a projector
+
     Notes
     ----------
     Initialize a projector given by
 
     .. math::
+
         H = \\lvert \\Psi \\rangle \\langle \\Psi \\rvert
 
     Parameters
     ----------
-    wfn: QubitWaveFunction or int, or string, or array :
+    wfn: QubitWaveFunction or int, or string, or array 
         The wavefunction onto which the projector projects
         Needs to be passed down as tequilas QubitWaveFunction type
         See the documentation on how to initialize a QubitWaveFunction from
         integer, string or array (can also be passed down diretly as one of those types)
-
-
-    threshold: float: (Default value = 0.0)
+    threshold: float (Default value = 0.0)
         neglect small parts of the operator
-
     n_qubits: only needed when an integer is given as wavefunction
 
     Returns
     -------
-
     """
 
     wfn = QubitWaveFunction(state=wfn, n_qubits=n_qubits)
@@ -269,29 +276,35 @@ def Projector(wfn, threshold=0.0, n_qubits=None) -> QubitHamiltonian:
 def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.e-6,
            n_qubits=None):
     """
+    Initialize the general KetBra operator
+
     Notes
     ----------
     Initialize the general KetBra operator
+
     .. math::
-        H = \\lvert ket \\rangle \\langle bra \\rvert
+
+       H = \\lvert ket \\rangle \\langle bra \\rvert
 
     e.g.
-    wfn1 = tq.QubitWaveFunction.from_string("1.0*|00> + 1.0*|11>").normalize()
-    wfn2 = tq.QubitWaveFunction.from_string("1.0*|00>")
-    operator = tq.paulis.KetBra(ket=wfn1, bra=wfn1)
+    
+    >>> wfn1 = tq.QubitWaveFunction.from_string("1.0*|00> + 1.0*|11>").normalize()
+    >>> wfn2 = tq.QubitWaveFunction.from_string("1.0*|00>")
+    >>> operator = tq.paulis.KetBra(ket=wfn1, bra=wfn1)
+
     initializes the transfer operator from the all-zero state to a Bell state
 
     Parameters
     ----------
-    ket: QubitWaveFunction:
+    ket: QubitWaveFunction
          QubitWaveFunction which defines the ket element
          can also be given as string or array or integer
-    bra: QubitWaveFunction:
+    bra: QubitWaveFunction
          QubitWaveFunction which defines the bra element
          can also be given as string or array or integer
-    hermitian: bool: (Default False)
+    hermitian: bool (Default False)
          if True the hermitian version H + H^\dagger is returned
-    threshold: float: (Default 1.e-6)
+    threshold: float (Default 1.e-6)
          elements smaller than the threshold will be ignored
     n_qubits: only needed if ket and/or bra are passed down as integers
 
@@ -318,6 +331,8 @@ def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = Fal
 
 def decompose_transfer_operator(ket: BitString, bra: BitString, qubits: typing.List[int] = None) -> QubitHamiltonian:
     """
+    Create the operator
+
     Notes
     ----------
     Create the operator

@@ -265,15 +265,23 @@ class PowerGateImpl(ParametrizedGateImpl):
 
 class GaussianGateImpl(ParametrizedGateImpl):
     """
-    A gate which behaves 'gaussian'
-     - its generator only has two distinguishable eigenvalues
-     - it is then differentiable by the shift rule
-     - shift needs to be given upon initialization (otherwise its default is 1/2)
-     - the generator will not be verified to fullfill the properties
-     Compiling will be done in analogy to a trotterized gate with steps=1 as default
+    Creates a gate which behaves 'gaussian'
+
+    Notes
+    -----
+
+    A gate which behaves 'gaussian':
+     * its generator only has two distinguishable eigenvalues
+     * it is then differentiable by the shift rule
+     * shift needs to be given upon initialization (otherwise its default is 1/2)
+     * the generator will not be verified to fullfill the properties
+
+    Compiling will be done in analogy to a trotterized gate with steps=1 as default
 
     The gate will act in the same way as rotations and exppauli gates
-    exp(-i angle/2 generator)
+
+    .. math::
+        \\  exp(-i angle/2 generator)
     """
 
     @staticmethod
@@ -377,7 +385,7 @@ class TrotterizedGateImpl(QGateImpl):
         :param control: control qubits
         :param threshold: neglect terms in the given Hamiltonians if their coefficients are below this threshold
         :param join_components: The generators are trotterized together. If False the first generator is trotterized, then the second etc
-        Note that for steps==1 as well as len(generators)==1 this has no effect
+         Note that for steps==1 as well as len(generators)==1 this has no effect
         :param randomize_component_order: randomize the order in the generators order before trotterizing
         :param randomize: randomize the trotter decomposition of each generator
         """

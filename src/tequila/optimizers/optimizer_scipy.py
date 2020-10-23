@@ -45,7 +45,7 @@ class OptimizerSciPy(Optimizer):
 
     @classmethod
     def available_methods(cls):
-        """:return: All tested available methods"""
+        """ All tested available methods"""
         return cls.gradient_free_methods + cls.gradient_based_methods + cls.hessian_based_methods
 
     def __init__(self, method: str = "L-BFGS-B",
@@ -57,18 +57,18 @@ class OptimizerSciPy(Optimizer):
         """
         Parameters
         ----------
-        method: str: Default = 'L-BFGS-B':
+        method: str: Default = 'L-BFGS-B'
             The scipy optimization method passed as string.
-        tol: float, optional:
+        tol: float, optional
             See scipy documentation for the method you picked
-        method_options: optional:
+        method_options: optional
             See scipy documentation for the method you picked
-        method_bounds: optional:
+        method_bounds: optional
             See scipy documentation for the method you picked
-        method_constraints: optional:
+        method_constraints: optional
             See scipy documentation for the method you picked
-        silent: bool:
-            if False the optimizer prints out all evaluated energies
+        silent: bool
+            If False the optimizer prints out all evaluated energies
         """
         super().__init__(**kwargs)
         if hasattr(method, "upper"):
@@ -110,25 +110,25 @@ class OptimizerSciPy(Optimizer):
 
         Parameters
         ----------
-        objective: Objective:
-            the objective to optimize.
-        variables: list, optional:
-            the variables of objective to optimize. If None: optimize all.
-        initial_values: dict, optional:
-            a starting point from which to begin optimization. Will be generated if None.
-        gradient: optional:
+        objective: Objective
+            The objective to optimize.
+        variables: list, optional
+            The variables of objective to optimize. If None: optimize all.
+        initial_values: dict, optional
+            A starting point from which to begin optimization. Will be generated if None.
+        gradient: optional
             Information or object used to calculate the gradient of objective. Defaults to None: get analytically.
-        hessian: optional:
+        hessian: optional
             Information or object used to calculate the hessian of objective. Defaults to None: get analytically.
-        reset_history: bool: Default = True:
-            whether or not to reset all history before optimizing.
+        reset_history: bool: Default = True
+            Whether or not to reset all history before optimizing.
         args
         kwargs
 
         Returns
         -------
         ScipyReturnType:
-            the results of optimization.
+            The results of optimization.
         """
 
 
@@ -301,7 +301,9 @@ class OptimizerSciPy(Optimizer):
 
 
 def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[str]:
-    """Convenience
+    """
+    Available methods of the scipy optimizer, a list of strings.
+
     Parameters
     ----------
     energy :
@@ -347,54 +349,57 @@ def minimize(objective: Objective,
              **kwargs) -> SciPyResults:
     """
 
+    Minimization function using scipy methods.
+
     Parameters
     ----------
-    objective: Objective :
+    objective: Objective 
         The tequila objective to optimize
     gradient: typing.Union[str, typing.Dict[Variable, Objective], None] : Default value = None):
         '2-point', 'cs' or '3-point' for numerical gradient evaluation (does not work in combination with all optimizers),
         dictionary of variables and tequila objective to define own gradient,
         None for automatic construction (default)
         Other options include 'qng' to use the quantum natural gradient.
-    hessian: typing.Union[str, typing.Dict[Variable, Objective], None], optional:
+    hessian: typing.Union[str, typing.Dict[Variable, Objective], None], optional
         '2-point', 'cs' or '3-point' for numerical gradient evaluation (does not work in combination with all optimizers),
         dictionary (keys:tuple of variables, values:tequila objective) to define own gradient,
         None for automatic construction (default)
-    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional:
+    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional
         Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero
-    variables: typing.List[typing.Hashable], optional:
+    variables: typing.List[typing.Hashable], optional
          List of Variables to optimize
-    samples: int, optional:
+    samples: int, optional
          samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)
-    maxiter: int : (Default value = 100):
+    maxiter: int : (Default value = 100)
          max iters to use.
-    backend: str, optional:
+    backend: str, optional
          Simulator backend, will be automatically chosen if set to None
-    backend_options: dict, optional:
+    backend_options: dict, optional
          Additional options for the backend
          Will be unpacked and passed to the compiled objective in every call
-    noise: NoiseModel, optional:
+    noise: NoiseModel, optional
          a NoiseModel to apply to all expectation values in the objective.
-    method: str : (Default = "BFGS"):
+    method: str : (Default = "BFGS")
          Optimization method (see scipy documentation, or 'available methods')
-    tol: float : (Default = 1.e-3):
+    tol: float : (Default = 1.e-3)
          Convergence tolerance for optimization (see scipy documentation)
-    method_options: dict, optional:
+    method_options: dict, optional
          Dictionary of options
          (see scipy documentation)
     method_bounds: typing.Dict[typing.Hashable, typing.Tuple[float, float]], optional:
         bounds for the variables (see scipy documentation)
-    method_constraints: optional:
+    method_constraints: optional
          (see scipy documentation
-    silent: bool :
+    silent: bool
          No printout if True
-    save_history: bool:
+    save_history: bool
         Save the history throughout the optimization
 
     Returns
     -------
     SciPyReturnType:
-        the results of optimization
+        The results of optimization
+
     """
 
     if isinstance(gradient, dict) or hasattr(gradient, "items"):

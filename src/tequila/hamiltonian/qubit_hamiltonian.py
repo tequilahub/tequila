@@ -66,10 +66,12 @@ class PauliString:
 
     def __init__(self, data=None, coeff=None):
         """
-        Initialize the class
+        Initialize PauliString Class
+
         :param data: Dictionary which holds the paulistring with dimensions as keys
         i.e. X(0)Y(1)Z(3)X(20) is { 0:'x', 1:'y', 3:'z', 20:'x' }
         :param coeff:
+
         """
         if data is None:
             self._data = {}
@@ -84,13 +86,16 @@ class PauliString:
 
     def trace_out_qubits(self, qubits, states=None):
         """
-        See trace_out_qubits in QubitHamiltonian
+        See `trace_out_qubits` in QubitHamiltonian.
+
         Parameters
         ----------
-        qubits
+        qubits :
             qubits to trace out
-        states
-            states a|0> + b|1> as list of tuples of the a,b coefficients. Default is just |0>.
+        states :
+            states :math:`a|0> + b|1>` as list of tuples of the a,b coefficients. Default is just :math:`|0>`.
+
+
         Returns
         -------
             traced out PauliString

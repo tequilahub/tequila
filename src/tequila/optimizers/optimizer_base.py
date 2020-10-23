@@ -245,19 +245,6 @@ class Optimizer:
         the device that sampling (real or emulated) should be performed on.
 
 
-    Methods
-    -------
-    reset_history:
-        reset the optimizer history.
-    initialize_variables:
-        convenience: format variables of an objective and segregrate actives from passives.
-    compile_objective:
-        convenience: compile an objective.
-    compile_gradient:
-        convenience: build and compile (i.e render callable) the gradient of an objective.
-    compile_hessian:
-        convenience: build and compile (i.e render callable) the hessian of an objective.
-
     """
     def __init__(self, backend: str = None,
                  maxiter: int = None,
@@ -335,7 +322,9 @@ class Optimizer:
 
     def reset_history(self):
         """
-        replace self.history with a blank history.
+        Reset the optimizer history.
+
+        Replace self.history with a blank history.
 
         Returns
         -------
@@ -371,7 +360,9 @@ class Optimizer:
 
     def initialize_variables(self, objective, initial_values, variables):
         """
-        Convenience function to format the variables of some objective recieved in calls to optimzers.
+        Convenience function to format the variables of some objective recieved in calls to optimizers.
+
+        Convenience: format variables of an objective and segregrate actives from passives.
 
         Parameters
         ----------
@@ -433,7 +424,10 @@ class Optimizer:
 
     def compile_objective(self, objective: Objective, *args, **kwargs):
         """
-        convenience function to wrap over compile; for use by inheritors.
+        Convenience function to wrap over compile; for use by inheritors.
+
+        Convenience: compile an objective.
+
         Parameters
         ----------
         objective: Objective:
@@ -460,7 +454,9 @@ class Optimizer:
                          *args, **kwargs) -> typing.Tuple[
         typing.Dict, typing.Dict]:
         """
-        convenience function to compile gradient objects and relavant types. For use by inheritors.
+        Convenience function to compile gradient objects and relavant types. For use by inheritors.
+
+        Convenience: build and compile (i.e render callable) the gradient of an objective.
 
         Parameters
         ----------
@@ -505,7 +501,10 @@ class Optimizer:
                         *args,
                         **kwargs) -> tuple:
         """
-        convenience function to compile hessians for optimizers which require it.
+        Convenience function to compile hessians for optimizers which require it.
+
+        Convenience: build and compile (i.e render callable) the hessian of an objective.
+
         Parameters
         ----------
         variables:

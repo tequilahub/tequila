@@ -20,36 +20,42 @@ def show_available_modules():
 def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
 
-def Molecule(geometry: str,
-             basis_set: str = None,
-             transformation: typing.Union[str, typing.Callable] = None,
-             backend: str = None,
-             guess_wfn=None,
-             *args,
-             **kwargs) -> QuantumChemistryBase:
+def Molecule(geometry: str, basis_set: str = None, transformation: typing.Union[str, typing.Callable] = None, backend: str = None, guess_wfn=None, *args, **kwargs) -> QuantumChemistryBase:
     """
+    Define a molecular geometry, basis set and fermion quibit transformation.
 
     Parameters
     ----------
-    geometry
-        molecular geometry as string or as filename (needs to be in xyz format with .xyz ending)
-    basis_set
-        quantum chemistry basis set (sto-3g, cc-pvdz, etc)
-    transformation
+    geometry: 
+        Molecular geometry as string or as filename (needs to be in xyz format with .xyz ending)
+    basis_set: 
+        Quantum chemistry basis set (sto-3g, cc-pvdz, etc)
+    transformation: 
         The Fermion to Qubit Transformation (jordan-wigner, bravyi-kitaev, bravyi-kitaev-tree and whatever OpenFermion supports)
-    backend
-        quantum chemistry backend (psi4, pyscf)
-    guess_wfn
-        pass down a psi4 guess wavefunction to start the scf cycle from
+    backend:
+        Quantum chemistry backend (psi4, pyscf)
+    guess_wfn:
+        Pass down a psi4 guess wavefunction to start the scf cycle from
         can also be a filename leading to a stored wavefunction
-    args
-    kwargs
+    args:
+    kwargs:
 
     Returns
     -------
+    Molecule: object
         The Fermion to Qubit Transformation (jordan-wigner, bravyi-kitaev, bravyi-kitaev-tree and whatever OpenFermion supports)
-    """
 
+       
+
+    Examples
+    ---------
+
+    >>> geom = 'H 0.0 0.0 0.0\\nLi 0.0 0.0 1.6'
+    >>> molecule = tq.chemistry.Molecule (geometry = geom, basis_set='sto-3g')
+    >>> molecule = tq.chemistry.Molecule(geometry = geom, basis_set='sto-3g', transformation='bravyi-kitaev')
+
+    """ 
+    
     keyvals = {}
     for k, v in kwargs.items():
         if k in ParametersQC.__dict__.keys():
@@ -96,6 +102,7 @@ def MoleculeFromOpenFermion(molecule,
                             **kwargs) -> QuantumChemistryBase:
     """
     Initialize a tequila Molecule directly from an openfermion molecule object
+
     Parameters
     ----------
     molecule

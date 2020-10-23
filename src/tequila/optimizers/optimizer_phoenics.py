@@ -32,7 +32,8 @@ class PhoenicsResults(OptimizerResults):
 
 class OptimizerPhoenics(Optimizer):
     """
-    wrapper to allow optimization of objectives with Phoenics, a bayesian optimizer.
+    Wrapper to allow optimization of objectives with Phoenics, a bayesian optimizer.
+
     See: https://github.com/aspuru-guzik-group/phoenics
     """
     @classmethod
@@ -49,7 +50,8 @@ class OptimizerPhoenics(Optimizer):
 
     def _process_for_sim(self, recommendation, passive_angles):
         """
-        convert from the phoenics suggestion format to a version recognizable by objectives.
+        Convert from the phoenics suggestion format to a version recognizable by objectives.
+
         Parameters
         ----------
         recommendation: dict:
@@ -74,6 +76,7 @@ class OptimizerPhoenics(Optimizer):
     def _process_for_phoenics(self, pset, result, passive_angles=None):
         """
         Convert results of a call to an objective into a form interpretable by phoenics.
+
         Parameters
         ----------
         pset: dict:
@@ -100,7 +103,7 @@ class OptimizerPhoenics(Optimizer):
 
     def _make_phoenics_object(self, objective, passive_angles=None, conf=None, *args, **kwargs):
         """
-        instantiate phoenics, to perform optimization.
+        Instantiate phoenics, to perform optimization.
 
         Parameters
         ----------
@@ -309,41 +312,42 @@ def minimize(objective: Objective,
              *args,
              **kwargs) -> PhoenicsResults:
     """
+    Perform optimization with phoenics.
 
     Parameters
     ----------
-    objective: Objective:
+    objective: Objective
         The tequila objective to optimize
-    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional:
+    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional
         Initial values as dictionary of Hashable types (variable keys) and floating point numbers.
         If given None they will be randomized.
-    variables: typing.List[typing.Hashable], optional:
-         List of Variables to optimize
-    samples: int, optional:
-         samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)
-    maxiter: int:
-         how many iterations of phoenics to run.
-         Note that this is NOT identical to the number of times the circuit will run.
-    backend: str, optional:
-         Simulator backend, will be automatically chosen if set to None
-    noise: NoiseModel, optional:
-         a noise model to apply to the circuits of Objective.
-    device: optional:
-        the device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.
-    previous: optional:
+    variables: typing.List[typing.Hashable], optional
+        List of Variables to optimize
+    samples: int, optional
+        Samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)
+    maxiter: int
+        How many iterations of phoenics to run.
+        Note that this is NOT identical to the number of times the circuit will run.
+    backend: str, optional
+        Simulator backend, will be automatically chosen if set to None
+    noise: NoiseModel, optional
+        A noise model to apply to the circuits of Objective.
+    device: optional
+        The device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.
+    previous: optional
         Previous phoenics observations. If string, the name of a file from which to load them. Else, a list.
-    phoenics_config: optional:
-        a pre-made phoenics configuration. if str, the name of a file from which to load it; Else, a dictionary.
+    phoenics_config: optional
+        A pre-made phoenics configuration. if str, the name of a file from which to load it; Else, a dictionary.
         Individual keywords of the 'general' sections can also be passed down as kwargs
-    file_name: str, optional:
-        where to save output to, if save_to_file is True.
-    kwargs: dict:
+    file_name: str, optional
+        Where to save output to, if save_to_file is True.
+    kwargs: dict
         Send down more keywords for single replacements in the phoenics config 'general' section, like e.g. batches=5,
         boosted=True etc
     Returns
     -------
     PhoenicsResults:
-        the result of an optimization by phoenics.
+        The result of an optimization by phoenics.
     """
 
     optimizer = OptimizerPhoenics(samples=samples, backend=backend,
