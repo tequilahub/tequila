@@ -37,13 +37,3 @@ tequila.optimizers.optimizer\_scipy.SciPyResults
    
    
 
-   .. rubric:: Methods
-
-   .. autosummary::
-      :toctree: SciPyResults
-      :nosignatures:
-   
-
-   
-   
-

@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tequila.hamiltonian.paulis &#8212; tequila XXXXX documentation</title>
+    <title>tequila.hamiltonian.paulis &#8212; tequila 0.0.3 documentation</title>
     <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -47,7 +47,7 @@
           <ul class="nav navbar-nav">
             
                 <li><a href="../.././tequila_presentation.html">Overview</a></li>
-                <li><a href="../.././install.html">Installation</a></li>
+                <li><a href="../.././README.html">Installation</a></li>
                 <li><a href="../.././package/index.html">API</a></li>
                 <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
                 <li><a href="../.././tutorials.html">Tutorials</a></li>
@@ -125,8 +125,8 @@
       
   <div class="section" id="module-tequila.hamiltonian.paulis">
 <span id="tequila-hamiltonian-paulis"></span><h1>tequila.hamiltonian.paulis<a class="headerlink" href="#module-tequila.hamiltonian.paulis" title="Permalink to this headline">¶</a></h1>
-<p>Convenience initialization
-of Pauli Operators. Resulting structures can be added and multiplied together.
+<p>Convenience initialization of Pauli Operators.
+Resulting structures can be added and multiplied together.
 Currently uses OpenFermion as backend (QubitOperators)</p>
 <p class="rubric">Functions</p>
 <table class="longtable docutils align-default">
@@ -139,28 +139,22 @@ Currently uses OpenFermion as backend (QubitOperators)</p>
 <td><p>Initialize unit Operator</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.KetBra.html#tequila.hamiltonian.paulis.KetBra" title="tequila.hamiltonian.paulis.KetBra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">KetBra</span></code></a></p></td>
-<td><p><p class="rubric">Notes</p>
-</p></td>
+<td><p>Initialize the general KetBra operator</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Projector.html#tequila.hamiltonian.paulis.Projector" title="tequila.hamiltonian.paulis.Projector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Projector</span></code></a></p></td>
-<td><p><p class="rubric">Notes</p>
-</p></td>
+<td><p>Initialize a projector</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Qm.html#tequila.hamiltonian.paulis.Qm" title="tequila.hamiltonian.paulis.Qm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Qm</span></code></a></p></td>
-<td><p><p class="rubric">Notes</p>
-</p></td>
+<td><p><span class="math notranslate nohighlight">\(\frac{1}{2} \left( 1 + \sigma_z \right)\)</span></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Qp.html#tequila.hamiltonian.paulis.Qp" title="tequila.hamiltonian.paulis.Qp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Qp</span></code></a></p></td>
-<td><p><p class="rubric">Notes</p>
-</p></td>
+<td><p><span class="math notranslate nohighlight">\(\frac{1}{2} \left( 1 - \sigma_z \right)\)</span></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Sm.html#tequila.hamiltonian.paulis.Sm" title="tequila.hamiltonian.paulis.Sm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Sm</span></code></a></p></td>
-<td><p><p class="rubric">Notes</p>
-</p></td>
+<td><p><span class="math notranslate nohighlight">\(\frac{1}{2} \left( \sigma_x + i \sigma_y \right)\)</span></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.Sp.html#tequila.hamiltonian.paulis.Sp" title="tequila.hamiltonian.paulis.Sp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Sp</span></code></a></p></td>
-<td><p><p class="rubric">Notes</p>
-</p></td>
+<td><p><span class="math notranslate nohighlight">\(\frac{1}{2} \left( \sigma_x + i \sigma_y \right)\)</span></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.X.html#tequila.hamiltonian.paulis.X" title="tequila.hamiltonian.paulis.X"><code class="xref py py-obj docutils literal notranslate"><span class="pre">X</span></code></a></p></td>
 <td><p>Initialize a single Pauli X Operator</p></td>
@@ -175,8 +169,7 @@ Currently uses OpenFermion as backend (QubitOperators)</p>
 <td><p>Initialize 0 Operator</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.decompose_transfer_operator.html#tequila.hamiltonian.paulis.decompose_transfer_operator" title="tequila.hamiltonian.paulis.decompose_transfer_operator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decompose_transfer_operator</span></code></a></p></td>
-<td><p><p class="rubric">Notes</p>
-</p></td>
+<td><p>Create the operator</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="paulis/tequila.hamiltonian.paulis.pauli.html#tequila.hamiltonian.paulis.pauli" title="tequila.hamiltonian.paulis.pauli"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pauli</span></code></a></p></td>
 <td><p><dl class="field-list simple">

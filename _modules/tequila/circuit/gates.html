@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tequila.circuit.gates &#8212; tequila XXXXX documentation</title>
+    <title>tequila.circuit.gates &#8212; tequila 0.0.3 documentation</title>
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
@@ -45,7 +45,7 @@
           <ul class="nav navbar-nav">
             
                 <li><a href="../../.././tequila_presentation.html">Overview</a></li>
-                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././README.html">Installation</a></li>
                 <li><a href="../../.././package/index.html">API</a></li>
                 <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
                 <li><a href="../../.././tutorials.html">Tutorials</a></li>
@@ -204,7 +204,8 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit</span>
+<span class="sd">         object</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">QCircuit</span><span class="o">.</span><span class="n">wrap_gate</span><span class="p">(</span><span class="n">PhaseGateImpl</span><span class="p">(</span><span class="n">phase</span><span class="o">=</span><span class="n">phi</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">))</span></div>
@@ -212,6 +213,8 @@
 
 <div class="viewcode-block" id="S"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.S.html#tequila.circuit.gates.S">[docs]</a><span class="k">def</span> <span class="nf">S</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :math:`S = \\begin{pmatrix} 1 &amp; 0 \\\\ 0 &amp; e^{i\\frac{\\pi}{2}} \\end{pmatrix}`</span>
+
 <span class="sd">    Notes</span>
 <span class="sd">    ----------</span>
 
@@ -227,13 +230,15 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit: object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Phase</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="T"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.T.html#tequila.circuit.gates.T">[docs]</a><span class="k">def</span> <span class="nf">T</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :math:`T = \\begin{pmatrix} 1 &amp; 0 \\\\ 0 &amp; e^{i\\frac{\\pi}{4}} \\end{pmatrix}`</span>
+
 <span class="sd">    Notes</span>
 <span class="sd">    ----------</span>
 <span class="sd">    Fixed phase gate</span>
@@ -413,6 +418,8 @@
 
 <div class="viewcode-block" id="Z"><a class="viewcode-back" href="../../../package/circuit/gates/tequila.circuit.gates.Z.html#tequila.circuit.gates.Z">[docs]</a><span class="k">def</span> <span class="nf">Z</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">control</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QCircuit</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Pauli Z Gate</span>
+
 <span class="sd">    Notes</span>
 <span class="sd">    ----------</span>
 <span class="sd">    Pauli Z Gate</span>
@@ -579,6 +586,7 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    QCircuit</span>
+<span class="sd">        object</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -617,6 +625,7 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    QCircuit</span>
+<span class="sd">        object</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_initialize_power_gate</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;SWAP&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="p">[</span><span class="n">first</span><span class="p">,</span> <span class="n">second</span><span class="p">],</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">)</span></div>
@@ -646,7 +655,9 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit</span>
+<span class="sd">        object</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
 
@@ -685,7 +696,8 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit</span>
+<span class="sd">        object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">X</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
 
@@ -703,7 +715,8 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit </span>
+<span class="sd">       object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Y</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
 
@@ -721,7 +734,8 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit</span>
+<span class="sd">       object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Z</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">)</span></div>
 
@@ -741,7 +755,8 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit</span>
+<span class="sd">       object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Rx</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span></div>
 
@@ -761,7 +776,8 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit</span>
+<span class="sd">        object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Ry</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span></div>
 
@@ -781,7 +797,8 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    QCircuit object</span>
+<span class="sd">    QCircuit </span>
+<span class="sd">       object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Rz</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="n">control</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span></div>
 

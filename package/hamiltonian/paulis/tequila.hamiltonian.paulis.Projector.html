@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tequila.hamiltonian.paulis.Projector &#8212; tequila XXXXX documentation</title>
+    <title>tequila.hamiltonian.paulis.Projector &#8212; tequila 0.0.3 documentation</title>
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
@@ -47,7 +47,7 @@
           <ul class="nav navbar-nav">
             
                 <li><a href="../../.././tequila_presentation.html">Overview</a></li>
-                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././README.html">Installation</a></li>
                 <li><a href="../../.././package/index.html">API</a></li>
                 <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
                 <li><a href="../../.././tutorials.html">Tutorials</a></li>
@@ -128,23 +128,23 @@
 <dl class="py function">
 <dt id="tequila.hamiltonian.paulis.Projector">
 <code class="sig-prename descclassname">tequila.hamiltonian.paulis.</code><code class="sig-name descname">Projector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">wfn</span></em>, <em class="sig-param"><span class="n">threshold</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">n_qubits</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; tequila.hamiltonian.qubit_hamiltonian.QubitHamiltonian<a class="reference internal" href="../../../_modules/tequila/hamiltonian/paulis.html#Projector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tequila.hamiltonian.paulis.Projector" title="Permalink to this definition">¶</a></dt>
-<dd><p class="rubric">Notes</p>
+<dd><p>Initialize a projector</p>
+<p class="rubric">Notes</p>
 <p>Initialize a projector given by</p>
 <div class="math notranslate nohighlight">
 \[H = \lvert \Psi \rangle \langle \Psi \rvert\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>wfn</strong> (<em>QubitWaveFunction</em><em> or </em><em>int</em><em>, or </em><em>string</em><em>, or </em><em>array :</em>) – The wavefunction onto which the projector projects
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>wfn</strong> (<em>QubitWaveFunction</em><em> or </em><em>int</em><em>, or </em><em>string</em><em>, or </em><em>array</em>) – The wavefunction onto which the projector projects
 Needs to be passed down as tequilas QubitWaveFunction type
 See the documentation on how to initialize a QubitWaveFunction from
-integer, string or array (can also be passed down diretly as one of those types)</p>
+integer, string or array (can also be passed down diretly as one of those types)</p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em> (</em><em>Default value = 0.0</em><em>)</em>) – neglect small parts of the operator</p></li>
+<li><p><strong>n_qubits</strong> (<em>only needed when an integer is given as wavefunction</em>) – </p></li>
+</ul>
 </dd>
 </dl>
-<dl class="simple">
-<dt>threshold: float: (Default value = 0.0)</dt><dd><p>neglect small parts of the operator</p>
-</dd>
-</dl>
-<p>n_qubits: only needed when an integer is given as wavefunction</p>
 </dd></dl>
 
 </div>

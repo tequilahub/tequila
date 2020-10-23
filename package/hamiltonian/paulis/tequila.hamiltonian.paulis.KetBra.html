@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tequila.hamiltonian.paulis.KetBra &#8212; tequila XXXXX documentation</title>
+    <title>tequila.hamiltonian.paulis.KetBra &#8212; tequila 0.0.3 documentation</title>
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
@@ -47,7 +47,7 @@
           <ul class="nav navbar-nav">
             
                 <li><a href="../../.././tequila_presentation.html">Overview</a></li>
-                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././README.html">Installation</a></li>
                 <li><a href="../../.././package/index.html">API</a></li>
                 <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
                 <li><a href="../../.././tutorials.html">Tutorials</a></li>
@@ -128,26 +128,27 @@
 <dl class="py function">
 <dt id="tequila.hamiltonian.paulis.KetBra">
 <code class="sig-prename descclassname">tequila.hamiltonian.paulis.</code><code class="sig-name descname">KetBra</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ket</span><span class="p">:</span> <span class="n">tequila.wavefunction.qubit_wavefunction.QubitWaveFunction</span></em>, <em class="sig-param"><span class="n">bra</span><span class="p">:</span> <span class="n">tequila.wavefunction.qubit_wavefunction.QubitWaveFunction</span></em>, <em class="sig-param"><span class="n">hermitian</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">threshold</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1e-06</span></em>, <em class="sig-param"><span class="n">n_qubits</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/tequila/hamiltonian/paulis.html#KetBra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tequila.hamiltonian.paulis.KetBra" title="Permalink to this definition">¶</a></dt>
-<dd><p class="rubric">Notes</p>
-<p>Initialize the general KetBra operator
-.. math:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">H</span> <span class="o">=</span> \<span class="n">lvert</span> <span class="n">ket</span> \<span class="n">rangle</span> \<span class="n">langle</span> <span class="n">bra</span> \<span class="n">rvert</span>
+<dd><p>Initialize the general KetBra operator</p>
+<p class="rubric">Notes</p>
+<p>Initialize the general KetBra operator</p>
+<div class="math notranslate nohighlight">
+\[H = \lvert ket \rangle \langle bra \rvert\]</div>
+<p>e.g.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">wfn1</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">QubitWaveFunction</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="s2">&quot;1.0*|00&gt; + 1.0*|11&gt;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">normalize</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">wfn2</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">QubitWaveFunction</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="s2">&quot;1.0*|00&gt;&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">operator</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">paulis</span><span class="o">.</span><span class="n">KetBra</span><span class="p">(</span><span class="n">ket</span><span class="o">=</span><span class="n">wfn1</span><span class="p">,</span> <span class="n">bra</span><span class="o">=</span><span class="n">wfn1</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>e.g.
-wfn1 = tq.QubitWaveFunction.from_string(“1.0*|00&gt; + 1.0*|11&gt;”).normalize()
-wfn2 = tq.QubitWaveFunction.from_string(“1.0*|00&gt;”)
-operator = tq.paulis.KetBra(ket=wfn1, bra=wfn1)
-initializes the transfer operator from the all-zero state to a Bell state</p>
+<p>initializes the transfer operator from the all-zero state to a Bell state</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ket</strong> (<em>QubitWaveFunction:</em>) – QubitWaveFunction which defines the ket element
+<li><p><strong>ket</strong> (<em>QubitWaveFunction</em>) – QubitWaveFunction which defines the ket element
 can also be given as string or array or integer</p></li>
-<li><p><strong>bra</strong> (<em>QubitWaveFunction:</em>) – QubitWaveFunction which defines the bra element
+<li><p><strong>bra</strong> (<em>QubitWaveFunction</em>) – QubitWaveFunction which defines the bra element
 can also be given as string or array or integer</p></li>
-<li><p><strong>hermitian</strong> (<em>bool:</em><em> (</em><em>Default False</em><em>)</em>) – if True the hermitian version H + H^dagger is returned</p></li>
-<li><p><strong>threshold</strong> (<em>float:</em><em> (</em><em>Default 1.e-6</em><em>)</em>) – elements smaller than the threshold will be ignored</p></li>
+<li><p><strong>hermitian</strong> (<em>bool</em><em> (</em><em>Default False</em><em>)</em>) – if True the hermitian version H + H^dagger is returned</p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em> (</em><em>Default 1.e-6</em><em>)</em>) – elements smaller than the threshold will be ignored</p></li>
 <li><p><strong>n_qubits</strong> (<em>only needed if ket and/or bra are passed down as integers</em>) – </p></li>
 </ul>
 </dd>

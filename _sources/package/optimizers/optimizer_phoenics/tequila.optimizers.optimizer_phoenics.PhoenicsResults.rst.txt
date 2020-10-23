@@ -33,18 +33,3 @@ tequila.optimizers.optimizer\_phoenics.PhoenicsResults
 
    
    
-
-
-   
-   
-
-   .. rubric:: Methods
-
-   .. autosummary::
-      :toctree: PhoenicsResults
-      :nosignatures:
-   
-
-   
-   
-

@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tequila.optimizers.optimizer_phoenics &#8212; tequila XXXXX documentation</title>
+    <title>tequila.optimizers.optimizer_phoenics &#8212; tequila 0.0.3 documentation</title>
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
@@ -45,7 +45,7 @@
           <ul class="nav navbar-nav">
             
                 <li><a href="../../.././tequila_presentation.html">Overview</a></li>
-                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././README.html">Installation</a></li>
                 <li><a href="../../.././package/index.html">API</a></li>
                 <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
                 <li><a href="../../.././tutorials.html">Tutorials</a></li>
@@ -428,38 +428,38 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    objective: Objective:</span>
+<span class="sd">    objective: Objective</span>
 <span class="sd">        The tequila objective to optimize</span>
-<span class="sd">    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional:</span>
+<span class="sd">    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional</span>
 <span class="sd">        Initial values as dictionary of Hashable types (variable keys) and floating point numbers.</span>
 <span class="sd">        If given None they will be randomized.</span>
-<span class="sd">    variables: typing.List[typing.Hashable], optional:</span>
-<span class="sd">         List of Variables to optimize</span>
-<span class="sd">    samples: int, optional:</span>
-<span class="sd">         samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)</span>
-<span class="sd">    maxiter: int:</span>
-<span class="sd">         how many iterations of phoenics to run.</span>
-<span class="sd">         Note that this is NOT identical to the number of times the circuit will run.</span>
-<span class="sd">    backend: str, optional:</span>
-<span class="sd">         Simulator backend, will be automatically chosen if set to None</span>
-<span class="sd">    noise: NoiseModel, optional:</span>
-<span class="sd">         a noise model to apply to the circuits of Objective.</span>
-<span class="sd">    device: optional:</span>
-<span class="sd">        the device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.</span>
-<span class="sd">    previous: optional:</span>
+<span class="sd">    variables: typing.List[typing.Hashable], optional</span>
+<span class="sd">        List of Variables to optimize</span>
+<span class="sd">    samples: int, optional</span>
+<span class="sd">        Samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)</span>
+<span class="sd">    maxiter: int</span>
+<span class="sd">        How many iterations of phoenics to run.</span>
+<span class="sd">        Note that this is NOT identical to the number of times the circuit will run.</span>
+<span class="sd">    backend: str, optional</span>
+<span class="sd">        Simulator backend, will be automatically chosen if set to None</span>
+<span class="sd">    noise: NoiseModel, optional</span>
+<span class="sd">        A noise model to apply to the circuits of Objective.</span>
+<span class="sd">    device: optional</span>
+<span class="sd">        The device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.</span>
+<span class="sd">    previous: optional</span>
 <span class="sd">        Previous phoenics observations. If string, the name of a file from which to load them. Else, a list.</span>
-<span class="sd">    phoenics_config: optional:</span>
-<span class="sd">        a pre-made phoenics configuration. if str, the name of a file from which to load it; Else, a dictionary.</span>
+<span class="sd">    phoenics_config: optional</span>
+<span class="sd">        A pre-made phoenics configuration. if str, the name of a file from which to load it; Else, a dictionary.</span>
 <span class="sd">        Individual keywords of the &#39;general&#39; sections can also be passed down as kwargs</span>
-<span class="sd">    file_name: str, optional:</span>
-<span class="sd">        where to save output to, if save_to_file is True.</span>
-<span class="sd">    kwargs: dict:</span>
+<span class="sd">    file_name: str, optional</span>
+<span class="sd">        Where to save output to, if save_to_file is True.</span>
+<span class="sd">    kwargs: dict</span>
 <span class="sd">        Send down more keywords for single replacements in the phoenics config &#39;general&#39; section, like e.g. batches=5,</span>
 <span class="sd">        boosted=True etc</span>
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    PhoenicsResults:</span>
-<span class="sd">        the result of an optimization by phoenics.</span>
+<span class="sd">        The result of an optimization by phoenics.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">optimizer</span> <span class="o">=</span> <span class="n">OptimizerPhoenics</span><span class="p">(</span><span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span>

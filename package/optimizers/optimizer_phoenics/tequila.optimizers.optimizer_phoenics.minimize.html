@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tequila.optimizers.optimizer_phoenics.minimize &#8212; tequila XXXXX documentation</title>
+    <title>tequila.optimizers.optimizer_phoenics.minimize &#8212; tequila 0.0.3 documentation</title>
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
@@ -47,7 +47,7 @@
           <ul class="nav navbar-nav">
             
                 <li><a href="../../.././tequila_presentation.html">Overview</a></li>
-                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././README.html">Installation</a></li>
                 <li><a href="../../.././package/index.html">API</a></li>
                 <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
                 <li><a href="../../.././tutorials.html">Tutorials</a></li>
@@ -132,26 +132,26 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>objective</strong> (<em>Objective:</em>) – The tequila objective to optimize</p></li>
-<li><p><strong>initial_values</strong> (<em>typing.Dict</em><em>[</em><em>typing.Hashable</em><em>, </em><em>numbers.Real</em><em>]</em><em>, </em><em>optional:</em>) – Initial values as dictionary of Hashable types (variable keys) and floating point numbers.
+<li><p><strong>objective</strong> (<em>Objective</em>) – The tequila objective to optimize</p></li>
+<li><p><strong>initial_values</strong> (<em>typing.Dict</em><em>[</em><em>typing.Hashable</em><em>, </em><em>numbers.Real</em><em>]</em><em>, </em><em>optional</em>) – Initial values as dictionary of Hashable types (variable keys) and floating point numbers.
 If given None they will be randomized.</p></li>
-<li><p><strong>variables</strong> (<em>typing.List</em><em>[</em><em>typing.Hashable</em><em>]</em><em>, </em><em>optional:</em>) – List of Variables to optimize</p></li>
-<li><p><strong>samples</strong> (<em>int</em><em>, </em><em>optional:</em>) – samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)</p></li>
-<li><p><strong>maxiter</strong> (<em>int:</em>) – how many iterations of phoenics to run.
+<li><p><strong>variables</strong> (<em>typing.List</em><em>[</em><em>typing.Hashable</em><em>]</em><em>, </em><em>optional</em>) – List of Variables to optimize</p></li>
+<li><p><strong>samples</strong> (<em>int</em><em>, </em><em>optional</em>) – Samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)</p></li>
+<li><p><strong>maxiter</strong> (<em>int</em>) – How many iterations of phoenics to run.
 Note that this is NOT identical to the number of times the circuit will run.</p></li>
-<li><p><strong>backend</strong> (<em>str</em><em>, </em><em>optional:</em>) – Simulator backend, will be automatically chosen if set to None</p></li>
-<li><p><strong>noise</strong> (<em>NoiseModel</em><em>, </em><em>optional:</em>) – a noise model to apply to the circuits of Objective.</p></li>
-<li><p><strong>device</strong> (<em>optional:</em>) – the device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.</p></li>
-<li><p><strong>previous</strong> (<em>optional:</em>) – Previous phoenics observations. If string, the name of a file from which to load them. Else, a list.</p></li>
-<li><p><strong>phoenics_config</strong> (<em>optional:</em>) – a pre-made phoenics configuration. if str, the name of a file from which to load it; Else, a dictionary.
+<li><p><strong>backend</strong> (<em>str</em><em>, </em><em>optional</em>) – Simulator backend, will be automatically chosen if set to None</p></li>
+<li><p><strong>noise</strong> (<em>NoiseModel</em><em>, </em><em>optional</em>) – A noise model to apply to the circuits of Objective.</p></li>
+<li><p><strong>device</strong> (<em>optional</em>) – The device from which to (potentially, simulatedly) sample all quantum circuits employed in optimization.</p></li>
+<li><p><strong>previous</strong> (<em>optional</em>) – Previous phoenics observations. If string, the name of a file from which to load them. Else, a list.</p></li>
+<li><p><strong>phoenics_config</strong> (<em>optional</em>) – A pre-made phoenics configuration. if str, the name of a file from which to load it; Else, a dictionary.
 Individual keywords of the ‘general’ sections can also be passed down as kwargs</p></li>
-<li><p><strong>file_name</strong> (<em>str</em><em>, </em><em>optional:</em>) – where to save output to, if save_to_file is True.</p></li>
-<li><p><strong>kwargs</strong> (<em>dict:</em>) – Send down more keywords for single replacements in the phoenics config ‘general’ section, like e.g. batches=5,
+<li><p><strong>file_name</strong> (<em>str</em><em>, </em><em>optional</em>) – Where to save output to, if save_to_file is True.</p></li>
+<li><p><strong>kwargs</strong> (<em>dict</em>) – Send down more keywords for single replacements in the phoenics config ‘general’ section, like e.g. batches=5,
 boosted=True etc</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>the result of an optimization by phoenics.</p>
+<dd class="field-even"><p>The result of an optimization by phoenics.</p>
 </dd>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>PhoenicsResults</p>

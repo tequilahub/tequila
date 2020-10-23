@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tequila.optimizers.optimizer_scipy &#8212; tequila XXXXX documentation</title>
+    <title>tequila.optimizers.optimizer_scipy &#8212; tequila 0.0.3 documentation</title>
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
@@ -45,7 +45,7 @@
           <ul class="nav navbar-nav">
             
                 <li><a href="../../.././tequila_presentation.html">Overview</a></li>
-                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././README.html">Installation</a></li>
                 <li><a href="../../.././package/index.html">API</a></li>
                 <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
                 <li><a href="../../.././tutorials.html">Tutorials</a></li>
@@ -157,7 +157,7 @@
 
 <div class="viewcode-block" id="OptimizerSciPy.available_methods"><a class="viewcode-back" href="../../../package/optimizers/optimizer_scipy/OptimizerSciPy/tequila.optimizers.optimizer_scipy.OptimizerSciPy.available_methods.html#tequila.optimizers.optimizer_scipy.OptimizerSciPy.available_methods">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">available_methods</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;:return: All tested available methods&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot; All tested available methods&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">gradient_free_methods</span> <span class="o">+</span> <span class="bp">cls</span><span class="o">.</span><span class="n">gradient_based_methods</span> <span class="o">+</span> <span class="bp">cls</span><span class="o">.</span><span class="n">hessian_based_methods</span></div>
 
 <div class="viewcode-block" id="OptimizerSciPy.__init__"><a class="viewcode-back" href="../../../package/optimizers/optimizer_scipy/tequila.optimizers.optimizer_scipy.OptimizerSciPy.html#tequila.optimizers.optimizer_scipy.OptimizerSciPy.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span>
@@ -169,18 +169,18 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        method: str: Default = &#39;L-BFGS-B&#39;:</span>
+<span class="sd">        method: str: Default = &#39;L-BFGS-B&#39;</span>
 <span class="sd">            The scipy optimization method passed as string.</span>
-<span class="sd">        tol: float, optional:</span>
+<span class="sd">        tol: float, optional</span>
 <span class="sd">            See scipy documentation for the method you picked</span>
-<span class="sd">        method_options: optional:</span>
+<span class="sd">        method_options: optional</span>
 <span class="sd">            See scipy documentation for the method you picked</span>
-<span class="sd">        method_bounds: optional:</span>
+<span class="sd">        method_bounds: optional</span>
 <span class="sd">            See scipy documentation for the method you picked</span>
-<span class="sd">        method_constraints: optional:</span>
+<span class="sd">        method_constraints: optional</span>
 <span class="sd">            See scipy documentation for the method you picked</span>
-<span class="sd">        silent: bool:</span>
-<span class="sd">            if False the optimizer prints out all evaluated energies</span>
+<span class="sd">        silent: bool</span>
+<span class="sd">            If False the optimizer prints out all evaluated energies</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s2">&quot;upper&quot;</span><span class="p">):</span>
@@ -222,25 +222,25 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        objective: Objective:</span>
-<span class="sd">            the objective to optimize.</span>
-<span class="sd">        variables: list, optional:</span>
-<span class="sd">            the variables of objective to optimize. If None: optimize all.</span>
-<span class="sd">        initial_values: dict, optional:</span>
-<span class="sd">            a starting point from which to begin optimization. Will be generated if None.</span>
-<span class="sd">        gradient: optional:</span>
+<span class="sd">        objective: Objective</span>
+<span class="sd">            The objective to optimize.</span>
+<span class="sd">        variables: list, optional</span>
+<span class="sd">            The variables of objective to optimize. If None: optimize all.</span>
+<span class="sd">        initial_values: dict, optional</span>
+<span class="sd">            A starting point from which to begin optimization. Will be generated if None.</span>
+<span class="sd">        gradient: optional</span>
 <span class="sd">            Information or object used to calculate the gradient of objective. Defaults to None: get analytically.</span>
-<span class="sd">        hessian: optional:</span>
+<span class="sd">        hessian: optional</span>
 <span class="sd">            Information or object used to calculate the hessian of objective. Defaults to None: get analytically.</span>
-<span class="sd">        reset_history: bool: Default = True:</span>
-<span class="sd">            whether or not to reset all history before optimizing.</span>
+<span class="sd">        reset_history: bool: Default = True</span>
+<span class="sd">            Whether or not to reset all history before optimizing.</span>
 <span class="sd">        args</span>
 <span class="sd">        kwargs</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        ScipyReturnType:</span>
-<span class="sd">            the results of optimization.</span>
+<span class="sd">            The results of optimization.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
 
@@ -413,7 +413,9 @@
 
 
 <div class="viewcode-block" id="available_methods"><a class="viewcode-back" href="../../../package/optimizers/optimizer_scipy/tequila.optimizers.optimizer_scipy.available_methods.html#tequila.optimizers.optimizer_scipy.available_methods">[docs]</a><span class="k">def</span> <span class="nf">available_methods</span><span class="p">(</span><span class="n">energy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">gradient</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hessian</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-    <span class="sd">&quot;&quot;&quot;Convenience</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Available methods of the scipy optimizer, a list of strings.</span>
+
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    energy :</span>
@@ -463,52 +465,53 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    objective: Objective :</span>
+<span class="sd">    objective: Objective </span>
 <span class="sd">        The tequila objective to optimize</span>
 <span class="sd">    gradient: typing.Union[str, typing.Dict[Variable, Objective], None] : Default value = None):</span>
 <span class="sd">        &#39;2-point&#39;, &#39;cs&#39; or &#39;3-point&#39; for numerical gradient evaluation (does not work in combination with all optimizers),</span>
 <span class="sd">        dictionary of variables and tequila objective to define own gradient,</span>
 <span class="sd">        None for automatic construction (default)</span>
 <span class="sd">        Other options include &#39;qng&#39; to use the quantum natural gradient.</span>
-<span class="sd">    hessian: typing.Union[str, typing.Dict[Variable, Objective], None], optional:</span>
+<span class="sd">    hessian: typing.Union[str, typing.Dict[Variable, Objective], None], optional</span>
 <span class="sd">        &#39;2-point&#39;, &#39;cs&#39; or &#39;3-point&#39; for numerical gradient evaluation (does not work in combination with all optimizers),</span>
 <span class="sd">        dictionary (keys:tuple of variables, values:tequila objective) to define own gradient,</span>
 <span class="sd">        None for automatic construction (default)</span>
-<span class="sd">    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional:</span>
+<span class="sd">    initial_values: typing.Dict[typing.Hashable, numbers.Real], optional</span>
 <span class="sd">        Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero</span>
-<span class="sd">    variables: typing.List[typing.Hashable], optional:</span>
+<span class="sd">    variables: typing.List[typing.Hashable], optional</span>
 <span class="sd">         List of Variables to optimize</span>
-<span class="sd">    samples: int, optional:</span>
+<span class="sd">    samples: int, optional</span>
 <span class="sd">         samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)</span>
-<span class="sd">    maxiter: int : (Default value = 100):</span>
+<span class="sd">    maxiter: int : (Default value = 100)</span>
 <span class="sd">         max iters to use.</span>
-<span class="sd">    backend: str, optional:</span>
+<span class="sd">    backend: str, optional</span>
 <span class="sd">         Simulator backend, will be automatically chosen if set to None</span>
-<span class="sd">    backend_options: dict, optional:</span>
+<span class="sd">    backend_options: dict, optional</span>
 <span class="sd">         Additional options for the backend</span>
 <span class="sd">         Will be unpacked and passed to the compiled objective in every call</span>
-<span class="sd">    noise: NoiseModel, optional:</span>
+<span class="sd">    noise: NoiseModel, optional</span>
 <span class="sd">         a NoiseModel to apply to all expectation values in the objective.</span>
-<span class="sd">    method: str : (Default = &quot;BFGS&quot;):</span>
+<span class="sd">    method: str : (Default = &quot;BFGS&quot;)</span>
 <span class="sd">         Optimization method (see scipy documentation, or &#39;available methods&#39;)</span>
-<span class="sd">    tol: float : (Default = 1.e-3):</span>
+<span class="sd">    tol: float : (Default = 1.e-3)</span>
 <span class="sd">         Convergence tolerance for optimization (see scipy documentation)</span>
-<span class="sd">    method_options: dict, optional:</span>
+<span class="sd">    method_options: dict, optional</span>
 <span class="sd">         Dictionary of options</span>
 <span class="sd">         (see scipy documentation)</span>
 <span class="sd">    method_bounds: typing.Dict[typing.Hashable, typing.Tuple[float, float]], optional:</span>
 <span class="sd">        bounds for the variables (see scipy documentation)</span>
-<span class="sd">    method_constraints: optional:</span>
+<span class="sd">    method_constraints: optional</span>
 <span class="sd">         (see scipy documentation</span>
-<span class="sd">    silent: bool :</span>
+<span class="sd">    silent: bool</span>
 <span class="sd">         No printout if True</span>
-<span class="sd">    save_history: bool:</span>
+<span class="sd">    save_history: bool</span>
 <span class="sd">        Save the history throughout the optimization</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    SciPyReturnType:</span>
-<span class="sd">        the results of optimization</span>
+<span class="sd">        The results of optimization</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gradient</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">gradient</span><span class="p">,</span> <span class="s2">&quot;items&quot;</span><span class="p">):</span>

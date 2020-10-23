@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tequila.optimizers.optimizer_scipy.minimize &#8212; tequila XXXXX documentation</title>
+    <title>tequila.optimizers.optimizer_scipy.minimize &#8212; tequila 0.0.3 documentation</title>
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
@@ -47,7 +47,7 @@
           <ul class="nav navbar-nav">
             
                 <li><a href="../../.././tequila_presentation.html">Overview</a></li>
-                <li><a href="../../.././install.html">Installation</a></li>
+                <li><a href="../../.././README.html">Installation</a></li>
                 <li><a href="../../.././package/index.html">API</a></li>
                 <li><a href="https://github.com/aspuru-guzik-group/tequila">GitHub</a></li>
                 <li><a href="../../.././tutorials.html">Tutorials</a></li>
@@ -132,34 +132,34 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>objective</strong> (<em>Objective :</em>) – The tequila objective to optimize</p></li>
+<li><p><strong>objective</strong> (<em>Objective</em>) – The tequila objective to optimize</p></li>
 <li><p><strong>gradient</strong> (<em>typing.Union</em><em>[</em><em>str</em><em>, </em><em>typing.Dict</em><em>[</em><em>Variable</em><em>, </em><em>Objective</em><em>]</em><em>, </em><em>None</em><em>] </em><em>: Default value = None</em><em>)</em><em>:</em>) – ‘2-point’, ‘cs’ or ‘3-point’ for numerical gradient evaluation (does not work in combination with all optimizers),
 dictionary of variables and tequila objective to define own gradient,
 None for automatic construction (default)
 Other options include ‘qng’ to use the quantum natural gradient.</p></li>
-<li><p><strong>hessian</strong> (<em>typing.Union</em><em>[</em><em>str</em><em>, </em><em>typing.Dict</em><em>[</em><em>Variable</em><em>, </em><em>Objective</em><em>]</em><em>, </em><em>None</em><em>]</em><em>, </em><em>optional:</em>) – ‘2-point’, ‘cs’ or ‘3-point’ for numerical gradient evaluation (does not work in combination with all optimizers),
+<li><p><strong>hessian</strong> (<em>typing.Union</em><em>[</em><em>str</em><em>, </em><em>typing.Dict</em><em>[</em><em>Variable</em><em>, </em><em>Objective</em><em>]</em><em>, </em><em>None</em><em>]</em><em>, </em><em>optional</em>) – ‘2-point’, ‘cs’ or ‘3-point’ for numerical gradient evaluation (does not work in combination with all optimizers),
 dictionary (keys:tuple of variables, values:tequila objective) to define own gradient,
 None for automatic construction (default)</p></li>
-<li><p><strong>initial_values</strong> (<em>typing.Dict</em><em>[</em><em>typing.Hashable</em><em>, </em><em>numbers.Real</em><em>]</em><em>, </em><em>optional:</em>) – Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero</p></li>
-<li><p><strong>variables</strong> (<em>typing.List</em><em>[</em><em>typing.Hashable</em><em>]</em><em>, </em><em>optional:</em>) – List of Variables to optimize</p></li>
-<li><p><strong>samples</strong> (<em>int</em><em>, </em><em>optional:</em>) – samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)</p></li>
-<li><p><strong>maxiter</strong> (<em>int :</em><em> (</em><em>Default value = 100</em><em>)</em><em>:</em>) – max iters to use.</p></li>
-<li><p><strong>backend</strong> (<em>str</em><em>, </em><em>optional:</em>) – Simulator backend, will be automatically chosen if set to None</p></li>
-<li><p><strong>backend_options</strong> (<em>dict</em><em>, </em><em>optional:</em>) – Additional options for the backend
+<li><p><strong>initial_values</strong> (<em>typing.Dict</em><em>[</em><em>typing.Hashable</em><em>, </em><em>numbers.Real</em><em>]</em><em>, </em><em>optional</em>) – Initial values as dictionary of Hashable types (variable keys) and floating point numbers. If given None they will all be set to zero</p></li>
+<li><p><strong>variables</strong> (<em>typing.List</em><em>[</em><em>typing.Hashable</em><em>]</em><em>, </em><em>optional</em>) – List of Variables to optimize</p></li>
+<li><p><strong>samples</strong> (<em>int</em><em>, </em><em>optional</em>) – samples/shots to take in every run of the quantum circuits (None activates full wavefunction simulation)</p></li>
+<li><p><strong>maxiter</strong> (<em>int :</em><em> (</em><em>Default value = 100</em><em>)</em>) – max iters to use.</p></li>
+<li><p><strong>backend</strong> (<em>str</em><em>, </em><em>optional</em>) – Simulator backend, will be automatically chosen if set to None</p></li>
+<li><p><strong>backend_options</strong> (<em>dict</em><em>, </em><em>optional</em>) – Additional options for the backend
 Will be unpacked and passed to the compiled objective in every call</p></li>
-<li><p><strong>noise</strong> (<em>NoiseModel</em><em>, </em><em>optional:</em>) – a NoiseModel to apply to all expectation values in the objective.</p></li>
-<li><p><strong>method</strong> (<em>str :</em><em> (</em><em>Default = &quot;BFGS&quot;</em><em>)</em><em>:</em>) – Optimization method (see scipy documentation, or ‘available methods’)</p></li>
-<li><p><strong>tol</strong> (<em>float :</em><em> (</em><em>Default = 1.e-3</em><em>)</em><em>:</em>) – Convergence tolerance for optimization (see scipy documentation)</p></li>
-<li><p><strong>method_options</strong> (<em>dict</em><em>, </em><em>optional:</em>) – Dictionary of options
+<li><p><strong>noise</strong> (<em>NoiseModel</em><em>, </em><em>optional</em>) – a NoiseModel to apply to all expectation values in the objective.</p></li>
+<li><p><strong>method</strong> (<em>str :</em><em> (</em><em>Default = &quot;BFGS&quot;</em><em>)</em>) – Optimization method (see scipy documentation, or ‘available methods’)</p></li>
+<li><p><strong>tol</strong> (<em>float :</em><em> (</em><em>Default = 1.e-3</em><em>)</em>) – Convergence tolerance for optimization (see scipy documentation)</p></li>
+<li><p><strong>method_options</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary of options
 (see scipy documentation)</p></li>
 <li><p><strong>method_bounds</strong> (<em>typing.Dict</em><em>[</em><em>typing.Hashable</em><em>, </em><em>typing.Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em><em>, </em><em>optional:</em>) – bounds for the variables (see scipy documentation)</p></li>
-<li><p><strong>method_constraints</strong> (<em>optional:</em>) – (see scipy documentation</p></li>
-<li><p><strong>silent</strong> (<em>bool :</em>) – No printout if True</p></li>
-<li><p><strong>save_history</strong> (<em>bool:</em>) – Save the history throughout the optimization</p></li>
+<li><p><strong>method_constraints</strong> (<em>optional</em>) – (see scipy documentation</p></li>
+<li><p><strong>silent</strong> (<em>bool</em>) – No printout if True</p></li>
+<li><p><strong>save_history</strong> (<em>bool</em>) – Save the history throughout the optimization</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>the results of optimization</p>
+<dd class="field-even"><p>The results of optimization</p>
 </dd>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>SciPyReturnType</p>
