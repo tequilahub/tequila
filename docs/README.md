@@ -5,7 +5,7 @@ Make sure to update it.
 
 
 ## Dependencies
-TODO
+Check requirements.txt
 
 ## Build
 
@@ -31,6 +31,7 @@ the set of autodoc files and the toctree in
    <set of modules or classes>
 ```
 
+It will create with autosummary and the appropriate template (template folder) a set of rst files.
 If you want to custumize, e.g. include or exclude some modules/classes/functions/attributes/etc.
 You can go ahead and modifiy the `.rst` file located in the appropriate folder.
 Make sure you commit the changes the file.
@@ -49,5 +50,11 @@ Some useful links:
 * Examples of themes:
 
 https://sphinx-themes.org/
+
+## Workflow:
+
+* The documentation is made from the master branch.
+* You don’t commit changes in the folder doc/build, since it contains all the html
+The htmls are comited into the branch gh-pages, and this is where the webpage lives.
 
 

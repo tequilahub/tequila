@@ -120,7 +120,7 @@ html_theme_options = {
     # an arbitrary url.
     'navbar_links': [
          ("Overview", "./tequila_presentation"),
-         ("Installation", "./install", False),
+         ("Installation", "./README", False),
          ("API", "./package/index", False),
          ("GitHub", "https://github.com/aspuru-guzik-group/tequila", True),
          ("Tutorials", "./tutorials", False),
@@ -137,7 +137,7 @@ html_theme_options = {
     #'source_link_position': 'nav',
 
     # Bootswatch (https://bootswatch.com/) theme.
-    'bootswatch_theme': 'Sandstone',
+    'bootswatch_theme': 'sandstone',
 
     # Choose Bootstrap version.
     # Values: "3" (default) or "2" (in quotes)
