@@ -72,8 +72,8 @@ molecule = tq.quantumchemistry.Molecule(geometry="lih.xyz", basis_set='6-31g', a
 # get the qubit hamiltonian
 H = molecule.make_hamiltonian()
 
-# make the UCCSD ansatz with cc2 ordering
-U = molecule.make_uccsd_ansatz(initial_amplitudes="cc2", trotter_steps=1)
+# create an k-UpCCGSD circuit of order k
+U = molecule.make_upccgsd_ansatz(order=1, include_singles=True)
 
 # define the expectationvalue
 E = tq.ExpectationValue(H=H, U=U)
@@ -89,6 +89,26 @@ print("VQE : {:+2.8}f".format(result.energy))
 print("CISD: {:+2.8}f".format(cisd))
 print("FCI : {:+2.8}f".format(fci))
 ```
+
+Do you want to create your own methods? Check out the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials)! 
+
+# Research projects using Tequila
+J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.  
+A basis-set-free approach for VQE employing pair-natural orbitals.   
+[arxiv.org/abs/2008.02819](https://arxiv.org/abs/2008.02819)
+[example code](https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryBasisSetFreeVQE.ipynb)
+
+A. Cervera-Lierta, J.S. Kottmann, A. Aspuru-Guzik.  
+The Meta-Variational Quantum Eigensolver.  
+[arxiv.org/abs/2009.13545](https://arxiv.org/abs/2009.13545) 
+[example code](https://github.com/aspuru-guzik-group/Meta-VQE)
+
+J.S. Kottmann, M. Krenn, T.H. Kyaw, A. Aspuru-Guzik.  
+Quantum Computer-Aided design of Quantum Optics Hardware.  
+[arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)
+[example code](https://github.com/kottmanj/Photonic)  
+
+Let us know, if you want your research project to be included in this list!
 
 # Dependencies
 Support for additional optimizers can be activated by intalling them in your environment.  
