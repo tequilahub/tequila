@@ -1,5 +1,5 @@
 import typing
-from .qc_base import ParametersQC, QuantumChemistryBase
+from .qc_base import ParametersQC, QuantumChemistryBase, NBodyTensor
 
 SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4"]
 INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase}
