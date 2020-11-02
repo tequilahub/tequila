@@ -66,7 +66,7 @@ def test_ketbra():
     ket = QubitWaveFunction.from_string("1.0*|00> + 1.0*|11>").normalize()
     operator = paulis.KetBra(ket=ket, bra="|00>")
     result = operator*QubitWaveFunction.from_int(0, n_qubits=2)
-    assert(result == ket)
+    assert(result.isclose(ket))
 
 @pytest.mark.parametrize("n_qubits", [1,2,3,5])
 def test_ketbra_random(n_qubits):
@@ -74,7 +74,7 @@ def test_ketbra_random(n_qubits):
     bra = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
     operator = paulis.KetBra(ket=ket, bra=bra)
     result = operator * bra
-    assert result == QubitWaveFunction.from_array(ket)
+    assert(result.isclose(QubitWaveFunction.from_array(ket)))
 
 def test_paulistring_conversion():
     X1 = QubitHamiltonian.from_string("X0", openfermion_format=True)
@@ -180,7 +180,7 @@ def test_projectors(qubits):
     wfn = QubitWaveFunction.from_array(arr=array)
     P = paulis.Projector(wfn=wfn.normalize())
     assert(P.is_hermitian())
-    assert(wfn.apply_qubitoperator(P) == wfn)
+    assert(wfn.apply_qubitoperator(P).isclose(wfn))
     PM = P.to_matrix()
     assert((PM.dot(PM) == PM).all)
 
@@ -266,3 +266,58 @@ def test_matrix_form():
     Hm3p = kron(Hm, paulis.Z(0).to_matrix())
     assert allclose(Hm3 , Hm3p)
 
+def test_simple_trace_out():
+    H1 = QubitHamiltonian.from_string("1.0*Z(0)*Z(1)")
+    H2 = QubitHamiltonian.from_string("1.0*Z(0)")
+    assert H2 == H1.trace_out_qubits(qubits=[1], states=None)
+
+    H1 = QubitHamiltonian.from_string("1.0*Z(0)*Z(1)X(100)")
+    H2 = QubitHamiltonian.from_string("1.0*Z(1)X(100)")
+    assert H2 == H1.trace_out_qubits(qubits=[0], states=None)
+
+    H1 = QubitHamiltonian.from_string("1.0*Z(0)*Z(1)X(100)")
+    H2 = QubitHamiltonian.from_string("-1.0*Z(0)X(100)")
+    assert H2 == H1.trace_out_qubits(qubits=[1], states=[QubitWaveFunction.from_string("1.0*|1>")])
+
+    H1 = QubitHamiltonian.from_string("1.0*Z(0)*Z(1)X(100)")
+    H2 = QubitHamiltonian.from_string("-1.0*Z(1)X(100)")
+    assert H2 == H1.trace_out_qubits(qubits=[0], states=[QubitWaveFunction.from_string("1.0*|1>")])
+
+    H1 = QubitHamiltonian.from_string("1.0*X(0)*Z(1)*Z(5)*X(100)Y(50)")
+    H2 = QubitHamiltonian.from_string("1.0*X(0)X(100)Y(50)")
+    assert H2 == H1.trace_out_qubits(qubits=[1,5], states=[QubitWaveFunction.from_string("1.0*|1>")]*2)
+
+    H1 = QubitHamiltonian.from_string("1.0*X(0)*Z(1)*X(100)Y(50)")
+    H2 = QubitHamiltonian.from_string("-1.0*X(0)X(100)Y(50)")
+    assert H2 == H1.trace_out_qubits(qubits=[1,5], states=[QubitWaveFunction.from_string("1.0*|1>")]*2)
+
+@pytest.mark.parametrize("theta", numpy.random.uniform(0.0, 6.0, 10))
+def test_trace_out_xy(theta):
+    a = numpy.sin(theta)
+    b = numpy.cos(theta)
+    state = QubitWaveFunction.from_array([a,b])
+
+    H1 = QubitHamiltonian.from_string("1.0*X(0)*X(1)*X(100)")
+    H2 = QubitHamiltonian.from_string("1.0*X(0)*X(100)")
+    factor = a.conjugate()*b + b.conjugate()*a
+    assert factor*H2 == H1.trace_out_qubits(qubits=[1,3,5], states=[state]*3)
+    factor *= factor
+    H1 = QubitHamiltonian.from_string("1.0*X(0)*X(1)*X(5)*X(100)")
+    assert factor*H2 == H1.trace_out_qubits(qubits=[1,3,5], states=[state]*3)
+
+
+    H1 = QubitHamiltonian.from_string("1.0*X(0)*Y(1)*X(100)")
+    H2 = QubitHamiltonian.from_string("1.0*X(0)*X(100)")
+    factor = -1.0j*(a.conjugate()*b - b.conjugate()*a)
+    assert factor*H2 == H1.trace_out_qubits(qubits=[1,3,5], states=[state]*3)
+    factor *= factor
+    H1 = QubitHamiltonian.from_string("1.0*X(0)*Y(1)*Y(5)*X(100)")
+    assert factor*H2 == H1.trace_out_qubits(qubits=[1,3,5], states=[state]*3)
+
+    H1 = QubitHamiltonian.from_string("1.0*X(0)*X(1)*X(100)")
+    H2 = QubitHamiltonian.from_string("1.0*X(0)*X(100)")
+    factor = a.conjugate()*b + b.conjugate()*a
+    assert factor*H2 == H1.trace_out_qubits(qubits=[1,3,5], states=[state]*3)
+    factor *= -1.0j*(a.conjugate()*b - b.conjugate()*a)
+    H1 = QubitHamiltonian.from_string("1.0*X(0)*X(1)*Y(5)*X(100)")
+    assert factor*H2 == H1.trace_out_qubits(qubits=[1,3,5], states=[state]*3)

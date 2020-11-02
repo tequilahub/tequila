@@ -1,5 +1,5 @@
 from tequila.objective.objective import Objective
-from tequila.optimizers.optimizer_base import Optimizer
+from tequila.optimizers.optimizer_base import Optimizer, OptimizerResults, dataclass
 import typing
 import numbers
 from tequila.objective.objective import Variable
@@ -18,13 +18,17 @@ import numpy as np
 from numpy import pi as pi
 from tequila.simulators.simulator_api import compile_objective
 import os
-from collections import namedtuple
 
 #numpy, tf, etc can get real, real, real, noisy here. We suppress it.
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 warnings.filterwarnings('ignore', category=FutureWarning)
-PhoenicsReturnType = namedtuple('PhoenicsReturnType', 'energy angles history observations object')
+
+@dataclass
+class PhoenicsResults(OptimizerResults):
+
+    observations: list = None
+    phoenics_instance: phoenics.Phoenics = None
 
 class OptimizerPhoenics(Optimizer):
     """
@@ -182,7 +186,7 @@ class OptimizerPhoenics(Optimizer):
 
         Returns
         -------
-        PhoenicsReturnType:
+        PhoenicsResults:
             the results of optimization by phoenics.
 
         """
@@ -287,7 +291,7 @@ class OptimizerPhoenics(Optimizer):
 
         if not self.silent:
             print("best energy after {} iterations : {:+2.8f}".format(self.maxiter, best))
-        return PhoenicsReturnType(energy=best, angles=best_angles, history=self.history, observations=obs,object=bird)
+        return PhoenicsResults(energy=best, variables=best_angles, history=self.history, observations=obs,phoenics_instance=bird)
 
 
 def minimize(objective: Objective,
@@ -303,7 +307,7 @@ def minimize(objective: Objective,
              file_name: str = None,
              silent: bool = False,
              *args,
-             **kwargs):
+             **kwargs) -> PhoenicsResults:
     """
 
     Parameters
@@ -338,7 +342,7 @@ def minimize(objective: Objective,
         boosted=True etc
     Returns
     -------
-    PhoenicsReturnType:
+    PhoenicsResults:
         the result of an optimization by phoenics.
     """
 

@@ -197,7 +197,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         self.logs = {}  # store full psi4 output
 
         self.active_space = None  # will be assigned in super
-        # active space will be formed later
+        # psi4 active space will be formed later
         super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None, reference=None,
                          *args, **kwargs)
         self.ref_energy = self.molecule.hf_energy
@@ -224,12 +224,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             self.compute_energy(method="hf", recompute=True)
             self.ref_wfn = self.logs["hf"].wfn
 
-    @property
-    def n_orbitals(self) -> int:
-        if self.active_space is not None:
-            return len(self.active_space.active_orbitals)
-        else:
-            return super().n_orbitals
+        self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
     @property
     def point_group(self):
@@ -340,7 +335,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # Molecular orbitals (coeffs)
         Ca = wfn.Ca()
-        h = NBodyTensor(elems=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), scheme='chem')
+        h = NBodyTensor(elems=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), ordering='chem')
         # Order tensor. default: meet openfermion conventions
         h.reorder(to=ordering)
         return h.elems
@@ -516,7 +511,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         options['basis'] = self.parameters.basis_set
         if self.active_space is not None and self.active_space.psi4_representable:
             options['frozen_docc'] = self.active_space.frozen_docc
-            if sum(self.active_space.frozen_uocc) > 0:
+            if sum(self.active_space.frozen_uocc) > 0 and method.lower() not in ["hf", "fci", "detci"]:
                 print("There are known issues with some psi4 methods and frozen virtual orbitals. Proceed with fingers crossed for {}.".format(method))
             options['frozen_uocc'] = self.active_space.frozen_uocc
         return self._run_psi4(method=method, options=options, *args, **kwargs)[0]
@@ -612,7 +607,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 self._rdm1 = rdm1
             if psi4_options["detci__tpdm"]:
                 rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
-                rdm2 = NBodyTensor(elems=rdm2, scheme='chem')
+                rdm2 = NBodyTensor(elems=rdm2, ordering='chem')
                 rdm2.reorder(to='phys')  # RDMs in physics ordering (cp. to NBodyTensor in qc_base.py)
                 rdm2 = 2*rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
                 self._rdm2 = rdm2

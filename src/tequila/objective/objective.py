@@ -2,7 +2,6 @@ import typing, copy, numbers
 
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
-from tequila.tools.convenience import list_assignment
 from tequila.hamiltonian import paulis
 from tequila.grouping.binary_rep import BinaryHamiltonian
 import numpy as onp
@@ -70,9 +69,9 @@ class ExpectationValueImpl:
             result = self.U.extract_variables()
         return result
 
-    def update_variables(self, variables: typing.Dict[str, numbers.Real]):
+    def replace_variables(self, replacement):
         if self.U is not None:
-            self.U.update_variables(variables)
+            self.U.replace_variables(replacement)
 
     def __init__(self, U=None, H=None, contraction=None, shape=None):
         """
@@ -95,6 +94,24 @@ class ExpectationValueImpl:
             self._hamiltonian = tuple(H)
         self._contraction = contraction
         self._shape = shape
+
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        Maps the qubit within the underlying Hamiltonians and Unitaries
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        the ExpectationValueImpl structure with mapped qubits
+
+        """
+        return ExpectationValueImpl(H=tuple([H.map_qubits(qubit_map=qubit_map) for H in self.H]), U=self.U.map_qubits(qubit_map=qubit_map), contraction=self._contraction, shape=self._shape)
+
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
@@ -147,6 +164,33 @@ class Objective:
             self._args = tuple(args)
             self._transformation = transformation
 
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        Maps qubits for all quantum circuits and hamiltonians in the objective
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+            keys and values should be integers
+
+        Returns
+        -------
+        the Objective with mapped qubits
+
+        """
+        mapped_args = []
+        for arg in self.args:
+            if hasattr(arg, "map_qubits"):
+                mapped_args.append(arg.map_qubits(qubit_map=qubit_map))
+            else:
+                assert not hasattr(arg, "U") # failsave
+                assert not hasattr(arg, "H") # failsave
+                mapped_args.append(arg) # for purely variable dependend arguments
+
+        return Objective(args=mapped_args, transformation=self.transformation)
+
     @property
     def backend(self) -> str:
         """
@@ -161,7 +205,7 @@ class Objective:
         else:
             return "free"
 
-    def extract_variables(self):
+    def extract_variables(self) -> list:
         """
         Extract all variables on which the objective depends
         :return: List of all Variables
@@ -172,8 +216,14 @@ class Objective:
                 variables += arg.extract_variables()
             else:
                 variables += []
-
-        return list(set(variables))
+        # remove duplicates without affecting ordering
+        # allows better reproducibility for random initialization
+        # won't work with set
+        unique = []
+        for i in variables:
+            if i not in unique:
+                unique.append(i)
+        return unique
 
     def is_expectationvalue(self):
         """
@@ -454,6 +504,17 @@ class Objective:
             the result of the calculation represented by this objective.
         """
         variables = format_variable_dictionary(variables)
+        # failsafe
+        check_variables = {k: k in variables for k in self.extract_variables()}
+        if not all(list(check_variables.values())):
+            raise TequilaException("Objective did not receive all variables:\n"
+                                   "You gave\n"
+                                   " {}\n"
+                                   " but the objective depends on\n"
+                                   " {}\n"
+                                   " missing values for\n"
+                                   " {}".format(variables, self.extract_variables(), [k for k,v in check_variables.items() if not v]))
+
         # avoid multiple evaluations
         evaluated = {}
         ev_array = []
@@ -1291,7 +1352,10 @@ class Variable:
         return [self]
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name == other.name
+        if hasattr(other, "name"):
+            return self.name == other.name
+        else:
+            return self.name == other
 
     def _left_helper(self, op, other):
         """
@@ -1313,17 +1377,39 @@ class Variable:
         VectorObjective:
             an VectorObjective, who transform is op, acting on self and other
         """
-        as_obj = Objective(args=[self])
-        return as_obj._left_helper(op,other)
-
+        if isinstance(other, numbers.Number):
+            t = lambda v: op(v, other)
+            new = Objective(args=[self], transformation=t)
+        elif isinstance(other, Variable):
+            t = op
+            new = Objective(args=[self, other], transformation=t)
+        elif isinstance(other, Objective):
+            new = Objective(args=[self])
+            new = new.binary_operator(left=new, right=other, op=op)
+        elif isinstance(other, ExpectationValueImpl):
+            new = Objective(args=[self, other], transformation=op)
+        else:
+            raise TequilaException("unknown type in left_helper of objective arithmetics with operation {}: {}".format(type(op), type(other)))
+        return new
 
     def _right_helper(self, op, other):
         """
         see _left_helper for details.
         """
-
-        as_obj = Objective(args=[self])
-        return as_obj._right_helper(op,other)
+        if isinstance(other, numbers.Number):
+            t = lambda v: op(other, v)
+            new = Objective(args=[self], transformation=t)
+        elif isinstance(other, Variable):
+            t = op
+            new = Objective(args=[other, self], transformation=t)
+        elif isinstance(other, Objective):
+            new = Objective(args=[self])
+            new = new.binary_operator(right=new, left=other, op=op)
+        elif isinstance(other, ExpectationValueImpl):
+            new = Objective(args=[other, self], transformation=op)
+        else:
+            raise TequilaException("unknown type in left_helper of objective arithmetics with operation {}: {}".format(type(op),type(other)))
+        return new
 
     def __mul__(self, other):
         return self._left_helper(numpy.multiply, other)

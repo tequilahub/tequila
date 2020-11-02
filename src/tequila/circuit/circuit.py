@@ -36,7 +36,6 @@ class QCircuit():
 
     """
 
-
     @property
     def moments(self):
         """
@@ -311,11 +310,7 @@ class QCircuit():
         list:
             the variables of the circuit
         """
-        variables = []
-        for i, g in enumerate(self.gates):
-            if g.is_parametrized():
-                variables += g.extract_variables()
-        return list(set(variables))
+        return list(self._parameter_map.keys())
 
     def max_qubit(self):
         """
@@ -430,6 +425,49 @@ class QCircuit():
         else:
             return QCircuit(gates=[gate])
 
+    def to_networkx(self):
+        """
+        Turn a given quantum circuit from tequila into graph form via NetworkX
+        :param self: tq.gates.QCircuit
+        :return: G, a graph in NetworkX with qubits as nodes and gate connections as edges
+        """
+        # avoiding dependcies (only used here so far)
+        import networkx as nx
+        G = nx.Graph()
+        for q in self.qubits:
+            G.add_node(q)
+        Gdict = {s: [] for s in self.qubits}
+        for gate in self.gates:
+            if gate.control:
+                for s in gate.control:
+                    for t in gate.target:
+                        tstr = ''
+                        tstr += str(t)
+                        target = int(tstr)
+                        Gdict[s].append(target)  # add target to key of correlated controls
+                for p in gate.target:
+                    for r in gate.control:
+                        cstr = ''
+                        cstr += str(r)
+                        control = int(cstr)
+                        Gdict[p].append(control)  # add control to key of correlated targets
+            else:
+               for s in gate.target:
+                    for t in gate.target:
+                        tstr2 = ''
+                        tstr2 += str(t)
+                        target2 = int(tstr2)
+                        Gdict[s].append(target2)
+        lConn = []  # List of connections between qubits
+        for a, b in Gdict.items():
+            for q in b:
+                lConn.append((a, q))
+        G.add_edges_from(lConn)
+        GPaths = list(nx.connected_components(
+            G))  # connections of various qubits, excluding repetitions (ex- (1,3) instead of (1,3) and (3,1))
+        GIso = [g for g in GPaths if len(g) == 1]  # list of Isolated qubits
+        return G
+
     @staticmethod
     def from_moments(moments: typing.List):
         """
@@ -461,6 +499,26 @@ class QCircuit():
             test = [self.gates[x[0]] == x[1] for x in v]
             test += [k in self._gates[x[0]].extract_variables() for x in v]
         return all(test)
+
+    def map_qubits(self, qubit_map):
+        """
+
+        E.G.  Rx(1)Ry(2) --> Rx(3)Ry(1) with qubit_map = {1:3, 2:1}
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        A new circuit with mapped qubits
+        """
+
+        new_gates = [gate.map_qubits(qubit_map) for gate in self.gates]
+        # could speed up by applying qubit_map to parameter_map here
+        # currently its recreated in the init function
+        return QCircuit(gates=new_gates)
 
 
 class Moment(QCircuit):

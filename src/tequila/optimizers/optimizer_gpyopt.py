@@ -1,5 +1,5 @@
 from tequila.objective.objective import Objective
-from tequila.optimizers.optimizer_base import Optimizer
+from tequila.optimizers.optimizer_base import Optimizer, OptimizerResults, dataclass
 import typing
 import numbers
 from tequila.objective.objective import Variable
@@ -9,11 +9,12 @@ import GPyOpt
 from GPyOpt.methods import BayesianOptimization
 import numpy as np
 from tequila.simulators.simulator_api import compile
-from collections import namedtuple
 from tequila.utils import to_float
 
-GPyOptReturnType = namedtuple('GPyOptReturnType', 'energy angles history object')
+@dataclass
+class GPyOptResults(OptimizerResults):
 
+    gpyopt_instance: GPyOpt.methods.BayesianOptimization = None
 
 def array_to_objective_dict(objective, array, passives=None) -> typing.Dict[Variable, float]:
     """
@@ -194,7 +195,7 @@ class OptimizerGPyOpt(Optimizer):
     def __call__(self, objective: Objective,
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  variables: typing.List[typing.Hashable] = None,
-                 method: str = 'lbfgs', *args, **kwargs) -> GPyOptReturnType:
+                 method: str = 'lbfgs', *args, **kwargs) -> GPyOptResults:
 
         """
         perform optimization of an objective via GPyOpt.
@@ -217,7 +218,7 @@ class OptimizerGPyOpt(Optimizer):
 
         Returns
         -------
-        GPyOptReturnType.
+        GPyOptResults.
             Results of the optimization.
         """
         objective = objective.contract()
@@ -238,8 +239,8 @@ class OptimizerGPyOpt(Optimizer):
         if self.save_history:
             self.history.energies = opt.get_evaluations()[1].flatten()
             self.history.angles = [self.redictify(v, objective, passive_angles) for v in opt.get_evaluations()[0]]
-        return GPyOptReturnType(energy=opt.fx_opt, angles=self.redictify(opt.x_opt, objective, passive_angles),
-                                history=self.history, object=opt)
+        return GPyOptResults(energy=opt.fx_opt, variables=self.redictify(opt.x_opt, objective, passive_angles),
+                                history=self.history, gpyopt_instance=opt)
 
 
 def minimize(objective: Objective,
@@ -254,7 +255,7 @@ def minimize(objective: Objective,
              silent: bool = False,
              *args,
              **kwargs
-             ) -> GPyOptReturnType:
+             ) -> GPyOptResults:
 
     """
     Minimize an objective using GPyOpt.
@@ -282,7 +283,7 @@ def minimize(objective: Objective,
 
     Returns
     -------
-    GPyOptReturnType:
+    GPyOptResults:
         the results of an optimization.
     """
 

@@ -1,9 +1,9 @@
 """
 Base class for Optimizers.
 """
-import typing, numbers, copy
+import typing, numbers, copy, warnings
 
-from tequila.utils.exceptions import TequilaException
+from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_api import compile, pick_backend
 from tequila.objective import Objective
 from tequila.circuit.gradient import grad
@@ -202,6 +202,19 @@ class OptimizerHistory:
             pickle.dump(fig, open(filename + ".pickle", "wb"))
             plt.savefig(fname=filename + ".pdf", **kwargs)
 
+@dataclass
+class OptimizerResults:
+
+    energy: float = None
+    history: OptimizerHistory = None
+    variables: dict = None
+
+
+    @property
+    def angles(self):
+        # allow backwards compatibility
+        return self.variables
+
 
 class Optimizer:
 
@@ -305,7 +318,7 @@ class Optimizer:
         else:
             self.print_level = print_level
 
-        if self.silent:
+        if silent:
             self.print_level = 0
 
         self.samples = samples
@@ -317,6 +330,8 @@ class Optimizer:
 
         self.noise = noise
         self.device = device
+        self.args = args
+        self.kwargs = kwargs
 
     def reset_history(self):
         """
@@ -332,8 +347,7 @@ class Optimizer:
                  variables: typing.List[Variable],
                  initial_values: typing.Dict[Variable, numbers.Real] = None,
                  *args,
-                 **kwargs) -> typing.Tuple[
-        numbers.Number, typing.Dict[str, numbers.Number]]:
+                 **kwargs) -> OptimizerResults:
         """
         Optimize some objective with the optimizer.
 
@@ -350,7 +364,8 @@ class Optimizer:
 
         Returns
         -------
-        see inheritors.
+        OptimizerResults instance with "energy" "history" and "variables" as attributes
+        see inheritors for more details.
         """
         raise TequilaOptimizerException("Tried to call BaseClass of Optimizer")
 
@@ -362,8 +377,11 @@ class Optimizer:
         ----------
         objective: Objective:
             the objective being optimized.
-        initial_values: dict:
+        initial_values: dict or string:
             initial values for the variables of objective, as a dictionary.
+            if string: can be `zero` or `random`
+            if callable: custom function that initializes when keys are passed
+            if None: random initialization between 0 and 2pi (not recommended)
         variables: list:
             the variables being optimized over.
 
@@ -382,6 +400,17 @@ class Optimizer:
             variables = all_variables
         if initial_values is None:
             initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
+        elif hasattr(initial_values, "lower"):
+            if initial_values.lower() == "zero":
+                initial_values = {k:0.0 for k in all_variables}
+            elif initial_values.lower() == "random":
+                initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
+            else:
+                raise TequilaOptimizerException("unknown initialization instruction: {}".format(initial_values))
+        elif callable(initial_values):
+            initial_values = {k: initial_values(k) for k in all_variables}
+        elif isinstance(initial_values, numbers.Number):
+            initial_values = {k: initial_values for k in all_variables}
         else:
             # autocomplete initial values, warn if you did
             detected = False
@@ -390,7 +419,7 @@ class Optimizer:
                     initial_values[k] = numpy.random.uniform(0, 2 * numpy.pi)
                     detected = True
             if detected and not self.silent:
-                print("WARNING: initial_variables given but not complete: Autocomplete with random number")
+                warnings.warn("initial_variables given but not complete: Autocompleted with random numbers", TequilaWarning)
 
         active_angles = {}
         for v in variables:
@@ -533,6 +562,7 @@ class Optimizer:
     def __repr__(self):
         infostring = "Optimizer: {} \n".format(str(type(self)))
         infostring += "{:15} : {}\n".format("backend", self.backend)
+        infostring += "{:15} : {}\n".format("device", self.device)
         infostring += "{:15} : {}\n".format("samples", self.samples)
         infostring += "{:15} : {}\n".format("save_history", self.save_history)
         infostring += "{:15} : {}\n".format("noise", self.noise)

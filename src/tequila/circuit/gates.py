@@ -1,7 +1,7 @@
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
-from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, MeasurementImpl, \
-    ExponentialPauliGateImpl, TrotterizedGateImpl, GaussianGateImpl, PhaseGateImpl, TrotterParameters
+from tequila.circuit._gates_impl import RotationGateImpl, PowerGateImpl, QGateImpl, \
+    ExponentialPauliGateImpl, TrotterizedGateImpl, GeneralizedRotationImpl, PhaseGateImpl, TrotterParameters
 import typing, numbers
 from tequila.hamiltonian.qubit_hamiltonian import PauliString, QubitHamiltonian
 import numpy as np
@@ -326,11 +326,6 @@ def _initialize_power_gate(name: str, target: typing.Union[list, int], control: 
         return QCircuit.wrap_gate(PowerGateImpl(name=name, power=power, target=target, control=control))
 
 
-@wrap_gate
-def Measurement(target):
-    return MeasurementImpl(name='Measure', target=target)
-
-
 def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None):
     """Exponentiated Pauligate:
     
@@ -422,7 +417,7 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
     The gate wrapped in a circuit
     """
     return QCircuit.wrap_gate(
-        GaussianGateImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
+        GeneralizedRotationImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
 
 
 def Trotterized(generators: typing.List[QubitHamiltonian],
@@ -467,6 +462,12 @@ def Trotterized(generators: typing.List[QubitHamiltonian],
     QCircuit
 
     """
+
+    # convenience
+    if not (isinstance(generators, list) or isinstance(generators, tuple)):
+        generators = [generators]
+    if not (isinstance(angles, list) or isinstance(angles, tuple)):
+        angles = [angles]
 
     if parameters is None:
         parameters = TrotterParameters()

@@ -20,7 +20,7 @@ def test_keymaps():
 
     keymap = KeyMapSubregisterToRegister(register=[0, 1, 2, 3, 4, 5, 6, 7], subregister=[1, 3, 5, 7])
 
-    assert (small.apply_keymap(keymap=keymap, initial_state=initial_state) == large)
+    assert (small.apply_keymap(keymap=keymap, initial_state=initial_state).isclose(large))
 
 
 def test_endianness():
@@ -57,14 +57,13 @@ def test_endianness_simulators():
              "111100101000010"]
 
     for string in tests:
-        number = int(string, 2)
         binary = BitString.from_binary(binary=string)
         c = QCircuit()
         for i, v in enumerate(binary):
             if v == 1:
                 c += gates.X(target=i)
-
-        c += gates.Measurement(target=[x for x in range(len(string))])
+            if v == 0:
+                c += gates.Z(target=i)
 
         wfn_cirq = simulate(c, initial_state=0, backend="cirq")
         counts_cirq = simulate(c, samples=1, backend="cirq")
@@ -73,19 +72,19 @@ def test_endianness_simulators():
         print("counts_qiskit=", type(counts_qiskit))
         print("counts_cirq  =", counts_cirq)
         print("counts_qiskit=", counts_qiskit)
-        assert (counts_cirq == counts_qiskit)
+        assert (counts_cirq.isclose(counts_qiskit))
         assert (wfn_cirq.state == counts_cirq.state)
 
 
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
-@pytest.mark.parametrize("case",
-                         [("X(0)Y(1)Z(4)", 0.0), ("Z(0)", 1.0), ("Z(0)Z(1)Z(3)", 1.0), ("Z(0)Z(1)Z(2)Z(3)Z(5)", -1.0)])
+@pytest.mark.parametrize("case", [("X(0)Y(1)Z(4)", 0.0), ("Z(0)", 1.0), ("Z(0)Z(1)Z(3)", 1.0), ("Z(0)Z(1)Z(2)Z(3)Z(5)", -1.0)])
 def test_paulistring_sampling(backend, case):
+    print(case)
     H = QubitHamiltonian.from_paulistrings(PauliString.from_string(case[0]))
     U = gates.X(target=1) + gates.X(target=3) + gates.X(target=5)
     E = ExpectationValue(H=H, U=U)
     result = simulate(E,backend=backend, samples=1)
-    assert (isclose(result, case[1], 1.e-4))
+    assert isclose(result, case[1], 1.e-4)
 
 
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
@@ -102,4 +101,4 @@ def test_qubitwavefunction_array(array):
     print(array)
     wfn = QubitWaveFunction.from_array(arr=array)
     array2 = wfn.to_array()
-    assert (array == array2).all()
+    assert numpy.allclose(array,array2)

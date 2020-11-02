@@ -82,6 +82,60 @@ class PauliString:
 
         self._all_z = all([x.lower() == "z" for x in data.values()])
 
+    def trace_out_qubits(self, qubits, states=None):
+        """
+        See trace_out_qubits in QubitHamiltonian
+        Parameters
+        ----------
+        qubits
+            qubits to trace out
+        states
+            states a|0> + b|1> as list of tuples of the a,b coefficients. Default is just |0>.
+        Returns
+        -------
+            traced out PauliString
+        """
+        # |psi> = a|0> + b|1>
+        # <psi|op|psi> = |a|**2<0|op|0> + (a*)*b<1|op|0> + (b*)*a<0|op|1> + |b|**2<1|op|1>
+
+        if states is None:
+            states = [(1.0, 0.0)]*len(qubits)
+
+        def make_coeff_vec(state_tuple):
+            return numpy.asarray([numpy.abs(state_tuple[0])**2, state_tuple[0].conjugate()*state_tuple[1], state_tuple[1].conjugate()*state_tuple[0] ,numpy.abs(state_tuple[1])**2])
+
+        factor=1.0
+        for q, state in zip(qubits, states):
+            if q in self.keys():
+                matrix = pauli_matrices[self[q].upper()].reshape([4])
+                vec = make_coeff_vec(state)
+                factor *= vec.dot(matrix)
+                if factor == 0.0:
+                    break
+
+        new_data = {k:v for k,v in self.items() if k not in qubits}
+        return PauliString(data=new_data, coeff=self.coeff*factor)
+
+
+    def map_qubits(self, qubit_map: dict):
+        """
+
+        E.G.  X(1)Y(2) --> X(3)Y(1) with qubit_map = {1:3, 2:1}
+
+        Parameters
+        ----------
+        qubit_map
+            a dictionary which maps old to new qubits
+
+        Returns
+        -------
+        the PauliString with mapped qubits
+
+        """
+
+        mapped = {qubit_map[k]: v for k, v in self._data.items()}
+        return PauliString(data=mapped, coeff=self.coeff)
+
     def items(self):
         return self._data.items()
 
@@ -162,9 +216,9 @@ class PauliString:
     def binary(self, n_qubits: int = None):
         if len(self._data.keys()) == 0:
             maxq = 1
-        else: 
+        else:
             maxq = max(self._data.keys()) + 1
-            
+
         if n_qubits is None:
             n_qubits = maxq
 
@@ -188,8 +242,6 @@ class PauliString:
 
     def is_all_z(self):
         return self._all_z
-
-
 
 
 class QubitHamiltonian:
@@ -254,6 +306,31 @@ class QubitHamiltonian:
             self._qubit_operator = qubit_hamiltonian
 
         assert (isinstance(self._qubit_operator, QubitOperator))
+
+    def trace_out_qubits(self, qubits, states: list=None, *args, **kwargs):
+        """
+        Tracing out qubits with the assumption that they are in the |0> (default) or |1> state
+
+        Parameters
+        ----------
+        qubits
+            qubits to trace out
+        states
+            states of the qubits as list of individual tq.QubitWaveFunction (default is all in |0>)
+        Returns
+        -------
+            traced out Hamiltonian
+        """
+
+        if states is None:
+            states = [(1.0,0.0)]*len(qubits)
+        else:
+            assert len(states) == len(qubits)
+            # states should be given as list of individual tq.QubitWaveFunctions
+            states = [tuple(s.to_array()) for s in states]
+
+        reduced_ps = [ps.trace_out_qubits(qubits=qubits, states=states) for ps in self.paulistrings]
+        return self.from_paulistrings(ps=reduced_ps).simplify(*args, **kwargs)
 
     def __len__(self):
         return len(self._qubit_operator.terms)

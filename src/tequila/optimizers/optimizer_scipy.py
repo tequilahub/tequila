@@ -1,20 +1,23 @@
 import scipy, numpy, typing, numbers
 from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
-from .optimizer_base import Optimizer
+from .optimizer_base import Optimizer, OptimizerResults
 from ._containers import _EvalContainer, _GradContainer, _HessContainer, _QngContainer
-from collections import namedtuple
 from tequila.utils.exceptions import TequilaException
 from tequila.circuit.noise import NoiseModel
 from tequila.tools.qng import get_qng_combos
 
+from dataclasses import dataclass
 
 class TequilaScipyException(TequilaException):
     """ """
     pass
 
+@dataclass
+class SciPyResults(OptimizerResults):
 
-SciPyReturnType = namedtuple('SciPyReturnType', 'energy angles history scipy_output')
+    scipy_result: scipy.optimize.OptimizeResult = None
+
 
 
 class OptimizerSciPy(Optimizer):
@@ -50,7 +53,6 @@ class OptimizerSciPy(Optimizer):
                  method_options=None,
                  method_bounds=None,
                  method_constraints=None,
-                 silent: bool = True,
                  **kwargs):
         """
         Parameters
@@ -79,7 +81,6 @@ class OptimizerSciPy(Optimizer):
         if method_bounds is not None:
             method_bounds = {assign_variable(k): v for k, v in method_bounds.items()}
         self.method_bounds = method_bounds
-        self.silent = silent
 
         if method_options is None:
             self.method_options = {'maxiter': self.maxiter}
@@ -88,7 +89,7 @@ class OptimizerSciPy(Optimizer):
             if 'maxiter' not in method_options:
                 self.method_options['maxiter'] = self.maxiter
 
-        self.method_options['disp'] = not silent
+        self.method_options['disp'] = self.print_level > 0
 
         if method_constraints is None:
             self.method_constraints = ()
@@ -102,7 +103,7 @@ class OptimizerSciPy(Optimizer):
                  hessian: typing.Dict[typing.Tuple[Variable, Variable], Objective] = None,
                  reset_history: bool = True,
                  *args,
-                 **kwargs) -> SciPyReturnType:
+                 **kwargs) -> SciPyResults:
 
         """
         Perform optimization using scipy optimizers.
@@ -241,6 +242,7 @@ class OptimizerSciPy(Optimizer):
 
         Es = []
 
+        optimizer_instance = self
         class SciPyCallback:
             energies = []
             gradients = []
@@ -256,6 +258,8 @@ class OptimizerSciPy(Optimizer):
                 if ddE is not None and not isinstance(ddE, str):
                     self.hessians.append(ddE.history[-1])
                 self.real_iterations += 1
+                if 'callback' in optimizer_instance.kwargs:
+                    optimizer_instance.kwargs['callback'](E.history_angles[-1])
 
         callback = SciPyCallback()
         res = scipy.optimize.minimize(E, x0=param_values, jac=dE, hess=ddE,
@@ -287,14 +291,13 @@ class OptimizerSciPy(Optimizer):
                 self.history.energies = E.history
                 self.history.angles = E.history_angles
 
-
-
-        E_final = res.fun
-        angles_final = dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
+        # some scipy methods always give back the last value and not the minimum (e.g. cobyla)
+        ea = sorted(zip(E.history, E.history_angles), key=lambda x: x[0])
+        E_final = ea[0][0]
+        angles_final = ea[0][1] #dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
         angles_final = {**angles_final, **passive_angles}
 
-        return SciPyReturnType(energy=E_final, angles=format_variable_dictionary(angles_final), history=self.history,
-                               scipy_output=res)
+        return SciPyResults(energy=E_final, history=self.history, variables=format_variable_dictionary(angles_final), scipy_result=res)
 
 
 def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[str]:
@@ -341,7 +344,7 @@ def minimize(objective: Objective,
              silent: bool = False,
              save_history: bool = True,
              *args,
-             **kwargs) -> SciPyReturnType:
+             **kwargs) -> SciPyResults:
     """
 
     Parameters
