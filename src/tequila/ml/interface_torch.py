@@ -102,12 +102,15 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
             ctx.save_for_backward(inputs, angles)
             call_args = tensor_fix(inputs, angles, first, second)
             result = comped_objective(variables=call_args, samples=samples)
+            print(result)
             if not isinstance(result, np.ndarray):
                 # this happens if the Objective is a scalar since that's usually more convenient for pure quantum stuff.
                 result = np.array(result)
             if hasattr(inputs,'device'):
                 if inputs.device == 'cuda':
                     r = torch.from_numpy(result).to(inputs.device)
+                else:
+                    r = torch.from_numpy(result)
             else:
                 r = torch.from_numpy(result)
             r.requires_grad_(True)

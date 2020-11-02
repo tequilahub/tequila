@@ -2,6 +2,7 @@ import typing, copy, numbers
 
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
+from tequila.tools.convenience import list_assignment
 from tequila.hamiltonian import paulis
 from tequila.grouping.binary_rep import BinaryHamiltonian
 import numpy as onp

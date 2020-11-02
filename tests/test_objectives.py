@@ -655,8 +655,12 @@ def test_stacking_quantum(simulator, value1=(numpy.random.randint(0, 1000) / 100
     # not gonna contract, lets make gradient do some real work
     ga=grad(stacked,a)
     gb=grad(stacked,b)
-    tota= np.sum([tq.simulate(x,variables=values) for x in ga])
-    totb= np.sum([tq.simulate(x,variables=values) for x in gb])
+    la=[tq.simulate(x,variables=values) for x in ga]
+    print(la)
+    lb=[tq.simulate(x,variables=values) for x in gb]
+    print(lb)
+    tota=np.sum(np.array(la))
+    totb=np.sum(np.array(lb))
     gan1= np.cos(a(values))
     gan2= -np.cos(b(values))
     assert np.isclose(tota+totb,gan1+gan2,atol=1e-3)
@@ -686,8 +690,12 @@ def test_total_type_jumble(simulator,value1=(numpy.random.randint(0, 1000) / 100
     # not gonna contract, lets make gradient do some real work
     ga=grad(stacked,a)
     gb=grad(stacked,b)
-    tota= np.sum([tq.simulate(x,variables=values) for x in ga])
-    totb= np.sum([tq.simulate(x,variables=values) for x in gb])
+    la=[tq.simulate(x,variables=values) for x in ga]
+    print(la)
+    lb=[tq.simulate(x,variables=values) for x in gb]
+    print(lb)
+    tota=np.sum(np.array(la))
+    totb=np.sum(np.array(lb))
     gan1= np.cos(a(values)) * appendage + (np.sin(a(values)) * -np.sin(b(values))) - (np.sin(b(values)) * -np.sin(b(values)))
     gan2= np.sin(a(values)) * a(values) * -np.cos(b(values)) + 2 * (-np.cos(b(values)) * appendage)
     assert np.isclose(tota+totb,gan1+gan2)
