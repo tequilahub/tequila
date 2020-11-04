@@ -147,9 +147,10 @@ If you used `tequila` for your research, feel free to include your algoritms her
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need:  
 don't hesitate to contact us directly or raise an issue here on github  
 
-
+## Qulacs simulator
 You will need cmake to install the qulacs simulator  
 `pip install cmake`  
+
 You don't need `qulacs` for tequila to run (although is is recommended)  
 To install without `qulacs` just remove the `qulacs` line from `requirements.txt`  
 It can be replaced by one (or many) of the other supported simulators.  
