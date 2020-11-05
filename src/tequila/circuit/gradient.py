@@ -1,15 +1,17 @@
 from tequila.circuit.compiler import Compiler
-from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, assign_variable
+from tequila.objective.objective import Objective, ExpectationValueImpl, Variable,\
+    assign_variable, identity, VectorObjective
 from tequila import TequilaException
 from tequila.simulators.simulator_api import compile
 import numpy as np
 import copy
-
+import typing
 # make sure to use the jax/autograd numpy
 from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
 
 
-def grad(objective: Objective, variable: Variable = None, no_compile=False):
+def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable = None, no_compile=False):
+
     '''
     wrapper function for getting the gradients of Objectives,ExpectationValues, Unitaries (including single gates), and Transforms.
     :param obj (QCircuit,ParametrizedGateImpl,Objective,ExpectationValue,Transform,Variable): structure to be differentiated
@@ -52,55 +54,110 @@ def grad(objective: Objective, variable: Variable = None, no_compile=False):
         return __grad_expectationvalue(E=objective, variable=variable)
     elif objective.is_expectationvalue():
         return __grad_expectationvalue(E=compiled.args[-1], variable=variable)
-    elif isinstance(compiled, Objective):
+    elif isinstance(compiled, Objective) or isinstance(compiled, VectorObjective):
         return __grad_objective(objective=compiled, variable=variable)
     else:
         raise TequilaException("Gradient not implemented for other types than ExpectationValue and Objective.")
 
 
-def __grad_objective(objective: Objective, variable: Variable):
-    args = objective.args
-    transformation = objective.transformation
-    dO = None
+def __grad_objective(objective: typing.Union[Objective, VectorObjective], variable: Variable):
+    if isinstance(objective, VectorObjective):
+        return __grad_vector_objective(objective, variable)
+    else:
+        args = objective.args
+        transformation = objective.transformation
+        dO = None
 
-    processed_expectationvalues = {}
-    for i, arg in enumerate(args):
-        if __AUTOGRAD__BACKEND__ == "jax":
-            df = jax.grad(transformation, argnums=i)
-        elif __AUTOGRAD__BACKEND__ == "autograd":
-            df = jax.grad(transformation, argnum=i)
-        else:
-            raise TequilaException("Can't differentiate without autograd or jax")
-
-        # We can detect one simple case where the outer derivative is const=1
-        if objective.transformation is None:
-            outer = 1.0
-        else:
-            outer = Objective(args=args, transformation=df)
-
-        if hasattr(arg, "U"):
-            # save redundancies
-            if arg in processed_expectationvalues:
-                inner = processed_expectationvalues[arg]
+        processed_expectationvalues = {}
+        for i, arg in enumerate(args):
+            if __AUTOGRAD__BACKEND__ == "jax":
+                df = jax.grad(transformation, argnums=i)
+            elif __AUTOGRAD__BACKEND__ == "autograd":
+                df = jax.grad(transformation, argnum=i)
             else:
-                inner = __grad_inner(arg=arg, variable=variable)
-                processed_expectationvalues[arg] = inner
-        else:
-            # this means this inner derivative is purely variable dependent
-            inner = __grad_inner(arg=arg, variable=variable)
+                raise TequilaException("Can't differentiate without autograd or jax")
 
-        if inner == 0.0:
-            # don't pile up zero expectationvalues
-            continue
+            # We can detect one simple case where the outer derivative is const=1
+            if transformation is None or transformation == identity:
+                outer = 1.0
+            else:
+                outer = Objective(args=args, transformation=df)
+
+            if hasattr(arg, "U"):
+                # save redundancies
+                if arg in processed_expectationvalues:
+                    inner = processed_expectationvalues[arg]
+                else:
+                    inner = __grad_inner(arg=arg, variable=variable)
+                    processed_expectationvalues[arg] = inner
+            else:
+                # this means this inner derivative is purely variable dependent
+                inner = __grad_inner(arg=arg, variable=variable)
+
+            if inner == 0.0:
+                # don't pile up zero expectationvalues
+                continue
+
+            if dO is None:
+                dO = outer * inner
+            else:
+                dO = dO + outer * inner
 
         if dO is None:
-            dO = outer * inner
-        else:
-            dO = dO + outer * inner
+            raise TequilaException("caught None in __grad_objective")
+        return dO
 
-    if dO is None:
-        raise TequilaException("caught None in __grad_objective")
-    return dO
+
+def __grad_vector_objective(objective: typing.Union[Objective,VectorObjective], variable: Variable):
+    argsets = objective.argsets
+    transformations = objective._transformations
+    outputs = []
+    for pos in range(len(objective)):
+        args = argsets[pos]
+        transformation = transformations[pos]
+        dO = None
+
+        processed_expectationvalues = {}
+        for i, arg in enumerate(args):
+            if __AUTOGRAD__BACKEND__ == "jax":
+                df = jax.grad(transformation, argnums=i)
+            elif __AUTOGRAD__BACKEND__ == "autograd":
+                df = jax.grad(transformation, argnum=i)
+            else:
+                raise TequilaException("Can't differentiate without autograd or jax")
+
+            # We can detect one simple case where the outer derivative is const=1
+            if transformation is None or transformation == identity:
+                outer = 1.0
+            else:
+                outer = Objective(args=args, transformation=df)
+
+            if hasattr(arg, "U"):
+                # save redundancies
+                if arg in processed_expectationvalues:
+                    inner = processed_expectationvalues[arg]
+                else:
+                    inner = __grad_inner(arg=arg, variable=variable)
+                    processed_expectationvalues[arg] = inner
+            else:
+                # this means this inner derivative is purely variable dependent
+                inner = __grad_inner(arg=arg, variable=variable)
+
+            if inner == 0.0:
+                # don't pile up zero expectationvalues
+                continue
+
+            if dO is None:
+                dO = outer * inner
+            else:
+                dO = dO + outer * inner
+
+        if dO is None:
+            dO = Objective()
+        outputs.append(dO)
+    if len(outputs) == 1:
+        return outputs[0]
+    return outputs
 
 
 def __grad_inner(arg, variable):
@@ -135,6 +192,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     :param variables (list, dict, str): the variables with respect to which differentiation should be performed.
     :return: vector (as dict) of dU/dpi as Objective (without hamiltonian)
     '''
+
     hamiltonian = E.H
     unitary = E.U
     assert (unitary.verify())
