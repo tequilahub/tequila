@@ -5,7 +5,7 @@ from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateIm
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
 from tequila import Variable
-from tequila import Objective
+from tequila import Objective, VectorObjective
 from tequila.objective.objective import ExpectationValueImpl
 from tequila.autograd_imports import numpy as jnp
 from tequila.autograd_imports import numpy
@@ -41,7 +41,7 @@ class Compiler:
                  multitarget=False,
                  multicontrol=False,
                  trotterized=False,
-                 gaussian=False,
+                 genrot=False,
                  exponential_pauli=False,
                  controlled_exponential_pauli=False,
                  hadamard_power=False,
@@ -66,8 +66,8 @@ class Compiler:
             whether or not to split gates into single controlled gates.
         trotterized:
             whether or not to break down TrotterizedGateImpl into other types
-        gaussian:
-            whether or not to break down GaussianGateImpl into other types
+        genrot:
+            whether or not to break down GeneralizedRotationGateImpl into other types
         exponential_pauli:
             whether or not to break down ExponentialPauliGateImpl into other types
         controlled_exponential_pauli
@@ -95,7 +95,7 @@ class Compiler:
         """
         self.multitarget = multitarget
         self.multicontrol = multicontrol
-        self.gaussian = gaussian
+        self.gaussian = genrot
         self.trotterized = trotterized
         self.exponential_pauli = exponential_pauli
         self.controlled_exponential_pauli = controlled_exponential_pauli
@@ -128,7 +128,7 @@ class Compiler:
         -------
         a compiled version of objective
         """
-        start = time.time()
+
         if isinstance(objective, Objective) or hasattr(objective, "args"):
             result = self.compile_objective(objective=objective, variables=variables, *args, **kwargs)
         elif isinstance(objective, QCircuit) or hasattr(objective, "gates"):
@@ -138,10 +138,9 @@ class Compiler:
         else:
             raise TequilaCompilerException("Tequila compiler can't process type {}".format(type(objective)))
 
-        stop = time.time()
         return result
 
-    def compile_objective(self, objective, variables=None, *args, **kwargs):
+    def compile_objective(self, objective, *args, **kwargs):
         """
         Compile an objective.
 
@@ -149,30 +148,35 @@ class Compiler:
         ----------
         objective: Objective:
             the objective.
-        variables:
-            Todo: jakob, what is this for?
         args
         kwargs
-
         Returns
         -------
         the objective, compiled
         """
-        compiled_args = []
-        already_processed = {}
-        for arg in objective.args:
-            if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
-                if arg in already_processed:
-                    compiled_args.append(already_processed[arg])
-                else:
-                    compiled = self.compile_objective_argument(arg, variables=None, *args, **kwargs)
-                    compiled_args.append(compiled)
-                    already_processed[arg] = compiled
-            else:
-                # nothing to process for non-expectation-value types, but acts as sanity check
-                compiled_args.append(self.compile_objective_argument(arg, variables=None, *args, **kwargs))
 
-        return type(objective)(args=compiled_args, transformation=objective._transformation)
+        argsets=objective.argsets
+        compiled_sets=[]
+        for argset in argsets:
+            compiled_args = []
+            already_processed = {}
+            for arg in argset:
+                if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
+                    if arg in already_processed:
+                        compiled_args.append(already_processed[arg])
+                    else:
+                        compiled = self.compile_objective_argument(arg, variables=None, *args, **kwargs)
+                        compiled_args.append(compiled)
+                        already_processed[arg] = compiled
+                else:
+                    # nothing to process for non-expectation-value types, but acts as sanity check
+                    compiled_args.append(self.compile_objective_argument(arg, variables=None, *args, **kwargs))
+            compiled_sets.append(compiled_args)
+        if isinstance(objective,Objective):
+            return type(objective)(args=compiled_sets[0],transformation=objective.transformation)
+        if isinstance(objective, VectorObjective):
+            return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
+
 
     def compile_objective_argument(self, arg, variables=None, *args, **kwargs):
         """
@@ -192,7 +196,8 @@ class Compiler:
         the arg, compiled
         """
 
-        if isinstance(arg, ExpectationValueImpl):
+
+        if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
             return ExpectationValueImpl(H=arg.H,
                                         U=self.compile_circuit(abstract_circuit=arg.U, variables=variables, *args,
                                                                **kwargs))
@@ -250,7 +255,7 @@ class Compiler:
             if controlled or self.trotterized:
                 cg = compile_trotterized_gate(gate=cg)
             if controlled or self.gaussian:
-                cg = compile_gaussian_gate(gate=cg)
+                cg = compile_generalized_rotation_gate(gate=cg)
             if controlled or self.exponential_pauli:
                 cg = compile_exponential_pauli_gate(gate=cg)
             if self.swap:
@@ -320,17 +325,23 @@ def compiler(f):
             for g in gate.U.gates:
                 cU += f(gate=g, **kwargs)
             return type(gate)(U=cU, H=gate.H)
-        elif hasattr(gate, 'transformation'):
-            compiled = []
-            for E in gate.args:
-                if hasattr(E, 'name'):
-                    compiled.append(E)
-                else:
-                    cU = QCircuit()
-                    for g in E.U.gates:
-                        cU += f(gate=g, **kwargs)
-                    compiled.append(type(E)(U=cU, H=E.H))
-            return type(gate)(args=compiled, transformation=gate._transformation)
+        elif hasattr(gate, 'transformations'):
+            outer=[]
+            for args in gate.argsets:
+                compiled = []
+                for E in args:
+                    if hasattr(E, 'name'):
+                        compiled.append(E)
+                    else:
+                        cU = QCircuit()
+                        for g in E.U.gates:
+                            cU += f(gate=g, **kwargs)
+                        compiled.append(type(E)(U=cU, H=E.H))
+                outer.append(compiled)
+            if isinstance(gate, Objective):
+                return type(gate)(args=outer[0], transformation=gate._transformation)
+            if isinstance(gate, VectorObjective):
+                return type(gate)(argsets=outer, transformations=gate._transformations)
         else:
             return f(gate=gate, **kwargs)
 
@@ -1219,7 +1230,7 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
 
 
 @compiler
-def compile_gaussian_gate(gate, compile_exponential_pauli: bool = False):
+def compile_generalized_rotation_gate(gate, compile_exponential_pauli: bool = False):
     """
     Todo: Jakob, plz write
     Parameters

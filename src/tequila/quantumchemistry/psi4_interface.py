@@ -339,7 +339,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # Molecular orbitals (coeffs)
         Ca = wfn.Ca()
-        h = NBodyTensor(elems=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), scheme='chem')
+        h = NBodyTensor(elems=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), ordering='chem')
         # Order tensor. default: meet openfermion conventions
         h.reorder(to=ordering)
         return h.elems
@@ -611,7 +611,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 self._rdm1 = rdm1
             if psi4_options["detci__tpdm"]:
                 rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
-                rdm2 = NBodyTensor(elems=rdm2, scheme='chem')
+                rdm2 = NBodyTensor(elems=rdm2, ordering='chem')
                 rdm2.reorder(to='phys')  # RDMs in physics ordering (cp. to NBodyTensor in qc_base.py)
                 rdm2 = 2*rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
                 self._rdm2 = rdm2

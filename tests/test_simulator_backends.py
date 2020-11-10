@@ -40,8 +40,8 @@ def test_interface(backend):
     aa = CU()
     aaa = tq.compile_to_function(objective=U, backend=backend)()
     assert (isinstance(a, tq.QubitWaveFunction))
-    assert (aa == a)
-    assert (aaa == a)
+    assert (aa.isclose(a))
+    assert (aaa.isclose(a))
     E = tq.ExpectationValue(H=H, U=U)
     CE = tq.compile(objective=E, backend=backend)
     a = tq.simulate(objective=E, backend=backend)
@@ -124,8 +124,8 @@ def test_parametrized_interface(backend, samples):
     aa = CU(variables=variables, samples=None)
     aaa = tq.compile_to_function(objective=U, backend=backend, samples=samples)(variables["a"], samples=None)
     assert (isinstance(a, tq.QubitWaveFunction))
-    assert (aa == a)
-    assert (aaa == a)
+    assert (aa.isclose(a))
+    assert (aaa.isclose(a))
     E = tq.ExpectationValue(H=H, U=U)
     CE = tq.compile(objective=E, backend=backend, samples=samples)
     a = tq.simulate(objective=E, backend=backend, variables=variables, samples=samples)
@@ -262,7 +262,7 @@ def test_wfn_simple_consistency(simulator):
     wfn1 = tequila.simulators.simulator_api.simulate(ac, backend=None)
     print(wfn0)
     print(wfn1)
-    assert (wfn0 == wfn1)
+    assert (wfn0.isclose(wfn1))
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
@@ -302,9 +302,9 @@ def test_shot_simple_consistency():
     reference = tequila.simulate(ac, backend=None, samples=1000)
     for sampler in samplers:
         wfn = tequila.simulate(ac, backend=sampler, samples=1000)
-        if reference != wfn:
+        if not reference.isclose(wfn):
             raise Exception("failed for {}\n{} vs \n{}".format(sampler, reference, wfn))
-        assert reference == wfn
+        assert reference.isclose(wfn)
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())

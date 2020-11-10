@@ -205,15 +205,21 @@ class QubitWaveFunction:
         return result
 
     def __eq__(self, other):
-        if len(self.state) != len(other.state):
-            return False
-        for k, v in self.state.items():
-            if k not in other.state:
-                return False
-            elif not numpy.isclose(complex(v), complex(other.state[k]), atol=1.e-6):
-                return False
+        raise TequilaException("Wavefunction equality is not well-defined. Consider using inner"
+                               + " product equality, wf1.isclose(wf2).")
 
-        return True
+    def isclose(self :  'QubitWaveFunction',
+                other : 'QubitWaveFunction',
+                rtol : float=1e-5,
+                atol : float=1e-8) -> bool:
+        """Return whether this wavefunction is similar to the target wavefunction."""
+        over1 = complex(self.inner(other))
+        over2 = numpy.sqrt(complex(self.inner(self) * other.inner(other)))
+        # Explicit casts to complex() is required if self or other are sympy
+        # wavefunction with sympy-typed amplitudes
+
+        # Check if the two numbers are equal.
+        return numpy.isclose(over1, over2, rtol=rtol, atol=atol)
 
     def __add__(self, other):
         result = QubitWaveFunction(state=copy.deepcopy(self._state))

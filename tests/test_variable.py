@@ -1,7 +1,7 @@
 import pytest
 from tequila import numpy as np
 from tequila.circuit.gradient import grad
-from tequila.objective.objective import Objective, Variable
+from tequila.objective.objective import Objective, Variable, VectorObjective
 import operator
 
 
@@ -36,7 +36,7 @@ def test_equality():
 def test_transform_update():
     a = Variable('a')
     b = Variable('a.')
-    t = Objective(transformation=operator.add, args=[a, b])
+    t = VectorObjective(transformations=[operator.add], argsets=[[a, b]])
     variables = {a: 8, b: 1, a: 9, "c": 17}
     assert np.isclose(float(t(variables)), 10.0)
 
@@ -54,7 +54,8 @@ def test_exotic_gradients(gradvar):
 
     t = c * a ** b + b / c - Objective(args=[c], transformation=np.cos) + f / (d * e) + a * Objective(args=[d],
                                                                                                       transformation=np.exp) / (
-                    f + b) + Objective(args=[e], transformation=np.tanh) + Objective(args=[f], transformation=np.sinc)
+                    f + b) + Objective(args=[e], transformation=np.tanh) + Objective(args=[f],
+                                                                                             transformation=np.sinc)
     g = grad(t, gradvar)
     if gradvar == 'a':
         assert np.isclose(g(variables) , c(variables) * b(variables) * (a(variables) ** (b(variables) - 1.)) + np.exp(d(variables)) / (f(variables) + b(variables)))
