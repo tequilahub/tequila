@@ -32,12 +32,12 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
     def steps(self):
         return 1
 
-    def __init__(self, angle, generator, p0, exact=True, control=None):
+    def __init__(self, angle, generator, p0, assume_real=True, control=None):
         angle = assign_variable(angle)
         super().__init__(name="FermionicEx", parameter=angle, target=self.extract_targets(generator), control=control, eigenvalues_magnitude = 0.25)
         self.generator = generator
         self.p0 = p0
-        self.exact = exact
+        self.assume_real = assume_real
 
     def compile(self):
         return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
@@ -50,7 +50,7 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
         Um1 = gates.QCircuit.wrap_gate(
             FermionicGateImpl(angle=self._parameter - s, generator=self.generator, p0=self.p0, control=self.control))
         Um2 = gates.GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=self.eigenvalues_magnitude, steps=1, control=self.control)
-        if self.exact:
+        if not self.assume_real:
             return [(self.eigenvalues_magnitude, Up1 + Up2), (-self.eigenvalues_magnitude, Um1 + Um2), (self.eigenvalues_magnitude, Up1 + Um2),
                     (-self.eigenvalues_magnitude, Um1 + Up2)]
         else:
@@ -869,10 +869,31 @@ class QuantumChemistryBase:
                           "indices = " + str(indices), category=TequilaWarning)
         return qop
 
-    def make_excitation_gate(self, indices, angle, control=None, exact=False):
+    def make_excitation_gate(self, indices, angle, control=None, assume_real=True):
+        """
+        Initialize a fermionic excitation gate defined as
+
+        .. math::
+            e^{-i\\frac{a}{2} G}
+        with generator defines by the indices [(p0,q0),(p1,q1),...]
+        .. math::
+            G = i(\\prod_{k} a_{p_k}^\\dagger a_{q_k} - h.c.)
+
+        Parameters
+        ----------
+            indices:
+                List of tuples that define the generator
+            angle:
+                Numeric or hashable type or tequila objective
+            control:
+                List of possible control qubits
+            assume_real:
+                Assume that the wavefunction will always stay real.
+                Will reduce potential gradient costs by a factor of 2
+        """
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
-        return QCircuit.wrap_gate(FermionicGateImpl(angle=angle, generator=generator, p0=p0, exact=exact, control=control))
+        return QCircuit.wrap_gate(FermionicGateImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real, control=control))
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
         """Does a really lazy workaround ... but it works
@@ -1074,7 +1095,7 @@ class QuantumChemistryBase:
                             indices: list = None,
                             label: str = None,
                             order: int = 1,
-                            exact_gradient: bool = False,
+                            assume_real: bool = True,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1098,6 +1119,9 @@ class QuantumChemistryBase:
             Order of the ansatz (default is 1)
             determines how often the ordering gets repeated
             parameters of repeating layers are independent
+        assume_real
+            assume a real wavefunction (that is always the case if the reference state is real)
+            reduces potential gradient costs from 4 to 2
         Returns
         -------
             UpGCCSD ansatz
@@ -1120,7 +1144,7 @@ class QuantumChemistryBase:
         for k in range(order):
             for idx in indices:
                 angle = (k, idx, label)
-                U += self.make_excitation_gate(angle=angle, indices=idx, exact=exact_gradient)
+                U += self.make_excitation_gate(angle=angle, indices=idx, assume_real=assume_real)
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int,
