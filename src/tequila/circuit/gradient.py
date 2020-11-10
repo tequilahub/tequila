@@ -42,7 +42,8 @@ def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable 
                             hadamard_power=True,
                             power=True,
                             controlled_phase=True,
-                            controlled_rotation=True)
+                            controlled_rotation=True,
+                            gradient_mode=True)
 
         compiled = compiler(objective, variables=[variable])
 

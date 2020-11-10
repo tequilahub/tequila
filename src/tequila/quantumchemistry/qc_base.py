@@ -40,7 +40,7 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
         self.exact = exact
 
     def compile(self):
-        return gates.Trotterized(angles=[self.angle], generators=[self.generator], steps=1)
+        return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
 
     def shifted_gates(self):
         s = 0.5 * numpy.pi

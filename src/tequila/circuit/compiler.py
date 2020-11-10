@@ -41,7 +41,7 @@ class Compiler:
                  multitarget=False,
                  multicontrol=False,
                  trotterized=False,
-                 genrot=False,
+                 generalized_rotation=False,
                  exponential_pauli=False,
                  controlled_exponential_pauli=False,
                  hadamard_power=False,
@@ -53,7 +53,8 @@ class Compiler:
                  phase_to_z=False,
                  controlled_rotation=False,
                  swap=False,
-                 cc_max=False
+                 cc_max=False,
+                 gradient_mode=False
                  ):
 
         """
@@ -66,7 +67,7 @@ class Compiler:
             whether or not to split gates into single controlled gates.
         trotterized:
             whether or not to break down TrotterizedGateImpl into other types
-        genrot:
+        generalized_rotation:
             whether or not to break down GeneralizedRotationGateImpl into other types
         exponential_pauli:
             whether or not to break down ExponentialPauliGateImpl into other types
@@ -95,7 +96,7 @@ class Compiler:
         """
         self.multitarget = multitarget
         self.multicontrol = multicontrol
-        self.gaussian = genrot
+        self.generalized_rotation = generalized_rotation
         self.trotterized = trotterized
         self.exponential_pauli = exponential_pauli
         self.controlled_exponential_pauli = controlled_exponential_pauli
@@ -109,6 +110,7 @@ class Compiler:
         self.controlled_rotation = controlled_rotation
         self.swap = swap
         self.cc_max = cc_max
+        self.gradient_mode = gradient_mode
 
     def __call__(self, objective: typing.Union[Objective, QCircuit, ExpectationValueImpl], variables=None, *args,
                  **kwargs):
@@ -165,12 +167,12 @@ class Compiler:
                     if arg in already_processed:
                         compiled_args.append(already_processed[arg])
                     else:
-                        compiled = self.compile_objective_argument(arg, variables=None, *args, **kwargs)
+                        compiled = self.compile_objective_argument(arg, *args, **kwargs)
                         compiled_args.append(compiled)
                         already_processed[arg] = compiled
                 else:
                     # nothing to process for non-expectation-value types, but acts as sanity check
-                    compiled_args.append(self.compile_objective_argument(arg, variables=None, *args, **kwargs))
+                    compiled_args.append(self.compile_objective_argument(arg, *args, **kwargs))
             compiled_sets.append(compiled_args)
         if isinstance(objective,Objective):
             return type(objective)(args=compiled_sets[0],transformation=objective.transformation)
@@ -178,7 +180,7 @@ class Compiler:
             return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
 
 
-    def compile_objective_argument(self, arg, variables=None, *args, **kwargs):
+    def compile_objective_argument(self, arg, *args, **kwargs):
         """
         Compile an argument of an objective.
 
@@ -186,8 +188,6 @@ class Compiler:
         ----------
         arg:
             the term to compile
-        variables:
-            Todo: jakob, what is this for?
         args
         kwargs
 
@@ -199,11 +199,11 @@ class Compiler:
 
         if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
             return ExpectationValueImpl(H=arg.H,
-                                        U=self.compile_circuit(abstract_circuit=arg.U, variables=variables, *args,
+                                        U=self.compile_circuit(abstract_circuit=arg.U, *args,
                                                                **kwargs))
         elif hasattr(arg, "abstract_expectationvalue"):
             E = arg.abstract_expectationvalue
-            E._U = self.compile_circuit(abstract_circuit=E.U, variables=variables, *args, **kwargs)
+            E._U = self.compile_circuit(abstract_circuit=E.U, *args, **kwargs)
             return type(arg)(E, **arg._input_args)
         elif isinstance(arg, Variable) or hasattr(arg, "name"):
             return arg
@@ -247,14 +247,20 @@ class Compiler:
         for idx, gate in gatelist:
 
             cg = gate
-            # print('into compile comes ', cg)
             controlled = gate.is_controlled()
+
+            if self.gradient_mode and (hasattr(cg, "eigenvalues_magnitude") or hasattr(cg, "shifted_gates")):
+                compiled_gates.append((idx, QCircuit.wrap_gate(cg)))
+                continue
+            else:
+                if hasattr(cg, "compile"):
+                    cg = cg.compile()
 
             # order matters
             # first the real multi-target gates
             if controlled or self.trotterized:
                 cg = compile_trotterized_gate(gate=cg)
-            if controlled or self.gaussian:
+            if controlled or self.generalized_rotation:
                 cg = compile_generalized_rotation_gate(gate=cg)
             if controlled or self.exponential_pauli:
                 cg = compile_exponential_pauli_gate(gate=cg)
@@ -1244,7 +1250,7 @@ def compile_generalized_rotation_gate(gate, compile_exponential_pauli: bool = Fa
     """
     if not hasattr(gate, "generator"):
         return QCircuit.wrap_gate(gate)
-    if not hasattr(gate, "shift"):
+    if not hasattr(gate, "eigenvalues_magnitude"):
         return QCircuit.wrap_gate(gate)
 
     return do_compile_trotterized_gate(generator=gate.generator, steps=gate.steps, randomize=False,
