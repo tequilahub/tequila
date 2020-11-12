@@ -3,7 +3,7 @@ from cmath import polar
 import numbers
 
 
-def list_assignement(o):
+def list_assignment(o):
     """
     --> moved to tools
     Helper function to make initialization with lists and single elements possible
@@ -12,6 +12,8 @@ def list_assignement(o):
     """
     if o is None:
         return []
+    elif isinstance(o,tuple):
+        return o
     elif hasattr(o, "__get_item__"):
         return list(o)
     elif hasattr(o, "__iter__"):

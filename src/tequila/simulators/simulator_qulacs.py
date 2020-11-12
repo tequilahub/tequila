@@ -46,7 +46,7 @@ class BackendCircuitQulacs(BackendCircuit):
         "swap": False,
         "multitarget": True,
         "controlled_rotation": True, # needed for gates depending on variables
-        "gaussian": True,
+        "generalized_rotation": True,
         "exponential_pauli": False,
         "controlled_exponential_pauli": True,
         "phase": True,

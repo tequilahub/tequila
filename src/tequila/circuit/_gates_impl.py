@@ -3,9 +3,9 @@ import copy
 import numbers
 from abc import ABC
 from tequila import TequilaException
-from tequila.objective.objective import Variable, FixedVariable, assign_variable
+from tequila.objective.objective import Variable, FixedVariable, assign_variable,Objective,VectorObjective
 from tequila.hamiltonian import PauliString, QubitHamiltonian
-from tequila.tools import list_assignement
+from tequila.tools import list_assignment
 
 from dataclasses import dataclass
 
@@ -44,8 +44,8 @@ class QGateImpl:
 
     def __init__(self, name, target: UnionList, control: UnionList = None):
         self._name = name
-        self._target = tuple(list_assignement(target))
-        self._control = tuple(list_assignement(control))
+        self._target = tuple(list_assignment(target))
+        self._control = tuple(list_assignment(control))
         self.finalize()
         # Set the active qubits
         if self.control:
@@ -157,6 +157,8 @@ class ParametrizedGateImpl(QGateImpl, ABC):
 
     def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None):
         super().__init__(name=name, target=target, control=control)
+        if isinstance(parameter, VectorObjective):
+            raise TequilaException('Received VectorObjective {} as parameter. This is forbidden.'.format(parameter))
         self._parameter = assign_variable(variable=parameter)
 
     def __str__(self):
@@ -259,7 +261,6 @@ class PowerGateImpl(ParametrizedGateImpl):
     def dagger(self):
         result = copy.deepcopy(self)
         return result
-
 
 class GeneralizedRotationImpl(DifferentiableGateImpl):
     """
@@ -371,7 +372,7 @@ class TrotterizedGateImpl(QGateImpl):
         :param randomize: randomize the trotter decomposition of each generator
         """
         super().__init__(name="Trotterized", target=self.extract_targets(generators), control=control)
-        self.generators = list_assignement(generators)
+        self.generators = list_assignment(generators)
         self.angles = angles
         self.steps = steps
         self.threshold = threshold
