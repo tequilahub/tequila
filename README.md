@@ -96,7 +96,7 @@ Do you want to create your own methods? Check out the [tutorials](https://github
 
 # Research projects using Tequila
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
-A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers
+A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.  
 [arxiv.org/abs/2011.05938](https://arxiv.org/abs/2011.05938)  
 Fermionic gradients available on `devel` branch.  
 
