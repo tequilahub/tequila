@@ -99,7 +99,7 @@ Do you want to create your own methods? Check out the [tutorials](https://github
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
 A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.  
 [arxiv.org/abs/2011.05938](https://arxiv.org/abs/2011.05938)  
-Fermionic gradients available on `devel` branch.  
+Techniques are implemented in the chemistry modules of tequila. See the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials) for examples.  
 
 J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.  
 A basis-set-free approach for VQE employing pair-natural orbitals.   
@@ -111,7 +111,7 @@ The Meta-Variational Quantum Eigensolver.
 [arxiv.org/abs/2009.13545](https://arxiv.org/abs/2009.13545) 
 [example code](https://github.com/aspuru-guzik-group/Meta-VQE)
 
-J.S. Kottmann, M. Krenn, T.H. Kyaw, A. Aspuru-Guzik.  
+J.S. Kottmann, M. Krenn, T.H. Kyaw, S. Alperin-Lea, A. Aspuru-Guzik.  
 Quantum Computer-Aided design of Quantum Optics Hardware.  
 [arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)
 [example code](https://github.com/kottmanj/Photonic)  
