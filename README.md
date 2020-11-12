@@ -111,7 +111,7 @@ The Meta-Variational Quantum Eigensolver.
 [arxiv.org/abs/2009.13545](https://arxiv.org/abs/2009.13545) 
 [example code](https://github.com/aspuru-guzik-group/Meta-VQE)
 
-J.S. Kottmann, M. Krenn, T.H. Kyaw, A. Aspuru-Guzik.  
+J.S. Kottmann, M. Krenn, T.H. Kyaw, S. Alperin-Lea, A. Aspuru-Guzik.  
 Quantum Computer-Aided design of Quantum Optics Hardware.  
 [arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)
 [example code](https://github.com/kottmanj/Photonic)  
