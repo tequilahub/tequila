@@ -99,7 +99,7 @@ Do you want to create your own methods? Check out the [tutorials](https://github
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
 A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.  
 [arxiv.org/abs/2011.05938](https://arxiv.org/abs/2011.05938)  
-Fermionic gradients available on `devel` branch.  
+Techniques are implemented in the chemistry modules of tequila. See the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials) for examples.  
 
 J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.  
 A basis-set-free approach for VQE employing pair-natural orbitals.   
