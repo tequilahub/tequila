@@ -69,6 +69,7 @@ def test_one_qubit_wfn_really_works(simulator):
     assert (numpy.isclose(result.energy, -1.0,atol=1.e-2))
     assert (numpy.isclose(result.energy,simulate(objective=O,variables=result.angles)))
 
+@pytest.mark.skip(reason"unrelieable")
 @pytest.mark.skipif(condition=not has_gpyopt, reason="you don't have GPyOpt")
 @pytest.mark.parametrize("simulator", samplers)
 def test_one_qubit_shot(simulator):
