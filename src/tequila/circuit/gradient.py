@@ -3,11 +3,10 @@ from tequila.objective.objective import Objective, ExpectationValueImpl, Variabl
     assign_variable, identity, VectorObjective
 from tequila import TequilaException
 from tequila.simulators.simulator_api import compile
-import numpy as np
-import copy
 import typing
-# make sure to use the jax/autograd numpy
-from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
+import copy
+from numpy import pi
+from tequila.autograd_imports import jax, __AUTOGRAD__BACKEND__
 
 
 def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable = None, no_compile=False):
@@ -43,7 +42,8 @@ def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable 
                             hadamard_power=True,
                             power=True,
                             controlled_phase=True,
-                            controlled_rotation=True)
+                            controlled_rotation=True,
+                            gradient_mode=True)
 
         compiled = compiler(objective, variables=[variable])
 
@@ -232,6 +232,7 @@ def __grad_shift_rule(unitary, g, i, variable, hamiltonian):
     :return: an Objective, whose calculation yields the gradient of g w.r.t variable
     '''
 
+
     # possibility for overwride in custom gate construction
     if hasattr(g, "shifted_gates"):
         inner_grad=__grad_inner(g.parameter, variable)
@@ -246,11 +247,11 @@ def __grad_shift_rule(unitary, g, i, variable, hamiltonian):
         return dOinc
 
     if not hasattr(g, "eigenvalues_magnitude"):
-        raise TequilaException("No shift found for gate {}".format(g))
+        raise TequilaException("No shift-rule found for gate {}. Neither shifted_gates nor eigenvalues_magnitude not defined".format(g))
 
     # neo_a and neo_b are the shifted versions of gate g needed to evaluate its gradient
-    shift_a = g._parameter + np.pi / (4 * g.eigenvalues_magnitude)
-    shift_b = g._parameter - np.pi / (4 * g.eigenvalues_magnitude)
+    shift_a = g._parameter + pi / (4 * g.eigenvalues_magnitude)
+    shift_b = g._parameter - pi / (4 * g.eigenvalues_magnitude)
     neo_a = copy.deepcopy(g)
     neo_a._parameter = shift_a
     neo_b = copy.deepcopy(g)

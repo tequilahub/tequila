@@ -212,7 +212,7 @@ class BackendCircuitQibo(BackendCircuit):
         "swap": False,
         "multitarget": True,
         "controlled_rotation": False,
-        "gaussian": True,
+        "generalized_rotation": True,
         "exponential_pauli": True,
         "controlled_exponential_pauli": True,
         "phase": False,

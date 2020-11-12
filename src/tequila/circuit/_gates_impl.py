@@ -262,7 +262,6 @@ class PowerGateImpl(ParametrizedGateImpl):
         result = copy.deepcopy(self)
         return result
 
-
 class GeneralizedRotationImpl(DifferentiableGateImpl):
     """
     A gate which behaves like a generalized rotation

@@ -63,6 +63,8 @@ def Molecule(geometry: str,
         elif "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
             backend = "pyscf"
         else:
+            raise Exception("No quantum chemistry backends installed on your system")
+    elif backend == "base":
             requirements = [key in kwargs for key in ["one_body_integrals", "two_body_integrals", "nuclear_repulsion", "n_orbitals"]]
             if not all(requirements):
                 raise Exception("No quantum chemistry backends installed on your system\n"
