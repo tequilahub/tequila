@@ -15,6 +15,7 @@ or checkout our [overview article](https://arxiv.org/abs/2011.03057)
 # Quantum Backends
 Currently supported
 - [Qulacs](https://github.com/qulacs/qulacs)
+- [Qibo](https://github.com/Quantum-TII/qibo)
 - [Qiskit](https://github.com/qiskit/qiskit)
 - [Cirq](https://github.com/quantumlib/cirq)
 - [PyQuil](https://github.com/rigetti/pyquil)
