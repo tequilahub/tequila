@@ -1211,7 +1211,7 @@ class QuantumChemistryBase:
                 tIA=numpy.zeros(shape=[nocc, nvirt]))
 
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
-        generators = []
+        indices = []
         variables = []
 
         if not isinstance(amplitudes, dict):
@@ -1236,7 +1236,7 @@ class QuantumChemistryBase:
                         partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
                     for idx in spin_indices:
                         idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
-                        generators.append(self.make_excitation_generator(indices=idx))
+                        indices.append(idx)
 
                     if parametrized:
                         variables.append(Variable(name=key))  # abab
@@ -1251,14 +1251,19 @@ class QuantumChemistryBase:
                             variables.append(t - amplitudes[partner])
                             variables.append(t - amplitudes[partner])
                 else:
-                    generators.append(self.make_excitation_operator(indices=spin_indices))
+                    indices.append(spin_indices)
                     if parametrized:
                         variables.append(Variable(name=key))
                     else:
                         variables.append(t)
+        UCCSD=QCircuit()
+        factor = 1.0/trotter_steps
+        for step in range(trotter_steps):
+            for i,idx in enumerate(indices):
+                UCCSD += self.make_excitation_gate(indices=idx, angle=factor*variables[i])
 
-        return Uref + gates.Trotterized(generators=generators, angles=variables, steps=trotter_steps,
-                                        parameters=trotter_parameters)
+        return Uref + UCCSD
+
 
     def compute_amplitudes(self, method: str, *args, **kwargs):
         """
