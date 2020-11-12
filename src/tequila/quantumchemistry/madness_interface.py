@@ -3,6 +3,8 @@ from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase,
 import typing
 import numpy
 import warnings
+import os
+import shutil
 
 from dataclasses import dataclass
 
@@ -21,7 +23,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             elif self.pno_pair[0] < 0:
                 return "orbital {}, virtual orbital {}, energy {} ".format(self.idx_total, self.pno_pair, self.occ)
             else:
-                return "orbital {}, occupied reference orbital {}, energy {} ".format(self.idx_total, self.pno_pair, self.occ)
+                return "orbital {}, occupied reference orbital {}, energy {} ".format(self.idx_total, self.pno_pair,
+                                                                                      self.occ)
 
         def __repr__(self):
             return self.__str__()
@@ -29,23 +32,36 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
-                 madness_root_dir: str = None,
+                 executable: str = None,
                  n_pno: int = None,
-                 frozen_core = False,
+                 frozen_core=False,
                  n_virt: int = 0,
                  *args,
                  **kwargs):
 
-        self.madness_root_dir = madness_root_dir
+        # see if MAD_ROOT_DIR is defined
+        self.madness_root_dir = str(os.environ.get("MAD_ROOT_DIR"))
+        # see if the pno_integrals executable can be found
+        if executable is None:
+            executable = shutil.which("pno_integrals")
+            if executable is None and self.madness_root_dir is not None:
+                exestr="{}/src/apps/pno/pno_integrals".format(self.madness_root_dir)
+                executable = shutil.which(exestr)
+                if executable is None:
+                    warnings.warn("MAD_ROOT_DIR={} found\nbut couldn't find executable {}".format(self.madness_root_dir, exestr), TequilaWarning)
+
+
+        else:
+            executable = shutil.which(executable)
+
+        self.executable = executable
         self.n_pno = n_pno
         self.n_virt = n_virt
         self.frozen_core = frozen_core
-        self.kwargs=kwargs
+        self.kwargs = kwargs
 
         # if no n_pno is given, look for MRA data (default)
-        name = "gs"
-        if parameters.name != "molecule":
-            name = parameters.name
+        name = parameters.name
 
         if n_pno is None:
             h, g = self.read_tensors(name=name)
@@ -139,25 +155,28 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         # print warning if read data does not match expectations
         if n_pno is not None:
             nrefs = len(self.get_reference_orbitals())
-            if n_pno+nrefs+n_virt != self.n_orbitals:
+            if n_pno + nrefs + n_virt != self.n_orbitals:
                 warnings.warn(
-                    "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
+                    "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(
+                        self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
 
     def run_madness(self, *args, **kwargs):
-        executable = "pno_integrals"
-        if self.madness_root_dir is not None:
-            executable = "{}/src/apps/pno/pno_integrals".format(self.madness_root_dir)
+        if self.executable is None:
+            return "pno_integrals executable not found\n" \
+                   "pass over executable keyword or export MAD_ROOT_DIR to system environment"
         self.make_madness_input(n_pno=self.n_pno, frozen_core=self.frozen_core, n_virt=self.n_virt, *args, **kwargs)
         import subprocess
         import time
         start = time.time()
-        print("Starting madness calculation with executable: ", executable)
-        with open("{}_pno.out".format(self.parameters.filename), "w") as logfile:
-            madout = subprocess.call([executable], stdout=logfile)
+        filename="{}_pno_integrals.out".format(self.parameters.name)
+        print("Starting madness calculation with executable: ", self.executable)
+        print("output redirected to {} logfile".format(filename))
+        with open(filename, "w") as logfile:
+            madout = subprocess.call([self.executable], stdout=logfile)
         print("finished after {}s".format(time.time() - start))
         return madout
 
-    def read_tensors(self, name="gs", filetype="npy"):
+    def read_tensors(self, name="molecule", filetype="npy"):
         """
         Try to read files "name_htensor.npy" and "name_gtensor.npy"
         """
@@ -190,7 +209,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
 
-    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False, **kwargs):
+    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False,
+                                **kwargs):
         indices_d = []
         indices_s = []
         refs = self.get_reference_orbitals()
@@ -216,15 +236,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if include_offdiagonals:
             for i in self.get_reference_orbitals():
                 for j in self.get_reference_orbitals():
-                    if i.idx<=j.idx:
+                    if i.idx <= j.idx:
                         continue
-                    for a in self.get_pno_indices(i,j):
+                    for a in self.get_pno_indices(i, j):
                         ui = (2 * i.idx, 2 * a.idx)
                         di = (2 * i.idx + 1, 2 * a.idx + 1)
                         uj = (2 * j.idx, 2 * a.idx)
                         dj = (2 * j.idx + 1, 2 * a.idx + 1)
-                        indices_d.append((ui,dj))
-                        indices_d.append((uj,di))
+                        indices_d.append((ui, dj))
+                        indices_d.append((uj, di))
                         indices_s.append((ui))
                         indices_s.append((uj))
                         indices_s.append((di))
@@ -233,7 +253,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     if generalized:
                         for a in self.get_pno_indices(i, j):
                             for b in self.get_pno_indices(i, j):
-                                if a.idx <=b.idx:
+                                if a.idx <= b.idx:
                                     continue
                                 u = (2 * a.idx, 2 * b.idx)
                                 d = (2 * a.idx + 1, 2 * b.idx + 1)
@@ -251,11 +271,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if n_pno is None:
             raise TequilaException("Can't write madness input without n_pnos")
         data = {}
-        data["dft"] = {"xc": "hf", "k": 7, "econv": "1.e-4", "dconv": "1.e-4"}
-        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh":1.e-4}
+        data["dft"] = {"xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 1.e-4, "ncf": "( none , 1.0 )"}
+        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
-        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog":"cholesky"}
+        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "cholesky"}
         data["plot"] = {}
         data["f12"] = {}
         for key in data.keys():
@@ -274,16 +294,16 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 print("units angstrom", file=f)
                 print("eprec 1.e-6", file=f)
                 for line in self.parameters.get_geometry_string().split("\n"):
-                    line=line.strip()
-                    if line!="":
+                    line = line.strip()
+                    if line != "":
                         print(line, file=f)
                 print("end", file=f)
 
         return data
 
-    def convert_madness_output_from_bin_to_npy(self, name="gs"):
+    def convert_madness_output_from_bin_to_npy(self, name):
         try:
-            g_data = numpy.fromfile("gs_gtensor.bin")
+            g_data = numpy.fromfile("molecule_gtensor.bin".format())
             sd = int(numpy.power(g_data.size, 0.25))
             assert (sd ** 4 == g_data.size)
             sds = [sd] * 4
@@ -293,7 +313,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             g = "failed"
 
         try:
-            h_data = numpy.fromfile("gs_htensor.bin")
+            h_data = numpy.fromfile("molecule_htensor.bin")
             sd = int(numpy.sqrt(h_data.size))
             assert (sd ** 2 == h_data.size)
             sds = [sd] * 2
@@ -305,10 +325,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         return h, g
 
     def __str__(self):
-        info=super().__str__()
-        info+="{key:15} :\n".format(key="MRA Orbitals")
+        info = super().__str__()
+        info += "{key:15} :\n".format(key="MRA Orbitals")
         for orb in self.orbitals:
-            info+="{}\n".format(orb)
+            info += "{}\n".format(orb)
+        info += "\n"
+        info += "{:15} : {}\n".format("executable", self.executable)
+        info += "{:15} : {}\n".format("htensor", "{}_htensor.npy".format(self.parameters.name))
+        info += "{:15} : {}\n".format("gtensor", "{}_gtensor.npy".format(self.parameters.name))
+
         return info
 
     def __repr__(self):
