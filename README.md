@@ -8,7 +8,9 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 
 [You can get an overview from this presentation](/docs/tequila.pdf)  
 
-[Get started with our Tutorials](/tutorials/)
+[Get started with our Tutorials](/tutorials/)  
+
+or checkout our [overview article](https://arxiv.org/abs/2011.03057)  
 
 # Quantum Backends
 Currently supported
@@ -93,6 +95,11 @@ print("FCI : {:+2.8}f".format(fci))
 Do you want to create your own methods? Check out the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials)! 
 
 # Research projects using Tequila
+J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
+A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers
+[arxiv.org/abs/2011.05938](https://arxiv.org/abs/2011.05938)  
+Fermionic gradients available on `devel` branch.  
+
 J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.  
 A basis-set-free approach for VQE employing pair-natural orbitals.   
 [arxiv.org/abs/2008.02819](https://arxiv.org/abs/2008.02819)
