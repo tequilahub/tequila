@@ -191,7 +191,7 @@ class OptimizerPhoenics(Optimizer):
 
         """
 
-
+        objective = objective.contract()
         active_angles, passive_angles, variables = self.initialize_variables(objective,
                                                                initial_values=initial_values,
                                                                variables=variables)

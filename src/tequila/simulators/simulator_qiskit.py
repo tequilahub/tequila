@@ -116,7 +116,7 @@ class BackendCircuitQiskit(BackendCircuit):
         "swap": False,
         "multitarget": True,
         "controlled_rotation": True,
-        "gaussian": True,
+        "generalized_rotation": True,
         "exponential_pauli": True,
         "controlled_exponential_pauli": True,
         "phase": True,
@@ -166,14 +166,12 @@ class BackendCircuitQiskit(BackendCircuit):
             'SWAP': (lambda c: c.swap, lambda c: c.cswap),
         }
 
-
-
         self.resolver = {}
         self.tq_to_pars = {}
         self.counter = 0
 
         if qubit_map is None:
-            n_qubits = abstract_circuit.n_qubits
+            n_qubits = len(abstract_circuit.qubits)
         else:
             n_qubits = max(qubit_map.values()) + 1
 

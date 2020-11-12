@@ -1,5 +1,5 @@
 import typing
-from tequila.tools import list_assignement
+from tequila.tools import list_assignment
 from tequila.utils import TequilaException
 import copy
 
@@ -77,7 +77,7 @@ class QuantumNoise:
         level: int:
             the number of qubits in the gates this noise acts upon.
         """
-        probs=list_assignement(probs)
+        probs=list_assignment(probs)
         if name not in noises_available:
             raise TequilaException('The name you asked for, {}, is not recognized'.format(name))
         self._name=name
@@ -87,7 +87,7 @@ class QuantumNoise:
             raise TequilaException('{} noise requires {} probabilities; recieved {}'.format(name, self.prob_length[name], len(probs)))
         if name in krausses:
             assert sum(probs)<=1.
-        self.probs=list_assignement(probs)
+        self.probs=list_assignment(probs)
 
     def __str__(self):
         back=self.name
@@ -126,7 +126,7 @@ class NoiseModel():
         if noises is None:
             self.noises = []
         else:
-            self.noises=[QuantumNoise.from_dict(d) for d in list_assignement(noises)]
+            self.noises=[QuantumNoise.from_dict(d) for d in list_assignment(noises)]
 
     def __str__(self):
         back='NoiseModel with: \n'
@@ -191,7 +191,7 @@ def BitFlip(p:float,level:int):
     NoiseModel
     """
 
-    new=NoiseModel.wrap_noise(QuantumNoise(name='bit flip', probs=list_assignement(p), level=level))
+    new=NoiseModel.wrap_noise(QuantumNoise(name='bit flip', probs=list_assignment(p), level=level))
     return new
 
 def PhaseFlip(p:float,level:int):
@@ -210,7 +210,7 @@ def PhaseFlip(p:float,level:int):
     NoiseModel
     '''
 
-    new=NoiseModel.wrap_noise(QuantumNoise(name='phase flip', probs=list_assignement(p), level=level))
+    new=NoiseModel.wrap_noise(QuantumNoise(name='phase flip', probs=list_assignment(p), level=level))
     return new
 
 
@@ -235,7 +235,7 @@ def PhaseDamp(p:float,level:int):
     NoiseModel
     '''
 
-    new=NoiseModel.wrap_noise(QuantumNoise(name='phase damp', probs=list_assignement(p), level=level))
+    new=NoiseModel.wrap_noise(QuantumNoise(name='phase damp', probs=list_assignment(p), level=level))
     return new
 
 
@@ -262,7 +262,7 @@ def AmplitudeDamp(p:float,level:int):
     NoiseModel
     '''
 
-    new=NoiseModel.wrap_noise(QuantumNoise(name='amplitude damp', probs=list_assignement(p), level=level))
+    new=NoiseModel.wrap_noise(QuantumNoise(name='amplitude damp', probs=list_assignment(p), level=level))
     return new
 
 def PhaseAmplitudeDamp(p1:float,p2:float,level:int):
@@ -282,7 +282,7 @@ def PhaseAmplitudeDamp(p1:float,p2:float,level:int):
     -------
     NoiseModel
     '''
-    new=NoiseModel.wrap_noise(QuantumNoise(name='phase-amplitude damp', probs=list_assignement([p1, p2]), level=level))
+    new=NoiseModel.wrap_noise(QuantumNoise(name='phase-amplitude damp', probs=list_assignment([p1, p2]), level=level))
     return new
 
 def DepolarizingError(p:float,level:int):
@@ -301,5 +301,5 @@ def DepolarizingError(p:float,level:int):
     -------
     NoiseModel
     '''
-    new = NoiseModel.wrap_noise(QuantumNoise(name='depolarizing', probs=list_assignement(p), level=level))
+    new = NoiseModel.wrap_noise(QuantumNoise(name='depolarizing', probs=list_assignment(p), level=level))
     return new

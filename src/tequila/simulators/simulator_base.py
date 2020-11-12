@@ -94,7 +94,7 @@ class BackendCircuit():
         "swap": True,
         "multitarget": True,
         "controlled_rotation": True,
-        "gaussian": True,
+        "generalized_rotation": True,
         "exponential_pauli": True,
         "controlled_exponential_pauli": True,
         "phase": True,
@@ -179,16 +179,19 @@ class BackendCircuit():
         compiled = c(abstract_circuit)
         self.abstract_circuit = compiled
 
+
+        self.noise = noise
+
+        self.check_device(device)
+        self.device = self.retrieve_device(device)
+
         # translate into the backend object
         self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
 
         if optimize_circuit and noise is None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
-        self.noise = noise
 
-        self.check_device(device)
-        self.device = self.retrieve_device(device)
 
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,

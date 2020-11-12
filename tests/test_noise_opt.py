@@ -15,6 +15,7 @@ def test_dependencies():
     assert 'pyquil' in samplers
     assert 'cirq' in samplers
     assert 'qulacs' in samplers
+    assert 'qibo' in samplers
 
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
