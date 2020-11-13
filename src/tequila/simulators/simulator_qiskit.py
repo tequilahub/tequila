@@ -258,7 +258,7 @@ class BackendCircuitQiskit(BackendCircuit):
         if "optimization_level" in kwargs:
             optimization_level = kwargs['optimization_level']
 
-        opts = None
+        opts = {}
         if initial_state != 0:
             array = numpy.zeros(shape=[2 ** self.n_qubits])
             i = BitStringLSB.from_binary(BitString.from_int(integer=initial_state, nbits=self.n_qubits).binary)
