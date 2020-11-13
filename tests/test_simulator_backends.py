@@ -72,6 +72,7 @@ def test_sampling_circuits(backend):
     d1 = tq.simulate(U, samples=10, backend=backend, read_out_qubits=[0,2,4,6])
     if 1+2+4+8 not in d1 or d1[1+2+4+8] != 10:
         print("got this = ", d1)
+    print("got this = ", d1)
     assert d1[1+2+4+8] == 10
 
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
