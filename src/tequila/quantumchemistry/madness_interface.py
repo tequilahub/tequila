@@ -29,6 +29,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         def __repr__(self):
             return self.__str__()
 
+    @staticmethod
+    def find_executabe(madness_root_dir=None):
+        executable = shutil.which("pno_integrals")
+        if madness_root_dir is None:
+            madness_root_dir = str(os.environ.get("MAD_ROOT_DIR"))
+        if executable is None and madness_root_dir is not None:
+            executable = shutil.which("{}/src/apps/pno/pno_integrals".format(madness_root_dir))
+        return executable
+
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
@@ -43,12 +52,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.madness_root_dir = str(os.environ.get("MAD_ROOT_DIR"))
         # see if the pno_integrals executable can be found
         if executable is None:
-            executable = shutil.which("pno_integrals")
+            executable = self.find_executabe()
             if executable is None and self.madness_root_dir is not None:
-                exestr="{}/src/apps/pno/pno_integrals".format(self.madness_root_dir)
-                executable = shutil.which(exestr)
-                if executable is None:
-                    warnings.warn("MAD_ROOT_DIR={} found\nbut couldn't find executable {}".format(self.madness_root_dir, exestr), TequilaWarning)
+                warnings.warn("MAD_ROOT_DIR={} found\nbut couldn't find executable".format(self.madness_root_dir), TequilaWarning)
 
 
         else:
@@ -164,7 +170,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if self.executable is None:
             return "pno_integrals executable not found\n" \
                    "pass over executable keyword or export MAD_ROOT_DIR to system environment"
-        self.make_madness_input(n_pno=self.n_pno, frozen_core=self.frozen_core, n_virt=self.n_virt, *args, **kwargs)
+        self.write_madness_input(n_pno=self.n_pno, frozen_core=self.frozen_core, n_virt=self.n_virt, *args, **kwargs)
         import subprocess
         import time
         start = time.time()
@@ -267,11 +273,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def make_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
+    def write_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
         if n_pno is None:
             raise TequilaException("Can't write madness input without n_pnos")
         data = {}
-        data["dft"] = {"xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 1.e-4, "ncf": "( none , 1.0 )"}
+        data["dft"] = {"xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 3.e-4, "ncf": "( none , 1.0 )"}
         data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
