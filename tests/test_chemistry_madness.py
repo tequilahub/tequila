@@ -11,8 +11,9 @@ def test_executable():
         raise Exception("Found no pno_integrals executable but found MAD_ROOT_DIR={}\n"
                         "Seems like you wanted that tested".format(root))
 
+@pytest.mark.skipif(not(os.path.isfile('he_gtensor.npy') and os.path.isfile('be_htensor.npy')), reason="data not there")
 def test_madness_he_data():
-    # relies in he_xtensor.npy being present (x=g,h)
+    # relies that he_xtensor.npy are present (x=g,h)
     geomstring="He 0.0 0.0 0.0"
     molecule = tq.Molecule(name="he", geometry=geomstring)
     H = molecule.make_hamiltonian()

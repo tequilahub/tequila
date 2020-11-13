@@ -24,6 +24,15 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+    - name: madness basics
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
+        python -m pip install -e .
+        cd tests
+        ls
+        pytest test_chemistry_madness.py
+        cd ../
     - name: Install and test Psi4 interface
       run: |
         ver=$(python -c"import sys; print(sys.version_info.minor)")
@@ -46,7 +55,33 @@ jobs:
         python -m pip install -e .
         cd tests
         ls
+        pytest test_chemistry_madness.py
         pytest test_chemistry.py
+        cd ../
+    - name: Install and test madness interface
+      run: |
+        wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
+        sudo sh -c 'echo deb https://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'
+        sudo apt-get update
+        sudo apt-get install -y intel-mkl-64bit-2020.1-102
+
+        wget https://dl.bintray.com/boostorg/release/1.73.0/source/boost_1_73_0.tar.bz2
+        tar --bzip2 -xf boost_1_73_0.tar.bz2
+        git clone https://github.com/dpilger26/NumCpp.git numcpp
+
+        git clone https://github.com/kottmanj/madness.git madsrc
+        mkdir madroot
+        base=$(pwd)
+        cd madroot
+        cmake -D ENABLE_MKL=ON -D MKL_ROOT_DIR=/opt/intel/compilers_and_libraries/linux/mkl -D CMAKE_CXX_FLAGS='-O3 -DNDEBUG -march=native -I/numcpp/include/ -I/boost_1_73_0/'  /madsrc/
+        make -j
+        export MAD_ROOT_DIR=$(pwd)
+        cd $base
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
+        python -m pip install -e .
+        cd tests
         pytest test_chemistry_madness.py
         cd ../
+
 
