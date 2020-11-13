@@ -49,7 +49,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  **kwargs):
 
         # see if MAD_ROOT_DIR is defined
-        self.madness_root_dir = str(os.environ.get("MAD_ROOT_DIR"))
+        self.madness_root_dir = os.environ.get("MAD_ROOT_DIR")
         # see if the pno_integrals executable can be found
         if executable is None:
             executable = self.find_executabe()

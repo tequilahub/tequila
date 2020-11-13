@@ -3,7 +3,7 @@ import numpy
 import os
 import tequila as tq
 
-root=str(os.environ.get("MAD_ROOT_DIR"))
+root=os.environ.get("MAD_ROOT_DIR")
 executable = tq.quantumchemistry.madness_interface.QuantumChemistryMadness.find_executabe(root)
 
 def test_executable():

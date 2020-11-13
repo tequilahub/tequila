@@ -269,7 +269,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
         backend_result = qiskit.execute(experiments=self.circuit, optimization_level=optimization_level,
                                         backend=qiskit_backend, parameter_binds=[self.resolver],
-                                        backend_options=opts).result()
+                                        **opts).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, *args, **kwargs) -> QubitWaveFunction:
