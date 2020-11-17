@@ -60,30 +60,19 @@ jobs:
 #        cd ../
     - name: Install and test madness interface
       run: |
-        wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
-        sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
-        echo "trying to install mkl ..." 
-        sudo sh -c 'echo deb https://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'
-        sudo apt-get update
-        sudo apt-get install -y intel-mkl-64bit-2020.1-102
-        
-        sudo apt-get install -y mpich
+         
+        docker pull kottmanj/mra-pno
+        echo "#!/bin/bash" > pno_integrals
+        echo "name=$(docker run -t -d mra-pno)" >> pno_integrals
+        echo "docker cp input $name:/" >> pno_integrals
+        echo "docker exec $name pno_integrals > pno.out" >> pno_integrals
+        echo "docker cp $name:/madroot/gs_htensor.bin ." >> pno_integrals 
+        echo "docker cp $name:/madroot/gs_gtensor.bin ." >> pno_integrals
+        echo "docker stop $name" >> pno_integrals
+        echo "docker rm $name" >> pno_integrals
 
-        wget https://dl.bintray.com/boostorg/release/1.73.0/source/boost_1_73_0.tar.bz2
-        tar --bzip2 -xf boost_1_73_0.tar.bz2
-
-        git clone https://github.com/dpilger26/NumCpp.git numcpp
-      
-        git clone https://github.com/kottmanj/madness.git madsrc
-
-        mkdir madroot
-        base=$(pwd)
-        cd madroot
-        cmake -D ENABLE_MKL=ON -D MKL_ROOT_DIR=/opt/intel/compilers_and_libraries_2020.1.102/linux/mkl -D CMAKE_CXX_FLAGS='-O3 -DNDEBUG -march=native -I/${base}/numcpp/include/ -I/${base}/boost_1_73_0/'  ${base}/madsrc/
-        make -j
-        export MAD_ROOT_DIR=$(pwd)
-        cd $base
-
+        chmod +X pno_integrals
+        ln -s pno_integrals /usr/bin/pno_integrals
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
         python -m pip install -e .
