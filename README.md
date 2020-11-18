@@ -86,7 +86,7 @@ fci = molecule.compute_energy("fci")
 cisd = molecule.compute_energy("detci", options={"detci__ex_level": 2})
 
 # optimize
-result = tq.minimize(objective=E, method="BFGS", gradient="2-point", method_options={"eps":1.e-3}, initial_values={k:0.0 for k in E.extract_variables()})
+result = tq.minimize(objective=E, method="BFGS", initial_values=0.0)
 
 print("VQE : {:+2.8}f".format(result.energy))
 print("CISD: {:+2.8}f".format(cisd))
