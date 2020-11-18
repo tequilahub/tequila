@@ -90,3 +90,4 @@ def test_compile_swap():
     equivalent_swap = gates.X(target=0, control=3) + gates.X(target=3, control=0) + gates.X(target=0, control=3)
 
     assert (equivalent_circuit == equivalent_swap)
+    
