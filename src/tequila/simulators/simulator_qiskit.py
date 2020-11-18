@@ -171,6 +171,9 @@ class BackendCircuitQiskit(BackendCircuit):
         self.counter = 0
 
         if qubit_map is None:
+            qubit_map = {q: i for i, q in enumerate(abstract_circuit.qubits)}
+
+        if qubit_map is None:
             n_qubits = len(abstract_circuit.qubits)
         else:
             n_qubits = max(qubit_map.values()) + 1
@@ -258,7 +261,7 @@ class BackendCircuitQiskit(BackendCircuit):
         if "optimization_level" in kwargs:
             optimization_level = kwargs['optimization_level']
 
-        opts = None
+        opts = {}
         if initial_state != 0:
             array = numpy.zeros(shape=[2 ** self.n_qubits])
             i = BitStringLSB.from_binary(BitString.from_int(integer=initial_state, nbits=self.n_qubits).binary)
@@ -269,7 +272,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
         backend_result = qiskit.execute(experiments=self.circuit, optimization_level=optimization_level,
                                         backend=qiskit_backend, parameter_binds=[self.resolver],
-                                        backend_options=opts).result()
+                                        **opts).result()
         return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, *args, **kwargs) -> QubitWaveFunction:
@@ -296,7 +299,8 @@ class BackendCircuitQiskit(BackendCircuit):
             qiskit_backend = self.retrieve_device('qasm_simulator')
         else:
             qiskit_backend = self.device
-        if qiskit_backend in qiskit.Aer.backends() or str(qiskit_backend).lower() == "ibmq_qasm_simulator":
+
+        if qiskit_backend in qiskit.Aer.backends() or str(qiskit_backend).lower() in ["ibmq_qasm_simulator", "quasm_simulator"] or isinstance(qiskit_backend, qiskit.providers.aer.backends.qasm_simulator.QasmSimulator):
             return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
                                                             basis_gates=full_basis,
                                                             optimization_level=optimization_level,
@@ -319,7 +323,7 @@ class BackendCircuitQiskit(BackendCircuit):
                     print("WARNING: There are no noise models when running on real machines!")
                 return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
                                                                 optimization_level=optimization_level,
-                                                                parameter_binds=[self.resolver]))
+                                                                parameter_binds=[self.resolver]), target_qubits=read_out_qubits)
 
     def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
         """
@@ -339,7 +343,6 @@ class BackendCircuitQiskit(BackendCircuit):
         for k, v in qiskit_counts.items():
             converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
             result._state[converted_key] = v
-
         if target_qubits is not None:
             mapped_target = [self.qubit_map[q].number for q in target_qubits]
             mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
