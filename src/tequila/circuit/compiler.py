@@ -1144,9 +1144,9 @@ def compile_swap(gate) -> QCircuit:
         c = []
         if gate.control is not None:
             c = gate.control
-        return X(target=gate.target[0], control=gate.target[1] + c) \
-               + X(target=gate.target[1], control=gate.target[0] + c) \
-               + X(target=gate.target[0], control=gate.target[1] + c)
+        return X(target=gate.target[0], control=[gate.target[1]] + list(c)) \
+               + X(target=gate.target[1], control=[gate.target[0]] + list(c)) \
+               + X(target=gate.target[0], control=[gate.target[1]] + list(c))
 
     else:
         return QCircuit.wrap_gate(gate)
