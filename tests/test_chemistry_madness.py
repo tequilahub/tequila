@@ -5,6 +5,8 @@ import tequila as tq
 
 root=os.environ.get("MAD_ROOT_DIR")
 executable = tq.quantumchemistry.madness_interface.QuantumChemistryMadness.find_executabe(root)
+print("root = ", root)
+print("executable = ", executable)
 
 def test_executable():
     if root is not None and executable is None:
