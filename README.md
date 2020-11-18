@@ -31,14 +31,22 @@ In a conda environment this can be installed with
 
 # Installation
 We recommend installing in editable mode with  
-`git clone https://github.com/aspuru-guzik-group/tequila.git`  
-`cd tequila`   
-`pip install -e .`  
+```bash
+git clone https://github.com/aspuru-guzik-group/tequila.git
+cd tequila
+pip install -e . 
+```
 
 **Do not** install over PyPi (Minecraft lovers excluded)  
 <strike>`pip install tequila`</strike>
 
-Recommended Python version is 3.7 or 3.6
+You can install `tequila` directly with pip over:  
+```bash
+pip install git+https://github.com/aspuru-guzik-group/tequila.git
+```
+
+Recommended Python version is 3.7 or 3.6.  
+Python 3.8 works, but not all (optional) dependencies support it yet.  
 
 # Getting Started
 Check out the tutorial notebooks provided in tutorials.
