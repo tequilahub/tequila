@@ -16,4 +16,5 @@ cmake # needed by qulacs, can be removed otherwise
 #pyquil # you need to install the forest-sdk
 #qulacs-gpu
 
-#optional third party lin¡braries
+#optional third party libraries
+#pyzx
