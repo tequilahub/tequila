@@ -8,7 +8,7 @@ from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
 
-import numbers, typing, numpy
+import numbers, typing, numpy, copy
 
 from dataclasses import dataclass
 
@@ -94,7 +94,7 @@ class BackendCircuit():
         "swap": True,
         "multitarget": True,
         "controlled_rotation": True,
-        "gaussian": True,
+        "generalized_rotation": True,
         "exponential_pauli": True,
         "controlled_exponential_pauli": True,
         "phase": True,
@@ -179,16 +179,19 @@ class BackendCircuit():
         compiled = c(abstract_circuit)
         self.abstract_circuit = compiled
 
+
+        self.noise = noise
+
+        self.check_device(device)
+        self.device = self.retrieve_device(device)
+
         # translate into the backend object
         self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
 
         if optimize_circuit and noise is None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
-        self.noise = noise
 
-        self.check_device(device)
-        self.device = self.retrieve_device(device)
 
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
@@ -472,7 +475,10 @@ class BackendCircuit():
             basis_change += change_basis(target=idx, axis=p)
 
         # add basis change to the circuit
-        circuit = self.create_circuit(circuit=self.circuit, abstract_circuit=basis_change)
+        # deepcopy is necessary to avoid changing the circuits
+        # can be circumvented by optimizing the measurements
+        # on construction: tq.ExpectationValue(H=H, U=U, optimize_measurements=True)
+        circuit = self.create_circuit(circuit=copy.deepcopy(self.circuit), abstract_circuit=basis_change)
         # run simulators
         counts = self.sample(samples=samples, circuit=circuit, read_out_qubits=qubits, variables=variables, *args,
                              **kwargs)

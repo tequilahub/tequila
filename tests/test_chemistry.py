@@ -13,6 +13,10 @@ HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 import tequila as tq
 
+# Get QC backends for parametrized testing
+import select_backends
+backends = select_backends.get()
+
 
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
@@ -101,8 +105,7 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT"])  # bravyi_kitaev_fast not yet supported for ucc
-@pytest.mark.parametrize("backend", [tequila.simulators.simulator_api.pick_backend("random"),
-                                     tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("backend", backends)
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
         pytest.skip("skipping for symbolic simulator  ... way too slow")
@@ -337,9 +340,9 @@ def test_hamiltonian_reduction(backend):
         assert numpy.isclose(E, hf, atol=1.e-4)
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
-@pytest.mark.parametrize("exact", [True, False])
+@pytest.mark.parametrize("assume_real", [True, False])
 @pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "symmetry_conserving_bravyi_kitaev"])
-def test_fermionic_gates(exact, trafo):
+def test_fermionic_gates(assume_real, trafo):
     mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.7\nLi 0.0 0.0 0.0", basis_set="sto-3g")
     U1 = mol.prepare_reference()
     U2 = mol.prepare_reference()
@@ -347,7 +350,7 @@ def test_fermionic_gates(exact, trafo):
     for i in [0,1,0]:
         for a in numpy.random.randint(2, 5, 3):
             idx = [(2 * i, 2 * a), (2 * i + 1, 2 * a + 1)]
-            U1 += mol.make_excitation_gate(indices=idx, angle=(i, a), complex_wfn=exact)
+            U1 += mol.make_excitation_gate(indices=idx, angle=(i, a), assume_real=assume_real)
             g = mol.make_excitation_generator(indices=idx)
             U2    += tq.gates.Trotterized(generators=[g], angles=[(i, a)], steps=1)
             if (i,a) in variable_count:
@@ -360,7 +363,7 @@ def test_fermionic_gates(exact, trafo):
     H = mol.make_hamiltonian()
     E = tq.ExpectationValue(H=H, U=U1)
     dE = tq.grad(E, a)
-    if exact:
+    if not assume_real:
         assert dE.count_expectationvalues() == 4*variable_count[a.name]
     else:
         assert dE.count_expectationvalues() == 2*variable_count[a.name]
@@ -376,3 +379,4 @@ def test_fermionic_gates(exact, trafo):
 
     assert numpy.isclose(test1, test1x, atol=1.e-6)
     assert numpy.isclose(test2, test2x, atol=1.e-6)
+

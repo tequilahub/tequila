@@ -1,6 +1,6 @@
 import tequila.simulators.simulator_api
 from tequila.circuit import gates
-from tequila.circuit.compiler import compile_controlled_rotation, change_basis, compile_phase
+from tequila.circuit.compiler import compile_controlled_rotation, change_basis, compile_phase, compile_swap
 from numpy.random import uniform, randint
 from numpy import pi, isclose
 from tequila.hamiltonian import paulis
@@ -10,12 +10,17 @@ from tequila.objective.objective import ExpectationValue
 import pytest
 import numpy
 
+# Get QC backends for parametrized testing
+import select_backends
+simulators = select_backends.get()
+samplers = select_backends.get(sampler=True)
+
 PX = paulis.X
 PY = paulis.Y
 PZ = paulis.Z
 
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('angle', numpy.random.uniform(0, 2 * numpy.pi, 1))
 @pytest.mark.parametrize('axis', ['X', 'Y', 'Z'])
 @pytest.mark.parametrize('control', [None, 1])
@@ -30,7 +35,7 @@ def test_exponential_pauli_wfn(simulator, angle, axis, control):
     assert (isclose(numpy.abs(wfn1.inner(wfn2))**2, 1.0, atol=1.e-4))
     assert (isclose(numpy.abs(wfn2.inner(wfn3))**2, 1.0, atol=1.e-4))
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", simulators)
 def test_controlled_rotations(simulator):
     angles = uniform(0, 2 * pi, 5)
     gs = [gates.Rx, gates.Ry, gates.Rz]
@@ -44,7 +49,7 @@ def test_controlled_rotations(simulator):
             wfn2 = simulate(RCU, initial_state=0, backend=simulator)
             assert (isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
 
-@pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
+@pytest.mark.parametrize("simulator", simulators)
 def test_basis_change(simulator):
     for angle in list(uniform(0, 2 * pi, 5)):
         EX = simulate(ExpectationValue(U=gates.Rx(target=0, angle=angle), H=PX(0)), backend=simulator)
@@ -76,3 +81,13 @@ def test_basis_change(simulator):
         wfn1 = simulate(U1, initial_state=1, backend=simulator)
         wfn2 = simulate(U2, initial_state=1, backend=simulator)
         assert (isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+
+
+def test_compile_swap():
+    circuit = gates.SWAP(first=0, second=3)
+    equivalent_circuit = compile_swap(circuit)
+
+    equivalent_swap = gates.X(target=0, control=3) + gates.X(target=3, control=0) + gates.X(target=0, control=3)
+
+    assert (equivalent_circuit == equivalent_swap)
+    

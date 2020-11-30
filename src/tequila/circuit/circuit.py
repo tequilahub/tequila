@@ -36,7 +36,6 @@ class QCircuit():
 
     """
 
-
     @property
     def moments(self):
         """

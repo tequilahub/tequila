@@ -1,5 +1,5 @@
 import typing
-from .qc_base import ParametersQC, QuantumChemistryBase
+from .qc_base import ParametersQC, QuantumChemistryBase, NBodyTensor
 from .madness_interface import QuantumChemistryMadness
 
 SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness"]

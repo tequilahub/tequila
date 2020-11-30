@@ -385,7 +385,7 @@ def Rp(paulistring: typing.Union[PauliString, str], angle, control: typing.Union
 def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real]],
                         generator: QubitHamiltonian,
                         control: typing.Union[list, int] = None,
-                        shift: float = 0.5,
+                        eigenvalues_magnitude: float = 0.5,
                         steps: int = 1) -> QCircuit:
     """
 
@@ -395,7 +395,7 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
     A gates which is shift-rule differentiable
      - its generator only has two distinguishable eigenvalues
      - it is then differentiable by the shift rule
-     - shift needs to be given upon initialization (otherwise its default is 1/2)
+     - eigenvalues_magnitude needs to be given upon initialization (this is "r" and the default is r=1/2)
      - the generator will not be verified to fullfill the properties
      Compiling will be done in analogy to a trotterized gate with steps=1 as default
 
@@ -407,10 +407,15 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
     Parameters
     ----------
     angle
+        numeric type or hashable symbol or tequila objective
     generator
+        tequila QubitHamiltonian or any other structure with paulistrings
     control
-    shift
+        list of control qubits
+    eigenvalues_magnitude
+        magnitude of eigenvalues, in most papers referred to as "r" (default 0.5)
     steps
+        possible Trotterization steps (default 1)
 
     Returns
     -------
@@ -418,7 +423,7 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
     """
 
     return QCircuit.wrap_gate(
-        GeneralizedRotationImpl(angle=assign_variable(angle), generator=generator, control=control, shift=shift, steps=steps))
+        GeneralizedRotationImpl(angle=assign_variable(angle), generator=generator, control=control, eigenvalues_magnitude=eigenvalues_magnitude, steps=steps))
 
 
 def Trotterized(generators: typing.List[QubitHamiltonian],
@@ -463,6 +468,12 @@ def Trotterized(generators: typing.List[QubitHamiltonian],
     QCircuit
 
     """
+
+    # convenience
+    if not (isinstance(generators, list) or isinstance(generators, tuple)):
+        generators = [generators]
+    if not (isinstance(angles, list) or isinstance(angles, tuple)):
+        angles = [angles]
 
     if parameters is None:
         parameters = TrotterParameters()
