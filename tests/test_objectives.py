@@ -7,6 +7,7 @@ from tequila.circuit.gradient import grad
 from tequila import numpy as np
 import numpy
 import pytest
+import numbers
 import tequila as tq
 from tequila.simulators.simulator_api import simulate
 
@@ -26,6 +27,13 @@ def test_non_quantum():
     E = 1.0 + E
     E = E.apply(lambda x: x/3.0)
     assert E() == 2.0*2.0*(1.0 + 2.0)/3.0
+
+def test_return_type():
+    U = tq.gates.H(0)
+    H = tq.paulis.X(0)
+    E = tq.ExpectationValue(H=H,U=U)
+    result = tq.simulate(E)
+    assert isinstance(result, numbers.Number)
 
 def test_qubit_maps():
     qubit_map = {0:1, 1:2, 2:3}
