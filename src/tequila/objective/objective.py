@@ -526,7 +526,12 @@ class Objective:
             else:
                 expval_result = evaluated[E]
             ev_array.append(expval_result)
-        return float(self.transformation(*ev_array))
+        result = onp.asarray(self.transformation(*ev_array),dtype=float)
+        if result.shape == ():
+            return float(result)
+        else:
+            return result
+        
 
     def contract(self):
         """
