@@ -871,7 +871,7 @@ class QuantumChemistryBase:
                           "indices = " + str(indices), category=TequilaWarning)
         return qop
 
-    def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, complex_wfn=False):
+    def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, assume_real=True):
         G = QubitHamiltonian()
         P0 = QubitHamiltonian()
         for pair in indices:
@@ -884,7 +884,7 @@ class QuantumChemistryBase:
         assert P0.is_hermitian()
         assert G.is_hermitian()
         return QCircuit.wrap_gate(
-            FermionicGateImpl(angle=angle, generator=G, p0=P0, exact=complex_wfn, control=control))
+            FermionicGateImpl(angle=angle, generator=G, p0=P0, assume_real=assume_real, control=control))
     
     def make_excitation_gate(self, indices, angle, control=None, assume_real=True):
         """
