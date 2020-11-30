@@ -526,7 +526,7 @@ class Objective:
             else:
                 expval_result = evaluated[E]
             ev_array.append(expval_result)
-        return self.transformation(*ev_array)
+        return float(self.transformation(*ev_array))
 
     def contract(self):
         """
