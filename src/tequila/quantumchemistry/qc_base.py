@@ -1260,11 +1260,7 @@ class QuantumChemistryBase:
         for k in range(order):
             for idx in indices:
                 angle = (k, idx, label)
-<<<<<<< HEAD
-                U += self.make_excitation_gate(angle=angle, indices=idx, complex_wfn=not assume_real)
-=======
                 U += self.make_excitation_gate(angle=angle, indices=idx, assume_real=assume_real)
->>>>>>> devel
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int,
