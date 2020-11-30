@@ -11,7 +11,7 @@ cmake # needed by qulacs, can be removed otherwise
 qulacs # default simulator, remove if the installation gives you trouble
 
 #optional quantum backends
-#cirq
-#qiskit
+#cirq >= 0.9.2 #
+#qiskit >= 0.7.0 # older versions work for basics
 #pyquil # you need to install the forest-sdk
 #qulacs-gpu
