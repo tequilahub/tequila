@@ -328,3 +328,22 @@ def test_hamiltonian_reductions(backend):
         E2 = tq.compile(tq.ExpectationValue(H=H, U=U2), backend=backend)
         assert E1.get_expectationvalues()[0]._reduced_hamiltonians[0] == tq.paulis.Z(q)
         assert numpy.isclose(E1(), E2())
+
+@pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
+def test_sampling(backend):
+    U = tq.gates.Ry(angle=0.0, target=0)
+    H = tq.paulis.X(0)
+    E = tq.ExpectationValue(H=H, U=U)
+
+    for i in range(10):
+        e = tq.simulate(E, samples=1000, backend=backend)
+        assert numpy.isclose(e, 0.0, atol=2.e-1)
+
+    E = tq.compile(E, backend=backend, samples=1000)
+    for i in range(10):
+        e = E(samples=1000)
+        assert numpy.isclose(e, 0.0, atol=2.e-1)
+
+
+
+
