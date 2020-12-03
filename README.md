@@ -6,7 +6,7 @@ Tequila is an Extensible Quantum Information and Learning Architecture where the
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
 Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.
 
-[You can get an overview from this presentation](/docs/tequila.pdf)  
+[You can get an overview from this presentation](/docs/tequila.pdf) or from it's [video recording](https://www.youtube.com/watch?v=hUdf0P2fW2E)  
 
 [Get started with our Tutorials](/tutorials/)  
 
@@ -25,9 +25,20 @@ All of them are available over standard pip installation like for example `pip i
 For best performance tt is recommended to have `qulacs` installed.
 
 # QuantumChemistry:
-Tequila supports [Psi4](https://github.com/psi4/psi4).  
+Currently supported
+- [Psi4](https://github.com/psi4/psi4).  
 In a conda environment this can be installed with  
-`conda install psi4 -c psi4`
+```bash
+conda install psi4 -c psi4
+```
+Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/Chemistry.ipynb) that illustrates the usage. 
+
+- [Madness](https://github.com/kottmanj/madness)  
+Currently you need to compile from a separate [fork](https://github.com/kottmanj/madness).  
+See the github page of this fork for installation instruction.  
+Note that the madness interface is currently only available on the `devel` branch of tequila (coming to master soon).  
+Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb) that illustrates the usage.  
+
 
 # Installation
 We recommend installing in editable mode with  
