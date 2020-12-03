@@ -171,7 +171,7 @@ class BackendCircuitCirq(BackendCircuit):
         simulator = cirq.Simulator()
         backend_result = simulator.simulate(program=self.circuit, param_resolver=self.resolver,
                                             initial_state=initial_state)
-        return QubitWaveFunction.from_array(arr=backend_result.final_state, numbering=self.numbering)
+        return QubitWaveFunction.from_array(arr=backend_result.final_state_vector, numbering=self.numbering)
 
     def convert_measurements(self, backend_result: cirq.TrialResult) -> QubitWaveFunction:
         """
