@@ -221,11 +221,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if pairs is None:
             pairs = [i for i in range(self.n_electrons // 2)]
 
+        virtuals = self.get_virtual_orbitals()
         U = QCircuit()
         for i in pairs:
             if include_reference:
                 U += gates.X(i)
             for a in self.get_pno_indices(i=i, j=i):
+                U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
+            for a in virtuals:
                 U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
         return U
 
