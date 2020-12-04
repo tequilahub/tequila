@@ -135,6 +135,10 @@ Quantum Computer-Aided design of Quantum Optics Hardware.
 [arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)
 [example code](https://github.com/kottmanj/Photonic)  
 
+A. Anand, M. Degroote, A. Aspuru-Guzik.  
+Natural Evolutionary Strategies for Variational Quantum Computation.  
+[arxiv.org/abs/2012.00101](https://arxiv.org/abs/2012.00101)  
+
 Let us know, if you want your research project to be included in this list!
 
 # Dependencies
