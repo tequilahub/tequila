@@ -12,7 +12,7 @@ from tequila.utils import to_float
 
 from tequila.objective import assign_variable
 
-import typing, numpy, numbers
+import typing, numpy, numbers, copy
 from itertools import product
 
 import openfermion
@@ -40,6 +40,14 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
         self.generator = generator
         self.p0 = p0
         self.assume_real = assume_real
+
+    def map_qubits(self, qubit_map: dict):
+        mapped_generator = self.generator.map_qubits(qubit_map=qubit_map)
+        mapped_p0 = self.p0.map_qubits(qubit_map=qubit_map)
+        mapped_control = self.control
+        if mapped_control is not None:
+            mapped_control=tuple([qubit_map[i] for i in self.control])
+        return FermionicGateImpl(angle=self.angle, generator=mapped_generator, p0=mapped_p0, assume_real=self.assume_real, control=mapped_control)
 
     def compile(self):
         return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)

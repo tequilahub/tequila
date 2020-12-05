@@ -132,9 +132,9 @@ class QGateImpl:
         mapped._max_qubit = mapped.compute_max_qubit()
         mapped.finalize()
         if hasattr(self, "generator"):
-            self.generator = self.generator.map_qubits(qubit_map=qubit_map)
+            mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
         if hasattr(self, "generators"):
-            self.generators = [i.map_qubits(qubit_map=qubit_map) for i in self.generators]
+            mapped.generators = [i.map_qubits(qubit_map=qubit_map) for i in self.generators]
         return mapped
 
 class ParametrizedGateImpl(QGateImpl, ABC):
