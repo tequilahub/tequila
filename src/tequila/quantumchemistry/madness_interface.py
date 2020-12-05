@@ -56,7 +56,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if executable is None:
             executable = self.find_executabe()
             if executable is None and self.madness_root_dir is not None:
-                warnings.warn("MAD_ROOT_DIR={} found\nbut couldn't find executable".format(self.madness_root_dir), TequilaWarning)
+                warnings.warn("MAD_ROOT_DIR={} found\nbut couldn't find executable".format(self.madness_root_dir),
+                              TequilaWarning)
 
 
         else:
@@ -176,7 +177,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         import subprocess
         import time
         start = time.time()
-        filename="{}_pno_integrals.out".format(self.parameters.name)
+        filename = "{}_pno_integrals.out".format(self.parameters.name)
         print("Starting madness calculation with executable: ", self.executable)
         print("output redirected to {} logfile".format(filename))
         with open(filename, "w") as logfile:
@@ -220,17 +221,47 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True):
         if pairs is None:
             pairs = [i for i in range(self.n_electrons // 2)]
-
-        virtuals = self.get_virtual_orbitals()
         U = QCircuit()
         for i in pairs:
             if include_reference:
                 U += gates.X(i)
             for a in self.get_pno_indices(i=i, j=i):
                 U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
-            for a in virtuals:
-                U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
         return U
+
+    def make_hardcore_boson_pno_upccd_complement(self, pairs=None, label=None, generalized=False):
+        if pairs is None:
+            pairs = [i for i in range(self.n_electrons // 2)]
+        virtuals = [i for i in self.orbitals if len(i.pno_pair) == 2] + self.get_virtual_orbitals()
+        U = QCircuit()
+        for i in pairs:
+            aa = self.get_pno_indices(i=i, j=i)
+            for a in virtuals:
+                if a in aa:
+                    continue
+                U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
+        if generalized:
+            for a in virtuals:
+                for b in virtuals:
+                    if a.idx_total<=b.idx_total:
+                        continue
+                    U += self.make_hardcore_boson_excitation_gate(indices=[(a.idx, b.idx)], angle=(a.idx, b.idx, label))
+        return U
+
+    def make_hbc_jw_encoder(self, U: QCircuit = None):
+        # unitary that transforms between hbc representation and standard JW
+        # give our initial unitary in the hbc representation in order to map the qubits correctly
+        # gives back U + the transformation unitary
+        if U is None:
+            U = QCircuit()
+        else:
+            qubit_map = {i: 2 * i for i in range(self.n_orbitals)}
+            U.map_qubits(qubit_map=qubit_map)
+
+        encoder = QCircuit()
+        for i in range(self.n_orbitals):
+            encoder += gates.CNOT(control=2 * i, target=2 * i + 1)
+        return U + encoder
 
     def make_separated_objective(self, pairs=None, label=None, neglect_coupling=False):
         if pairs is None:
@@ -271,7 +302,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
                     Hp = QubitHamiltonian.from_paulistrings([PauliString(data=ps1)])
                     Ep = ExpectationValue(H=Hp, U=Up)
-                    if len(Ep.extract_variables())==0:
+                    if len(Ep.extract_variables()) == 0:
                         Ep = float(simulate(Ep))
                     tmp *= Ep
                 objective += tmp
@@ -279,7 +310,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 raise Exception("don't know how to handle paulistring: {}".format(ps))
 
         return objective
-
 
     def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False,
                                 **kwargs):
@@ -396,7 +426,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return h, g
 
-
     def __str__(self):
         info = super().__str__()
         info += "{key:15} :\n".format(key="MRA Orbitals")
@@ -408,7 +437,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         info += "{:15} : {}\n".format("gtensor", "{}_gtensor.npy".format(self.parameters.name))
 
         return info
-    
 
     def __repr__(self):
         return self.__str__()
