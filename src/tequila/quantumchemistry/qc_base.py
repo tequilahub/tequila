@@ -47,7 +47,7 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
         mapped_control = self.control
         if mapped_control is not None:
             mapped_control=tuple([qubit_map[i] for i in self.control])
-        return FermionicGateImpl(angle=self.angle, generator=mapped_generator, p0=mapped_p0, assume_real=self.assume_real, control=mapped_control)
+        return FermionicGateImpl(angle=self.parameter, generator=mapped_generator, p0=mapped_p0, assume_real=self.assume_real, control=mapped_control)
 
     def compile(self):
         return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
