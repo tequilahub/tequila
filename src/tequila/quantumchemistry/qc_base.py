@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from tequila import TequilaException, BitString, TequilaWarning
 from tequila.hamiltonian import QubitHamiltonian
+from tequila.wavefunction import QubitWaveFunction
 from tequila.hamiltonian.paulis import Sp, Sm, Qp, Qm
 
 from tequila.circuit import QCircuit, gates, _gates_impl
@@ -1080,25 +1081,31 @@ class QuantumChemistryBase:
 
     def make_hardcore_boson_hamiltonian(self):
         # integrate with QubitEncoding at some point
+        n_orbitals = self.n_orbitals
+        if self.active_space is not None:
+            n_orbitals += len(self.active_space.frozen_reference_orbitals)
         obt = self.compute_one_body_integrals()
         tbt = self.compute_two_body_integrals()
-        h = numpy.zeros(shape=[self.n_orbitals] * 2)
-        g = numpy.zeros(shape=[self.n_orbitals] * 2)
-        for p in range(self.n_orbitals):
+        h = numpy.zeros(shape=[n_orbitals] * 2)
+        g = numpy.zeros(shape=[n_orbitals] * 2)
+        for p in range(n_orbitals):
             h[p, p] += 2 * obt[p, p]
-            for q in range(self.n_orbitals):
+            for q in range(n_orbitals):
                 h[p, q] += + tbt[p, p, q, q]
                 if p != q:
                     g[p, q] += 2 * tbt[p, q, q, p] - tbt[p, q, p, q]
 
         H = self.molecule.nuclear_repulsion
-        for p in range(self.n_orbitals):
-            for q in range(self.n_orbitals):
+        for p in range(n_orbitals):
+            for q in range(n_orbitals):
                 H += h[p, q] * Sm(p) * Sp(q) + g[p, q] * Sm(p) * Sp(p) * Sm(q) * Sp(q)
-
+        
         if self.active_space is not None:
             inactive_orbitals = self.active_space.frozen_reference_orbitals
-            H = H.trace_out(qubits=inactive_orbitals, states= [(0.0,1.0)]*len(inactive_orbitals))
+            qm = {i+len(inactive_orbitals):i for i in range(self.n_orbitals)}
+            one=QubitWaveFunction.from_string("1.0*|1>")
+            H = H.trace_out_qubits(qubits=inactive_orbitals, states= [one]*len(inactive_orbitals))
+            H = H.map_qubits(qubit_map=qm)
         return H
 
     def make_molecular_hamiltonian(self):
