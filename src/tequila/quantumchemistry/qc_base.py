@@ -1080,10 +1080,6 @@ class QuantumChemistryBase:
 
     def make_hardcore_boson_hamiltonian(self):
         # integrate with QubitEncoding at some point
-        if self.active_space is not None:
-            # need integrals in active space ordering and the constant
-            # can in principle be obtained from the standard Hamiltonian in JW ordering
-            raise NotImplemented("Not yet supported with active spaces")
         obt = self.compute_one_body_integrals()
         tbt = self.compute_two_body_integrals()
         h = numpy.zeros(shape=[self.n_orbitals] * 2)
@@ -1100,6 +1096,9 @@ class QuantumChemistryBase:
             for q in range(self.n_orbitals):
                 H += h[p, q] * Sm(p) * Sp(q) + g[p, q] * Sm(p) * Sp(p) * Sm(q) * Sp(q)
 
+        if self.active_space is not None:
+            inactive_orbitals = self.active_space.frozen_reference_orbitals
+            H = H.trace_out(qubits=inactive_orbitals, states= [(0.0,1.0)]*len(inactive_orbitals))
         return H
 
     def make_molecular_hamiltonian(self):
@@ -1201,6 +1200,8 @@ class QuantumChemistryBase:
                     indices.append(((2 * i + 1, 2 * a + 1)))
 
         return indices
+
+
 
     def make_upccgsd_ansatz(self,
                             include_singles: bool = True,
