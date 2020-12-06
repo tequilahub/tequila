@@ -243,12 +243,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if generalized:
             for i in pairs:
                 for j in pairs:
-                    if i.idx_total <= j.idx_total:
+                    if i <= j:
                         continue
-                    U += self.make_hardcore_boson_excitation_gate(indices=[(i.idx,j.idx)], angle=(i.idx, j.idx, label))
+                    U += self.make_hardcore_boson_excitation_gate(indices=[(i, j)], angle=(i, j, label))
             for a in virtuals:
                 for b in virtuals:
-                    if a.idx_total<=b.idx_total:
+                    if a.idx_total <= b.idx_total:
                         continue
                     U += self.make_hardcore_boson_excitation_gate(indices=[(a.idx, b.idx)], angle=(a.idx, b.idx, label))
         return U
