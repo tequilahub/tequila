@@ -446,7 +446,6 @@ class Optimizer:
         Objective:
             a compiled Objective. Types vary.
         """
-
         return compile(objective=objective,
                        samples=self.samples,
                        backend=self.backend,
