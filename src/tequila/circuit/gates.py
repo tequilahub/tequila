@@ -15,6 +15,17 @@ def wrap_gate(func):
 
     return doit
 
+def U(a, b, c, target, control):
+
+    a = assign_variable(a)
+    b = assign_variable(b)
+    c = assign_variable(c)
+
+    # assume U = Rx(a+2)Ry(b/2+a+sin(c))
+    return Rx(angle=a+2, target=target, control=control) + Ry(angle=b/2+a+c.apply(numpy.sin), target=target, control=control)
+
+
+
 
 def RotationGate(axis: int, angle: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
                  control: typing.Union[list, int] = None):
