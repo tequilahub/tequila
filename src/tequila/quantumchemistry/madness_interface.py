@@ -8,6 +8,10 @@ import shutil
 
 from dataclasses import dataclass
 
+class TequilaMadnessException(TequilaException):
+    def __str__(self):
+        return "Error in madness backend:" + self.message
+
 
 class QuantumChemistryMadness(QuantumChemistryBase):
     @dataclass
@@ -98,7 +102,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             status += "found {}_htensor.npy={}\n".format(name, h != "failed")
             status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
             if h == "failed" or g == "failed":
-                raise TequilaException("Could not initialize the madness interface\n"
+                raise TequilaMadnessException("Could not initialize the madness interface\n"
                                        "Status report is\n"
                                        "{status}\n"
                                        "either provide {name}_gtensor.npy and {name}_htensor.npy files\n"
@@ -130,7 +134,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             kwargs["nuclear_repulsion"] = nuclear_repulsion
 
         if pairinfo is None:
-            raise TequilaException("Pairinfo from madness calculation not found\nPlease provide pnoinfo.txt")
+            raise TequilaMadnessException("Pairinfo from madness calculation not found\nPlease provide pnoinfo.txt")
 
         n_orbitals = h.shape[0]
         assert h.shape[1] == n_orbitals
@@ -155,7 +159,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if active_orbitals is None or i in active_orbitals:
                     orbitals.append(self.OrbitalData(idx_total=i, idx=len(orbitals), pno_pair=p, occ=occinfo[i]))
         else:
-            raise TequilaException("No pairinfo given")
+            raise TequilaMadnessException("No pairinfo given")
         self.orbitals = tuple(orbitals)
 
         # print warning if read data does not match expectations
@@ -275,9 +279,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
     def write_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
         if n_pno is None:
-            raise TequilaException("Can't write madness input without n_pnos")
+            raise TequilaMadnessException("Can't write madness input without n_pnos")
         data = {}
-        data["dft"] = {"xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 3.e-4, "ncf": "( none , 1.0 )"}
+        if self.parameters.multiplicity != 1:
+            raise TequilaMadnessException("Currently only closed shell supported for MRA-PNO-MP2, you demanded multiplicity={} for the surrogate".format(self.parameters.multiplicity))
+        data["dft"] = {"charge":self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 3.e-4, "ncf": "( none , 1.0 )"}
         data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
