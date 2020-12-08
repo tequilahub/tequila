@@ -4,7 +4,7 @@ import numbers
 from abc import ABC
 from tequila import TequilaException
 from tequila.objective.objective import Variable, FixedVariable, assign_variable,Objective,VectorObjective
-from tequila.hamiltonian import PauliString, QubitHamiltonian
+from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
 
 from dataclasses import dataclass
@@ -42,7 +42,13 @@ class QGateImpl:
     def is_parametrized(self) -> bool:
         return hasattr(self, "parameter")
 
-    def __init__(self, name, target: UnionList, control: UnionList = None):
+    def make_generator(self, include_controls=False):
+        if self.generator and include_controls and self.is_controlled():
+            return paulis.Qm(self.control) * self.generator
+
+        return self.generator
+
+    def __init__(self, name, target: UnionList, control: UnionList = None, generator: QubitHamiltonian = None):
         self._name = name
         self._target = tuple(list_assignment(target))
         self._control = tuple(list_assignment(control))
@@ -54,6 +60,7 @@ class QGateImpl:
             self._qubits = self.target
         self._qubits = sorted(tuple(set(self._qubits)))
         self._max_qubit = self.compute_max_qubit()
+        self.generator = generator
 
     def copy(self):
         return copy.deepcopy(self)
@@ -130,6 +137,8 @@ class QGateImpl:
             qubits += mapped._control
         mapped._qubits = sorted(tuple(set(qubits)))
         mapped._max_qubit = mapped.compute_max_qubit()
+        if self.generator:
+            mapped.generator = self.generator.map_qubits(qubit_map)
         mapped.finalize()
         return mapped
 
@@ -155,8 +164,9 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def parameter(self, other):
         self.parameter = assign_variable(variable=other)
 
-    def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None):
-        super().__init__(name=name, target=target, control=control)
+    def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None,
+                generator: QubitHamiltonian = None):
+        super().__init__(name=name, target=target, control=control, generator=generator)
         if isinstance(parameter, VectorObjective):
             raise TequilaException('Received VectorObjective {} as parameter. This is forbidden.'.format(parameter))
         self._parameter = assign_variable(variable=parameter)
@@ -219,6 +229,7 @@ class RotationGateImpl(DifferentiableGateImpl):
         assert (angle is not None)
         super().__init__(eigenvalues_magnitude=0.5, name=self.get_name(axis=axis), parameter=angle, target=target, control=control)
         self._axis = self.assign_axis(axis)
+        self.generator = self.assign_generator(self.axis, self.target)
 
     @staticmethod
     def assign_axis(axis):
@@ -229,6 +240,15 @@ class RotationGateImpl(DifferentiableGateImpl):
         else:
             assert (axis in [0, 1, 2])
             return axis
+
+    @staticmethod
+    def assign_generator(axis, qubits):
+        if axis == 0:
+            return sum(paulis.X(q) for q in qubits)
+        if axis == 1:
+            return sum(paulis.Y(q) for q in qubits)
+
+        return sum(paulis.Z(q) for q in qubits)
 
     def dagger(self):
         result = copy.deepcopy(self)
@@ -241,6 +261,7 @@ class PhaseGateImpl(DifferentiableGateImpl):
     def __init__(self, phase, target: list, control: list = None):
         assert (phase is not None)
         super().__init__(eigenvalues_magnitude=0.5, name='Phase', parameter=phase, target=target, control=control)
+        self.generator = paulis.Z(target) - paulis.I(target)
 
     def dagger(self):
         result = copy.deepcopy(self)
@@ -255,8 +276,8 @@ class PhaseGateImpl(DifferentiableGateImpl):
 
 class PowerGateImpl(ParametrizedGateImpl):
 
-    def __init__(self, name, target: list, power=None, control: list = None):
-        super().__init__(name=name, parameter=power, target=target, control=control)
+    def __init__(self, name, target: list, power=None, control: list = None, generator: QubitHamiltonian = None):
+        super().__init__(name=name, parameter=power, target=target, control=control, generator=generator)
 
     def dagger(self):
         result = copy.deepcopy(self)
@@ -307,6 +328,7 @@ class ExponentialPauliGateImpl(DifferentiableGateImpl):
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None):
         super().__init__(eigenvalues_magnitude=0.5, name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control, parameter=angle)
         self.paulistring = paulistring
+        self.generator = QubitHamiltonian.from_paulistrings(paulistring)
         self.finalize()
 
     def __str__(self):

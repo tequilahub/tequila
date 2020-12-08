@@ -564,7 +564,8 @@ class QubitHamiltonian:
         
         :return: numpy.ndarray(2**N, 2**N) with type numpy.complex
         """
-        nq = self.n_qubits
+        qubits = self.qubits
+        nq = len(qubits)
         I = numpy.eye(2, dtype=numpy.complex)
         Hm = numpy.zeros((2 ** nq, 2 ** nq), dtype=numpy.complex)
 
@@ -572,6 +573,7 @@ class QubitHamiltonian:
             term = [I] * nq
 
             for ind, op in key:
+                ind = qubits.index(ind)
                 term[ind] = pauli_matrices[op]
 
             Hm += val * reduce(numpy.kron, term)
@@ -579,12 +581,7 @@ class QubitHamiltonian:
 
     @property
     def n_qubits(self):
-        max_index = 0
-        for key, value in self.items():
-            indices = [self.index(k) for k in key]
-            if len(indices) > 0:  # for the case that there is a 1 in the operator
-                max_index = max(max_index, max(indices))
-        return max_index + 1
+        return len(self.qubits)
 
     @property
     def paulistrings(self):
@@ -643,4 +640,3 @@ class QubitHamiltonian:
             if not p.is_all_z():
                 return False
         return True
-
