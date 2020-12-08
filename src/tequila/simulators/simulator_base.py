@@ -735,7 +735,7 @@ class BackendExpectationValue:
         """
         self.abstract_expectationvalue = E
         self._input_args = {"variables":variables, "device":device, "noise":noise, **kwargs}
-        self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device)
+        self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device, **kwargs)
         self._reduced_hamiltonians = self.reduce_hamiltonians(self.abstract_expectationvalue.H)
         self._H = self.initialize_hamiltonian(self._reduced_hamiltonians)
 
@@ -797,11 +797,11 @@ class BackendExpectationValue:
     def initialize_hamiltonian(self, hamiltonians: tuple) -> tuple:
         return hamiltonians
 
-    def initialize_unitary(self, U, variables, noise, device):
+    def initialize_unitary(self, U, variables, noise, device, *args, **kwargs):
         """return a compiled unitary"""
         return self.BackendCircuitType(abstract_circuit=U, variables=variables, device=device,
                                        use_mapping=self.use_mapping,
-                                       noise=noise)
+                                       noise=noise, *args, **kwargs)
 
     def update_variables(self, variables):
         """wrapper over circuit update_variables"""

@@ -36,6 +36,7 @@ jobs:
               elif [ $ver -eq 7 ]; then
                 python -m pip install --upgrade pip
                 pip install --upgrade -r requirements.txt
-                pip install --upgrade -r requirements_phoenics_36.txt
+                pip install --upgrade -r requirements_phoenics.txt
                 pip install -e .
+                pytest tests/test_phoenics.py --slow  
               fi
