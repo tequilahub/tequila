@@ -6,8 +6,9 @@ https://github.com/qpic/qpic/blob/master/doc/qpic_doc.pdf
 from tequila.circuit import QCircuit
 from tequila.circuit import gates
 from tequila.tools import number_to_string
+from tequila.objective.objective import FixedVariable
 
-import subprocess
+import subprocess, numpy
 from shutil import which, move
 from os import remove
 
@@ -20,6 +21,14 @@ def assign_name(parameter):
         return "\\theta"
     if hasattr(parameter, "extract_variables"):
         return str(parameter.extract_variables()).lstrip('[').rstrip(']')
+    if isinstance(parameter, FixedVariable):
+        for i in [1,2,3,4]:
+            if numpy.isclose(numpy.abs(float(parameter)), numpy.pi/i, atol=1.e-4):
+                if float(parameter) < 0.0:
+                    return "-\\pi/{}".format(i)
+                else:
+                    return "+\\pi/{}".format(i)
+        return "{:+2.4f}".format(float(parameter))
     return str(parameter)
 
 
@@ -71,11 +80,12 @@ def export_to_qpic(circuit: QCircuit, filename=None) -> str:
             filenamex = filename + ".qpic"
         with open(filenamex, "w") as file:
             file.write(result)
-
     return result
 
+def export_to_pdf(circuit: QCircuit, filename):
+    export_to(circuit=circuit, filename=filename, filetype="pdf")
 
-def export_to_pdf(circuit: QCircuit, filename, keep_tex=True, keep_qpic=True):
+def export_to(circuit: QCircuit, filename, filetype="pdf"):
     if not system_has_qpic:
         raise Exception("You need qpic in order to export circuits to pdfs ---\n pip install qpic")
     if not system_has_pdflatex:
@@ -89,39 +99,8 @@ def export_to_pdf(circuit: QCircuit, filename, keep_tex=True, keep_qpic=True):
         export_to_qpic(circuit, filename=filename)
         filename_qpic = filename + ".qpic"
 
-    with open(filename + ".tex", "w") as file:
-        subprocess.call(["qpic", str(filename_qpic)], stdout=file)
-
-    latex_header = """
-\\documentclass[]{standalone}
-\\usepackage[english]{babel}
-\\usepackage{amsmath}
-\\usepackage{amssymb}
-\\usepackage{graphicx}
-\\usepackage{xspace}
-\\usepackage{booktabs}
-\\usepackage{xcolor}
-\\usepackage{tikz}
-\\usepackage{qcircuit}
-"""
-
-    with open(filename + ".tmp.tex", "w") as file:
-        file.write(latex_header + "\n")
-        file.write("\\begin{document}\n")
-        file.write("\\input{" + filename + "}\n")
-        file.write("\\end{document}\n")
-
-    with open(filename + "tmp.log", "w") as file:
-        subprocess.call(["pdflatex", str(filename) + ".tmp.tex"], stdout=file)
-
-    move(filename + ".tmp.pdf", filename + ".pdf")
-    remove(filename + ".tmp.aux")
-    remove(filename + ".tmp.log")
-    remove(filename + ".tmp.tex")
-    if not keep_qpic:
-        remove(filename + ".qpic")
-    if not keep_tex:
-        remove(filename + ".tex")
+    subprocess.call(["qpic", str(filename_qpic), "-f", "{}".format(filetype)])
+    return
 
 
 if __name__ == "__main__":
