@@ -6,6 +6,7 @@ from tequila import TequilaException
 from tequila.objective.objective import Variable, FixedVariable, assign_variable,Objective,VectorObjective
 from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
+from numpy import pi
 
 from dataclasses import dataclass
 
@@ -276,8 +277,17 @@ class PhaseGateImpl(DifferentiableGateImpl):
 
 class PowerGateImpl(ParametrizedGateImpl):
 
-    def __init__(self, name, target: list, power=None, control: list = None, generator: QubitHamiltonian = None):
-        super().__init__(name=name, parameter=power, target=target, control=control, generator=generator)
+    @property
+    def power(self):
+        return self._power
+
+    @power.setter
+    def power(self, other):
+        self._power = assign_variable(variable=other)
+
+    def __init__(self, name, target: list, power, control: list = None, generator: QubitHamiltonian = None):
+        super().__init__(name=name, parameter=power * pi, target=target, control=control, generator=generator)
+        self._power = assign_variable(variable=power)
 
     def dagger(self):
         result = copy.deepcopy(self)

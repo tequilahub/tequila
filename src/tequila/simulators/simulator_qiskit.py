@@ -126,7 +126,7 @@ class BackendCircuitQiskit(BackendCircuit):
         "controlled_phase": False,
         "toffoli": False,
         "phase_to_z": False,
-        "cc_max": False
+        "cc_max": True
     }
 
     numbering = BitNumbering.LSB
@@ -402,8 +402,7 @@ class BackendCircuitQiskit(BackendCircuit):
             if len(gate.control) > 2:
                 pass
                 # raise TequilaQiskitException("multi-controls beyond 2 not yet supported for the qiskit backend. Gate was:\n{}".format(gate) )
-            ops[1](circuit)(par, q_controls=[self.qubit(c) for c in gate.control],
-                            q_target=self.qubit(gate.target[0]), q_ancillae=None, mode='noancilla')
+            ops[1](circuit)(par, self.qubit(gate.control[0]), self.qubit(gate.target[0]))
         else:
             ops[0](circuit)(par, self.qubit(gate.target[0]))
 
