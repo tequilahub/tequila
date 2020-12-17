@@ -15,7 +15,6 @@ def wrap_gate(func):
 
     return doit
 
-
 def RotationGate(axis: int, angle: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
                  control: typing.Union[list, int] = None):
     """
