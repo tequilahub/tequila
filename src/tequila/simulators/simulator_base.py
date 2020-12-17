@@ -278,7 +278,7 @@ class BackendCircuit():
         TequilaException
         """
         if device is not None:
-            TequilaException('Devices not enabled for {}'.format(str(type(self))))
+            raise TequilaException('Devices not enabled for {}'.format(str(type(self))))
 
     def retrieve_device(self, device):
         """
@@ -299,19 +299,19 @@ class BackendCircuit():
         if device is None:
             return device
         else:
-            TequilaException('Devices not enabled for {}'.format(str(type(self))))
+            raise TequilaException('Devices not enabled for {}'.format(str(type(self))))
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def add_measurement(self, circuit, target_qubits, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def initialize_circuit(self, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def update_variables(self, variables):
         """

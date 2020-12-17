@@ -10,14 +10,13 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 
-SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic"]
+SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic", "qtensor"]
 SUPPORTED_NOISE_BACKENDS = ["qiskit",'qibo', 'cirq', 'pyquil', 'qulacs', "qulacs_gpu"]
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
-
-HAS_QULACS = True
 INSTALLED_NOISE_SAMPLERS = {}
+
 if typing.TYPE_CHECKING:
     from tequila.objective import Objective, Variable
     from tequila.circuit.gates import QCircuit
@@ -29,8 +28,6 @@ Check which simulators are installed
 We are distinguishing two classes of simulators: Samplers and full wavefunction simulators
 """
 
-
-HAS_QISKIT = True
 try:
     from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit
     HAS_QISKIT = True
@@ -38,9 +35,8 @@ try:
     INSTALLED_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
     INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
 except ImportError:
-    HAS_QISKIT = False
+    pass
 
-HAS_QIBO = True
 try:
     from tequila.simulators.simulator_qibo import BackendCircuitQibo, BackendExpectationValueQibo
     HAS_QIBO = True
@@ -48,27 +44,23 @@ try:
     INSTALLED_SAMPLERS["qibo"] = BackendTypes(BackendCircuitQibo, BackendExpectationValueQibo)
     INSTALLED_NOISE_SAMPLERS["qibo"] = BackendTypes(BackendCircuitQibo, BackendExpectationValueQibo)
 except ImportError:
-    HAS_QIBO = False
+    pass
 
-HAS_CIRQ = True
 try:
     from tequila.simulators.simulator_cirq import BackendCircuitCirq, BackendExpectationValueCirq
-
-    HAS_CIRQ = True
     INSTALLED_SIMULATORS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
     INSTALLED_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq, ExpValueType=BackendExpectationValueCirq)
     INSTALLED_NOISE_SAMPLERS["cirq"] = BackendTypes(CircType=BackendCircuitCirq,
                                                     ExpValueType=BackendExpectationValueCirq)
 
 except ImportError:
-    HAS_CIRQ = False
+    pass
 
 try:
     pkg_resources.require("qulacs")
     import qulacs
     from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
 
-    HAS_QULACS = True
     INSTALLED_SIMULATORS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
                                                   ExpValueType=BackendExpectationValueQulacs)
     INSTALLED_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
@@ -76,14 +68,13 @@ try:
     INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(CircType=BackendCircuitQulacs,
                                                       ExpValueType=BackendExpectationValueQulacs)
 except (ImportError, DistributionNotFound):
-    HAS_QULACS = False
+    pass
 
 try:
     pkg_resources.require("qulacs-gpu")
     import qulacs
     from tequila.simulators.simulator_qulacs_gpu import BackendCircuitQulacsGpu, BackendExpectationValueQulacsGpu
 
-    HAS_QULACS_GPU = True
     INSTALLED_SIMULATORS["qulacs_gpu"] = BackendTypes(CircType=BackendCircuitQulacsGpu,
                                                   ExpValueType=BackendExpectationValueQulacsGpu)
     INSTALLED_SAMPLERS["qulacs_gpu"] = BackendTypes(CircType=BackendCircuitQulacsGpu,
@@ -91,10 +82,8 @@ try:
     INSTALLED_NOISE_SAMPLERS["qulacs_gpu"] = BackendTypes(CircType=BackendCircuitQulacsGpu,
                                                       ExpValueType=BackendExpectationValueQulacsGpu)
 except (ImportError, DistributionNotFound):
-    HAS_QULACS_GPU = False
+    pass
 
-
-HAS_PYQUIL = True
 
 try:
     from tequila.simulators.simulator_pyquil import BackendCircuitPyquil, BackendExpectationValuePyquil
@@ -104,7 +93,15 @@ try:
     INSTALLED_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
     INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
 except ImportError:
-    HAS_PYQUIL = False
+    pass
+
+try:
+    # qtensor does currently not work with newest qiskit version
+    # be careful
+    from tequila.simulators.simulator_qtensor import BackendCircuitQtensor, BackendExpectationValueQtensor
+    INSTALLED_SIMULATORS["qtensor"] = BackendTypes(BackendCircuitQtensor, BackendExpectationValueQtensor)
+except ImportError:
+    pass
 
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
 
