@@ -17,6 +17,7 @@ class BackendCircuitQtensor(BackendCircuit):
         "trotterized": True,
         "swap": True,
         "multitarget": True,
+        "multicontrol": True,
         "controlled_rotation": True,  # needed for gates depending on variables
         "generalized_rotation": True,
         "exponential_pauli": True,
@@ -72,27 +73,14 @@ class BackendCircuitQtensor(BackendCircuit):
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         assert(len(gate.target)==1)
-        target = gate.target[0]
+        target = self.qubit_map[gate.target[0]].instance
         if gate.is_controlled():
-            failed = False
-            if gate.name == "X":
-                if len(gate.control) == 1:
-                    qtree_gate = qtree.operators.cX(target, gate.control[0])
-                elif len(gate.control) == 2:
-                    qtree_gate = qtree.operators.cX(target, gate.control[0], gate.control[1])
-                else:
-                    failed = True
-
-            elif gate.name == "Y" and len(control) == 1:
-                qtree_gate = qtree.operators.cY(*targets)
-            elif gate.name == "Z" and len(control) == 1:
-                qtree_gate = qtree.operators.cZ(*targets)
-            else:
-                failed = True
-
-            if failed:
-                raise TequilaQtensorException(
-                    "Multi-Controlled, except CCX, gates not yet supported in Qtensor backend! Can be circumvented by compiling")
+            control = [self.qubit_map[c].instance for c in gate.control]
+            if gate.name.upper() not in ["X", "Y", "Z"]:
+                raise TequilaQtensorException("controlled gate: only cX, cY, cZ; you gave {}".format(gate))
+            if len(gate.control) > 1:
+                raise TequilaQtensorException("controlled gate: only cX, cY, cZ; you gave {}".format(gate))
+            qtree_gate = getattr(qtree.operators, "c"+gate.name.upper())(control[0], target)
         else:
             op = self.op_lookup[gate.name]
             qtree_gate = op(target)
@@ -103,11 +91,12 @@ class BackendCircuitQtensor(BackendCircuit):
         if gate.is_controlled() or gate.name not in ["Rx", "Ry", "Rz"]:
             raise TequilaQtensorException("Only non-controlled rotations are supported as parametrized gates! Received gate={}".format(gate))
         assert len(gate.target) == 1
+        target = self.qubit_map[gate.target[0]].instance
         assert "variables" in kwargs
 
         op = self.op_lookup[gate.name]
         angle = gate.parameter(kwargs["variables"])
-        qtree_gate = op([angle], gate.target[0])
+        qtree_gate = op([angle], target)
         circuit.append(qtree_gate)
 
 
@@ -134,8 +123,7 @@ class BackendExpectationValueQtensor(BackendExpectationValue):
         return results
 
     def contract_paulistring(self, paulistring, ket=None, bra=None):
-
-        pauli_unitary = [self.U.op_lookup[name.upper()](target) for target, name in paulistring.items()]
+        pauli_unitary = [self.U.op_lookup[name.upper()](self.U.qubit_map[target].instance) for target, name in paulistring.items()]
         if ket is None:
             ket = self.U.circuit
         if bra is None:

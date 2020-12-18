@@ -269,7 +269,7 @@ class Compiler:
             # now every other multitarget gate which might be defined
             if self.multitarget:
                 cg = compile_multitarget(gate=cg)
-            if self.multicontrol:
+            if self.multicontrol and len([x for x in cg.gates if len(x.control) > 1]) > 0:
                 raise NotImplementedError("Multicontrol compilation does not work yet")
 
             if self.hadamard_power:
@@ -787,7 +787,6 @@ def compile_h_power(gate) -> QCircuit:
     """
     if not isinstance(gate, PowerGateImpl) or gate.name not in ['H', 'h', 'hadamard']:
         return QCircuit.wrap_gate(gate)
-
     if not gate.is_controlled():
         return hadamard_base(gate=gate)
     return hadamard_recursor(gate=gate)

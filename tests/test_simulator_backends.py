@@ -35,13 +35,14 @@ def test_dependencies():
 def test_interface(backend):
     H = tq.paulis.X(0)
     U = tq.gates.X(target=0)
-    CU = tq.compile(objective=U, backend=backend)
-    a = tq.simulate(objective=U, backend=backend)
-    aa = CU()
-    aaa = tq.compile_to_function(objective=U, backend=backend)()
-    assert (isinstance(a, tq.QubitWaveFunction))
-    assert (aa.isclose(a))
-    assert (aaa.isclose(a))
+    if backend is not "qtensor": # no wavefunction simulation
+        CU = tq.compile(objective=U, backend=backend)
+        a = tq.simulate(objective=U, backend=backend)
+        aa = CU()
+        aaa = tq.compile_to_function(objective=U, backend=backend)()
+        assert (isinstance(a, tq.QubitWaveFunction))
+        assert (aa.isclose(a))
+        assert (aaa.isclose(a))
     E = tq.ExpectationValue(H=H, U=U)
     CE = tq.compile(objective=E, backend=backend)
     a = tq.simulate(objective=E, backend=backend)
@@ -109,9 +110,6 @@ def test_sampling_expvals(backend):
     assert numpy.isclose(E1, 1.234)
 
 
-
-
-
 @pytest.mark.parametrize("backend",
                          list(set([None] + [k for k in INSTALLED_SIMULATORS] + [k for k in INSTALLED_SAMPLERS])))
 @pytest.mark.parametrize("samples", [None, 10])
@@ -122,13 +120,14 @@ def test_parametrized_interface(backend, samples):
     H = tq.paulis.X(0)
     U = tq.gates.Ry(angle="a", target=0)
     variables = {"a": numpy.pi / 2}
-    CU = tq.compile(objective=U, backend=backend, samples=None)
-    a = tq.simulate(objective=U, backend=backend, variables=variables, samples=None)
-    aa = CU(variables=variables, samples=None)
-    aaa = tq.compile_to_function(objective=U, backend=backend, samples=samples)(variables["a"], samples=None)
-    assert (isinstance(a, tq.QubitWaveFunction))
-    assert (aa.isclose(a))
-    assert (aaa.isclose(a))
+    if backend is not "qtensor": # no wavefunction simulation supported
+        CU = tq.compile(objective=U, backend=backend, samples=None)
+        a = tq.simulate(objective=U, backend=backend, variables=variables, samples=None)
+        aa = CU(variables=variables, samples=None)
+        aaa = tq.compile_to_function(objective=U, backend=backend, samples=samples)(variables["a"], samples=None)
+        assert (isinstance(a, tq.QubitWaveFunction))
+        assert (aa.isclose(a))
+        assert (aaa.isclose(a))
     E = tq.ExpectationValue(H=H, U=U)
     CE = tq.compile(objective=E, backend=backend, samples=samples)
     a = tq.simulate(objective=E, backend=backend, variables=variables, samples=samples)
@@ -150,6 +149,9 @@ def test_backend_availability(name):
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0 * numpy.pi, 2))
 def test_rotations(simulator, angle):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     U1 = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.Rx(angle=angle, target=0)
     U2 = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle=angle, paulistring="X(0)")
     wfn1 = tequila.simulators.simulator_api.simulate(U1, backend=None)
@@ -173,6 +175,9 @@ def test_rotations(simulator, angle):
 @pytest.mark.parametrize("ps", ["X(0)Y(3)",
                                 "Y(2)X(4)"])  # it is important to test paulistrings on qubits which are not explicitly initialized through other gates
 def test_multi_pauli_rotation(simulator, angle, ps):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     U = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle=angle, paulistring=ps)
     wfn1 = tequila.simulators.simulator_api.simulate(U, backend=None)
     wfn2 = tequila.simulators.simulator_api.simulate(U, backend=simulator)
@@ -183,6 +188,9 @@ def test_multi_pauli_rotation(simulator, angle, ps):
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0 * numpy.pi, 2))
 def test_parametrized_rotations(simulator, angle):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     U1 = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.Rx(angle="a", target=0)
     U2 = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle="a", paulistring="X(0)")
     variables = {"a": angle}
@@ -200,6 +208,9 @@ def test_parametrized_rotations(simulator, angle):
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0 * numpy.pi, 2))
 @pytest.mark.parametrize("ps", ["X(0)Z(3)", "Y(2)X(4)"])
 def test_parametrized_multi_pauli_rotation(simulator, angle, ps):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     a = tq.Variable("a")
     variables = {a: angle}
     U = tq.gates.X(target=1) + tq.gates.X(target=0, control=1) + tq.gates.ExpPauli(angle=a, paulistring=ps)
@@ -225,6 +236,9 @@ def create_random_circuit():
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_simple_execution(simulator):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     ac = tq.gates.X(0)
     ac += tq.gates.Ry(target=1, control=0, angle=2.3 / 2)
     ac += tq.gates.H(target=1, control=None)
@@ -233,6 +247,9 @@ def test_wfn_simple_execution(simulator):
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_multitarget(simulator):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     ac = tq.gates.X([0, 1, 2])
     ac += tq.gates.Ry(target=[1, 2], control=0, angle=2.3 / 2)
     ac += tq.gates.H(target=[1], control=None)
@@ -241,6 +258,9 @@ def test_wfn_multitarget(simulator):
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_multi_control(simulator):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     # currently no compiler, so that test can not succeed
     if simulator == 'qiskit':
         return
@@ -256,6 +276,9 @@ def test_wfn_multi_control(simulator):
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_simple_consistency(simulator):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     ac = tequila.circuit.QCircuit()
     for x in range(1, 5):
         ac += tq.gates.X(x)
@@ -313,6 +336,9 @@ def test_shot_simple_consistency():
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 @pytest.mark.parametrize("initial_state", numpy.random.randint(0, 31, 5))
 def test_initial_state_from_integer(simulator, initial_state):
+    if simulator is "qtensor":
+        # no wavefunction simulation in qtensor
+        return
     U = tq.gates.QCircuit()
     for i in range(6):
         U += tq.gates.X(target=i) + tq.gates.X(target=i)
@@ -330,6 +356,7 @@ def test_hamiltonian_reductions(backend):
         E1 = tq.compile(tq.ExpectationValue(H=H, U=U), backend=backend)
         E2 = tq.compile(tq.ExpectationValue(H=H, U=U2), backend=backend)
         assert E1.get_expectationvalues()[0]._reduced_hamiltonians[0] == tq.paulis.Z(q)
+        E1()
         assert numpy.isclose(E1(), E2())
 
 @pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
