@@ -19,6 +19,7 @@ Currently supported
 - [Qiskit](https://github.com/qiskit/qiskit)
 - [Cirq](https://github.com/quantumlib/cirq)
 - [PyQuil](https://github.com/rigetti/pyquil)
+- [Qtensor](https://github.com/danlkv/QTensor) (beta version on branch `backend-qtensor`, depends on old qiskit version)
 
 Tequila detects backends automatically if they are installed on your systems.  
 All of them are available over standard pip installation like for example `pip install qulacs`.  
