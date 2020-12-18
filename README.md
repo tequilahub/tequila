@@ -200,4 +200,5 @@ They can be installed for example over visual studio.
 Tequila runs on Macs OSX.  
 You might get in trouble with installing qulacs since it currently does not work with Apple's clang compiler.  
 You need to install latest GNU compile (at least gcc-7 and g++7) and set them as default before installing qulacs over pip.  
-
+## Qibo and GPyOpt
+Currently you can't use Qibo and GPyOpt within the same environment
