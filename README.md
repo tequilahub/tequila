@@ -8,7 +8,7 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 
 [You can get an overview from this presentation](/docs/tequila.pdf) or from it's [video recording](https://www.youtube.com/watch?v=hUdf0P2fW2E)  
 
-[Get started with our Tutorials](/tutorials/)  
+[Get started with our Tutorials](https://github.com/aspuru-guzik-group/tequila-tutorials)  
 
 or checkout our [overview article](https://arxiv.org/abs/2011.03057)  
 
@@ -200,4 +200,5 @@ They can be installed for example over visual studio.
 Tequila runs on Macs OSX.  
 You might get in trouble with installing qulacs since it currently does not work with Apple's clang compiler.  
 You need to install latest GNU compile (at least gcc-7 and g++7) and set them as default before installing qulacs over pip.  
-
+## Qibo and GPyOpt
+Currently you can't use Qibo and GPyOpt within the same environment
