@@ -6,9 +6,9 @@ Tequila is an Extensible Quantum Information and Learning Architecture where the
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
 Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.
 
-[You can get an overview from this presentation](/docs/tequila.pdf)  
+[You can get an overview from this presentation](/docs/tequila.pdf) or from it's [video recording](https://www.youtube.com/watch?v=hUdf0P2fW2E)  
 
-[Get started with our Tutorials](/tutorials/)  
+[Get started with our Tutorials](https://github.com/aspuru-guzik-group/tequila-tutorials)  
 
 or checkout our [overview article](https://arxiv.org/abs/2011.03057)  
 
@@ -25,9 +25,20 @@ All of them are available over standard pip installation like for example `pip i
 For best performance tt is recommended to have `qulacs` installed.
 
 # QuantumChemistry:
-Tequila supports [Psi4](https://github.com/psi4/psi4).  
+Currently supported
+- [Psi4](https://github.com/psi4/psi4).  
 In a conda environment this can be installed with  
-`conda install psi4 -c psi4`
+```bash
+conda install psi4 -c psi4
+```
+Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/Chemistry.ipynb) that illustrates the usage. 
+
+- [Madness](https://github.com/kottmanj/madness)  
+Currently you need to compile from a separate [fork](https://github.com/kottmanj/madness).  
+See the github page of this fork for installation instruction.  
+Note that the madness interface is currently only available on the `devel` branch of tequila (coming to master soon).  
+Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb) that illustrates the usage.  
+
 
 # Installation
 We recommend installing in editable mode with  
@@ -124,6 +135,10 @@ Quantum Computer-Aided design of Quantum Optics Hardware.
 [arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)
 [example code](https://github.com/kottmanj/Photonic)  
 
+A. Anand, M. Degroote, A. Aspuru-Guzik.  
+Natural Evolutionary Strategies for Variational Quantum Computation.  
+[arxiv.org/abs/2012.00101](https://arxiv.org/abs/2012.00101)  
+
 Let us know, if you want your research project to be included in this list!
 
 # Dependencies
@@ -185,4 +200,5 @@ They can be installed for example over visual studio.
 Tequila runs on Macs OSX.  
 You might get in trouble with installing qulacs since it currently does not work with Apple's clang compiler.  
 You need to install latest GNU compile (at least gcc-7 and g++7) and set them as default before installing qulacs over pip.  
-
+## Qibo and GPyOpt
+Currently you can't use Qibo and GPyOpt within the same environment
