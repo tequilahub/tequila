@@ -1,6 +1,7 @@
 import tequila.simulators.simulator_api
 from tequila.circuit import gates
-from tequila.circuit.compiler import compile_controlled_rotation, change_basis, compile_phase, compile_swap
+from tequila.circuit.compiler import compile_controlled_rotation, change_basis, compile_phase, compile_swap, \
+                                     compile_ry, compile_y, compile_ch
 from numpy.random import uniform, randint
 from numpy import pi, isclose
 from tequila.hamiltonian import paulis
@@ -90,4 +91,42 @@ def test_compile_swap():
     equivalent_swap = gates.X(target=0, control=3) + gates.X(target=3, control=0) + gates.X(target=0, control=3)
 
     assert (equivalent_circuit == equivalent_swap)
-    
+
+
+@pytest.mark.parametrize("ang, ctrl", [(3.14, None), (6.28, 1)])
+def test_compile_ry(ang, ctrl):
+
+    circuit = gates.Ry(target=0, control=ctrl, angle=ang)
+    equivalent_circuit = compile_ry(circuit)
+
+    equivalent_ry = gates.Rz(target=0, control=None, angle=-numpy.pi / 2) \
+                    + gates.Rx(target=0, control=ctrl, angle=ang) \
+                    + gates.Rz(target=0, control=None, angle=numpy.pi / 2)
+
+    assert (equivalent_circuit == equivalent_ry)
+
+
+@pytest.mark.parametrize("ctrl", [None, 1])
+def test_compile_y(ctrl):
+    circuit = gates.Y(target=0, control=ctrl)
+    equivalent_circuit_y = compile_y(circuit)
+
+    equivalent_y = gates.Rz(target=0, control=None, angle=-numpy.pi / 2) \
+                   + gates.Rx(target=0, control=ctrl, angle=numpy.pi) \
+                   + gates.Rz(target=0, control=None, angle=numpy.pi / 2)
+
+    assert (equivalent_circuit_y == equivalent_y)
+
+
+def test_compile_ch():
+    targ = 2
+    ctrl = 4
+    circuit = gates.H(target=targ, control=ctrl)
+    equivalent_circuit = compile_ch(circuit)
+
+    equivalent_ch = gates.H(target=targ) + gates.S(target=targ).dagger() + gates.CX(target=targ, control=ctrl) \
+                    + gates.H(target=targ) + gates.T(target=targ) + gates.CX(target=targ, control=ctrl) \
+                    + gates.T(target=targ) + gates.H(target=targ) + gates.S(target=targ) + gates.X(target=targ) \
+                    + gates.S(target=ctrl)
+
+    assert (equivalent_circuit == equivalent_ch)

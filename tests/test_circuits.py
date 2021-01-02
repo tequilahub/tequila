@@ -1,10 +1,12 @@
-from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized
+from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized, \
+                                  U, u1, u2, u3
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
 from tequila import assign_variable, paulis
 import numpy, sympy
+import pytest
 
 
 def test_qubit_map():
@@ -166,3 +168,60 @@ def test_circuit_from_moments():
     moms = c.moments
     c2 = QCircuit.from_moments(moms)
     assert c == c2
+
+
+@pytest.mark.parametrize("ctrl", [None, 1])
+def test_unitary_gate_u1(ctrl):
+    """
+    Since Z = u1(\\pi)
+    """
+    c_u1 = u1(lambd=numpy.pi, target=0, control=ctrl)
+    c_z = Z(target=0, control=ctrl)
+
+    wfn1 = simulate(c_u1, backend="symbolic")
+    wfn2 = simulate(c_z, backend="symbolic")
+
+    assert (numpy.isclose(abs(wfn1.inner(wfn2)), 1.0))
+
+
+@pytest.mark.parametrize("ctrl", [None, 1])
+def test_unitary_gate_u2(ctrl):
+    """
+    Since H = u2(0, \\pi)
+    """
+    c_u2 = u2(phi=0, lambd=numpy.pi, target=0, control=ctrl)
+    c_h = H(target=0, control=ctrl)
+
+    wfn1 = simulate(c_u2, backend="symbolic")
+    wfn2 = simulate(c_h, backend="symbolic")
+
+    assert (numpy.isclose(abs(wfn1.inner(wfn2)), 1.0))
+
+
+@pytest.mark.parametrize("ctrl", [None, 1])
+def test_unitary_gate_u3(ctrl):
+    """
+    Since X = u3(\\pi, 0, \\pi)
+    """
+    c_u3 = u3(theta=numpy.pi, phi=0, lambd=numpy.pi, target=0, control=ctrl)
+    c_x = X(target=0, control=ctrl)
+
+    wfn1 = simulate(c_u3, backend="symbolic")
+    wfn2 = simulate(c_x, backend="symbolic")
+
+    assert (numpy.isclose(abs(wfn1.inner(wfn2)), 1.0))
+
+
+@pytest.mark.parametrize("ctrl", [None, 1])
+def test_unitary_gate_u(ctrl):
+    """
+    Since Rz(\\lambda) = U(0, 0, \\lambda)
+    """
+    c_u = U(theta=0, phi=0, lambd=numpy.pi/3, target=0, control=ctrl)
+    c_rz = Rz(angle=numpy.pi/3, target=0, control=ctrl)
+
+    wfn1 = simulate(c_u, backend="symbolic")
+    wfn2 = simulate(c_rz, backend="symbolic")
+
+    assert (numpy.isclose(abs(wfn1.inner(wfn2)), 1.0))
+

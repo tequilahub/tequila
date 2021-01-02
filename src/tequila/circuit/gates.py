@@ -681,6 +681,146 @@ def CRz(control: int, target: int, angle: float) -> QCircuit:
     return Rz(target=target, control=control, angle=angle)
 
 
+def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    """
+    Notes
+    ----------
+    Convenient gate, one of the abstract gates defined by OpenQASM.
+
+    .. math::
+        U(\\theta, \\phi, \\lambda) = R_z(\\phi + 3\\pi)R_x(\\pi/2)R_z(\\theta + \\pi)R_x(\\pi/2)R_z(\\lambda)
+
+    Parameters
+    ----------
+    theta
+        first parameter angle
+    phi
+        second parameter angle
+    lamnd
+        third parameter angle
+    target
+        int or list of int
+    control
+        int or list of int
+
+    Returns
+    -------
+    QCircuit object
+
+    """
+
+    theta = assign_variable(theta)
+    phi = assign_variable(phi)
+    lambd = assign_variable(lambd)
+    pi_half = assign_variable(np.pi / 2)
+
+    return Rz(angle=phi + 3 * np.pi, target=target, control=control) + \
+           Rx(angle=pi_half,         target=target, control=control) + \
+           Rz(angle=theta + np.pi,   target=target, control=control) + \
+           Rx(angle=pi_half,         target=target, control=control) + \
+           Rz(angle=lambd,           target=target, control=control)
+
+
+def u1(lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    """
+    Notes
+    ----------
+    Convenient gate, one of the abstract gates defined by Quantum Experience Standard Header.
+    Changes the phase of a carrier without applying any pulses.
+
+    .. math::
+        u1(\\lambda) = U(0, 0, \\lambda) = R_z(\\lambda)
+
+    Parameters
+    ----------
+    lambd
+        parameter angle
+    target
+        int or list of int
+    control
+        int or list of int
+
+    Returns
+    -------
+    QCircuit object
+
+    """
+
+    lambd = assign_variable(lambd)
+
+    return U(theta=0, phi=0, lambd=lambd, target=target, control=control)
+
+
+def u2(phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    """
+    Notes
+    ----------
+    Convenient gate, one of the abstract gates defined by Quantum Experience Standard Header.
+    Uses a single \\pi/2-pulse.
+
+    .. math::
+        u2(\\phi, \\lambda) = U(\\pi/2, \\phi, \\lambda) = R_z(\\phi + \\pi/2)R_x(\\pi/2)R_z(\\lambda - \\pi/2)
+
+    Parameters
+    ----------
+    phi
+        first parameter angle
+    lambd
+        second parameter angle
+    target
+        int or list of int
+    control
+        int or list of int
+
+    Returns
+    -------
+    QCircuit object
+
+    """
+
+    phi = assign_variable(phi)
+    lambd = assign_variable(lambd)
+
+    return U(theta=np.pi/2, phi=phi, lambd=lambd, target=target, control=control)
+
+
+def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+    """
+    Notes
+    ----------
+    Convenient gate, one of the abstract gates defined by Quantum Experience Standard Header
+    The most general single-qubit gate.
+    Uses a pair of \\pi/2-pulses.
+
+    .. math::
+        u3(\\theta, \\phi, \\lambda) = U(\\theta, \\phi, \\lambda)
+
+    Parameters
+    ----------
+    theta
+        first parameter angle
+    phi
+        second parameter angle
+    lambd
+        third parameter angle
+    target
+        int or list of int
+    control
+        int or list of int
+
+    Returns
+    -------
+    QCircuit object
+
+    """
+
+    theta = assign_variable(theta)
+    phi = assign_variable(phi)
+    lambd = assign_variable(lambd)
+
+    return U(theta=theta, phi=phi, lambd=lambd, target=target, control=control)
+
+
 if __name__ == "__main__":
     G = CRx(1, 0, 2.0)
 
