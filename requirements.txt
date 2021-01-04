@@ -6,7 +6,7 @@ jaxlib
 #autograd # use if jaxlib gives you trouble, make sure jax is uninstalled then
 setuptools 
 pytest
-openfermion
+openfermion <= 0.11*
 qulacs # default simulator, remove if the installation gives you trouble
 cmake # needed by qulacs, can be removed otherwise
 
