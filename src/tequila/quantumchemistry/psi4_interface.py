@@ -225,7 +225,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             self.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals, reference=reference)
             # need to recompute
             # (psi4 won't take over active space information otherwise)
-            self.compute_energy(method="hf", recompute=True)
+            self.compute_energy(method="hf", recompute=True, *args, **kwargs)
             self.ref_wfn = self.logs["hf"].wfn
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
@@ -272,7 +272,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if irrep is None or self.point_group.lower() == "c1":
             result = []
             for x in tmp:
-                result += x
+                result += [x]
             return result
         else:
             return tmp[irrep]
@@ -523,7 +523,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def __str__(self):
         result = super().__str__()
-        result += "\nPsi4 Data\n"
+        result += "Psi4 Data\n"
         result += "{key:15} : {value:15} \n".format(key="Point Group (full)",
                                                     value=self.psi4_mol.get_full_point_group().lower())
         result += "{key:15} : {value:15} \n".format(key="Point Group (used)", value=self.point_group)
@@ -533,6 +533,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             [len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)]))
         if self.active_space is not None:
             result += str(self.active_space)
+
+        result += "\nOrbitals:\n"
+        for orb in self.orbitals:
+            result += "{}\n".format(orb)
+
         return result
 
     def prepare_reference(self, *args, **kwargs):

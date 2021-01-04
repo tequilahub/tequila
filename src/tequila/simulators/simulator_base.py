@@ -8,7 +8,7 @@ from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
 
-import numbers, typing, numpy
+import numbers, typing, numpy, copy
 
 from dataclasses import dataclass
 
@@ -278,7 +278,7 @@ class BackendCircuit():
         TequilaException
         """
         if device is not None:
-            TequilaException('Devices not enabled for {}'.format(str(type(self))))
+            raise TequilaException('Devices not enabled for {}'.format(str(type(self))))
 
     def retrieve_device(self, device):
         """
@@ -299,19 +299,19 @@ class BackendCircuit():
         if device is None:
             return device
         else:
-            TequilaException('Devices not enabled for {}'.format(str(type(self))))
+            raise TequilaException('Devices not enabled for {}'.format(str(type(self))))
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def add_measurement(self, circuit, target_qubits, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def initialize_circuit(self, *args, **kwargs):
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def update_variables(self, variables):
         """
@@ -475,7 +475,10 @@ class BackendCircuit():
             basis_change += change_basis(target=idx, axis=p)
 
         # add basis change to the circuit
-        circuit = self.create_circuit(circuit=self.circuit, abstract_circuit=basis_change)
+        # deepcopy is necessary to avoid changing the circuits
+        # can be circumvented by optimizing the measurements
+        # on construction: tq.ExpectationValue(H=H, U=U, optimize_measurements=True)
+        circuit = self.create_circuit(circuit=copy.deepcopy(self.circuit), abstract_circuit=basis_change)
         # run simulators
         counts = self.sample(samples=samples, circuit=circuit, read_out_qubits=qubits, variables=variables, *args,
                              **kwargs)
@@ -516,7 +519,7 @@ class BackendCircuit():
             the result of sampling.
 
         """
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def do_simulate(self, variables, initial_state, *args, **kwargs) -> QubitWaveFunction:
         """
@@ -537,10 +540,10 @@ class BackendCircuit():
             the result of simulating the circuit.
 
         """
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
-        TequilaException("Backend Handler needs to be overwritten for supported simulators")
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def initialize_qubit(self, number: int):
         """
@@ -732,7 +735,7 @@ class BackendExpectationValue:
         """
         self.abstract_expectationvalue = E
         self._input_args = {"variables":variables, "device":device, "noise":noise, **kwargs}
-        self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device)
+        self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device, **kwargs)
         self._reduced_hamiltonians = self.reduce_hamiltonians(self.abstract_expectationvalue.H)
         self._H = self.initialize_hamiltonian(self._reduced_hamiltonians)
 
@@ -794,11 +797,11 @@ class BackendExpectationValue:
     def initialize_hamiltonian(self, hamiltonians: tuple) -> tuple:
         return hamiltonians
 
-    def initialize_unitary(self, U, variables, noise, device):
+    def initialize_unitary(self, U, variables, noise, device, *args, **kwargs):
         """return a compiled unitary"""
         return self.BackendCircuitType(abstract_circuit=U, variables=variables, device=device,
                                        use_mapping=self.use_mapping,
-                                       noise=noise)
+                                       noise=noise, *args, **kwargs)
 
     def update_variables(self, variables):
         """wrapper over circuit update_variables"""

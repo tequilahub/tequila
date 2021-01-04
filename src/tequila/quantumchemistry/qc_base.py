@@ -39,6 +39,15 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
         self.p0 = p0
         self.assume_real = assume_real
 
+    def map_qubits(self, qubit_map: dict):
+        mapped_generator = self.generator.map_qubits(qubit_map=qubit_map)
+        mapped_p0 = self.p0.map_qubits(qubit_map=qubit_map)
+        mapped_control = self.control
+        if mapped_control is not None:
+            mapped_control=tuple([qubit_map[i] for i in self.control])
+        return FermionicGateImpl(angle=self.parameter, generator=mapped_generator, p0=mapped_p0, assume_real=self.assume_real, control=mapped_control)
+
+
     def compile(self):
         return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
 
@@ -1043,7 +1052,7 @@ class QuantumChemistryBase:
         else:
             return 2 * len(self.active_space.active_reference_orbitals)
 
-    def make_hamiltonian(self, occupied_indices=None, active_indices=None) -> QubitHamiltonian:
+    def make_hamiltonian(self, occupied_indices=None, active_indices=None, threshold=1.e-8) -> QubitHamiltonian:
         """ """
         if occupied_indices is None and self.active_space is not None:
             occupied_indices = self.active_space.frozen_reference_orbitals
@@ -1056,7 +1065,10 @@ class QuantumChemistryBase:
             qop = self.transformation(fop)
         except TypeError:
             qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
-        return QubitHamiltonian(qubit_operator=qop)
+
+        result=QubitHamiltonian(qubit_operator=qop).simplify(threshold)
+        result.is_hermitian()
+        return result
 
     def make_molecular_hamiltonian(self):
         if self.active_space:
@@ -1088,6 +1100,71 @@ class QuantumChemistryBase:
         """
 
         return prepare_product_state(self.reference_state(*args, **kwargs))
+
+    def get_pair_specific_indices(self,
+                                  pair_info: str = None,
+                                  include_singles: bool = True,
+                                  general_excitations: bool = True) -> list:
+        """
+        Assuming a pair-specific model, create a pair-specific index list 
+        to be used in make_upccgsd_ansatz(indices = ... ) 
+        Excite from a set of references (i) to any pair coming from (i),
+        i.e. any (i,j)/(j,i). If general excitations are allowed, also 
+        allow excitations from pairs to appendant pairs and reference.
+
+        Parameters
+        ----------
+        pair_info
+            file or list including information about pair structure
+            references single number, pair double
+            example: as file: "0,1,11,11,00,10" (hand over file name)
+                     in file, skip first row assuming some text with information
+                     as list:['0','1`','11','11','00','10']
+                     ~> two reference orbitals 0 and 1, 
+                     then two orbitals from pair 11, one from 00, one mixed 10
+        include_singles
+            include single excitations
+        general_excitations
+            allow general excitations 
+       Returns
+        -------
+            list of indices with pair-specific ansatz 
+        """
+
+        if pair_info is None:
+            raise TequilaException("Need to provide some pair information.")
+        # If pair-information given on file, load (layout see above)
+        if isinstance(pair_info, str):
+            pairs = numpy.loadtxt(pair_info, dtype=str, delimiter=",", skiprows=1)
+        elif isinstance(pair_info, list):
+            pairs = pair_info
+        elif not isinstance(pair_info, list):
+            raise TequilaException("Pair information needs to be contained in a list or filename.")
+        
+        connect = [[]]*len(pairs)
+        # determine "connectivity"
+        generalized = 0 
+        for idx, p in enumerate(pairs):
+            if len(p)==1:
+                connect[idx] = [i for i in range(len(pairs)) 
+                                if ( (len(pairs[i])==2) and (str(idx) in pairs[i]) )]
+            elif (len(p)==2) and general_excitations:
+                connect[idx] = [i for i in range(len(pairs)) 
+                                if ( ((p[0] in  pairs[i]) or (p[1] in pairs[i]) or str(i) in p)
+                                     and not(i==idx) )]
+            elif len(p)>2:
+                raise TequilaException("Invalid reference of pair id.")
+            
+        # create generating indices from connectivity
+        indices = []
+        for i, to in enumerate(connect):
+            for a in to:
+                indices.append(( (2*i, 2*a), (2*i+1, 2*a+1) ))  
+                if include_singles:
+                    indices.append(((2*i, 2*a)))  
+                    indices.append(((2*i+1, 2*a+1)))  
+        
+        return indices 
 
     def make_upccgsd_ansatz(self,
                             include_singles: bool = True,
@@ -1129,13 +1206,16 @@ class QuantumChemistryBase:
 
         # indices defining the UpCCD ansatz
         if indices is None:
+            singles = []
             indices = []
             for i in range(self.n_orbitals):
                 for a in range(i + 1, self.n_orbitals):
                     indices.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
-                    if include_singles:
-                        indices.append(((2 * i, 2 * a)))
-                        indices.append(((2 * i + 1, 2 * a + 1)))
+                    singles.append(((2 * i, 2 * a)))
+                    singles.append(((2 * i + 1, 2 * a + 1)))
+
+            if include_singles:
+                indices += singles
 
         U = QCircuit()
         if include_reference:
@@ -1684,7 +1764,9 @@ class QuantumChemistryBase:
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
         result += "Qubit Encoding\n"
-        result += str(self.transformation) + "\n"
+        result += str(self.transformation) + "\n\n"
+        result += "Parameters\n"
         for k, v in self.parameters.__dict__.items():
             result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
+        result += "\n"
         return result
