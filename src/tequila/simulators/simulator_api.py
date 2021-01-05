@@ -279,7 +279,7 @@ def compile_objective(objective: typing.Union['Objective','VectorObjective'],
         for arg in argset:
             if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
                 if arg not in expectationvalues:
-                    compiled_expval = ExpValueType(arg, variables=variables, noise=noise, device=device)
+                    compiled_expval = ExpValueType(arg, variables=variables, noise=noise, device=device, *args, **kwargs)
                     expectationvalues[arg] = compiled_expval
                 else:
                     compiled_expval = expectationvalues[arg]
@@ -486,7 +486,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
         variables = {assign_variable(k): v for k, v in variables.items()}
 
     if isinstance(objective, Objective) or hasattr(objective, "args"):
-        return compile_objective(objective=objective, samples=samples, variables=variables, backend=backend, noise=noise, device=device)
+        return compile_objective(objective=objective, samples=samples, variables=variables, backend=backend, noise=noise, device=device, *args, **kwargs)
     elif hasattr(objective, "gates") or hasattr(objective, "abstract_circuit"):
         return compile_circuit(abstract_circuit=objective, variables=variables, backend=backend,samples=samples,
                                noise=noise, device=device, *args, **kwargs)

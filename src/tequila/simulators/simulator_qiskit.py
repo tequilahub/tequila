@@ -1,10 +1,10 @@
 from tequila.simulators.simulator_base import BackendCircuit, QCircuit, BackendExpectationValue
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila import TequilaException
+from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
 
-import qiskit, numpy
+import qiskit, numpy, warnings
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
 import qiskit.test.mock.backends
@@ -172,11 +172,11 @@ class BackendCircuitQiskit(BackendCircuit):
 
         if qubit_map is None:
             qubit_map = {q: i for i, q in enumerate(abstract_circuit.qubits)}
-
-        if qubit_map is None:
-            n_qubits = len(abstract_circuit.qubits)
         else:
-            n_qubits = max(qubit_map.values()) + 1
+            warnings.warn("reveived custom qubit_map = {}\n"
+                          "This is not fully integrated with qiskit and might result in unexpected behaviour".format(qubit_map), TequilaWarning)
+
+        n_qubits = max(qubit_map.values()) + 1
 
         self.q = qiskit.QuantumRegister(n_qubits, "q")
         self.c  = qiskit.ClassicalRegister(n_qubits, "c")

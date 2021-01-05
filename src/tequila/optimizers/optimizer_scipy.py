@@ -161,7 +161,7 @@ class OptimizerSciPy(Optimizer):
             assert (names == param_keys)  # make sure the bounds are not shuffled
 
         # do the compilation here to avoid costly recompilation during the optimization
-        compiled_objective = self.compile_objective(objective=objective)
+        compiled_objective = self.compile_objective(objective=objective, *args, **kwargs)
         E = _EvalContainer(objective=compiled_objective,
                            param_keys=param_keys,
                            samples=self.samples,
@@ -213,7 +213,7 @@ class OptimizerSciPy(Optimizer):
             compile_hessian = False
 
         if compile_gradient:
-            grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
+            grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient, *args, **kwargs)
             expvals = sum([o.count_expectationvalues() for o in comp_grad_obj.values()])
             infostring += "{:15} : {} expectationvalues\n".format("gradient", expvals)
             dE = _GradContainer(objective=comp_grad_obj,
@@ -226,7 +226,7 @@ class OptimizerSciPy(Optimizer):
             hess_obj, comp_hess_obj = self.compile_hessian(variables=variables,
                                                            hessian=hessian,
                                                            grad_obj=grad_obj,
-                                                           comp_grad_obj=comp_grad_obj)
+                                                           comp_grad_obj=comp_grad_obj, *args, **kwargs)
             expvals = sum([o.count_expectationvalues() for o in comp_hess_obj.values()])
             infostring += "{:15} : {} expectationvalues\n".format("hessian", expvals)
             ddE = _HessContainer(objective=comp_hess_obj,
@@ -336,6 +336,7 @@ def minimize(objective: Objective,
              backend: str = None,
              backend_options: dict = None,
              noise: NoiseModel = None,
+             device: str = None,
              method: str = "BFGS",
              tol: float = 1.e-3,
              method_options: dict = None,
@@ -416,6 +417,7 @@ def minimize(objective: Objective,
                                silent=silent,
                                backend=backend,
                                backend_options=backend_options,
+                               device=device,
                                samples=samples,
                                noise_model=noise,
                                tol=tol,
