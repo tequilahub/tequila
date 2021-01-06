@@ -1326,7 +1326,8 @@ def compile_ry(gate: RotationGateImpl, controlled_rotation: bool = False) -> QCi
     gate:
         the gate.
     controlled_rotation:
-        to determine if the gate break down need to be applied here
+        determines if the decomposition of the controlled-Ry gate will be performed in compile_controlled_rotation,
+        if not, decomposition will be performed here
 
     Returns
     -------
