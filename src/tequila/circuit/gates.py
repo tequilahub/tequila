@@ -688,6 +688,34 @@ def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[
 
     .. math::
         U(\\theta, \\phi, \\lambda) = R_z(\\phi + 3\\pi)R_x(\\pi/2)R_z(\\theta + \\pi)R_x(\\pi/2)R_z(\\lambda)
+        U(\\theta, \\phi, \\lambda) = \\begin{pmatrix}
+                                            e^{-i \\frac{\\phi+3\\pi}{2}} & 0 \\\\
+                                            0 & e^{i \\frac{\\phi+3\\pi}{2}}
+                                        \\end{pmatrix}
+                                        \\begin{pmatrix}
+                                            \\cos{\\frac{\\pi}{4}} & -i \\sin{\\frac{\pi}{4}} \\\\
+                                            -i \\sin{\\frac{\\pi}{4}} & \\cos{\\frac{\\pi}{4}}
+                                        \\end{pmatrix}
+                                        \\begin{pmatrix}
+                                            e^{-i \\frac{\\theta+\\pi}{2}} & 0 \\\\
+                                            0 & e^{i \\frac{\\theta+\\pi}{2}}
+                                        \\end{pmatrix}
+                                        \\begin{pmatrix}
+                                            \\cos{\\frac{\\pi}{4}} & -i \\sin{\\frac{\\pi}{4}} \\\\
+                                            -i \\sin{\\frac{\\pi}{4}} & \\cos{\\frac{\\pi}{4}}
+                                        \\end{pmatrix}
+                                        \\begin{pmatrix}
+                                            e^{-i \\frac{\\lambda}{2}} & 0 \\\\
+                                            0 & e^{i \\frac{\\lambda}{2}}
+                                        \\end{pmatrix}
+
+        U(\\theta, \\phi, \\lambda) = \\frac{1}{2}
+                                        \\begin{pmatrix}
+                                            e^{-\\frac{i}{2} (\\lambda+\\phi-\\theta)}+e^{\\frac{i}{2} (\\theta-\\phi-\\lambda)} &
+                                            i e^{\\frac{i}{2} (\\lambda+\\theta-\\phi)}- i e^{\\frac{i}{2} (\\lambda-\\phi+\\theta)} \\\\
+                                            i e^{\\frac{i}{2} (\\phi-\\theta-\\lambda)}- i e^{-\\frac{i}{2} (\\lambda+\\phi+\\theta)} &
+                                            e^{\\frac{i}{2} (\\lambda+\\phi-\\theta)}+e^{\\frac{i}{2} (\\lambda-\\phi-\\theta)}
+                                        \\end{pmatrix}
 
     Parameters
     ----------
@@ -728,7 +756,7 @@ def u1(lambd, target: typing.Union[list, int], control: typing.Union[list, int] 
     Changes the phase of a carrier without applying any pulses.
 
     .. math::
-        u1(\\lambda) = U(0, 0, \\lambda) = R_z(\\lambda)
+        u1(\\lambda) = U(0, 0, \\lambda) = R_z(\\lambda) = R_{z}(\\lambda) = e^{-i\\frac{\\lambda}{2} \\sigma_{z}}
 
     Parameters
     ----------
