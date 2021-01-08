@@ -1347,7 +1347,7 @@ def compile_ry(gate: RotationGateImpl, controlled_rotation: bool = False) -> QCi
 @compiler
 def compile_y(gate) -> QCircuit:
     """
-    Compile Y gates into X and Z.
+    Compile Y gates into X and Rz.
     Parameters
     ----------
     gate:
@@ -1370,8 +1370,8 @@ def compile_y(gate) -> QCircuit:
 @compiler
 def compile_ch(gate: QGateImpl) -> QCircuit:
     """
-    Compile H gates into its equivalent:
-        ch a,b = h b + sdg b + cx a,b + h b + t b + cx a,b + t b + h b + s b + x b + s a
+    Compile CH gates into its equivalent:
+        CH = Ry(0.25pi) CZ Ry(-0.25pi)
     Parameters
     ----------
     gate:
