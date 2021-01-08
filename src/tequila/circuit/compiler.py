@@ -292,12 +292,12 @@ class Compiler:
                 cg = compile_power_gate(gate=cg)
             if self.phase:
                 cg = compile_phase(gate=cg)
-            if self.ry_gate:
-                cg = compile_ry(gate=cg, controlled_rotation=self.controlled_rotation)
-            if self.y_gate:
-                cg = compile_y(gate=cg)
             if self.ch_gate:
                 cg = compile_ch(gate=cg)
+            if self.y_gate:
+                cg = compile_y(gate=cg)
+            if self.ry_gate:
+                cg = compile_ry(gate=cg, controlled_rotation=self.controlled_rotation)
             if controlled:
                 if self.cc_max:
                     cg = compile_to_cc(gate=cg)
@@ -1345,7 +1345,7 @@ def compile_ry(gate: RotationGateImpl, controlled_rotation: bool = False) -> QCi
 
 
 @compiler
-def compile_y(gate: QGateImpl) -> QCircuit:
+def compile_y(gate) -> QCircuit:
     """
     Compile Y gates into X and Z.
     Parameters
@@ -1360,7 +1360,7 @@ def compile_y(gate: QGateImpl) -> QCircuit:
     if gate.name.lower() == "y":
 
         return Rz(target=gate.target, control=None, angle=-numpy.pi / 2) \
-               + Rx(target=gate.target, control=gate.control, angle=numpy.pi) \
+               + X(target=gate.target, control=gate.control, power=gate.parameter if gate.is_parametrized() else None) \
                + Rz(target=gate.target, control=None, angle=numpy.pi / 2)
 
     else:
@@ -1383,16 +1383,8 @@ def compile_ch(gate: QGateImpl) -> QCircuit:
     """
     if gate.name.lower() == "h" and gate.is_controlled():
 
-        return H(target=gate.target) \
-               + S(target=gate.target).dagger() \
-               + CX(target=gate.target, control=gate.control) \
-               + H(target=gate.target) \
-               + T(target=gate.target) \
-               + CX(target=gate.target, control=gate.control) \
-               + T(target=gate.target) \
-               + H(target=gate.target) \
-               + S(target=gate.target) \
-               + X(target=gate.target) \
-               + S(target=gate.control)
+        return Ry(target=gate.target, control=None, angle=numpy.pi / 4) \
+               + Z(target=gate.target, control=gate.control, power=gate.parameter if gate.is_parametrized() else None) \
+               + Ry(target=gate.target, control=None, angle=-numpy.pi / 4)
     else:
         return QCircuit.wrap_gate(gate)
