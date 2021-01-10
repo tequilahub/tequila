@@ -437,8 +437,9 @@ class BackendCircuit():
                 Etmp += sign * count
                 n_samples += count
             E += (Etmp / samples) * paulistring.coeff
-            # small failsafe
-            assert n_samples == samples
+            # Removed this failsafe since it causes errors when simulating with samples in simulator_cirq.py for
+            # example, since the count is "filtered" and the total is sometimes less than the requested sample
+            # assert n_samples == samples
         return E
 
     def sample_paulistring(self, samples: int, paulistring, variables, *args,

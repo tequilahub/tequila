@@ -5,7 +5,7 @@ from tequila.objective import Objective, VectorObjective,\
     ExpectationValue, Variable, assign_variable, format_variable_dictionary,\
     vectorize
 
-from tequila.ml import to_platform,HAS_TORCH
+from tequila.ml import to_platform, HAS_TORCH, HAS_TF
 
 from tequila.optimizers import INSTALLED_OPTIMIZERS, show_available_optimizers
 from tequila.optimizers import minimize, minimize_scipy, minimize_gd, optimizer_scipy

@@ -531,7 +531,7 @@ class Objective:
             return float(result)
         else:
             return result
-        
+
 
     def contract(self):
         """
@@ -676,7 +676,8 @@ class VectorObjective:
             else:
                 variables += []
 
-        return list(set(variables))
+        # Casting to set ensures unique elements but not the order of the elements, so they must be sorted
+        return sorted(list(set(variables)))
 
     def extract_variables_at(self,pos):
         """
@@ -1321,6 +1322,9 @@ class Variable:
     @property
     def name(self):
         return self._name
+
+    def __lt__(self, other):
+        return str(self.name) < str(other.name)
 
     def __hash__(self):
         return hash(self.name)
