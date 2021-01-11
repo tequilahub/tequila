@@ -30,11 +30,16 @@ class QGateImpl:
 
     @property
     def qubits(self):
-        return self._qubits
+        # Set the active qubits
+        if self.control:
+            qubits = self.target + self.control
+        else:
+            qubits = self.target
+        return sorted(tuple(set(qubits)))
 
     @property
     def max_qubit(self):
-        return self._max_qubit
+        return self.compute_max_qubit()
 
     def extract_variables(self):
         return []
@@ -47,13 +52,6 @@ class QGateImpl:
         self._target = tuple(list_assignment(target))
         self._control = tuple(list_assignment(control))
         self.finalize()
-        # Set the active qubits
-        if self.control:
-            self._qubits = self.target + self.control
-        else:
-            self._qubits = self.target
-        self._qubits = sorted(tuple(set(self._qubits)))
-        self._max_qubit = self.compute_max_qubit()
 
     def copy(self):
         return copy.deepcopy(self)
