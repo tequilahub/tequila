@@ -676,8 +676,7 @@ class VectorObjective:
             else:
                 variables += []
 
-        # Casting to set ensures unique elements but not the order of the elements, so they must be sorted
-        return sorted(list(set(variables)))
+        return list(set(variables))
 
     def extract_variables_at(self,pos):
         """
@@ -1324,7 +1323,7 @@ class Variable:
         return self._name
 
     def __lt__(self, other):
-        return str(self.name) < str(other.name)
+        return hash(self.name) < hash(other.name)
 
     def __hash__(self):
         return hash(self.name)

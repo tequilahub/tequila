@@ -3,7 +3,7 @@ from typing import List
 
 from typing import Union, Dict, Callable, Any
 
-from .utils_ml import preamble, TequilaMLException
+from tequila.ml.utils_ml import preamble, TequilaMLException
 from tequila.objective import Objective, VectorObjective, Variable, vectorize
 from tequila.tools import list_assignment
 from tequila.simulators.simulator_api import simulate
@@ -45,13 +45,7 @@ class TFLayer(tf.keras.layers.Layer):
 
         # Store the list of the names of the variables which will be considered as inputs
         if input_vars is not None:
-            self.input_vars = input_vars = sorted(input_vars)
-        else:
-            self.input_vars = None
-
-        # Make sure that the dict of the initial values is sorted
-        if compile_args is not None and compile_args["initial_values"] is not None:
-            compile_args["initial_values"] = OrderedDict(sorted(compile_args["initial_values"].items()))
+            input_vars = sorted(input_vars)
 
         self.objective = objective
         # Store the objective and vectorize it if necessary
@@ -70,19 +64,20 @@ class TFLayer(tf.keras.layers.Layer):
         self.objective = objective
 
         # Compile the objective, prepare the gradients and whatever else that may be necessary
-        self.comped_objective, self.compile_args, self.weight_vars, self.w_grads, self.i_grads, self.first, \
-        self.second = preamble(objective, compile_args, input_vars)
-
-        self.params_vars = [x.name for x in list(self.weight_vars)]
+        self.comped_objective, self.compile_args, self.input_vars, self.weight_vars, self.i_grads, self.w_grads, \
+        self.first, self.second = preamble(objective, compile_args, input_vars)
 
         # VARIABLES
+        # These variables will hold 1D tensors which each will store the values in the order found by self.input_vars
+        # for the variable in self.input_variable, and in the order found by self.weight_vars for the variable in
+        # self.weight_variable
 
         # If there are inputs, prepare an input tensor as a trainable variable
         # NOTE: if the user specifies values for the inputs, they will be assigned in the set_input_values()
-        if input_vars is not None:
-            initializer = tf.constant_initializer(np.random.uniform(low=0., high=2 * np.pi, size=len(input_vars)))
+        if self.input_vars:
+            initializer = tf.constant_initializer(np.random.uniform(low=0., high=2 * np.pi, size=len(self.input_vars)))
             self.input_variable = self.add_weight(name="input_tensor_variable",
-                                                  shape=(len(input_vars)),
+                                                  shape=(len(self.input_vars)),
                                                   dtype=self._cast_type,
                                                   initializer=initializer,
                                                   trainable=True)
@@ -93,7 +88,7 @@ class TFLayer(tf.keras.layers.Layer):
         if self.weight_vars:
             # Initialize the variable tensor that will hold the weights/parameters/angles
             initializer = tf.constant_initializer(np.random.uniform(low=0., high=2 * np.pi, size=len(self.weight_vars)))
-            self.params_variable = self.add_weight(name="params_tensor_variable",
+            self.weight_variable = self.add_weight(name="params_tensor_variable",
                                                    shape=(len(self.weight_vars)),
                                                    dtype=self._cast_type,
                                                    initializer=initializer,
@@ -101,15 +96,15 @@ class TFLayer(tf.keras.layers.Layer):
 
             # If the user specified initial values for the parameters, use them
             if compile_args is not None and compile_args["initial_values"] is not None:
-                self.params_variable.assign([compile_args["initial_values"][val]
-                                             for val in compile_args["initial_values"]])
+                self.weight_variable.assign([compile_args["initial_values"][val]
+                                             for val in sorted(compile_args["initial_values"])])
         else:
-            self.params_variable = None
+            self.weight_variable = None
 
         # Store extra useful information
         self._input_len = 0
-        if input_vars is not None:
-            self._input_len = len(input_vars)
+        if input_vars:
+            self._input_len = len(self.input_vars)
         self._params_len = len(list(self.weight_vars))
 
         self.samples = None
@@ -138,12 +133,12 @@ class TFLayer(tf.keras.layers.Layer):
             self.set_input_values(input_tensor)
 
         # Case of both inputs and parameters
-        if self.input_vars is not None and self.weight_vars:
-            return self._do(self.input_variable, self.get_params_variable())
+        if self.input_vars and self.weight_vars:
+            return self._do(self.get_inputs_variable(), self.get_params_variable())
 
         # Case of just inputs
-        elif self.input_vars is not None:
-            return self._do_just_input(self.input_variable)
+        elif self.input_vars:
+            return self._do_just_input(self.get_inputs_variable())
 
         # Case of just parameters
         return self._do_just_params(self.get_params_variable())
@@ -369,31 +364,27 @@ class TFLayer(tf.keras.layers.Layer):
 
         # Inputs
         list_inputs = self.get_inputs_list()
-        in_vars = None
         if list_inputs:
-            in_vars = sorted(self.input_vars)
-            for i, in_var_name in enumerate(in_vars):
+            for i, in_var_name in enumerate(self.input_vars):
                 variables[in_var_name] = list_inputs[i]
 
         # Parameters
         list_angles = self.get_params_list()
-        param_vars = None
         if list_angles:
-            param_vars = sorted(self.weight_vars)
-            for p, param_name in enumerate(param_vars):
+            for p, param_name in enumerate(self.weight_vars):
                 variables[param_name] = list_angles[p]
 
         # GETTING THE GRADIENT VALUES
         # Get the gradient values with respect to the inputs
         inputs_grads_values = []
-        if get_input_grads and in_vars:
-            for in_var in sorted(in_vars):
+        if get_input_grads and self.input_vars:
+            for in_var in self.input_vars:
                 self.fill_grads_values(inputs_grads_values, in_var, variables, self.i_grads)
 
         # Get the gradient values with respect to the parameters
         param_grads_values = []
-        if get_param_grads and param_vars:
-            for param_var in sorted(param_vars):  # Iterate through the names of the parameters
+        if get_param_grads and self.weight_vars:
+            for param_var in self.weight_vars:  # Iterate through the names of the parameters
                 self.fill_grads_values(param_grads_values, param_var, variables, self.w_grads)
 
         # Determine what to return
@@ -464,7 +455,7 @@ class TFLayer(tf.keras.layers.Layer):
         grads_values.append(var_results)
 
     def get_params_variable(self):
-        return self.params_variable
+        return self.weight_variable
 
     def get_params_list(self):
         if self.get_params_variable() is not None:
@@ -480,20 +471,20 @@ class TFLayer(tf.keras.layers.Layer):
         return []
 
     def get_input_values(self):
-        # We assume self.input_vars has been sorted at initialization
-        inputs_list = self.get_inputs_list()  # Numbers of the input variable as a list
-        input_values = OrderedDict()
-        for i, value in enumerate(inputs_list):
-            input_values[self.input_vars[i]] = value
-        return input_values
+        # Tensor values is in the order of self.input_vars
+        input_values = self.get_inputs_list()
+        input_values_dict = {}
+        for i, value in enumerate(self.input_vars):
+            input_values_dict[value] = input_values[i]
+        return input_values_dict
 
     def get_params_values(self):
-        # We assume self.params_vars is an OrderedDict with correctly ordered elements
-        params_list = self.get_params_list()  # Numbers of the params variable as a list
-        params_values = OrderedDict()
-        for i, value in enumerate(params_list):
-            params_values[self.params_vars[i]] = value
-        return params_values
+        # Tensor values is in the order of self.weight_vars
+        params_values = self.get_params_list()
+        params_values_dict = {}
+        for i, value in enumerate(self.weight_vars):
+            params_values_dict[value] = params_values[i]
+        return params_values_dict
 
     def set_cast_type(self, datatype):
         """
