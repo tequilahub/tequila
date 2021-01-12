@@ -1383,8 +1383,8 @@ def compile_ch(gate: QGateImpl) -> QCircuit:
     """
     if gate.name.lower() == "h" and gate.is_controlled():
 
-        return Ry(target=gate.target, control=None, angle=numpy.pi / 4) \
+        return Ry(target=gate.target, control=None, angle=-numpy.pi / 4) \
                + Z(target=gate.target, control=gate.control, power=gate.parameter if gate.is_parametrized() else None) \
-               + Ry(target=gate.target, control=None, angle=-numpy.pi / 4)
+               + Ry(target=gate.target, control=None, angle=numpy.pi / 4)
     else:
         return QCircuit.wrap_gate(gate)
