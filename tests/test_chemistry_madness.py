@@ -28,7 +28,7 @@ def test_madness_he_data():
     print(result.energy)
     assert (numpy.isclose(-2.87761809, result.energy, atol=1.e-5))
 
-@pytest.mark.skipif(executable is None, reason="pno_integrals not found")
+@pytest.mark.skipif(executable is None, reason="madness was not found")
 def test_madness_full_he():
     # relies on madness being compiled and MAD_ROOT_DIR exported
     # or pno_integrals in the path
@@ -43,7 +43,22 @@ def test_madness_full_he():
     result = tq.minimize(method="bfgs", objective=E, initial_values=0.0, silent=True)
     assert (numpy.isclose(-2.87761809, result.energy, atol=1.e-5))
 
-@pytest.mark.skipif(executable is None, reason="pno_integrals not found")
+@pytest.mark.skipif(executable is None, reason="madness was not found")
+def test_madness_full_li_plus():
+    # relies on madness being compiled and MAD_ROOT_DIR exported
+    # or pno_integrals in the path
+    geomstring="Li 0.0 0.0 0.0"
+    molecule = tq.Molecule(name="li+", geometry=geomstring, n_pno=1, charge=1)
+    H = molecule.make_hamiltonian()
+    UHF = molecule.prepare_reference()
+    EHF = tq.simulate(tq.ExpectationValue(H=H, U=UHF))
+    assert(numpy.isclose(-7.236247e+00, EHF, atol=1.e-5))
+    U = molecule.make_upccgsd_ansatz()
+    E = tq.ExpectationValue(H=H, U=U)
+    result = tq.minimize(method="bfgs", objective=E, initial_values=0.0, silent=True)
+    assert (numpy.isclose(-7.251177798, result.energy, atol=1.e-5))
+
+@pytest.mark.skipif(executable is None, reason="madness was not found")
 def test_madness_full_be():
     # relies on madness being compiled and MAD_ROOT_DIR exported
     # or pno_integrals in the path
