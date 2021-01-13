@@ -43,10 +43,6 @@ class TFLayer(tf.keras.layers.Layer):
         # set_cast_type()
         self._cast_type = tf.float32
 
-        # Store the list of the names of the variables which will be considered as inputs
-        if input_vars is not None:
-            input_vars = sorted(input_vars)
-
         self.objective = objective
         # Store the objective and vectorize it if necessary
         if isinstance(objective, tuple) or isinstance(objective, list):
@@ -96,8 +92,10 @@ class TFLayer(tf.keras.layers.Layer):
 
             # If the user specified initial values for the parameters, use them
             if compile_args is not None and compile_args["initial_values"] is not None:
+                # Assign them in the order given by self.second
+                toVariable = [self.second[i] for i in self.second]  # Variable names in the correct order
                 self.weight_variable.assign([compile_args["initial_values"][val]
-                                             for val in sorted(compile_args["initial_values"])])
+                                             for val in toVariable])
         else:
             self.weight_variable = None
 
@@ -365,26 +363,26 @@ class TFLayer(tf.keras.layers.Layer):
         # Inputs
         list_inputs = self.get_inputs_list()
         if list_inputs:
-            for i, in_var_name in enumerate(self.input_vars):
-                variables[in_var_name] = list_inputs[i]
+            for i in self.first:
+                variables[self.first[i]] = list_inputs[i]
 
         # Parameters
         list_angles = self.get_params_list()
         if list_angles:
-            for p, param_name in enumerate(self.weight_vars):
-                variables[param_name] = list_angles[p]
+            for w in self.second:
+                variables[self.second[w]] = list_angles[w]
 
         # GETTING THE GRADIENT VALUES
         # Get the gradient values with respect to the inputs
         inputs_grads_values = []
-        if get_input_grads and self.input_vars:
-            for in_var in self.input_vars:
+        if get_input_grads and self.first:
+            for in_var in self.first.values():
                 self.fill_grads_values(inputs_grads_values, in_var, variables, self.i_grads)
 
         # Get the gradient values with respect to the parameters
         param_grads_values = []
-        if get_param_grads and self.weight_vars:
-            for param_var in self.weight_vars:  # Iterate through the names of the parameters
+        if get_param_grads and self.second:
+            for param_var in self.second.values():  # Iterate through the names of the parameters
                 self.fill_grads_values(param_grads_values, param_var, variables, self.w_grads)
 
         # Determine what to return
@@ -406,8 +404,7 @@ class TFLayer(tf.keras.layers.Layer):
         """
         # If the input is a dictionary
         if isinstance(initial_input_values, dict):
-            initial_input_values = OrderedDict(sorted(initial_input_values.items()))
-            input_values_tensor = tf.convert_to_tensor([initial_input_values[i] for i in initial_input_values])
+            input_values_tensor = tf.convert_to_tensor([initial_input_values[i] for i in self.first.values()])
 
             # Check that input variables are expected
             if self.input_vars is not None:
@@ -416,13 +413,15 @@ class TFLayer(tf.keras.layers.Layer):
                     self.input_variable.assign(input_values_tensor)
                 else:
                     raise TequilaMLException("Input tensor has shape {} which does not match "
-                                             "the {} inputs expected".format(input_values_tensor.shape, self._input_len))
+                                             "the {} inputs expected".format(input_values_tensor.shape,
+                                                                             self._input_len))
             else:
                 raise TequilaMLException("No input variables were expected.")
         # If the input is a tensor
         elif isinstance(initial_input_values, tf.Tensor):
             if initial_input_values.shape == self._input_len:
-                # We have no information about which value corresponds to which variable, so we assume alphabetical order
+                # We have no information about which value corresponds to which variable, so we assume that the user
+                # knows that the order will be the same as in self.first
                 self.input_variable.assign(initial_input_values)
             else:
                 raise TequilaMLException("Input tensor has shape {} which does not match "
