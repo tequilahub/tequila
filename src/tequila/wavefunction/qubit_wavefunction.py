@@ -27,7 +27,11 @@ class QubitWaveFunction:
         self.n_qubits = keymap.n_qubits
         mapped_state = dict()
         for k, v in self.state.items():
-            mapped_state[keymap(input_state=k, initial_state=initial_state)] = v
+            mapped_key=keymap(input_state=k, initial_state=initial_state)
+            if mapped_key in mapped_state:
+                mapped_state[mapped_key] += v
+            else:
+                mapped_state[mapped_key] = v
 
         self.state = mapped_state
         return self
