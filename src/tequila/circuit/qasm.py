@@ -7,7 +7,6 @@ https://arxiv.org/pdf/1707.03429v2.pdf
 """
 from tequila import TequilaException
 from tequila.circuit import QCircuit
-from tequila.tools import list_assignment
 from tequila.circuit.compiler import Compiler
 from tequila.circuit.gates import *
 from numpy import pi
@@ -66,7 +65,7 @@ def import_open_qasm(qasm_code: str, variables=None, version: str = "2.0", rigor
     return result
 
 
-def import_open_qasm_from_file(filename: str, variables=None, version: str = " 2.0", rigorous: bool = True) -> QCircuit:
+def import_open_qasm_from_file(filename: str, variables=None, version: str = "2.0", rigorous: bool = True) -> QCircuit:
     """
     Allow import from different versions of OpenQASM from a file
 
@@ -376,10 +375,8 @@ def apply_custom_gate(custom_circuit: QCircuit, qregisters_values: list) -> QCir
     applied_custom_circuit = QCircuit()
     for gate in custom_circuit.gates:
         g = gate.copy()
-        g._target = tuple(list_assignment([qregisters_values[i] for i in gate._target]))
-        g._control = tuple(list_assignment([qregisters_values[i] for i in gate._control])) if gate.is_controlled() else gate._control
-        # g._target = tuple([qregisters_values[i] for i in gate._target])
-        # g._control = tuple([qregisters_values[i] for i in gate._control]) if gate.is_controlled() else gate._control
+        g._target = tuple([qregisters_values[i] for i in gate._target])
+        g._control = tuple([qregisters_values[i] for i in gate._control]) if gate.is_controlled() else gate._control
         applied_custom_circuit += g
     return applied_custom_circuit
 
