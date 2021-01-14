@@ -132,12 +132,8 @@ class QGateImpl:
     def map_qubits(self, qubit_map: dict):
         mapped = copy.deepcopy(self)
         mapped._target = tuple([qubit_map[i] for i in self.target])
-        qubits = mapped._target
         if self.control is not None:
             mapped._control = tuple([qubit_map[i] for i in self.control])
-            qubits += mapped._control
-        mapped._qubits = sorted(tuple(set(qubits)))
-        mapped._max_qubit = mapped.compute_max_qubit()
         if hasattr(self, "generator"):
             mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
         if hasattr(self, "generators"):
