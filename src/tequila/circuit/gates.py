@@ -680,25 +680,25 @@ def CRz(control: int, target: int, angle: float) -> QCircuit:
     return Rz(target=target, control=control, angle=angle)
 
 
-def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
     Notes
     ----------
     Convenient gate, one of the abstract gates defined by OpenQASM.
 
     .. math::
-        U(\\theta, \\phi, \\lambda) = R_z(\\phi + 3\\pi)R_x(\\pi/2)R_z(\\theta + \\pi)R_x(\\pi/2)R_z(\\lambda)
+        U(\\theta, \\phi, \\lambda) = R_z(\\phi)R_x(-\\pi/2)R_z(\\theta)R_x(\\pi/2)R_z(\\lambda)
         U(\\theta, \\phi, \\lambda) = \\begin{pmatrix}
-                                            e^{-i \\frac{\\phi+3\\pi}{2}} & 0 \\\\
-                                            0 & e^{i \\frac{\\phi+3\\pi}{2}}
+                                            e^{-i \\frac{\\phi}{2}} & 0 \\\\
+                                            0 & e^{i \\frac{\\phi}{2}}
                                         \\end{pmatrix}
                                         \\begin{pmatrix}
-                                            \\cos{\\frac{\\pi}{4}} & -i \\sin{\\frac{\pi}{4}} \\\\
-                                            -i \\sin{\\frac{\\pi}{4}} & \\cos{\\frac{\\pi}{4}}
+                                            \\cos{-\\frac{\\pi}{4}} & -i \\sin{-\\frac{\pi}{4}} \\\\
+                                            -i \\sin{-\\frac{\\pi}{4}} & \\cos{-\\frac{\\pi}{4}}
                                         \\end{pmatrix}
                                         \\begin{pmatrix}
-                                            e^{-i \\frac{\\theta+\\pi}{2}} & 0 \\\\
-                                            0 & e^{i \\frac{\\theta+\\pi}{2}}
+                                            e^{-i \\frac{\\theta}{2}} & 0 \\\\
+                                            0 & e^{i \\frac{\\theta}{2}}
                                         \\end{pmatrix}
                                         \\begin{pmatrix}
                                             \\cos{\\frac{\\pi}{4}} & -i \\sin{\\frac{\\pi}{4}} \\\\
@@ -709,13 +709,12 @@ def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[
                                             0 & e^{i \\frac{\\lambda}{2}}
                                         \\end{pmatrix}
 
-        U(\\theta, \\phi, \\lambda) = \\frac{1}{2}
-                                        \\begin{pmatrix}
-                                            e^{-\\frac{i}{2} (\\lambda+\\phi-\\theta)}+e^{\\frac{i}{2} (\\theta-\\phi-\\lambda)} &
-                                            i e^{\\frac{i}{2} (\\lambda+\\theta-\\phi)}- i e^{\\frac{i}{2} (\\lambda-\\phi+\\theta)} \\\\
-                                            i e^{\\frac{i}{2} (\\phi-\\theta-\\lambda)}- i e^{-\\frac{i}{2} (\\lambda+\\phi+\\theta)} &
-                                            e^{\\frac{i}{2} (\\lambda+\\phi-\\theta)}+e^{\\frac{i}{2} (\\lambda-\\phi-\\theta)}
-                                        \\end{pmatrix}
+        U(\\theta, \\phi, \\lambda) = \\begin{pmatrix}
+                                        \\cos{\\frac{\\theta}{2}} &
+                                        -e^{i \\lambda} \\sin{\\frac{\\theta}{2}} \\\\
+                                        e^{i \\phi} \\sin{\\frac{\\theta}{2}} &
+                                        e^{i (\\phi+\\lambda)} \\cos{\\frac{\\theta}{2}}
+                                      \\end{pmatrix}
 
     Parameters
     ----------
@@ -733,7 +732,6 @@ def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[
     Returns
     -------
     QCircuit object
-
     """
 
     theta = assign_variable(theta)
@@ -741,14 +739,14 @@ def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[
     lambd = assign_variable(lambd)
     pi_half = assign_variable(np.pi / 2)
 
-    return Rz(angle=phi + 3 * np.pi, target=target, control=control) + \
-           Rx(angle=pi_half,         target=target, control=control) + \
-           Rz(angle=theta + np.pi,   target=target, control=control) + \
-           Rx(angle=pi_half,         target=target, control=control) + \
-           Rz(angle=lambd,           target=target, control=control)
+    return Rz(angle=lambd, target=target, control=control) + \
+           Rx(angle=pi_half, target=target, control=control) + \
+           Rz(angle=theta, target=target, control=control) + \
+           Rx(angle=-pi_half, target=target, control=control) + \
+           Rz(angle=phi, target=target, control=control)
 
 
-def u1(lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+def u1(lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
     Notes
     ----------
@@ -756,7 +754,12 @@ def u1(lambd, target: typing.Union[list, int], control: typing.Union[list, int] 
     Changes the phase of a carrier without applying any pulses.
 
     .. math::
-        u1(\\lambda) = U(0, 0, \\lambda) = R_z(\\lambda) = R_{z}(\\lambda) = e^{-i\\frac{\\lambda}{2} \\sigma_{z}}
+        from OpenQASM 2.0 specification:
+            u1(\\lambda) \\sim U(0, 0, \\lambda) = R_z(\\lambda) = e^{-i\\frac{\\lambda}{2} \\sigma_{z}}
+        also is equal to:
+            u1(\\lambda) = \\begin{pmatrix} 1 & 0 \\\\ 0 & e^{i\\lambda} \\end{pmatrix}
+        which is the Tequila Phase gate:
+            u1(\\lambda) = Phase(\\lambda)
 
     Parameters
     ----------
@@ -770,15 +773,12 @@ def u1(lambd, target: typing.Union[list, int], control: typing.Union[list, int] 
     Returns
     -------
     QCircuit object
-
     """
 
-    lambd = assign_variable(lambd)
-
-    return U(theta=0, phi=0, lambd=lambd, target=target, control=control)
+    return Phase(phi=lambd, target=target, control=control)
 
 
-def u2(phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+def u2(phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
     Notes
     ----------
@@ -787,6 +787,12 @@ def u2(phi, lambd, target: typing.Union[list, int], control: typing.Union[list, 
 
     .. math::
         u2(\\phi, \\lambda) = U(\\pi/2, \\phi, \\lambda) = R_z(\\phi + \\pi/2)R_x(\\pi/2)R_z(\\lambda - \\pi/2)
+
+        u2(\\phi, \\lambda) = \\frac{1}{\\sqrt{2}}
+                              \\begin{pmatrix}
+                                    1          & -e^{i\\lambda} \\\\
+                                    e^{i\\phi} & e^{i(\\\phi+\\lambda)}
+                              \\end{pmatrix}
 
     Parameters
     ----------
@@ -802,16 +808,12 @@ def u2(phi, lambd, target: typing.Union[list, int], control: typing.Union[list, 
     Returns
     -------
     QCircuit object
-
     """
-
-    phi = assign_variable(phi)
-    lambd = assign_variable(lambd)
 
     return U(theta=np.pi/2, phi=phi, lambd=lambd, target=target, control=control)
 
 
-def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None):
+def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
     Notes
     ----------
@@ -821,6 +823,12 @@ def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union
 
     .. math::
         u3(\\theta, \\phi, \\lambda) = U(\\theta, \\phi, \\lambda)
+                                     = \\begin{pmatrix}
+                                            \\cos{\\frac{\\5theta}{2}} &
+                                            -e^{i \\lambda} \\sin{\\frac{\\theta}{2}} \\\\
+                                            e^{i \\phi} \\sin{\\frac{\\theta}{2}} &
+                                            e^{i (\\phi+\\lambda)} \\cos{\\frac{\\theta}{2}}
+                                       \\end{pmatrix}
 
     Parameters
     ----------
@@ -838,12 +846,7 @@ def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union
     Returns
     -------
     QCircuit object
-
     """
-
-    theta = assign_variable(theta)
-    phi = assign_variable(phi)
-    lambd = assign_variable(lambd)
 
     return U(theta=theta, phi=phi, lambd=lambd, target=target, control=control)
 
