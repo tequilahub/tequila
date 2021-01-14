@@ -297,7 +297,6 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
     if name == "qreg":
         regname, sizep = args[0].split("[", 1)
         size = int(sizep[:-1])
-        #qregisters[regname] = range(len(qregisters), size)
         for i in range(size):
             qregisters[regname + "[" + str(i) + "]"] = len(qregisters)
         return None

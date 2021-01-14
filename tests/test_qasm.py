@@ -195,3 +195,40 @@ def test_export_import_qasm_file(zx_calculus, variabs):
     assert (numpy.isclose(wfn1.inner(wfn3), 1.0))
     assert (numpy.isclose(wfn2.inner(wfn3), 1.0))
 
+
+def test_import_qasm_with_custom_gates():
+
+    openqasmcode = "OPENQASM 2.0;\n" \
+                   "include \"qelib1.inc\";\n" \
+                   "gate mycustom a,b,c\n" \
+                   "{\n" \
+                   "cx c,b;\n" \
+                   "cx c,a;\n" \
+                   "}\n" \
+                   "qreg q1[3];\n" \
+                   "qreg q2[4];\n" \
+                   "creg c[3];\n" \
+                   "y q1[1];\n" \
+                   "z q2[2];\n" \
+                   "mycustom q1[0],q2[0],q1[2];\n" \
+                   "h q2[1];\n" \
+                   "mycustom q2[3],q1[1],q2[2];\n" \
+                   "y q2[1];\n"
+
+    imported_circuit = import_open_qasm(qasm_code=openqasmcode)
+
+    # openqasm   -> tequila qbits
+    # qreg q1[3] -> 0, 1, 2
+    # qreg q2[4] -> 3, 4, 5, 6
+
+    tequila_circuit = Y(target=1) + Z(target=5) + \
+                      CX(target=3, control=2) + CX(target=3, control=0) + \
+                      H(target=4) + \
+                      CX(target=1, control=5) + CX(target=6, control=5) + \
+                      Y(target=4)
+
+    wfn1 = simulate(tequila_circuit, backend="symbolic")
+    wfn2 = simulate(imported_circuit, backend="symbolic")
+
+    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+
