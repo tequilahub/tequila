@@ -18,7 +18,7 @@ def test_qubit_map():
         assert len(mapped.gates) == len(U2.gates)
         for i in range(len(mapped.gates)):
             for k, v in mapped.gates[i].__dict__.items():
-                assert U2.gates[i].__dict__[k] == v   # error because _qubits and _max_qubit don't exist anymore in U2 (this comment will be deleted)
+                assert U2.gates[i].__dict__[k] == v
 
     for gate in [H, X, Y, Z]:
         U1 = gate(target=0, control=1)
