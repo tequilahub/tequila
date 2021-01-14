@@ -693,7 +693,7 @@ def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[
                                             0 & e^{i \\frac{\\phi}{2}}
                                         \\end{pmatrix}
                                         \\begin{pmatrix}
-                                            \\cos{-\\frac{\\pi}{4}} & -i \\sin{-\\frac{\pi}{4}} \\\\
+                                            \\cos{-\\frac{\\pi}{4}} & -i \\sin{-\\frac{\\pi}{4}} \\\\
                                             -i \\sin{-\\frac{\\pi}{4}} & \\cos{-\\frac{\\pi}{4}}
                                         \\end{pmatrix}
                                         \\begin{pmatrix}
@@ -791,7 +791,7 @@ def u2(phi, lambd, target: typing.Union[list, int], control: typing.Union[list, 
         u2(\\phi, \\lambda) = \\frac{1}{\\sqrt{2}}
                               \\begin{pmatrix}
                                     1          & -e^{i\\lambda} \\\\
-                                    e^{i\\phi} & e^{i(\\\phi+\\lambda)}
+                                    e^{i\\phi} & e^{i(\\phi+\\lambda)}
                               \\end{pmatrix}
 
     Parameters
