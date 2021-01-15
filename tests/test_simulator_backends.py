@@ -56,6 +56,16 @@ def test_interface(backend):
 INSTALLED_SIMULATORS = tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys()
 INSTALLED_SAMPLERS = tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys()
 
+@pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
+def test_sampling_accumulation(backend):
+    # minimal test that was added after a bug was discovered
+    # just needs to asssure that it runs through and no errors are thrown within the process
+    U = tq.gates.Ry(angle=numpy.pi/2, target=0) + tq.gates.CNOT(1,3)
+    H = tq.paulis.Qm(1)
+    E = tq.ExpectationValue(H=H, U=U)
+    result = tq.simulate(E, backend=backend, samples=100)
+    assert result == 0.0
+
 
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
 def test_sampling_circuits(backend):

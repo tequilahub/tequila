@@ -22,7 +22,7 @@ Currently supported
 
 Tequila detects backends automatically if they are installed on your systems.  
 All of them are available over standard pip installation like for example `pip install qulacs`.  
-For best performance tt is recommended to have `qulacs` installed.
+For best performance it is recommended to have `qulacs` installed.
 
 # QuantumChemistry:
 Currently supported
