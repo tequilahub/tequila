@@ -12,6 +12,8 @@ except ImportError:
     HAS_PYZX = False
 
 
+@pytest.mark.skipif(not HAS_PYZX,
+                    reason="Pyzx package not installed, test_convert_to_from_pyzx_simple not executed")
 @pytest.mark.parametrize(
     "tequila_circuit",
     [
@@ -34,6 +36,8 @@ def test_convert_to_from_pyzx_simple(tequila_circuit):
     assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
 
 
+@pytest.mark.skipif(not HAS_PYZX,
+                    reason="Pyzx package not installed, test_convert_to_from_pyzx not executed")
 @pytest.mark.parametrize(
     "variabs",
     [
@@ -87,6 +91,8 @@ def test_convert_to_from_pyzx(variabs):
     assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
 
 
+@pytest.mark.skipif(not HAS_PYZX,
+                    reason="Pyzx package not installed, test_convert_to_from_pyzx_trotterized_gate not executed")
 @pytest.mark.parametrize(
     "string1,string2,angles,steps",
     [
@@ -114,23 +120,22 @@ def test_convert_to_from_pyzx_trotterized_gate(string1, string2, angles, steps):
     assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
 
 
+@pytest.mark.skipif(not HAS_PYZX,
+                    reason="Pyzx package not installed, test_convert_from_pyzx_exception not executed")
 def test_convert_from_pyzx_exception():
 
-    if HAS_PYZX:
+    pyzx_circuit = pyzx.circuit.Circuit(qubit_amount=1)
+    tequila_circuit = QCircuit()
 
-        pyzx_circuit = pyzx.circuit.Circuit(qubit_amount=1)
-        tequila_circuit = QCircuit()
+    with pytest.raises(expected_exception=TequilaException,
+                       match="Circuit provided must be of type pyzx.circuit.Circuit"):
+        convert_from_pyzx(tequila_circuit)
 
-        with pytest.raises(expected_exception=TequilaException,
-                           match="Circuit provided must be of type pyzx.circuit.Circuit"):
-            convert_from_pyzx(tequila_circuit)
-
-        assert (isinstance(convert_from_pyzx(pyzx_circuit), QCircuit))
-
-    else:
-        print("\nPyzx package not installed, test_convert_from_pyzx_exception not executed")
+    assert (isinstance(convert_from_pyzx(pyzx_circuit), QCircuit))
 
 
+@pytest.mark.skipif(not HAS_PYZX,
+                    reason="Pyzx package not installed, test_convert_to_from_pyzx_optimizing_circuit not executed")
 @pytest.mark.parametrize(
     "tequila_circuit,t_reduce",
     [
@@ -144,35 +149,30 @@ def test_convert_from_pyzx_exception():
 )
 def test_convert_to_from_pyzx_optimizing_circuit(tequila_circuit, t_reduce):
 
-    if HAS_PYZX:
+    pyzx_circuit = convert_to_pyzx(tequila_circuit)
 
-        pyzx_circuit = convert_to_pyzx(tequila_circuit)
+    pyzx_graph = pyzx_circuit.to_graph()
 
-        pyzx_graph = pyzx_circuit.to_graph()
-
-        if t_reduce:
-            pyzx.teleport_reduce(pyzx_graph)
-            pyzx_circuit_opt = pyzx.Circuit.from_graph(pyzx_graph)
-        else:
-            pyzx.full_reduce(pyzx_graph)
-            pyzx_graph.normalize()
-            pyzx_circuit_opt = pyzx.extract_circuit(pyzx_graph.copy())
-
-        # compare_tensors returns True if pyzx_circuit and pyzx_circuit_opt
-        # implement the same circuit (up to global phase)
-        assert (pyzx.compare_tensors(pyzx_circuit, pyzx_circuit_opt))
-
-        # verify_equality return True if full_reduce() is able to reduce the
-        # composition of the circuits to the identity
-        assert (pyzx_circuit.verify_equality(pyzx_circuit_opt))
-
-        converted_circuit = convert_from_pyzx(pyzx_circuit_opt)
-
-        wfn1 = simulate(tequila_circuit, backend="symbolic")
-        wfn2 = simulate(converted_circuit, backend="symbolic")
-
-        assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
-
+    if t_reduce:
+        pyzx.teleport_reduce(pyzx_graph)
+        pyzx_circuit_opt = pyzx.Circuit.from_graph(pyzx_graph)
     else:
-        print("\nPyzx package not installed, test_convert_to_from_pyzx_optimizing_circuit not executed")
+        pyzx.full_reduce(pyzx_graph)
+        pyzx_graph.normalize()
+        pyzx_circuit_opt = pyzx.extract_circuit(pyzx_graph.copy())
+
+    # compare_tensors returns True if pyzx_circuit and pyzx_circuit_opt
+    # implement the same circuit (up to global phase)
+    assert (pyzx.compare_tensors(pyzx_circuit, pyzx_circuit_opt))
+
+    # verify_equality return True if full_reduce() is able to reduce the
+    # composition of the circuits to the identity
+    assert (pyzx_circuit.verify_equality(pyzx_circuit_opt))
+
+    converted_circuit = convert_from_pyzx(pyzx_circuit_opt)
+
+    wfn1 = simulate(tequila_circuit, backend="symbolic")
+    wfn2 = simulate(converted_circuit, backend="symbolic")
+
+    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
 
