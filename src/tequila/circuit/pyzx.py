@@ -16,7 +16,7 @@ from tequila import export_open_qasm, import_open_qasm
 from tequila.circuit import QCircuit
 
 
-def convert_to_pyzx(circuit: QCircuit, variables=None) -> pyzx.circuit.Circuit:
+def convert_to_pyzx(circuit: QCircuit, variables=None):
     """
     Allow convert from Tequila circuit to pyzx circuit
 
