@@ -1,4 +1,4 @@
-from tequila.utils import TequilaException, to_float
+from tequila.utils import TequilaException, to_float, TequilaWarning
 from tequila.circuit.circuit import QCircuit
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila.utils.misc import to_float
@@ -8,7 +8,7 @@ from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
 
-import numbers, typing, numpy, copy
+import numbers, typing, numpy, copy, warnings
 
 from dataclasses import dataclass
 
@@ -177,8 +177,10 @@ class BackendCircuit():
                         "This is not fully integrated and might result in unexpected behaviour!"
                           .format(qubit_map), TequilaWarning)
 
-            if len(qubit_map) >= abstract_circuit.max_qubit():
-                raise TequilaException("Custom qubit_map has too many qubits {} vs {}".format(len(qubit_map), abstract_circuit.max_qubit()))
+            if len(qubit_map) > abstract_circuit.max_qubit()+1:
+                raise TequilaException("Custom qubit_map has too many qubits {} vs {}".format(len(qubit_map), abstract_circuit.max_qubit()+1))
+            if max(qubit_map.keys()) > abstract_circuit.max_qubit():
+                raise TequilaException("Custom qubit_map tries to assign qubit {} but we only have {}".format(max(qubit_map.keys()), abstract_circuit.max_qubit()))
 
         # qubit map is initialized to have BackendQubits as values (they carry number and instance attributes)
         self.qubit_map = self.make_qubit_map(qubit_map)
