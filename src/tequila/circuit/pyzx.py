@@ -11,7 +11,7 @@ try:
 except ImportError:
     HAS_PYZX = False
 
-
+from tequila import TequilaException
 from tequila import export_open_qasm, import_open_qasm
 from tequila.circuit import QCircuit
 
@@ -33,17 +33,20 @@ def convert_to_pyzx(circuit: QCircuit, variables=None) -> pyzx.circuit.Circuit:
         raise TequilaException("Pyzx package not installed.")
 
 
-def convert_from_pyzx(circuit: pyzx.circuit.Circuit) -> QCircuit:
+def convert_from_pyzx(circuit) -> QCircuit:
     """
     Allow convert from pyzx circuit to Tequila circuit
 
     Args:
-        circuit: in pyzx format to be exported to Tequila circuit
+        circuit: in pyzx format (pyzx.circuit.Circuit) to be exported to Tequila circuit
 
     Returns:
         QCircuit: Tequila circuit
     """
     if HAS_PYZX:
-        return import_open_qasm(circuit.to_qasm(), version="2.0")
+        if isinstance(circuit, pyzx.circuit.Circuit):
+            return import_open_qasm(circuit.to_qasm(), version="2.0")
+        else:
+            raise TequilaException("Circuit provided must be of type pyzx.circuit.Circuit")
     else:
         raise TequilaException("Pyzx package not installed.")

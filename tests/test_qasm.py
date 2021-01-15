@@ -73,7 +73,7 @@ def test_export_import_qasm(zx_calculus, variabs):
                       CRx(target=5, control=8, angle="ang4") + \
                       CRy(target=6, control=9, angle="ang5") + \
                       CRz(target=7, control=0, angle="ang6") + \
-                      Phase(control=0, target=1, phi=5.89) + \
+                      Phase(control=0, target=1, phi="ang1") + \
                       S(target=1, control=0) + \
                       T(target=1, control=2) + \
                       Rp(paulistring="Y(1)", angle="ang7") + \
