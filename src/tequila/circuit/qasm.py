@@ -42,13 +42,12 @@ def export_open_qasm(circuit: QCircuit, variables=None, version: str = "2.0", fi
     return result
 
 
-def import_open_qasm(qasm_code: str, variables=None, version: str = "2.0", rigorous: bool = True) -> QCircuit:
+def import_open_qasm(qasm_code: str, version: str = "2.0", rigorous: bool = True) -> QCircuit:
     """
     Allow import from different versions of OpenQASM
 
     Args:
         qasm_code: string with the OpenQASM code
-        variables: optional dictionary with values for variables
         version: of the OpenQASM specification, optional
         rigorous: indicates whether the QASM code should be read rigorously
 
@@ -57,7 +56,7 @@ def import_open_qasm(qasm_code: str, variables=None, version: str = "2.0", rigor
     """
 
     if version == "2.0":
-        result = parse_from_open_qasm_2(qasm_code=qasm_code, variables=variables, rigorous=rigorous)
+        result = parse_from_open_qasm_2(qasm_code=qasm_code, rigorous=rigorous)
     else:
         return "Unsupported OpenQASM version : " + version
     # TODO: export to version 3
@@ -65,7 +64,7 @@ def import_open_qasm(qasm_code: str, variables=None, version: str = "2.0", rigor
     return result
 
 
-def import_open_qasm_from_file(filename: str, variables=None, version: str = "2.0", rigorous: bool = True) -> QCircuit:
+def import_open_qasm_from_file(filename: str, version: str = "2.0", rigorous: bool = True) -> QCircuit:
     """
     Allow import from different versions of OpenQASM from a file
 
@@ -83,7 +82,7 @@ def import_open_qasm_from_file(filename: str, variables=None, version: str = "2.
         qasm_code = file.read()
         file.close()
 
-    return import_open_qasm(qasm_code, variables=variables, version=version, rigorous=rigorous)
+    return import_open_qasm(qasm_code, version=version, rigorous=rigorous)
 
 
 def convert_to_open_qasm_2(circuit: QCircuit, variables=None, zx_calculus: bool = False) -> str:
@@ -186,7 +185,7 @@ def name_and_params(g, variables):
     return res
 
 
-def parse_from_open_qasm_2(qasm_code: str, variables=None, rigorous: bool = True) -> QCircuit:
+def parse_from_open_qasm_2(qasm_code: str, rigorous: bool = True) -> QCircuit:
 
     lines = qasm_code.splitlines()
     clean_code = []
