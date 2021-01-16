@@ -342,7 +342,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
         else:
             return abstract_circuit
 
-    return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device)
+    return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device, *args, **kwargs)
 
 
 def simulate(objective: typing.Union['Objective', 'QCircuit'],
