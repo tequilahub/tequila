@@ -97,6 +97,16 @@ class QGateImpl:
             for c in self.target:
                 if c in self.control:
                     raise Exception("control and target are the same qubit: " + self.__str__())
+        if hasattr(self,"generator") and self.generator:
+            if set(list(self.generator.qubits)) != set(list(self.target)):
+                raise Exception("qubits of generator and targets don't agree -- mapping error?\n gate = {}".format(self.__str__()))
+        if hasattr(self, "generators"):
+            genq = []
+            for generator in self.generators:
+                genq += generator.qubits
+            if set(list(genq)) != set(list(self.target)):
+                raise Exception("qubits of generator and targets don't agree -- mapping error?\n gate = {}".format(self.__str__()))
+
 
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
@@ -138,8 +148,10 @@ class QGateImpl:
             qubits += mapped._control
         mapped._qubits = sorted(tuple(set(qubits)))
         mapped._max_qubit = mapped.compute_max_qubit()
-        if self.generator:
-            mapped.generator = self.generator.map_qubits(qubit_map)
+        if hasattr(self, "generator") and self.generator::
+            mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
+        if hasattr(self, "generators"):
+            mapped.generators = [i.map_qubits(qubit_map=qubit_map) for i in self.generators]
         mapped.finalize()
         return mapped
 
@@ -450,8 +462,3 @@ class TrotterizedGateImpl(QGateImpl):
             angles.append(-angle)
         result.angles = angles
         return result
-
-    def map_qubits(self, qubit_map: dict):
-        mapped = super().map_qubits(qubit_map=qubit_map)
-        mapped.generators = [generator.map_qubits(qubit_map=qubit_map) for generator in mapped.generators]
-        return mapped

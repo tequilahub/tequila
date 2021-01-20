@@ -80,7 +80,7 @@ def show_available_optimizers(module=None):
 def minimize(method: str,
              objective,
              variables: list=None,
-             initial_values: dict=None,
+             initial_values: typing.Union[dict,numbers.Number]=None,
              maxiter: int=None,
              *args,
              **kwargs):
