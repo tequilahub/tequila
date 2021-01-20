@@ -148,7 +148,7 @@ class QGateImpl:
             qubits += mapped._control
         mapped._qubits = sorted(tuple(set(qubits)))
         mapped._max_qubit = mapped.compute_max_qubit()
-        if hasattr(self, "generator") and self.generator::
+        if hasattr(self, "generator") and self.generator:
             mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
         if hasattr(self, "generators"):
             mapped.generators = [i.map_qubits(qubit_map=qubit_map) for i in self.generators]
