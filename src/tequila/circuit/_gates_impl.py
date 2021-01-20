@@ -276,6 +276,15 @@ class PhaseGateImpl(DifferentiableGateImpl):
 
 
 class PowerGateImpl(ParametrizedGateImpl):
+    """
+    Attributes
+    ---------
+    power
+        numeric type (fixed exponent) or hashable type (parametrized exponent)
+    parameter
+        power multiplied by pi
+        to be consitent with exp(-i a/2 G) representation [a: gate.parameter, G: gate.generator]
+    """
 
     @property
     def power(self):
@@ -291,7 +300,10 @@ class PowerGateImpl(ParametrizedGateImpl):
 
     def dagger(self):
         result = copy.deepcopy(self)
+        result._parameter = assign_variable(-self.parameter)
+        result._power = assign_variable(-self.power)
         return result
+
 
 class GeneralizedRotationImpl(DifferentiableGateImpl):
     """

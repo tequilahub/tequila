@@ -277,7 +277,7 @@ class Compiler:
                 cg = compile_phase(gate=cg)
             if controlled:
                 if self.cc_max:
-                    cg = compile_to_cc(gate=cg)
+                    cg = compile_to_single_control(gate=cg)
                 if self.controlled_exponential_pauli:
                     cg = compile_exponential_pauli_gate(gate=cg)
                 if self.controlled_power:
@@ -476,7 +476,7 @@ def compile_controlled_rotation(gate: RotationGateImpl) -> QCircuit:
 
 
 @compiler
-def compile_to_cc(gate) -> QCircuit:
+def compile_to_single_control(gate) -> QCircuit:
     """
     break down a gate into a sequence with no more than single-controlled gates.
     Parameters
@@ -504,13 +504,13 @@ def compile_to_cc(gate) -> QCircuit:
             power = 1.0
         new = PowerGateImpl(name=name, power=power, target=target, control=control)
         partial = compile_power_gate(gate=new)
-        back += compile_to_cc(gate=partial)
+        back += compile_to_single_control(gate=partial)
     elif isinstance(gate, RotationGateImpl):
         partial = compile_controlled_rotation(gate=gate)
-        back += compile_to_cc(gate=partial)
+        back += compile_to_single_control(gate=partial)
     elif isinstance(gate, PhaseGateImpl):
         partial = compile_controlled_phase(gate=gate)
-        back += compile_to_cc(gate=partial)
+        back += compile_to_single_control(gate=partial)
     else:
         print(gate)
         raise TequilaException('frankly, what the fuck is this gate?')
