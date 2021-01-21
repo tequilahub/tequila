@@ -1,6 +1,6 @@
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, Y
+from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, Y, S, CX
 from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
@@ -54,7 +54,10 @@ class Compiler:
                  controlled_rotation=False,
                  swap=False,
                  cc_max=False,
-                 gradient_mode=False
+                 gradient_mode=False,
+                 ry_gate=False,
+                 y_gate=False,
+                 ch_gate=False
                  ):
 
         """
@@ -93,6 +96,12 @@ class Compiler:
             whether or not to break down swap gates into CNOT gates.
         cc_max:
             whether or not to break down all controlled gates with 2 or more controls.
+        ry_gate:
+            whether or not to break down all rotational y gates
+        y_gate:
+            whether or not to break down all y gates
+        ch_gate:
+            whether or not to break down all controlled-H gates
         """
         self.multitarget = multitarget
         self.multicontrol = multicontrol
@@ -111,6 +120,9 @@ class Compiler:
         self.swap = swap
         self.cc_max = cc_max
         self.gradient_mode = gradient_mode
+        self.ry_gate = ry_gate
+        self.y_gate = y_gate
+        self.ch_gate = ch_gate
 
     def __call__(self, objective: typing.Union[Objective, QCircuit, ExpectationValueImpl], variables=None, *args,
                  **kwargs):
@@ -275,6 +287,12 @@ class Compiler:
                 cg = compile_power_gate(gate=cg)
             if self.phase:
                 cg = compile_phase(gate=cg)
+            if self.ch_gate:
+                cg = compile_ch(gate=cg)
+            if self.y_gate:
+                cg = compile_y(gate=cg)
+            if self.ry_gate:
+                cg = compile_ry(gate=cg, controlled_rotation=self.controlled_rotation)
             if controlled:
                 if self.cc_max:
                     cg = compile_to_single_control(gate=cg)
@@ -919,3 +937,76 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
         return compile_exponential_pauli_gate(result)
     else:
         return result
+
+
+@compiler
+def compile_ry(gate: RotationGateImpl, controlled_rotation: bool = False) -> QCircuit:
+    """
+    Compile Ry gates into Rx and Rz.
+    Parameters
+    ----------
+    gate:
+        the gate.
+    controlled_rotation:
+        determines if the decomposition of the controlled-Ry gate will be performed in compile_controlled_rotation,
+        if not, decomposition will be performed here
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
+    if gate.name.lower() == "ry":
+
+        if not (gate.is_controlled() and controlled_rotation):
+
+            return Rz(target=gate.target, control=None, angle=-numpy.pi / 2) \
+                   + Rx(target=gate.target, control=gate.control, angle=gate.parameter) \
+                   + Rz(target=gate.target, control=None, angle=numpy.pi / 2)
+
+    return QCircuit.wrap_gate(gate)
+
+
+@compiler
+def compile_y(gate) -> QCircuit:
+    """
+    Compile Y gates into X and Rz.
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
+    if gate.name.lower() == "y":
+
+        return Rz(target=gate.target, control=None, angle=-numpy.pi / 2) \
+               + X(target=gate.target, control=gate.control, power=gate.parameter if gate.is_parametrized() else None) \
+               + Rz(target=gate.target, control=None, angle=numpy.pi / 2)
+
+    else:
+        return QCircuit.wrap_gate(gate)
+
+
+@compiler
+def compile_ch(gate: QGateImpl) -> QCircuit:
+    """
+    Compile CH gates into its equivalent:
+        CH = Ry(0.25pi) CZ Ry(-0.25pi)
+    Parameters
+    ----------
+    gate:
+        the gate.
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
+    if gate.name.lower() == "h" and gate.is_controlled():
+
+        return Ry(target=gate.target, control=None, angle=-numpy.pi / 4) \
+               + Z(target=gate.target, control=gate.control, power=gate.parameter if gate.is_parametrized() else None) \
+               + Ry(target=gate.target, control=None, angle=numpy.pi / 4)
+    else:
+        return QCircuit.wrap_gate(gate)

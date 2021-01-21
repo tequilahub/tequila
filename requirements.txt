@@ -16,3 +16,6 @@ qulacs # default simulator, remove if the installation gives you trouble
 #pyquil # you need to install the forest-sdk
 #qulacs-gpu
 #qibo <= 0.1.1
+
+#optional third party libraries
+#pyzx

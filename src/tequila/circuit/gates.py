@@ -688,6 +688,177 @@ def CRz(control: int, target: int, angle: float) -> QCircuit:
     return Rz(target=target, control=control, angle=angle)
 
 
+def U(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
+    """
+    Notes
+    ----------
+    Convenient gate, one of the abstract gates defined by OpenQASM.
+
+    .. math::
+        U(\\theta, \\phi, \\lambda) = R_z(\\phi)R_x(-\\pi/2)R_z(\\theta)R_x(\\pi/2)R_z(\\lambda)
+        U(\\theta, \\phi, \\lambda) = \\begin{pmatrix}
+                                            e^{-i \\frac{\\phi}{2}} & 0 \\\\
+                                            0 & e^{i \\frac{\\phi}{2}}
+                                        \\end{pmatrix}
+                                        \\begin{pmatrix}
+                                            \\cos{-\\frac{\\pi}{4}} & -i \\sin{-\\frac{\\pi}{4}} \\\\
+                                            -i \\sin{-\\frac{\\pi}{4}} & \\cos{-\\frac{\\pi}{4}}
+                                        \\end{pmatrix}
+                                        \\begin{pmatrix}
+                                            e^{-i \\frac{\\theta}{2}} & 0 \\\\
+                                            0 & e^{i \\frac{\\theta}{2}}
+                                        \\end{pmatrix}
+                                        \\begin{pmatrix}
+                                            \\cos{\\frac{\\pi}{4}} & -i \\sin{\\frac{\\pi}{4}} \\\\
+                                            -i \\sin{\\frac{\\pi}{4}} & \\cos{\\frac{\\pi}{4}}
+                                        \\end{pmatrix}
+                                        \\begin{pmatrix}
+                                            e^{-i \\frac{\\lambda}{2}} & 0 \\\\
+                                            0 & e^{i \\frac{\\lambda}{2}}
+                                        \\end{pmatrix}
+
+        U(\\theta, \\phi, \\lambda) = \\begin{pmatrix}
+                                        \\cos{\\frac{\\theta}{2}} &
+                                        -e^{i \\lambda} \\sin{\\frac{\\theta}{2}} \\\\
+                                        e^{i \\phi} \\sin{\\frac{\\theta}{2}} &
+                                        e^{i (\\phi+\\lambda)} \\cos{\\frac{\\theta}{2}}
+                                      \\end{pmatrix}
+
+    Parameters
+    ----------
+    theta
+        first parameter angle
+    phi
+        second parameter angle
+    lamnd
+        third parameter angle
+    target
+        int or list of int
+    control
+        int or list of int
+
+    Returns
+    -------
+    QCircuit object
+    """
+
+    theta = assign_variable(theta)
+    phi = assign_variable(phi)
+    lambd = assign_variable(lambd)
+    pi_half = assign_variable(np.pi / 2)
+
+    return Rz(angle=lambd, target=target, control=control) + \
+           Rx(angle=pi_half, target=target, control=control) + \
+           Rz(angle=theta, target=target, control=control) + \
+           Rx(angle=-pi_half, target=target, control=control) + \
+           Rz(angle=phi, target=target, control=control)
+
+
+def u1(lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
+    """
+    Notes
+    ----------
+    Convenient gate, one of the abstract gates defined by Quantum Experience Standard Header.
+    Changes the phase of a carrier without applying any pulses.
+
+    .. math::
+        from OpenQASM 2.0 specification:
+            u1(\\lambda) \\sim U(0, 0, \\lambda) = R_z(\\lambda) = e^{-i\\frac{\\lambda}{2} \\sigma_{z}}
+        also is equal to:
+            u1(\\lambda) = \\begin{pmatrix} 1 & 0 \\\\ 0 & e^{i\\lambda} \\end{pmatrix}
+        which is the Tequila Phase gate:
+            u1(\\lambda) = Phase(\\lambda)
+
+    Parameters
+    ----------
+    lambd
+        parameter angle
+    target
+        int or list of int
+    control
+        int or list of int
+
+    Returns
+    -------
+    QCircuit object
+    """
+
+    return Phase(phi=lambd, target=target, control=control)
+
+
+def u2(phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
+    """
+    Notes
+    ----------
+    Convenient gate, one of the abstract gates defined by Quantum Experience Standard Header.
+    Uses a single \\pi/2-pulse.
+
+    .. math::
+        u2(\\phi, \\lambda) = U(\\pi/2, \\phi, \\lambda) = R_z(\\phi + \\pi/2)R_x(\\pi/2)R_z(\\lambda - \\pi/2)
+
+        u2(\\phi, \\lambda) = \\frac{1}{\\sqrt{2}}
+                              \\begin{pmatrix}
+                                    1          & -e^{i\\lambda} \\\\
+                                    e^{i\\phi} & e^{i(\\phi+\\lambda)}
+                              \\end{pmatrix}
+
+    Parameters
+    ----------
+    phi
+        first parameter angle
+    lambd
+        second parameter angle
+    target
+        int or list of int
+    control
+        int or list of int
+
+    Returns
+    -------
+    QCircuit object
+    """
+
+    return U(theta=np.pi/2, phi=phi, lambd=lambd, target=target, control=control)
+
+
+def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
+    """
+    Notes
+    ----------
+    Convenient gate, one of the abstract gates defined by Quantum Experience Standard Header
+    The most general single-qubit gate.
+    Uses a pair of \\pi/2-pulses.
+
+    .. math::
+        u3(\\theta, \\phi, \\lambda) = U(\\theta, \\phi, \\lambda)
+                                     = \\begin{pmatrix}
+                                            \\cos{\\frac{\\5theta}{2}} &
+                                            -e^{i \\lambda} \\sin{\\frac{\\theta}{2}} \\\\
+                                            e^{i \\phi} \\sin{\\frac{\\theta}{2}} &
+                                            e^{i (\\phi+\\lambda)} \\cos{\\frac{\\theta}{2}}
+                                       \\end{pmatrix}
+
+    Parameters
+    ----------
+    theta
+        first parameter angle
+    phi
+        second parameter angle
+    lambd
+        third parameter angle
+    target
+        int or list of int
+    control
+        int or list of int
+
+    Returns
+    -------
+    QCircuit object
+    """
+
+    return U(theta=theta, phi=phi, lambd=lambd, target=target, control=control)
+
+
 if __name__ == "__main__":
     G = CRx(1, 0, 2.0)
 

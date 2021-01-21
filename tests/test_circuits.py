@@ -1,10 +1,12 @@
-from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized
+from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized, \
+                                  U, u1, u2, u3, S, T
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
 from tequila import assign_variable, paulis
 import numpy, sympy
+import pytest
 
 
 def test_qubit_map():
@@ -166,3 +168,103 @@ def test_circuit_from_moments():
     moms = c.moments
     c2 = QCircuit.from_moments(moms)
     assert c == c2
+
+
+@pytest.mark.parametrize(
+    "gate, angle",
+    [
+        (Z(target=0, control=None), numpy.pi),              # Z = u1(pi)
+        (Z(target=0, control=1), numpy.pi),
+        (S(target=0, control=None), numpy.pi/2),            # S = u1(pi/2)
+        (S(target=0, control=1), numpy.pi/2),
+        (S(target=0, control=None).dagger(), -numpy.pi/2),  # Sdg = u1(-pi/2)
+        (S(target=0, control=1).dagger(), -numpy.pi/2),
+        (T(target=0, control=None), numpy.pi/4),            # T = u1(pi/4)
+        (T(target=0, control=1), numpy.pi/4),
+        (T(target=0, control=None).dagger(), -numpy.pi/4),  # Tdg = u1(-pi/4)
+        (T(target=0, control=1).dagger(), -numpy.pi/4)
+    ]
+)
+def test_unitary_gate_u1(gate, angle):
+    """
+    Test some equivalences for u1 gate
+    """
+    c_u1 = u1(lambd=angle, target=gate.gates[0].target,
+              control=None if len(gate.gates[0].control) == 0 else gate.gates[0].control)
+
+    if len(gate.gates[0].control) > 0:
+        c_u1 = X(target=gate.gates[0].control) + c_u1
+        gate = X(target=gate.gates[0].control) + gate
+
+    wfn1 = simulate(c_u1, backend="symbolic")
+    wfn2 = simulate(gate, backend="symbolic")
+
+    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+
+
+@pytest.mark.parametrize(
+    "ctrl, phi, lambd",
+    [
+        (None, numpy.pi / 13, numpy.pi / 7),
+        (1, numpy.pi / 13, numpy.pi / 7),
+        (None, 0, 0),
+        (1, 0, 0),
+        (None, numpy.pi, numpy.pi),
+        (1, numpy.pi, numpy.pi),
+        (None, 0, numpy.pi),
+        (1, numpy.pi, 0),
+    ]
+)
+def test_unitary_gate_u2(ctrl, phi, lambd):
+    """
+    Test some equivalences for u2 gate
+    Since u2(\\phi, \\lambda) = Rz(\\phi)Ry(\\pi/2)Rz(\\lambda)
+    """
+    c_u2 = u2(phi=phi, lambd=lambd, target=0, control=ctrl)
+    c_equiv = Rz(target=0, control=ctrl, angle=lambd) + \
+              Ry(target=0, control=ctrl, angle=numpy.pi / 2) + \
+              Rz(target=0, control=ctrl, angle=phi)
+
+    if ctrl is not None:
+        c_u2 = X(target=ctrl) + c_u2
+        c_equiv = X(target=ctrl) + c_equiv
+
+    wfn1 = simulate(c_u2, backend="symbolic")
+    wfn2 = simulate(c_equiv, backend="symbolic")
+
+    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+
+
+@pytest.mark.parametrize(
+    "gate, theta, phi, lambd",
+    [
+        (Rx(target=0, control=None, angle=numpy.pi/5), numpy.pi/5, -numpy.pi/2, numpy.pi/2),  # Rx(angle) = u3(angle, -pi/2, pi/2)
+        (Rx(target=0, control=1, angle=numpy.pi/6), numpy.pi/6, -numpy.pi/2, numpy.pi/2),
+        (Rx(target=0, control=None, angle=numpy.pi/7), numpy.pi/7, -numpy.pi/2, numpy.pi/2),
+        (Rx(target=0, control=1, angle=numpy.pi/8), numpy.pi/8, -numpy.pi/2, numpy.pi/2),
+        (Ry(target=0, control=1, angle=numpy.pi/4), numpy.pi/4, 0, 0),                        # Ry(angle) = u3(angle, 0, 0)
+        (Ry(target=0, control=1, angle=numpy.pi/5), numpy.pi/5, 0, 0),
+        (Ry(target=0, control=1, angle=numpy.pi/3), numpy.pi/3, 0, 0),
+        (Ry(target=0, control=1, angle=numpy.pi/2), numpy.pi/2, 0, 0),
+        (Rz(target=0, control=None, angle=numpy.pi), 0, 0, numpy.pi),                         # Rz(angle) = U(0, 0, angle)
+        (Rz(target=0, control=1, angle=numpy.pi/6), 0, 0, numpy.pi/6),
+        (Rz(target=0, control=None, angle=numpy.pi/7), 0, 0, numpy.pi/7),
+        (Rz(target=0, control=1, angle=numpy.pi/8), 0, 0, numpy.pi/8)
+    ]
+)
+def test_unitary_gate_u_u3(gate, theta, phi, lambd):
+    """
+    Test some equivalences for u3 gate (also U gate, because U = u3)
+    """
+    c_u3 = u3(theta=theta, phi=phi, lambd=lambd, target=gate.gates[0].target,
+              control=None if len(gate.gates[0].control) == 0 else gate.gates[0].control)
+
+    if len(gate.gates[0].control) > 0:
+        c_u3 = X(target=gate.gates[0].control) + c_u3
+        gate = X(target=gate.gates[0].control) + gate
+
+    wfn1 = simulate(c_u3, backend="symbolic")
+    wfn2 = simulate(gate, backend="symbolic")
+
+    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+

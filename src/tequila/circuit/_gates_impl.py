@@ -31,11 +31,16 @@ class QGateImpl:
 
     @property
     def qubits(self):
-        return self._qubits
+        # Set the active qubits
+        if self.control:
+            qubits = self.target + self.control
+        else:
+            qubits = self.target
+        return sorted(tuple(set(qubits)))
 
     @property
     def max_qubit(self):
-        return self._max_qubit
+        return self.compute_max_qubit()
 
     def extract_variables(self):
         return []
@@ -54,13 +59,6 @@ class QGateImpl:
         self._target = tuple(list_assignment(target))
         self._control = tuple(list_assignment(control))
         self.finalize()
-        # Set the active qubits
-        if self.control:
-            self._qubits = self.target + self.control
-        else:
-            self._qubits = self.target
-        self._qubits = sorted(tuple(set(self._qubits)))
-        self._max_qubit = self.compute_max_qubit()
         self.generator = generator
 
     def copy(self):
@@ -142,12 +140,8 @@ class QGateImpl:
     def map_qubits(self, qubit_map: dict):
         mapped = copy.deepcopy(self)
         mapped._target = tuple([qubit_map[i] for i in self.target])
-        qubits = mapped._target
         if self.control is not None:
             mapped._control = tuple([qubit_map[i] for i in self.control])
-            qubits += mapped._control
-        mapped._qubits = sorted(tuple(set(qubits)))
-        mapped._max_qubit = mapped.compute_max_qubit()
         if hasattr(self, "generator") and self.generator:
             mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
         if hasattr(self, "generators"):
