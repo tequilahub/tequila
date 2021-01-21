@@ -103,7 +103,7 @@ def test_basic_gates():
         1 / sympy.sqrt(2) * (BS(0) + BS(1))
     ]
     for i, g in enumerate(gates):
-        wfn = simulate(g, backend="symbolic", variables={angle: sympy.pi})
+        wfn = simulate(g, backend="symbolic", variables={angle: numpy.pi})
         assert wfn.isclose(strip_sympy_zeros(results[i]))
 
 
