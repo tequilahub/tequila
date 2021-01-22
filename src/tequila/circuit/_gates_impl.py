@@ -299,6 +299,7 @@ class PowerGateImpl(ParametrizedGateImpl):
     @power.setter
     def power(self, other):
         self._power = assign_variable(variable=other)
+        self._parameter = assign_variable(variable=other)*pi
 
     def __init__(self, name, target: list, power, control: list = None, generator: QubitHamiltonian = None):
         super().__init__(name=name, parameter=power * pi, target=target, control=control, generator=generator)
