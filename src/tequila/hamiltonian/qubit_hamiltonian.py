@@ -555,17 +555,28 @@ class QubitHamiltonian:
         self._qubit_operator.renormalize()
         return self
 
-    def to_matrix(self):
+    def to_matrix(self, ignore_unused_qubits=True):
         """
         Returns the Hamiltonian as a dense matrix.
 
         Returns a dense 2**N x 2**N matrix representation of this
         QubitHamiltonian. Watch for memory usage when N is >12!
         
+        Args:
+            ignore_unused_qubits: If no non-trivial operator is defined on a qubits this qubit will be ignored in the matrix construction.
+                Take for example X(1). 
+                If False the operator X(1) will get mapped to X(0)
+                and the function will return the matrix for X(0)
+                otherwise the function will return the matrix 1 \otimes X(1)
+
+
         :return: numpy.ndarray(2**N, 2**N) with type numpy.complex
         """
         qubits = self.qubits
-        nq = len(qubits)
+        if ignore_unused_qubits:
+            nq = len(qubits)
+        else:
+            nq = max(qubits)+1
         I = numpy.eye(2, dtype=numpy.complex)
         Hm = numpy.zeros((2 ** nq, 2 ** nq), dtype=numpy.complex)
 
