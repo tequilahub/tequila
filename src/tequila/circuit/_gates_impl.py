@@ -169,7 +169,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
 
     @parameter.setter
     def parameter(self, other):
-        self.parameter = assign_variable(variable=other)
+        self._parameter = assign_variable(variable=other)
 
     def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None,
                 generator: QubitHamiltonian = None):
@@ -365,7 +365,7 @@ class ExponentialPauliGateImpl(DifferentiableGateImpl):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", parameter=" + str(self._parameter)
+        result += ", parameter=" + str(self.parameter)
         result += ", paulistring=" + str(self.paulistring)
         result += ")"
         return result

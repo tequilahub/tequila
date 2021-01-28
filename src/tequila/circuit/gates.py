@@ -521,7 +521,7 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     if power is None or power in [1, 1.0]:
         return QGate(name="SWAP", target=target, control=control, generator=generator)
     else:
-        return PowerGate(name="SWAP", power=power, target=target, control=control, generator=generator)
+        return GeneralizedRotation(angle=power, control=control, generator=generator)
 
 
 # @wrap_gate
