@@ -1,5 +1,5 @@
 from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized, \
-                                  U, u1, u2, u3, S, T
+                                  U, u1, u2, u3, S, T, SWAP
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.objective.objective import Variable
@@ -267,4 +267,33 @@ def test_unitary_gate_u_u3(gate, theta, phi, lambd):
     wfn2 = simulate(gate, backend="symbolic")
 
     assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+
+def test_swap():
+    U = X(0)
+    U += SWAP(0,2)
+    wfn = simulate(U)
+    wfnx = simulate(X(2))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+
+    U = X(2)
+    U += SWAP(0,2, power=2.0)
+    wfn = simulate(U)
+    wfnx = simulate(X(0))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+
+    U = X(0)+X(3)
+    U += SWAP(0,2, control=3)
+    wfn = simulate(U)
+    wfnx = simulate(X(2)+X(3))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+
+    U = X(2)+X(3)
+    U += SWAP(0,2, control=3, power=2.0)
+    wfn = simulate(U)
+    wfnx = simulate(X(2)+X(3))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+
+
+
+
 

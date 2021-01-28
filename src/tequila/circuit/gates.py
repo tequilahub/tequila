@@ -9,6 +9,7 @@ import numpy as np
 import functools
 
 
+
 def RotationGate(axis: int, angle: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
                  control: typing.Union[list, int] = None):
     """
@@ -521,7 +522,7 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     if power is None or power in [1, 1.0]:
         return QGate(name="SWAP", target=target, control=control, generator=generator)
     else:
-        return PowerGate(name="SWAP", power=power, target=target, control=control, generator=generator)
+        return GeneralizedRotation(angle=power*np.pi, control=control, generator=generator, eigenvalues_magnitude=0.25)
 
 
 # @wrap_gate

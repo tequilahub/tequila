@@ -777,7 +777,10 @@ def compile_swap(gate) -> QCircuit:
             raise TequilaCompilerException("SWAP gates needs two targets")
         power = 1
         if hasattr(gate, "power"):
-            power = gate.power
+            if power is None or power in [1, 1.0]:
+                pass
+            else:
+                raise TequilaCompilerException("Parametrized SWAPs should be decomposed on top level! Something went wrong")
 
         c = []
         if gate.control is not None:
@@ -867,9 +870,11 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
             coeff = to_float(ps.coeff)
             if len(ps._data) == 0 and len(control) > 0:
                 circuit += Phase(target=control[0], control=control[1:], phi=-factor * coeff / 2)
-            else:
+            elif len(ps._data) > 0:
                 circuit += ExpPauli(paulistring=ps.naked(), angle=factor * coeff, control=control)
-
+            else:
+                # ignore global phases
+                pass
     return circuit
 
 
