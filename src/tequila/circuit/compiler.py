@@ -777,7 +777,10 @@ def compile_swap(gate) -> QCircuit:
             raise TequilaCompilerException("SWAP gates needs two targets")
         power = 1
         if hasattr(gate, "power"):
-            power = gate.power
+            if power is None or power in [1, 1.0]:
+                pass
+            else:
+                raise TequilaCompilerException("Parametrized SWAPs should be decomposed on top level! Something went wrong")
 
         c = []
         if gate.control is not None:
