@@ -394,7 +394,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
     return compiled_objective(variables=variables, samples=samples, *args, **kwargs)
 
 
-def draw(objective, variables=None, backend: str = None):
+def draw(objective, variables=None, backend: str = None, *args, **kwargs):
     """
     Pretty output (depends on installed backends)
 
@@ -442,7 +442,10 @@ def draw(objective, variables=None, backend: str = None):
             variables = format_variable_dictionary(variables)
             compiled = compile_circuit(abstract_circuit=objective, backend=backend,
                                        variables=variables)
-            print(compiled.circuit)
+            if backend == "qiskit":
+                return compiled.circuit.draw(*args, **kwargs)
+            else:
+                return str(compiled.circuit)
 
 
 def compile(objective: typing.Union['Objective', 'QCircuit'],
