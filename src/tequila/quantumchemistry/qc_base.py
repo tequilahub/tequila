@@ -13,8 +13,11 @@ from tequila.objective import assign_variable
 import typing, numpy, numbers
 from itertools import product
 
+# if you are experiencing import errors you need to update openfermion
+# required is version >= 1.0
+# otherwise replace with from openfermion.hamiltonians import MolecularData
 import openfermion
-from openfermion.hamiltonians import MolecularData
+from openfermion.chem import MolecularData
 
 import warnings
 
