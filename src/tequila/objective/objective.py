@@ -531,7 +531,7 @@ class Objective:
             return float(result)
         else:
             return result
-        
+
 
     def contract(self):
         """
@@ -1321,6 +1321,9 @@ class Variable:
     @property
     def name(self):
         return self._name
+
+    def __lt__(self, other):
+        return hash(self.name) < hash(other.name)
 
     def __hash__(self):
         return hash(self.name)

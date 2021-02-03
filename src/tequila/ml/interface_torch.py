@@ -26,7 +26,7 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
 
     if isinstance(objective,tuple) or isinstance(objective,list) or isinstance(objective,Objective):
         objective = vectorize(list_assignment(objective))
-    comped_objective, compile_args, weight_vars, w_grads, i_grads, first, second \
+    comped_objective, compile_args, input_vars, weight_vars, i_grads, w_grads, first, second \
         = preamble(objective, compile_args, input_vars)
     samples = compile_args['samples']
 
