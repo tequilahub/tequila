@@ -135,5 +135,5 @@ def export_to(circuit: QCircuit,
                    decompose_control_generators=decompose_control_generators,
                    group_together=group_together,
                    qubit_names=qubit_names, *args, **kwargs)
-    if ftype is not "qpic":
+    if ftype != "qpic":
         subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype])
