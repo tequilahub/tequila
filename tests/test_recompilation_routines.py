@@ -1,6 +1,7 @@
 import tequila.simulators.simulator_api
 from tequila.circuit import gates
-from tequila.circuit.compiler import compile_controlled_rotation, change_basis, compile_phase, compile_swap
+from tequila.circuit.compiler import compile_controlled_rotation, change_basis, compile_phase, compile_swap, \
+                                     compile_ry, compile_y, compile_ch
 from numpy.random import uniform, randint
 from numpy import pi, isclose
 from tequila.hamiltonian import paulis
@@ -90,4 +91,70 @@ def test_compile_swap():
     equivalent_swap = gates.X(target=0, control=3) + gates.X(target=3, control=0) + gates.X(target=0, control=3)
 
     assert (equivalent_circuit == equivalent_swap)
-    
+
+
+@pytest.mark.parametrize(
+    "target,control,angle",
+    [
+        (2, 4, 3.14),
+        (1, 0, numpy.pi / 7),
+        (1, None, numpy.pi / 5),
+        (5, None, 1.093)
+    ]
+)
+def test_compile_ry(target, control, angle):
+
+    circuit = gates.Ry(target=target, control=control, angle=angle)
+    equivalent_circuit = compile_ry(circuit)
+
+    equivalent_ry = gates.Rz(target=target, control=None, angle=-numpy.pi / 2) + \
+                    gates.Rx(target=target, control=control, angle=angle) + \
+                    gates.Rz(target=target, control=None, angle=numpy.pi / 2)
+
+    assert (equivalent_circuit == equivalent_ry)
+
+
+@pytest.mark.parametrize(
+    "target,control,power",
+    [
+        (2, 4, 1.5),
+        (4, 0, 1.0),
+        (0, 5, 2.9),
+        (1, None, 4.2),
+        (5, None, 3.9)
+    ]
+)
+def test_compile_y(target, control, power):
+
+    circuit = gates.Y(target=target, control=control, power=power)
+    equivalent_circuit_y = compile_y(circuit)
+
+    equivalent_y = gates.Rz(target=target, control=None, angle=-numpy.pi / 2) + \
+                   gates.X(target=target, control=control, power=power) + \
+                   gates.Rz(target=target, control=None, angle=numpy.pi / 2)
+
+    assert (equivalent_circuit_y == equivalent_y)
+
+
+@pytest.mark.parametrize(
+    "target,control,power",
+    [
+        (2, 4, 1.5),
+        (4, 2, 1.0),
+        (0, 5, 2.9),
+        (1, None, 4.2),
+        (5, None, 3.9)
+    ]
+)
+def test_compile_ch(target, control, power):
+
+    circuit = gates.H(target=target, control=control, power=power)
+    equivalent_circuit = compile_ch(circuit)
+
+    equivalent_ch = gates.Ry(target=target, control=None, angle=-numpy.pi / 4) + \
+                    gates.Z(target=target, control=control, power=power) + \
+                    gates.Ry(target=target, control=None, angle=numpy.pi / 4)
+
+    if control is not None:
+        assert (equivalent_circuit == equivalent_ch)
+

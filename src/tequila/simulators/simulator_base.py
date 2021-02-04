@@ -172,7 +172,7 @@ class BackendCircuit():
 
         if qubit_map is None:
             qubit_map = {q: i for i, q in enumerate(abstract_circuit.qubits)}
-        else:
+        elif not qubit_map == {q: i for i, q in enumerate(abstract_circuit.qubits)}:
             warnings.warn("reveived custom qubit_map = {}\n"
                         "This is not fully integrated and might result in unexpected behaviour!"
                           .format(qubit_map), TequilaWarning)

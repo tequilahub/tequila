@@ -152,9 +152,8 @@ def test_parametrized_interface(backend, samples):
 
 @pytest.mark.parametrize("name", tequila.simulators.simulator_api.SUPPORTED_BACKENDS)
 def test_backend_availability(name):
-    for backend in tq.SUPPORTED_BACKENDS:
-        if backend not in tq.INSTALLED_BACKENDS:
-            warnings.warn(name + " is not installed!", UserWarning)
+    if name not in tq.INSTALLED_BACKENDS:
+        warnings.warn(name + " is not installed!", UserWarning)
 
 
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
@@ -356,7 +355,3 @@ def test_sampling(backend):
     for i in range(10):
         e = E(samples=1000)
         assert numpy.isclose(e, 0.0, atol=2.e-1)
-
-
-
-
