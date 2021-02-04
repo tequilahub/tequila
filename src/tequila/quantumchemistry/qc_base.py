@@ -15,8 +15,11 @@ from tequila.objective import assign_variable
 import typing, numpy, numbers, copy
 from itertools import product
 
+# if you are experiencing import errors you need to update openfermion
+# required is version >= 1.0
+# otherwise replace with from openfermion.hamiltonians import MolecularData
 import openfermion
-from openfermion.hamiltonians import MolecularData
+from openfermion.chem import MolecularData
 
 import warnings
 
@@ -672,11 +675,7 @@ class QuantumChemistryBase:
                 trafo_args["active_orbitals"] = self.n_orbitals * 2
             if "active_fermions" not in trafo_args:
                 trafo_args["active_fermions"] = self.n_electrons
-            print("trafo_args = ", trafo_args)
-            # trafo = openfermion.symmetry_conserving_bravyi_kitaev
-            # Current hotfix, to be changed once it works again straightforward with OpenFermion
-            from ._openfermion_symmetry_conserving_bk_hotfix import symmetry_conserving_bravyi_kitaev_HOTFIX
-            trafo = symmetry_conserving_bravyi_kitaev_HOTFIX
+            trafo = openfermion.symmetry_conserving_bravyi_kitaev
         elif hasattr(transformation, "lower"):
             trafo = getattr(openfermion, transformation.lower())
         else:
