@@ -68,8 +68,8 @@ def PowerGate(name: str, target: typing.Union[list, int], power: float = None, a
     return QCircuit.wrap_gate(PowerGateImpl(name=name, power=power, target=target, control=control, generator=generator))
 
 
-def Phase(angle: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
-          control: typing.Union[list, int] = None, *args, **kwargs) -> QCircuit:
+def Phase(target: typing.Union[list, int],
+          control: typing.Union[list, int] = None, angle: typing.Union[typing.Hashable, numbers.Number]=None, *args, **kwargs) -> QCircuit:
     """
     Notes
     ----------
@@ -99,6 +99,9 @@ def Phase(angle: typing.Union[typing.Hashable, numbers.Number], target: typing.U
             angle = kwargs["phi"]
         else:
             raise Exception("tq.gates.Phase initialization: You gave two angles angle={} and phi={}. Please only use angle".format(angle, kwargs["phi"]))
+
+    if angle is None:
+        angle = np.pi
 
     target = list_assignment(target)
     gates  = [PhaseGateImpl(phase=angle, target=q, control=control) for q in target]
