@@ -10,7 +10,7 @@ def test_simple_example():
     operator_pool = tq.adapt.AdaptPoolBase(generators=generators)
     solver = tq.adapt.Adapt(H=H, operator_pool=operator_pool, Upre=Upre, UPost=Upost)
     result = solver()
-    assert numpy.isclose(result.energy, 1.0, atol=1.e-4)
+    assert numpy.isclose(result.energy, -1.0, atol=1.e-4)
 
 
 def make_test_molecule():
