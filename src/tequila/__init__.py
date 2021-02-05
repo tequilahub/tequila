@@ -25,4 +25,8 @@ from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
 import warnings
 
 warnings.filterwarnings("ignore", module="jax")
+warnings.filterwarnings("ignore", module="absl")
 warnings.filterwarnings("default", category=TequilaWarning)
+
+# load applications and helpers
+from tequila.apps import adapt
