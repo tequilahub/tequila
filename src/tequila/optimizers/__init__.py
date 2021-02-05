@@ -77,10 +77,10 @@ def show_available_optimizers(module=None):
         print("Supported optimizer modules: ", SUPPORTED_OPTIMIZERS)
         print("Installed optimizer modules: ", list(INSTALLED_OPTIMIZERS.keys()))
 
-def minimize(method: str,
-             objective,
+def minimize(objective,
+             method: str = "bfgs",
              variables: list=None,
-             initial_values: typing.Union[dict,numbers.Number]=None,
+             initial_values: typing.Union[dict,numbers.Number]=0.0,
              maxiter: int=None,
              *args,
              **kwargs):
