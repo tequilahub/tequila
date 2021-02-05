@@ -8,8 +8,6 @@ from tequila.tools import list_assignment
 import numpy as np
 import functools
 
-
-
 def RotationGate(axis: int, angle: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
                  control: typing.Union[list, int] = None):
     """
@@ -42,7 +40,7 @@ def RotationGate(axis: int, angle: typing.Union[typing.Hashable, numbers.Number]
     return QCircuit.wrap_gate(gates)
 
 
-def PowerGate(name: str, target: typing.Union[list, int], power: bool = None, control: typing.Union[list, int] = None,
+def PowerGate(name: str, target: typing.Union[list, int], power: float = None, angle: float = None, control: typing.Union[list, int] = None,
             generator: QubitHamiltonian = None):
     """
     Initialize a (potentially parametrized) gate which is supported on the backend
@@ -50,11 +48,16 @@ def PowerGate(name: str, target: typing.Union[list, int], power: bool = None, co
     Parameters
     ----------
     name: str
-        name of the gate on the backend
+        name of the gate on the backend (usually, H, X, Y, Z)
     target
         int or list of int
     power
         numeric type (fixed exponent) or hashable type (parametrized exponent)
+        will be interpreted as
+    angle
+        similar to power, but will be interpreted as
+        .. math::
+           U=e^{-i\\frac{angle}{2} generator}
     control
         int or list of int
 
@@ -65,8 +68,8 @@ def PowerGate(name: str, target: typing.Union[list, int], power: bool = None, co
     return QCircuit.wrap_gate(PowerGateImpl(name=name, power=power, target=target, control=control, generator=generator))
 
 
-def Phase(phi: typing.Union[typing.Hashable, numbers.Number], target: typing.Union[list, int],
-          control: typing.Union[list, int] = None) -> QCircuit:
+def Phase(target: typing.Union[list, int],
+          control: typing.Union[list, int] = None, angle: typing.Union[typing.Hashable, numbers.Number]=None, *args, **kwargs) -> QCircuit:
     """
     Notes
     ----------
@@ -77,7 +80,7 @@ def Phase(phi: typing.Union[typing.Hashable, numbers.Number], target: typing.Uni
 
     Parameters
     ----------
-    phi
+    angle
         defines the phase, can be numeric type (static gate) or hashable non-numeric type (parametrized gate)
     target
         int or list of int
@@ -89,8 +92,19 @@ def Phase(phi: typing.Union[typing.Hashable, numbers.Number], target: typing.Uni
     QCircuit object
 
     """
+
+    # ensure backward compatibility
+    if "phi" in kwargs:
+        if angle is None:
+            angle = kwargs["phi"]
+        else:
+            raise Exception("tq.gates.Phase initialization: You gave two angles angle={} and phi={}. Please only use angle".format(angle, kwargs["phi"]))
+
+    if angle is None:
+        angle = np.pi
+
     target = list_assignment(target)
-    gates  = [PhaseGateImpl(phase=phi, target=q, control=control) for q in target]
+    gates  = [PhaseGateImpl(phase=angle, target=q, control=control) for q in target]
 
     return QCircuit.wrap_gate(gates)
 
@@ -114,7 +128,7 @@ def S(target: typing.Union[list, int], control: typing.Union[list, int] = None) 
     -------
     QCircuit object
     """
-    return Phase(np.pi / 2, target=target, control=control)
+    return Phase(angle=np.pi / 2, target=target, control=control)
 
 
 def T(target: typing.Union[list, int], control: typing.Union[list, int] = None):
@@ -138,7 +152,7 @@ def T(target: typing.Union[list, int], control: typing.Union[list, int] = None):
     QCircuit object
 
     """
-    return Phase(np.pi / 4, target=target, control=control)
+    return Phase(angle=np.pi / 4, target=target, control=control)
 
 
 def QGate(name, target: typing.Union[list, int], control: typing.Union[list, int] = None,  generator: QubitHamiltonian = None):
@@ -224,7 +238,7 @@ def Rz(angle, target: typing.Union[list, int], control: typing.Union[list, int] 
     return RotationGate(axis=2, angle=angle, target=target, control=control)
 
 
-def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
+def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None) -> QCircuit:
     """
     Notes
     ----------
@@ -238,16 +252,25 @@ def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
         int or list of int
     power
         numeric type (fixed exponent) or hashable type (parametrized exponent)
+    angle
+        similar to power, but will be interpreted as
+        .. math::
+           U(\\text{angle})=e^{-i\\frac{angle}{2} (1-X)}
+        the default is angle=pi
+        .. math::
+           U(\\pi) = X
+        If angle and power are given both, tequila will combine them
 
     Returns
     -------
     QCircuit object
     """
+
     generator = lambda q: paulis.X(q) - paulis.I(q)
-    return _initialize_power_gate(name="X", power=power, target=target, control=control, generator=generator)
+    return _initialize_power_gate(name="X", power=power, angle=angle, target=target, control=control, generator=generator)
 
 
-def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
+def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None) -> QCircuit:
     """
     Notes
     ----------
@@ -261,6 +284,14 @@ def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
         int or list of int
     power
         numeric type (fixed exponent) or hashable type (parametrized exponent)
+        angle
+        similar to power, but will be interpreted as
+        .. math::
+           U(\\text{angle})=e^{-i\\frac{angle}{2} generator}
+        the default is angle=pi
+        .. math::
+           U(\\pi) = H
+        If angle and power are given both, tequila will combine them
 
     Returns
     -------
@@ -269,10 +300,10 @@ def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
     """
     coef = 1 / np.sqrt(2)
     generator = lambda q: coef * (paulis.Z(q) + paulis.X(q)) - paulis.I(q)
-    return _initialize_power_gate(name="H", power=power, target=target, control=control, generator=generator)
+    return _initialize_power_gate(name="H", power=power, angle=angle, target=target, control=control, generator=generator)
 
 
-def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
+def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None) -> QCircuit:
     """
     Notes
     ----------
@@ -286,6 +317,14 @@ def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
         int or list of int
     power
         numeric type (fixed exponent) or hashable type (parametrized exponent)
+    angle
+        similar to power, but will be interpreted as
+        .. math::
+           U(\\text{angle})=e^{-i\\frac{angle}{2} (1-Y)}
+        the default is angle=pi
+        .. math::
+           U(\\pi) = Y
+        If angle and power are given both, tequila will combine them
 
     Returns
     -------
@@ -293,10 +332,10 @@ def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
 
     """
     generator = lambda q: paulis.Y(q) - paulis.I(q)
-    return _initialize_power_gate(name="Y", power=power, target=target, control=control, generator=generator)
+    return _initialize_power_gate(name="Y", power=power, angle=angle, target=target, control=control, generator=generator)
 
 
-def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
+def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None) -> QCircuit:
     """
     Notes
     ----------
@@ -310,6 +349,14 @@ def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
         int or list of int
     power
         numeric type (fixed exponent) or hashable type (parametrized exponent)
+    angle
+        similar to power, but will be interpreted as
+        .. math::
+           U(\\text{angle})=e^{-i\\frac{angle}{2} (1-Z)}
+        the default is angle=pi
+        .. math::
+           U(\\pi) = Z
+        If angle and power are given both, tequila will combine them
 
     Returns
     -------
@@ -317,11 +364,18 @@ def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
 
     """
     generator = lambda q: paulis.Z(q) - paulis.I(q)
-    return _initialize_power_gate(name="Z", power=power, target=target, control=control, generator=generator)
+    return _initialize_power_gate(name="Z", power=power, angle=angle, target=target, control=control, generator=generator)
 
 
-def _initialize_power_gate(name: str, target: typing.Union[list, int], generator, control: typing.Union[list, int] = None, power=None) -> QCircuit:
+def _initialize_power_gate(name: str, target: typing.Union[list, int], generator, control: typing.Union[list, int] = None, power=None, angle=None) -> QCircuit:
     target = list_assignment(target)
+
+    if angle is not None:
+        if power is not None:
+            power = power*angle/np.pi
+        else:
+            power = angle/np.pi
+
     if power is None or power in [1, 1.0]:
         gates = [QGateImpl(name=name, target=q, control=control, generator=generator(q)) for q in target]
     else:
@@ -430,12 +484,12 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
         GeneralizedRotationImpl(angle=assign_variable(angle), generator=generator, control=control, eigenvalues_magnitude=eigenvalues_magnitude, steps=steps))
 
 
-def Trotterized(generators: typing.List[QubitHamiltonian],
-                steps: int,
+def Trotterized(generators: typing.List[QubitHamiltonian]=None,
+                steps: int=1,
                 angles: typing.Union[
                     typing.List[typing.Hashable], typing.List[numbers.Real], typing.List[Variable]] = None,
                 control: typing.Union[list, int] = None,
-                parameters: TrotterParameters = None) -> QCircuit:
+                parameters: TrotterParameters = None, *args, **kwargs) -> QCircuit:
     """
 
     Parameters
@@ -474,6 +528,19 @@ def Trotterized(generators: typing.List[QubitHamiltonian],
     """
 
     # convenience
+    if "generator" in kwargs:
+        if generators is None:
+            generators = [kwargs["generator"]]
+        else:
+            raise Exception("Trotterized: You gave generators={} and generator={}".format(angles, kwargs["generator"]))
+
+    if "angle" in kwargs:
+        if angles is None:
+            angles = [kwargs["angle"]]*len(generators)
+        else:
+            raise Exception("Trotterized: You gave angles={} and angle={}".format(angles, kwargs["angle"]))
+
+    # more convenience
     if not (isinstance(generators, list) or isinstance(generators, tuple)):
         generators = [generators]
     if not (isinstance(angles, list) or isinstance(angles, tuple)):
@@ -489,13 +556,7 @@ def Trotterized(generators: typing.List[QubitHamiltonian],
                             **parameters.__dict__))
 
 
-"""
-Convenience for Two Qubit Gates
-iSWAP will only work with cirq, the others will be recompiled
-"""
-
-
-def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None) -> QCircuit:
+def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None, *args, **kwargs) -> QCircuit:
     """
     Notes
     ----------
@@ -517,6 +578,7 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     QCircuit
 
     """
+
     target = [first, second]
     generator = 0.5 * (paulis.X(target) + paulis.Y(target) + paulis.Z(target) - paulis.I(target))
     if power is None or power in [1, 1.0]:
@@ -524,17 +586,11 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     else:
         return GeneralizedRotation(angle=power*np.pi, control=control, generator=generator, eigenvalues_magnitude=0.25)
 
-
-# @wrap_gate
-# def iSWAP(q0: int, q1: int, control: typing.Union[int, list] = None):
-#     return initialize_power_gate(name="ISWAP", target=[q0, q1], control=control)
-
-
 """
 Convenience Initialization Routines for controlled gates
 All following the patern: Gate(control_qubit, target_qubit, possible_parameter)
+All can be initialized as well with the standard operations above
 """
-
 
 def CNOT(control: int, target: int) -> QCircuit:
     """
