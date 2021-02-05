@@ -117,6 +117,12 @@ class Adapt:
         print("Starting Adaptive Solver")
         print(self)
 
+        # count resources
+        screening_cycles = 0
+        objective_expval_evaluations = 0
+        gradient_expval_evaluations = 0
+        histories = []
+
         if static_variables is None:
             static_variables = {}
 
@@ -191,6 +197,13 @@ class Adapt:
             print("max_grad       : {:+2.8f}".format(max_grad))
             print("circuit size   : {}".format(len(U.gates)))
 
+            screening_cycles += 1
+            mini_iter=len(result.history.extract_energies())
+            gradient_expval = sum([v.count_expectationvalues() for k, v in grad(objective).items()])
+            objective_expval_evaluations += mini_iter*objective.count_expectationvalues()
+            gradient_expval_evaluations += mini_iter*gradient_expval
+            histories.append(result.history)
+
             if self.parameters.energy_convergence is not None and numpy.abs(diff) < self.parameters.energy_convergence:
                 print("energy difference is {:+2.8f}, convergence criterion met".format(diff))
                 break
@@ -205,8 +218,19 @@ class Adapt:
             objective_factory:ObjectiveFactoryBase=None
             variables:dict=None
             energy: float = None
+            histories: list = None
+            screening_cycles: int = None
+            objective_expval_evaluations: int =None
+            gradient_expval_evaluations: int =None
 
-        return AdaptReturn(U=U, variables=variables, objective_factory=self.objective_factory, energy=energy)
+        return AdaptReturn(U=U,
+                           variables=variables,
+                           objective_factory=self.objective_factory,
+                           energy=energy,
+                           histories=histories,
+                           screening_cycles = screening_cycles,
+                           objective_expval_evaluations=objective_expval_evaluations,
+                           gradient_expval_evaluations=gradient_expval_evaluations)
 
     def screen_gradients(self, U, variables, mp_pool=None):
 
