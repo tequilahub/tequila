@@ -267,7 +267,7 @@ def X(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
     return _initialize_power_gate(name="X", power=power, angle=angle, target=target, control=control, generator=generator)
 
 
-def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
+def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None) -> QCircuit:
     """
     Notes
     ----------
@@ -300,7 +300,7 @@ def H(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
     return _initialize_power_gate(name="H", power=power, angle=angle, target=target, control=control, generator=generator)
 
 
-def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
+def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None) -> QCircuit:
     """
     Notes
     ----------
@@ -332,7 +332,7 @@ def Y(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
     return _initialize_power_gate(name="Y", power=power, angle=angle, target=target, control=control, generator=generator)
 
 
-def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None) -> QCircuit:
+def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None) -> QCircuit:
     """
     Notes
     ----------
