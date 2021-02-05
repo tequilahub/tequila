@@ -31,23 +31,23 @@ class AdaptPoolBase:
     The pool is a list of generators (tequila QubitHamiltonians)
     """
 
-    pool: list = None
+    generators: list = None
 
     __n: int = 0 # for iterator, don't touch
 
-    def __init__(self, pool, trotter_steps=1):
-        self.pool = pool
+    def __init__(self, generators, trotter_steps=1):
+        self.generators = generators
         self.trotter_steps=1
 
     def make_unitary(self, k, label) -> QCircuit:
-        return gates.Trotterized(generators=[self.pool[k]], angles=[(str(k),label)], steps=self.trotter_steps)
+        return gates.Trotterized(generators=[self.generators[k]], angles=[(str(k), label)], steps=self.trotter_steps)
 
     def __iter__(self):
         self.__n = 0
         return self
 
     def __next__(self):
-        if self.__n < len(self.pool):
+        if self.__n < len(self.generators):
             result = self.__n
             self.__n +=1
             return result
@@ -55,7 +55,7 @@ class AdaptPoolBase:
             raise StopIteration
 
     def __str__(self):
-        return "{} with {} Generators".format(type(self).__name__, len(self.pool))
+        return "{} with {} Generators".format(type(self).__name__, len(self.generators))
 
 class ObjectiveFactoryBase:
     """
@@ -82,7 +82,7 @@ class ObjectiveFactoryBase:
         else:
             self.Upost = QCircuit()
 
-    def __call__(self, U, *args, **kwargs):
+    def __call__(self, U, screening=False, *args, **kwargs):
         return ExpectationValue(H=self.H, U=self.Upre + U + self.Upost, *args, **kwargs)
 
     def grad_objective(self, *args, **kwargs):
@@ -112,7 +112,7 @@ class Adapt:
         self.parameters = AdaptParameters(*args, **filtered)
 
 
-    def __call__(self, static_variables = None, mp_pool=None, label=None, *args, **kwargs):
+    def __call__(self, static_variables = None, mp_pool=None, label=None, variables=None, *args, **kwargs):
 
         print("Starting Adaptive Solver")
         print(self)
@@ -120,7 +120,10 @@ class Adapt:
         if static_variables is None:
             static_variables = {}
 
-        variables = static_variables
+        if variables is None:
+            variables = {**static_variables}
+        else:
+            variables = {**variables, **static_variables}
 
         U = QCircuit()
 
@@ -128,6 +131,7 @@ class Adapt:
         for k in initial_objective.extract_variables():
             if k not in variables:
                 warnings.warn("variable {} of initial objective not given, setting to 0.0 and activate optimization".format(k), TequilaWarning)
+                variables[k] = 0.0
 
         energy = 0.0
         for iter in range(self.parameters.maxiter):
@@ -275,7 +279,7 @@ class MolecularPool(AdaptPoolBase):
                 raise TequilaException("Pool of type {} not yet supported.\nCreate your own by passing the initialized indices".format(indices))
 
         indices = [tuple(k) for k in indices]
-        super().__init__(pool=indices)
+        super().__init__(generators=indices)
 
 
     def make_indices_singles(self, generalized=False):
@@ -315,14 +319,14 @@ class MolecularPool(AdaptPoolBase):
         return indices
 
     def make_unitary(self, k, label):
-        return self.molecule.make_excitation_gate(indices=self.pool[k], angle=(self.pool[k],label))
+        return self.molecule.make_excitation_gate(indices=self.generators[k], angle=(self.generators[k], label))
 
 class PseudoSingletMolecularPool(MolecularPool):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         indices = []
-        for idx in self.pool:
+        for idx in self.generators:
             if len(idx) == 1:
                 combined = ( ((idx[0][0]//2*2, idx[0][1]//2*2)), ((idx[0][0]//2*2+1, idx[0][1]//2*2+1)) )
                 if combined not in indices:
@@ -330,12 +334,12 @@ class PseudoSingletMolecularPool(MolecularPool):
             else:
                 indices.append(tuple([idx]))
 
-        self.pool = list(set(indices))
+        self.generators = list(set(indices))
 
     def make_unitary(self, k, label):
         U = QCircuit()
-        for idx in self.pool[k]:
-            combined_variable = self.pool[k][0]
+        for idx in self.generators[k]:
+            combined_variable = self.generators[k][0]
             U += self.molecule.make_excitation_gate(indices=idx, angle=(combined_variable,label))
         return U
 

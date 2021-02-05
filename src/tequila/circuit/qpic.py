@@ -3,8 +3,9 @@ Export QCircuits as qpic files
 https://github.com/qpic/qpic/blob/master/doc/qpic_doc.pdf
 """
 
-from tequila.circuit import QCircuit
+from tequila.circuit.compiler import Compiler
 from tequila.circuit import gates
+from tequila.circuit import QCircuit
 from tequila.tools import number_to_string
 
 import subprocess
@@ -23,7 +24,7 @@ def assign_name(parameter):
     return str(parameter)
 
 
-def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True, decompose_control_generators=True, group_together=True, qubit_names=None) -> str:
+def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True, decompose_control_generators=True, group_together=True, qubit_names=None, *args, **kwargs) -> str:
     result = ""
     # define tequila blue color
     result = "COLOR tq 0.03137254901960784 0.1607843137254902 0.23921568627450981\n"
@@ -44,7 +45,6 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
 
         if always_use_generators:
             for ps in g.make_generator(include_controls=decompose_control_generators).paulistrings:
-                print(ps)
                 if len(ps) == 0: continue
                 for k,v in ps.items():
                     result += " a{qubit} P:fill=tq  \\textcolor{{white}}{{{op}}} ".format(qubit=k, op=v.upper())
@@ -129,7 +129,9 @@ def export_to(circuit: QCircuit,
         raise Exception("export_to: No filetype given {}, expected something like {}.pdf".format(filename,filename))
     fname, ftype = filename.split(".")
 
-    export_to_qpic(circuit=circuit,
+    compiled = Compiler(trotterized=True)(circuit)
+
+    export_to_qpic(circuit=compiled,
                    filename=fname,
                    always_use_generators=always_use_generators,
                    decompose_control_generators=decompose_control_generators,
@@ -137,3 +139,4 @@ def export_to(circuit: QCircuit,
                    qubit_names=qubit_names, *args, **kwargs)
     if ftype != "qpic":
         subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype])
+
