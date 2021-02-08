@@ -74,7 +74,7 @@ class ExpectationValueImpl:
         if self.U is not None:
             self.U.replace_variables(replacement)
 
-    def __init__(self, U=None, H=None, contraction=None, shape=None):
+    def __init__(self, U=None, H=None, contraction=None, shape=None, *args, **kwargs):
         """
 
         Parameters

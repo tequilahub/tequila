@@ -98,8 +98,8 @@ class Adapt:
     parameters: AdaptParameters = AdaptParameters()
 
 
-    def make_objective(self, U, *args, **kwargs):
-        return self.objective_factory(U, *args, **{**self.parameters.compile_args, **kwargs})
+    def make_objective(self, U, variables=None, *args, **kwargs):
+        return self.objective_factory(U=U, variables=variables, *args, **{**self.parameters.compile_args, **kwargs})
 
     def __init__(self, operator_pool, H=None,objective_factory=None, *args, **kwargs):
         self.operator_pool = operator_pool
@@ -133,7 +133,7 @@ class Adapt:
 
         U = QCircuit()
 
-        initial_objective = self.make_objective(U)
+        initial_objective = self.make_objective(U, variables = variables)
         for k in initial_objective.extract_variables():
             if k not in variables:
                 warnings.warn("variable {} of initial objective not given, setting to 0.0 and activate optimization".format(k), TequilaWarning)
@@ -169,6 +169,7 @@ class Adapt:
                 print("detected degeneracies: increasing batch size temporarily from {} to {}".format(self.parameters.batch_size, batch_size))
 
             count = 0
+
             for k,v in gradients.items():
                 Ux = self.operator_pool.make_unitary(k, label=current_label)
                 U += Ux
@@ -179,7 +180,7 @@ class Adapt:
             variables = {**variables, **{k:0.0 for k in U.extract_variables() if k not in variables}}
             active_variables = [k for k in variables if k not in static_variables]
 
-            objective = self.make_objective(U)
+            objective = self.make_objective(U, variables=variables)
             result = minimize(objective=objective,
                                  variables=active_variables,
                                  initial_values=variables,
@@ -253,8 +254,9 @@ class Adapt:
     def do_screening(self, arg):
         Ux = self.operator_pool.make_unitary(k=arg["k"], label="tmp")
         Utmp = arg["U"] + Ux
-        objective = self.make_objective(Utmp, screening=True)
         variables = {**arg["variables"]}
+        objective = self.make_objective(Utmp, screening=True, variables=variables)
+
 
         dEs = []
         for k in Ux.extract_variables():
@@ -336,14 +338,15 @@ class MolecularPool(AdaptPoolBase):
 
         for p in range(self.molecule.n_orbitals):
             for q in range(p+1, self.molecule.n_orbitals):
-                if [(2*p, 2*q)] in indices:
+                idx = [(2*p, 2*q),(2*p+1, 2*q+1)]
+                if idx in indices:
                     continue
-                indices.append([(2 * p, 2 * q), (2 * p + 1, 2 * q + 1)])
+                indices.append(idx)
 
         return indices
 
     def make_unitary(self, k, label):
-        return self.molecule.make_excitation_gate(indices=self.generators[k], angle=(self.generators[k], label))
+        return self.molecule.make_excitation_gate(indices=self.generators[k], angle=(self.generators[k], label), assume_real=True)
 
 class PseudoSingletMolecularPool(MolecularPool):
 
