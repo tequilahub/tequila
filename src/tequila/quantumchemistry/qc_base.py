@@ -950,7 +950,7 @@ class QuantumChemistryBase:
 
         if self.transformation._trafo == openfermion.symmetry_conserving_bravyi_kitaev:
             def tapering(fop):
-                fermion_hamiltonian_reorder = openfermion.utils.reorder(fop, openfermion.utils.up_then_down,
+                fermion_hamiltonian_reorder = openfermion.reorder(fop, openfermion.utils.up_then_down,
                                                                         num_modes=n_qubits)
                 qubit_operator = openfermion.bravyi_kitaev_tree(fermion_hamiltonian_reorder, n_qubits=n_qubits)
                 qubit_operator.compress()

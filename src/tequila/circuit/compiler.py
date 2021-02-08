@@ -4,8 +4,8 @@ from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z,
 from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
-from tequila import Variable
-from tequila import Objective, VectorObjective
+from tequila.objective.objective import Variable
+from tequila.objective.objective import Objective, VectorObjective
 from tequila.objective.objective import ExpectationValueImpl
 from tequila.autograd_imports import numpy as jnp
 from tequila.autograd_imports import numpy
