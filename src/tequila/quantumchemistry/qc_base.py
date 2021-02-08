@@ -39,7 +39,8 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
 
     def __init__(self, angle, generator, p0, assume_real=True, control=None):
         angle = assign_variable(angle)
-        super().__init__(name="FermionicEx", parameter=angle, target=self.extract_targets(generator), control=control, eigenvalues_magnitude = 0.25)
+        super().__init__(name="FermionicEx", parameter=angle, target=self.extract_targets(generator), control=control,
+                         eigenvalues_magnitude=0.25)
         self.generator = generator
         self.p0 = p0
         self.assume_real = assume_real
@@ -49,8 +50,9 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
         mapped_p0 = self.p0.map_qubits(qubit_map=qubit_map)
         mapped_control = self.control
         if mapped_control is not None:
-            mapped_control=tuple([qubit_map[i] for i in self.control])
-        return FermionicGateImpl(angle=self.parameter, generator=mapped_generator, p0=mapped_p0, assume_real=self.assume_real, control=mapped_control)
+            mapped_control = tuple([qubit_map[i] for i in self.control])
+        return FermionicGateImpl(angle=self.parameter, generator=mapped_generator, p0=mapped_p0,
+                                 assume_real=self.assume_real, control=mapped_control)
 
     def compile(self):
         return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
@@ -59,12 +61,15 @@ class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
         s = 0.5 * numpy.pi
         Up1 = gates.QCircuit.wrap_gate(
             FermionicGateImpl(angle=self._parameter + s, generator=self.generator, p0=self.p0, control=self.control))
-        Up2 = gates.GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=self.eigenvalues_magnitude, steps=1, control=self.control)
+        Up2 = gates.GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=self.eigenvalues_magnitude,
+                                        steps=1, control=self.control)
         Um1 = gates.QCircuit.wrap_gate(
             FermionicGateImpl(angle=self._parameter - s, generator=self.generator, p0=self.p0, control=self.control))
-        Um2 = gates.GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=self.eigenvalues_magnitude, steps=1, control=self.control)
+        Um2 = gates.GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=self.eigenvalues_magnitude,
+                                        steps=1, control=self.control)
         if not self.assume_real:
-            return [(self.eigenvalues_magnitude, Up1 + Up2), (-self.eigenvalues_magnitude, Um1 + Um2), (self.eigenvalues_magnitude, Up1 + Um2),
+            return [(self.eigenvalues_magnitude, Up1 + Up2), (-self.eigenvalues_magnitude, Um1 + Um2),
+                    (self.eigenvalues_magnitude, Up1 + Um2),
                     (-self.eigenvalues_magnitude, Um1 + Up2)]
         else:
             return [(2.0 * self.eigenvalues_magnitude, Up1 + Up2), (-2.0 * self.eigenvalues_magnitude, Um1 + Um2)]
@@ -369,7 +374,7 @@ class NBodyTensor:
                 scheme = scheme._scheme
             elif hasattr(scheme, "scheme"):
                 scheme = scheme.scheme
-            self._scheme=self.assign_scheme(scheme)
+            self._scheme = self.assign_scheme(scheme)
 
         def assign_scheme(self, scheme):
             if scheme is None:
@@ -384,15 +389,17 @@ class NBodyTensor:
             elif scheme.lower() in ["openfermion", "of", "o", "1221"]:
                 return "of"
             else:
-                raise TequilaException("Unknown two-body tensor scheme {}. Supported are dirac, mulliken, and openfermion".format(scheme))
+                raise TequilaException(
+                    "Unknown two-body tensor scheme {}. Supported are dirac, mulliken, and openfermion".format(scheme))
 
         def is_phys(self):
             return self._scheme == "phys"
+
         def is_chem(self):
             return self._scheme == "chem"
+
         def is_of(self):
             return self._scheme == "of"
-
 
     def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, ordering: str = None,
                  size_full: int = None):
@@ -435,7 +442,7 @@ class NBodyTensor:
             self._size_full = size_full
         # 2-body tensors (<=> order 4) currently allow reordering
         if self.order == 4:
-            self.ordering=self.Ordering(ordering)
+            self.ordering = self.Ordering(ordering)
         else:
             if ordering is not None:
                 raise Exception("Ordering only implemented for tensors of order 4 / 2-body tensors.")
@@ -584,6 +591,7 @@ class NBodyTensor:
                 self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
 
         return self
+
 
 class QuantumChemistryBase:
     """ """
@@ -893,7 +901,7 @@ class QuantumChemistryBase:
         assert G.is_hermitian()
         return QCircuit.wrap_gate(
             FermionicGateImpl(angle=angle, generator=G, p0=P0, assume_real=assume_real, control=control))
-    
+
     def make_excitation_gate(self, indices, angle, control=None, assume_real=True):
         """
         Initialize a fermionic excitation gate defined as
@@ -918,7 +926,8 @@ class QuantumChemistryBase:
         """
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
-        return QCircuit.wrap_gate(FermionicGateImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real, control=control))
+        return QCircuit.wrap_gate(
+            FermionicGateImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real, control=control))
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
         """Does a really lazy workaround ... but it works
@@ -1106,12 +1115,12 @@ class QuantumChemistryBase:
         for p in range(n_orbitals):
             for q in range(n_orbitals):
                 H += h[p, q] * Sm(p) * Sp(q) + g[p, q] * Sm(p) * Sp(p) * Sm(q) * Sp(q)
-        
+
         if self.active_space is not None:
             inactive_orbitals = self.active_space.frozen_reference_orbitals
-            qm = {i+len(inactive_orbitals):i for i in range(self.n_orbitals)}
-            one=QubitWaveFunction.from_string("1.0*|1>")
-            H = H.trace_out_qubits(qubits=inactive_orbitals, states= [one]*len(inactive_orbitals))
+            qm = {i + len(inactive_orbitals): i for i in range(self.n_orbitals)}
+            one = QubitWaveFunction.from_string("1.0*|1>")
+            H = H.trace_out_qubits(qubits=inactive_orbitals, states=[one] * len(inactive_orbitals))
             H = H.map_qubits(qubit_map=qm)
         return H
 
@@ -1215,6 +1224,79 @@ class QuantumChemistryBase:
 
         return indices
 
+    # make the k-upccgsd ansatz with order=k and exploit the physical structure
+    def make_optimized_upccgsd_ansatz(self,
+                                      include_singles: bool = True,
+                                      include_reference: bool = True,
+                                      indices: list = None,
+                                      label: str = None,
+                                      order: int = 1,
+                                      assume_real: bool = True,
+                                      topology = "ladder"
+                                      *args, **kwargs):
+
+        if self.transformation._trafo is not openfermion.jordan_wigner:
+            raise TequilaException("optimized k-UpCCGSD ansatz currently only supported for Jordan-Wigner encoding")
+
+        U0 = QCircuit()
+        if include_reference:
+            jw_reference = self.prepare_reference()
+            # transform to hcb
+            hcb_reference = sum([gates.X(target=g.target[0]//2) for g in jw_reference.gates if g.target[0] % 2 == 0])
+            U0 = hcb_reference
+
+        UD = QCircuit()
+        # add doubles in hcb encoding
+        if hasattr(indices, "lower") and indices.lower() == "ladder":
+            # ladder structure of the pair excitations
+            # ensures local connectivity
+            indices = [(n, n+1) for n in range(self.n_orbitals - 1)]
+        elif hasattr(indices, "lower") and indices.lower() == "canonical":
+            # canonical: doubles correspond to pCCD doubles
+            indices = [(n,m) for n in range(U0.qubits) for m in range(self.n_orbitals) if n>m and m not in U0.qubits]
+        elif hasattr(indices, "lower") and indices.lower() == "all":
+            # all: all possible doubles
+            indices = [(n,m) for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n>m]
+        elif hasattr(indices, "lower"):
+            raise TequilaException("Unknown recipe: {}".format(indices))
+
+        for m,n in indices:
+            if m <= n:
+                continue
+            UD += self.make_hardcore_boson_excitation_gate(indices=[(n, m)], angle=(n,m,"D", label))
+
+        UX = self.hcb_to_jw()
+
+        US = QCircuit()
+        for n in range(self.n_orbitals):
+            for m in range(self.n_orbitals):
+                US += self.make_excitation_gate(indices=[(2*n,2*m)], angle=(n,m,"a", label))
+                US += self.make_excitation_gate(indices=[(2*n+1,2*m+1)], angle=(n,m,"b", label))
+
+        U += U0 + UD + UX + US
+        for k in range(order-1):
+            U += UX + UD + UX + US
+
+        return U
+
+
+
+    def hcb_to_jw(self):
+        """
+        in hcb, electron pairs in the same spatial orbitals are encoded into a single qubit
+        here we chose the even numbered qubits for this
+        in Jordan-Wigner the even numbered qubits are spin-up and the odd-numbered are spin-down
+        with a depth-1 cnot cascade we can transform between the two represenations
+        :return: Quantum circuit that transforms from hardcore-boson to jordan-wigner representation
+        """
+        if self.transformation._trafo is not openfermion.jordan_wigner:
+            warnings.warn("hcb_to_jw: constructed hardcore-boson to Jordan-Wigner transformation, but the fermion-to-qubit transformation is not Jordan-Wigner!", TequilaWarning)
+
+        U = QCircuit()
+        for n in self.n_orbitals:
+            U += gates.CNOT(2*n+1, 2*n)
+
+        return U
 
 
     def make_upccgsd_ansatz(self,
@@ -1387,14 +1469,13 @@ class QuantumChemistryBase:
                         variables.append(Variable(name=key))
                     else:
                         variables.append(t)
-        UCCSD=QCircuit()
-        factor = 1.0/trotter_steps
+        UCCSD = QCircuit()
+        factor = 1.0 / trotter_steps
         for step in range(trotter_steps):
-            for i,idx in enumerate(indices):
-                UCCSD += self.make_excitation_gate(indices=idx, angle=factor*variables[i])
+            for i, idx in enumerate(indices):
+                UCCSD += self.make_excitation_gate(indices=idx, angle=factor * variables[i])
 
         return Uref + UCCSD
-
 
     def compute_amplitudes(self, method: str, *args, **kwargs):
         """
