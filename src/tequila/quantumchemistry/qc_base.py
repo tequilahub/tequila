@@ -12,6 +12,8 @@ from tequila.utils import to_float
 
 from tequila.objective import assign_variable
 
+from .encodings import JordanWigner, ReorderedJordanWigner, TaperedBravyKitaev
+
 import typing, numpy, numbers, copy
 from itertools import product
 
@@ -22,7 +24,6 @@ import openfermion
 from openfermion.chem import MolecularData
 
 import warnings
-
 
 class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
 
@@ -594,40 +595,6 @@ class NBodyTensor:
 
 
 class QuantumChemistryBase:
-    """ """
-
-    class _QubitEncoding:
-        """
-        Small wrapper class for the Qubit Transformation
-        Provides more controlled output and handles special cases
-        """
-
-        def __init__(self, transformation: typing.Callable, **kwargs):
-            self._trafo = transformation
-            self._kwargs = kwargs
-
-        def __call__(self, op):
-            errlog = ""
-            try:
-                try:
-                    # return self._trafo(op, **self._kwargs)
-                    return self._trafo(op, **self._kwargs)
-                except TypeError as E:
-                    print("converting to interaction operator")
-                    errlog += "\n" + str(E)
-                    return self._trafo(openfermion.get_interaction_operator(op), **self._kwargs)
-            except Exception as E:
-                errlog += "\n" + str(E)
-                raise TequilaException("Error in QubitEncoding " + str(self) + errlog)
-
-        def __repr__(self):
-            if len(self._kwargs) > 0:
-                return "transformation=" + str(self._trafo) + "\nadditional keys: " + str(self._kwargs)
-            else:
-                return "transformation=" + str(self._trafo)
-
-        def __str__(self):
-            return self.__repr__()
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
@@ -662,35 +629,24 @@ class QuantumChemistryBase:
         self._rdm2 = None
 
     def _initialize_transformation(self, transformation, *args, **kwargs):
+
         # filter out arguments to the transformation
         trafo_args = {k.split("__")[1]: v for k, v in kwargs.items() if
                       (hasattr(k, "lower") and "transformation__" in k.lower())}
 
-        if transformation is None:
-            trafo = openfermion.jordan_wigner
-        elif hasattr(transformation, "lower") and transformation.lower() in ["jordan-wigner", "jw", "j-w",
-                                                                             "jordanwigner"]:
-            trafo = openfermion.jordan_wigner
-        elif hasattr(transformation, "lower") and transformation.lower() in ["bravyi-kitaev", "bk", "b-k",
-                                                                             "bravyikitaev"]:
-            trafo = openfermion.bravyi_kitaev
-        elif hasattr(transformation, "lower") and transformation.lower() in ["bravyi-kitaev-tree", "bkt",
-                                                                             "bravykitaevtree", "b-k-t"]:
-            trafo = openfermion.bravyi_kitaev_tree
-        elif hasattr(transformation, "lower") and transformation.lower() in ["tapered_bravyi_kitaev", "tbk", "t-b-k",
-                                                                             "symmetry_conserving_bravyi_kitaev"]:
-            if "active_orbitals" not in trafo_args:
-                trafo_args["active_orbitals"] = self.n_orbitals * 2
-            if "active_fermions" not in trafo_args:
-                trafo_args["active_fermions"] = self.n_electrons
-            trafo = openfermion.symmetry_conserving_bravyi_kitaev
-        elif hasattr(transformation, "lower"):
-            trafo = getattr(openfermion, transformation.lower())
-        else:
-            assert (callable(transformation))
-            trafo = transformation
+        trafo_args["n_electrons"] = self.n_electrons
+        trafo_args["n_orbitals"] = self.n_orbitals
 
-        return self._QubitEncoding(transformation=trafo, **trafo_args)
+        if hasattr(transformation, "upper"):
+            if transformation.upper() in ["JORDANWIGNER"]:
+                transformation = JordanWigner(**trafo_args)
+            elif transformation.upper() in ["REORDEREDJORDANWIGNER"]:
+                transformation = ReorderedJordanWigner(**trafo_args)
+            elif transformation.upper() in ["TAPEREDBRAVYIKITAEV"]:
+                transformation = TaperedBravyiKitaev(**trafo_args)
+            else:
+                raise TequilaException("Unkown Fermion-to-Qubit encoding {}. Try something like: JordanWigner, BravyiKitaev, TaperedBravyiKitaev".format(transformation))
+        return transformation
 
     def _make_active_space_data(self, active_orbitals, reference=None):
         """
@@ -944,6 +900,9 @@ class QuantumChemistryBase:
         -------
 
         """
+
+        if hasattr(self.transformation._trafo, "reference_state"):
+            return self.transformation._trafo.reference_state(n_electrons=self.n_electrons, n_orbitals=self.n_orbitals)
 
         if n_qubits is None:
             n_qubits = 2 * self.n_orbitals
@@ -1228,73 +1187,44 @@ class QuantumChemistryBase:
     def make_optimized_upccgsd_ansatz(self,
                                       include_singles: bool = True,
                                       include_reference: bool = True,
-                                      indices: list = None,
+                                      indices: list = "UpCCGSD",
                                       label: str = None,
                                       order: int = 1,
                                       assume_real: bool = True,
-                                      topology = "ladder"
                                       *args, **kwargs):
-
-        if self.transformation._trafo is not openfermion.jordan_wigner:
-            raise TequilaException("optimized k-UpCCGSD ansatz currently only supported for Jordan-Wigner encoding")
-
         U0 = QCircuit()
         if include_reference:
-            jw_reference = self.prepare_reference()
-            # transform to hcb
-            hcb_reference = sum([gates.X(target=g.target[0]//2) for g in jw_reference.gates if g.target[0] % 2 == 0])
-            U0 = hcb_reference
+            U0 = sum([gates.X(target=t) for t in range(self.n_electrons//2) ], QCircuit())
 
-        UD = QCircuit()
         # add doubles in hcb encoding
         if hasattr(indices, "lower") and indices.lower() == "ladder":
             # ladder structure of the pair excitations
             # ensures local connectivity
             indices = [(n, n+1) for n in range(self.n_orbitals - 1)]
-        elif hasattr(indices, "lower") and indices.lower() == "canonical":
+        elif hasattr(indices, "lower") and indices.lower() == "upccsd":
             # canonical: doubles correspond to pCCD doubles
-            indices = [(n,m) for n in range(U0.qubits) for m in range(self.n_orbitals) if n>m and m not in U0.qubits]
-        elif hasattr(indices, "lower") and indices.lower() == "all":
+            indices = [(n,m) for n in U0.qubits for m in range(self.n_orbitals) if n<m and m not in U0.qubits]
+        elif hasattr(indices, "lower") and indices.lower() == "upccgsd":
             # all: all possible doubles
-            indices = [(n,m) for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n>m]
+            indices = [(n,m) for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n<m]
         elif hasattr(indices, "lower"):
             raise TequilaException("Unknown recipe: {}".format(indices))
 
+        UD = QCircuit()
         for m,n in indices:
-            if m <= n:
-                continue
-            UD += self.make_hardcore_boson_excitation_gate(indices=[(n, m)], angle=(n,m,"D", label))
+            UD += self.make_hardcore_boson_excitation_gate(indices=[(n,m)], angle=(n,m,"D", label))
 
-        UX = self.hcb_to_jw()
+        UX = self.transformation.me_to_hcb()
 
         US = QCircuit()
-        for n in range(self.n_orbitals):
-            for m in range(self.n_orbitals):
-                US += self.make_excitation_gate(indices=[(2*n,2*m)], angle=(n,m,"a", label))
-                US += self.make_excitation_gate(indices=[(2*n+1,2*m+1)], angle=(n,m,"b", label))
+        if include_singles:
+            for m,n in indices:
+                US += self.make_hardcore_boson_excitation_gate(indices=[(n, m)], angle=(n, m, "S", label))
+                US += self.make_hardcore_boson_excitation_gate(indices=[(n+self.n_orbitals, m+self.n_orbitals)], angle=(n, m, "S", label))
 
-        U += U0 + UD + UX + US
+        U = U0 + UD + UX + US
         for k in range(order-1):
             U += UX + UD + UX + US
-
-        return U
-
-
-
-    def hcb_to_jw(self):
-        """
-        in hcb, electron pairs in the same spatial orbitals are encoded into a single qubit
-        here we chose the even numbered qubits for this
-        in Jordan-Wigner the even numbered qubits are spin-up and the odd-numbered are spin-down
-        with a depth-1 cnot cascade we can transform between the two represenations
-        :return: Quantum circuit that transforms from hardcore-boson to jordan-wigner representation
-        """
-        if self.transformation._trafo is not openfermion.jordan_wigner:
-            warnings.warn("hcb_to_jw: constructed hardcore-boson to Jordan-Wigner transformation, but the fermion-to-qubit transformation is not Jordan-Wigner!", TequilaWarning)
-
-        U = QCircuit()
-        for n in self.n_orbitals:
-            U += gates.CNOT(2*n+1, 2*n)
 
         return U
 
@@ -1338,17 +1268,30 @@ class QuantumChemistryBase:
         """
 
         # indices defining the UpCCD ansatz
-        if indices is None:
+        singles = []
+        doubles = []
+        if indices is None or (hasattr(indices, "lower") and indices.lower() == "upccgsd"):
+            for i in range(self.n_orbitals):
+                for a in range(i + 1, self.n_orbitals):
+                    doubles.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
+                    singles.append(((2 * i, 2 * a)))
+                    singles.append(((2 * i + 1, 2 * a + 1)))
+        elif hasattr(indices, "lower") and indices.lower() == "upccsd":
             singles = []
             indices = []
             for i in range(self.n_orbitals):
                 for a in range(i + 1, self.n_orbitals):
-                    indices.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
+                    doubles.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
                     singles.append(((2 * i, 2 * a)))
                     singles.append(((2 * i + 1, 2 * a + 1)))
+        elif hasattr(indices, "lower"):
+            raise TequilaException("make_upccgsd_ansatz: Unknown recipe: {}".format(indices))
+        else:
+           doubles = indices
 
-            if include_singles:
-                indices += singles
+        indices = doubles
+        if include_singles:
+            indices += singles
 
         U = QCircuit()
         if include_reference:
