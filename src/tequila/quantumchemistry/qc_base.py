@@ -12,7 +12,7 @@ from tequila.utils import to_float
 
 from tequila.objective import assign_variable
 
-from .encodings import JordanWigner, ReorderedJordanWigner, TaperedBravyKitaev
+from .encodings import known_encodings
 
 import typing, numpy, numbers, copy
 from itertools import product
@@ -24,6 +24,7 @@ import openfermion
 from openfermion.chem import MolecularData
 
 import warnings
+
 
 class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
 
@@ -599,7 +600,6 @@ class QuantumChemistryBase:
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
-                 reference: list = None,
                  *args,
                  **kwargs):
 
@@ -618,17 +618,15 @@ class QuantumChemistryBase:
         if active_orbitals is not None:
             self.active_space = self._make_active_space_data(active_orbitals=active_orbitals, reference=reference)
 
-        if reference is None:
-            self.reference = [i for i in range(self.n_electrons // 2)]
-        else:
-            self.reference = reference
-
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
         self._rdm1 = None
         self._rdm2 = None
 
-    def _initialize_transformation(self, transformation, *args, **kwargs):
+    def _initialize_transformation(self, transformation=None, *args, **kwargs):
+
+        if transformation is None:
+            transformation = "JordanWigner"
 
         # filter out arguments to the transformation
         trafo_args = {k.split("__")[1]: v for k, v in kwargs.items() if
@@ -638,14 +636,16 @@ class QuantumChemistryBase:
         trafo_args["n_orbitals"] = self.n_orbitals
 
         if hasattr(transformation, "upper"):
-            if transformation.upper() in ["JORDANWIGNER"]:
-                transformation = JordanWigner(**trafo_args)
-            elif transformation.upper() in ["REORDEREDJORDANWIGNER"]:
-                transformation = ReorderedJordanWigner(**trafo_args)
-            elif transformation.upper() in ["TAPEREDBRAVYIKITAEV"]:
-                transformation = TaperedBravyiKitaev(**trafo_args)
+            # format to conventions
+            transformation = transformation.replace("_", "").replace("-", "").upper()
+            encodings = known_encodings()
+            if transformation in encodings:
+                transformation = encodings[transformation](**trafo_args)
             else:
-                raise TequilaException("Unkown Fermion-to-Qubit encoding {}. Try something like: JordanWigner, BravyiKitaev, TaperedBravyiKitaev".format(transformation))
+                raise TequilaException(
+                    "Unkown Fermion-to-Qubit encoding {}. Try something like: {}".format(transformation,
+                                                                                         list(encodings.keys())))
+
         return transformation
 
     def _make_active_space_data(self, active_orbitals, reference=None):
@@ -752,7 +752,7 @@ class QuantumChemistryBase:
             1j*Transformed qubit excitation operator, depends on self.transformation
         """
 
-        if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
+        if type(self.transformation).__name__ == "BravyiKitaevFast":
             raise TequilaException(
                 "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
 
@@ -822,7 +822,7 @@ class QuantumChemistryBase:
                 raise TequilaException(
                     "Unknown generator form {}, supported are G, P+, P-, G+, G- and P0".format(form))
 
-        qop = QubitHamiltonian(qubit_operator=self.transformation(op))
+        qop = self.transformation(op)
 
         # remove constant terms
         # they have no effect in the unitary (if not controlled)
@@ -884,67 +884,6 @@ class QuantumChemistryBase:
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
         return QCircuit.wrap_gate(
             FermionicGateImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real, control=control))
-
-    def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
-        """Does a really lazy workaround ... but it works
-        :return: Hartree-Fock Reference as binary-number
-
-        Parameters
-        ----------
-        reference_orbitals: list:
-            give list of doubly occupied orbitals
-            default is None which leads to automatic list of the
-            first n_electron/2 orbitals
-
-        Returns
-        -------
-
-        """
-
-        if hasattr(self.transformation._trafo, "reference_state"):
-            return self.transformation._trafo.reference_state(n_electrons=self.n_electrons, n_orbitals=self.n_orbitals)
-
-        if n_qubits is None:
-            n_qubits = 2 * self.n_orbitals
-
-        if self.transformation._trafo == openfermion.symmetry_conserving_bravyi_kitaev:
-            def tapering(fop):
-                fermion_hamiltonian_reorder = openfermion.reorder(fop, openfermion.utils.up_then_down,
-                                                                        num_modes=n_qubits)
-                qubit_operator = openfermion.bravyi_kitaev_tree(fermion_hamiltonian_reorder, n_qubits=n_qubits)
-                qubit_operator.compress()
-                return qubit_operator
-
-            transformation = tapering
-        elif self.transformation._trafo == openfermion.bravyi_kitaev_fast:
-            raise TequilaException(
-                "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
-
-        else:
-            transformation = self.transformation
-
-        if reference_orbitals is None:
-            reference_orbitals = self.reference
-
-        spin_orbitals = sorted([2 * i for i in reference_orbitals] + [2 * i + 1 for i in reference_orbitals])
-
-        string = "1.0 ["
-        for i in spin_orbitals:
-            string += str(i) + "^ "
-        string += "]"
-
-        fop = openfermion.FermionOperator(string, 1.0)
-        op = QubitHamiltonian(qubit_operator=transformation(fop))
-        from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-        wfn = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
-        wfn = wfn.apply_qubitoperator(operator=op)
-        assert (len(wfn.keys()) == 1)
-        key = list(wfn.keys())[0]
-        if self.transformation._trafo == openfermion.symmetry_conserving_bravyi_kitaev:
-            active_qubits = [i for i in range(n_qubits) if i not in [n_qubits - 1, n_qubits // 2 - 1]]
-            array = [key.array[i] for i in active_qubits]
-            key = BitString.from_array(array=array)
-        return key
 
     def make_molecule(self, *args, **kwargs) -> MolecularData:
         """Creates a molecule in openfermion format by running psi4 and extracting the data
@@ -1045,12 +984,8 @@ class QuantumChemistryBase:
 
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
-        try:
-            qop = self.transformation(fop)
-        except TypeError:
-            qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
 
-        result = QubitHamiltonian(qubit_operator=qop).simplify(threshold)
+        result = self.transformation(fop).simplify(threshold)
         result.is_hermitian()
         return result
 
@@ -1104,7 +1039,7 @@ class QuantumChemistryBase:
         """ """
         raise Exception("BaseClass Method")
 
-    def prepare_reference(self, *args, **kwargs):
+    def prepare_reference(self, state=None, *args, **kwargs):
         """
 
         Returns
@@ -1112,7 +1047,11 @@ class QuantumChemistryBase:
         A tequila circuit object which prepares the reference of this molecule in the chosen transformation
         """
 
-        return prepare_product_state(self.reference_state(*args, **kwargs))
+        if state is None:
+            state = [1 for i in range(self.n_electrons)]
+            state += [0 for i in range(2 * self.n_orbitals - self.n_electrons)]
+        reference_state = BitString.from_array(self.transformation.map_state(state=state))
+        return prepare_product_state(reference_state)
 
     def prepare_hardcore_boson_reference(self):
         # todo: integrate with transformation
@@ -1194,40 +1133,40 @@ class QuantumChemistryBase:
                                       *args, **kwargs):
         U0 = QCircuit()
         if include_reference:
-            U0 = sum([gates.X(target=t) for t in range(self.n_electrons//2) ], QCircuit())
+            U0 = sum([gates.X(target=t) for t in range(self.n_electrons // 2)], QCircuit())
 
         # add doubles in hcb encoding
         if hasattr(indices, "lower") and indices.lower() == "ladder":
             # ladder structure of the pair excitations
             # ensures local connectivity
-            indices = [(n, n+1) for n in range(self.n_orbitals - 1)]
+            indices = [(n, n + 1) for n in range(self.n_orbitals - 1)]
         elif hasattr(indices, "lower") and indices.lower() == "upccsd":
             # canonical: doubles correspond to pCCD doubles
-            indices = [(n,m) for n in U0.qubits for m in range(self.n_orbitals) if n<m and m not in U0.qubits]
+            indices = [(n, m) for n in U0.qubits for m in range(self.n_orbitals) if n < m and m not in U0.qubits]
         elif hasattr(indices, "lower") and indices.lower() == "upccgsd":
             # all: all possible doubles
-            indices = [(n,m) for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n<m]
+            indices = [(n, m) for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n < m]
         elif hasattr(indices, "lower"):
             raise TequilaException("Unknown recipe: {}".format(indices))
 
         UD = QCircuit()
-        for m,n in indices:
-            UD += self.make_hardcore_boson_excitation_gate(indices=[(n,m)], angle=(n,m,"D", label))
+        for m, n in indices:
+            UD += self.make_hardcore_boson_excitation_gate(indices=[(n, m)], angle=(n, m, "D", label))
 
         UX = self.transformation.me_to_hcb()
 
         US = QCircuit()
         if include_singles:
-            for m,n in indices:
+            for m, n in indices:
                 US += self.make_hardcore_boson_excitation_gate(indices=[(n, m)], angle=(n, m, "S", label))
-                US += self.make_hardcore_boson_excitation_gate(indices=[(n+self.n_orbitals, m+self.n_orbitals)], angle=(n, m, "S", label))
+                US += self.make_hardcore_boson_excitation_gate(indices=[(n + self.n_orbitals, m + self.n_orbitals)],
+                                                               angle=(n, m, "S", label))
 
         U = U0 + UD + UX + US
-        for k in range(order-1):
+        for k in range(order - 1):
             U += UX + UD + UX + US
 
         return U
-
 
     def make_upccgsd_ansatz(self,
                             include_singles: bool = True,
@@ -1287,7 +1226,7 @@ class QuantumChemistryBase:
         elif hasattr(indices, "lower"):
             raise TequilaException("make_upccgsd_ansatz: Unknown recipe: {}".format(indices))
         else:
-           doubles = indices
+            doubles = indices
 
         indices = doubles
         if include_singles:
@@ -1585,7 +1524,7 @@ class QuantumChemistryBase:
         # Issue here: when a single operator acts only on a subset of qubits, BKSF might not yield the correct
         # transformation, because it computes the number of qubits incorrectly in this case.
         # A hotfix such as for symmetry_conserving_bravyi_kitaev would require deeper changes, thus omitted for now
-        if self.transformation._trafo == openfermion.bravyi_kitaev_fast:
+        if type(self.transformation).__name__ == "BravyiKitaevFast":
             raise TequilaException(
                 "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet.")
 
@@ -1609,8 +1548,8 @@ class QuantumChemistryBase:
             if real:
                 return real
             elif not real:
-                print(of_operator)
-                raise TequilaException("Qubit Hamiltonian does not have a Hermitian part. Check this...")
+                raise TequilaException(
+                    "Qubit Hamiltonian does not have a Hermitian part. Operator ={}".format(of_operator))
 
         def _build_1bdy_operators_spinful() -> list:
             """ Returns spinful one-body operators as a symmetry-reduced list of QubitHamiltonians """
