@@ -6,6 +6,7 @@ import os, glob
 import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
 from tequila.quantumchemistry import QuantumChemistryBase, ParametersQC
+from tequila.quantumchemistry.encodings import known_encodings
 from tequila.simulators.simulator_api import simulate
 
 HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
@@ -29,7 +30,7 @@ def teardown_function(function):
     [os.remove(x) for x in glob.glob("*.dat")]
 
 
-@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree"])
+@pytest.mark.parametrize("trafo", list(known_encodings().keys()))
 def test_base(trafo):
     obt = numpy.asarray([[-1.94102524, -0.31651552], [-0.31651552, -0.0887454]])
     tbt = numpy.asarray(
@@ -75,7 +76,7 @@ def test_interface():
                     reason="you don't have a quantum chemistry backend installed")
 @pytest.mark.parametrize("geom", [" H 0.0 0.0 1.0\n H 0.0 0.0 -1.0", " he 0.0 0.0 0.0", " be 0.0 0.0 0.0"])
 @pytest.mark.parametrize("basis", ["sto-3g"])
-@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "bravyi_kitaev_fast"])
+@pytest.mark.parametrize("trafo", list(known_encodings().keys()))
 def test_hamiltonian_consistency(geom: str, basis: str, trafo: str):
     parameters_qc = qc.ParametersQC(geometry=geom, basis_set=basis, outfile="asd")
     hqc1 = qc.QuantumChemistryPsi4(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
@@ -308,7 +309,7 @@ def test_rdms_psi4():
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 0.7"])
-@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "tapered_bravyi_kitaev"])
+@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev"])
 def test_upccgsd(geometry, trafo):
     molecule = tq.chemistry.Molecule(geometry=geometry, basis_set="sto-3g", transformation=trafo)
     energy = do_test_upccgsd(molecule)
@@ -379,4 +380,24 @@ def test_fermionic_gates(assume_real, trafo):
 
     assert numpy.isclose(test1, test1x, atol=1.e-6)
     assert numpy.isclose(test2, test2x, atol=1.e-6)
+
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "ReorderedJordanWigner", "ReorderedBravyiKitaev"])
+def test_hcb(trafo):
+    geomstring = "Be 0.0 0.0 0.0\n H 0.0 0.0 1.6\n H 0.0 0.0 -1.6"
+    mol1 = tq.Molecule(geometry=geomstring, active_orbitals=[1,2,3,4,5,6], basis_set="sto-3g", transformation="ReorderedJordanWigner")
+    H = mol1.make_hardcore_boson_hamiltonian()
+    U = mol1.make_hardcore_boson_upccgd_layer(include_reference=True, include_singles=False)
+    E = tq.ExpectationValue(H=H, U=U)
+    energy1 = tq.minimize(E).energy
+
+    mol2 = tq.Molecule(geometry=geomstring, active_orbitals=[1,2,3,4,5,6], basis_set="sto-3g", transformation=trafo)
+    H = mol2.make_hamiltonian()
+    U = mol2.make_upccgsd_ansatz(include_reference=True, include_singles=False)
+    E = tq.ExpectationValue(H=H, U=U)
+    energy2 = tq.minimize(E).energy
+
+    assert numpy.isclose(energy1, energy2)
+
+
 

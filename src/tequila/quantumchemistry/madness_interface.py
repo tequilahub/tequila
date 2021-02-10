@@ -257,21 +257,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     U += self.make_hardcore_boson_excitation_gate(indices=[(a.idx, b.idx)], angle=(a.idx, b.idx, label))
         return U
 
-    def make_hbc_jw_encoder(self, U: QCircuit = None):
-        # unitary that transforms between hbc representation and standard JW
-        # give our initial unitary in the hbc representation in order to map the qubits correctly
-        # gives back U + the transformation unitary
-        if U is None:
-            U0 = QCircuit()
-        else:
-            qubit_map = {i: 2 * i for i in range(self.n_orbitals)}
-            U0 = U.map_qubits(qubit_map=qubit_map)
-
-        encoder = QCircuit()
-        for i in range(self.n_orbitals):
-            encoder += gates.CNOT(control=2 * i, target=2 * i + 1)
-        return U0 + encoder
-
     def make_separated_objective(self, pairs=None, label=None, neglect_coupling=False):
         if pairs is None:
             pairs = [i for i in range(self.n_electrons // 2)]

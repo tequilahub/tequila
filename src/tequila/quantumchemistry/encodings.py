@@ -45,7 +45,10 @@ class EncodingBase:
 
         fop = self.do_transform(fermion_operator=op, *args, **kwargs)
         fop.compress()
-        return QubitHamiltonian.from_openfermion(fop)
+        return self.post_processing(QubitHamiltonian.from_openfermion(fop))
+
+    def post_processing(self, op, *args, **kwargs):
+        return op
 
     def up(self, i):
         if self.up_then_down:
@@ -175,6 +178,7 @@ class TaperedBravyKitaev(EncodingBase):
     Uses OpenFermion::symmetry_conserving_bravyi_kitaev (tapered bravyi_kitaev_tree arxiv:1701.07072)
     Reduces Hamiltonian by 2 qubits
     See OpenFermion Documentation for more
+    Does not work for UCC generators yet
     """
     def __init__(self, n_electrons, n_orbitals, active_fermions=None, active_orbitals=None, *args, **kwargs):
         if active_fermions is None:
@@ -192,6 +196,8 @@ class TaperedBravyKitaev(EncodingBase):
         super().__init__(n_orbitals=n_orbitals, n_electrons=n_electrons, up_then_down=False, *args, **kwargs)
 
     def do_transform(self, fermion_operator:openfermion.FermionOperator, *args, **kwargs) -> openfermion.QubitOperator:
+        if openfermion.count_qubits(fermion_operator) != self.n_orbitals*2:
+            raise Exception("TaperedBravyiKitaev not ready for UCC generators yet")
         return openfermion.symmetry_conserving_bravyi_kitaev(fermion_operator, active_orbitals=self.active_orbitals, active_fermions=self.active_fermions)
 
     def map_state(self, state:list, *args, **kwargs):
@@ -201,3 +207,5 @@ class TaperedBravyKitaev(EncodingBase):
         active_qubits = [i for i in range(n_qubits) if i not in [n_qubits - 1, n_qubits // 2 - 1]]
         key = [key[i] for i in active_qubits]
         return key
+
+

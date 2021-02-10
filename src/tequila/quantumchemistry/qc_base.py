@@ -846,10 +846,13 @@ class QuantumChemistryBase:
     def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, assume_real=True):
         G = QubitHamiltonian()
         P0 = QubitHamiltonian()
+
         for pair in indices:
-            G += Sp(pair[0]) * Sm(pair[1])
-            P0 += Qp(pair[0]) * Qm(pair[1])
-            P0 += Qm(pair[0]) * Qp(pair[1])
+            u0 = self.transformation.up(pair[0])
+            u1 = self.transformation.up(pair[1])
+            G += Sp(u0) * Sm(u1)
+            P0 += Qp(u0) * Qm(u1)
+            P0 += Qm(u0) * Qp(u1)
 
         G = 1.0j * (G - G.dagger())
         P0 = 1.0 - P0
@@ -1053,6 +1056,31 @@ class QuantumChemistryBase:
         reference_state = BitString.from_array(self.transformation.map_state(state=state))
         return prepare_product_state(reference_state)
 
+    def prepare_hcb_reference(self, state=None, *args, **kwargs):
+        """
+
+        Returns
+        -------
+        A tequila circuit object which prepares the reference of this molecule in hardcore-boson representation
+        (a pair function represented only by the spin-up orbitals)
+        this is independent of the qubit encoding (except the up_then_down key) and can be transformed via
+        U = self.transfomration.hcb_to_me
+        so
+        self.prepare_reference == self.prepare_hcb_reference + self.transformation.hcb_to_me()
+
+        state can define a given product state (expected in full spin orbital notation up, down, up, down)
+        """
+
+        if state is None:
+            state = [1 for i in range(self.n_electrons)]
+            state += [0 for i in range(2 * self.n_orbitals - self.n_electrons)]
+        reference_state = [0] * len(state)
+        for i in range(self.n_orbitals):
+            assert state[2 * i] == state[2 * i + 1]
+            reference_state[self.transformation.up(i)] = state[2 * i]
+
+        return prepare_product_state(BitString.from_array(reference_state))
+
     def prepare_hardcore_boson_reference(self):
         # todo: integrate with transformation
         return gates.X(target=[i for i in range(self.n_orbitals)])
@@ -1122,59 +1150,59 @@ class QuantumChemistryBase:
 
         return indices
 
-    # make the k-upccgsd ansatz with order=k and exploit the physical structure
-    def make_optimized_upccgsd_ansatz(self,
-                                      include_singles: bool = True,
-                                      include_reference: bool = True,
-                                      indices: list = "UpCCGSD",
-                                      label: str = None,
-                                      order: int = 1,
-                                      assume_real: bool = True,
-                                      *args, **kwargs):
-        U0 = QCircuit()
-        if include_reference:
-            U0 = sum([gates.X(target=t) for t in range(self.n_electrons // 2)], QCircuit())
+    def make_upccgsd_indices(self, key, reference_orbitals=None, *args, **kwargs):
 
+        if reference_orbitals is None:
+            reference_orbitals = [i for i in range(self.n_electrons // 2)]
+        indices = []
         # add doubles in hcb encoding
-        if hasattr(indices, "lower") and indices.lower() == "ladder":
+        if hasattr(key, "lower") and key.lower() == "ladder":
             # ladder structure of the pair excitations
             # ensures local connectivity
             indices = [(n, n + 1) for n in range(self.n_orbitals - 1)]
-        elif hasattr(indices, "lower") and indices.lower() == "upccsd":
+        elif hasattr(key, "lower") and key.lower() == "upccsd":
             # canonical: doubles correspond to pCCD doubles
-            indices = [(n, m) for n in U0.qubits for m in range(self.n_orbitals) if n < m and m not in U0.qubits]
-        elif hasattr(indices, "lower") and indices.lower() == "upccgsd":
+            indices = [(n, m) for n in reference_orbitals for m in range(self.n_orbitals) if
+                       n < m and m not in reference_orbitals]
+        elif hasattr(key, "lower") and key.lower() == "upccgsd":
             # all: all possible doubles
             indices = [(n, m) for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n < m]
-        elif hasattr(indices, "lower"):
-            raise TequilaException("Unknown recipe: {}".format(indices))
+        else:
+            raise TequilaException("Unknown recipe: {}".format(key))
+
+        return indices
+
+    # make the k-upccgsd ansatz with order=k and exploit the physical structure
+    def make_hardcore_boson_upccgd_layer(self,
+                                         include_singles: bool = True,
+                                         spin_adapt_singles: bool = True,
+                                         include_reference: bool = True,
+                                         indices: list = "UpCCGSD",
+                                         label: str = None,
+                                         assume_real: bool = True,
+                                         *args, **kwargs):
+        U0 = QCircuit()
+        if include_reference:
+            U0 = self.prepare_hcb_reference()
+
+        if hasattr(indices, "lower"):
+            indices = self.make_upccgsd_indices(key=indices.lower())
 
         UD = QCircuit()
         for m, n in indices:
             UD += self.make_hardcore_boson_excitation_gate(indices=[(n, m)], angle=(n, m, "D", label))
 
-        UX = self.transformation.me_to_hcb()
-
-        US = QCircuit()
-        if include_singles:
-            for m, n in indices:
-                US += self.make_hardcore_boson_excitation_gate(indices=[(n, m)], angle=(n, m, "S", label))
-                US += self.make_hardcore_boson_excitation_gate(indices=[(n + self.n_orbitals, m + self.n_orbitals)],
-                                                               angle=(n, m, "S", label))
-
-        U = U0 + UD + UX + US
-        for k in range(order - 1):
-            U += UX + UD + UX + US
-
-        return U
+        return U0 + UD
 
     def make_upccgsd_ansatz(self,
                             include_singles: bool = True,
                             include_reference: bool = True,
-                            indices: list = None,
+                            indices: list = "UpCCGSD",
                             label: str = None,
                             order: int = 1,
                             assume_real: bool = True,
+                            do_not_optimize: bool = False,
+                            spin_adapt_singles: bool = True,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1193,7 +1221,7 @@ class QuantumChemistryBase:
             default is None and no label will be set: variables names will be
             (x, (p,q)) for x in range(order)
             with a label the variables will be named
-            (label, (x, (p,q))) 
+            (label, (x, (p,q)))
         order
             Order of the ansatz (default is 1)
             determines how often the ordering gets repeated
@@ -1206,581 +1234,614 @@ class QuantumChemistryBase:
             UpGCCSD ansatz
         """
 
-        # indices defining the UpCCD ansatz
-        singles = []
-        doubles = []
-        if indices is None or (hasattr(indices, "lower") and indices.lower() == "upccgsd"):
-            for i in range(self.n_orbitals):
-                for a in range(i + 1, self.n_orbitals):
-                    doubles.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
-                    singles.append(((2 * i, 2 * a)))
-                    singles.append(((2 * i + 1, 2 * a + 1)))
-        elif hasattr(indices, "lower") and indices.lower() == "upccsd":
-            singles = []
-            indices = []
-            for i in range(self.n_orbitals):
-                for a in range(i + 1, self.n_orbitals):
-                    doubles.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
-                    singles.append(((2 * i, 2 * a)))
-                    singles.append(((2 * i + 1, 2 * a + 1)))
-        elif hasattr(indices, "lower"):
-            raise TequilaException("make_upccgsd_ansatz: Unknown recipe: {}".format(indices))
+        if hasattr(indices, "lower"):
+            indices = self.make_upccgsd_indices(key=indices.lower())
+
+        # check if the used qubit encoding has a hcb transformation
+        have_hcb_trafo = True
+        try:
+            U = self.transformation.hcb_to_me()
+        except:
+            have_hcb_trafo = False
+
+        # first layer
+        if do_not_optimize or not have_hcb_trafo:
+            U = QCircuit()
+            if include_reference:
+                U = self.prepare_reference()
+            U += self.make_upccgsd_layer(include_singles=include_singles, indices=indices, label=label)
         else:
-            doubles = indices
+            U = self.make_hardcore_boson_upccgd_layer(include_singles=include_singles,
+                                                      include_reference=include_reference, indices=indices, label=label)
+            U += self.transformation.hcb_to_me()
 
-        indices = doubles
         if include_singles:
-            indices += singles
-
-        U = QCircuit()
-        if include_reference:
-            U = self.prepare_reference()
-
-        for k in range(order):
             for idx in indices:
-                angle = (k, idx, label)
-                U += self.make_excitation_gate(angle=angle, indices=idx, assume_real=assume_real)
+                angle = (idx, "S", label)
+                U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
+                if spin_adapt_singles:
+                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
+                                                   assume_real=assume_real)
+                else:
+                    angle = (idx, "SX", label)
+                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
+                                                   assume_real=assume_real)
+
+        for k in range(order - 1):
+            label = (order, label)
+            U += self.make_upccgsd_layer(include_singles=include_singles, indices=indices, label=label, spin_adapt_singles=spin_adapt_singles)
+
         return U
 
-    def make_uccsd_ansatz(self, trotter_steps: int,
-                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
-                          include_reference_ansatz=True,
-                          parametrized=True,
-                          threshold=1.e-8,
-                          trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
-        """
-
-        Parameters
-        ----------
-        initial_amplitudes :
-            initial amplitudes given as ManyBodyAmplitudes structure or as string
-            where 'mp2', 'cc2' or 'ccsd' are possible initializations
-        include_reference_ansatz :
-            Also do the reference ansatz (prepare closed-shell Hartree-Fock) (Default value = True)
-        parametrized :
-            Initialize with variables, otherwise with static numbers (Default value = True)
-        trotter_steps: int :
-
-        initial_amplitudes: typing.Union[str :
-
-        Amplitudes :
-
-        ClosedShellAmplitudes] :
-             (Default value = "mp2")
-        trotter_parameters: gates.TrotterParameters :
-             (Default value = None)
-
-        Returns
-        -------
-        type
-            Parametrized QCircuit
-
-        """
-
-        if self.n_electrons % 2 != 0:
-            raise TequilaException("make_uccsd_ansatz currently only for closed shell systems")
-
-        nocc = self.n_electrons // 2
-        nvirt = self.n_orbitals // 2 - nocc
-
-        Uref = QCircuit()
-        if include_reference_ansatz:
-            Uref = self.prepare_reference()
-
-        amplitudes = initial_amplitudes
-        if hasattr(initial_amplitudes, "lower"):
-            if initial_amplitudes.lower() == "mp2":
-                amplitudes = self.compute_mp2_amplitudes()
-            elif initial_amplitudes.lower() == "ccsd":
-                amplitudes = self.compute_ccsd_amplitudes()
-            else:
-                try:
-                    amplitudes = self.compute_amplitudes(method=initial_amplitudes.lower())
-                except Exception as exc:
-                    raise TequilaException(
-                        "{}\nDon't know how to initialize \'{}\' amplitudes".format(exc, initial_amplitudes))
-
-        if amplitudes is None:
-            amplitudes = ClosedShellAmplitudes(
-                tIjAb=numpy.zeros(shape=[nocc, nocc, nvirt, nvirt]),
-                tIA=numpy.zeros(shape=[nocc, nvirt]))
-
-        closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
-        indices = []
-        variables = []
-
-        if not isinstance(amplitudes, dict):
-            amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
-            amplitudes = dict(sorted(amplitudes.items(), key=lambda x: numpy.fabs(x[1]), reverse=True))
-
-        for key, t in amplitudes.items():
-            assert (len(key) % 2 == 0)
-            if not numpy.isclose(t, 0.0, atol=threshold):
-
-                if closed_shell:
-                    spin_indices = []
-                    if len(key) == 2:
-                        spin_indices = [[2 * key[0], 2 * key[1]], [2 * key[0] + 1, 2 * key[1] + 1]]
-                        partner = None
-                    else:
-                        spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
-                        spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
-                        if key[0] != key[2] and key[1] != key[3]:
-                            spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
-                            spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
-                        partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
-                    for idx in spin_indices:
-                        idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
-                        indices.append(idx)
-
-                    if parametrized:
-                        variables.append(Variable(name=key))  # abab
-                        variables.append(Variable(name=key))  # baba
-                        if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(Variable(name=key) - Variable(partner))  # aaaa
-                            variables.append(Variable(name=key) - Variable(partner))  # bbbb
-                    else:
-                        variables.append(t)
-                        variables.append(t)
-                        if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(t - amplitudes[partner])
-                            variables.append(t - amplitudes[partner])
+    def make_upccgsd_layer(self, indices, include_singles=True, assume_real=True, label=None, spin_adapt_singles:bool=True, *args, **kwargs):
+        U = QCircuit()
+        for idx in indices:
+            angle = (idx, "D", label)
+            U += self.make_excitation_gate(angle=angle,
+                                           indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
+                                           assume_real=assume_real)
+        if include_singles:
+            for idx in indices:
+                angle = (idx, "S", label)
+                U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
+                if spin_adapt_singles:
+                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
+                                                   assume_real=assume_real)
                 else:
-                    indices.append(spin_indices)
-                    if parametrized:
-                        variables.append(Variable(name=key))
-                    else:
-                        variables.append(t)
-        UCCSD = QCircuit()
-        factor = 1.0 / trotter_steps
-        for step in range(trotter_steps):
-            for i, idx in enumerate(indices):
-                UCCSD += self.make_excitation_gate(indices=idx, angle=factor * variables[i])
+                    angle = (idx, "SX", label)
+                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
+                                                   assume_real=assume_real)
 
-        return Uref + UCCSD
-
-    def compute_amplitudes(self, method: str, *args, **kwargs):
-        """
-        Compute closed-shell CC amplitudes
-
-        Parameters
-        ----------
-        method :
-            coupled-cluster methods like cc2, ccsd, cc3, ccsd(t)
-            Success might depend on backend
-            got an extra function for MP2
-        *args :
-
-        **kwargs :
+        return U
 
 
-        Returns
-        -------
+def make_uccsd_ansatz(self, trotter_steps: int,
+                      initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
+                      include_reference_ansatz=True,
+                      parametrized=True,
+                      threshold=1.e-8,
+                      trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
+    """
 
-        """
-        raise TequilaException("compute amplitudes: Needs to be overwritten by backend")
+    Parameters
+    ----------
+    initial_amplitudes :
+        initial amplitudes given as ManyBodyAmplitudes structure or as string
+        where 'mp2', 'cc2' or 'ccsd' are possible initializations
+    include_reference_ansatz :
+        Also do the reference ansatz (prepare closed-shell Hartree-Fock) (Default value = True)
+    parametrized :
+        Initialize with variables, otherwise with static numbers (Default value = True)
+    trotter_steps: int :
 
-    def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
-        """
+    initial_amplitudes: typing.Union[str :
 
-        Compute closed-shell mp2 amplitudes
+    Amplitudes :
 
-        .. math::
-            t(a,i,b,j) = 0.25 * g(a,i,b,j)/(e(i) + e(j) -a(i) - b(j) )
+    ClosedShellAmplitudes] :
+         (Default value = "mp2")
+    trotter_parameters: gates.TrotterParameters :
+         (Default value = None)
 
-        :return:
+    Returns
+    -------
+    type
+        Parametrized QCircuit
 
-        Parameters
-        ----------
+    """
 
-        Returns
-        -------
+    if self.n_electrons % 2 != 0:
+        raise TequilaException("make_uccsd_ansatz currently only for closed shell systems")
 
-        """
-        assert self.parameters.closed_shell
-        g = self.molecule.two_body_integrals
-        fij = self.molecule.orbital_energies
-        nocc = self.molecule.n_electrons // 2  # this is never the active space
-        ei = fij[:nocc]
-        ai = fij[nocc:]
-        abgij = g[nocc:, nocc:, :nocc, :nocc]
-        amplitudes = abgij * 1.0 / (
-                ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
-        E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
-                                                                                optimize='greedy')
+    nocc = self.n_electrons // 2
+    nvirt = self.n_orbitals // 2 - nocc
 
-        self.molecule.mp2_energy = E + self.molecule.hf_energy
-        return ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='greedy'))
+    Uref = QCircuit()
+    if include_reference_ansatz:
+        Uref = self.prepare_reference()
 
-    def compute_cis_amplitudes(self):
-        """
-        Compute the CIS amplitudes of the molecule
-        """
-
-        @dataclass
-        class ResultCIS:
-            """ """
-            omegas: typing.List[numbers.Real]  # excitation energies [omega0, ...]
-            amplitudes: typing.List[ClosedShellAmplitudes]  # corresponding amplitudes [x_{ai}_0, ...]
-
-            def __getitem__(self, item):
-                return (self.omegas[item], self.amplitudes[item])
-
-            def __len__(self):
-                return len(self.omegas)
-
-        g = self.molecule.two_body_integrals
-        fij = self.molecule.orbital_energies
-
-        nocc = self.n_alpha_electrons
-        nvirt = self.n_orbitals - nocc
-
-        pairs = []
-        for i in range(nocc):
-            for a in range(nocc, nocc + nvirt):
-                pairs.append((a, i))
-        M = numpy.ndarray(shape=[len(pairs), len(pairs)])
-
-        for xx, x in enumerate(pairs):
-            eia = fij[x[0]] - fij[x[1]]
-            a, i = x
-            for yy, y in enumerate(pairs):
-                b, j = y
-                delta = float(y == x)
-                gpart = 2.0 * g[a, i, b, j] - g[a, i, j, b]
-                M[xx, yy] = eia * delta + gpart
-
-        omega, xvecs = numpy.linalg.eigh(M)
-
-        # convert amplitudes to ndarray sorted by excitation energy
-        nex = len(omega)
-        amplitudes = []
-        for ex in range(nex):
-            t = numpy.ndarray(shape=[nvirt, nocc])
-            exvec = xvecs[ex]
-            for xx, x in enumerate(pairs):
-                a, i = x
-                t[a - nocc, i] = exvec[xx]
-            amplitudes.append(ClosedShellAmplitudes(tIA=t))
-
-        return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
-
-    @property
-    def rdm1(self):
-        """ """
-        if self._rdm1 is not None:
-            return self._rdm1
+    amplitudes = initial_amplitudes
+    if hasattr(initial_amplitudes, "lower"):
+        if initial_amplitudes.lower() == "mp2":
+            amplitudes = self.compute_mp2_amplitudes()
+        elif initial_amplitudes.lower() == "ccsd":
+            amplitudes = self.compute_ccsd_amplitudes()
         else:
-            print("1-RDM has not been computed. Return None for 1-RDM.")
-            return None
-
-    @property
-    def rdm2(self):
-        """ """
-        if self._rdm2 is not None:
-            return self._rdm2
-        else:
-            print("2-RDM has not been computed. Return None for 2-RDM.")
-            return None
-
-    def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True):
-        """
-        Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
-        a unitary U. This method uses the standard ordering in physics as denoted below.
-        Note, that the representation of the density matrices depends on the qubit transformation
-        used. The Jordan-Wigner encoding corresponds to 'classical' second quantized density
-        matrices in the occupation picture.
-
-        We only consider real orbitals and thus real-valued RDMs.
-        The matrices are set as private members _rdm1, _rdm2 and can be accessed via the properties rdm1, rdm2.
-
-        .. math :
-            \\text{rdm1: } \\gamma^p_q = \\langle \\psi | a^p a_q | \\psi \\rangle
-                                     = \\langle U 0 | a^p a_q | U 0 \\rangle
-            \\text{rdm2: } \\gamma^{pq}_{rs} = \\langle \\psi | a^p a^q a_s a_r | \\psi \\rangle
-                                             = \\langle U 0 | a^p a^q a_s a_r | U 0 \\rangle
-
-        Parameters
-        ----------
-        U :
-            Quantum Circuit to achieve the desired state \\psi = U |0\\rangle, non-optional
-        variables :
-            If U is parametrized, then need to hand over a set of fixed variables
-        spin_free :
-            Set whether matrices should be spin-free (summation over spin) or defined by spin-orbitals
-        get_rdm1, get_rdm2 :
-            Set whether either one or both rdm1, rdm2 should be computed. If both are needed at some point,
-            it is recommended to compute them at once.
-
-        Returns
-        -------
-        """
-        # Check whether unitary circuit is not 0
-        if U is None:
-            raise TequilaException('Need to specify a Quantum Circuit.')
-
-        # Check whether transformation is BKSF.
-        # Issue here: when a single operator acts only on a subset of qubits, BKSF might not yield the correct
-        # transformation, because it computes the number of qubits incorrectly in this case.
-        # A hotfix such as for symmetry_conserving_bravyi_kitaev would require deeper changes, thus omitted for now
-        if type(self.transformation).__name__ == "BravyiKitaevFast":
-            raise TequilaException(
-                "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet.")
-
-        # Set up number of spin-orbitals and molecular orbitals respectively
-        n_SOs = 2 * self.n_orbitals
-        n_MOs = self.n_orbitals
-
-        # Check whether unitary circuit is not 0
-        if U is None:
-            raise TequilaException('Need to specify a Quantum Circuit.')
-
-        def _get_of_op(operator_tuple):
-            """ Returns operator given by a operator tuple as OpenFermion - Fermion operator """
-            op = openfermion.FermionOperator(operator_tuple)
-            return op
-
-        def _get_qop_hermitian(of_operator) -> QubitHamiltonian:
-            """ Returns Hermitian part of Fermion operator as QubitHamiltonian """
-            qop = QubitHamiltonian(self.transformation(of_operator))
-            real, imag = qop.split(hermitian=True)
-            if real:
-                return real
-            elif not real:
+            try:
+                amplitudes = self.compute_amplitudes(method=initial_amplitudes.lower())
+            except Exception as exc:
                 raise TequilaException(
-                    "Qubit Hamiltonian does not have a Hermitian part. Operator ={}".format(of_operator))
+                    "{}\nDon't know how to initialize \'{}\' amplitudes".format(exc, initial_amplitudes))
 
-        def _build_1bdy_operators_spinful() -> list:
-            """ Returns spinful one-body operators as a symmetry-reduced list of QubitHamiltonians """
-            # Exploit symmetry pq = qp
-            ops = []
-            for p in range(n_SOs):
-                for q in range(p + 1):
-                    op_tuple = ((p, 1), (q, 0))
-                    op = _get_of_op(op_tuple)
-                    ops += [op]
+    if amplitudes is None:
+        amplitudes = ClosedShellAmplitudes(
+            tIjAb=numpy.zeros(shape=[nocc, nocc, nvirt, nvirt]),
+            tIA=numpy.zeros(shape=[nocc, nvirt]))
 
-            return ops
+    closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
+    indices = []
+    variables = []
 
-        def _build_2bdy_operators_spinful() -> list:
-            """ Returns spinful two-body operators as a symmetry-reduced list of QubitHamiltonians """
-            # Exploit symmetries pqrs = -pqsr = -qprs = qpsr
-            #                and      =  rspq
-            ops = []
-            for p in range(n_SOs):
-                for q in range(p):
-                    for r in range(n_SOs):
-                        for s in range(r):
-                            if p * n_SOs + q >= r * n_SOs + s:
-                                op_tuple = ((p, 1), (q, 1), (s, 0), (r, 0))
-                                op = _get_of_op(op_tuple)
-                                ops += [op]
+    if not isinstance(amplitudes, dict):
+        amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
+        amplitudes = dict(sorted(amplitudes.items(), key=lambda x: numpy.fabs(x[1]), reverse=True))
 
-            return ops
+    for key, t in amplitudes.items():
+        assert (len(key) % 2 == 0)
+        if not numpy.isclose(t, 0.0, atol=threshold):
 
-        def _build_1bdy_operators_spinfree() -> list:
-            """ Returns spinfree one-body operators as a symmetry-reduced list of QubitHamiltonians """
-            # Exploit symmetry pq = qp (not changed by spin-summation)
-            ops = []
-            for p in range(n_MOs):
-                for q in range(p + 1):
-                    # Spin aa
-                    op_tuple = ((2 * p, 1), (2 * q, 0))
-                    op = _get_of_op(op_tuple)
-                    # Spin bb
-                    op_tuple = ((2 * p + 1, 1), (2 * q + 1, 0))
-                    op += _get_of_op(op_tuple)
-                    ops += [op]
+            if closed_shell:
+                spin_indices = []
+                if len(key) == 2:
+                    spin_indices = [[2 * key[0], 2 * key[1]], [2 * key[0] + 1, 2 * key[1] + 1]]
+                    partner = None
+                else:
+                    spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
+                    spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
+                    if key[0] != key[2] and key[1] != key[3]:
+                        spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
+                        spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
+                    partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
+                for idx in spin_indices:
+                    idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
+                    indices.append(idx)
 
-            return ops
+                if parametrized:
+                    variables.append(Variable(name=key))  # abab
+                    variables.append(Variable(name=key))  # baba
+                    if partner is not None and key[0] != key[1] and key[2] != key[3]:
+                        variables.append(Variable(name=key) - Variable(partner))  # aaaa
+                        variables.append(Variable(name=key) - Variable(partner))  # bbbb
+                else:
+                    variables.append(t)
+                    variables.append(t)
+                    if partner is not None and key[0] != key[1] and key[2] != key[3]:
+                        variables.append(t - amplitudes[partner])
+                        variables.append(t - amplitudes[partner])
+            else:
+                indices.append(spin_indices)
+                if parametrized:
+                    variables.append(Variable(name=key))
+                else:
+                    variables.append(t)
+    UCCSD = QCircuit()
+    factor = 1.0 / trotter_steps
+    for step in range(trotter_steps):
+        for i, idx in enumerate(indices):
+            UCCSD += self.make_excitation_gate(indices=idx, angle=factor * variables[i])
 
-        def _build_2bdy_operators_spinfree() -> list:
-            """ Returns spinfree two-body operators as a symmetry-reduced list of QubitHamiltonians """
-            # Exploit symmetries pqrs = qpsr (due to spin summation, '-pqsr = -qprs' drops out)
-            #                and      = rspq
-            ops = []
-            for p, q, r, s in product(range(n_MOs), repeat=4):
-                if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
-                    # Spin aaaa
-                    op_tuple = ((2 * p, 1), (2 * q, 1), (2 * s, 0), (2 * r, 0)) if (p != q and r != s) else '0.0 []'
-                    op = _get_of_op(op_tuple)
-                    # Spin abab
-                    op_tuple = ((2 * p, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r, 0)) if (
-                            2 * p != 2 * q + 1 and 2 * r != 2 * s + 1) else '0.0 []'
-                    op += _get_of_op(op_tuple)
-                    # Spin baba
-                    op_tuple = ((2 * p + 1, 1), (2 * q, 1), (2 * s, 0), (2 * r + 1, 0)) if (
-                            2 * p + 1 != 2 * q and 2 * r + 1 != 2 * s) else '0.0 []'
-                    op += _get_of_op(op_tuple)
-                    # Spin bbbb
-                    op_tuple = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0)) if (
-                            p != q and r != s) else '0.0 []'
-                    op += _get_of_op(op_tuple)
+    return Uref + UCCSD
 
-                    ops += [op]
 
-            return ops
+def compute_amplitudes(self, method: str, *args, **kwargs):
+    """
+    Compute closed-shell CC amplitudes
 
-        def _assemble_rdm1(evals) -> numpy.ndarray:
-            """
-            Returns spin-ful or spin-free one-particle RDM built by symmetry conditions
-            Same symmetry with or without spin, so we can use the same function
-            """
-            N = n_MOs if spin_free else n_SOs
-            rdm1 = numpy.zeros([N, N])
-            ctr: int = 0
-            for p in range(N):
-                for q in range(p + 1):
-                    rdm1[p, q] = evals[ctr]
-                    # Symmetry pq = qp
-                    rdm1[q, p] = rdm1[p, q]
-                    ctr += 1
+    Parameters
+    ----------
+    method :
+        coupled-cluster methods like cc2, ccsd, cc3, ccsd(t)
+        Success might depend on backend
+        got an extra function for MP2
+    *args :
 
-            return rdm1
+    **kwargs :
 
-        def _assemble_rdm2_spinful(evals) -> numpy.ndarray:
-            """ Returns spin-ful two-particle RDM built by symmetry conditions """
-            ctr: int = 0
-            rdm2 = numpy.zeros([n_SOs, n_SOs, n_SOs, n_SOs])
-            for p in range(n_SOs):
-                for q in range(p):
-                    for r in range(n_SOs):
-                        for s in range(r):
-                            if p * n_SOs + q >= r * n_SOs + s:
-                                rdm2[p, q, r, s] = evals[ctr]
-                                # Symmetry pqrs = rspq
-                                rdm2[r, s, p, q] = rdm2[p, q, r, s]
-                                ctr += 1
 
-            # Further permutational symmetries due to anticommutation relations
-            for p in range(n_SOs):
-                for q in range(p):
-                    for r in range(n_SOs):
-                        for s in range(r):
-                            rdm2[p, q, s, r] = -1 * rdm2[p, q, r, s]  # pqrs = -pqsr
-                            rdm2[q, p, r, s] = -1 * rdm2[p, q, r, s]  # pqrs = -qprs
-                            rdm2[q, p, s, r] = rdm2[p, q, r, s]  # pqrs =  qpsr
+    Returns
+    -------
 
-            return rdm2
+    """
+    raise TequilaException("compute amplitudes: Needs to be overwritten by backend")
 
-        def _assemble_rdm2_spinfree(evals) -> numpy.ndarray:
-            """ Returns spin-free two-particle RDM built by symmetry conditions """
-            ctr: int = 0
-            rdm2 = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
-            for p, q, r, s in product(range(n_MOs), repeat=4):
-                if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
-                    rdm2[p, q, r, s] = evals[ctr]
-                    # Symmetry pqrs = rspq
-                    rdm2[r, s, p, q] = rdm2[p, q, r, s]
-                    ctr += 1
 
-            # Further permutational symmetry: pqrs = qpsr
-            for p, q, r, s in product(range(n_MOs), repeat=4):
-                if p >= q or r >= s:
-                    rdm2[q, p, s, r] = rdm2[p, q, r, s]
+def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
+    """
 
-            return rdm2
+    Compute closed-shell mp2 amplitudes
 
-        # Build operator lists
-        qops = []
-        if spin_free:
-            qops += _build_1bdy_operators_spinfree() if get_rdm1 else []
-            qops += _build_2bdy_operators_spinfree() if get_rdm2 else []
-        else:
-            qops += _build_1bdy_operators_spinful() if get_rdm1 else []
-            qops += _build_2bdy_operators_spinful() if get_rdm2 else []
+    .. math::
+        t(a,i,b,j) = 0.25 * g(a,i,b,j)/(e(i) + e(j) -a(i) - b(j) )
 
-        # Transform operator lists to QubitHamiltonians
-        qops = [_get_qop_hermitian(op) for op in qops]
-        # Compute expected values
-        evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+    :return:
 
-        # Assemble density matrices
-        # If self._rdm1, self._rdm2 exist, reset them if they are of the other spin-type
-        def _reset_rdm(rdm):
-            if rdm is not None:
-                if spin_free and rdm.shape[0] != n_MOs:
-                    return None
-                if not spin_free and rdm.shape[0] != n_SOs:
-                    return None
-            return rdm
+    Parameters
+    ----------
 
-        self._rdm1 = _reset_rdm(self._rdm1)
-        self._rdm2 = _reset_rdm(self._rdm2)
-        # Split expectation values in 1- and 2-particle expectation values
-        if get_rdm1:
-            len_1 = n_MOs * (n_MOs + 1) // 2 if spin_free else n_SOs * (n_SOs + 1) // 2
-        else:
-            len_1 = 0
-        evals_1, evals_2 = evals[:len_1], evals[len_1:]
-        # Build matrices using the expectation values
-        self._rdm1 = _assemble_rdm1(evals_1) if get_rdm1 else self._rdm1
-        if spin_free:
-            self._rdm2 = _assemble_rdm2_spinfree(evals_2) if get_rdm2 else self._rdm2
-        else:
-            self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
+    Returns
+    -------
 
-    def rdm_spinsum(self, sum_rdm1: bool = True, sum_rdm2: bool = True) -> tuple:
+    """
+    assert self.parameters.closed_shell
+    g = self.molecule.two_body_integrals
+    fij = self.molecule.orbital_energies
+    nocc = self.molecule.n_electrons // 2  # this is never the active space
+    ei = fij[:nocc]
+    ai = fij[nocc:]
+    abgij = g[nocc:, nocc:, :nocc, :nocc]
+    amplitudes = abgij * 1.0 / (
+            ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
+    E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
+                                                                            optimize='greedy')
+
+    self.molecule.mp2_energy = E + self.molecule.hf_energy
+    return ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='greedy'))
+
+
+def compute_cis_amplitudes(self):
+    """
+    Compute the CIS amplitudes of the molecule
+    """
+
+    @dataclass
+    class ResultCIS:
+        """ """
+        omegas: typing.List[numbers.Real]  # excitation energies [omega0, ...]
+        amplitudes: typing.List[ClosedShellAmplitudes]  # corresponding amplitudes [x_{ai}_0, ...]
+
+        def __getitem__(self, item):
+            return (self.omegas[item], self.amplitudes[item])
+
+        def __len__(self):
+            return len(self.omegas)
+
+    g = self.molecule.two_body_integrals
+    fij = self.molecule.orbital_energies
+
+    nocc = self.n_alpha_electrons
+    nvirt = self.n_orbitals - nocc
+
+    pairs = []
+    for i in range(nocc):
+        for a in range(nocc, nocc + nvirt):
+            pairs.append((a, i))
+    M = numpy.ndarray(shape=[len(pairs), len(pairs)])
+
+    for xx, x in enumerate(pairs):
+        eia = fij[x[0]] - fij[x[1]]
+        a, i = x
+        for yy, y in enumerate(pairs):
+            b, j = y
+            delta = float(y == x)
+            gpart = 2.0 * g[a, i, b, j] - g[a, i, j, b]
+            M[xx, yy] = eia * delta + gpart
+
+    omega, xvecs = numpy.linalg.eigh(M)
+
+    # convert amplitudes to ndarray sorted by excitation energy
+    nex = len(omega)
+    amplitudes = []
+    for ex in range(nex):
+        t = numpy.ndarray(shape=[nvirt, nocc])
+        exvec = xvecs[ex]
+        for xx, x in enumerate(pairs):
+            a, i = x
+            t[a - nocc, i] = exvec[xx]
+        amplitudes.append(ClosedShellAmplitudes(tIA=t))
+
+    return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
+
+
+@property
+def rdm1(self):
+    """ """
+    if self._rdm1 is not None:
+        return self._rdm1
+    else:
+        print("1-RDM has not been computed. Return None for 1-RDM.")
+        return None
+
+
+@property
+def rdm2(self):
+    """ """
+    if self._rdm2 is not None:
+        return self._rdm2
+    else:
+        print("2-RDM has not been computed. Return None for 2-RDM.")
+        return None
+
+
+def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
+                 get_rdm1: bool = True, get_rdm2: bool = True):
+    """
+    Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
+    a unitary U. This method uses the standard ordering in physics as denoted below.
+    Note, that the representation of the density matrices depends on the qubit transformation
+    used. The Jordan-Wigner encoding corresponds to 'classical' second quantized density
+    matrices in the occupation picture.
+
+    We only consider real orbitals and thus real-valued RDMs.
+    The matrices are set as private members _rdm1, _rdm2 and can be accessed via the properties rdm1, rdm2.
+
+    .. math :
+        \\text{rdm1: } \\gamma^p_q = \\langle \\psi | a^p a_q | \\psi \\rangle
+                                 = \\langle U 0 | a^p a_q | U 0 \\rangle
+        \\text{rdm2: } \\gamma^{pq}_{rs} = \\langle \\psi | a^p a^q a_s a_r | \\psi \\rangle
+                                         = \\langle U 0 | a^p a^q a_s a_r | U 0 \\rangle
+
+    Parameters
+    ----------
+    U :
+        Quantum Circuit to achieve the desired state \\psi = U |0\\rangle, non-optional
+    variables :
+        If U is parametrized, then need to hand over a set of fixed variables
+    spin_free :
+        Set whether matrices should be spin-free (summation over spin) or defined by spin-orbitals
+    get_rdm1, get_rdm2 :
+        Set whether either one or both rdm1, rdm2 should be computed. If both are needed at some point,
+        it is recommended to compute them at once.
+
+    Returns
+    -------
+    """
+    # Check whether unitary circuit is not 0
+    if U is None:
+        raise TequilaException('Need to specify a Quantum Circuit.')
+
+    # Check whether transformation is BKSF.
+    # Issue here: when a single operator acts only on a subset of qubits, BKSF might not yield the correct
+    # transformation, because it computes the number of qubits incorrectly in this case.
+    # A hotfix such as for symmetry_conserving_bravyi_kitaev would require deeper changes, thus omitted for now
+    if type(self.transformation).__name__ == "BravyiKitaevFast":
+        raise TequilaException(
+            "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet.")
+
+    # Set up number of spin-orbitals and molecular orbitals respectively
+    n_SOs = 2 * self.n_orbitals
+    n_MOs = self.n_orbitals
+
+    # Check whether unitary circuit is not 0
+    if U is None:
+        raise TequilaException('Need to specify a Quantum Circuit.')
+
+    def _get_of_op(operator_tuple):
+        """ Returns operator given by a operator tuple as OpenFermion - Fermion operator """
+        op = openfermion.FermionOperator(operator_tuple)
+        return op
+
+    def _get_qop_hermitian(of_operator) -> QubitHamiltonian:
+        """ Returns Hermitian part of Fermion operator as QubitHamiltonian """
+        qop = QubitHamiltonian(self.transformation(of_operator))
+        real, imag = qop.split(hermitian=True)
+        if real:
+            return real
+        elif not real:
+            raise TequilaException(
+                "Qubit Hamiltonian does not have a Hermitian part. Operator ={}".format(of_operator))
+
+    def _build_1bdy_operators_spinful() -> list:
+        """ Returns spinful one-body operators as a symmetry-reduced list of QubitHamiltonians """
+        # Exploit symmetry pq = qp
+        ops = []
+        for p in range(n_SOs):
+            for q in range(p + 1):
+                op_tuple = ((p, 1), (q, 0))
+                op = _get_of_op(op_tuple)
+                ops += [op]
+
+        return ops
+
+    def _build_2bdy_operators_spinful() -> list:
+        """ Returns spinful two-body operators as a symmetry-reduced list of QubitHamiltonians """
+        # Exploit symmetries pqrs = -pqsr = -qprs = qpsr
+        #                and      =  rspq
+        ops = []
+        for p in range(n_SOs):
+            for q in range(p):
+                for r in range(n_SOs):
+                    for s in range(r):
+                        if p * n_SOs + q >= r * n_SOs + s:
+                            op_tuple = ((p, 1), (q, 1), (s, 0), (r, 0))
+                            op = _get_of_op(op_tuple)
+                            ops += [op]
+
+        return ops
+
+    def _build_1bdy_operators_spinfree() -> list:
+        """ Returns spinfree one-body operators as a symmetry-reduced list of QubitHamiltonians """
+        # Exploit symmetry pq = qp (not changed by spin-summation)
+        ops = []
+        for p in range(n_MOs):
+            for q in range(p + 1):
+                # Spin aa
+                op_tuple = ((2 * p, 1), (2 * q, 0))
+                op = _get_of_op(op_tuple)
+                # Spin bb
+                op_tuple = ((2 * p + 1, 1), (2 * q + 1, 0))
+                op += _get_of_op(op_tuple)
+                ops += [op]
+
+        return ops
+
+    def _build_2bdy_operators_spinfree() -> list:
+        """ Returns spinfree two-body operators as a symmetry-reduced list of QubitHamiltonians """
+        # Exploit symmetries pqrs = qpsr (due to spin summation, '-pqsr = -qprs' drops out)
+        #                and      = rspq
+        ops = []
+        for p, q, r, s in product(range(n_MOs), repeat=4):
+            if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
+                # Spin aaaa
+                op_tuple = ((2 * p, 1), (2 * q, 1), (2 * s, 0), (2 * r, 0)) if (p != q and r != s) else '0.0 []'
+                op = _get_of_op(op_tuple)
+                # Spin abab
+                op_tuple = ((2 * p, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r, 0)) if (
+                        2 * p != 2 * q + 1 and 2 * r != 2 * s + 1) else '0.0 []'
+                op += _get_of_op(op_tuple)
+                # Spin baba
+                op_tuple = ((2 * p + 1, 1), (2 * q, 1), (2 * s, 0), (2 * r + 1, 0)) if (
+                        2 * p + 1 != 2 * q and 2 * r + 1 != 2 * s) else '0.0 []'
+                op += _get_of_op(op_tuple)
+                # Spin bbbb
+                op_tuple = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0)) if (
+                        p != q and r != s) else '0.0 []'
+                op += _get_of_op(op_tuple)
+
+                ops += [op]
+
+        return ops
+
+    def _assemble_rdm1(evals) -> numpy.ndarray:
         """
-        Given the spin-ful 1- and 2-particle reduced density matrices, compute the spin-free RDMs by spin summation.
-
-        Parameters
-        ----------
-            sum_rdm1, sum_rdm2 :
-               If set to true, perform spin summation on rdm1, rdm2
-
-        Returns
-        -------
-            rdm1_spinsum, rdm2_spinsum :
-                The desired spin-free matrices
+        Returns spin-ful or spin-free one-particle RDM built by symmetry conditions
+        Same symmetry with or without spin, so we can use the same function
         """
-        n_MOs = self.n_orbitals
-        rdm1_spinsum = None
-        rdm2_spinsum = None
+        N = n_MOs if spin_free else n_SOs
+        rdm1 = numpy.zeros([N, N])
+        ctr: int = 0
+        for p in range(N):
+            for q in range(p + 1):
+                rdm1[p, q] = evals[ctr]
+                # Symmetry pq = qp
+                rdm1[q, p] = rdm1[p, q]
+                ctr += 1
 
-        # Spin summation on rdm1
-        if sum_rdm1:
-            # Check whether spin-rdm2 exists
-            if self._rdm1 is None:
-                raise TequilaException("The spin-RDM for the 1-RDM does not exist!")
-            # Check whether existing rdm1 is in spin-orbital basis
-            if self._rdm1.shape[0] != 2 * n_MOs:
-                raise TequilaException("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
-            # Do summation
-            rdm1_spinsum = numpy.zeros([n_MOs, n_MOs])
-            for p in range(n_MOs):
-                for q in range(p + 1):
-                    rdm1_spinsum[p, q] += self._rdm1[2 * p, 2 * q]
-                    rdm1_spinsum[p, q] += self._rdm1[2 * p + 1, 2 * q + 1]
-            for p in range(n_MOs):
-                for q in range(p):
-                    rdm1_spinsum[q, p] = rdm1_spinsum[p, q]
+        return rdm1
 
-        # Spin summation on rdm2
-        if sum_rdm2:
-            # Check whether spin-rdm2 exists
-            if self._rdm2 is None:
-                raise TequilaException("The spin-RDM for the 2-RDM does not exist!")
-            # Check whether existing rdm2 is in spin-orbital basis
-            if self._rdm2.shape[0] != 2 * n_MOs:
-                raise TequilaException("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
-            # Do summation
-            rdm2_spinsum = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
-            for p, q, r, s in product(range(n_MOs), repeat=4):
-                rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p, 2 * q, 2 * r, 2 * s]
-                rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q, 2 * r + 1, 2 * s]
-                rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p, 2 * q + 1, 2 * r, 2 * s + 1]
-                rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q + 1, 2 * r + 1, 2 * s + 1]
+    def _assemble_rdm2_spinful(evals) -> numpy.ndarray:
+        """ Returns spin-ful two-particle RDM built by symmetry conditions """
+        ctr: int = 0
+        rdm2 = numpy.zeros([n_SOs, n_SOs, n_SOs, n_SOs])
+        for p in range(n_SOs):
+            for q in range(p):
+                for r in range(n_SOs):
+                    for s in range(r):
+                        if p * n_SOs + q >= r * n_SOs + s:
+                            rdm2[p, q, r, s] = evals[ctr]
+                            # Symmetry pqrs = rspq
+                            rdm2[r, s, p, q] = rdm2[p, q, r, s]
+                            ctr += 1
 
-        return rdm1_spinsum, rdm2_spinsum
+        # Further permutational symmetries due to anticommutation relations
+        for p in range(n_SOs):
+            for q in range(p):
+                for r in range(n_SOs):
+                    for s in range(r):
+                        rdm2[p, q, s, r] = -1 * rdm2[p, q, r, s]  # pqrs = -pqsr
+                        rdm2[q, p, r, s] = -1 * rdm2[p, q, r, s]  # pqrs = -qprs
+                        rdm2[q, p, s, r] = rdm2[p, q, r, s]  # pqrs =  qpsr
 
-    def __str__(self) -> str:
-        result = str(type(self)) + "\n"
-        result += "Qubit Encoding\n"
-        result += str(self.transformation) + "\n\n"
-        result += "Parameters\n"
-        for k, v in self.parameters.__dict__.items():
-            result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
-        result += "\n"
-        return result
+        return rdm2
+
+    def _assemble_rdm2_spinfree(evals) -> numpy.ndarray:
+        """ Returns spin-free two-particle RDM built by symmetry conditions """
+        ctr: int = 0
+        rdm2 = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
+        for p, q, r, s in product(range(n_MOs), repeat=4):
+            if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
+                rdm2[p, q, r, s] = evals[ctr]
+                # Symmetry pqrs = rspq
+                rdm2[r, s, p, q] = rdm2[p, q, r, s]
+                ctr += 1
+
+        # Further permutational symmetry: pqrs = qpsr
+        for p, q, r, s in product(range(n_MOs), repeat=4):
+            if p >= q or r >= s:
+                rdm2[q, p, s, r] = rdm2[p, q, r, s]
+
+        return rdm2
+
+    # Build operator lists
+    qops = []
+    if spin_free:
+        qops += _build_1bdy_operators_spinfree() if get_rdm1 else []
+        qops += _build_2bdy_operators_spinfree() if get_rdm2 else []
+    else:
+        qops += _build_1bdy_operators_spinful() if get_rdm1 else []
+        qops += _build_2bdy_operators_spinful() if get_rdm2 else []
+
+    # Transform operator lists to QubitHamiltonians
+    qops = [_get_qop_hermitian(op) for op in qops]
+    # Compute expected values
+    evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+
+    # Assemble density matrices
+    # If self._rdm1, self._rdm2 exist, reset them if they are of the other spin-type
+    def _reset_rdm(rdm):
+        if rdm is not None:
+            if spin_free and rdm.shape[0] != n_MOs:
+                return None
+            if not spin_free and rdm.shape[0] != n_SOs:
+                return None
+        return rdm
+
+    self._rdm1 = _reset_rdm(self._rdm1)
+    self._rdm2 = _reset_rdm(self._rdm2)
+    # Split expectation values in 1- and 2-particle expectation values
+    if get_rdm1:
+        len_1 = n_MOs * (n_MOs + 1) // 2 if spin_free else n_SOs * (n_SOs + 1) // 2
+    else:
+        len_1 = 0
+    evals_1, evals_2 = evals[:len_1], evals[len_1:]
+    # Build matrices using the expectation values
+    self._rdm1 = _assemble_rdm1(evals_1) if get_rdm1 else self._rdm1
+    if spin_free:
+        self._rdm2 = _assemble_rdm2_spinfree(evals_2) if get_rdm2 else self._rdm2
+    else:
+        self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
+
+
+def rdm_spinsum(self, sum_rdm1: bool = True, sum_rdm2: bool = True) -> tuple:
+    """
+    Given the spin-ful 1- and 2-particle reduced density matrices, compute the spin-free RDMs by spin summation.
+
+    Parameters
+    ----------
+        sum_rdm1, sum_rdm2 :
+           If set to true, perform spin summation on rdm1, rdm2
+
+    Returns
+    -------
+        rdm1_spinsum, rdm2_spinsum :
+            The desired spin-free matrices
+    """
+    n_MOs = self.n_orbitals
+    rdm1_spinsum = None
+    rdm2_spinsum = None
+
+    # Spin summation on rdm1
+    if sum_rdm1:
+        # Check whether spin-rdm2 exists
+        if self._rdm1 is None:
+            raise TequilaException("The spin-RDM for the 1-RDM does not exist!")
+        # Check whether existing rdm1 is in spin-orbital basis
+        if self._rdm1.shape[0] != 2 * n_MOs:
+            raise TequilaException("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
+        # Do summation
+        rdm1_spinsum = numpy.zeros([n_MOs, n_MOs])
+        for p in range(n_MOs):
+            for q in range(p + 1):
+                rdm1_spinsum[p, q] += self._rdm1[2 * p, 2 * q]
+                rdm1_spinsum[p, q] += self._rdm1[2 * p + 1, 2 * q + 1]
+        for p in range(n_MOs):
+            for q in range(p):
+                rdm1_spinsum[q, p] = rdm1_spinsum[p, q]
+
+    # Spin summation on rdm2
+    if sum_rdm2:
+        # Check whether spin-rdm2 exists
+        if self._rdm2 is None:
+            raise TequilaException("The spin-RDM for the 2-RDM does not exist!")
+        # Check whether existing rdm2 is in spin-orbital basis
+        if self._rdm2.shape[0] != 2 * n_MOs:
+            raise TequilaException("The existing RDM needs to be in spin-orbital basis, it is already spin-free!")
+        # Do summation
+        rdm2_spinsum = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
+        for p, q, r, s in product(range(n_MOs), repeat=4):
+            rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p, 2 * q, 2 * r, 2 * s]
+            rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q, 2 * r + 1, 2 * s]
+            rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p, 2 * q + 1, 2 * r, 2 * s + 1]
+            rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q + 1, 2 * r + 1, 2 * s + 1]
+
+    return rdm1_spinsum, rdm2_spinsum
+
+
+def __str__(self) -> str:
+    result = str(type(self)) + "\n"
+    result += "Qubit Encoding\n"
+    result += str(self.transformation) + "\n\n"
+    result += "Parameters\n"
+    for k, v in self.parameters.__dict__.items():
+        result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
+    result += "\n"
+    return result
