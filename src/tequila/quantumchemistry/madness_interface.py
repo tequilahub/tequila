@@ -147,6 +147,23 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         # openfermion conventions
         g = numpy.einsum("psqr", g, optimize='optimize')
+
+        orbitals = []
+        if pairinfo is not None:
+            orbitals = [self.OrbitalData(idx_total=i, idx=i, pno_pair=p, occ=occinfo[i]) for i,p in enumerate(pairinfo)]
+            if active_orbitals == "auto":
+                reference_orbitals = [x for x in orbitals if len(x.pno_pair)==1]
+                not_active = [i for i in reference_orbitals if sum([1 for x in orbitals if i.idx_total in x.pno_pair])<2]
+                active_orbitals = [x.idx_total for x in orbitals if x not in not_active]
+
+            if active_orbitals is not None:
+                orbitals = [x for x in orbitals if x.idx_total in active_orbitals]
+                for i,x in enumerate(orbitals):
+                    orbitals[i].idx=i
+        else:
+            raise TequilaMadnessException("No pairinfo given")
+        self.orbitals = tuple(orbitals)
+
         super().__init__(parameters=parameters,
                          transformation=transformation,
                          active_orbitals=active_orbitals,
@@ -155,15 +172,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                          n_orbitals=n_orbitals,
                          *args,
                          **kwargs)
-
-        orbitals = []
-        if pairinfo is not None:
-            for i, p in enumerate(pairinfo):
-                if active_orbitals is None or i in active_orbitals:
-                    orbitals.append(self.OrbitalData(idx_total=i, idx=len(orbitals), pno_pair=p, occ=occinfo[i]))
-        else:
-            raise TequilaMadnessException("No pairinfo given")
-        self.orbitals = tuple(orbitals)
 
         # print warning if read data does not match expectations
         if n_pno is not None:
