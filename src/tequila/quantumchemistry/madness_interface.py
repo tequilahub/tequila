@@ -130,8 +130,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                             occinfo = line.split("=")[1].split(",")
                             occinfo = [float(x) for x in occinfo]
                 if name == "pnoinfo.txt":
-                    with open(parameters.name + "_pnoinfo.txt", "w"):
-                        f.write(filecontent)
+                    with open("pnoinfo.txt", "r") as f1, open(parameters.name + "_pnoinfo.txt", "w") as f2:
+                        f2.write(f1.read().strip())
+                if pairinfo is not None:
+                    break
+
             except:
                 continue
 
