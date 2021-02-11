@@ -9,7 +9,7 @@ from numpy import pi
 from tequila.autograd_imports import jax, __AUTOGRAD__BACKEND__
 
 
-def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable = None, no_compile=False):
+def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable = None, no_compile=False, *args, **kwargs):
 
     '''
     wrapper function for getting the gradients of Objectives,ExpectationValues, Unitaries (including single gates), and Transforms.

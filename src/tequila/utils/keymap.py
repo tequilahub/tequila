@@ -58,8 +58,8 @@ class KeyMapSubregisterToRegister(KeyMapABC):
         return self.make_complement()
 
     def __init__(self, subregister: typing.List[int], register: typing.List[int]):
-        self._subregister = subregister
-        self._register = register
+        self._subregister = sorted(subregister)
+        self._register = sorted(register)
 
     def make_complement(self):
         return [i for i in self._register if i not in self._subregister]
