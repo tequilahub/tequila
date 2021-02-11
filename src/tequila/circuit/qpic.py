@@ -24,7 +24,8 @@ def assign_name(parameter):
     return str(parameter)
 
 
-def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True, decompose_control_generators=True, group_together=True, qubit_names=None, *args, **kwargs) -> str:
+def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True, decompose_control_generators=True,
+                   group_together=True, qubit_names=None, *args, **kwargs) -> str:
     result = ""
     # define tequila blue color
     result = "COLOR tq 0.03137254901960784 0.1607843137254902 0.23921568627450981\n"
@@ -36,7 +37,7 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
         qubit_names = circuit.qubits
     if isinstance(qubit_names, str):
         qubit_names = [qubit_names for i in range(len(circuit.qubits))]
-    for i,q in enumerate(circuit.qubits):
+    for i, q in enumerate(circuit.qubits):
         name = "a" + str(q)
         names[q] = name
         result += name + " W " + str(qubit_names[i]) + "\n"
@@ -44,6 +45,7 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
     for g in circuit.gates:
 
         if always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
+            for ps in g.make_generator(include_controls=decompose_control_generators).paulistrings:
                 if len(ps) == 0: continue
                 for k,v in ps.items():
                     result += " a{qubit} P:fill=tq  \\textcolor{{white}}{{{op}}} ".format(qubit=k, op=v.upper())
@@ -51,17 +53,17 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
                     for c in g.control:
                         result += names[c] + " "
                 result += "\n"
-            if hasattr(group_together, "upper"):
-                for t in circuit.qubits:
-                    result += "a{} ".format(t)
-                result += "{}\n".format(group_together.upper())
+        if hasattr(group_together, "upper"):
+            for t in circuit.qubits:
+                result += "a{} ".format(t)
+            result += "{}\n".format(group_together.upper())
 
         else:
             if g.name.upper() in ["Exp-Pauli".upper(), "GenRot".upper()]:
                 # represent ExpPaulis as generators
                 for ps in g.generator.paulistrings:
                     if len(ps) == 0: continue
-                    for k,v in ps.items():
+                    for k, v in ps.items():
                         result += " a{qubit} P:fill=tq  \\textcolor{{white}}{{{op}}} ".format(qubit=k, op=v.upper())
                     if g.is_controlled():
                         for c in g.control:
@@ -71,7 +73,8 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
                 for t in g.target:
                     result += names[t] + " "
                 if hasattr(g, "angle"):
-                    result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(g.parameter) + ")$ width=" + str(
+                    result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(
+                        g.parameter) + ")$ width=" + str(
                         25 + 5 * len(assign_name(g.parameter))) + " "
                 elif hasattr(g, "parameter") and g.parameter is not None:
                     result += " G $" + g.name + "(" + assign_name(g.parameter) + ")$ width=" + str(
@@ -94,12 +97,13 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
 
     return result
 
+
 def export_to(circuit: QCircuit,
               filename: str,
-              always_use_generators:bool=True,
-              decompose_control_generators:bool=True,
-              group_together:bool=True,
-              qubit_names:list=None,*args, **kwargs):
+              always_use_generators: bool = True,
+              decompose_control_generators: bool = True,
+              group_together: bool = True,
+              qubit_names: list = None, *args, **kwargs):
     """
     Parameters
     ----------
@@ -125,15 +129,14 @@ def export_to(circuit: QCircuit,
     if not system_has_qpic:
         raise Exception("You need qpic in order to export circuits to pictures ---\n pip install qpic")
     if "." not in filename:
-        raise Exception("export_to: No filetype given {}, expected something like {}.pdf".format(filename,filename))
-    
+        raise Exception("export_to: No filetype given {}, expected something like {}.pdf".format(filename, filename))
+
     filename_tmp = filename.split(".")
     ftype = filename_tmp[-1]
     fname = "".join(filename_tmp[:-1])
-    if len(filename_tmp) ==1:
+    if len(filename_tmp) == 1:
         ftype = ".pdf"
         fname = filename
-
 
     compiled = Compiler(trotterized=True)(circuit)
 
@@ -145,4 +148,3 @@ def export_to(circuit: QCircuit,
                    qubit_names=qubit_names, *args, **kwargs)
     if ftype != "qpic":
         subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype])
-
