@@ -42,7 +42,7 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
         result += name + " W " + str(qubit_names[i]) + "\n"
 
     for g in circuit.gates:
-
+        
         if always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
                 if len(ps) == 0: continue
                 for k,v in ps.items():
@@ -133,7 +133,6 @@ def export_to(circuit: QCircuit,
     if len(filename_tmp) ==1:
         ftype = ".pdf"
         fname = filename
-
 
     compiled = Compiler(trotterized=True)(circuit)
 
