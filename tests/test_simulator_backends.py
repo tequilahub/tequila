@@ -355,3 +355,16 @@ def test_sampling(backend):
     for i in range(10):
         e = E(samples=1000)
         assert numpy.isclose(e, 0.0, atol=2.e-1)
+
+@pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
+def test_sampling_read_out_qubits(backend):
+    U = tq.gates.X(0)
+    U += tq.gates.Z(1)
+
+    wfn = tq.QubitWaveFunction(2)
+
+    result = tq.simulate(U, backend=backend, samples=1, read_out_qubits=[0, 1])
+    assert (numpy.isclose(numpy.abs(wfn.inner(result)) ** 2, 1.0, atol=1.e-4))
+
+    result = tq.simulate(U, backend=backend, samples=1, read_out_qubits=[1, 0])
+    assert (numpy.isclose(numpy.abs(wfn.inner(result)) ** 2, 1.0, atol=1.e-4))
