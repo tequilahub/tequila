@@ -45,13 +45,14 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
     for g in circuit.gates:
 
         if always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
-            if len(ps) == 0: continue
-            for k, v in ps.items():
-                result += " a{qubit} P:fill=tq  \\textcolor{{white}}{{{op}}} ".format(qubit=k, op=v.upper())
-            if g.is_controlled() and not decompose_control_generators:
-                for c in g.control:
-                    result += names[c] + " "
-            result += "\n"
+            for ps in g.make_generator(include_controls=decompose_control_generators).paulistrings:
+                if len(ps) == 0: continue
+                for k,v in ps.items():
+                    result += " a{qubit} P:fill=tq  \\textcolor{{white}}{{{op}}} ".format(qubit=k, op=v.upper())
+                if g.is_controlled() and not decompose_control_generators:
+                    for c in g.control:
+                        result += names[c] + " "
+                result += "\n"
         if hasattr(group_together, "upper"):
             for t in circuit.qubits:
                 result += "a{} ".format(t)
