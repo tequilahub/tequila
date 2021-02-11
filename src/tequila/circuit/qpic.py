@@ -43,8 +43,7 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
 
     for g in circuit.gates:
 
-        if always_use_generators:
-            for ps in g.make_generator(include_controls=decompose_control_generators).paulistrings:
+        if always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
                 if len(ps) == 0: continue
                 for k,v in ps.items():
                     result += " a{qubit} P:fill=tq  \\textcolor{{white}}{{{op}}} ".format(qubit=k, op=v.upper())
@@ -127,7 +126,14 @@ def export_to(circuit: QCircuit,
         raise Exception("You need qpic in order to export circuits to pictures ---\n pip install qpic")
     if "." not in filename:
         raise Exception("export_to: No filetype given {}, expected something like {}.pdf".format(filename,filename))
-    fname, ftype = filename.split(".")
+    
+    filename_tmp = filename.split(".")
+    ftype = filename_tmp[-1]
+    fname = "".join(filename_tmp[:-1])
+    if len(filename_tmp) ==1:
+        ftype = ".pdf"
+        fname = filename
+
 
     compiled = Compiler(trotterized=True)(circuit)
 
