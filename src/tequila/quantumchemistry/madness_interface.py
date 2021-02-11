@@ -120,10 +120,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         occinfo = None
         for name in [parameters.name + "_pnoinfo.txt", "pnoinfo.txt"]:
             try:
-                filecontent = ""
                 with open(name, "r") as f:
                     for line in f.readlines():
-                        filecontent += line
                         if "nuclear_repulsion" in line:
                             nuclear_repulsion = float(line.split("=")[1])
                         elif "pairinfo" in line:
@@ -133,8 +131,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                             occinfo = line.split("=")[1].split(",")
                             occinfo = [float(x) for x in occinfo]
                 if name == "pnoinfo.txt":
-                    with open(parameters.name + "_pnoinfo.txt", "w"):
-                        f.write(filecontent)
+                    with open("pnoinfo.txt", "r") as f1, open(parameters.name + "_pnoinfo.txt", "w") as f2:
+                        f2.write(f1.read().strip())
+                if pairinfo is not None:
+                    break
             except:
                 continue
 
