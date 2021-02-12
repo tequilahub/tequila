@@ -56,11 +56,12 @@ def test_interface(backend):
 INSTALLED_SIMULATORS = tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys()
 INSTALLED_SAMPLERS = tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys()
 
+
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
 def test_sampling_accumulation(backend):
     # minimal test that was added after a bug was discovered
     # just needs to asssure that it runs through and no errors are thrown within the process
-    U = tq.gates.Ry(angle=numpy.pi/2, target=0) + tq.gates.CNOT(1,3)
+    U = tq.gates.Ry(angle=numpy.pi / 2, target=0) + tq.gates.CNOT(1, 3)
     H = tq.paulis.Qm(1)
     E = tq.ExpectationValue(H=H, U=U)
     result = tq.simulate(E, backend=backend, samples=100)
@@ -76,50 +77,48 @@ def test_sampling_circuits(backend):
     d1 = tq.simulate(U, samples=10, backend=backend)
     assert d1[1 + 4 + 16 + 64] == 10
 
-    d1 = tq.simulate(U, samples=10, backend=backend, read_out_qubits=[1,3,5])
+    d1 = tq.simulate(U, samples=10, backend=backend, read_out_qubits=[1, 3, 5])
     assert d1[0] == 10
 
-    d1 = tq.simulate(U, samples=10, backend=backend, read_out_qubits=[0,2,4,6])
-    if 1+2+4+8 not in d1 or d1[1+2+4+8] != 10:
+    d1 = tq.simulate(U, samples=10, backend=backend, read_out_qubits=[0, 2, 4, 6])
+    if 1 + 2 + 4 + 8 not in d1 or d1[1 + 2 + 4 + 8] != 10:
         print("got this = ", d1)
     print("got this = ", d1)
-    assert d1[1+2+4+8] == 10
+    assert d1[1 + 2 + 4 + 8] == 10
+
 
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
 def test_sampling_expvals(backend):
-    U = tq.gates.X([0,1,2])
+    U = tq.gates.X([0, 1, 2])
     H = tq.paulis.Z(0)
-    E1 = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend, samples=1000)
+    E1 = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend, samples=1000)
     assert numpy.isclose(E1, -1.0)
-    H = tq.paulis.Z([0,1])
-    E1 = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend, samples=1000)
+    H = tq.paulis.Z([0, 1])
+    E1 = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend, samples=1000)
     assert numpy.isclose(E1, 1.0)
-    H = tq.paulis.Z([0,1,2])
-    E1 = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend, samples=1000)
+    H = tq.paulis.Z([0, 1, 2])
+    E1 = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend, samples=1000)
     assert numpy.isclose(E1, -1.0)
 
-    U = tq.gates.H([0,1,2])
+    U = tq.gates.H([0, 1, 2])
     H = tq.paulis.X(0)
-    E1 = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend, samples=1000)
+    E1 = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend, samples=1000)
     assert numpy.isclose(E1, 1.0)
-    H = tq.paulis.X([0,1])
-    E1 = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend, samples=1000)
+    H = tq.paulis.X([0, 1])
+    E1 = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend, samples=1000)
     assert numpy.isclose(E1, 1.0)
-    H = tq.paulis.X([0,1,2])
-    E1 = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend, samples=1000)
+    H = tq.paulis.X([0, 1, 2])
+    E1 = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend, samples=1000)
     assert numpy.isclose(E1, 1.0)
 
-    U = tq.gates.H([0,1,2])
+    U = tq.gates.H([0, 1, 2])
     H = tq.paulis.Zero()
-    E1 = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend, samples=1000)
+    E1 = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend, samples=1000)
     assert numpy.isclose(E1, 0.0)
-    U = tq.gates.H([0,1,2])
-    H = tq.paulis.X(3) + 1.234*tq.paulis.I()
-    E1 = tq.simulate(tq.ExpectationValue(H=H,U=U), backend=backend, samples=1000)
+    U = tq.gates.H([0, 1, 2])
+    H = tq.paulis.X(3) + 1.234 * tq.paulis.I()
+    E1 = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend, samples=1000)
     assert numpy.isclose(E1, 1.234)
-
-
-
 
 
 @pytest.mark.parametrize("backend",
@@ -330,16 +329,18 @@ def test_initial_state_from_integer(simulator, initial_state):
     assert (initial_state in wfn)
     assert (numpy.isclose(wfn[initial_state], 1.0))
 
+
 @pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_hamiltonian_reductions(backend):
-    for q in [0,1,2,3,4]:
-        H = tq.paulis.Z(qubit=[0,1,2,3,4])
+    for q in [0, 1, 2, 3, 4]:
+        H = tq.paulis.Z(qubit=[0, 1, 2, 3, 4])
         U = tq.gates.X(target=q)
-        U2 = tq.gates.X(target=q) + tq.gates.X(target=[0,1,2,3,4]) + tq.gates.X(target=[0,1,2,3,4])
+        U2 = tq.gates.X(target=q) + tq.gates.X(target=[0, 1, 2, 3, 4]) + tq.gates.X(target=[0, 1, 2, 3, 4])
         E1 = tq.compile(tq.ExpectationValue(H=H, U=U), backend=backend)
         E2 = tq.compile(tq.ExpectationValue(H=H, U=U2), backend=backend)
         assert E1.get_expectationvalues()[0]._reduced_hamiltonians[0] == tq.paulis.Z(q)
         assert numpy.isclose(E1(), E2())
+
 
 @pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
 def test_sampling(backend):
@@ -356,6 +357,7 @@ def test_sampling(backend):
         e = E(samples=1000)
         assert numpy.isclose(e, 0.0, atol=2.e-1)
 
+
 @pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys())
 def test_sampling_read_out_qubits(backend):
     U = tq.gates.X(0)
@@ -368,3 +370,43 @@ def test_sampling_read_out_qubits(backend):
 
     result = tq.simulate(U, backend=backend, samples=1, read_out_qubits=[1, 0])
     assert (numpy.isclose(numpy.abs(wfn.inner(result)) ** 2, 1.0, atol=1.e-4))
+
+
+@pytest.mark.parametrize("backend", INSTALLED_SIMULATORS)
+def test_qubit_excitations(backend):
+    if backend == "symbolic":
+        return
+    U1 = tq.gates.X(0) + tq.gates.QubitExcitation(angle=numpy.pi / 2, target=[0, 1])
+    U2 = tq.gates.H(0) + tq.gates.X(1) + tq.gates.CNOT(0, 1)
+    wfn1 = tq.simulate(U1, backend=backend)
+    wfn2 = tq.simulate(U2, backend=backend)
+    F = numpy.abs(wfn1.inner(wfn2)) ** 2
+    assert numpy.isclose(F, 1.0, 1.e-4)
+
+    U1 = tq.gates.X([0, 1]) + tq.gates.QubitExcitation(angle=numpy.pi / 2, target=[0, 2, 1, 3])
+    U2 = tq.gates.H(0) + tq.gates.X([2, 3]) + tq.gates.CNOT(0, 1) + tq.gates.CNOT(0, 2) + tq.gates.CNOT(0, 3)
+    wfn1 = tq.simulate(U1, backend=backend)
+    wfn2 = tq.simulate(U2, backend=backend)
+    F = numpy.abs(wfn1.inner(wfn2)) ** 2
+
+    assert numpy.isclose(F, 1.0, 1.e-4)
+
+    U1 = tq.gates.X([0, 1, 2, 3]) + tq.gates.QubitExcitation(angle=numpy.pi / 2, target=[0, 4, 1, 5, 2, 6, 3, 7])
+    U2 = tq.gates.H(0) + tq.gates.X([4, 5, 6, 7]) + tq.gates.X([1, 2, 3], 0) + tq.gates.X([4, 5, 6, 7], 0)
+    wfn1 = tq.simulate(U1, backend=backend)
+    wfn2 = tq.simulate(U2, backend=backend)
+    F = numpy.abs(wfn1.inner(wfn2)) ** 2
+
+    assert numpy.isclose(F, 1.0, 1.e-4)
+
+    q = [5, 3, 7, 8, 2, 9, 2, 4]
+
+    U1 = tq.gates.X([q[0], q[1], q[2]]) + tq.gates.QubitExcitation(angle=numpy.pi / 2,
+                                                                   target=[q[0], q[3], q[1], q[4], q[2], q[5]])
+    U2 = tq.gates.H(q[0]) + tq.gates.X([q[3], q[4], q[5]]) + tq.gates.X([q[1], q[2]], q[0]) + tq.gates.X(
+        [q[3], q[4], q[5]], q[0])
+    wfn1 = tq.simulate(U1, backend=backend)
+    wfn2 = tq.simulate(U2, backend=backend)
+    F = numpy.abs(wfn1.inner(wfn2)) ** 2
+
+    assert numpy.isclose(F, 1.0, 1.e-4)
