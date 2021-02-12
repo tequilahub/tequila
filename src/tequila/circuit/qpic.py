@@ -62,10 +62,10 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
                     for c in g.control:
                         result += names[c] + " "
                 result += "\n"
-        if hasattr(group_together, "upper"):
-            for t in circuit.qubits:
-                result += "a{} ".format(t)
-            result += "{}\n".format(group_together.upper())
+            if hasattr(group_together, "upper"):
+                for t in circuit.qubits:
+                    result += "a{} ".format(t)
+                result += "{}\n".format(group_together.upper())
 
         else:
             if g.name.upper() in ["Exp-Pauli".upper(), "GenRot".upper()]:
