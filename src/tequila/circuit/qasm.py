@@ -11,6 +11,7 @@ from tequila.circuit.compiler import Compiler
 import tequila.circuit.gates as gates
 from numpy import pi
 from typing import Dict
+import typing
 
 
 def export_open_qasm(circuit: QCircuit, variables=None, version: str = "2.0", filename: str = None, zx_calculus: bool = False) -> str:
