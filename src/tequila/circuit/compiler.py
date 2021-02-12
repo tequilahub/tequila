@@ -8,7 +8,7 @@ from tequila.objective.objective import Variable
 from tequila.objective.objective import Objective, VectorObjective
 from tequila.objective.objective import ExpectationValueImpl
 from tequila.autograd_imports import numpy as jnp
-from tequila.autograd_imports import numpy
+import numpy
 from numpy import pi as pi
 
 import copy, typing
@@ -905,7 +905,6 @@ def compile_generalized_rotation_gate(gate, compile_exponential_pauli: bool = Fa
 @compiler
 def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
     """
-    Todo: Jakob, plz write
     Parameters
     ----------
     gate

@@ -22,54 +22,12 @@ from openfermion.chem import MolecularData
 import warnings
 
 
-class FermionicGateImpl(_gates_impl.DifferentiableGateImpl):
+class FermionicGateImpl(_gates_impl.QubitExcitationImpl):
+    # keep the overview in circuits
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._name = "FermionicExcitation"
 
-    @staticmethod
-    def extract_targets(generator):
-        targets = []
-        for ps in generator.paulistrings:
-            targets += [k for k in ps.keys()]
-        return tuple(set(targets))
-
-    @property
-    def steps(self):
-        return 1
-
-    def __init__(self, angle, generator, p0, assume_real=True, control=None):
-        angle = assign_variable(angle)
-        super().__init__(name="FermionicEx", parameter=angle, target=self.extract_targets(generator), control=control, eigenvalues_magnitude = 0.25)
-        self.generator = generator
-        self.p0 = p0
-        self.assume_real = assume_real
-
-    def map_qubits(self, qubit_map: dict):
-        mapped_generator = self.generator.map_qubits(qubit_map=qubit_map)
-        mapped_p0 = self.p0.map_qubits(qubit_map=qubit_map)
-        mapped_control = self.control
-        if mapped_control is not None:
-            mapped_control=tuple([qubit_map[i] for i in self.control])
-        return FermionicGateImpl(angle=self.parameter, generator=mapped_generator, p0=mapped_p0, assume_real=self.assume_real, control=mapped_control)
-
-
-    def compile(self):
-        return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
-
-    def shifted_gates(self):
-        s = 0.5 * numpy.pi
-        Up1 = gates.QCircuit.wrap_gate(
-            FermionicGateImpl(angle=self._parameter + s, generator=self.generator, p0=self.p0, control=self.control))
-        Up2 = gates.GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=self.eigenvalues_magnitude, steps=1, control=self.control)
-        Um1 = gates.QCircuit.wrap_gate(
-            FermionicGateImpl(angle=self._parameter - s, generator=self.generator, p0=self.p0, control=self.control))
-        Um2 = gates.GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=self.eigenvalues_magnitude, steps=1, control=self.control)
-        if not self.assume_real:
-            return [(self.eigenvalues_magnitude, Up1 + Up2), (-self.eigenvalues_magnitude, Um1 + Um2), (self.eigenvalues_magnitude, Up1 + Um2),
-                    (-self.eigenvalues_magnitude, Um1 + Up2)]
-        else:
-            return [(2.0 * self.eigenvalues_magnitude, Up1 + Up2), (-2.0 * self.eigenvalues_magnitude, Um1 + Um2)]
-
-    def dagger(self):
-        return FermionicGateImpl(angle=-self._parameter, generator=self.generator, p0=self.p0, control=self.control)
 
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
