@@ -68,9 +68,7 @@ class QGateImpl:
         """
         :return: return the hermitian conjugate of the gate.
         """
-
-        return QGateImpl(name=copy.copy(self.name), target=self.target,
-                         control=self.control)
+        return copy.deepcopy(self)
 
     def is_controlled(self) -> bool:
         """
@@ -305,7 +303,7 @@ class PowerGateImpl(ParametrizedGateImpl):
         self._power = assign_variable(variable=other)
         self._parameter = assign_variable(variable=other)*pi
 
-    def __init__(self, name, target: list, power, control: list = None, generator: QubitHamiltonian = None):
+    def __init__(self, name, generator: QubitHamiltonian,  target: list, power, control: list = None):
         super().__init__(name=name, parameter=power * pi, target=target, control=control, generator=generator)
         self._power = assign_variable(variable=power)
 
@@ -313,6 +311,7 @@ class PowerGateImpl(ParametrizedGateImpl):
         result = copy.deepcopy(self)
         result._parameter = assign_variable(-self.parameter)
         result._power = assign_variable(-self.power)
+        result.generator = self.generator
         return result
 
 

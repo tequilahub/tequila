@@ -1241,6 +1241,7 @@ class QuantumChemistryBase:
 
         if hasattr(indices, "lower"):
             indices = self.make_upccgsd_indices(key=indices.lower())
+            print(indices)
 
         # check if the used qubit encoding has a hcb transformation
         have_hcb_trafo = True

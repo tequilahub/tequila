@@ -398,8 +398,10 @@ def change_basis(target, axis=None, name=None, daggered=False):
     if isinstance(axis, str):
         axis = RotationGateImpl.string_to_axis[axis.lower()]
 
-    if axis == 0:
-        return H(target=target)
+    if axis == 0 and daggered:
+        return Ry(angle=-numpy.pi / 2, target=target)
+    elif axis == 0:
+        return Ry(angle=numpy.pi / 2, target=target)
     elif axis == 1 and daggered:
         return Rx(angle=-numpy.pi / 2, target=target)
     elif axis == 1:
@@ -520,7 +522,7 @@ def compile_to_single_control(gate) -> QCircuit:
             power = gate.parameter
         else:
             power = 1.0
-        new = PowerGateImpl(name=name, power=power, target=target, control=control)
+        new = PowerGateImpl(name=name, power=power, target=target, control=control, generator=gate.generator)
         partial = compile_power_gate(gate=new)
         back += compile_to_single_control(gate=partial)
     elif isinstance(gate, RotationGateImpl):

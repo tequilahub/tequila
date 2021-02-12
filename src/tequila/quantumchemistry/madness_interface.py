@@ -329,29 +329,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return objective
 
-    def make_pno_upccgsd_ansatz(self, include_singles: bool = True, generalized=False, include_offdiagonals=False,
+    def make_pno_upccgsd_ansatz(self, generalized=False, include_offdiagonals=False,
                                 **kwargs):
-        indices_d = []
-        indices_s = []
+        indices = []
         refs = self.get_reference_orbitals()
-        print("refs=", refs)
         for i in self.get_reference_orbitals():
             for a in self.get_pno_indices(i=i, j=i):
-                u = (2 * i.idx, 2 * a.idx)
-                d = (2 * i.idx + 1, 2 * a.idx + 1)
-                indices_d.append((u, d))
-                indices_s.append((u))
-                indices_s.append((d))
+                indices.append((i.idx, a.idx))
             if generalized:
                 for a in self.get_pno_indices(i, i):
                     for b in self.get_pno_indices(i, i):
                         if b.idx_total <= a.idx_total:
                             continue
-                        u = (2 * a.idx, 2 * b.idx)
-                        d = (2 * a.idx + 1, 2 * b.idx + 1)
-                        indices_d.append((u, d))
-                        indices_s.append((u))
-                        indices_s.append((d))
+                        indices.append((i.idx, a.idx))
 
         if include_offdiagonals:
             for i in self.get_reference_orbitals():
@@ -359,33 +349,16 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     if i.idx <= j.idx:
                         continue
                     for a in self.get_pno_indices(i, j):
-                        ui = (2 * i.idx, 2 * a.idx)
-                        di = (2 * i.idx + 1, 2 * a.idx + 1)
-                        uj = (2 * j.idx, 2 * a.idx)
-                        dj = (2 * j.idx + 1, 2 * a.idx + 1)
-                        indices_d.append((ui, dj))
-                        indices_d.append((uj, di))
-                        indices_s.append((ui))
-                        indices_s.append((uj))
-                        indices_s.append((di))
-                        indices_s.append((dj))
+                        indices.append((j.idx, a.idx))
 
                     if generalized:
                         for a in self.get_pno_indices(i, j):
                             for b in self.get_pno_indices(i, j):
                                 if a.idx <= b.idx:
                                     continue
-                                u = (2 * a.idx, 2 * b.idx)
-                                d = (2 * a.idx + 1, 2 * b.idx + 1)
-                                indices_d.append((u, d))
-                                indices_s.append((u))
-                                indices_s.append((d))
+                                indices.append((a.idx, b.idx))
 
-        indices = indices_d
-        if include_singles:
-            indices += indices_s
-
-        return self.make_upccgsd_ansatz(indices=indices, **kwargs)
+        return self.make_upccgsd_ansatz(indices=indices,**kwargs)
 
     def write_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
         if n_pno is None:

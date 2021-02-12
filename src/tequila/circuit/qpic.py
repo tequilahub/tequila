@@ -13,6 +13,8 @@ import subprocess, numpy
 from shutil import which, move
 from os import remove
 
+import numbers
+
 system_has_qpic = which("qpic") is not None
 system_has_pdflatex = which("pdflatex") is not None
 
@@ -33,11 +35,14 @@ def assign_name(parameter):
     return str(parameter)
 
 
-def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True, decompose_control_generators=True,
-                   group_together=True, qubit_names=None, *args, **kwargs) -> str:
+def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True, decompose_control_generators=False,
+                   group_together=False, qubit_names=None, mark_parametrized_gates=True, *args, **kwargs) -> str:
     result = ""
     # define tequila blue color
     result = "COLOR tq 0.03137254901960784 0.1607843137254902 0.23921568627450981\n"
+    # define other colors
+    result += "COLOR guo 0.988 0.141 0.757\n"
+
     if group_together is True:
         group_together = "TOUCH"
     # define wires
@@ -52,12 +57,16 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
         result += name + " W " + str(qubit_names[i]) + "\n"
 
     for g in circuit.gates:
-
+        gcol = "tq"
+        tcol = "white"
+        if hasattr(g, "parameter") and not isinstance(g.parameter, numbers.Number) and mark_parametrized_gates:
+            tcol = "black"
+            gcol = "guo"
         if always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
             for ps in g.make_generator(include_controls=decompose_control_generators).paulistrings:
                 if len(ps) == 0: continue
                 for k,v in ps.items():
-                    result += " a{qubit} P:fill=tq  \\textcolor{{white}}{{{op}}} ".format(qubit=k, op=v.upper())
+                    result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=k, gcol=gcol, tcol="{"+tcol+"}", op=v.upper())
                 if g.is_controlled() and not decompose_control_generators:
                     for c in g.control:
                         result += names[c] + " "
@@ -73,7 +82,7 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
                 for ps in g.generator.paulistrings:
                     if len(ps) == 0: continue
                     for k, v in ps.items():
-                        result += " a{qubit} P:fill=tq  \\textcolor{{white}}{{{op}}} ".format(qubit=k, op=v.upper())
+                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=k, gcol=gcol,tcol="{" + tcol + "}",op=v.upper())
                     if g.is_controlled():
                         for c in g.control:
                             result += names[c] + " "
@@ -109,8 +118,8 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
 def export_to(circuit: QCircuit,
               filename: str,
               always_use_generators: bool = True,
-              decompose_control_generators: bool = True,
-              group_together: bool = True,
+              decompose_control_generators: bool = False,
+              group_together: bool = False,
               qubit_names: list = None, *args, **kwargs):
     """
     Parameters
