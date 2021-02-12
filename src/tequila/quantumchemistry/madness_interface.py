@@ -235,15 +235,26 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
 
-    def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True):
+    def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True, direct_compiling=True):
         if pairs is None:
             pairs = [i for i in range(self.n_electrons // 2)]
         U = QCircuit()
-        for i in pairs:
-            if include_reference:
+        if direct_compiling:
+            if not include_reference:
+                raise Exception("HCB_PNO_UPCCD: Direct compiling needs reference included")
+            for i in pairs:
                 U += gates.X(i)
-            for a in self.get_pno_indices(i=i, j=i):
-                U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
+                c = [None, i]
+                for a in self.get_pno_indices(i=i, j=i):
+                    U += gates.Ry(angle=(i, a.idx, label), target=a.idx, control=c[0])
+                    U += gates.X(target=c[1], control=a.idx)
+                    c = [a.idx,a.idx]
+        else:
+            for i in pairs:
+                if include_reference:
+                    U += gates.X(i)
+                for a in self.get_pno_indices(i=i, j=i):
+                    U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
         return U
 
     def make_hardcore_boson_pno_upccd_complement(self, pairs=None, label=None, generalized=False):
