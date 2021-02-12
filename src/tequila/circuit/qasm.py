@@ -8,7 +8,7 @@ https://arxiv.org/pdf/1707.03429v2.pdf
 from tequila import TequilaException
 from tequila.circuit import QCircuit
 from tequila.circuit.compiler import Compiler
-from tequila.circuit.gates import *
+import tequila.circuit.gates as gates
 from numpy import pi
 from typing import Dict
 
@@ -312,56 +312,57 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
         return apply_custom_gate(custom_circuit=custom_circuit, qregisters_values=qregisters_values)
 
     if name in ("x", "y", "z", "h", "cx", "cy", "cz", "ch"):
-        return QCircuit.wrap_gate(QGateImpl(name=(name[1] if name[0] == 'c' else name).upper(),
+        return QCircuit.wrap_gate(gates.impl.QGateImpl(name=(name[1] if name[0] == 'c' else name).upper(),
                                             control=get_qregister(args[0], qregisters) if name[0] == 'c' else None,
                                             target=get_qregister(args[1 if name[0] == 'c' else 0], qregisters)))
     if name in ("ccx", "ccy", "ccz"):
-        return QCircuit.wrap_gate(QGateImpl(name=name.upper()[2],
+        return QCircuit.wrap_gate(gates.impl.QGateImpl(name=name.upper()[2],
                                             control=[get_qregister(args[0], qregisters), get_qregister(args[1], qregisters)],
                                             target=get_qregister(args[2], qregisters)))
     if name.startswith("rx(") or name.startswith("ry(") or name.startswith("rz(") or \
         name.startswith("crx(") or name.startswith("cry(") or name.startswith("crz("):
-        return QCircuit.wrap_gate(RotationGateImpl(axis=name[2 if name[0] == 'c' else 1],
+        return QCircuit.wrap_gate(gates.impl.RotationGateImpl(axis=name[2 if name[0] == 'c' else 1],
                                                    angle=get_angle(name)[0],
                                                    control=get_qregister(args[0], qregisters) if name[0] == 'c' else None,
                                                    target=get_qregister(args[1 if name[0] == 'c' else 0], qregisters)))
     if name.startswith("U("):
         angles = get_angle(name)
-        return U(theta=angles[0], phi=angles[1], lambd=angles[2],
+        return gates.U(theta=angles[0], phi=angles[1], lambd=angles[2],
                  control=None,
                  target=get_qregister(args[0], qregisters))
     if name.startswith("u1("):
         angles = get_angle(name)
-        return u1(lambd=angles[0],
+        return gates.u1(lambd=angles[0],
                   control=None,
                   target=get_qregister(args[0], qregisters))
     if name.startswith("u2("):
         angles = get_angle(name)
-        return u2(phi=angles[0], lambd=angles[1],
+        return gates.u2(phi=angles[0], lambd=angles[1],
                   control=None,
                   target=get_qregister(args[0], qregisters))
     if name.startswith("u3("):
         angles = get_angle(name)
-        return u3(theta=angles[0], phi=angles[1], lambd=angles[2],
+        return gates.u3(theta=angles[0], phi=angles[1], lambd=angles[2],
                   control=None,
                   target=get_qregister(args[0], qregisters))
     if name.startswith("cu1("):
         angles = get_angle(name)
-        return u1(lambd=angles[0],
+        return gates.u1(lambd=angles[0],
                   control=get_qregister(args[0], qregisters),
                   target=get_qregister(args[1], qregisters))
     if name.startswith("cu2("):
         angles = get_angle(name)
-        return u2(phi=angles[0], lambd=angles[1],
+        return gates.u2(phi=angles[0], lambd=angles[1],
                   control=get_qregister(args[0], qregisters),
                   target=get_qregister(args[1], qregisters))
     if name.startswith("cu3("):
         angles = get_angle(name)
-        return u3(theta=angles[0], phi=angles[1], lambd=angles[2],
+        return gates.u3(theta=angles[0], phi=angles[1], lambd=angles[2],
                   control=get_qregister(args[0], qregisters),
                   target=get_qregister(args[1], qregisters))
     if name in ("s", "t", "sdg", "tdg"):
-        g = Phase(np.pi / (2 if name.startswith("s") else 4),
+        g = gates.
+        Phase(np.pi / (2 if name.startswith("s") else 4),
                      control=None,
                      target=get_qregister(args[0], qregisters))
         if name.find("dg") != -1:
