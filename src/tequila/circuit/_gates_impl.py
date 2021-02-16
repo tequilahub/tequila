@@ -70,7 +70,7 @@ class QGateImpl:
         """
 
         return QGateImpl(name=copy.copy(self.name), target=self.target,
-                         control=self.control)
+                         control=self.control, generator=-self.generator)
 
     def is_controlled(self) -> bool:
         """

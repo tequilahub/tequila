@@ -333,7 +333,7 @@ class QubitHamiltonian:
         return self.from_paulistrings(ps=reduced_ps).simplify(*args, **kwargs)
 
     def __len__(self):
-        return len(self._qubit_operator.terms)
+        return len(self.paulistrings)
 
     def __repr__(self):
         result = ""

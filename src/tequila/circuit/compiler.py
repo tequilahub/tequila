@@ -520,7 +520,7 @@ def compile_to_single_control(gate) -> QCircuit:
             power = gate.parameter
         else:
             power = 1.0
-        new = PowerGateImpl(name=name, power=power, target=target, control=control)
+        new = PowerGateImpl(name=name, power=power, target=target, control=control, generator=gate.make_generator())
         partial = compile_power_gate(gate=new)
         back += compile_to_single_control(gate=partial)
     elif isinstance(gate, RotationGateImpl):

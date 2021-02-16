@@ -394,9 +394,10 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
     return compiled_objective(variables=variables, samples=samples, *args, **kwargs)
 
 
-def draw(objective, variables=None, backend: str = None, *args, **kwargs):
+def draw(objective, variables=None, backend: str = None, name=None, *args, **kwargs):
     """
-    Pretty output (depends on installed backends)
+    Pretty output (depends on installed backends) for jupyter notebooks
+    or similar HTML environments
 
     Parameters
     ----------
@@ -404,14 +405,21 @@ def draw(objective, variables=None, backend: str = None, *args, **kwargs):
         the tequila objective to print out
     variables : optional:
          Give variables if the objective is parametrized (not necesarry for displaying)
+    name: optional:
+         Name the objective (changes circuit filenames for qpic backend)
     backend: str, optional:
          chose preferred backend (of None or not found it will be automatically picked)
     """
     if backend not in INSTALLED_SIMULATORS:
         backend = None
+    if name is None:
+        name = abs(hash("tmp"))
 
     if backend is None:
-        if "cirq" in INSTALLED_SIMULATORS:
+        from tequila.circuit.qpic import system_has_qpic
+        if system_has_qpic:
+            backend = "qpic"
+        elif "cirq" in INSTALLED_SIMULATORS:
             backend = "cirq"
         elif "qiskit" in INSTALLED_SIMULATORS:
             backend = "qiskit"
@@ -423,25 +431,40 @@ def draw(objective, variables=None, backend: str = None, *args, **kwargs):
             if E in drawn:
                 print("\nExpectation Value {} is the same as {}".format(i, drawn[E]))
             else:
-                print("\nExpectation Value {}".format(i))
-                print("Hamiltonian : ", E.H)
-                print("variables : ", E.U.extract_variables())
-                print("circuit:\n")
-                draw(E.U, backend=backend)
+                print("\nExpectation Value {}:".format(i))
+                measurements = E.count_measurements()
+                if measurements < 5:
+                    print("Measurements : ", "\n", E.H)
+                else:
+                    print("Measurements : {} terms".format(measurements))
+                variables = E.U.extract_variables()
+                if len(variables) < 5:
+                    print("variables    : ", E.U.extract_variables())
+                else:
+                    print("variables    : {}".format(len(variables)))
+                filename = "{}_{}.png".format(name,i)
+                print("circuit      : ", filename)
+                draw(E.U, backend=backend, filename=filename)
             drawn[E] = i
 
     else:
         if backend is None:
             print(objective)
+        elif backend.lower() in ["qpic", "html"]:
+            try:
+                import IPython
+                import qpic
+                from tequila.circuit.qpic import export_to
+                if "filename" not in kwargs:
+                    kwargs["filename"] = "tmp_{}.png".format(hash(backend))
+                export_to(circuit=objective, *args, **kwargs)
+                image=IPython.display.Image(filename=kwargs["filename"])
+                IPython.display.display(image)
+
+            except ImportError as E:
+                raise Exception("Original Error Message:{}\nYou are missing dependencies for drawing: You need IPython, qpic and pdfatex.\n".format(E))
         else:
-            if variables is None:
-                variables = {}
-            for k in objective.extract_variables():
-                if k not in variables:
-                    variables[k] = 0.0
-            variables = format_variable_dictionary(variables)
-            compiled = compile_circuit(abstract_circuit=objective, backend=backend,
-                                       variables=variables)
+            compiled = compile_circuit(abstract_circuit=objective, backend=backend)
             if backend == "qiskit":
                 return compiled.circuit.draw(*args, **kwargs)
             else:
