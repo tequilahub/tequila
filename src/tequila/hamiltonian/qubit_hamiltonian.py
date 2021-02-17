@@ -332,8 +332,14 @@ class QubitHamiltonian:
         reduced_ps = [ps.trace_out_qubits(qubits=qubits, states=states) for ps in self.paulistrings]
         return self.from_paulistrings(ps=reduced_ps).simplify(*args, **kwargs)
 
+    def count_measurements(self):
+        if self.is_all_z():
+            return 1
+        else:
+            return len(self)
+
     def __len__(self):
-        return len(self._qubit_operator.terms)
+        return len(self.paulistrings)
 
     def __repr__(self):
         result = ""
@@ -555,16 +561,28 @@ class QubitHamiltonian:
         self._qubit_operator.renormalize()
         return self
 
-    def to_matrix(self):
+    def to_matrix(self, ignore_unused_qubits=True):
         """
         Returns the Hamiltonian as a dense matrix.
 
         Returns a dense 2**N x 2**N matrix representation of this
         QubitHamiltonian. Watch for memory usage when N is >12!
         
+        Args:
+            ignore_unused_qubits: If no non-trivial operator is defined on a qubits this qubit will be ignored in the matrix construction.
+                Take for example X(1). 
+                If False the operator X(1) will get mapped to X(0)
+                and the function will return the matrix for X(0)
+                otherwise the function will return the matrix 1 \otimes X(1)
+
+
         :return: numpy.ndarray(2**N, 2**N) with type numpy.complex
         """
-        nq = self.n_qubits
+        qubits = self.qubits
+        if ignore_unused_qubits:
+            nq = len(qubits)
+        else:
+            nq = max(qubits)+1
         I = numpy.eye(2, dtype=numpy.complex)
         Hm = numpy.zeros((2 ** nq, 2 ** nq), dtype=numpy.complex)
 
@@ -572,6 +590,7 @@ class QubitHamiltonian:
             term = [I] * nq
 
             for ind, op in key:
+                ind = qubits.index(ind)
                 term[ind] = pauli_matrices[op]
 
             Hm += val * reduce(numpy.kron, term)
@@ -579,12 +598,7 @@ class QubitHamiltonian:
 
     @property
     def n_qubits(self):
-        max_index = 0
-        for key, value in self.items():
-            indices = [self.index(k) for k in key]
-            if len(indices) > 0:  # for the case that there is a 1 in the operator
-                max_index = max(max_index, max(indices))
-        return max_index + 1
+        return len(self.qubits)
 
     @property
     def paulistrings(self):
@@ -643,4 +657,3 @@ class QubitHamiltonian:
             if not p.is_all_z():
                 return False
         return True
-

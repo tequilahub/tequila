@@ -56,8 +56,10 @@ You can install `tequila` directly with pip over:
 pip install git+https://github.com/aspuru-guzik-group/tequila.git
 ```
 
-Recommended Python version is 3.7 or 3.6.  
+Recommended Python version is *3.7*.    
 Python 3.8 works, but not all (optional) dependencies support it yet.  
+Python 3.6 works, but some (optional) dependencies might have issues with numpy >= 1.20.  
+
 
 # Getting Started
 Check out the tutorial notebooks provided in tutorials.
@@ -205,4 +207,4 @@ Tequila runs on Macs OSX.
 You might get in trouble with installing qulacs since it currently does not work with Apple's clang compiler.  
 You need to install latest GNU compile (at least gcc-7 and g++7) and set them as default before installing qulacs over pip.  
 ## Qibo and GPyOpt
-Currently you can't use Qibo and GPyOpt within the same environment
+Currently you can't use Qibo and GPyOpt within the same environment.  

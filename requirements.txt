@@ -1,4 +1,4 @@
-numpy
+numpy >= 1.20.0
 scipy >= 1.5
 sympy
 jax
@@ -6,7 +6,7 @@ jaxlib
 #autograd # use if jaxlib gives you trouble, make sure jax is uninstalled then
 setuptools 
 pytest
-openfermion <= 0.11*
+openfermion >= 1.0*
 cmake # needed by qulacs, can be removed otherwise
 qulacs # default simulator, remove if the installation gives you trouble
 
@@ -16,3 +16,6 @@ qulacs # default simulator, remove if the installation gives you trouble
 #pyquil # you need to install the forest-sdk
 #qulacs-gpu
 #qibo <= 0.1.1
+
+#optional third party libraries
+#pyzx

@@ -430,7 +430,7 @@ class BackendCircuitQibo(BackendCircuit):
         # todo there are faster ways
 
         for k, v in backend_result.frequencies(binary=True).items():
-            converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
+            converted_key = BitString.from_bitstring(other=BitString.from_binary(binary=k))
             result._state[converted_key] = v
 
 
@@ -678,6 +678,7 @@ class BackendCircuitQibo(BackendCircuit):
         -------
         None
         """
+        target_qubits = sorted(target_qubits)
         added=[]
         for t in target_qubits:
             circuit.add(gates.M(t))
@@ -736,4 +737,3 @@ class BackendCircuitQibo(BackendCircuit):
 
 class BackendExpectationValueQibo(BackendExpectationValue):
     BackendCircuitType = BackendCircuitQibo
-

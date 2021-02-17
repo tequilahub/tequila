@@ -1,18 +1,19 @@
 import numpy as np
 import pytest
 import tequila as tq
-has_torch = tq.HAS_TORCH
-if has_torch:
+from tequila.ml import HAS_TORCH
+
+if HAS_TORCH:
     import torch
     from torch import optim
 
 
 @pytest.mark.dependencies
 def test_dependencies():
-    assert has_torch
+    assert HAS_TORCH
 
 
-@pytest.mark.skipif(condition=not has_torch, reason="you don't have PyTorch")
+@pytest.mark.skipif(condition=not HAS_TORCH, reason="you don't have PyTorch")
 @pytest.mark.parametrize("angles", [np.random.uniform(0, np.pi*2, 3)])
 def test_calls_correctly(angles):
     U1 = tq.gates.Rx(angle='a', target=0)
@@ -32,7 +33,7 @@ def test_calls_correctly(angles):
     assert np.isclose(summed, analytic, atol=1.e-3)
 
 
-@pytest.mark.skipif(condition=not has_torch, reason="you don't have PyTorch")
+@pytest.mark.skipif(condition=not HAS_TORCH, reason="you don't have PyTorch")
 def test_example_training():
     U = tq.gates.Rx('a', 0) + tq.gates.Rx('b', 1) + tq.gates.CNOT(1, 3) + tq.gates.CNOT(0, 2) + tq.gates.CNOT(0, 1)
     H1 = tq.paulis.Qm(1)
