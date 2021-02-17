@@ -4,7 +4,7 @@ import os
 import tequila as tq
 
 root=os.environ.get("MAD_ROOT_DIR")
-executable = tq.quantumchemistry.madness_interface.QuantumChemistryMadness.find_executabe(root)
+executable = tq.quantumchemistry.madness_interface.QuantumChemistryMadness.find_executable(root)
 print("root = ", root)
 print("executable = ", executable)
 

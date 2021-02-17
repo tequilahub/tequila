@@ -469,6 +469,7 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
             if backend == "qiskit":
                 return compiled.circuit.draw(*args, **kwargs)
             else:
+                print(compiled.circuit)
                 return str(compiled.circuit)
 
 

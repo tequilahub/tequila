@@ -288,6 +288,12 @@ class QubitHamiltonian:
     def pauli(selfs, ituple):
         return ituple[1]
 
+    def __call__(self, wfn):
+        if hasattr(wfn, "apply_qubitoperator"):
+            return wfn.apply_qubitoperator(self)
+        else:
+            raise TequilaException("Not sure what to do here with {} and {} ...".format(self, wfn))
+
     def __init__(self, qubit_operator: typing.Union[QubitOperator, str, numbers.Number] = None):
         """
         Initialize from string or from a preexisting OpenFermion QubitOperator instance

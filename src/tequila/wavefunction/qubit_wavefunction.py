@@ -285,6 +285,7 @@ class QubitWaveFunction:
         result = QubitWaveFunction()
         for ps in operator.paulistrings:
             result += self.apply_paulistring(paulistring=ps)
+        result = result.simplify()
         return result
 
     def apply_paulistring(self, paulistring: 'PauliString'):
