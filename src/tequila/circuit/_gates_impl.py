@@ -471,7 +471,7 @@ class TrotterizedGateImpl(QGateImpl):
         """
         super().__init__(name="Trotterized", target=self.extract_targets(generators), control=control)
         self.generators = list_assignment(generators)
-        self.angles = angles
+        self._parameter = angles
         self.steps = steps
         self.threshold = threshold
         self.join_components = join_components
@@ -484,7 +484,7 @@ class TrotterizedGateImpl(QGateImpl):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", angles=" + str(self._parameter)
+        result += ", angles=" + str(self.angles)
         result += ", generators=" + str(self.generators)
         result += ")"
         return result

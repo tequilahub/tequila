@@ -383,6 +383,7 @@ def _initialize_power_gate(name: str, target: typing.Union[list, int], generator
     target = list_assignment(target)
 
     if angle is not None:
+        angle = assign_variable(angle)
         if power is not None:
             power = power * angle / np.pi
         else:
