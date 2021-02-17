@@ -713,6 +713,9 @@ class BackendExpectationValue:
     def U(self):
         return self._U
 
+    def count_measurements(self):
+        return self.abstract_expectationvalue.count_measurements()
+
     def extract_variables(self) -> typing.Dict[str, numbers.Real]:
         """
         wrapper over circuit extract variables
