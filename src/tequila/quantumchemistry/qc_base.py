@@ -1130,6 +1130,7 @@ class QuantumChemistryBase:
                             label: str = None,
                             order: int = 1,
                             assume_real: bool = True,
+                            angle_transform: typing.Callable = None,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1180,7 +1181,9 @@ class QuantumChemistryBase:
 
         for k in range(order):
             for idx in indices:
-                angle = (k, idx, label)
+                angle = Variable(name=(k, idx, label))
+                if angle_transform is not None:
+                    angle = angle_transform(angle)
                 U += self.make_excitation_gate(angle=angle, indices=idx, assume_real=assume_real)
         return U
 

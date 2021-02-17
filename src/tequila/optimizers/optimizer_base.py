@@ -416,10 +416,10 @@ class Optimizer:
             detected = False
             for k in all_variables:
                 if k not in initial_values:
-                    initial_values[k] = numpy.random.uniform(0, 2 * numpy.pi)
+                    initial_values[k] = 0.0
                     detected = True
             if detected and not self.silent:
-                warnings.warn("initial_variables given but not complete: Autocompleted with random numbers", TequilaWarning)
+                warnings.warn("initial_variables given but not complete: Autocompleted with zeroes", TequilaWarning)
 
         active_angles = {}
         for v in variables:

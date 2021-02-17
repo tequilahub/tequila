@@ -433,17 +433,11 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
             else:
                 print("\nExpectation Value {}:".format(i))
                 measurements = E.count_measurements()
-                if measurements < 5:
-                    print("Measurements : ", "\n", E.H)
-                else:
-                    print("Measurements : {} terms".format(measurements))
+                print("total measurements = {}".format(measurements))
                 variables = E.U.extract_variables()
-                if len(variables) < 5:
-                    print("variables    : ", E.U.extract_variables())
-                else:
-                    print("variables    : {}".format(len(variables)))
+                print("variables          = {}".format(len(variables)))
                 filename = "{}_{}.png".format(name,i)
-                print("circuit      : ", filename)
+                print("circuit            = {}".format(filename))
                 draw(E.U, backend=backend, filename=filename)
             drawn[E] = i
 
@@ -457,7 +451,14 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
                 from tequila.circuit.qpic import export_to
                 if "filename" not in kwargs:
                     kwargs["filename"] = "tmp_{}.png".format(hash(backend))
-                export_to(circuit=objective, *args, **kwargs)
+
+                circuit = objective
+                if hasattr(circuit, "U"):
+                    circuit = circuit.U
+                if hasattr(circuit, "abstract_circuit"):
+                    circuit = objective.abstract_circuit
+
+                export_to(circuit=circuit, *args, **kwargs)
                 image=IPython.display.Image(filename=kwargs["filename"])
                 IPython.display.display(image)
 

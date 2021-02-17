@@ -332,6 +332,12 @@ class QubitHamiltonian:
         reduced_ps = [ps.trace_out_qubits(qubits=qubits, states=states) for ps in self.paulistrings]
         return self.from_paulistrings(ps=reduced_ps).simplify(*args, **kwargs)
 
+    def count_measurements(self):
+        if self.is_all_z():
+            return 1
+        else:
+            return len(self)
+
     def __len__(self):
         return len(self.paulistrings)
 

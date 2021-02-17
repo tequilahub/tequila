@@ -132,7 +132,7 @@ class OptimizerPhoenics(Optimizer):
                 if thing in passive_angles.keys():
                     op.remove(thing)
 
-        config = {"general": {"auto_desc_gen": "False", "batches": 5, "boosted": "False", "parallel": "False"}}
+        config = {"general": {"auto_desc_gen": "False", "batches": 5, "boosted": "False", "parallel": "False", "scratch_dir":os.getcwd()}}
         config['parameters'] = [
             {'name': k, 'periodic': 'True', 'type': 'continuous', 'size': 1, 'low': 0, 'high': 2 * pi} for k in op]
         if self._minimize is True:
@@ -144,9 +144,6 @@ class OptimizerPhoenics(Optimizer):
             if hasattr(k, "lower") and k.lower() in config["general"]:
                 config["general"][k.lower()] = v
 
-        if not self.silent:
-            print("Phoenics config:\n")
-            print(config)
         bird = phoenics.Phoenics(config_dict=config)
         return bird
 
@@ -243,10 +240,7 @@ class OptimizerPhoenics(Optimizer):
                 warnings.simplefilter("ignore")
                 warnings.filterwarnings("ignore", category=FutureWarning)
 
-            if len(obs) >= 1:
-                precs = bird.recommend(observations=obs)
-            else:
-                precs = bird.recommend()
+            precs = bird.recommend(observations=obs)
 
             runs = []
             recs = self._process_for_sim(precs, passive_angles=passive_angles)

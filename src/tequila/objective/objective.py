@@ -59,7 +59,7 @@ class ExpectationValueImpl:
             return self._hamiltonian
 
     def count_measurements(self):
-        return sum(len(H) for H in self.H)
+        return sum([H.count_measurements() for H in self.H])
 
     def extract_variables(self) -> typing.Dict[str, numbers.Real]:
         """
@@ -1276,7 +1276,7 @@ def ExpectationValue(U, H, optimize_measurements: bool = False, *args, **kwargs)
     if optimize_measurements:
         binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
         commuting_parts = binary_H.commuting_groups()
-        result = VectorObjective()
+        result = 0.0
         for cH in commuting_parts:
             qwc, Um = cH.get_qubit_wise()
             Etmp = ExpectationValue(H=qwc, U=U + Um, optimize_measurements=False)
