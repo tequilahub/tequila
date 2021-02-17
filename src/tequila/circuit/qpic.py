@@ -62,7 +62,15 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
         if hasattr(g, "parameter") and not isinstance(g.parameter, numbers.Number) and mark_parametrized_gates:
             tcol = "black"
             gcol = "guo"
-        if always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
+
+        # special gates
+        if g.name in ["H", "h"]:
+            for target in g.target:
+                result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=target, gcol=gcol,tcol="{" + tcol + "}", op="H")
+                if g.is_controlled():
+                    for c in g.control:
+                        result += names[c] + " "
+        elif always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
             for ps in g.make_generator(include_controls=decompose_control_generators).paulistrings:
                 if len(ps) == 0: continue
                 for k,v in ps.items():

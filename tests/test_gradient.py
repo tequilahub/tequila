@@ -439,3 +439,43 @@ def test_gradient_deep_H(simulator, power, controls):
     dE = simulate(dO, variables=variables, backend=simulator)
 
     assert (numpy.isclose(dE, numpy.pi * numpy.sin(angle(variables) * (numpy.pi)) / 2, atol=1.e-4))
+
+def test_qubit_excitations():
+
+    H = paulis.Projector("1.0*|100>")
+    U1 = gates.X(0) + gates.QubitExcitation(target=[0,1], angle="a", assume_real=True)
+    U2 = gates.X(0) + gates.Trotterized(generators=[U1.gates[1].make_generator()], angles=["a"], steps=1)
+    E1 = ExpectationValue(H=H, U=U1)
+    E2 = ExpectationValue(H=H, U=U2)
+    dE1 = grad(E1, "a")
+    dE2 = grad(E2, "a")
+
+    for a in numpy.random.uniform(-numpy.pi, numpy.pi, 5):
+        a = float(a)
+        variables = {"a": a}
+        wfn1 = simulate(U1,variables=variables)
+        wfn2 = simulate(U2,variables=variables)
+        F = numpy.abs(wfn1.inner(wfn2))**2
+        assert numpy.isclose(F, 1.0, 1.e-4)
+        eval1 = simulate(dE1, variables=variables)
+        eval2 = simulate(dE2, variables=variables)
+        assert numpy.isclose(eval1, eval2, 1.e-4)
+
+    H = paulis.Projector("1.0*|0110>")
+    U1 = gates.X([1,2]) + gates.QubitExcitation(target=[0,1,3,2], angle="a", assume_real=True)
+    U2 = gates.X([1,2]) + gates.Trotterized(generators=[U1.gates[2].make_generator()], angles=["a"], steps=1)
+    E1 = ExpectationValue(H=H, U=U1)
+    E2 = ExpectationValue(H=H, U=U2)
+    dE1 = grad(E1, "a")
+    dE2 = grad(E2, "a")
+
+    for a in numpy.random.uniform(-numpy.pi, numpy.pi, 5):
+        a = float(a)
+        variables = {"a": a}
+        wfn1 = simulate(U1,variables=variables)
+        wfn2 = simulate(U2,variables=variables)
+        F = numpy.abs(wfn1.inner(wfn2))**2
+        assert numpy.isclose(F, 1.0, 1.e-4)
+        eval1 = simulate(dE1, variables=variables)
+        eval2 = simulate(dE2, variables=variables)
+        assert numpy.isclose(eval1, eval2, 1.e-4)

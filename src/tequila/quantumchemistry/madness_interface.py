@@ -36,7 +36,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             return self.__str__()
 
     @staticmethod
-    def find_executabe(madness_root_dir=None):
+    def find_executable(madness_root_dir=None):
         executable = shutil.which("pno_integrals")
         if madness_root_dir is None:
             madness_root_dir = str(os.environ.get("MAD_ROOT_DIR"))
@@ -58,7 +58,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.madness_root_dir = os.environ.get("MAD_ROOT_DIR")
         # see if the pno_integrals executable can be found
         if executable is None:
-            executable = self.find_executabe()
+            executable = self.find_executable()
             if executable is None and self.madness_root_dir is not None:
                 warnings.warn("MAD_ROOT_DIR={} found\nbut couldn't find executable".format(self.madness_root_dir),
                               TequilaWarning)
@@ -80,6 +80,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             h, g = self.read_tensors(name=name)
 
             if h == "failed" or g == "failed":
+                warnings.warn("Could not find data for {}. Looking for binary files from potential madness calculation".format(name), TequilaWarning)
                 # try if madness was run manually without conversion before
                 h, g = self.convert_madness_output_from_bin_to_npy(name=name)
         else:
@@ -138,9 +139,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             except:
                 continue
 
-        if "nuclear_repulsion" not in kwargs:
-            kwargs["nuclear_repulsion"] = nuclear_repulsion
-
         if pairinfo is None:
             raise TequilaMadnessException("Pairinfo from madness calculation not found\nPlease provide pnoinfo.txt")
 
@@ -174,6 +172,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                          active_orbitals=active_orbitals,
                          one_body_integrals=h,
                          two_body_integrals=g,
+                         nuclear_repulsion = nuclear_repulsion,
                          n_orbitals=n_orbitals,
                          *args,
                          **kwargs)
@@ -362,7 +361,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
     def write_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
         if n_pno is None:
-            raise TequilaMadnessException("Can't write madness input without n_pnos")
+            raise TequilaMadnessException("Can't write madness input without n_pno keyword!")
         data = {}
         if self.parameters.multiplicity != 1:
             raise TequilaMadnessException("Currently only closed shell supported for MRA-PNO-MP2, you demanded multiplicity={} for the surrogate".format(self.parameters.multiplicity))

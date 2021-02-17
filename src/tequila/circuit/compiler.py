@@ -8,7 +8,7 @@ from tequila.objective.objective import Variable
 from tequila.objective.objective import Objective, VectorObjective
 from tequila.objective.objective import ExpectationValueImpl
 from tequila.autograd_imports import numpy as jnp
-from tequila.autograd_imports import numpy
+import numpy
 from numpy import pi as pi
 
 import copy, typing
@@ -522,7 +522,7 @@ def compile_to_single_control(gate) -> QCircuit:
             power = gate.parameter
         else:
             power = 1.0
-        new = PowerGateImpl(name=name, power=power, target=target, control=control, generator=gate.generator)
+        new = PowerGateImpl(name=name, power=power, target=target, control=control, generator=gate.make_generator())
         partial = compile_power_gate(gate=new)
         back += compile_to_single_control(gate=partial)
     elif isinstance(gate, RotationGateImpl):
@@ -907,7 +907,6 @@ def compile_generalized_rotation_gate(gate, compile_exponential_pauli: bool = Fa
 @compiler
 def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
     """
-    Todo: Jakob, plz write
     Parameters
     ----------
     gate

@@ -288,6 +288,12 @@ class QubitHamiltonian:
     def pauli(selfs, ituple):
         return ituple[1]
 
+    def __call__(self, wfn):
+        if hasattr(wfn, "apply_qubitoperator"):
+            return wfn.apply_qubitoperator(self)
+        else:
+            raise TequilaException("Not sure what to do here with {} and {} ...".format(self, wfn))
+
     def __init__(self, qubit_operator: typing.Union[QubitOperator, str, numbers.Number] = None):
         """
         Initialize from string or from a preexisting OpenFermion QubitOperator instance
@@ -332,8 +338,14 @@ class QubitHamiltonian:
         reduced_ps = [ps.trace_out_qubits(qubits=qubits, states=states) for ps in self.paulistrings]
         return self.from_paulistrings(ps=reduced_ps).simplify(*args, **kwargs)
 
+    def count_measurements(self):
+        if self.is_all_z():
+            return 1
+        else:
+            return len(self)
+
     def __len__(self):
-        return len(self._qubit_operator.terms)
+        return len(self.paulistrings)
 
     def __repr__(self):
         result = ""
