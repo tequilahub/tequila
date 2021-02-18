@@ -147,10 +147,11 @@ Natural Evolutionary Strategies for Variational Quantum Computation.
 Let us know, if you want your research project to be included in this list!
 
 # Dependencies
-Support for additional optimizers can be activated by intalling them in your environment.  
+Support for additional optimizers or quantum backends can be activated by intalling them in your environment.  
 Tequila will then detect them automatically.  
 Currently those are: [Phoenics](https://github.com/aspuru-guzik-group/phoenics)
- and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).
+ and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).  
+Quantum backends are treated in the same way.
 
 # Documentation
 You can build the documentation by navigating to `docs` and entering `make html`.  
