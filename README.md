@@ -35,8 +35,7 @@ Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutoria
 
 - [Madness](https://github.com/kottmanj/madness)  
 Currently you need to compile from a separate [fork](https://github.com/kottmanj/madness).  
-See the github page of this fork for installation instruction.  
-Note that the madness interface is currently only available on the `devel` branch of tequila (coming to master soon).  
+See the github page of this fork for installation instruction.   
 Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb) that illustrates the usage.  
 
 
