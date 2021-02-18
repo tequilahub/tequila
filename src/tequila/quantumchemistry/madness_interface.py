@@ -34,7 +34,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             return self.__str__()
 
     @staticmethod
-    def find_executabe(madness_root_dir=None):
+    def find_executable(madness_root_dir=None):
         executable = shutil.which("pno_integrals")
         if madness_root_dir is None:
             madness_root_dir = str(os.environ.get("MAD_ROOT_DIR"))
@@ -56,7 +56,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.madness_root_dir = os.environ.get("MAD_ROOT_DIR")
         # see if the pno_integrals executable can be found
         if executable is None:
-            executable = self.find_executabe()
+            executable = self.find_executable()
             if executable is None and self.madness_root_dir is not None:
                 warnings.warn("MAD_ROOT_DIR={} found\nbut couldn't find executable".format(self.madness_root_dir), TequilaWarning)
 
@@ -231,7 +231,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         indices_d = []
         indices_s = []
         refs = self.get_reference_orbitals()
-        print("refs=", refs)
         for i in self.get_reference_orbitals():
             for a in self.get_pno_indices(i=i, j=i):
                 u = (2 * i.idx, 2 * a.idx)
