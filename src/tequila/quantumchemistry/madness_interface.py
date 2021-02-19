@@ -234,7 +234,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
 
-    def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True, direct_compiling=True):
+    def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True, direct_compiling=False):
+        if not self.transformation.up_then_down:
+            warnings.warn("Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency", TequilaWarning)
         if pairs is None:
             pairs = [i for i in range(self.n_electrons // 2)]
         U = QCircuit()
@@ -247,7 +249,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 for a in self.get_pno_indices(i=i, j=i):
                     U += gates.Ry(angle=(i, a.idx, label), target=a.idx, control=c[0])
                     U += gates.X(target=c[1], control=a.idx)
-                    c = [a.idx,a.idx]
+                    if hasattr(direct_compiling, "lower") and direct_compiling.lower()=="ladder":
+                        c = [a.idx,a.idx]
+                    else:
+                        c = [i, i]
         else:
             for i in pairs:
                 if include_reference:
