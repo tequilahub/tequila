@@ -234,6 +234,28 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
 
+    def local_qubit_map(self, hcb=False):
+        # re-arrange orbitals to result in more local circuits
+        # does not make the circuit more local, but rather will show locality better in pictures
+        # transform circuits and Hamiltonians with this map
+        # H = H.map_qubits(qubit_map), U = U.map_qubits(qubit_map)
+        # hcb: same for the harcore_boson representation
+        ordered_qubits = []
+        pairs = [i for i in range(self.n_electrons // 2)]
+        for i in pairs:
+            pnos = [i] + [a.idx for a in self.get_pno_indices(i=i, j=i)]
+            if hcb:
+                up = [i for i in pnos]
+                ordered_qubits += up
+            else:
+                up = [self.transformation.up(i) for i in pnos]
+                down = [self.transformation.down(i) for i in pnos]
+                ordered_qubits += up + down
+
+        qubit_map = {x: i for i, x in enumerate(ordered_qubits)}
+        return qubit_map
+
+
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True, direct_compiling=False):
         if not self.transformation.up_then_down:
             warnings.warn("Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency", TequilaWarning)
