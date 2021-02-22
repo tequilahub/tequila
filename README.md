@@ -184,6 +184,22 @@ If you used `tequila` for your research, feel free to include your algoritms her
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need:  
 don't hesitate to contact us directly or raise an issue here on github  
 
+## Circuit drawing
+Standard graphical circuit representation within a Jupyter environment is often done using `tq.draw`.  
+Without further keywords `tequial` will try to create and compile a [qpic](https://github.com/qpic/qpic) file.  
+For proper display you will need the following dependcies: qpic, pdflatex and convert/ImageMagic (pre-installed on most linux distributions, not pre-installed on macs).  
+On linux distributions sometimes the permissions of `convert` to convert pdf to png are not granted, resulting in an error when trying to use `tq.draw`.  
+Click [here](https://stackoverflow.com/questions/52998331/imagemagick-security-policy-pdf-blocking-conversion?answertab=oldest#tab-top) for a possible solution.  
+
+In general, there is no reason to worry if `tq.draw` does not function properly.  
+It is just one way to display circuits, but not neccessary to have.  
+Alternatives are:  
+- Use `tq.draw(circuit, backend="qiskit")` (or `backend=cirq` ) 
+- translate to qiskit/cirq and use their functionality ( `qiskit_circuit = tq.compile(circuit, backend='qiskit').circuit` )  
+- directly create pdfs: `tq.circuit.export_to(circuit, filename="my_name.pdf")` (will also create `my_name.qpic` that can be used with qpic)  
+- use `print(circuit)` (does not look pretty, but carries the same information).  
+- become a contributor and implement your own graphical circuit representation and create a pull-request.  
+
 ## Qulacs simulator
 You will need cmake to install the qulacs simulator  
 `pip install cmake`  
