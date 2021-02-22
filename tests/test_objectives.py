@@ -59,13 +59,13 @@ def test_qubit_maps():
 def test_compilation(backend):
     U = gates.X(target=[0,1,2,3,4,5])
     for i in range(10):
-        U += gates.Ry(angle=(i,), target=numpy.random.randint(0,5,1)[0])
+        U += gates.Ry(angle=(i,), target=numpy.random.randint(1,5,1)[0])
     U += gates.CZ(0,1) + gates.CNOT(1,2) + gates.CZ(2,3) + gates.CNOT(3,4) + gates.CZ(5,6)
     H = paulis.X(0) + paulis.X(1) + paulis.X(2) + paulis.X(3) + paulis.X(4) + paulis.X(5)
     H += paulis.Z(0) + paulis.Z(1) + paulis.Z(2) + paulis.Z(3) + paulis.Z(4) + paulis.Z(5)
     E = ExpectationValue(H=H, U=U)
 
-    randvals = numpy.random.uniform(0.0, 2.0, 10)
+    randvals = numpy.random.uniform(1.0, 1.9, 10)
     variables = {(i,): randvals[i] for i in range(10)}
     e0 = simulate(E, variables=variables, backend=backend)
 
@@ -99,7 +99,7 @@ def test_l_addition(simulator, value=(numpy.random.randint(0, 1000) / 1000.0 * (
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_r_addition(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
+def test_r_addition(simulator, value=numpy.random.uniform(0.1, 1.9*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
     qubit = 0
@@ -116,7 +116,7 @@ def test_r_addition(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_l_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
+def test_l_multiplication(simulator, value=numpy.random.uniform(0.1, 1.9*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
     qubit = 0
@@ -133,7 +133,7 @@ def test_l_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.p
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_r_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
+def test_r_multiplication(simulator, value=numpy.random.uniform(0.1, 1.9*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
     qubit = 0
@@ -150,7 +150,7 @@ def test_r_multiplication(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.p
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_l_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
+def test_l_division(simulator, value=numpy.random.uniform(0.1, 1.9*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
     qubit = 0
@@ -167,7 +167,7 @@ def test_l_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_r_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
+def test_r_division(simulator, value=numpy.random.uniform(0.1, 1.9*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
     qubit = 0
@@ -184,7 +184,7 @@ def test_r_division(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_l_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
+def test_l_power(simulator, value=numpy.random.uniform(0.1, 1.9*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
     qubit = 0
@@ -201,7 +201,7 @@ def test_l_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0])
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_r_power(simulator, value=numpy.random.uniform(0.0, 2.0*numpy.pi, 1)[0]):
+def test_r_power(simulator, value=numpy.random.uniform(0.1, 1.9*numpy.pi, 1)[0]):
     angle1 = Variable(name="angle1")
     variables = {angle1: value}
     qubit = 0
@@ -244,8 +244,8 @@ def test_ex_addition(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_ex_multiplication(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                           value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_ex_multiplication(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                           value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -268,8 +268,8 @@ def test_ex_multiplication(simulator, value1=(numpy.random.randint(0, 1000) / 10
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_ex_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                     value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_ex_division(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                     value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -292,8 +292,8 @@ def test_ex_division(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_ex_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                  value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_ex_power(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                  value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -305,14 +305,14 @@ def test_ex_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (n
     H2 = paulis.Y(qubit=qubit)
     U2 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle2)
     e2 = ExpectationValue(U=U2, H=H2)
-    added = e1 ** e2
+    added = (e1+1.e-4) ** e2 # avoid zero division
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert np.isclose(val, en1 ** en2, atol=1.e-4)
-    assert np.isclose(val, an1 ** an2, atol=1.e-4)
+    assert np.isclose(val, (en1+1.e-4) ** en2, atol=1.e-4)
+    assert np.isclose(val, (an1+1.e-4) ** an2, atol=1.e-4)
 
 
 ### these four tests test the mixed Objective,ExpectationValue operations to ensure propriety
@@ -342,8 +342,8 @@ def test_mixed_addition(simulator, value1=(numpy.random.randint(0, 1000) / 1000.
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_mixed_multiplication(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                              value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_mixed_multiplication(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                              value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -378,19 +378,19 @@ def test_mixed_division(simulator, value1=(numpy.random.randint(10, 1000) / 1000
     H2 = paulis.Y(qubit=qubit)
     U2 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle2)
     e2 = ExpectationValue(U=U2, H=H2)
-    added = e1 / e2
+    added = e1 / (e2+1.e-4) # avoid zero division
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert np.isclose(val, en1 / en2, atol=1.e-4)
-    assert np.isclose(val, an1 / an2, atol=1.e-4)
+    assert np.isclose(val, en1 / (en2+1.e-4), atol=1.e-4)
+    assert np.isclose(val, an1 / (an2+1.e-4), atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_mixed_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                     value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_mixed_power(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                     value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -402,20 +402,20 @@ def test_mixed_power(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 *
     H2 = paulis.Y(qubit=qubit)
     U2 = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle2)
     e2 = ExpectationValue(U=U2, H=H2)
-    added = e1 ** e2
+    added = (e1+1.e-4) ** e2
     val = simulate(added, variables=variables, backend=simulator)
     en1 = simulate(e1, variables=variables, backend=simulator)
     en2 = simulate(e2, variables=variables, backend=simulator)
     an1 = np.sin(angle1(variables=variables))
     an2 = -np.sin(angle2(variables=variables))
-    assert np.isclose(val, en1 ** en2, atol=1.e-4)
-    assert np.isclose(val, an1 ** an2, atol=1.e-4)
+    assert np.isclose(val, (en1+1.e-4) ** en2, atol=1.e-4)
+    assert np.isclose(val, (an1+1.e-4) ** an2, atol=1.e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('op', [np.add, np.subtract, np.float_power, np.true_divide, np.multiply])
-def test_heterogeneous_operations_l(simulator, op, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                                    value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_heterogeneous_operations_l(simulator, op, value1=(numpy.random.randint(1, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                                    value2=(numpy.random.randint(1, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -435,8 +435,8 @@ def test_heterogeneous_operations_l(simulator, op, value1=(numpy.random.randint(
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize('op', [np.add, np.subtract, np.true_divide, np.multiply])
-def test_heterogeneous_operations_r(simulator, op, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                                    value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_heterogeneous_operations_r(simulator, op, value1=(numpy.random.randint(1, 999) / 1000.0 * (numpy.pi / 2.0)),
+                                    value2=(numpy.random.randint(1, 999) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -533,8 +533,8 @@ def test_heterogeneous_gradient_r_div(simulator):
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_inside(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_inside(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -562,8 +562,8 @@ def test_inside(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (num
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_akward_expression(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                           value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_akward_expression(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                           value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -594,8 +594,8 @@ def test_akward_expression(simulator, value1=(numpy.random.randint(0, 1000) / 10
 
 
 @pytest.mark.parametrize("simulator", simulators)
-def test_really_awfull_thing(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                             value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_really_awfull_thing(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                             value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     angle1 = Variable(name="angle1")
     angle2 = Variable(name="angle2")
     variables = {angle1: value1, angle2: value2}
@@ -642,8 +642,8 @@ def test_stacking():
     assert np.isclose(1.,np.sum(output))
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
-def test_stacking_quantum(simulator, value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_stacking_quantum(simulator, value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     a = Variable('a')
     b = Variable('b')
     values = {a: value1, b: value2}
@@ -675,8 +675,8 @@ def test_stacking_quantum(simulator, value1=(numpy.random.randint(0, 1000) / 100
 
 
 @pytest.mark.parametrize("simulator", [tequila.simulators.simulator_api.pick_backend("random"), tequila.simulators.simulator_api.pick_backend()])
-def test_total_type_jumble(simulator,value1=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0)),
-                value2=(numpy.random.randint(0, 1000) / 1000.0 * (numpy.pi / 2.0))):
+def test_total_type_jumble(simulator,value1=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0)),
+                value2=(numpy.random.randint(10, 1000) / 1000.0 * (numpy.pi / 2.0))):
     a = Variable('a')
     b = Variable('b')
     values = {a: value1, b: value2}
