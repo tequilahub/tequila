@@ -1194,7 +1194,6 @@ class QuantumChemistryBase:
 
         if hasattr(indices, "lower"):
             indices = self.make_upccgsd_indices(key=indices.lower())
-            print(indices)
 
         # check if the used qubit encoding has a hcb transformation
         have_hcb_trafo = True
@@ -1232,7 +1231,7 @@ class QuantumChemistryBase:
 
         return U
 
-    def make_upccgsd_layer(self, indices, include_singles=True, assume_real=True, label=None, spin_adapt_singles:bool=True, *args, **kwargs):
+    def make_upccgsd_layer(self, indices, include_singles=True, assume_real=True, label=None, spin_adapt_singles:bool=True, angle_transform=None, *args, **kwargs):
         U = QCircuit()
         for idx in indices:
             angle = (idx, "D", label)
