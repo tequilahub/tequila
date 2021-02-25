@@ -26,6 +26,29 @@ from openfermion.chem import MolecularData
 import warnings
 
 
+@dataclass
+class ActiveSpaceData:
+    active_orbitals: list  # active orbitals (spatial, c1)
+    reference_orbitals: list  # reference orbitals (spatial, c1)
+
+    def __str__(self):
+        result = "Active Space Data:\n"
+        result += "{key:15} : {value:15} \n".format(key="active_orbitals", value=str(self.active_orbitals))
+        result += "{key:15} : {value:15} \n".format(key="reference_orbitals",
+                                                    value=str(self.reference_orbitals))
+        result += "{key:15} : {value:15} \n".format(key="frozen_docc", value=str(self.frozen_docc))
+        result += "{key:15} : {value:15} \n".format(key="frozen_uocc", value=str(self.frozen_uocc))
+        return result
+
+    @property
+    def frozen_reference_orbitals(self):
+        return [i for i in self.reference_orbitals if i not in self.active_orbitals]
+
+    @property
+    def active_reference_orbitals(self):
+        return [i for i in self.reference_orbitals if i in self.active_orbitals]
+
+
 class FermionicGateImpl(_gates_impl.QubitExcitationImpl):
     # keep the overview in circuits
     def __init__(self, *args, **kwargs):
@@ -623,28 +646,6 @@ class QuantumChemistryBase:
 
         if active_orbitals is None:
             return None
-
-        @dataclass
-        class ActiveSpaceData:
-            active_orbitals: list  # active orbitals (spatial, c1)
-            reference_orbitals: list  # reference orbitals (spatial, c1)
-
-            def __str__(self):
-                result = "Active Space Data:\n"
-                result += "{key:15} : {value:15} \n".format(key="active_orbitals", value=str(self.active_orbitals))
-                result += "{key:15} : {value:15} \n".format(key="reference_orbitals",
-                                                            value=str(self.reference_orbitals))
-                result += "{key:15} : {value:15} \n".format(key="frozen_docc", value=str(self.frozen_docc))
-                result += "{key:15} : {value:15} \n".format(key="frozen_uocc", value=str(self.frozen_uocc))
-                return result
-
-            @property
-            def frozen_reference_orbitals(self):
-                return [i for i in self.reference_orbitals if i not in self.active_orbitals]
-
-            @property
-            def active_reference_orbitals(self):
-                return [i for i in self.reference_orbitals if i in self.active_orbitals]
 
         if reference is None:
             # auto assignment only for closed-shell

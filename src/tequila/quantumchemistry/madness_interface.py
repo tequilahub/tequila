@@ -10,6 +10,7 @@ import shutil
 
 from dataclasses import dataclass
 
+
 class TequilaMadnessException(TequilaException):
     def __str__(self):
         return "Error in madness backend:" + self.message
@@ -80,7 +81,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             h, g = self.read_tensors(name=name)
 
             if h == "failed" or g == "failed":
-                warnings.warn("Could not find data for {}. Looking for binary files from potential madness calculation".format(name), TequilaWarning)
+                warnings.warn(
+                    "Could not find data for {}. Looking for binary files from potential madness calculation".format(
+                        name), TequilaWarning)
                 # try if madness was run manually without conversion before
                 h, g = self.convert_madness_output_from_bin_to_npy(name=name)
         else:
@@ -107,12 +110,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
             if h == "failed" or g == "failed":
                 raise TequilaMadnessException("Could not initialize the madness interface\n"
-                                       "Status report is\n"
-                                       "{status}\n"
-                                       "either provide {name}_gtensor.npy and {name}_htensor.npy files\n"
-                                       "or provide the number of pnos over by giving the n_pnos keyword to run madness\n"
-                                       "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
-                                       "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness\n".format(
+                                              "Status report is\n"
+                                              "{status}\n"
+                                              "either provide {name}_gtensor.npy and {name}_htensor.npy files\n"
+                                              "or provide the number of pnos over by giving the n_pnos keyword to run madness\n"
+                                              "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
+                                              "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness\n".format(
                     name=name, status=status))
 
         # get additional information from madness file
@@ -153,16 +156,18 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         orbitals = []
         if pairinfo is not None:
-            orbitals = [self.OrbitalData(idx_total=i, idx=i, pno_pair=p, occ=occinfo[i]) for i,p in enumerate(pairinfo)]
+            orbitals = [self.OrbitalData(idx_total=i, idx=i, pno_pair=p, occ=occinfo[i]) for i, p in
+                        enumerate(pairinfo)]
             if active_orbitals == "auto":
-                reference_orbitals = [x for x in orbitals if len(x.pno_pair)==1]
-                not_active = [i for i in reference_orbitals if sum([1 for x in orbitals if i.idx_total in x.pno_pair])<2]
+                reference_orbitals = [x for x in orbitals if len(x.pno_pair) == 1]
+                not_active = [i for i in reference_orbitals if
+                              sum([1 for x in orbitals if i.idx_total in x.pno_pair]) < 2]
                 active_orbitals = [x.idx_total for x in orbitals if x not in not_active]
 
             if active_orbitals is not None:
                 orbitals = [x for x in orbitals if x.idx_total in active_orbitals]
-                for i,x in enumerate(orbitals):
-                    orbitals[i].idx=i
+                for i, x in enumerate(orbitals):
+                    orbitals[i].idx = i
         else:
             raise TequilaMadnessException("No pairinfo given")
         self.orbitals = tuple(orbitals)
@@ -172,7 +177,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                          active_orbitals=active_orbitals,
                          one_body_integrals=h,
                          two_body_integrals=g,
-                         nuclear_repulsion = nuclear_repulsion,
+                         nuclear_repulsion=nuclear_repulsion,
                          n_orbitals=n_orbitals,
                          *args,
                          **kwargs)
@@ -255,10 +260,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         qubit_map = {x: i for i, x in enumerate(ordered_qubits)}
         return qubit_map
 
-
-    def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True, direct_compiling=False):
+    def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
+                                             direct_compiling=False):
         if not self.transformation.up_then_down:
-            warnings.warn("Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency", TequilaWarning)
+            warnings.warn(
+                "Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency",
+                TequilaWarning)
         if pairs is None:
             pairs = [i for i in range(self.n_electrons // 2)]
         U = QCircuit()
@@ -271,8 +278,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 for a in self.get_pno_indices(i=i, j=i):
                     U += gates.Ry(angle=(i, a.idx, label), target=a.idx, control=c[0])
                     U += gates.X(target=c[1], control=a.idx)
-                    if hasattr(direct_compiling, "lower") and direct_compiling.lower()=="ladder":
-                        c = [a.idx,a.idx]
+                    if hasattr(direct_compiling, "lower") and direct_compiling.lower() == "ladder":
+                        c = [a.idx, a.idx]
                     else:
                         c = [i, i]
         else:
@@ -384,15 +391,18 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                                     continue
                                 indices.append((a.idx, b.idx))
 
-        return self.make_upccgsd_ansatz(indices=indices,**kwargs)
+        return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
     def write_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
         if n_pno is None:
             raise TequilaMadnessException("Can't write madness input without n_pno keyword!")
         data = {}
         if self.parameters.multiplicity != 1:
-            raise TequilaMadnessException("Currently only closed shell supported for MRA-PNO-MP2, you demanded multiplicity={} for the surrogate".format(self.parameters.multiplicity))
-        data["dft"] = {"charge":self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 3.e-4, "ncf": "( none , 1.0 )"}
+            raise TequilaMadnessException(
+                "Currently only closed shell supported for MRA-PNO-MP2, you demanded multiplicity={} for the surrogate".format(
+                    self.parameters.multiplicity))
+        data["dft"] = {"charge": self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 3.e-4,
+                       "ncf": "( none , 1.0 )"}
         data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
         if not frozen_core:
             data["pno"]["freeze"] = 0
