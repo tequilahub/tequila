@@ -47,18 +47,38 @@ cd tequila
 pip install -e . 
 ```
 
-**Do not** install over PyPi (Minecraft lovers excluded)  
-<strike>`pip install tequila`</strike>
 
 You can install `tequila` directly with pip over:  
 ```bash
 pip install git+https://github.com/aspuru-guzik-group/tequila.git
 ```
+**Do not** install over like this: (Minecraft lovers excluded)  
+<strike>`pip install tequila`</strike>
 
 Recommended Python version is *3.7*.    
 Python 3.8 works, but not all (optional) dependencies support it yet.  
 Python 3.6 works, but some (optional) dependencies might have issues with numpy >= 1.20.  
 
+# Install from PyPi
+**Do not** install like this:
+```bash
+<strike>`pip install tequila`</strike>
+```
+this will install a Minecraft server manager (might be useful for other things, but probably not what you are looking for).  
+
+You can install tequila from PyPi as:  
+```bash
+pip install tequila-basic
+```
+this will install tequila with all essential dependencies.  
+We recommend to install some fast quantum backends, like qulacs or qibo, as well.  
+Those can be installed before or after you install tequila.  
+```bash
+# install basic tequila
+pip install tequila-basic
+# install qulacs and use it within tequila
+pip install qulacs
+```
 
 # Getting Started
 Check out the tutorial notebooks provided in tutorials.
