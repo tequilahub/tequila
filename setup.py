@@ -10,6 +10,19 @@ def read_requirements(fname):
         requirements = [line.strip() for line in lines]
     return requirements
 
+# get author and version information
+VERSIONFILE="src/tequila/version.py"
+info = {"__version__":None, "__author__":None}
+with open(VERSIONFILE, "r") as f:
+    for l in f.readlines():
+        tmp = l.split("=")
+        if tmp[0].strip().lower() in info:
+            info[tmp[0].strip().lower()] = tmp[1].strip()
+
+for k,v in info.items():
+    if v is None:
+        raise Exception("could not find {} string in {}".format(k,VERSIONFILE))
+
 extras_3_6 = ['dataclasses']
 extras_3_7 = []
 additional = []
@@ -18,8 +31,8 @@ requirements = read_requirements('requirements.txt')
 
 setup(
     name='tequila',
-    version="1.0",
-    author='Jakob S. Kottmann, Sumner Alperin-Lea, Teresa Tamayo-Mendoza, Cyrille Lavigne, Alba Cervera-Lierta, Abhinav Anand, Maha Kesebi, and others',
+    version=info["__version__"],
+    author=info["__author__"],
     author_email='jakob.kottmann@gmail.com',
     install_requires=requirements + additional,
     extras_require={
