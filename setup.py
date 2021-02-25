@@ -11,7 +11,7 @@ def read_requirements(fname):
     return requirements
 
 # get author and version information
-VERSIONFILE="src/tequila/_version.py"
+VERSIONFILE="src/tequila/version.py"
 info = {"__version__":None, "__author__":None}
 with open(VERSIONFILE, "r") as f:
     for l in f.readlines():
