@@ -17,7 +17,7 @@ with open(VERSIONFILE, "r") as f:
     for l in f.readlines():
         tmp = l.split("=")
         if tmp[0].strip().lower() in info:
-            info[tmp[0].strip().lower()] = tmp[1].strip()
+            info[tmp[0].strip().lower()] = tmp[1].strip().strip("\"").strip("\'")
 
 for k,v in info.items():
     if v is None:
@@ -30,9 +30,11 @@ additional = []
 requirements = read_requirements('requirements.txt')
 
 setup(
-    name='tequila',
+    name='tequila-basic',
     version=info["__version__"],
     author=info["__author__"],
+    url="https://github.com/aspuru-guzik-group/tequila",
+    description="Tequila is an abstract library for the development and prototyping of quantum algorithms.\nSee github for more information",
     author_email='jakob.kottmann@gmail.com',
     install_requires=requirements + additional,
     extras_require={
