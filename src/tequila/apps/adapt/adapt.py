@@ -140,7 +140,7 @@ class Adapt:
                 warnings.warn("variable {} of initial objective not given, setting to 0.0 and activate optimization".format(k), TequilaWarning)
                 variables[k] = 0.0
 
-        energy = 0.0
+        energy = simulate(initial_objective, variables=variables)
         for iter in range(self.parameters.maxiter):
             current_label = (iter,0)
             if label is not None:
@@ -156,7 +156,7 @@ class Adapt:
                 print("pool gradient norm is {:+2.8f}, convergence criterion met".format(grad_norm))
                 break
             if numpy.abs(max_grad) < self.parameters.max_gradient_convergence:
-                print("max pool gradient is {:+2.8f}, convergence criterion met".format(grad_norm))
+                print("max pool gradient is {:+2.8f}, convergence criterion |max(grad)|<{} met".format(max_grad, self.parameters.max_gradient_convergence))
                 break
 
             batch_size = self.parameters.batch_size
@@ -351,10 +351,6 @@ class MolecularPool(AdaptPoolBase):
         unwrapped = [x[0] for x in singles]
         # now make all combinations of singles
         indices = [x for x in combinations(unwrapped, 2)]
-        print("asd")
-        print(singles)
-        print(indices)
-        print("dsa")
         return self.sort_and_filter_unique_indices(indices)
 
     def sort_and_filter_unique_indices(self, indices):
@@ -369,7 +365,6 @@ class MolecularPool(AdaptPoolBase):
             idx = tuple(list(set(idx))) # avoid repetitions (like ((0,2),(0,2)))
             idx = tuple(sorted(idx, key=lambda x:x[0])) # sort pairs by first entry (a<c)
             sorted_indices.append(idx)
-        print(sorted_indices)
         return list(set(sorted_indices))
 
 
