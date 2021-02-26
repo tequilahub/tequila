@@ -5,6 +5,7 @@ from tequila import QCircuit, QubitHamiltonian, gates, paulis, grad, simulate, T
 import numpy
 import dataclasses
 import warnings
+from itertools import combinations
 
 
 @dataclasses.dataclass
@@ -291,18 +292,17 @@ class MolecularPool(AdaptPoolBase):
         self.molecule = molecule
 
         if isinstance(indices, str):
-            if indices.upper() == "UPCCGSD":
-                indices = self.make_indices_doubles(generalized=True)
-                indices += self.make_indices_singles(generalized=True)
-            elif indices.upper() == "UPCCSD":
-                indices = self.make_indices_doubles(generalized=False)
-                indices += self.make_indices_singles(generalized=False)
-            elif indices.upper() == "UPCCD":
-                indices = self.make_indices_doubles(generalized=False)
-            elif indices.upper() == "UPCCGD":
-                indices = self.make_indices_doubles(generalized=True)
-            else:
+            if not "CC" in indices.upper():
                 raise TequilaException("Pool of type {} not yet supported.\nCreate your own by passing the initialized indices".format(indices))
+
+            generalized = True if "G" in indices.upper() else False
+            paired = True if "P" in indices.upper() else False
+            singles = True if "S" in indices.upper() else False
+            doubles = True if "D" in indices.upper() else False
+
+            indices = []
+            if doubles: indices += self.make_indices_doubles(generalized=generalized, paired=paired)
+            if singles: indices += self.make_indices_singles(generalized=generalized)
 
         indices = [tuple(k) for k in indices]
         super().__init__(generators=indices)
@@ -323,11 +323,9 @@ class MolecularPool(AdaptPoolBase):
                     continue
                 indices.append([(2*p, 2*q)])
                 indices.append([(2*p+1, 2*q+1)])
-        return indices
+        return self.sort_and_filter_unique_indices(indices)
 
     def make_indices_doubles(self, generalized=False, paired=True):
-        # only paired doubles supported currently
-        assert paired
         indices = []
         for p in range(self.molecule.n_electrons//2):
             for q in range(self.molecule.n_electrons//2, self.molecule.n_orbitals):
@@ -343,7 +341,38 @@ class MolecularPool(AdaptPoolBase):
                     continue
                 indices.append(idx)
 
-        return indices
+        if not paired:
+            indices += self.make_indices_doubles_all(generalized=generalized)
+
+        return self.sort_and_filter_unique_indices(indices)
+
+    def make_indices_doubles_all(self, generalized=False):
+        singles = self.make_indices_singles(generalized=generalized)
+        unwrapped = [x[0] for x in singles]
+        # now make all combinations of singles
+        indices = [x for x in combinations(unwrapped, 2)]
+        print("asd")
+        print(singles)
+        print(indices)
+        print("dsa")
+        return self.sort_and_filter_unique_indices(indices)
+
+    def sort_and_filter_unique_indices(self, indices):
+        # sort as: [[(a,b),(c,d),(e,f)...],...]with a<c, a<b, c<d
+        sorted_indices = []
+        for idx in indices:
+            idx = tuple([tuple(sorted(pair)) for pair in idx]) # sort internal pairs (a<b, c<d, etc)
+            # avoid having orbitals show up multiple times in excitatin strings
+            idx = tuple([pair for pair in idx if sum([1 for pair2 in idx if pair[0] in pair2 or pair[1] in pair2 ])==1 ])
+            if len(idx) == 0:
+                continue
+            idx = tuple(list(set(idx))) # avoid repetitions (like ((0,2),(0,2)))
+            idx = tuple(sorted(idx, key=lambda x:x[0])) # sort pairs by first entry (a<c)
+            sorted_indices.append(idx)
+        print(sorted_indices)
+        return list(set(sorted_indices))
+
+
 
     def make_unitary(self, k, label):
         return self.molecule.make_excitation_gate(indices=self.generators[k], angle=(self.generators[k], label), assume_real=True)
