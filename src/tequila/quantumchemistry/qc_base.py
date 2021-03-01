@@ -1128,7 +1128,7 @@ class QuantumChemistryBase:
         else:
             raise TequilaException("Unknown recipe: {}".format(key))
 
-        indices = [sorted(idx) for idx in indices]
+        indices = [tuple(sorted(idx)) for idx in indices]
 
         return indices
 
