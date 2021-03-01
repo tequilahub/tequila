@@ -276,7 +276,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 U += gates.X(i)
                 c = [None, i]
                 for a in self.get_pno_indices(i=i, j=i):
-                    U += gates.Ry(angle=(tuple([i, a.idx]), "D", label), target=a.idx, control=c[0])
+                    U += gates.Ry(angle=(tuple([(i, a.idx)]), "D", label), target=a.idx, control=c[0])
                     U += gates.X(target=c[1], control=a.idx)
                     if hasattr(direct_compiling, "lower") and direct_compiling.lower() == "ladder":
                         c = [a.idx, a.idx]
