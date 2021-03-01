@@ -1244,7 +1244,7 @@ class QuantumChemistryBase:
 
     def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapted=True, label=None, angle_transform=None, assume_real=True):
         if hasattr(indices, "lower"):
-            indices = self.make_upccgsd_indices(indices=indices)
+            indices = self.make_upccgsd_indices(key=indices)
 
         U = tq.QCircuit()
         for idx in indices:
