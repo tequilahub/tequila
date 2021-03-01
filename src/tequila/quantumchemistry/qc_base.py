@@ -1246,7 +1246,7 @@ class QuantumChemistryBase:
         if hasattr(indices, "lower"):
             indices = self.make_upccgsd_indices(key=indices)
 
-        U = tq.QCircuit()
+        U = QCircuit()
         for idx in indices:
             if spin_adapted:
                 angle = (idx, "S", label)
