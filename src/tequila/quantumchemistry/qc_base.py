@@ -1128,6 +1128,8 @@ class QuantumChemistryBase:
         else:
             raise TequilaException("Unknown recipe: {}".format(key))
 
+        indices = [sorted(idx) for idx in indices]
+
         return indices
 
     # make the k-upccgsd ansatz with order=k and exploit the physical structure
