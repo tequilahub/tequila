@@ -1169,7 +1169,7 @@ class QuantumChemistryBase:
         Parameters
         ----------
         include_singles
-            include singles excitations
+            include singles excitations. Is overwritten if indices are a string (i.e. indices=UpCCGSD will always include singles, UpCCGD will not)
         include_reference
             include the HF reference state as initial state
         indices
@@ -1194,6 +1194,14 @@ class QuantumChemistryBase:
         """
 
         if hasattr(indices, "lower"):
+            if "s" in indices.lower():
+                if include_singles is False:
+                    warnings.warn("Unclear statements about singles: include_singles = False, but indices={}".format(indices), TequilaWarning)
+                include_singles = True
+            else:
+                warnings.warn("Unclear statements about singles: include_singles = False, but indices={}".format(indices),TequilaWarning)
+                include_singles = False
+
             indices = self.make_upccgsd_indices(key=indices.lower())
 
         # check if the used qubit encoding has a hcb transformation
@@ -1215,16 +1223,7 @@ class QuantumChemistryBase:
             U += self.transformation.hcb_to_me()
 
         if include_singles:
-            for idx in indices:
-                angle = (idx, "S", label)
-                U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
-                if spin_adapt_singles:
-                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
-                                                   assume_real=assume_real)
-                else:
-                    angle = (idx, "SX", label)
-                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
-                                                   assume_real=assume_real)
+            self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label, spin_adapted=spin_adapt_singles)
 
         for k in range(order - 1):
             label = (order, label)
@@ -1240,24 +1239,33 @@ class QuantumChemistryBase:
                                            indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
                                            assume_real=assume_real)
         if include_singles:
-            for idx in indices:
+            U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label, spin_adapted=spin_adapt_singles, angle_transform=angle_transform)
+        return U
+
+    def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapted=True, label=None, angle_transform=None, assume_real=True):
+        if hasattr(indices, "lower"):
+            indices = self.make_upccgsd_indices(indices=indices)
+
+        U = tq.QCircuit()
+        for idx in indices:
+            if spin_adapted:
                 angle = (idx, "S", label)
                 if angle_transform is not None:
                     angle = angle_transform(angle)
 
                 U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
-                if spin_adapt_singles:
-                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
-                                                   assume_real=assume_real)
-                else:
-                    angle = (idx, "SX", label)
-                    if angle_transform is not None:
-                        angle = angle_transform(angle)
-                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
-                                                   assume_real=assume_real)
+                U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0]+1, 2 * idx[1]+1)], assume_real=assume_real)
+            else:
+                angle1 = (idx, "SU", label)
+                angle2 = (idx, "SD", label)
+                if angle_transform is not None:
+                    angle1 = angle_transform(angle1)
+                    angle2 = angle_transform(angle2)
+
+                U += self.make_excitation_gate(angle=angle1, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
+                U += self.make_excitation_gate(angle=angle2, indices=[(2 * idx[0]+1, 2 * idx[1]+1)], assume_real=assume_real)
 
         return U
-
 
     def make_uccsd_ansatz(self, trotter_steps: int,
                           initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",

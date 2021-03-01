@@ -276,7 +276,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 U += gates.X(i)
                 c = [None, i]
                 for a in self.get_pno_indices(i=i, j=i):
-                    U += gates.Ry(angle=(i, a.idx, label), target=a.idx, control=c[0])
+                    U += gates.Ry(angle=(tuple([i, a.idx]), "D", label), target=a.idx, control=c[0])
                     U += gates.X(target=c[1], control=a.idx)
                     if hasattr(direct_compiling, "lower") and direct_compiling.lower() == "ladder":
                         c = [a.idx, a.idx]
@@ -287,7 +287,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if include_reference:
                     U += gates.X(i)
                 for a in self.get_pno_indices(i=i, j=i):
-                    U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
+                    idx = tuple([(i, a.idx)])
+                    U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
         return U
 
     def make_hardcore_boson_pno_upccd_complement(self, pairs=None, label=None, generalized=False):
@@ -300,18 +301,21 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             for a in virtuals:
                 if a in aa:
                     continue
-                U += self.make_hardcore_boson_excitation_gate(indices=[(i, a.idx)], angle=(i, a.idx, label))
+                idx = tuple([(i, a.idx)])
+                U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
         if generalized:
             for i in pairs:
                 for j in pairs:
                     if i <= j:
                         continue
-                    U += self.make_hardcore_boson_excitation_gate(indices=[(i, j)], angle=(i, j, label))
+                    idx = tuple([(i, j)])
+                    U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
             for a in virtuals:
                 for b in virtuals:
                     if a.idx_total <= b.idx_total:
                         continue
-                    U += self.make_hardcore_boson_excitation_gate(indices=[(a.idx, b.idx)], angle=(a.idx, b.idx, label))
+                    idx = tuple([(a.idx, b.idx)])
+                    U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
         return U
 
     def make_separated_objective(self, pairs=None, label=None, neglect_coupling=False):
