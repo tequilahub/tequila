@@ -301,20 +301,20 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             for a in virtuals:
                 if a in aa:
                     continue
-                idx = (i, a.idx)
+                idx = tuple(sorted((i, a.idx)))
                 U += self.make_hardcore_boson_excitation_gate(indices=[idx], angle=(idx, "D", label))
         if generalized:
             for i in pairs:
                 for j in pairs:
                     if i <= j:
                         continue
-                    idx = (i, j)
+                    idx = tuple(sorted((i, j)))
                     U += self.make_hardcore_boson_excitation_gate(indices=[idx], angle=(idx, "D", label))
             for a in virtuals:
                 for b in virtuals:
                     if a.idx_total <= b.idx_total:
                         continue
-                    idx = (a.idx, b.idx)
+                    idx = tuple(sorted((a.idx, b.idx)))
                     U += self.make_hardcore_boson_excitation_gate(indices=[idx], angle=(idx, "D", label))
         return U
 
