@@ -35,12 +35,15 @@ Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutoria
 
 - [Madness](https://github.com/kottmanj/madness)  
 Currently you need to compile from a separate [fork](https://github.com/kottmanj/madness).  
-See the github page of this fork for installation instruction.  
-Note that the madness interface is currently only available on the `devel` branch of tequila (coming to master soon).  
+See the github page of this fork for installation instruction.   
 Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb) that illustrates the usage.  
 
 
-# Installation
+# Install from source
+
+**Do not** install like this: (Minecraft lovers excluded)  
+<strike>`pip install tequila`</strike>  
+
 We recommend installing in editable mode with  
 ```bash
 git clone https://github.com/aspuru-guzik-group/tequila.git
@@ -48,18 +51,34 @@ cd tequila
 pip install -e . 
 ```
 
-**Do not** install over PyPi (Minecraft lovers excluded)  
-<strike>`pip install tequila`</strike>
-
 You can install `tequila` directly with pip over:  
 ```bash
 pip install git+https://github.com/aspuru-guzik-group/tequila.git
 ```
 
-Recommended Python version is *3.7*.    
-Python 3.8 works, but not all (optional) dependencies support it yet.  
+Recommended Python version is 3.7.    
+Python 3.8 works, but not all (optional) dependencies support it yet (e.g. Psi4).  
 Python 3.6 works, but some (optional) dependencies might have issues with numpy >= 1.20.  
 
+# Install from PyPi
+**Do not** install like this:  
+<strike>`pip install tequila`</strike>
+
+this will install a Minecraft server manager (might be useful for other things, but probably not what you are looking for).  
+
+You can install tequila from PyPi as:  
+```bash
+pip install tequila-basic
+```
+this will install tequila with all essential dependencies.  
+We recommend to install some fast quantum backends, like qulacs or qibo, as well.  
+Those can be installed before or after you install tequila.  
+```bash
+# install basic tequila
+pip install tequila-basic
+# install qulacs and/or other backends and use it within tequila
+pip install qulacs
+```
 
 # Getting Started
 Check out the tutorial notebooks provided in tutorials.
@@ -119,13 +138,17 @@ Do you want to create your own methods? Check out the [tutorials](https://github
 # Research projects using Tequila
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
 A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.  
+Chemical Science, 2021, [doi.org/10.1039/D0SC06627C](https://doi.org/10.1039/D0SC06627C).  
 [arxiv.org/abs/2011.05938](https://arxiv.org/abs/2011.05938)  
-Techniques are implemented in the chemistry modules of tequila. See the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials) for examples.  
+General techniques are implemented in the chemistry modules of tequila.  
+See the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials) for examples.  
 
 J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.  
-A basis-set-free approach for VQE employing pair-natural orbitals.   
+Reducing Qubit Requirements while Maintaining Numerical Precision for the Variational Quantum Eigensolver: A Basis-Set-Free Approach.   
+J.Phys.Chem.Lett., 2021, [doi.org/10.1021/acs.jpclett.0c03410](https://doi.org/10.1021/acs.jpclett.0c03410).  
 [arxiv.org/abs/2008.02819](https://arxiv.org/abs/2008.02819)
 [example code](https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryBasisSetFreeVQE.ipynb)
+[tutorial on the madness interface](https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryMadnessInterface.ipynb)
 
 A. Cervera-Lierta, J.S. Kottmann, A. Aspuru-Guzik.  
 The Meta-Variational Quantum Eigensolver.  
@@ -144,10 +167,11 @@ Natural Evolutionary Strategies for Variational Quantum Computation.
 Let us know, if you want your research project to be included in this list!
 
 # Dependencies
-Support for additional optimizers can be activated by intalling them in your environment.  
+Support for additional optimizers or quantum backends can be activated by intalling them in your environment.  
 Tequila will then detect them automatically.  
 Currently those are: [Phoenics](https://github.com/aspuru-guzik-group/phoenics)
- and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).
+ and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).  
+Quantum backends are treated in the same way.
 
 # Documentation
 You can build the documentation by navigating to `docs` and entering `make html`.  
@@ -179,6 +203,22 @@ If you used `tequila` for your research, feel free to include your algoritms her
 # Troubleshooting
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need:  
 don't hesitate to contact us directly or raise an issue here on github  
+
+## Circuit drawing
+Standard graphical circuit representation within a Jupyter environment is often done using `tq.draw`.  
+Without further keywords `tequial` will try to create and compile a [qpic](https://github.com/qpic/qpic) file.  
+For proper display you will need the following dependcies: qpic, pdflatex and convert/ImageMagic (pre-installed on most linux distributions, not pre-installed on macs).  
+On linux distributions sometimes the permissions of `convert` to convert pdf to png are not granted, resulting in an error when trying to use `tq.draw`.  
+Click [here](https://stackoverflow.com/questions/52998331/imagemagick-security-policy-pdf-blocking-conversion?answertab=oldest#tab-top) for a possible solution.  
+
+In general, there is no reason to worry if `tq.draw` does not function properly.  
+It is just one way to display circuits, but not neccessary to have.  
+Alternatives are:  
+- Use `tq.draw(circuit, backend="qiskit")` (or `backend=cirq` ) 
+- translate to qiskit/cirq and use their functionality ( `qiskit_circuit = tq.compile(circuit, backend='qiskit').circuit` )  
+- directly create pdfs: `tq.circuit.export_to(circuit, filename="my_name.pdf")` (will also create `my_name.qpic` that can be used with qpic)  
+- use `print(circuit)` (does not look pretty, but carries the same information).  
+- become a contributor and implement your own graphical circuit representation and create a pull-request.  
 
 ## Qulacs simulator
 You will need cmake to install the qulacs simulator  

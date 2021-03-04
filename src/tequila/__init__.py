@@ -30,3 +30,5 @@ warnings.filterwarnings("default", category=TequilaWarning)
 
 # load applications and helpers
 from tequila.apps import adapt
+
+from .version import __version__, __author__
