@@ -194,12 +194,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.cleanup(warn=False, delete_all_files=False)
 
     def cleanup(self, warn=False, delete_all_files=False):
-        os.remove("pnoinfo.txt")
-        os.remove("molecule_htensor.bin")
-        os.remove("molecule_gtensor.bin")
-        os.remove("{}_htensor.npy".format(self.parameters.name))
-        os.remove("{}_gtensor.npy".format(self.parameters.name))
-        os.remove("{}_pnoinfo.txt".format(self.parameters.name))
 
         filenames = ["pnoinfo.txt", "molecule_htensor.bin", "molecule.gtensor.bin"]
         if delete_all_files:
