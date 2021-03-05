@@ -57,7 +57,8 @@ class Compiler:
                  gradient_mode=False,
                  ry_gate=False,
                  y_gate=False,
-                 ch_gate=False
+                 ch_gate=False,
+                 hadamard=False
                  ):
 
         """
@@ -110,6 +111,7 @@ class Compiler:
         self.exponential_pauli = exponential_pauli
         self.controlled_exponential_pauli = controlled_exponential_pauli
         self.hadamard_power = hadamard_power
+        self.hadamard = hadamard
         self.controlled_power = controlled_power
         self.power = power
         self.toffoli = toffoli

@@ -122,7 +122,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         nuclear_repulsion = 0.0
         pairinfo = None
         occinfo = None
-        for name in [parameters.name + "_pnoinfo.txt", "pnoinfo.txt"]:
+        for name in [parameters.name + "_pnoinfo.txt"]:
             try:
                 with open(name, "r") as f:
                     for line in f.readlines():
@@ -190,11 +190,36 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(
                         self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
 
+        # delete *.bin files and pnoinfo.txt form madness calculation
+        self.cleanup(warn=False, delete_all_files=False)
+
+    def cleanup(self, warn=False, delete_all_files=False):
+        os.remove("pnoinfo.txt")
+        os.remove("molecule_htensor.bin")
+        os.remove("molecule_gtensor.bin")
+        os.remove("{}_htensor.npy".format(self.parameters.name))
+        os.remove("{}_gtensor.npy".format(self.parameters.name))
+        os.remove("{}_pnoinfo.txt".format(self.parameters.name))
+
+        filenames = ["pnoinfo.txt", "molecule_htensor.bin", "molecule.gtensor.bin"]
+        if delete_all_files:
+            filenames = ["{}_htensor.npy".format(self.parameters.name), "{}_gtensor.npy".format(self.parameters.name), "{}_pnoinfo.txt".format(self.parameters.name), "{}_pno_integrals.out".format(self.parameters.name)]
+        for filename in filenames:
+            if os.path.exists(filename):
+                if warn:
+                    warnings.warn("Found file {} from previous calculation ... deleting it".format(filename), TequilaWarning)
+                os.remove(filename)
+
+
     def run_madness(self, *args, **kwargs):
         if self.executable is None:
             return "pno_integrals executable not found\n" \
                    "pass over executable keyword or export MAD_ROOT_DIR to system environment"
         self.write_madness_input(n_pno=self.n_pno, frozen_core=self.frozen_core, n_virt=self.n_virt, *args, **kwargs)
+
+        # prevent reading in old files
+        self.cleanup(warn=True, delete_all_files=True)
+
         import subprocess
         import time
         start = time.time()
@@ -204,6 +229,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         with open(filename, "w") as logfile:
             madout = subprocess.call([self.executable], stdout=logfile)
         print("finished after {}s".format(time.time() - start))
+
+        os.rename("pnoinfo.txt", "{}_pnoinfo.txt".format(self.parameters.name))
+
         return madout
 
     def read_tensors(self, name="molecule", filetype="npy"):
