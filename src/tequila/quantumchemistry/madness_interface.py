@@ -354,6 +354,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 return self.orbitals[k].pno_pair[0]
 
         objective = 0.0
+        implemented_ops = {}
         for ps in H.paulistrings:
             c = float(ps.coeff.real)
             if numpy.isclose(c, 0.0):
@@ -367,20 +368,50 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     ops[pair][k] = v
                 else:
                     ops[pair] = {k: v}
+            #print(ops)
             if len(ops) == 0:
                 objective += c
-            elif len(ops) <= 2:
+            elif len(ops) == 1:
                 assert len(ops) > 0
                 if neglect_coupling and len(ops) == 2:
                     continue
-
                 tmp = c
                 for pair, ps1 in ops.items():
                     Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
-                    Hp = QubitHamiltonian.from_paulistrings([PauliString(data=ps1)])
+                    ps = PauliString(data=ps1)
+                    Hp = QubitHamiltonian.from_paulistrings([ps])
                     Ep = ExpectationValue(H=Hp, U=Up)
                     if len(Ep.extract_variables()) == 0:
                         Ep = float(simulate(Ep))
+                    #print(pair, Hp, ps)
+                    if pair not in implemented_ops.keys():
+                        implemented_ops.update({pair: {str(ps):Ep}})
+                    else:
+                        if str(ps) not in implemented_ops[pair].keys():
+                            implemented_ops[pair].update({str(ps):Ep})
+                        else:
+                            Ep = implemented_ops[pair][str(ps)]
+                    tmp *= Ep
+                objective += tmp
+            elif len(ops) == 2:
+                assert len(ops) > 0
+                if neglect_coupling and len(ops) == 2:
+                    continue
+                tmp = c
+                for pair, ps1 in ops.items():
+                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
+                    ps = PauliString(data=ps1)
+                    Hp = QubitHamiltonian.from_paulistrings([ps])
+                    Ep = ExpectationValue(H=Hp, U=Up)
+                    if len(Ep.extract_variables()) == 0:
+                        Ep = float(simulate(Ep))
+                    if pair not in implemented_ops.keys():
+                        implemented_ops.update({pair: {str(ps):Ep}})
+                    else:
+                        if str(ps) not in implemented_ops[pair].keys():
+                            implemented_ops[pair].update({str(ps):Ep})
+                        else:
+                            Ep = implemented_ops[pair][str(ps)]
                     tmp *= Ep
                 objective += tmp
             else:
