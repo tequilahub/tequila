@@ -419,7 +419,7 @@ def minimize(objective: Objective,
                                backend_options=backend_options,
                                device=device,
                                samples=samples,
-                               noise_model=noise,
+                               noise=noise,
                                tol=tol,
                                *args,
                                **kwargs)
