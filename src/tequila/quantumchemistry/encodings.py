@@ -109,16 +109,8 @@ class EncodingBase:
         key = list(wfn.keys())[0].array
         return key
 
-    def me_to_hcb(self, *args, **kwargs):
-        """
-        Returns the quantum circuit that maps from the Hardcore-Boson system
-        to the corresponding Fermion system in the enoding of this class
-        :return:
-        """
-        raise Exception("{}::me_to_hcb:called base class, or HCB mapping not implemented.".format(type(self).__name__))
-
     def hcb_to_me(self, *args, **kwargs):
-        return self.me_to_hcb(*args, **kwargs)
+        return None
 
     def __str__(self):
         return type(self).__name__
@@ -138,7 +130,7 @@ class JordanWigner(EncodingBase):
         else:
             return state
 
-    def me_to_hcb(self, *args, **kwargs):
+    def hcb_to_me(self, *args, **kwargs):
         U = QCircuit()
         for i in range(self.n_orbitals):
             U += X(target=self.down(i), control=self.up(i))

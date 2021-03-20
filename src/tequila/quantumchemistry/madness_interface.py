@@ -282,12 +282,65 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         qubit_map = {x: i for i, x in enumerate(ordered_qubits)}
         return qubit_map
 
+    def make_upccgsd_ansatz(self, label=None, direct_compiling=None, name="UpCCGSD", order=1, *args, **kwargs):
+        """
+        Overwriting baseclass to allow names like : PNO-UpCCD etc
+        Parameters
+        ----------
+        label: label the variables of the ansatz ( variables will be labelled (indices, X, (label, layer) witch X=D/S)
+        direct_compiling: Directly compile the first layer (works only for transformation that implement the hcb_to_me function)
+        name: ansatz name (PNO-UpCCD, PNO-UpCCGD, PNO-UpCCGSD, UpCCGSD ...
+        order: repetition of layers
+        args
+        kwargs
+
+        Returns
+        -------
+
+        """
+        # check if the used qubit encoding has a hcb transformation
+        have_hcb_trafo = self.transformation.hcb_to_me() is not None
+
+        if "HCB" in name and "S" in name:
+            raise Exception("name={}, HCB + Singles can't be realized".format(name))
+
+        if ("HCB" in name or have_hcb_trafo) and direct_compiling is None:
+            direct_compiling=True
+
+        if direct_compiling and not have_hcb_trafo and not "HCB" in name:
+                raise TequilaMadnessException("direct_compiling={} demanded but no hcb_to_me in transformation={}\ntry transformation=\'ReorderedJordanWigner\' ".format(direct_compiling, self.transformation))
+
+        name = name.upper()
+
+        # first layer
+        if have_hcb_trafo or "HCB" in name:
+            U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=True, direct_compiling=direct_compiling, label=(label,0))
+            indices0 = [k.name[0] for k in U.extract_variables()]
+            indices1 = self.make_upccgsd_indices(label=label, name=name, exclude=indices0, *args, **kwargs)
+            U += self.make_hardcore_boson_upccgd_layer(indices=indices1, label=(label,0), *args, **kwargs)
+            indices = indices0 + indices1
+            if "HCB" not in name:
+                U = self.hcb_to_me(U=U)
+            else:
+                assert "S" not in name
+            if "S" in name:
+                U += self.make_upccgsd_singles(indices=indices, label=(label,0), *args, **kwargs)
+        else:
+            indices = self.make_upccgsd_indices(label=(label,0), name=name, *args, **kwargs)
+            U = self.prepare_reference()
+            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label,0), *args, **kwargs)
+
+        if order > 1:
+            for layer in range(order-1):
+                indices = self.make_upccgsd_indices(pairs=pairs, label=(label, layer), name=name, exclude=indices, *args, **kwargs)
+                if "HCB" in name:
+                    U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, 0), *args, **kwargs)
+                else:
+                    U += self.make_upccgsd_layer(include_singles="S" in name, label=(label,layer), *args, **kwargs)
+        return U
+
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
                                              direct_compiling=False):
-        if not self.transformation.up_then_down:
-            warnings.warn(
-                "Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency",
-                TequilaWarning)
         if pairs is None:
             pairs = [i for i in range(self.n_electrons // 2)]
         U = QCircuit()
@@ -298,7 +351,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 U += gates.X(i)
                 c = [None, i]
                 for a in self.get_pno_indices(i=i, j=i):
-                    U += gates.Ry(angle=((i, a.idx), "D", label), target=a.idx, control=c[0])
+                    idx = self.format_excitation_indices([(i,a.idx)])
+                    U += gates.Ry(angle=(idx, "D", label), target=a.idx, control=c[0])
                     U += gates.X(target=c[1], control=a.idx)
                     if hasattr(direct_compiling, "lower") and direct_compiling.lower() == "ladder":
                         c = [a.idx, a.idx]
@@ -309,36 +363,70 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if include_reference:
                     U += gates.X(i)
                 for a in self.get_pno_indices(i=i, j=i):
-                    idx = (i, a.idx)
-                    U += self.make_hardcore_boson_excitation_gate(indices=[idx], angle=(idx, "D", label))
+                    idx = self.format_excitation_indices([(i, a.idx)])
+                    U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
         return U
 
-    def make_hardcore_boson_pno_upccd_complement(self, pairs=None, label=None, generalized=False):
-        if pairs is None:
-            pairs = [i for i in range(self.n_electrons // 2)]
-        virtuals = [i for i in self.orbitals if len(i.pno_pair) == 2] + self.get_virtual_orbitals()
-        U = QCircuit()
-        for i in pairs:
-            aa = self.get_pno_indices(i=i, j=i)
+    def make_upccgsd_indices(self, label=None, name="UpCCGD", exclude:list=None, *args, **kwargs):
+        """
+        :param label: label the angles
+        :param generalized: if true the complement to UpCCGD is created (otherwise UpCCD)
+        :param exclude: list of indices to exclude
+        :return: All gates missing between PNO-UpCCD and UpCC(G)D
+        """
+
+        if exclude is None:
+            exclude = []
+        name = name.upper()
+
+        indices = []
+
+        # HF-X -- PNO-XX indices
+        for i in self.get_reference_orbitals():
+            for a in self.get_pno_indices(i=i, j=i):
+                idx = self.format_excitation_indices([(i.idx, a.idx)])
+                if idx not in exclude and idx not in indices:
+                    indices.append(idx)
+        if "G" in name:
+            for i in self.get_reference_orbitals():
+                for a in self.get_pno_indices(i=i, j=i):
+                    for b in self.get_pno_indices(i=i, j=i):
+                        if a.idx <= b.idx:
+                            continue
+                        idx = self.format_excitation_indices([(a.idx, b.idx)])
+                        if idx not in exclude and idx not in indices:
+                            indices.append(idx)
+
+        if "PNO" in name:
+            return indices
+
+        virtuals = [i for i in self.orbitals if len(i.pno_pair) == 2]
+        virtuals += self.get_virtual_orbitals() # this is usually empty
+
+        # HF-X -- PNO-XY/PNO-YY indices
+        for i in self.get_reference_orbitals():
             for a in virtuals:
-                if a in aa:
-                    continue
-                idx = tuple(sorted((i, a.idx)))
-                U += self.make_hardcore_boson_excitation_gate(indices=[idx], angle=(idx, "D", label))
-        if generalized:
-            for i in pairs:
-                for j in pairs:
-                    if i <= j:
+                idx = self.format_excitation_indices([(i.idx, a.idx)])
+                if idx not in exclude and idx not in indices:
+                    indices.append(idx)
+        # HF-HF and PNO-PNO indices
+        if "G" in name:
+            for i in self.get_reference_orbitals():
+                for j in self.get_reference_orbitals():
+                    if i.idx <= j.idx:
                         continue
-                    idx = tuple(sorted((i, j)))
-                    U += self.make_hardcore_boson_excitation_gate(indices=[idx], angle=(idx, "D", label))
+                    idx = self.format_excitation_indices([(i.idx, j.idx)])
+                    if idx not in exclude and idx not in indices:
+                        indices.append(idx)
             for a in virtuals:
                 for b in virtuals:
                     if a.idx_total <= b.idx_total:
                         continue
-                    idx = tuple(sorted((a.idx, b.idx)))
-                    U += self.make_hardcore_boson_excitation_gate(indices=[idx], angle=(idx, "D", label))
-        return U
+                    idx = self.format_excitation_indices([(a.idx, b.idx)])
+                    if idx not in exclude and idx not in indices:
+                        indices.append(idx)
+
+        return indices
 
     def make_separated_objective(self, pairs=None, label=None, neglect_coupling=False):
         if pairs is None:

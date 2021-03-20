@@ -797,22 +797,14 @@ class QuantumChemistryBase:
         return qop
 
     def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, assume_real=True):
-        G = QubitHamiltonian()
-        P0 = QubitHamiltonian()
-
+        target=[]
         for pair in indices:
-            u0 = self.transformation.up(pair[0])
-            u1 = self.transformation.up(pair[1])
-            G += Sp(u0) * Sm(u1)
-            P0 += Qp(u0) * Qm(u1)
-            P0 += Qm(u0) * Qp(u1)
-
-        G = 1.0j * (G - G.dagger())
-        P0 = 1.0 - P0
-        assert P0.is_hermitian()
-        assert G.is_hermitian()
-        return QCircuit.wrap_gate(
-            FermionicGateImpl(angle=angle, generator=G, p0=P0, assume_real=assume_real, control=control))
+            assert len(pair) == 2
+            target += [pair[0], pair[1]]
+        consistency = [x < self.n_orbitals for x in target]
+        if not all(consistency):
+            raise TequilaException("make_hardcore_boson_excitation_gate: Inconsistencies in indices={}. Should be indexed from 0 ... n_orbitals={}".format(indices, self.n_orbitals))
+        return gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control)
 
     def make_excitation_gate(self, indices, angle, control=None, assume_real=True):
         """
@@ -966,8 +958,8 @@ class QuantumChemistryBase:
         H = self.molecule.nuclear_repulsion
         for p in range(n_orbitals):
             for q in range(n_orbitals):
-                up = self.transformation.up(p)
-                uq = self.transformation.up(q)
+                up = p
+                uq = q
                 H += h[p, q] * Sm(up) * Sp(uq) + g[p, q] * Sm(up) * Sp(up) * Sm(uq) * Sp(uq)
 
         if self.active_space is not None:
@@ -1041,7 +1033,36 @@ class QuantumChemistryBase:
 
     def prepare_hardcore_boson_reference(self):
         # todo: integrate with transformation
-        return gates.X(target=[i for i in range(self.n_orbitals)])
+        return gates.X(target=[i for i in range(self.n_electrons//2)])
+
+    def hcb_to_me(self, U=None):
+        """
+        Transform a circuit in the hardcore-boson encoding (HCB)
+        to the encoding of this molecule
+        HCB is supposed to be encoded on the first n_orbitals qubits
+        Parameters
+        ----------
+        U: HCB circuit (using the alpha qubits)
+        Returns
+        -------
+
+        """
+        if U is None:
+            U = QCircuit()
+
+        # consistency
+        consistency = [x<self.n_orbitals for x in U.qubits]
+        if not all(consistency):
+            warnings.warn("hcb_to_me: given circuit is not defined on the first {} qubits. Is this a HCB circuit?".format(self.n_orbitals))
+
+        # map to alpha qubits
+        alpha_map = {k:self.transformation.up(k) for k in range(self.n_orbitals)}
+        alpha_U = U.map_qubits(qubit_map=alpha_map)
+        UX = self.transformation.hcb_to_me()
+        if UX is None:
+            raise TequilaException("transformation={} has no hcb_to_me function implemented".format(self.transformation))
+        return alpha_U + UX
+
 
     def get_pair_specific_indices(self,
                                   pair_info: str = None,
@@ -1108,6 +1129,19 @@ class QuantumChemistryBase:
 
         return indices
 
+    def format_excitation_indices(self, idx):
+        """
+        Consistent formatting of excitation indices
+        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
+        sorted as: p0<p1<pn and pi<qi
+        :param idx: list of index tuples describing a single(!) fermionic excitation
+        :return: tuple-list of index tuples
+        """
+
+        idx = [ tuple(sorted(x)) for x in idx ]
+        idx = sorted(idx, key=lambda x:x[0])
+        return tuple(idx)
+
     def make_upccgsd_indices(self, key, reference_orbitals=None, *args, **kwargs):
 
         if reference_orbitals is None:
@@ -1117,53 +1151,42 @@ class QuantumChemistryBase:
         if hasattr(key, "lower") and key.lower() == "ladder":
             # ladder structure of the pair excitations
             # ensures local connectivity
-            indices = [(n, n + 1) for n in range(self.n_orbitals - 1)]
-        elif hasattr(key, "lower") and key.lower() == "upccsd":
-            # canonical: doubles correspond to pCCD doubles
-            indices = [(n, m) for n in reference_orbitals for m in range(self.n_orbitals) if
+            indices = [[(n, n + 1)] for n in range(self.n_orbitals - 1)]
+        elif hasattr(key, "lower") and "g" not in key:
+            indices = [[(n, m)] for n in reference_orbitals for m in range(self.n_orbitals) if
                        n < m and m not in reference_orbitals]
-        elif hasattr(key, "lower") and key.lower() == "upccgsd":
-            # all: all possible doubles
-            indices = [(n, m) for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n < m]
+        elif hasattr(key, "lower") and "g" in key:
+            indices = [[(n, m)] for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n < m]
         else:
             raise TequilaException("Unknown recipe: {}".format(key))
 
-        indices = [tuple(sorted(idx)) for idx in indices]
+        indices = [self.format_excitation_indices(idx) for idx in indices]
 
         return indices
 
-    # make the k-upccgsd ansatz with order=k and exploit the physical structure
     def make_hardcore_boson_upccgd_layer(self,
-                                         include_singles: bool = True,
-                                         spin_adapt_singles: bool = True,
-                                         include_reference: bool = True,
-                                         indices: list = "UpCCGSD",
+                                         indices: list = "UpCCGD",
                                          label: str = None,
                                          assume_real: bool = True,
                                          *args, **kwargs):
-        U0 = QCircuit()
-        if include_reference:
-            U0 = self.prepare_hcb_reference()
 
         if hasattr(indices, "lower"):
             indices = self.make_upccgsd_indices(key=indices.lower())
 
         UD = QCircuit()
-        for m, n in indices:
-            UD += self.make_hardcore_boson_excitation_gate(indices=[(n, m)], angle=(n, m, "D", label))
+        for idx in indices:
+            UD += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label), assume_real=assume_real)
 
-        return U0 + UD
+        return UD
 
     def make_upccgsd_ansatz(self,
-                            include_singles: bool = True,
                             include_reference: bool = True,
-                            indices: list = "UpCCGSD",
+                            name: str= "UpCCGSD",
                             label: str = None,
                             order: int = 1,
                             assume_real: bool = True,
-                            do_not_optimize: bool = False,
+                            use_hcb: bool = None,
                             spin_adapt_singles: bool = True,
-                            angle_transform: typing.Callable = None,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1195,65 +1218,71 @@ class QuantumChemistryBase:
             UpGCCSD ansatz
         """
 
-        if hasattr(indices, "lower"):
-            if "s" in indices.lower():
-                if include_singles is False:
-                    warnings.warn("Unclear statements about singles: include_singles = False, but indices={}".format(indices), TequilaWarning)
-                include_singles = True
-            else:
-                warnings.warn("Unclear statements about singles: include_singles = False, but indices={}".format(indices),TequilaWarning)
-                include_singles = False
+        name = name.upper()
 
-            indices = self.make_upccgsd_indices(key=indices.lower())
+        indices = self.make_upccgsd_indices(key=name)
 
         # check if the used qubit encoding has a hcb transformation
-        have_hcb_trafo = True
-        try:
-            U = self.transformation.hcb_to_me()
-        except:
-            have_hcb_trafo = False
+        have_hcb_trafo = self.transformation.hcb_to_me() is not None
+
+        # consistency checks for optimization
+        if have_hcb_trafo and use_hcb is None:
+            use_hcb = True
+        if "HCB" in name:
+            use_hcb = True
+        if use_hcb and not have_hcb_trafo and "HCB" not in name:
+            raise TequilaException("use_hcb={} but transformation={} has no \'hcb_to_me\' function. Try transformation=\'ReorderedJordanWigner\'".format(use_hcb, self.transformation))
+        if "S" in name and "HCB" in name:
+            if "HCB" in name and "S" in name:
+                raise Exception("name={}, Singles can't be realized without mapping back to the standard encoding leave S or HCB out of the name".format(name))
 
         # first layer
-        if do_not_optimize or not have_hcb_trafo:
+        if not use_hcb:
             U = QCircuit()
             if include_reference:
                 U = self.prepare_reference()
-            U += self.make_upccgsd_layer(include_singles=include_singles, indices=indices, label=label)
+            U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, assume_real=assume_real, label=(label, 0), spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
         else:
-            U = self.make_hardcore_boson_upccgd_layer(include_singles=include_singles,
-                                                      include_reference=include_reference, indices=indices, label=label)
-            U += self.transformation.hcb_to_me()
+            U = QCircuit()
+            if include_reference:
+                U = self.prepare_hardcore_boson_reference()
+            U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label,0), *args, **kwargs)
+            if "HCB" not in name:
+                U = self.hcb_to_me(U=U)
 
-        if include_singles:
-            self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label, spin_adapted=spin_adapt_singles)
+            if "S" in name:
+                self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label,0), spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
 
         for k in range(order - 1):
-            label = (order, label)
-            U += self.make_upccgsd_layer(include_singles=include_singles, indices=indices, label=label, spin_adapt_singles=spin_adapt_singles)
+            U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, label=(label,k), spin_adapt_singles=spin_adapt_singles)
 
         return U
 
     def make_upccgsd_layer(self, indices, include_singles=True, assume_real=True, label=None, spin_adapt_singles:bool=True, angle_transform=None, mix_sd=False, *args, **kwargs):
         U = QCircuit()
         for idx in indices:
-            angle = (idx, "D", label)
+            assert len(idx)==1
+            idx = idx[0]
+            angle = (tuple([idx]), "D", label)
             U += self.make_excitation_gate(angle=angle,
                                            indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
                                            assume_real=assume_real)
             if include_singles and mix_sd:
-                U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label, spin_adapted=spin_adapt_singles, angle_transform=angle_transform)
+                U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label, spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)
 
         if include_singles and not mix_sd:
-            U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label, spin_adapted=spin_adapt_singles, angle_transform=angle_transform)
+            U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label, spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)
         return U
 
-    def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapted=True, label=None, angle_transform=None, assume_real=True):
+    def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapt_singles=True, label=None, angle_transform=None, assume_real=True):
         if hasattr(indices, "lower"):
             indices = self.make_upccgsd_indices(key=indices)
 
         U = QCircuit()
         for idx in indices:
-            if spin_adapted:
+            assert len(idx) == 1
+            idx = idx[0]
+            if spin_adapt_singles:
                 angle = (idx, "S", label)
                 if angle_transform is not None:
                     angle = angle_transform(angle)

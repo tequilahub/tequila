@@ -309,7 +309,7 @@ def test_rdms_psi4():
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 0.7"])
-@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev"])
+@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "ReorderedJordanWigner", "ReorderedBravyiKitaev"])
 def test_upccgsd(geometry, trafo):
     molecule = tq.chemistry.Molecule(geometry=geometry, basis_set="sto-3g", transformation=trafo)
     energy = do_test_upccgsd(molecule)
@@ -387,13 +387,15 @@ def test_hcb(trafo):
     geomstring = "Be 0.0 0.0 0.0\n H 0.0 0.0 1.6\n H 0.0 0.0 -1.6"
     mol1 = tq.Molecule(geometry=geomstring, active_orbitals=[1,2,3,4,5,6], basis_set="sto-3g", transformation="ReorderedJordanWigner")
     H = mol1.make_hardcore_boson_hamiltonian()
-    U = mol1.make_hardcore_boson_upccgd_layer(include_reference=True, include_singles=False)
+    U = mol1.make_upccgsd_ansatz(name="HCB-UpCCGD")
+
     E = tq.ExpectationValue(H=H, U=U)
     energy1 = tq.minimize(E).energy
+    assert numpy.isclose(energy1, -15.527740838656282, atol=1.e-3)
 
     mol2 = tq.Molecule(geometry=geomstring, active_orbitals=[1,2,3,4,5,6], basis_set="sto-3g", transformation=trafo)
     H = mol2.make_hamiltonian()
-    U = mol2.make_upccgsd_ansatz(include_reference=True, include_singles=False)
+    U = mol2.make_upccgsd_ansatz(name="UpCCGD", use_hcb=False)
     E = tq.ExpectationValue(H=H, U=U)
     energy2 = tq.minimize(E).energy
 
