@@ -346,7 +346,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if "HCB" in name:
                     U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, 0), *args, **kwargs)
                 else:
-                    U += self.make_upccgsd_layer(include_singles="S" in name, label=(label,layer), *args, **kwargs)
+                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label,layer), *args, **kwargs)
         return U
 
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
