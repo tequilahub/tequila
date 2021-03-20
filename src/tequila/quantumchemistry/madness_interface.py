@@ -282,7 +282,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         qubit_map = {x: i for i, x in enumerate(ordered_qubits)}
         return qubit_map
 
-    def make_upccgsd_ansatz(self, label=None, direct_compiling=None, name="UpCCGSD", order=1, *args, **kwargs):
+    def make_upccgsd_ansatz(self, label=None, direct_compiling=None, name="UpCCGSD", order=None, *args, **kwargs):
         """
         Overwriting baseclass to allow names like : PNO-UpCCD etc
         Parameters
@@ -311,6 +311,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 raise TequilaMadnessException("direct_compiling={} demanded but no hcb_to_me in transformation={}\ntry transformation=\'ReorderedJordanWigner\' ".format(direct_compiling, self.transformation))
 
         name = name.upper()
+
+        if order is None:
+            if "-" in name:
+                order = int(name.split("-")[0])
+            else:
+                order = 1
 
         # first layer
         if have_hcb_trafo or "HCB" in name:

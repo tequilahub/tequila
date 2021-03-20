@@ -1183,7 +1183,7 @@ class QuantumChemistryBase:
                             include_reference: bool = True,
                             name: str= "UpCCGSD",
                             label: str = None,
-                            order: int = 1,
+                            order: int = None,
                             assume_real: bool = True,
                             use_hcb: bool = None,
                             spin_adapt_singles: bool = True,
@@ -1219,6 +1219,11 @@ class QuantumChemistryBase:
         """
 
         name = name.upper()
+        if oder is None:
+            if "-" in name:
+                order = int(name.split("-")[0])
+            else:
+                order = 1
 
         indices = self.make_upccgsd_indices(key=name)
 
