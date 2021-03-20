@@ -428,7 +428,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return indices
 
-    def make_separated_objective(self, pairs=None, label=None, neglect_coupling=False):
+    def make_separated_objective(self, pairs=None, label=None, neglect_coupling=False, direct_compiling=False):
         if pairs is None:
             pairs = [i for i in range(self.n_electrons // 2)]
 
@@ -465,12 +465,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     continue
                 tmp = c
                 for pair, ps1 in ops.items():
-                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
+                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label, direct_compiling=direct_compiling)
                     ps = PauliString(data=ps1)
                     Hp = QubitHamiltonian.from_paulistrings([ps])
                     Ep = ExpectationValue(H=Hp, U=Up)
                     if len(Ep.extract_variables()) == 0:
-                        Ep = float(simulate(Ep))
+                        Ep = numpy.float64(simulate(Ep))
                     #print(pair, Hp, ps)
                     if pair not in implemented_ops.keys():
                         implemented_ops.update({pair: {str(ps):Ep}})
@@ -487,12 +487,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     continue
                 tmp = c
                 for pair, ps1 in ops.items():
-                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label)
+                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label, direct_compiling=direct_compiling)
                     ps = PauliString(data=ps1)
                     Hp = QubitHamiltonian.from_paulistrings([ps])
                     Ep = ExpectationValue(H=Hp, U=Up)
                     if len(Ep.extract_variables()) == 0:
-                        Ep = float(simulate(Ep))
+                        Ep = numpy.float64(simulate(Ep))
                     if pair not in implemented_ops.keys():
                         implemented_ops.update({pair: {str(ps):Ep}})
                     else:
