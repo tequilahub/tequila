@@ -1219,7 +1219,7 @@ class QuantumChemistryBase:
         """
 
         name = name.upper()
-        if oder is None:
+        if order is None:
             try:
                 if "-" in name:
                     order = int(name.split("-")[0])
