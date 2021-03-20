@@ -312,10 +312,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         name = name.upper()
 
-        if order is None:
-            if "-" in name:
-                order = int(name.split("-")[0])
-            else:
+        name = name.upper()
+        if oder is None:
+            try:
+                if "-" in name:
+                    order = int(name.split("-")[0])
+                else:
+                    order = 1
+            except:
                 order = 1
 
         # first layer

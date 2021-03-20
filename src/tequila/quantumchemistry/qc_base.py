@@ -1220,9 +1220,12 @@ class QuantumChemistryBase:
 
         name = name.upper()
         if oder is None:
-            if "-" in name:
-                order = int(name.split("-")[0])
-            else:
+            try:
+                if "-" in name:
+                    order = int(name.split("-")[0])
+                else:
+                    order = 1
+            except:
                 order = 1
 
         indices = self.make_upccgsd_indices(key=name)
