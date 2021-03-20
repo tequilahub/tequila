@@ -55,6 +55,7 @@ class FermionicGateImpl(_gates_impl.QubitExcitationImpl):
         super().__init__(*args, **kwargs)
         self._name = "FermionicExcitation"
 
+
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
 
@@ -797,13 +798,15 @@ class QuantumChemistryBase:
         return qop
 
     def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, assume_real=True):
-        target=[]
+        target = []
         for pair in indices:
             assert len(pair) == 2
             target += [pair[0], pair[1]]
         consistency = [x < self.n_orbitals for x in target]
         if not all(consistency):
-            raise TequilaException("make_hardcore_boson_excitation_gate: Inconsistencies in indices={}. Should be indexed from 0 ... n_orbitals={}".format(indices, self.n_orbitals))
+            raise TequilaException(
+                "make_hardcore_boson_excitation_gate: Inconsistencies in indices={}. Should be indexed from 0 ... n_orbitals={}".format(
+                    indices, self.n_orbitals))
         return gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control)
 
     def make_excitation_gate(self, indices, angle, control=None, assume_real=True):
@@ -939,7 +942,9 @@ class QuantumChemistryBase:
 
     def make_hardcore_boson_hamiltonian(self):
         if not self.transformation.up_then_down:
-            warnings.warn("Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency", TequilaWarning)
+            warnings.warn(
+                "Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency",
+                TequilaWarning)
         # integrate with QubitEncoding at some point
         n_orbitals = self.n_orbitals
         if self.active_space is not None:
@@ -964,7 +969,8 @@ class QuantumChemistryBase:
 
         if self.active_space is not None:
             inactive_orbitals = self.active_space.frozen_reference_orbitals
-            qm = {self.transformation.up(i + len(inactive_orbitals)): self.transformation.up(i) for i in range(self.n_orbitals)}
+            qm = {self.transformation.up(i + len(inactive_orbitals)): self.transformation.up(i) for i in
+                  range(self.n_orbitals)}
             one = QubitWaveFunction.from_string("1.0*|1>")
             H = H.trace_out_qubits(qubits=inactive_orbitals, states=[one] * len(inactive_orbitals))
             H = H.map_qubits(qubit_map=qm)
@@ -1033,7 +1039,7 @@ class QuantumChemistryBase:
 
     def prepare_hardcore_boson_reference(self):
         # todo: integrate with transformation
-        return gates.X(target=[i for i in range(self.n_electrons//2)])
+        return gates.X(target=[i for i in range(self.n_electrons // 2)])
 
     def hcb_to_me(self, U=None):
         """
@@ -1051,18 +1057,20 @@ class QuantumChemistryBase:
             U = QCircuit()
 
         # consistency
-        consistency = [x<self.n_orbitals for x in U.qubits]
+        consistency = [x < self.n_orbitals for x in U.qubits]
         if not all(consistency):
-            warnings.warn("hcb_to_me: given circuit is not defined on the first {} qubits. Is this a HCB circuit?".format(self.n_orbitals))
+            warnings.warn(
+                "hcb_to_me: given circuit is not defined on the first {} qubits. Is this a HCB circuit?".format(
+                    self.n_orbitals))
 
         # map to alpha qubits
-        alpha_map = {k:self.transformation.up(k) for k in range(self.n_orbitals)}
+        alpha_map = {k: self.transformation.up(k) for k in range(self.n_orbitals)}
         alpha_U = U.map_qubits(qubit_map=alpha_map)
         UX = self.transformation.hcb_to_me()
         if UX is None:
-            raise TequilaException("transformation={} has no hcb_to_me function implemented".format(self.transformation))
+            raise TequilaException(
+                "transformation={} has no hcb_to_me function implemented".format(self.transformation))
         return alpha_U + UX
-
 
     def get_pair_specific_indices(self,
                                   pair_info: str = None,
@@ -1138,8 +1146,8 @@ class QuantumChemistryBase:
         :return: tuple-list of index tuples
         """
 
-        idx = [ tuple(sorted(x)) for x in idx ]
-        idx = sorted(idx, key=lambda x:x[0])
+        idx = [tuple(sorted(x)) for x in idx]
+        idx = sorted(idx, key=lambda x: x[0])
         return tuple(idx)
 
     def make_upccgsd_indices(self, key, reference_orbitals=None, *args, **kwargs):
@@ -1175,13 +1183,14 @@ class QuantumChemistryBase:
 
         UD = QCircuit()
         for idx in indices:
-            UD += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label), assume_real=assume_real)
+            UD += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label),
+                                                           assume_real=assume_real)
 
         return UD
 
     def make_upccgsd_ansatz(self,
                             include_reference: bool = True,
-                            name: str= "UpCCGSD",
+                            name: str = "UpCCGSD",
                             label: str = None,
                             order: int = None,
                             assume_real: bool = True,
@@ -1239,50 +1248,62 @@ class QuantumChemistryBase:
         if "HCB" in name:
             use_hcb = True
         if use_hcb and not have_hcb_trafo and "HCB" not in name:
-            raise TequilaException("use_hcb={} but transformation={} has no \'hcb_to_me\' function. Try transformation=\'ReorderedJordanWigner\'".format(use_hcb, self.transformation))
+            raise TequilaException(
+                "use_hcb={} but transformation={} has no \'hcb_to_me\' function. Try transformation=\'ReorderedJordanWigner\'".format(
+                    use_hcb, self.transformation))
         if "S" in name and "HCB" in name:
             if "HCB" in name and "S" in name:
-                raise Exception("name={}, Singles can't be realized without mapping back to the standard encoding leave S or HCB out of the name".format(name))
+                raise Exception(
+                    "name={}, Singles can't be realized without mapping back to the standard encoding leave S or HCB out of the name".format(
+                        name))
 
         # first layer
         if not use_hcb:
             U = QCircuit()
             if include_reference:
                 U = self.prepare_reference()
-            U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, assume_real=assume_real, label=(label, 0), spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
+            U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, assume_real=assume_real,
+                                         label=(label, 0), spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
         else:
             U = QCircuit()
             if include_reference:
                 U = self.prepare_hardcore_boson_reference()
-            U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label,0), *args, **kwargs)
+            U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0),
+                                                       *args, **kwargs)
             if "HCB" not in name:
                 U = self.hcb_to_me(U=U)
 
             if "S" in name:
-                self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label,0), spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
+                self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label, 0),
+                                          spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
 
-        for k in range(order - 1):
-            U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, label=(label,k), spin_adapt_singles=spin_adapt_singles)
+        for k in range(1, order:
+            U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, label=(label, k),
+                                         spin_adapt_singles=spin_adapt_singles)
 
         return U
 
-    def make_upccgsd_layer(self, indices, include_singles=True, assume_real=True, label=None, spin_adapt_singles:bool=True, angle_transform=None, mix_sd=False, *args, **kwargs):
+    def make_upccgsd_layer(self, indices, include_singles=True, assume_real=True, label=None,
+                           spin_adapt_singles: bool = True, angle_transform=None, mix_sd=False, *args, **kwargs):
         U = QCircuit()
         for idx in indices:
-            assert len(idx)==1
+            assert len(idx) == 1
             idx = idx[0]
             angle = (tuple([idx]), "D", label)
             U += self.make_excitation_gate(angle=angle,
                                            indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
                                            assume_real=assume_real)
             if include_singles and mix_sd:
-                U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label, spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)
+                U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label,
+                                               spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)
 
         if include_singles and not mix_sd:
-            U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label, spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)
+            U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label,
+                                           spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)
         return U
 
-    def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapt_singles=True, label=None, angle_transform=None, assume_real=True):
+    def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapt_singles=True, label=None, angle_transform=None,
+                             assume_real=True):
         if hasattr(indices, "lower"):
             indices = self.make_upccgsd_indices(key=indices)
 
@@ -1296,7 +1317,8 @@ class QuantumChemistryBase:
                     angle = angle_transform(angle)
 
                 U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
-                U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0]+1, 2 * idx[1]+1)], assume_real=assume_real)
+                U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
+                                               assume_real=assume_real)
             else:
                 angle1 = (idx, "SU", label)
                 angle2 = (idx, "SD", label)
@@ -1304,8 +1326,10 @@ class QuantumChemistryBase:
                     angle1 = angle_transform(angle1)
                     angle2 = angle_transform(angle2)
 
-                U += self.make_excitation_gate(angle=angle1, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
-                U += self.make_excitation_gate(angle=angle2, indices=[(2 * idx[0]+1, 2 * idx[1]+1)], assume_real=assume_real)
+                U += self.make_excitation_gate(angle=angle1, indices=[(2 * idx[0], 2 * idx[1])],
+                                               assume_real=assume_real)
+                U += self.make_excitation_gate(angle=angle2, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
+                                               assume_real=assume_real)
 
         return U
 
@@ -1426,7 +1450,6 @@ class QuantumChemistryBase:
 
         return Uref + UCCSD
 
-
     def compute_amplitudes(self, method: str, *args, **kwargs):
         """
         Compute closed-shell CC amplitudes
@@ -1447,7 +1470,6 @@ class QuantumChemistryBase:
 
         """
         raise TequilaException("compute amplitudes: Needs to be overwritten by backend")
-
 
     def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
         """
@@ -1480,7 +1502,6 @@ class QuantumChemistryBase:
 
         self.molecule.mp2_energy = E + self.molecule.hf_energy
         return ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='greedy'))
-
 
     def compute_cis_amplitudes(self):
         """
@@ -1535,7 +1556,6 @@ class QuantumChemistryBase:
 
         return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
 
-
     @property
     def rdm1(self):
         """ """
@@ -1545,7 +1565,6 @@ class QuantumChemistryBase:
             print("1-RDM has not been computed. Return None for 1-RDM.")
             return None
 
-
     @property
     def rdm2(self):
         """ """
@@ -1554,7 +1573,6 @@ class QuantumChemistryBase:
         else:
             print("2-RDM has not been computed. Return None for 2-RDM.")
             return None
-
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True):
@@ -1794,7 +1812,6 @@ class QuantumChemistryBase:
         else:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
 
-
     def rdm_spinsum(self, sum_rdm1: bool = True, sum_rdm2: bool = True) -> tuple:
         """
         Given the spin-ful 1- and 2-particle reduced density matrices, compute the spin-free RDMs by spin summation.
@@ -1848,7 +1865,6 @@ class QuantumChemistryBase:
                 rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q + 1, 2 * r + 1, 2 * s + 1]
 
         return rdm1_spinsum, rdm2_spinsum
-
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"

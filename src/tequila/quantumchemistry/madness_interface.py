@@ -197,13 +197,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         filenames = ["pnoinfo.txt", "molecule_htensor.bin", "molecule.gtensor.bin"]
         if delete_all_files:
-            filenames = ["{}_htensor.npy".format(self.parameters.name), "{}_gtensor.npy".format(self.parameters.name), "{}_pnoinfo.txt".format(self.parameters.name), "{}_pno_integrals.out".format(self.parameters.name)]
+            filenames = ["{}_htensor.npy".format(self.parameters.name), "{}_gtensor.npy".format(self.parameters.name),
+                         "{}_pnoinfo.txt".format(self.parameters.name),
+                         "{}_pno_integrals.out".format(self.parameters.name)]
         for filename in filenames:
             if os.path.exists(filename):
                 if warn:
-                    warnings.warn("Found file {} from previous calculation ... deleting it".format(filename), TequilaWarning)
+                    warnings.warn("Found file {} from previous calculation ... deleting it".format(filename),
+                                  TequilaWarning)
                 os.remove(filename)
-
 
     def run_madness(self, *args, **kwargs):
         if self.executable is None:
@@ -305,10 +307,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             raise Exception("name={}, HCB + Singles can't be realized".format(name))
 
         if ("HCB" in name or have_hcb_trafo) and direct_compiling is None:
-            direct_compiling=True
+            direct_compiling = True
 
         if direct_compiling and not have_hcb_trafo and not "HCB" in name:
-                raise TequilaMadnessException("direct_compiling={} demanded but no hcb_to_me in transformation={}\ntry transformation=\'ReorderedJordanWigner\' ".format(direct_compiling, self.transformation))
+            raise TequilaMadnessException(
+                "direct_compiling={} demanded but no hcb_to_me in transformation={}\ntry transformation=\'ReorderedJordanWigner\' ".format(
+                    direct_compiling, self.transformation))
 
         name = name.upper()
 
@@ -324,29 +328,32 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         # first layer
         if have_hcb_trafo or "HCB" in name:
-            U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=True, direct_compiling=direct_compiling, label=(label,0))
+            U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=True, direct_compiling=direct_compiling,
+                                                          label=(label, 0))
             indices0 = [k.name[0] for k in U.extract_variables()]
             indices1 = self.make_upccgsd_indices(label=label, name=name, exclude=indices0, *args, **kwargs)
-            U += self.make_hardcore_boson_upccgd_layer(indices=indices1, label=(label,0), *args, **kwargs)
+            U += self.make_hardcore_boson_upccgd_layer(indices=indices1, label=(label, 0), *args, **kwargs)
             indices = indices0 + indices1
             if "HCB" not in name:
                 U = self.hcb_to_me(U=U)
             else:
                 assert "S" not in name
             if "S" in name:
-                U += self.make_upccgsd_singles(indices=indices, label=(label,0), *args, **kwargs)
+                U += self.make_upccgsd_singles(indices=indices, label=(label, 0), *args, **kwargs)
         else:
-            indices = self.make_upccgsd_indices(label=(label,0), name=name, *args, **kwargs)
+            indices = self.make_upccgsd_indices(label=(label, 0), name=name, *args, **kwargs)
             U = self.prepare_reference()
-            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label,0), *args, **kwargs)
+            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, 0), *args,
+                                         **kwargs)
 
         if order > 1:
-            for layer in range(order-1):
+            for layer in range(1, order):
                 indices = self.make_upccgsd_indices(label=(label, layer), name=name, *args, **kwargs)
                 if "HCB" in name:
                     U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, layer), *args, **kwargs)
                 else:
-                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label,layer), *args, **kwargs)
+                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, layer),
+                                                 *args, **kwargs)
         return U
 
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
@@ -361,7 +368,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 U += gates.X(i)
                 c = [None, i]
                 for a in self.get_pno_indices(i=i, j=i):
-                    idx = self.format_excitation_indices([(i,a.idx)])
+                    idx = self.format_excitation_indices([(i, a.idx)])
                     U += gates.Ry(angle=(idx, "D", label), target=a.idx, control=c[0])
                     U += gates.X(target=c[1], control=a.idx)
                     if hasattr(direct_compiling, "lower") and direct_compiling.lower() == "ladder":
@@ -377,7 +384,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
         return U
 
-    def make_upccgsd_indices(self, label=None, name="UpCCGD", exclude:list=None, *args, **kwargs):
+    def make_upccgsd_indices(self, label=None, name="UpCCGD", exclude: list = None, *args, **kwargs):
         """
         :param label: label the angles
         :param generalized: if true the complement to UpCCGD is created (otherwise UpCCD)
@@ -411,7 +418,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             return indices
 
         virtuals = [i for i in self.orbitals if len(i.pno_pair) == 2]
-        virtuals += self.get_virtual_orbitals() # this is usually empty
+        virtuals += self.get_virtual_orbitals()  # this is usually empty
 
         # HF-X -- PNO-XY/PNO-YY indices
         for i in self.get_reference_orbitals():
@@ -466,7 +473,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     ops[pair][k] = v
                 else:
                     ops[pair] = {k: v}
-            #print(ops)
+            # print(ops)
             if len(ops) == 0:
                 objective += c
             elif len(ops) == 1:
@@ -475,18 +482,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     continue
                 tmp = c
                 for pair, ps1 in ops.items():
-                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label, direct_compiling=direct_compiling)
+                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label,
+                                                                   direct_compiling=direct_compiling)
                     ps = PauliString(data=ps1)
                     Hp = QubitHamiltonian.from_paulistrings([ps])
                     Ep = ExpectationValue(H=Hp, U=Up)
                     if len(Ep.extract_variables()) == 0:
                         Ep = numpy.float64(simulate(Ep))
-                    #print(pair, Hp, ps)
+                    # print(pair, Hp, ps)
                     if pair not in implemented_ops.keys():
-                        implemented_ops.update({pair: {str(ps):Ep}})
+                        implemented_ops.update({pair: {str(ps): Ep}})
                     else:
                         if str(ps) not in implemented_ops[pair].keys():
-                            implemented_ops[pair].update({str(ps):Ep})
+                            implemented_ops[pair].update({str(ps): Ep})
                         else:
                             Ep = implemented_ops[pair][str(ps)]
                     tmp *= Ep
@@ -497,17 +505,18 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     continue
                 tmp = c
                 for pair, ps1 in ops.items():
-                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label, direct_compiling=direct_compiling)
+                    Up = self.make_hardcore_boson_pno_upccd_ansatz(pairs=[pair], label=label,
+                                                                   direct_compiling=direct_compiling)
                     ps = PauliString(data=ps1)
                     Hp = QubitHamiltonian.from_paulistrings([ps])
                     Ep = ExpectationValue(H=Hp, U=Up)
                     if len(Ep.extract_variables()) == 0:
                         Ep = numpy.float64(simulate(Ep))
                     if pair not in implemented_ops.keys():
-                        implemented_ops.update({pair: {str(ps):Ep}})
+                        implemented_ops.update({pair: {str(ps): Ep}})
                     else:
                         if str(ps) not in implemented_ops[pair].keys():
-                            implemented_ops[pair].update({str(ps):Ep})
+                            implemented_ops[pair].update({str(ps): Ep})
                         else:
                             Ep = implemented_ops[pair][str(ps)]
                     tmp *= Ep
