@@ -1277,7 +1277,7 @@ class QuantumChemistryBase:
                 self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label, 0),
                                           spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
 
-        for k in range(1, order:
+        for k in range(1, order):
             U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, label=(label, k),
                                          spin_adapt_singles=spin_adapt_singles)
 
