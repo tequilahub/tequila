@@ -344,7 +344,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             for layer in range(order-1):
                 indices = self.make_upccgsd_indices(label=(label, layer), name=name, exclude=indices, *args, **kwargs)
                 if "HCB" in name:
-                    U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, 0), *args, **kwargs)
+                    U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, layer), *args, **kwargs)
                 else:
                     U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label,layer), *args, **kwargs)
         return U
