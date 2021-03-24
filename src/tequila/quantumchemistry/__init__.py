@@ -11,15 +11,9 @@ try:
 except ImportError:
     pass
 
-#try:
-from .pyscf_interface import QuantumChemistryPySCF
-INSTALLED_QCHEMISTRY_BACKENDS["pyscf"] = QuantumChemistryPySCF
-#except ImportError:
-#    pass
-
 try:
-    from .madness_interface import QuantumChemistryMadness
-    INSTALLED_QCHEMISTRY_BACKENDS["madness"] = QuantumChemistryMadness
+    from .pyscf_interface import QuantumChemistryPySCF
+    INSTALLED_QCHEMISTRY_BACKENDS["pyscf"] = QuantumChemistryPySCF
 except ImportError:
     pass
 
