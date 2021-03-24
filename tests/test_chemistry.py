@@ -65,32 +65,13 @@ def test_dependencies():
         assert key in qc.INSTALLED_QCHEMISTRY_BACKENDS.keys()
 
 
-@pytest.mark.skipif(condition=not HAS_PYSCF or not HAS_PSI4, reason="no quantum chemistry backends installed")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="no quantum chemistry backends installed")
 def test_interface():
     molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JW")
-
-
-@pytest.mark.skipif(condition=not (HAS_PYSCF and HAS_PSI4),
-                    reason="you don't have a quantum chemistry backend installed")
-@pytest.mark.parametrize("geom", [" H 0.0 0.0 1.0\n H 0.0 0.0 -1.0", " he 0.0 0.0 0.0", " be 0.0 0.0 0.0"])
-@pytest.mark.parametrize("basis", ["sto-3g"])
-@pytest.mark.parametrize("trafo", ["JW", "BK", "TBK", "BKT", "bravyi_kitaev_fast"])
-def test_hamiltonian_consistency(geom: str, basis: str, trafo: str):
-    parameters_qc = qc.ParametersQC(geometry=geom, basis_set=basis, outfile="asd")
-    hqc1 = qc.QuantumChemistryPsi4(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
-    hqc2 = qc.QuantumChemistryPySCF(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
-    assert (hqc1.qubit_operator == hqc2.qubit_operator)
-
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 def test_h2_hamiltonian_psi4():
     do_test_h2_hamiltonian(qc_interface=qc.QuantumChemistryPsi4)
-
-
-@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
-def test_h2_hamiltonian_pysf():
-    do_test_h2_hamiltonian(qc_interface=qc.QuantumChemistryPySCF)
-
 
 def do_test_h2_hamiltonian(qc_interface):
     parameters = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
@@ -112,15 +93,6 @@ def test_ucc_psi4(trafo, backend):
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo,
                 backend=backend)
 
-
-@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
-@pytest.mark.parametrize("trafo", ["JW", "BK"])
-def test_ucc_pyscf(trafo):
-    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_ucc(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1368354639104123,
-                trafo=trafo)
-
-
 def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     # check examples for comments
     psi4_interface = qc_interface(parameters=parameters, transformation=trafo)
@@ -141,14 +113,6 @@ def test_mp2_psi4():
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1344497203826904)
-
-
-@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
-def test_mp2_pyscf():
-    # the number might be wrong ... its definetely not what psi4 produces
-    # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
-    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_mp2(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1344497203826904)
 
 
 def do_test_mp2(qc_interface, parameters, result):
@@ -244,7 +208,7 @@ def test_active_spaces(active):
     assert (H.n_qubits == qubits)
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="no quantum chemistry backends installed")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="no quantum chemistry backends installed")
 @pytest.mark.parametrize("trafo", ["JW", "BK", "BKT", "symmetry_conserving_bravyi_kitaev"])  # BKSF not working currently
 def test_rdms(trafo):
     rdm1_ref = numpy.array([[1.99137832, -0.00532359], [-0.00532359, 0.00862168]])
