@@ -325,7 +325,7 @@ class NBodyTensor:
                 scheme = scheme._scheme
             elif hasattr(scheme, "scheme"):
                 scheme = scheme.scheme
-            self._scheme=self.assign_scheme(scheme)
+            self._scheme = self.assign_scheme(scheme)
 
         def assign_scheme(self, scheme):
             if scheme is None:
@@ -340,15 +340,17 @@ class NBodyTensor:
             elif scheme.lower() in ["openfermion", "of", "o", "1221"]:
                 return "of"
             else:
-                raise TequilaException("Unknown two-body tensor scheme {}. Supported are dirac, mulliken, and openfermion".format(scheme))
+                raise TequilaException(
+                    "Unknown two-body tensor scheme {}. Supported are dirac, mulliken, and openfermion".format(scheme))
 
         def is_phys(self):
             return self._scheme == "phys"
+
         def is_chem(self):
             return self._scheme == "chem"
+
         def is_of(self):
             return self._scheme == "of"
-
 
     def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, ordering: str = None,
                  size_full: int = None):
@@ -391,7 +393,7 @@ class NBodyTensor:
             self._size_full = size_full
         # 2-body tensors (<=> order 4) currently allow reordering
         if self.order == 4:
-            self.ordering=self.Ordering(ordering)
+            self.ordering = self.Ordering(ordering)
         else:
             if ordering is not None:
                 raise Exception("Ordering only implemented for tensors of order 4 / 2-body tensors.")
@@ -540,6 +542,7 @@ class NBodyTensor:
                 self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
 
         return self
+
 
 class QuantumChemistryBase:
     """ """
@@ -859,7 +862,8 @@ class QuantumChemistryBase:
         """
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
-        return QCircuit.wrap_gate(FermionicGateImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real, control=control))
+        return QCircuit.wrap_gate(
+            FermionicGateImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real, control=control))
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
         """Does a really lazy workaround ... but it works
@@ -883,7 +887,7 @@ class QuantumChemistryBase:
         if self.transformation._trafo == openfermion.symmetry_conserving_bravyi_kitaev:
             def tapering(fop):
                 fermion_hamiltonian_reorder = openfermion.reorder(fop, openfermion.utils.up_then_down,
-                                                                        num_modes=n_qubits)
+                                                                  num_modes=n_qubits)
                 qubit_operator = openfermion.bravyi_kitaev_tree(fermion_hamiltonian_reorder, n_qubits=n_qubits)
                 qubit_operator.compress()
                 return qubit_operator
@@ -1023,7 +1027,7 @@ class QuantumChemistryBase:
         except TypeError:
             qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
 
-        result=QubitHamiltonian(qubit_operator=qop).simplify(threshold)
+        result = QubitHamiltonian(qubit_operator=qop).simplify(threshold)
         result.is_hermitian()
         return result
 
@@ -1034,15 +1038,42 @@ class QuantumChemistryBase:
         else:
             return self.molecule.get_molecular_hamiltonian()
 
-    def compute_one_body_integrals(self):
-        """ """
-        if hasattr(self, "molecule"):
-            return self.molecule.one_body_integrals
+    def get_integrals(self, two_body_ordering="openfermion"):
+        """
+        Returns
+        -------
+        Tuple with:
+        constant part (nuclear_repulsion + possible integrated parts from active-spaces)
+        one_body_integrals
+        two_body_integrals
 
-    def compute_two_body_integrals(self):
+        """
+        if self.active_space is not None and len(self.active_space.frozen_reference_orbitals) > 0:
+            c, h1, h2 = self.molecule.get_active_space_integrals(active_indices=self.active_space.active_orbitals,
+                                                                occupied_indices=self.active_space.frozen_reference_orbitals)
+        else:
+            c = 0.0
+            h1 = self.molecule.one_body_integrals
+            h2 = self.molecule.two_body_integrals
+        c += self.molecule.nuclear_repulsion
+        h2 = NBodyTensor(h2, ordering="openfermion")
+        h2 = h2.reorder(to=two_body_ordering).elems
+
+        return c, h1, h2
+
+    def compute_one_body_integrals(self):
+        """ convenience function """
+        c, h1, h2 = self.get_integrals()
+        return h1
+
+    def compute_two_body_integrals(self, two_body_ordering="openfermion"):
         """ """
-        if hasattr(self, "molecule"):
-            return self.molecule.two_body_integrals
+        c, h1, h2 = self.get_integrals(two_body_ordering=two_body_ordering)
+        return h2
+
+    def compute_constant_part(self):
+        c, h1, h2 = self.get_integrals()
+        return c
 
     def compute_ccsd_amplitudes(self) -> ClosedShellAmplitudes:
         """ """
@@ -1097,31 +1128,31 @@ class QuantumChemistryBase:
             pairs = pair_info
         elif not isinstance(pair_info, list):
             raise TequilaException("Pair information needs to be contained in a list or filename.")
-        
-        connect = [[]]*len(pairs)
+
+        connect = [[]] * len(pairs)
         # determine "connectivity"
-        generalized = 0 
+        generalized = 0
         for idx, p in enumerate(pairs):
-            if len(p)==1:
-                connect[idx] = [i for i in range(len(pairs)) 
-                                if ( (len(pairs[i])==2) and (str(idx) in pairs[i]) )]
-            elif (len(p)==2) and general_excitations:
-                connect[idx] = [i for i in range(len(pairs)) 
-                                if ( ((p[0] in  pairs[i]) or (p[1] in pairs[i]) or str(i) in p)
-                                     and not(i==idx) )]
-            elif len(p)>2:
+            if len(p) == 1:
+                connect[idx] = [i for i in range(len(pairs))
+                                if ((len(pairs[i]) == 2) and (str(idx) in pairs[i]))]
+            elif (len(p) == 2) and general_excitations:
+                connect[idx] = [i for i in range(len(pairs))
+                                if (((p[0] in pairs[i]) or (p[1] in pairs[i]) or str(i) in p)
+                                    and not (i == idx))]
+            elif len(p) > 2:
                 raise TequilaException("Invalid reference of pair id.")
-            
+
         # create generating indices from connectivity
         indices = []
         for i, to in enumerate(connect):
             for a in to:
-                indices.append(( (2*i, 2*a), (2*i+1, 2*a+1) ))  
+                indices.append(((2 * i, 2 * a), (2 * i + 1, 2 * a + 1)))
                 if include_singles:
-                    indices.append(((2*i, 2*a)))  
-                    indices.append(((2*i+1, 2*a+1)))  
-        
-        return indices 
+                    indices.append(((2 * i, 2 * a)))
+                    indices.append(((2 * i + 1, 2 * a + 1)))
+
+        return indices
 
     def make_upccgsd_ansatz(self,
                             include_singles: bool = True,
@@ -1296,14 +1327,13 @@ class QuantumChemistryBase:
                         variables.append(Variable(name=key))
                     else:
                         variables.append(t)
-        UCCSD=QCircuit()
-        factor = 1.0/trotter_steps
+        UCCSD = QCircuit()
+        factor = 1.0 / trotter_steps
         for step in range(trotter_steps):
-            for i,idx in enumerate(indices):
-                UCCSD += self.make_excitation_gate(indices=idx, angle=factor*variables[i])
+            for i, idx in enumerate(indices):
+                UCCSD += self.make_excitation_gate(indices=idx, angle=factor * variables[i])
 
         return Uref + UCCSD
-
 
     def compute_amplitudes(self, method: str, *args, **kwargs):
         """
