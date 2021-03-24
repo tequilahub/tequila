@@ -7,8 +7,7 @@ import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
 from tequila.quantumchemistry import QuantumChemistryBase, ParametersQC
 from tequila.simulators.simulator_api import simulate
-
-HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
+HAS_PYSCF = True#"pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 import tequila as tq
@@ -380,3 +379,21 @@ def test_fermionic_gates(assume_real, trafo):
     assert numpy.isclose(test1, test1x, atol=1.e-6)
     assert numpy.isclose(test2, test2x, atol=1.e-6)
 
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.parametrize("method", ["hf", "mp2", "ccsd", "ccsd(t)", "fci"])
+@pytest.mark.parametrize("geometry", ["h 0.0 0.0 0.0\nh 0.0 0.0 0.7", "li 0.0 0.0 0.0\nh 0.0 0.0 1.5"])
+@pytest.mark.parametrize("basis_set", ["sto-3g"])
+def test_pyscf_methods(method, geometry, basis_set):
+    mol = tq.Molecule(geometry=geometry, basis_set=basis_set)
+    e1 = mol.compute_energy(method=method)
+    c, h1, h2 = mol.get_integrals()
+    mol = tq.Molecule(geometry=geometry,
+                      basis_set=basis_set,
+                      nuclear_repulsion=c,
+                      one_body_integrals=h1,
+                      two_body_integrals=h2,
+                      backend="pyscf")
+    e2 = mol.compute_energy(method)
+
+    assert numpy.isclose(e1,e2, atol=1.e-4)
