@@ -570,7 +570,6 @@ class NBodyTensor:
 
         return self
 
-
 class QuantumChemistryBase:
 
     def __init__(self, parameters: ParametersQC,
@@ -936,7 +935,6 @@ class QuantumChemistryBase:
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
 
-        result = self.transformation(fop).simplify(threshold)
         result.is_hermitian()
         return result
 
@@ -984,15 +982,42 @@ class QuantumChemistryBase:
         else:
             return self.molecule.get_molecular_hamiltonian()
 
-    def compute_one_body_integrals(self):
-        """ """
-        if hasattr(self, "molecule"):
-            return self.molecule.one_body_integrals
+    def get_integrals(self, two_body_ordering="openfermion"):
+        """
+        Returns
+        -------
+        Tuple with:
+        constant part (nuclear_repulsion + possible integrated parts from active-spaces)
+        one_body_integrals
+        two_body_integrals
 
-    def compute_two_body_integrals(self):
+        """
+        if self.active_space is not None and len(self.active_space.frozen_reference_orbitals) > 0:
+            c, h1, h2 = self.molecule.get_active_space_integrals(active_indices=self.active_space.active_orbitals,
+                                                                occupied_indices=self.active_space.frozen_reference_orbitals)
+        else:
+            c = 0.0
+            h1 = self.molecule.one_body_integrals
+            h2 = self.molecule.two_body_integrals
+        c += self.molecule.nuclear_repulsion
+        h2 = NBodyTensor(h2, ordering="openfermion")
+        h2 = h2.reorder(to=two_body_ordering).elems
+
+        return c, h1, h2
+
+    def compute_one_body_integrals(self):
+        """ convenience function """
+        c, h1, h2 = self.get_integrals()
+        return h1
+
+    def compute_two_body_integrals(self, two_body_ordering="openfermion"):
         """ """
-        if hasattr(self, "molecule"):
-            return self.molecule.two_body_integrals
+        c, h1, h2 = self.get_integrals(two_body_ordering=two_body_ordering)
+        return h2
+
+    def compute_constant_part(self):
+        c, h1, h2 = self.get_integrals()
+        return c
 
     def compute_ccsd_amplitudes(self) -> ClosedShellAmplitudes:
         """ """

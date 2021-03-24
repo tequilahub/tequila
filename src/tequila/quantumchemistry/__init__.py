@@ -2,12 +2,18 @@ import typing
 from .qc_base import ParametersQC, QuantumChemistryBase, NBodyTensor
 from .madness_interface import QuantumChemistryMadness
 
-SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness"]
+SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness", "pyscf"]
 INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase, "madness": QuantumChemistryMadness}
 
 try:
     from .psi4_interface import QuantumChemistryPsi4
     INSTALLED_QCHEMISTRY_BACKENDS["psi4"] = QuantumChemistryPsi4
+except ImportError:
+    pass
+
+try:
+    from .pyscf_interface import QuantumChemistryPySCF
+    INSTALLED_QCHEMISTRY_BACKENDS["pyscf"] = QuantumChemistryPySCF
 except ImportError:
     pass
 
@@ -90,7 +96,6 @@ def Molecule(geometry: str,
         parameters.basis_set=basis_set
 
     return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation, guess_wfn=guess_wfn, *args, **kwargs)
-
 
 def MoleculeFromOpenFermion(molecule,
                             transformation: typing.Union[str, typing.Callable] = None,
