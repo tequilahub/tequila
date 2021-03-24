@@ -934,9 +934,12 @@ class QuantumChemistryBase:
 
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
-
-        result.is_hermitian()
-        return result
+        try:
+            qop = self.transformation(fop)
+        except TypeError:
+            qop = self.transformation(openfermion.transforms.get_interaction_operator(fop))
+        qop.is_hermitian()
+        return qop
 
     def make_hardcore_boson_hamiltonian(self):
         if not self.transformation.up_then_down:
@@ -961,14 +964,6 @@ class QuantumChemistryBase:
                 up = p
                 uq = q
                 H += h[p, q] * Sm(up) * Sp(uq) + g[p, q] * Sm(up) * Sp(up) * Sm(uq) * Sp(uq)
-
-        # if self.active_space is not None:
-        #     inactive_orbitals = self.active_space.frozen_reference_orbitals
-        #     qm = {self.transformation.up(i + len(inactive_orbitals)): self.transformation.up(i) for i in
-        #           range(self.n_orbitals)}
-        #     one = QubitWaveFunction.from_string("1.0*|1>")
-        #     H = H.trace_out_qubits(qubits=inactive_orbitals, states=[one] * len(inactive_orbitals))
-        #     H = H.map_qubits(qubit_map=qm)
 
         return H
 
