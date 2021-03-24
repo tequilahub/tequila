@@ -23,6 +23,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         return type(self)(constant_part=c,
                           one_body_integrals=h1,
                           two_body_integrals=h2,
+                          n_electrons=molecule.n_electrons,
                           transformation=transformation,
                           parameters=molecule.parameters, *args, **kwargs)
 

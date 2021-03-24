@@ -906,6 +906,8 @@ class QuantumChemistryBase:
         molecule.two_body_integrals = two_body_integrals
         molecule.nuclear_repulsion = nuclear_repulsion
         molecule.n_orbitals = n_orbitals
+        if "n_electrons" in kwargs:
+            molecule.n_electrons = kwargs["n_electrons"]
         molecule.save()
         return molecule
 
