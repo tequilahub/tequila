@@ -7,7 +7,7 @@ import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
 from tequila.quantumchemistry import QuantumChemistryBase, ParametersQC
 from tequila.simulators.simulator_api import simulate
-HAS_PYSCF = True#"pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
+HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 import tequila as tq
