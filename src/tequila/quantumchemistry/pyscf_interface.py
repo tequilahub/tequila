@@ -21,7 +21,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
     @classmethod
     def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
         c, h1, h2 = molecule.get_integrals(two_body_ordering="openfermion")
-        return type(cls)(constant_part=c,
+        return cls(constant_part=c,
                           one_body_integrals=h1,
                           two_body_integrals=h2,
                           n_electrons=molecule.n_electrons,
