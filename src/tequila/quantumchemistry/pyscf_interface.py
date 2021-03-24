@@ -6,6 +6,7 @@ import pyscf
 
 import numpy, typing, warnings
 
+
 class OpenVQEEPySCFException(TequilaException):
     pass
 
@@ -18,20 +19,23 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
 
     def from_tequila(self, molecule, transformation=None, *args, **kwargs):
-        c,h1,h2 = molecule.get_integrals(two_body_ordering="openfermion")
+        c, h1, h2 = molecule.get_integrals(two_body_ordering="openfermion")
         return type(self)(constant_part=c,
                           one_body_integrals=h1,
                           two_body_integrals=h2,
                           transformation=transformation,
                           parameters=molecule.parameters, *args, **kwargs)
 
-    def do_make_molecule(self, molecule=None, nuclear_repulsion=None, one_body_integrals=None, two_body_integrals=None, *args, **kwargs) -> MolecularData:
+    def do_make_molecule(self, molecule=None, nuclear_repulsion=None, one_body_integrals=None, two_body_integrals=None,
+                         *args, **kwargs) -> MolecularData:
         if molecule is None:
             if one_body_integrals is not None and two_body_integrals is not None:
                 if nuclear_repulsion is None:
-                    warnings.warn("PySCF Interface: No constant part (nuclear repulsion)",TequilaWarning)
+                    warnings.warn("PySCF Interface: No constant part (nuclear repulsion)", TequilaWarning)
                     nuclear_repulsion = 0.0
-                molecule = super().do_make_molecule(nuclear_repulsion=nuclear_repulsion, one_body_integrals=one_body_integrals, two_body_integrals=two_body_integrals, *args, **kwargs)
+                molecule = super().do_make_molecule(nuclear_repulsion=nuclear_repulsion,
+                                                    one_body_integrals=one_body_integrals,
+                                                    two_body_integrals=two_body_integrals, *args, **kwargs)
             else:
                 raise TequilaException("not here yet, use openfermionpyscf and feed the integrals to the init")
         return molecule
@@ -44,13 +48,13 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         e, fcivec = fci.direct_spin1.kernel(h1, h2, norb, nelec, **kwargs)
         return e + c
 
-    def compute_energy(self, method:str, *args, **kwargs) -> float:
+    def compute_energy(self, method: str, *args, **kwargs) -> float:
         method = method.lower()
 
         if method == "hf":
             return self._get_hf(do_not_solve=False, **kwargs).e_tot
         elif method == "mp2":
-            return  self._run_mp2(**kwargs).e_tot
+            return self._run_mp2(**kwargs).e_tot
         elif method == "cisd":
             hf = self._get_hf(do_not_solve=False, **kwargs)
             return self._run_cisd(hf=hf, **kwargs).e_tot
@@ -63,7 +67,6 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             return self.compute_fci(**kwargs)
         else:
             raise TequilaException("unknown method: {}".format(method))
-
 
     def _get_hf(self, do_not_solve=True, **kwargs):
         c, h1, h2 = self.get_integrals(two_body_ordering="mulliken")
@@ -121,6 +124,3 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         mp2 = mp.MP2(hf)
         mp2.kernel()
         return mp2
-
-
-
