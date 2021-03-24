@@ -945,10 +945,7 @@ class QuantumChemistryBase:
                 TequilaWarning)
         # integrate with QubitEncoding at some point
         n_orbitals = self.n_orbitals
-        if self.active_space is not None:
-            n_orbitals += len(self.active_space.frozen_reference_orbitals)
-        obt = self.compute_one_body_integrals()
-        tbt = self.compute_two_body_integrals()
+        c, obt, tbt = self.get_integrals()
         h = numpy.zeros(shape=[n_orbitals] * 2)
         g = numpy.zeros(shape=[n_orbitals] * 2)
         for p in range(n_orbitals):
@@ -958,20 +955,20 @@ class QuantumChemistryBase:
                 if p != q:
                     g[p, q] += 2 * tbt[p, q, q, p] - tbt[p, q, p, q]
 
-        H = self.molecule.nuclear_repulsion
+        H = c
         for p in range(n_orbitals):
             for q in range(n_orbitals):
                 up = p
                 uq = q
                 H += h[p, q] * Sm(up) * Sp(uq) + g[p, q] * Sm(up) * Sp(up) * Sm(uq) * Sp(uq)
 
-        if self.active_space is not None:
-            inactive_orbitals = self.active_space.frozen_reference_orbitals
-            qm = {self.transformation.up(i + len(inactive_orbitals)): self.transformation.up(i) for i in
-                  range(self.n_orbitals)}
-            one = QubitWaveFunction.from_string("1.0*|1>")
-            H = H.trace_out_qubits(qubits=inactive_orbitals, states=[one] * len(inactive_orbitals))
-            H = H.map_qubits(qubit_map=qm)
+        # if self.active_space is not None:
+        #     inactive_orbitals = self.active_space.frozen_reference_orbitals
+        #     qm = {self.transformation.up(i + len(inactive_orbitals)): self.transformation.up(i) for i in
+        #           range(self.n_orbitals)}
+        #     one = QubitWaveFunction.from_string("1.0*|1>")
+        #     H = H.trace_out_qubits(qubits=inactive_orbitals, states=[one] * len(inactive_orbitals))
+        #     H = H.map_qubits(qubit_map=qm)
 
         return H
 

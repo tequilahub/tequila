@@ -70,22 +70,7 @@ def test_dependencies():
 def test_interface():
     molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JordanWigner")
 
-<<<<<<< HEAD
 
-@pytest.mark.skipif(condition=not (HAS_PYSCF and HAS_PSI4),
-                    reason="you don't have a quantum chemistry backend installed")
-@pytest.mark.parametrize("geom", [" H 0.0 0.0 1.0\n H 0.0 0.0 -1.0", " he 0.0 0.0 0.0", " be 0.0 0.0 0.0"])
-@pytest.mark.parametrize("basis", ["sto-3g"])
-@pytest.mark.parametrize("trafo", list(known_encodings().keys()))
-def test_hamiltonian_consistency(geom: str, basis: str, trafo: str):
-    parameters_qc = qc.ParametersQC(geometry=geom, basis_set=basis, outfile="asd")
-    hqc1 = qc.QuantumChemistryPsi4(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
-    hqc2 = qc.QuantumChemistryPySCF(parameters=parameters_qc).make_hamiltonian(transformation=trafo)
-    assert (hqc1.qubit_operator == hqc2.qubit_operator)
-
-
-=======
->>>>>>> devel
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 def test_h2_hamiltonian_psi4():
     do_test_h2_hamiltonian(qc_interface=qc.QuantumChemistryPsi4)
@@ -110,18 +95,6 @@ def test_ucc_psi4(trafo, backend):
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo,
                 backend=backend)
 
-<<<<<<< HEAD
-
-@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
-@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev"])
-def test_ucc_pyscf(trafo):
-    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
-    do_test_ucc(qc_interface=qc.QuantumChemistryPySCF, parameters=parameters_qc, result=-1.1368354639104123,
-                trafo=trafo)
-
-
-=======
->>>>>>> devel
 def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     # check examples for comments
     psi4_interface = qc_interface(parameters=parameters, transformation=trafo)
