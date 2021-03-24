@@ -1049,7 +1049,7 @@ class QuantumChemistryBase:
 
         """
         if self.active_space is not None and len(mol.active_space.frozen_reference_orbitals) > 0:
-            c, h1, h2 = mol.molecule.get_active_space_integrals(active_indices=mol.active_space.active_orbitals,
+            c, h1, h2 = self.molecule.get_active_space_integrals(active_indices=mol.active_space.active_orbitals,
                                                                 occupied_indices=mol.active_space.frozen_reference_orbitals)
         else:
             c = 0.0
