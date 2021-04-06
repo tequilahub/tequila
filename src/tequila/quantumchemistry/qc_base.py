@@ -1306,21 +1306,21 @@ class QuantumChemistryBase:
                             #spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
                         partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
                     for idx in spin_indices:
-                        idx = [(idx[ i]) for i in range(len(idx))]
+                        idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
                         indices.append(idx)
 
                     if parametrized:
-                        variables.append(Variable(name=key))  # abab
-                        variables.append(Variable(name=key))  # baba
+                        variables.append(2.0*Variable(name=key))  # abab
+                        #variables.append(Variable(name=key))  # baba
                         if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(Variable(name=key) - Variable(partner))  # aaaa
-                            variables.append(Variable(name=key) - Variable(partner))  # bbbb
+                            variables.append(2.0*(Variable(name=key) - Variable(partner))) # aaaa
+                            #variables.append(Variable(name=key) - Variable(partner))  # bbbb
                     else:
-                        variables.append(t)
-                        variables.append(t)
+                        variables.append(2.0*t)
+                        #variables.append(t)
                         if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(t - amplitudes[partner])
-                            variables.append(t - amplitudes[partner])
+                            variables.append(2.0*(t - amplitudes[partner]))
+                            #variables.append(t - amplitudes[partner])
                 else:
                     indices.append(spin_indices)
                     if parametrized:
