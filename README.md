@@ -16,7 +16,7 @@ or checkout our [overview article](https://arxiv.org/abs/2011.03057)
 Currently supported
 - [Qulacs](https://github.com/qulacs/qulacs)
 - [Qibo](https://github.com/Quantum-TII/qibo)
-- [Qiskit](https://github.com/qiskit/qiskit)
+- [Qiskit](https://github.com/qiskit/qiskit) -- currently needs to be qiskit<0.25
 - [Cirq](https://github.com/quantumlib/cirq)
 - [PyQuil](https://github.com/rigetti/pyquil)
 
@@ -203,6 +203,10 @@ If you used `tequila` for your research, feel free to include your algoritms her
 # Troubleshooting
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need:  
 don't hesitate to contact us directly or raise an issue here on github  
+
+## Qiskit backend
+Qiskit version 0.25 is not yet supported.  
+`pip install --upgrade qiskit<0.25` fixes potential issues. If not: Please let us know.
 
 ## Circuit drawing
 Standard graphical circuit representation within a Jupyter environment is often done using `tq.draw`.  
