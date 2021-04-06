@@ -37,7 +37,7 @@ def prepare_product_state(state: BitString) -> QCircuit:
     state :
         product state encoded into a bitstring
     state: BitString :
-        
+
 
     Returns
     -------
@@ -86,7 +86,7 @@ class ParametersQC:
         Parameters
         ----------
         string :
-            
+
 
         Returns
         -------
@@ -254,7 +254,7 @@ class Amplitudes:
         Parameters
         ----------
         cs: ClosedShellAmplitudes :
-            
+
 
         Returns
         -------
@@ -1094,10 +1094,10 @@ class QuantumChemistryBase:
                                   include_singles: bool = True,
                                   general_excitations: bool = True) -> list:
         """
-        Assuming a pair-specific model, create a pair-specific index list 
-        to be used in make_upccgsd_ansatz(indices = ... ) 
+        Assuming a pair-specific model, create a pair-specific index list
+        to be used in make_upccgsd_ansatz(indices = ... )
         Excite from a set of references (i) to any pair coming from (i),
-        i.e. any (i,j)/(j,i). If general excitations are allowed, also 
+        i.e. any (i,j)/(j,i). If general excitations are allowed, also
         allow excitations from pairs to appendant pairs and reference.
 
         Parameters
@@ -1108,15 +1108,15 @@ class QuantumChemistryBase:
             example: as file: "0,1,11,11,00,10" (hand over file name)
                      in file, skip first row assuming some text with information
                      as list:['0','1`','11','11','00','10']
-                     ~> two reference orbitals 0 and 1, 
+                     ~> two reference orbitals 0 and 1,
                      then two orbitals from pair 11, one from 00, one mixed 10
         include_singles
             include single excitations
         general_excitations
-            allow general excitations 
+            allow general excitations
        Returns
         -------
-            list of indices with pair-specific ansatz 
+            list of indices with pair-specific ansatz
         """
 
         if pair_info is None:
@@ -1180,7 +1180,7 @@ class QuantumChemistryBase:
             default is None and no label will be set: variables names will be
             (x, (p,q)) for x in range(order)
             with a label the variables will be named
-            (label, (x, (p,q))) 
+            (label, (x, (p,q)))
         order
             Order of the ansatz (default is 1)
             determines how often the ordering gets repeated
@@ -1300,13 +1300,13 @@ class QuantumChemistryBase:
                         partner = None
                     else:
                         spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
-                        spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
+                        #spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
                         if key[0] != key[2] and key[1] != key[3]:
                             spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
-                            spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
+                            #spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
                         partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
                     for idx in spin_indices:
-                        idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
+                        idx = [(idx[ i]) for i in range(len(idx))]
                         indices.append(idx)
 
                     if parametrized:
