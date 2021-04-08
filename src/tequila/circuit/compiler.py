@@ -400,39 +400,15 @@ def change_basis(target, axis=None, name=None, daggered=False):
         axis = RotationGateImpl.string_to_axis[axis.lower()]
 
     if axis == 0 and daggered:
-        return Ry(angle=-numpy.pi / 2, target=target)
-    elif axis == 0:
         return Ry(angle=numpy.pi / 2, target=target)
+    elif axis == 0:
+        return Ry(angle=-numpy.pi / 2, target=target)
     elif axis == 1 and daggered:
         return Rx(angle=-numpy.pi / 2, target=target)
     elif axis == 1:
         return Rx(angle=numpy.pi / 2, target=target)
     else:
         return QCircuit()
-
-
-@compiler
-def compile_multicontrol(gate, *args, **kwargs) -> QCircuit:
-    """
-    If a gate is 'trivially' multitarget, split it into single target gates.
-    Parameters
-    ----------
-    gate:
-        the gate in question
-
-    Returns
-    -------
-    QCircuit, the result of compilation.
-    """
-    targets = gate.target
-
-    if len(gate.control > 1):
-        return QCircuit.wrap_gate(gate)
-
-
-
-
-    return result
 
 @compiler
 def compile_multitarget(gate, *args, **kwargs) -> QCircuit:

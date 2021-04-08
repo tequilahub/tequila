@@ -546,9 +546,9 @@ class Objective:
             else:
                 expval_result = evaluated[E]
             ev_array.append(expval_result)
-        result = onp.asarray(self.transformation(*ev_array),dtype=numpy.float64)
+        result = onp.asarray(self.transformation(*ev_array),dtype=float)
         if result.shape == ():
-            return numpy.float64(result)
+            return float(result)
         else:
             return result
 
