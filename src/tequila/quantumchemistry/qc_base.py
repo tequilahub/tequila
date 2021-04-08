@@ -1320,8 +1320,8 @@ class QuantumChemistryBase:
             idx = idx[0]
             angle = (tuple([idx]), "D", label)
             # we can optimize with qubit excitations for the JW representation
-            if self.transformation.name.lower() == "jordanwigner":
-                target=[idx[0], idx[1]]
+            if  "jordanwigner" in self.transformation.name.lower():
+                target=[self.transformation.up(idx[0]), self.transformation.up(idx[1]), self.transformation.down(idx[0]), self.transformation.down(idx[1])]
                 U += gates.QubitExcitation(angle=angle, target=target)
             else:
                 U += self.make_excitation_gate(angle=angle,
@@ -1338,7 +1338,7 @@ class QuantumChemistryBase:
 
     def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapt_singles=True, label=None, angle_transform=None,
                              assume_real=True, neglect_z=False):
-        if neglect_z and not "jordanwigner" not in self.transformation.name.lower():
+        if neglect_z and "jordanwigner" not in self.transformation.name.lower():
             raise TequilaException("neglegt-z approximation in UpCCGSD singles needs the (Reversed)JordanWigner representation")
         if hasattr(indices, "lower"):
             indices = self.make_upccgsd_indices(key=indices)

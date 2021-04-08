@@ -287,7 +287,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         qubit_map = {x: i for i, x in enumerate(ordered_qubits)}
         return qubit_map
 
-    def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None, *args, **kwargs):
+    def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None, hcb_optimization=None, *args, **kwargs):
         """
         Overwriting baseclass to allow names like : PNO-UpCCD etc
         Parameters
@@ -310,7 +310,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if "HCB" in name and "S" in name:
             raise Exception("name={}, HCB + Singles can't be realized".format(name))
 
-        if ("HCB" in name or have_hcb_trafo) and direct_compiling is None:
+        if (have_hcb_trafo or "HCB" in name) and hcb_optimization is None:
+            hcb_optimization = True
+
+        if hcb_optimization and direct_compiling is None:
             direct_compiling = True
 
         if ("A" in name) and neglect_z is None:
@@ -324,8 +327,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     direct_compiling, self.transformation))
 
         name = name.upper()
-
-        name = name.upper()
         if order is None:
             try:
                 if "-" in name:
@@ -336,7 +337,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 order = 1
 
         # first layer
-        if have_hcb_trafo or "HCB" in name:
+        if hcb_optimization:
             U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=True, direct_compiling=direct_compiling,
                                                           label=(label, 0))
             indices0 = [k.name[0] for k in U.extract_variables()]
