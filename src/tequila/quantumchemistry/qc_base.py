@@ -1314,7 +1314,7 @@ class QuantumChemistryBase:
             angle = (tuple([idx]), "D", label)
             # we can optimize with qubit excitations for the JW representation
             if self.transformation.name.lower() == "jordanwigner":
-                target=sum([list(x[0]) for x in indices], [])
+                target=[idx[0], idx[1]]
                 U += gates.QubitExcitation(angle=angle, target=target)
             else:
                 U += self.make_excitation_gate(angle=angle,
