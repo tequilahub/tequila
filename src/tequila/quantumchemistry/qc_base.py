@@ -55,6 +55,9 @@ class FermionicGateImpl(_gates_impl.QubitExcitationImpl):
         super().__init__(*args, **kwargs)
         self._name = "FermionicExcitation"
 
+    def compile(self):
+        return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
+
 
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
@@ -1309,9 +1312,14 @@ class QuantumChemistryBase:
             assert len(idx) == 1
             idx = idx[0]
             angle = (tuple([idx]), "D", label)
-            U += self.make_excitation_gate(angle=angle,
-                                           indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
-                                           assume_real=assume_real)
+            # we can optimize with qubit excitations for the JW representation
+            if self.transformation.name.lower() == "jordanwigner":
+                target=sum([list(x[0]) for x in indices], [])
+                U += gates.QubitExcitation(angle=angle, target=target)
+            else:
+                U += self.make_excitation_gate(angle=angle,
+                                               indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
+                                               assume_real=assume_real)
             if include_singles and mix_sd:
                 U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label,
                                                spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)

@@ -26,6 +26,16 @@ def known_encodings():
 
 class EncodingBase:
 
+    @property
+    def name(self):
+        prefix=""
+        if self.up_then_down:
+            prefix="Reordered"
+        if hasattr(self, "_name"):
+            return prefix+self._name
+        else:
+            return prefix+type(self).__name__
+
     def __init__(self, n_electrons, n_orbitals, up_then_down=False, *args, **kwargs):
         self.n_electrons = n_electrons
         self.n_orbitals = n_orbitals
@@ -119,6 +129,7 @@ class JordanWigner(EncodingBase):
     """
     OpenFermion::jordan_wigner
     """
+
     def do_transform(self, fermion_operator:openfermion.FermionOperator, *args, **kwargs) -> openfermion.QubitOperator:
         return openfermion.jordan_wigner(fermion_operator, *args, **kwargs)
 
