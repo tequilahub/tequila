@@ -281,8 +281,7 @@ class Compiler:
             if self.swap:
                 cg = compile_swap(gate=cg)
             if self.multicontrol:
-                raise NotImplementedError("Multicontrol compilation does not work yet")
-
+                cg = compile_to_single_control(gate=cg)
             if self.phase_to_z:
                 cg = compile_phase_to_z(gate=cg)
             if self.power:
@@ -413,15 +412,36 @@ def change_basis(target, axis=None, name=None, daggered=False):
 
 
 @compiler
-def compile_multitarget(gate, variables=None) -> QCircuit:
+def compile_multicontrol(gate, *args, **kwargs) -> QCircuit:
     """
     If a gate is 'trivially' multitarget, split it into single target gates.
     Parameters
     ----------
     gate:
         the gate in question
-    variables:
-        Todo: Jakob plz write
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
+    targets = gate.target
+
+    if len(gate.control > 1):
+        return QCircuit.wrap_gate(gate)
+
+
+
+
+    return result
+
+@compiler
+def compile_multitarget(gate, *args, **kwargs) -> QCircuit:
+    """
+    If a gate is 'trivially' multitarget, split it into single target gates.
+    Parameters
+    ----------
+    gate:
+        the gate in question
 
     Returns
     -------

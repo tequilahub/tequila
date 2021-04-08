@@ -115,6 +115,7 @@ class BackendCircuitQiskit(BackendCircuit):
         "trotterized": True,
         "swap": False,
         "multitarget": True,
+        "multicontrol": True,
         "controlled_rotation": True,
         "generalized_rotation": True,
         "exponential_pauli": True,

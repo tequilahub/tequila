@@ -306,6 +306,12 @@ class PowerGateImpl(ParametrizedGateImpl):
         self._parameter = assign_variable(variable=other)*pi
 
     def __init__(self, name, generator: QubitHamiltonian,  target: list, power, control: list = None):
+        if generator is None:
+            assert name is not None and name.upper() in ["X", "Y", "Z"]
+            generator = QubitHamiltonian.from_string("{}({})".format(name.upper(), target))
+        if name is None:
+            assert generator is not None
+            name = str(generator)
         super().__init__(name=name, parameter=power * pi, target=target, control=control, generator=generator)
         self._power = assign_variable(variable=power)
 
@@ -409,7 +415,35 @@ class QubitExcitationImpl(DifferentiableGateImpl):
 
 
     def compile(self):
-        return TrotterizedGateImpl(angles=[self.parameter], generators=[self.generator], steps=1)
+        # optimized compiling for single and double qubit excitaitons
+        # single: A gate from arxiv:2003.00171
+        # double: arxiv:2005.14475
+        if len(self.target) == 2:
+            p,q = self.target
+            gates=[QGateImpl(name="X", target=p, control=q, generator=None)]
+            gates+=[RotationGateImpl(axis="Y", target=q, angle=self.parameter/2.0)]
+            gates+=[QGateImpl(name="X", target=q, control=p, generator=None)]
+            gates+=[RotationGateImpl(axis="Y", target=q, angle=-self.parameter/2.0)]
+            gates+=[QGateImpl(name="X", target=p, control=q, generator=None)]
+            return gates
+        elif len(self.target) == 4:
+            p,q,r,s = self.target
+            gates = [QGateImpl(name="X", target=q, control=p)]
+            gates += [QGateImpl(name="X", target=s, control=r, generator=None)]
+            gates += [QGateImpl(name="X", target=r, control=p, generator=None)]
+            gates += [QGateImpl(name="X", target=q, generator=None)]
+            gates += [QGateImpl(name="X", target=s, generator=None)]
+
+            gates += [RotationGateImpl(axis="Y", target=p, control=[q,r,s], angle=-self.parameter)]
+
+            gates += [QGateImpl(name="X", target=q, generator=None)]
+            gates += [QGateImpl(name="X", target=s, generator=None)]
+            gates += [QGateImpl(name="X", target=r, control=p, generator=None)]
+            gates += [QGateImpl(name="X", target=s, control=r, generator=None)]
+            gates += [QGateImpl(name="X", target=q, control=p, generator=None)]
+            return gates
+        else:
+            return TrotterizedGateImpl(angles=[self.parameter], generators=[self.generator], steps=1)
 
     def shifted_gates(self):
         s = 0.5 * pi
