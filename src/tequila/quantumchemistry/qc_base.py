@@ -1218,6 +1218,7 @@ class QuantumChemistryBase:
                             assume_real: bool = True,
                             use_hcb: bool = None,
                             spin_adapt_singles: bool = True,
+                            neglect_z = False,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1250,6 +1251,12 @@ class QuantumChemistryBase:
         """
 
         name = name.upper()
+
+        if ("A" in name) and neglect_z is None:
+            neglect_z = True
+        else:
+            neglect_z = False
+
         if order is None:
             try:
                 if "-" in name:
@@ -1297,16 +1304,16 @@ class QuantumChemistryBase:
 
             if "S" in name:
                 self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label, 0),
-                                          spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
+                                          spin_adapt_singles=spin_adapt_singles, neglect_z=neglect_z, *args, **kwargs)
 
         for k in range(1, order):
             U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, label=(label, k),
-                                         spin_adapt_singles=spin_adapt_singles)
+                                         spin_adapt_singles=spin_adapt_singles, neglect_z=neglect_z)
 
         return U
 
     def make_upccgsd_layer(self, indices, include_singles=True, assume_real=True, label=None,
-                           spin_adapt_singles: bool = True, angle_transform=None, mix_sd=False, *args, **kwargs):
+                           spin_adapt_singles: bool = True, angle_transform=None, mix_sd=False, neglect_z=False, *args, **kwargs):
         U = QCircuit()
         for idx in indices:
             assert len(idx) == 1
@@ -1322,7 +1329,7 @@ class QuantumChemistryBase:
                                                assume_real=assume_real)
             if include_singles and mix_sd:
                 U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label,
-                                               spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)
+                                               spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform, neglect_z=neglect_z)
 
         if include_singles and not mix_sd:
             U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label,
@@ -1330,7 +1337,9 @@ class QuantumChemistryBase:
         return U
 
     def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapt_singles=True, label=None, angle_transform=None,
-                             assume_real=True):
+                             assume_real=True, neglect_z=False):
+        if neglect_z and not "jordanwigner" not in self.transformation.name.lower():
+            raise TequilaException("neglegt-z approximation in UpCCGSD singles needs the (Reversed)JordanWigner representation")
         if hasattr(indices, "lower"):
             indices = self.make_upccgsd_indices(key=indices)
 
@@ -1342,9 +1351,14 @@ class QuantumChemistryBase:
                 angle = (idx, "S", label)
                 if angle_transform is not None:
                     angle = angle_transform(angle)
-
-                U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
-                U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
+                if neglect_z:
+                    targeta=[self.transformation.up(idx[0]), self.transformation.up(idx[1])]
+                    targetb=[self.transformation.down(idx[0]), self.transformation.down(idx[1])]
+                    U += gates.QubitExcitation(angle=angle, target=targeta, assume_real=assume_real)
+                    U += gates.QubitExcitation(angle=angle, target=targetb, assume_real=assume_real)
+                else:
+                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
+                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
                                                assume_real=assume_real)
             else:
                 angle1 = (idx, "SU", label)
@@ -1352,10 +1366,15 @@ class QuantumChemistryBase:
                 if angle_transform is not None:
                     angle1 = angle_transform(angle1)
                     angle2 = angle_transform(angle2)
-
-                U += self.make_excitation_gate(angle=angle1, indices=[(2 * idx[0], 2 * idx[1])],
+                if neglect_z:
+                    targeta=[self.transformation.up(idx[0]), self.transformation.up(idx[1])]
+                    targetb=[self.transformation.down(idx[0]), self.transformation.down(idx[1])]
+                    U += gates.QubitExcitation(angle=angle1, target=targeta, assume_real=assume_real)
+                    U += gates.QubitExcitation(angle=angle2, target=targetb, assume_real=assume_real)
+                else:
+                    U += self.make_excitation_gate(angle=angle1, indices=[(2 * idx[0], 2 * idx[1])],
                                                assume_real=assume_real)
-                U += self.make_excitation_gate(angle=angle2, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
+                    U += self.make_excitation_gate(angle=angle2, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
                                                assume_real=assume_real)
 
         return U

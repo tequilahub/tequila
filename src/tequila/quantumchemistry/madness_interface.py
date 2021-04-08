@@ -287,7 +287,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         qubit_map = {x: i for i, x in enumerate(ordered_qubits)}
         return qubit_map
 
-    def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, *args, **kwargs):
+    def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None, *args, **kwargs):
         """
         Overwriting baseclass to allow names like : PNO-UpCCD etc
         Parameters
@@ -295,6 +295,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         label: label the variables of the ansatz ( variables will be labelled (indices, X, (label, layer) witch X=D/S)
         direct_compiling: Directly compile the first layer (works only for transformation that implement the hcb_to_me function)
         name: ansatz name (PNO-UpCCD, PNO-UpCCGD, PNO-UpCCGSD, UpCCGSD ...
+        neglect_z: neglect all Z terms in singles excitations generators
         order: repetition of layers
         args
         kwargs
@@ -311,6 +312,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         if ("HCB" in name or have_hcb_trafo) and direct_compiling is None:
             direct_compiling = True
+
+        if ("A" in name) and neglect_z is None:
+            neglect_z = True
+        else:
+            neglect_z = False
 
         if direct_compiling and not have_hcb_trafo and not "HCB" in name:
             raise TequilaMadnessException(
@@ -342,11 +348,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             else:
                 assert "S" not in name
             if "S" in name:
-                U += self.make_upccgsd_singles(indices=indices, label=(label, 0), *args, **kwargs)
+                U += self.make_upccgsd_singles(indices=indices, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
         else:
             indices = self.make_upccgsd_indices(label=(label, 0), name=name, *args, **kwargs)
             U = self.prepare_reference()
-            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, 0), *args,
+            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, 0), neglect_z=neglect_z, *args,
                                          **kwargs)
 
         if order > 1:
