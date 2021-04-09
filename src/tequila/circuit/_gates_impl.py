@@ -420,11 +420,13 @@ class QubitExcitationImpl(DifferentiableGateImpl):
         # double: arxiv:2005.14475
         if len(self.target) == 2:
             p,q = self.target
-            gates=[QGateImpl(name="X", target=p, control=q, generator=None)]
-            gates+=[RotationGateImpl(axis="Y", target=q, angle=self.parameter/2.0)]
-            gates+=[QGateImpl(name="X", target=q, control=p, generator=None)]
-            gates+=[RotationGateImpl(axis="Y", target=q, angle=-self.parameter/2.0)]
+            gates=[QGateImpl(name="X", target=p, generator=None)]
             gates+=[QGateImpl(name="X", target=p, control=q, generator=None)]
+            gates+=[QGateImpl(name="X", target=p, generator=None)]
+            gates+=[RotationGateImpl(axis="Y", target=q, control=p, angle=self.parameter)]
+            gates+=[QGateImpl(name="X", target=p, generator=None)]
+            gates+=[QGateImpl(name="X", target=p, control=q, generator=None)]
+            gates+=[QGateImpl(name="X", target=p, generator=None)]
             return gates
         elif len(self.target) == 4:
             p,q,r,s = self.target

@@ -268,7 +268,11 @@ class Compiler:
                 continue
             else:
                 if hasattr(cg, "compile"):
-                    cg = cg.compile()
+                    cg = QCircuit.wrap_gate(cg.compile())
+                    for g in cg.gates:
+                        if g.is_controlled():
+                            controlled = True
+
 
             # order matters
             # first the real multi-target gates
