@@ -353,8 +353,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         else:
             indices = self.make_upccgsd_indices(label=(label, 0), name=name, *args, **kwargs)
             U = self.prepare_reference()
-            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, 0), neglect_z=neglect_z, *args,
-                                         **kwargs)
+            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
 
         if order > 1:
             for layer in range(1, order):
@@ -362,8 +361,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if "HCB" in name:
                     U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, layer), *args, **kwargs)
                 else:
-                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, layer),
-                                                 *args, **kwargs)
+                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, layer), neglect_z=neglect_z, *args, **kwargs)
         return U
 
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,

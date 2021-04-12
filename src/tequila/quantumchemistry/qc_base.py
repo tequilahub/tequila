@@ -1333,7 +1333,7 @@ class QuantumChemistryBase:
 
         if include_singles and not mix_sd:
             U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=label,
-                                           spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform)
+                                           spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform, neglect_z=neglect_z)
         return U
 
     def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapt_singles=True, label=None, angle_transform=None,

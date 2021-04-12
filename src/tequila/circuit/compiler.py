@@ -258,6 +258,7 @@ class Compiler:
                 gatelist += abstract_circuit._parameter_map[variable]
 
         compiled_gates = []
+
         for idx, gate in gatelist:
 
             cg = gate
