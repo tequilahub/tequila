@@ -7,6 +7,7 @@ from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
 import numpy as np
 import functools
+import copy
 
 
 def Phase(target: typing.Union[list, int],
@@ -992,23 +993,27 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
     def steps(self):
         return 1
 
-    def __init__(self, angle, target, assume_real=True, control=None, compile_options=None):
+    def __init__(self, angle, target=None, generator=None, p0=None, assume_real=True, control=None, compile_options=None):
         angle = assign_variable(angle)
 
-        generator = paulis.I()
-        p0a = paulis.I()
-        p0b = paulis.I()
+        if generator is None:
+            assert target is not None
+            assert p0 is None
+            generator = paulis.I()
+            p0a = paulis.I()
+            p0b = paulis.I()
 
-        for i in range(len(target) // 2):
-            generator *= paulis.Sp(target[2 * i]) * paulis.Sm(target[2 * i + 1])
-            p0a *= paulis.Qp(target[2 * i]) * paulis.Qm(target[2 * i + 1])
-            p0b *= paulis.Qm(target[2 * i]) * paulis.Qp(target[2 * i + 1])
-        generator = (1.0j * (generator - generator.dagger())).simplify()
-        p0 = paulis.I() - p0a - p0b
+            for i in range(len(target) // 2):
+                generator *= paulis.Sp(target[2 * i]) * paulis.Sm(target[2 * i + 1])
+                p0a *= paulis.Qp(target[2 * i]) * paulis.Qm(target[2 * i + 1])
+                p0b *= paulis.Qm(target[2 * i]) * paulis.Qp(target[2 * i + 1])
+            generator = (1.0j * (generator - generator.dagger())).simplify()
+            p0 = paulis.I() - p0a - p0b
+        else:
+            assert generator is not None
+            assert p0 is not None
 
         super().__init__(name="QubitExcitation", parameter=angle, target=self.extract_targets(generator), control=control)
-        # order matters (avoid complications in re-initialization, as used in shifted-gates below)
-        self._target= tuple(target)
         self.generator = generator
         if control is not None:
             # augment p0 for control qubits
@@ -1055,10 +1060,16 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
     def shifted_gates(self):
         r = 0.25
         s = 0.5*np.pi
-        Up1 = QubitExcitation(angle=self.parameter + s, target=self.target, control=self.control)
+
+        Up1 = copy.deepcopy(self)
+        Up1._parameter=self.parameter+s
+        Up1 = QCircuit.wrap_gate(Up1)
         Up2 = GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
-        Um1 = QubitExcitation(angle=self.parameter - s, target=self.target, control=self.control)
+        Um1 = copy.deepcopy(self)
+        Um1._parameter=self.parameter-s
+        Um1 = QCircuit.wrap_gate(Um1)
         Um2 = GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
+
         if not self.assume_real:
             # 4-point shift rule of arxiv:2104.05695 saves gates
             return [(r, Up1 + Up2), (-r, Um1 + Um2), (r, Up1 + Um2), (-r, Um1 + Up2)]
