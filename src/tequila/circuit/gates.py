@@ -1038,7 +1038,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             U0 = X(target=p)
             U0 += X(target=p, control=q)
             U0 += X(target=p)
-            U1 += Ry(angle=self.parameter, target=q, control=p)
+            U1 = Ry(angle=self.parameter, target=q, control=p)
             return U0 + U1 + U0
         elif self.compile == "optimize" and len(self.target) == 4:
             p,q,r,s = self.target
@@ -1047,7 +1047,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             U0 += X(target=r, control=p)
             U0 += X(target=q)
             U0 += X(target=s)
-            U1 += Ry(angle=-self.parameter, target=p, control=[q,r,s])
+            U1 = Ry(angle=-self.parameter, target=p, control=[q,r,s])
             return U0 + U1 + U0.dagger()
         else:
             return Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
