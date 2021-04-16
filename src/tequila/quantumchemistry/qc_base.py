@@ -22,7 +22,7 @@ from openfermion.chem import MolecularData
 import warnings
 
 
-class FermionicGateImpl(_gates_impl.QubitExcitationImpl):
+class FermionicGateImpl(gates.QubitExcitationImpl):
     # keep the overview in circuits
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

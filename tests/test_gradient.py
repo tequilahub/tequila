@@ -478,4 +478,5 @@ def test_qubit_excitations():
         assert numpy.isclose(F, 1.0, 1.e-4)
         eval1 = simulate(dE1, variables=variables)
         eval2 = simulate(dE2, variables=variables)
+        print(dE1.get_expectationvalues()[1].U)
         assert numpy.isclose(eval1, eval2, 1.e-4)

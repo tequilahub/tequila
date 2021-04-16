@@ -851,7 +851,7 @@ def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union
 
 
 def QubitExcitation(angle: typing.Union[numbers.Real, Variable, typing.Hashable], target: typing.List, control=None,
-                    assume_real: bool = False):
+                    assume_real: bool = False, compile_options="optimized"):
     """
     A Qubit Excitation, as described under "qubit perspective" in https://doi.org/10.1039/D0SC06627C
     For the Fermionic operators under corresponding Qubit encodings: Use the chemistry interface
@@ -877,19 +877,7 @@ def QubitExcitation(angle: typing.Union[numbers.Real, Variable, typing.Hashable]
     except:
         raise Exception("QubitExcitation: Needs an even number of targets")
 
-    generator = paulis.I()
-    p0a = paulis.I()
-    p0b = paulis.I()
-
-    for i in range(len(target) // 2):
-        generator *= paulis.Sp(target[2 * i]) * paulis.Sm(target[2 * i + 1])
-        p0a *= paulis.Qp(target[2 * i]) * paulis.Qm(target[2 * i + 1])
-        p0b *= paulis.Qm(target[2 * i]) * paulis.Qp(target[2 * i + 1])
-    generator = (1.0j * (generator - generator.dagger())).simplify()
-    p0 = paulis.I() - p0a - p0b
-
-
-    return QCircuit.wrap_gate(impl.QubitExcitationImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real))
+    return QCircuit.wrap_gate(QubitExcitationImpl(angle=angle, target=target, assume_real=assume_real, compile_options=compile_options))
 
 
 """
@@ -981,7 +969,96 @@ def QGate(name, target: typing.Union[list, int], control: typing.Union[list, int
           generator: QubitHamiltonian = None):
     return QCircuit.wrap_gate(impl.QGateImpl(name=name, target=target, control=control, generator=generator))
 
-if __name__ == "__main__":
-    G = CRx(1, 0, 2.0)
+"""
+Implementation of specific gates
+Not put into _gates_impl.py for convenience
+Those gate types will not be recognized by the compiler
+and should all implement a compile function that 
+returns a QCircuit of primitive tq gates
+"""
 
-    print(G)
+class QubitExcitationImpl(impl.DifferentiableGateImpl):
+    @staticmethod
+    def extract_targets(generator):
+        targets = []
+        for ps in generator.paulistrings:
+            targets += [k for k in ps.keys()]
+        return tuple(set(targets))
+
+    @property
+    def steps(self):
+        return 1
+
+    def __init__(self, angle, target, assume_real=True, control=None, compile_options=None):
+        angle = assign_variable(angle)
+
+        generator = paulis.I()
+        p0a = paulis.I()
+        p0b = paulis.I()
+
+        for i in range(len(target) // 2):
+            generator *= paulis.Sp(target[2 * i]) * paulis.Sm(target[2 * i + 1])
+            p0a *= paulis.Qp(target[2 * i]) * paulis.Qm(target[2 * i + 1])
+            p0b *= paulis.Qm(target[2 * i]) * paulis.Qp(target[2 * i + 1])
+        generator = (1.0j * (generator - generator.dagger())).simplify()
+        p0 = paulis.I() - p0a - p0b
+
+        super().__init__(name="QubitExcitation", parameter=angle, target=self.extract_targets(generator), control=control, eigenvalues_magnitude = 0.25)
+        # order matters (avoid complications in re-initialization, as used in shifted-gates below)
+        self._target= tuple(target)
+        self.generator = generator
+        if control is not None:
+            # augment p0 for control qubits
+            # Qp = 1/2(1+Z) = |0><0|
+            p0 = p0*paulis.Qp(control)
+        self.p0 = p0
+        self.assume_real = assume_real
+        if compile_options is None:
+            self.compile_options = "optimize"
+        else:
+            self.compile_options = compile_options
+
+    def map_qubits(self, qubit_map: dict):
+        mapped_generator = self.generator.map_qubits(qubit_map=qubit_map)
+        mapped_p0 = self.p0.map_qubits(qubit_map=qubit_map)
+        mapped_control = self.control
+        if mapped_control is not None:
+            mapped_control=tuple([qubit_map[i] for i in self.control])
+        return type(self)(angle=self.parameter, generator=mapped_generator, p0=mapped_p0, assume_real=self.assume_real, control=mapped_control)
+
+
+    def compile(self):
+        # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475
+        # Alternative representation in arxiv:2104.05695 (not implemented -> could be added and controlled with optional compile keywords)
+        if self.compile == "optimize" and len(self.target) == 2:
+            p,q = self.target
+            U0 = X(target=p)
+            U0 += X(target=p, control=q)
+            U0 += X(target=p)
+            U1 += Ry(angle=self.parameter, target=q, control=p)
+            return U0 + U1 + U0
+        elif self.compile == "optimize" and len(self.target) == 4:
+            p,q,r,s = self.target
+            U0 = X(target=q, control=p)
+            U0 += X(target=s, control=r)
+            U0 += X(target=r, control=p)
+            U0 += X(target=q)
+            U0 += X(target=s)
+            U1 += Ry(angle=-self.parameter, target=p, control=[q,r,s])
+            return U0 + U1 + U0.dagger()
+        else:
+            return Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
+
+    def shifted_gates(self):
+        r = 0.25 #self.eigenvalues_magnitude
+        s = 0.5*np.pi
+        Up1 = QubitExcitation(angle=self.parameter + s, target=self.target, control=self.control)
+        Up2 = GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
+        Um1 = QubitExcitation(angle=self.parameter - s, target=self.target, control=self.control)
+        Um2 = GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
+        if not self.assume_real:
+            # 4-point shift rule of arxiv:2104.05695 saves gates
+            return [(r, Up1 + Up2), (-r, Um1 + Um2), (r, Up1 + Um2), (-r, Um1 + Up2)]
+        else:
+            return [(2.0 * r, Up1 +  Up2), (-2.0 * r, Um1 + Um2)]
+
