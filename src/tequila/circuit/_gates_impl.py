@@ -16,6 +16,10 @@ UnionParam = typing.Union[Variable, FixedVariable]
 
 
 class QGateImpl:
+    """"
+    BaseClass for internal gate representation
+    All other gate classes should derive from here
+    """
 
     @property
     def name(self):
@@ -43,7 +47,10 @@ class QGateImpl:
         return self.compute_max_qubit()
 
     def extract_variables(self):
-        return []
+        if self.is_parametrized() and hasattr(self.parameter, "extract_variables"):
+            return self.parameter.extract_variables()
+        else:
+            return []
 
     def is_parametrized(self) -> bool:
         return hasattr(self, "parameter")
@@ -83,7 +90,7 @@ class QGateImpl:
 
     def is_single_qubit_gate(self) -> bool:
         """
-        Convenience and easier to interpret
+        Convenience and easier to interpret in code
         :return: True if the Gate only acts on one qubit (not controlled)
         """
         return (not self.control) and (len(self.target) == 1)
@@ -154,15 +161,6 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     the base class from which all parametrized gates inherit. User defined gates, when implemented, are liable to be members of this class directly.
     '''
 
-    def extract_variables(self):
-        if hasattr(self.parameter, "extract_variables"):
-            return self.parameter.extract_variables()
-        else:
-            return []
-
-    def dagger(self):
-        raise TequilaException("should not be called from ABC")
-
     @property
     def parameter(self):
         return self._parameter
@@ -174,6 +172,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None,
                 generator: QubitHamiltonian = None):
         super().__init__(name=name, target=target, control=control, generator=generator)
+        # failsafe
         if isinstance(parameter, VectorObjective):
             raise TequilaException('Received VectorObjective {} as parameter. This is forbidden.'.format(parameter))
         self._parameter = assign_variable(variable=parameter)
@@ -196,15 +195,45 @@ class ParametrizedGateImpl(QGateImpl, ABC):
             return False
         return True
 
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result._parameter = assign_variable(-self.parameter)
+        return result
+
 class DifferentiableGateImpl(ParametrizedGateImpl):
 
     @property
     def eigenvalues_magnitude(self):
         return self._eigenvalues_magnitude
 
-    def __init__(self,eigenvalues_magnitude, *args, **kwargs):
+    def __init__(self,eigenvalues_magnitude=None, *args, **kwargs):
         self._eigenvalues_magnitude=eigenvalues_magnitude
         super().__init__(*args, **kwargs)
+
+    def shifted_gates(self, r=None):
+        """
+        Default shift rule, override this for special strategies
+        Returns
+        -------
+            List of Tuples: [(weight, shifted_gate), (weight, shifted_gate)]
+            The gradient compiler will assemble this the following way
+            <H>_U with U = AU(a)B --> \sum weight <H>_V , with V=A shifted_gate
+
+            shifted_gate can also be a whole circuit (either as QCircuit object or a list of gates)
+        """
+        if r is None:
+            r = self.eigenvalues_magnitude
+
+        shift_a = self.parameter + pi / (4 * r)
+        shift_b = self.parameter - pi / (4 * r)
+        right = copy.deepcopy(self)
+        right.parameter = shift_a
+        left = copy.deepcopy(self)
+        left.parameter = shift_b
+        return [ (r, right), (-r, left) ]
+
+    def finalize(self):
+        super().finalize()
 
 class RotationGateImpl(DifferentiableGateImpl):
     axis_to_string = {0: "x", 1: "y", 2: "z"}
@@ -257,11 +286,6 @@ class RotationGateImpl(DifferentiableGateImpl):
 
         return sum(paulis.Z(q) for q in qubits)
 
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = assign_variable(-self.parameter)
-        return result
-
 
 class PhaseGateImpl(DifferentiableGateImpl):
 
@@ -270,16 +294,10 @@ class PhaseGateImpl(DifferentiableGateImpl):
         super().__init__(eigenvalues_magnitude=0.5, name='Phase', parameter=phase, target=target, control=control)
         self.generator = paulis.Z(target) - paulis.I(target)
 
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = -self.parameter
-        return result
-
     def __pow__(self, power, modulo=None):
         result = copy.deepcopy(self)
         result.parameter *= power
         return result
-
 
 class PowerGateImpl(ParametrizedGateImpl):
     """
@@ -294,22 +312,10 @@ class PowerGateImpl(ParametrizedGateImpl):
 
     @property
     def power(self):
-        return self._power
-
-    @power.setter
-    def power(self, other):
-        self._power = assign_variable(variable=other)
-        self._parameter = assign_variable(variable=other)*pi
+        return self.parameter/pi
 
     def __init__(self, name, target: list, power, control: list = None, generator: QubitHamiltonian = None):
         super().__init__(name=name, parameter=power * pi, target=target, control=control, generator=generator)
-        self._power = assign_variable(variable=power)
-
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = assign_variable(-self.parameter)
-        result._power = assign_variable(-self.power)
-        return result
 
 
 class GeneralizedRotationImpl(DifferentiableGateImpl):
@@ -337,22 +343,11 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
         self.steps = steps
         self.generator = generator
 
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = assign_variable(-self.parameter)
-        return result
-
-
 class ExponentialPauliGateImpl(DifferentiableGateImpl):
     """
     Same convention as for rotation gates:
     Exp(-i angle/2 * paulistring)
     """
-
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = -self.parameter
-        return result
 
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None):
         super().__init__(eigenvalues_magnitude=0.5, name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control, parameter=angle)
@@ -404,6 +399,7 @@ class QubitExcitationImpl(DifferentiableGateImpl):
 
 
     def compile(self):
+        # Trotterization is no approximation here
         return TrotterizedGateImpl(angles=[self.parameter], generators=[self.generator], steps=1)
 
     def shifted_gates(self):
@@ -416,10 +412,8 @@ class QubitExcitationImpl(DifferentiableGateImpl):
             return [(self.eigenvalues_magnitude, [Up1 ,Up2]), (-self.eigenvalues_magnitude, [Um1 , Um2]), (self.eigenvalues_magnitude, [Up1 , Um2]),
                     (-self.eigenvalues_magnitude,[Um1 ,Up2])]
         else:
+            # 4-point shift-rule will be better here (same evaluation cost, but no additional gates)
             return [(2.0 * self.eigenvalues_magnitude, [Up1 , Up2]), (-2.0 * self.eigenvalues_magnitude, [Um1 , Um2])]
-
-    def dagger(self):
-        return type(self)(angle=-self._parameter, generator=self.generator, p0=self.p0, control=self.control)
 
 
 @dataclass
