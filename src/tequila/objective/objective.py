@@ -485,7 +485,7 @@ class Objective:
             return len(self.get_expectationvalues())
 
     def __str__(self):
-        return self.__repr__()
+        return "f({})".format(self.extract_variables())
 
     def __repr__(self):
         variables = self.extract_variables()
@@ -1158,10 +1158,10 @@ class VectorObjective:
             back += group[i]
         return back
 
-    def __str__(self):
-        return self.__repr__()
-
     def __repr__(self):
+        return "f({})".format(self.extract_variables())
+
+    def __str__(self):
         variables = self.extract_variables()
         types = [type(E) for E in self.get_expectationvalues()]
         types = list(set(types))

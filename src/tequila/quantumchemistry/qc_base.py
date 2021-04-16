@@ -22,12 +22,15 @@ from openfermion.chem import MolecularData
 import warnings
 
 
-class FermionicGateImpl(_gates_impl.QubitExcitationImpl):
+class FermionicGateImpl(gates.QubitExcitationImpl):
     # keep the overview in circuits
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, generator, p0, transformation,  *args, **kwargs):
+        super().__init__(generator=generator, p0=p0, *args, **kwargs)
         self._name = "FermionicExcitation"
+        self.transformation=transformation
 
+    def compile(self):
+        return gates.Trotterized(generators=[self.generator], control=self.control, angles=[self.parameter], steps=1)
 
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
@@ -862,8 +865,9 @@ class QuantumChemistryBase:
         """
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
+
         return QCircuit.wrap_gate(
-            FermionicGateImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real, control=control))
+            FermionicGateImpl(angle=angle, generator=generator, p0=p0, transformation=type(self.transformation).__name__.lower(), assume_real=assume_real, control=control))
 
     def reference_state(self, reference_orbitals: list = None, n_qubits: int = None) -> BitString:
         """Does a really lazy workaround ... but it works
