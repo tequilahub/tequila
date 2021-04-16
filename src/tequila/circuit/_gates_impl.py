@@ -206,9 +206,10 @@ class DifferentiableGateImpl(ParametrizedGateImpl):
     def eigenvalues_magnitude(self):
         return self._eigenvalues_magnitude
 
-    def __init__(self,eigenvalues_magnitude=None, *args, **kwargs):
+    def __init__(self,eigenvalues_magnitude=None, assume_real=False, *args, **kwargs):
         self._eigenvalues_magnitude=eigenvalues_magnitude
         super().__init__(*args, **kwargs)
+        self.assume_real=assume_real
 
     def shifted_gates(self, r=None):
         """
@@ -224,13 +225,26 @@ class DifferentiableGateImpl(ParametrizedGateImpl):
         if r is None:
             r = self.eigenvalues_magnitude
 
-        shift_a = self.parameter + pi / (4 * r)
-        shift_b = self.parameter - pi / (4 * r)
+        s =  pi / (4 * r)
+        shift_a = self.parameter + s
+        shift_b = self.parameter - s
         right = copy.deepcopy(self)
         right.parameter = shift_a
         left = copy.deepcopy(self)
         left.parameter = shift_b
-        return [ (r, right), (-r, left) ]
+
+        if self.is_controlled():
+            # following https://doi.org/10.1039/D0SC06627C
+            p0 = paulis.Qp(self.control) # Qp = |0><0|
+            right2 = GeneralizedRotationImpl(angle=s, generator=p0, eigenvalues_magnitude=r/2)  # controls are in p0
+            left2 = GeneralizedRotationImpl(angle=-s, generator=p0, eigenvalues_magnitude=r/2)  # controls are in p0
+            if not self.assume_real:
+                # 4-point shift rule of arxiv:2104.05695 would saves gates here
+                return [(r/2, [right, right2]), (-r/2, [left , left2]), (r/2, [right , left2]), (-r/2, [left , right2])]
+            else:
+                return [(r, [right, right2]), (-r, [left , left2])]
+        else:
+            return [ (r, right), (-r, left) ]
 
     def finalize(self):
         super().finalize()
@@ -261,9 +275,9 @@ class RotationGateImpl(DifferentiableGateImpl):
         result.parameter *= power
         return result
 
-    def __init__(self, axis, angle, target: list, control: list = None):
+    def __init__(self, axis, angle, target: list, control: list = None, assume_real=False):
         assert (angle is not None)
-        super().__init__(eigenvalues_magnitude=0.5, name=self.get_name(axis=axis), parameter=angle, target=target, control=control)
+        super().__init__(eigenvalues_magnitude=0.5, assume_real=assume_real, name=self.get_name(axis=axis), parameter=angle, target=target, control=control)
         self._axis = self.assign_axis(axis)
         self.generator = self.assign_generator(self.axis, self.target)
 
@@ -338,8 +352,8 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
             targets += [k for k in ps.keys()]
         return tuple(set(targets))
 
-    def __init__(self, angle, generator, control=None, eigenvalues_magnitude=0.5, steps=1):
-        super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, name="GenRot", parameter=angle, target=self.extract_targets(generator), control=control)
+    def __init__(self, angle, generator, control=None, eigenvalues_magnitude=0.5, steps=1, assume_real=False):
+        super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, assume_real=assume_real, name="GenRot", parameter=angle, target=self.extract_targets(generator), control=control)
         self.steps = steps
         self.generator = generator
 
