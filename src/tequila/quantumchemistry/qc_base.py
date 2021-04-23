@@ -1312,21 +1312,22 @@ class QuantumChemistryBase:
 
         return U
 
-    def make_upccgsd_layer(self, indices, include_singles=True, assume_real=True, label=None,
+    def make_upccgsd_layer(self, indices, include_singles=True, include_doubles=True, assume_real=True, label=None,
                            spin_adapt_singles: bool = True, angle_transform=None, mix_sd=False, neglect_z=False, *args, **kwargs):
         U = QCircuit()
         for idx in indices:
             assert len(idx) == 1
             idx = idx[0]
             angle = (tuple([idx]), "D", label)
-            # we can optimize with qubit excitations for the JW representation
-            if  "jordanwigner" in self.transformation.name.lower():
-                target=[self.transformation.up(idx[0]), self.transformation.up(idx[1]), self.transformation.down(idx[0]), self.transformation.down(idx[1])]
-                U += gates.QubitExcitation(angle=angle, target=target)
-            else:
-                U += self.make_excitation_gate(angle=angle,
-                                               indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
-                                               assume_real=assume_real)
+            if include_doubles:
+                if  "jordanwigner" in self.transformation.name.lower():
+                    # we can optimize with qubit excitations for the JW representation
+                    target=[self.transformation.up(idx[0]), self.transformation.up(idx[1]), self.transformation.down(idx[0]), self.transformation.down(idx[1])]
+                    U += gates.QubitExcitation(angle=angle, target=target)
+                else:
+                    U += self.make_excitation_gate(angle=angle,
+                                                   indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
+                                                   assume_real=assume_real)
             if include_singles and mix_sd:
                 U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label,
                                                spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform, neglect_z=neglect_z)

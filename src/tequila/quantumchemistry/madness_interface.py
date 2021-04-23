@@ -50,7 +50,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
-                 active_orbitals: list = None,
+                 active_orbitals: list = "auto",
                  executable: str = None,
                  n_pno: int = None,
                  frozen_core=False,
@@ -308,7 +308,16 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         have_hcb_trafo = self.transformation.hcb_to_me() is not None
 
         if "HCB" in name and "S" in name:
-            raise Exception("name={}, HCB + Singles can't be realized".format(name))
+            raise TequilaMadnessException("name={}, HCB + Singles can't be realized".format(name))
+
+        if "HCB" in name and "D" not in name:
+            raise warnings.warn("name={}, HCB without Doubles has no result ".format(name), TequilaWarning)
+
+        if "S" not in name and "D" not in name:
+            raise warnings.warn("name={}, neither singles nor doubles requested".format(name), TequilaWarning)
+
+        if "T" in name or "Q" in name:
+            raise warnings.warn("name={}, only singles and doubles supported".format(name), TequilaWarning)
 
         if (have_hcb_trafo or "HCB" in name) and hcb_optimization is None:
             hcb_optimization = True
@@ -342,7 +351,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                                                           label=(label, 0))
             indices0 = [k.name[0] for k in U.extract_variables()]
             indices1 = self.make_upccgsd_indices(label=label, name=name, exclude=indices0, *args, **kwargs)
-            U += self.make_hardcore_boson_upccgd_layer(indices=indices1, label=(label, 0), *args, **kwargs)
+            if "D" in name:
+                U += self.make_hardcore_boson_upccgd_layer(indices=indices1, label=(label, 0), *args, **kwargs)
             indices = indices0 + indices1
             if "HCB" not in name:
                 U = self.hcb_to_me(U=U)
@@ -353,7 +363,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         else:
             indices = self.make_upccgsd_indices(label=(label, 0), name=name, *args, **kwargs)
             U = self.prepare_reference()
-            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
+            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, include_doubles="D" in name, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
 
         if order > 1:
             for layer in range(1, order):
@@ -361,7 +371,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if "HCB" in name:
                     U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, layer), *args, **kwargs)
                 else:
-                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, label=(label, layer), neglect_z=neglect_z, *args, **kwargs)
+                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, include_doubles="D" in name, label=(label, layer), neglect_z=neglect_z, *args, **kwargs)
         return U
 
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
@@ -564,7 +574,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def write_madness_input(self, n_pno, n_virt=0, frozen_core=False, filename="input", *args, **kwargs):
+    def write_madness_input(self, n_pno, n_virt=0, frozen_core=True, filename="input", *args, **kwargs):
         if n_pno is None:
             raise TequilaMadnessException("Can't write madness input without n_pno keyword!")
         data = {}
@@ -574,10 +584,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     self.parameters.multiplicity))
         data["dft"] = {"charge": self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 3.e-4,
                        "ncf": "( none , 1.0 )"}
-        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4}
+        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4, "diagonal":True}
         if not frozen_core:
             data["pno"]["freeze"] = 0
-        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "cholesky"}
+        data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "symmetric"}
         data["plot"] = {}
         data["f12"] = {}
         for key in data.keys():
