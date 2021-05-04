@@ -432,7 +432,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         if idx not in exclude and idx not in indices:
                             indices.append(idx)
 
-        if "PNO" in name:
+        if "PNO" or "SPA" in name:
             return indices
 
         virtuals = [i for i in self.orbitals if len(i.pno_pair) == 2]
