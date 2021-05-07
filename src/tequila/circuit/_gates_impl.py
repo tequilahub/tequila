@@ -395,9 +395,9 @@ class ExponentialPauliGateImpl(DifferentiableGateImpl):
 
 class TrotterizedGateImpl(ParametrizedGateImpl):
 
-    def __init__(self, generator: QubitHamiltonian=None,
+    def __init__(self, generator: QubitHamiltonian,
+                 angle: typing.Union[numbers.Real, Variable],
                  steps: int = 1,
-                 angle: typing.Union[numbers.Real, Variable] = None,
                  control: typing.Union[list, int] = None,
                  threshold: numbers.Real = 0.0,
                  randomize: bool = True, **kwargs):
@@ -410,16 +410,6 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         Note that for steps==1 as well as len(generators)==1 this has no effect
         :param randomize: randomize the trotter decomposition of the PauliStrings in the generator
         """
-
-        # downward compatibility
-        if "generators" in kwargs:
-            assert len(kwargs["generators"]) == 1
-            assert generator is None
-            generator = kwargs["generators"][0]
-        if "angles" in kwargs:
-            assert len(kwargs["angles"]) == 1
-            assert angle is None
-            angle = kwargs["angles"][0]
 
         assert angle is not None
         assert generator is not None

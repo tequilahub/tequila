@@ -425,8 +425,8 @@ def Trotterized(generator: QubitHamiltonian = None,
 
     Parameters
     ----------
-    generators :
-        list of generators
+    generator :
+        generator of the gate U = e^{-i\frac{angle}{2} G }
     angles :
         coefficients for each generator
     steps :
@@ -1038,7 +1038,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             U1 = Ry(angle=-self.parameter, target=p, control=[q,r,s])
             return U0 + U1 + U0.dagger()
         else:
-            return Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
+            return Trotterized(angle=self.parameter, generator=self.generator, steps=1)
 
     def shifted_gates(self):
         r = 0.25
