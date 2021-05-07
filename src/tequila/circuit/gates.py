@@ -454,15 +454,23 @@ def Trotterized(generator: QubitHamiltonian = None,
     if "generators" in kwargs:
         if generator is None:
             if len(kwargs["generators"]) > 1:
-                raise Exception("multiple generators not allowed, please construct manually")
-            generator = kwargs["generators"][0]
+                if "angles" not in kwargs:
+                    angles = [angle]*len(kwargs["generators"])
+                else:
+                    angles = kwargs["angles"]
+                result = QCircuit()
+                for angle,g in zip(angles,kwargs["generators"]):
+                    result += Trotterized(generator=g, angle=angle, steps=steps, control=control, *args, **kwargs)
+                    return result
+            else:
+                generator = kwargs["generators"][0]
         else:
             raise Exception("Trotterized: You gave generators={} and generator={}".format(generator, kwargs["generators"]))
 
     if "angles" in kwargs:
         if angle is None:
             if len(kwargs["angles"]) > 1:
-                raise Exception("multiple angles not allowed, please construct manually")
+                raise Exception("multiple angles given, but only one generator")
             angle = kwargs["angles"][0]
         else:
             raise Exception("Trotterized: You gave angles={} and angle={}".format(angle, kwargs["angles"]))
