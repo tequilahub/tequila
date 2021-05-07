@@ -49,7 +49,7 @@ class ActiveSpaceData:
         return [i for i in self.reference_orbitals if i in self.active_orbitals]
 
 
-class FermionicGateImpl(_gates_impl.QubitExcitationImpl):
+class FermionicGateImpl(gates.QubitExcitationImpl):
     # keep the overview in circuits
     def __init__(self, generator, p0, transformation,  *args, **kwargs):
         super().__init__(generator=generator, p0=p0, *args, **kwargs)
