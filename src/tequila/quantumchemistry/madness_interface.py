@@ -344,7 +344,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         name="SPA-UpCCD"
         if hcb:
             name="HCB-"+name
-        return make_upccgsd_ansatz(name=name, label=label)
+        return self.make_upccgsd_ansatz(name=name, label=label)
 
     def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None, hcb_optimization=None, *args, **kwargs):
         """
