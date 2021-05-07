@@ -264,7 +264,7 @@ class Compiler:
             cg = gate
             controlled = gate.is_controlled()
 
-            if not controlled and self.gradient_mode and (hasattr(cg, "eigenvalues_magnitude") or hasattr(cg, "shifted_gates")):
+            if self.gradient_mode and (hasattr(cg, "eigenvalues_magnitude") or hasattr(cg, "shifted_gates")):
                 compiled_gates.append((idx, QCircuit.wrap_gate(cg)))
                 continue
             else:

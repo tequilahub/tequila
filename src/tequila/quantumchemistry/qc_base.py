@@ -51,13 +51,13 @@ class ActiveSpaceData:
 
 class FermionicGateImpl(_gates_impl.QubitExcitationImpl):
     # keep the overview in circuits
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, generator, p0, transformation,  *args, **kwargs):
+        super().__init__(generator=generator, p0=p0, *args, **kwargs)
         self._name = "FermionicExcitation"
+        self.transformation=transformation
 
     def compile(self):
-        return gates.Trotterized(angles=[self.parameter], generators=[self.generator], steps=1)
-
+        return gates.Trotterized(generators=[self.generator], control=self.control, angles=[self.parameter], steps=1)
 
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
@@ -67,7 +67,7 @@ def prepare_product_state(state: BitString) -> QCircuit:
     state :
         product state encoded into a bitstring
     state: BitString :
-        
+
 
     Returns
     -------
@@ -116,7 +116,7 @@ class ParametersQC:
         Parameters
         ----------
         string :
-            
+
 
         Returns
         -------
@@ -284,7 +284,7 @@ class Amplitudes:
         Parameters
         ----------
         cs: ClosedShellAmplitudes :
-            
+
 
         Returns
         -------
@@ -835,8 +835,9 @@ class QuantumChemistryBase:
         """
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
+
         return QCircuit.wrap_gate(
-            FermionicGateImpl(angle=angle, generator=generator, p0=p0, assume_real=assume_real, control=control))
+            FermionicGateImpl(angle=angle, generator=generator, p0=p0, transformation=type(self.transformation).__name__.lower(), assume_real=assume_real, control=control))
 
     def make_molecule(self, *args, **kwargs) -> MolecularData:
         """Creates a molecule in openfermion format by running psi4 and extracting the data
@@ -1099,10 +1100,10 @@ class QuantumChemistryBase:
                                   include_singles: bool = True,
                                   general_excitations: bool = True) -> list:
         """
-        Assuming a pair-specific model, create a pair-specific index list 
-        to be used in make_upccgsd_ansatz(indices = ... ) 
+        Assuming a pair-specific model, create a pair-specific index list
+        to be used in make_upccgsd_ansatz(indices = ... )
         Excite from a set of references (i) to any pair coming from (i),
-        i.e. any (i,j)/(j,i). If general excitations are allowed, also 
+        i.e. any (i,j)/(j,i). If general excitations are allowed, also
         allow excitations from pairs to appendant pairs and reference.
 
         Parameters
@@ -1113,15 +1114,15 @@ class QuantumChemistryBase:
             example: as file: "0,1,11,11,00,10" (hand over file name)
                      in file, skip first row assuming some text with information
                      as list:['0','1`','11','11','00','10']
-                     ~> two reference orbitals 0 and 1, 
+                     ~> two reference orbitals 0 and 1,
                      then two orbitals from pair 11, one from 00, one mixed 10
         include_singles
             include single excitations
         general_excitations
-            allow general excitations 
+            allow general excitations
        Returns
         -------
-            list of indices with pair-specific ansatz 
+            list of indices with pair-specific ansatz
         """
 
         if pair_info is None:
@@ -1462,27 +1463,27 @@ class QuantumChemistryBase:
                         partner = None
                     else:
                         spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
-                        spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
+                        #spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
                         if key[0] != key[2] and key[1] != key[3]:
                             spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
-                            spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
+                            #spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
                         partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
                     for idx in spin_indices:
                         idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
                         indices.append(idx)
 
                     if parametrized:
-                        variables.append(Variable(name=key))  # abab
-                        variables.append(Variable(name=key))  # baba
+                        variables.append(2.0*Variable(name=key))  # abab
+                        #variables.append(Variable(name=key))  # baba
                         if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(Variable(name=key) - Variable(partner))  # aaaa
-                            variables.append(Variable(name=key) - Variable(partner))  # bbbb
+                            variables.append(2.0*(Variable(name=key) - Variable(partner))) # aaaa
+                            #variables.append(Variable(name=key) - Variable(partner))  # bbbb
                     else:
-                        variables.append(t)
-                        variables.append(t)
+                        variables.append(2.0*t)
+                        #variables.append(t)
                         if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(t - amplitudes[partner])
-                            variables.append(t - amplitudes[partner])
+                            variables.append(2.0*(t - amplitudes[partner]))
+                            #variables.append(t - amplitudes[partner])
                 else:
                     indices.append(spin_indices)
                     if parametrized:
