@@ -420,6 +420,7 @@ def Trotterized(generator: QubitHamiltonian = None,
                 steps: int = 1,
                 angle: typing.Union[typing.Hashable, numbers.Real, Variable] = None,
                 control: typing.Union[list, int] = None,
+                randomize=False,
                 *args, **kwargs) -> QCircuit:
     """
 
@@ -460,7 +461,7 @@ def Trotterized(generator: QubitHamiltonian = None,
                     angles = kwargs["angles"]
                 result = QCircuit()
                 for angle,g in zip(angles,kwargs["generators"]):
-                    result += Trotterized(generator=g, angle=angle, steps=steps, control=control, *args, **kwargs)
+                    result += Trotterized(generator=g, angle=angle, steps=steps, control=control, randomize=randomize)
                     return result
             else:
                 generator = kwargs["generators"][0]
@@ -477,7 +478,7 @@ def Trotterized(generator: QubitHamiltonian = None,
 
     angle = assign_variable(angle)
 
-    return QCircuit.wrap_gate(impl.TrotterizedGateImpl(generator=generator, angle=angle, steps=steps, control=control, **kwargs))
+    return QCircuit.wrap_gate(impl.TrotterizedGateImpl(generator=generator, angle=angle, steps=steps, control=control, randomize=randomize, **kwargs))
 
 
 def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None, *args,
