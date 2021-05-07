@@ -421,3 +421,25 @@ def test_qubit_excitations(backend):
     F = numpy.abs(wfn1.inner(wfn2)) ** 2
 
     assert numpy.isclose(F, 1.0, 1.e-4)
+
+@pytest.mark.parametrize("backend", INSTALLED_SIMULATORS)
+@pytest.mark.parametrize("power", numpy.random.uniform(0.0, 2.0, 1))
+@pytest.mark.parametrize("controls", [1, 2, 3])
+def test_gradient_deep_controlled_Z(backend, power, controls):
+    import tequila as tq
+    if controls > 2 and backend == "qiskit":
+        return
+    qubit = 0
+    control = [i for i in range(1, controls + 1)]
+    angle = tq.Variable(name="angle")
+    U = tq.gates.X(target=control) + tq.gates.H(target=qubit) + tq.gates.Z(target=qubit, angle=angle, control=control) + tq.gates.H(target=qubit)
+    print(U)
+    CU = tq.compile(U, backend=backend)
+    print(CU.abstract_circuit)
+    print(CU.circuit)
+    variables = {angle: power}
+    H = tq.paulis.Y(qubit=qubit)
+    O = tq.ExpectationValue(U=U, H=H)
+    E = tq.simulate(O, variables=variables, backend=backend)
+    E2= tq.simulate(O, variables=variables)
+    assert numpy.isclose(E, E2)

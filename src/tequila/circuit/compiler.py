@@ -285,8 +285,6 @@ class Compiler:
                 cg = compile_exponential_pauli_gate(gate=cg)
             if self.swap:
                 cg = compile_swap(gate=cg)
-            if self.multicontrol:
-                cg = compile_to_single_control(gate=cg)
             if self.phase_to_z:
                 cg = compile_phase_to_z(gate=cg)
             if self.power:
@@ -300,7 +298,7 @@ class Compiler:
             if self.ry_gate:
                 cg = compile_ry(gate=cg, controlled_rotation=self.controlled_rotation)
             if controlled:
-                if self.cc_max:
+                if self.cc_max or self.multicontrol:
                     cg = compile_to_single_control(gate=cg)
                 if self.controlled_exponential_pauli:
                     cg = compile_exponential_pauli_gate(gate=cg)
