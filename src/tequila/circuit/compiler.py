@@ -861,9 +861,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
 
 
 def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
-    """
-    Todo: Jakob, plz write
-    """
+
     assert (generator.is_hermitian())
     circuit = QCircuit()
     factor = factor / steps
@@ -886,7 +884,6 @@ def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
 @compiler
 def compile_generalized_rotation_gate(gate, compile_exponential_pauli: bool = False):
     """
-    Todo: Jakob, plz write
     Parameters
     ----------
     gate
@@ -919,28 +916,13 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
     -------
 
     """
-    if not hasattr(gate, "generators") or not hasattr(gate, "steps"):
+    if not hasattr(gate, "steps") or hasattr(gate, "eigenvalues_magnitude"):
         return QCircuit.wrap_gate(gate)
 
-    c = 1.0
-    result = QCircuit()
-    if gate.join_components:
-        for step in range(gate.steps):
-            if gate.randomize_component_order:
-                numpy.random.shuffle(gate.generators)
-            for i, g in enumerate(gate.generators):
-                if gate.angles is not None:
-                    c = gate.angles[i]
-                result += do_compile_trotterized_gate(generator=g, steps=1, factor=c / gate.steps,
-                                                      randomize=gate.randomize, control=gate.control)
-    else:
-        if gate.randomize_component_order:
-            numpy.random.shuffle(gate.generators)
-        for i, g in enumerate(gate.generators):
-            if gate.angles is not None:
-                c = gate.angles[i]
-            result += do_compile_trotterized_gate(generator=g, steps=gate.steps, factor=c, randomize=gate.randomize,
-                                                  control=gate.control)
+    randomize=False
+    if hasattr(gate, "randomize"):
+        randomize=gate.randomize
+    result = do_compile_trotterized_gate(generator=gate.generator, steps=gate.steps, factor=gate.parameter, randomize=randomize, control=gate.control)
 
     if compile_exponential_pauli:
         return compile_exponential_pauli_gate(result)

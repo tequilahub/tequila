@@ -5,7 +5,6 @@ import os, glob
 
 import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
-from tequila.quantumchemistry import QuantumChemistryBase, ParametersQC
 from tequila.quantumchemistry.encodings import known_encodings
 from tequila.simulators.simulator_api import simulate
 HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
@@ -269,7 +268,7 @@ def test_fermionic_gates(assume_real, trafo):
             idx = [(2 * i, 2 * a), (2 * i + 1, 2 * a + 1)]
             U1 += mol.make_excitation_gate(indices=idx, angle=(i, a), assume_real=assume_real)
             g = mol.make_excitation_generator(indices=idx)
-            U2    += tq.gates.Trotterized(generators=[g], angles=[(i, a)], steps=1)
+            U2    += tq.gates.Trotterized(generator=g, angle=(i, a), steps=1)
             if (i,a) in variable_count:
                 variable_count[(i,a)] += 1
             else:

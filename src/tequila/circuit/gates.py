@@ -1,7 +1,6 @@
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit import _gates_impl as impl
-from tequila.circuit._gates_impl import TrotterParameters
 import typing, numbers
 from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
@@ -417,12 +416,11 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
 
 
 
-def Trotterized(generators: typing.List[QubitHamiltonian] = None,
+def Trotterized(generator: QubitHamiltonian = None,
                 steps: int = 1,
-                angles: typing.Union[
-                    typing.List[typing.Hashable], typing.List[numbers.Real], typing.List[Variable]] = None,
+                angle: typing.Union[typing.Hashable, numbers.Real, Variable] = None,
                 control: typing.Union[list, int] = None,
-                parameters: TrotterParameters = None, *args, **kwargs) -> QCircuit:
+                *args, **kwargs) -> QCircuit:
     """
 
     Parameters
@@ -435,58 +433,43 @@ def Trotterized(generators: typing.List[QubitHamiltonian] = None,
         trotter steps
     control :
         control qubits
-    parameters :
-        Additional Trotter parameters, if None then defaults are used
-    generators: typing.List[QubitHamiltonian] :
-        
+    generators: QubitHamiltonian :
+        The generator of the gate
     steps: int :
-        
-    angles: typing.Union[typing.List[typing.Hashable] :
-        
-    typing.List[numbers.Real] :
-        
-    typing.List[Variable]] :
-         (Default value = None)
-    control: typing.Union[list :
-        
-    int] :
-         (Default value = None)
-    parameters: TrotterParameters :
-         (Default value = None)
-
+        Trotter Steps
+    angle: typing.Hashable :
+        A symbol that will be converted to a tq.Variable
+    numbers.Real :
+        A fixed real number
+    Variable :
+        A tequila Variable
+    control: control qubits
     Returns
     -------
     QCircuit
 
     """
 
-    # convenience
-    if "generator" in kwargs:
-        if generators is None:
-            generators = [kwargs["generator"]]
+    #  downward compatibility
+    if "generators" in kwargs:
+        if generator is None:
+            if len(kwargs["generators"]) > 1:
+                raise Exception("multiple generators not allowed, please construct manually")
+            generator = kwargs["generators"][0]
         else:
-            raise Exception("Trotterized: You gave generators={} and generator={}".format(angles, kwargs["generator"]))
+            raise Exception("Trotterized: You gave generators={} and generator={}".format(generator, kwargs["generators"]))
 
-    if "angle" in kwargs:
-        if angles is None:
-            angles = [kwargs["angle"]] * len(generators)
+    if "angles" in kwargs:
+        if angle is None:
+            if len(kwargs["angles"]) > 1:
+                raise Exception("multiple angles not allowed, please construct manually")
+            angle = kwargs["angles"][0]
         else:
-            raise Exception("Trotterized: You gave angles={} and angle={}".format(angles, kwargs["angle"]))
+            raise Exception("Trotterized: You gave angles={} and angle={}".format(angle, kwargs["angles"]))
 
-    # more convenience
-    if not (isinstance(generators, list) or isinstance(generators, tuple)):
-        generators = [generators]
-    if not (isinstance(angles, list) or isinstance(angles, tuple)):
-        angles = [angles]
+    angle = assign_variable(angle)
 
-    if parameters is None:
-        parameters = TrotterParameters()
-
-    assigned_angles = [assign_variable(angle) for angle in angles]
-
-    return QCircuit.wrap_gate(
-        impl.TrotterizedGateImpl(generators=generators, angles=assigned_angles, steps=steps, control=control,
-                            **parameters.__dict__))
+    return QCircuit.wrap_gate(impl.TrotterizedGateImpl(generator=generator, angle=angle, steps=steps, control=control, **kwargs))
 
 
 def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None, *args,

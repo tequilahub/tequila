@@ -57,7 +57,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self.transformation=transformation
 
     def compile(self):
-        return gates.Trotterized(generators=[self.generator], control=self.control, angles=[self.parameter], steps=1)
+        return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
 
 def prepare_product_state(state: BitString) -> QCircuit:
     """Small convenience function
@@ -1386,7 +1386,7 @@ class QuantumChemistryBase:
                           include_reference_ansatz=True,
                           parametrized=True,
                           threshold=1.e-8,
-                          trotter_parameters: gates.TrotterParameters = None) -> QCircuit:
+                          *args, **kwargs) -> QCircuit:
         """
 
         Parameters
@@ -1406,8 +1406,6 @@ class QuantumChemistryBase:
 
         ClosedShellAmplitudes] :
              (Default value = "mp2")
-        trotter_parameters: gates.TrotterParameters :
-             (Default value = None)
 
         Returns
         -------
