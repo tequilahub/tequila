@@ -1,7 +1,6 @@
 from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning, \
     QCircuit, gates
 from tequila import ExpectationValue, PauliString, QubitHamiltonian, simulate
-
 import typing
 import numpy
 import warnings
@@ -266,6 +265,47 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
 
+    def compute_energy(self, method, *args, **kwargs):
+        """
+        Call classical methods over PySCF (needs to be installed) or
+        use as a shortcut to calculate quantum energies (see make_upccgsd_ansatz)
+
+        Parameters
+        ----------
+        method: method name
+                classical: HF, MP2, CCSD, CCSD(T), FCI
+                quantum: SPA-GASD (SPA can be dropped as well as letters in GASD)
+                examples: GSD is the same as UpCCGSD, SPA alone is equivalent to SPA-D
+                see make_upccgsd_ansatz of the this class for more information
+        args
+        kwargs
+
+        Returns
+        -------
+
+        """
+        if any([x in method.upper() for x in ["U", "SPA", "PNO", "HCB"]]):
+            # simulate entirely in HCB representation if no singles are involved
+            if "S" not in method.upper().split("-")[-1] and "HCB" not in method.upper():
+                method = "HCB-"+method
+            U = self.make_upccgsd_ansatz(name=method)
+            if "hcb" in method.lower():
+                H = self.make_hardcore_boson_hamiltonian()
+            else:
+                H = self.make_hamiltonian()
+            E = ExpectationValue(H=H, U=U)
+            from tequila import minimize
+            return minimize(objective=E, *args, **kwargs).energy
+        else:
+            from tequila.quantumchemistry import INSTALLED_QCHEMISTRY_BACKENDS
+            if "pyscf" not in INSTALLED_QCHEMISTRY_BACKENDS:
+                raise TequilaMadnessException("PySCF needs to be installed to compute {}/MRA-PNO".format(method))
+            else:
+                from tequila.quantumchemistry import QuantumChemistryPySCF
+                molx = QuantumChemistryPySCF.from_tequila(self)
+                return molx.compute_energy(method=method)
+
+
     def local_qubit_map(self, hcb=False):
         # re-arrange orbitals to result in more local circuits
         # does not make the circuit more local, but rather will show locality better in pictures
@@ -287,6 +327,25 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         qubit_map = {x: i for i, x in enumerate(ordered_qubits)}
         return qubit_map
 
+    def make_spa_ansatz(self, label=None, hcb=False):
+        """
+        Shortcut for convenience
+        Parameters
+        ----------
+        label:
+           label for the angles
+        hcb:
+           if True the circuit will not map from HCB to JW (or other encodings that might be supported in the future)
+        Returns
+        -------
+        Default SPA ansatz (equivalent to PNO-UpCCD with madness PNOs)
+
+        """
+        name="SPA-UpCCD"
+        if hcb:
+            name="HCB-"+name
+        return make_upccgsd_ansatz(name=name, label=label)
+
     def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None, hcb_optimization=None, *args, **kwargs):
         """
         Overwriting baseclass to allow names like : PNO-UpCCD etc
@@ -294,9 +353,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         ----------
         label: label the variables of the ansatz ( variables will be labelled (indices, X, (label, layer) witch X=D/S)
         direct_compiling: Directly compile the first layer (works only for transformation that implement the hcb_to_me function)
-        name: ansatz name (PNO-UpCCD, PNO-UpCCGD, PNO-UpCCGSD, UpCCGSD ...
+        name: ansatz name (SPA-UpCCD or SPA-D, SPA-UpCCGD or SPA-GD, SPA-UpCCGSD or SPA-GSD, UpCCGSD or GSD ..., in general {HCB}-{SPA}-{Excitations}
+              if HCB is included in name: do not map from hard-core Boson to qubit encoding of this molecule
+              if SPA is included in name: Use the separable pair ansatz (excitations will be restricted to the PNO structure of the surrogate model)
+              Excitations: can be "S" (use only singles), "D" (use only doubles), "GSD" (generalized singles and doubles), "GASD" (approximate singles, neglecting Z terms in JW)
         neglect_z: neglect all Z terms in singles excitations generators
-        order: repetition of layers
+        order: repetition of layers, can be given over the name as well, the order needs to be the first in the name then (i.e. 2-UpCCGSD, 2-SPA-GSD, etc)
         args
         kwargs
 
@@ -306,17 +368,24 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         """
         # check if the used qubit encoding has a hcb transformation
         have_hcb_trafo = self.transformation.hcb_to_me() is not None
+        name = name.upper()
 
-        if "HCB" in name and "S" in name:
+        # Default Method
+        if "SPA" in name and name.split("-")[-1] in ["SPA", "HCB"]:
+            name+= "-D"
+
+        excitations = name.split("-")[-1]
+
+        if "HCB" in name and "S" in excitations:
             raise TequilaMadnessException("name={}, HCB + Singles can't be realized".format(name))
 
-        if "HCB" in name and "D" not in name:
+        if "HCB" in name and "D" not in excitations:
             raise warnings.warn("name={}, HCB without Doubles has no result ".format(name), TequilaWarning)
 
-        if "S" not in name and "D" not in name:
+        if "S" not in excitations and "D" not in excitations:
             raise warnings.warn("name={}, neither singles nor doubles requested".format(name), TequilaWarning)
 
-        if "T" in name or "Q" in name:
+        if "T" in excitations or "Q" in excitations:
             raise warnings.warn("name={}, only singles and doubles supported".format(name), TequilaWarning)
 
         if (have_hcb_trafo or "HCB" in name) and hcb_optimization is None:
@@ -325,7 +394,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if hcb_optimization and direct_compiling is None:
             direct_compiling = True
 
-        if ("A" in name) and neglect_z is None:
+        if ("A" in excitations) and neglect_z is None:
             neglect_z = True
         else:
             neglect_z = False
@@ -351,19 +420,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                                                           label=(label, 0))
             indices0 = [k.name[0] for k in U.extract_variables()]
             indices1 = self.make_upccgsd_indices(label=label, name=name, exclude=indices0, *args, **kwargs)
-            if "D" in name:
+            if "D" in excitations:
                 U += self.make_hardcore_boson_upccgd_layer(indices=indices1, label=(label, 0), *args, **kwargs)
             indices = indices0 + indices1
             if "HCB" not in name:
                 U = self.hcb_to_me(U=U)
             else:
-                assert "S" not in name
-            if "S" in name:
+                assert "S" not in excitations
+            if "S" in excitations:
                 U += self.make_upccgsd_singles(indices=indices, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
         else:
             indices = self.make_upccgsd_indices(label=(label, 0), name=name, *args, **kwargs)
             U = self.prepare_reference()
-            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, include_doubles="D" in name, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
+            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in excitations, include_doubles="D" in excitations, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
 
         if order > 1:
             for layer in range(1, order):
@@ -371,7 +440,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if "HCB" in name:
                     U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, layer), *args, **kwargs)
                 else:
-                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in name, include_doubles="D" in name, label=(label, layer), neglect_z=neglect_z, *args, **kwargs)
+                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in excitations, include_doubles="D" in excitations, label=(label, layer), neglect_z=neglect_z, *args, **kwargs)
         return U
 
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
@@ -432,12 +501,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         if idx not in exclude and idx not in indices:
                             indices.append(idx)
 
-        if "PNO" or "SPA" in name:
+        if "PNO" in name or "SPA" in name:
             return indices
 
         virtuals = [i for i in self.orbitals if len(i.pno_pair) == 2]
         virtuals += self.get_virtual_orbitals()  # this is usually empty
-
         # HF-X -- PNO-XY/PNO-YY indices
         for i in self.get_reference_orbitals():
             for a in virtuals:

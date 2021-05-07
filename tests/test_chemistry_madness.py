@@ -3,6 +3,9 @@ import numpy
 import os
 import tequila as tq
 
+from tequila.quantumchemistry import INSTALLED_QCHEMISTRY_BACKENDS
+has_pyscf = "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS
+
 root = os.environ.get("MAD_ROOT_DIR")
 executable = tq.quantumchemistry.madness_interface.QuantumChemistryMadness.find_executable(root)
 print("root = ", root)
@@ -77,7 +80,7 @@ def test_madness_full_be():
     U = molecule.make_upccgsd_ansatz()
     E = tq.ExpectationValue(H=H, U=U)
     result = tq.minimize(method="bfgs", objective=E, initial_values=0.0, silent=True)
-    assert (numpy.isclose(-14.614662051580321, result.energy, atol=1.e-5))
+    assert (numpy.isclose(-14.614662051580321, result.energy, atol=1.e-3))
 
 
 @pytest.mark.parametrize("trafo", ["BravyiKitaev", "JordanWigner", "BravyiKitaevTree", "ReorderedJordanWigner",
@@ -92,55 +95,84 @@ def test_madness_upccgsd(trafo):
                       transformation=trafo)
 
     H = mol.make_hardcore_boson_hamiltonian()
-    U = mol.make_upccgsd_ansatz(name="HCB-UpCCGD", direct_compiling="ladder")
+    oigawert=numpy.linalg.eigvalsh(H.to_matrix())[0]
+    U = mol.make_upccgsd_ansatz(name="HCB-UpCCGD", direct_compiling=True)
     E = tq.ExpectationValue(H=H, U=U)
+    assert (len(E.extract_variables()) == 6)
     result = tq.minimize(E)
-    assert numpy.isclose(result.energy, -14.60307768, atol=1.e-3)
+    assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
 
     U = mol.make_upccgsd_ansatz(name="HCB-PNO-UpCCD")
-    print(U)
     E = tq.ExpectationValue(H=H, U=U)
+    assert (len(E.extract_variables()) == 2)
     result = tq.minimize(E)
-    assert numpy.isclose(result.energy, -14.60266198, atol=1.e-3)
+    assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
 
     H = mol.make_hamiltonian()
-    U = mol.make_upccgsd_ansatz(name="PNO-UpCCD")
-    print(U)
+    oigawert2=numpy.linalg.eigvalsh(H.to_matrix())[0]
+    U = mol.make_upccgsd_ansatz(name="SPA-D")
     E = tq.ExpectationValue(H=H, U=U)
+    assert (len(E.extract_variables()) == 2)
     variables = result.variables
     if "bravyi" in trafo.lower():
         # signs of angles change in BK compared to JW-like HCB
         variables = {k: -v for k, v in variables.items()}
-        print(variables)
     energy = tq.simulate(E, variables)
     result = tq.minimize(E)
-    assert numpy.isclose(result.energy, -14.60266198, atol=1.e-3)
-    assert numpy.isclose(energy, -14.60266198, atol=1.e-3)
+    assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
+    assert numpy.isclose(energy, oigawert, atol=1.e-3)
+    e3 = mol.compute_energy(method="SPA")
+    assert numpy.isclose(result.energy, e3)
+    e3 = mol.compute_energy(method="HCB-SPA")
+    assert numpy.isclose(result.energy, e3)
+    e3 = mol.compute_energy(method="SPA-UpCCD")
+    assert numpy.isclose(result.energy, e3)
 
-    U = mol.make_upccgsd_ansatz(name="PNO-UpCCSD")
+    U = mol.make_upccgsd_ansatz(name="SPA-UpCCSD")
     E = tq.ExpectationValue(H=H, U=U)
+    assert (len(E.extract_variables()) == 4)
     result = tq.minimize(E)
     assert numpy.isclose(result.energy, -14.60266198, atol=1.e-3)
 
-    U = mol.make_upccgsd_ansatz(name="PNO-UpCCGSD")
+    U = mol.make_upccgsd_ansatz(name="SPA-UpCCGSD") # in this case no difference to SPA-UpCCSD
     E = tq.ExpectationValue(H=H, U=U)
+    assert (len(E.extract_variables()) == 4)
     result = tq.minimize(E)
     assert numpy.isclose(result.energy, -14.60266198, atol=1.e-3)
 
     U = mol.make_upccgsd_ansatz(name="UpCCSD")
     E = tq.ExpectationValue(H=H, U=U)
+    print(U)
+    assert (len(E.extract_variables()) == 8)
     result = tq.minimize(E)
-    assert numpy.isclose(result.energy, -14.60266198, atol=1.e-3)
+    assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
 
     U = mol.make_upccgsd_ansatz(name="UpCCGSD")
     E = tq.ExpectationValue(H=H, U=U)
+    assert (len(E.extract_variables()) == 12)
     result = tq.minimize(E)
-    assert numpy.isclose(result.energy, -14.60307768, atol=1.e-3)
+    assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
 
     U = mol.make_upccgsd_ansatz(name="UpCCGSD", direct_compiling=False)
     E = tq.ExpectationValue(H=H, U=U)
+    assert (len(E.extract_variables()) == 12)
     result = tq.minimize(E)
-    assert numpy.isclose(result.energy, -14.60307768, atol=1.e-3)
+    assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
+
+@pytest.mark.skipif(not has_pyscf, reason="PySCF not installed")
+@pytest.mark.skipif(executable is None and not os.path.isfile('balanced_be_gtensor.npy'), reason="madness not installed and no files found")
+def test_madness_pyscf_bridge():
+    mol = tq.Molecule(name="balanced_be", geometry="Be 0.0 0.0 0.0", n_pno=2, pno={"diagonal": True, "maxrank": 1}, )
+    H = mol.make_hamiltonian()
+    e1 = numpy.linalg.eigvalsh(H.to_matrix())[0]
+    e2 = mol.compute_energy("fci")
+    e3 = mol.compute_energy("ccsd")
+    e4 = mol.compute_energy("ccsd(t)")
+    assert numpy.isclose(e1, e2)
+    # CCSD(T) and CCSD are not exact but close in this case
+    # primarily testing a functioning interface and keywords here
+    assert numpy.isclose(e1, e4, atol=1.e-3)
+    assert numpy.isclose(e3, e4, atol=1.e-3)
 
 
 @pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "ReorderedJordanWigner",
@@ -157,12 +189,13 @@ def test_madness_separated_objective(trafo):
                       transformation=trafo)
 
     E = mol.make_separated_objective(direct_compiling=direct_compiling)
-    E2 = tq.ExpectationValue(H=mol.make_hardcore_boson_hamiltonian(), U=mol.make_upccgsd_ansatz(name="HCB-PNO-UpCCD", direct_compiling=direct_compiling))
+    E2 = tq.ExpectationValue(H=mol.make_hardcore_boson_hamiltonian(),
+                             U=mol.make_upccgsd_ansatz(name="HCB-PNO-UpCCD", direct_compiling=direct_compiling))
 
     dE1 = tq.grad(E)
     dE2 = tq.grad(E2)
     for x in range(10):
-        variables = {k:numpy.random.uniform(-2.0*numpy.pi, 2.0*numpy.pi,1)[0] for k in E.extract_variables()}
+        variables = {k: numpy.random.uniform(-2.0 * numpy.pi, 2.0 * numpy.pi, 1)[0] for k in E.extract_variables()}
         f1 = tq.simulate(E, variables=variables)
         f2 = tq.simulate(E2, variables=variables)
         assert numpy.isclose(f1, f2, atol=1.e-4)
@@ -193,12 +226,13 @@ def test_madness_separated_objective_active_space(trafo):
     result = tq.minimize(E)
     assert numpy.isclose(result.energy, -14.58913708)
 
-    E2 = tq.ExpectationValue(H=mol.make_hardcore_boson_hamiltonian(), U=mol.make_upccgsd_ansatz(name="HCB-PNO-UpCCD", direct_compiling=True))
+    E2 = tq.ExpectationValue(H=mol.make_hardcore_boson_hamiltonian(),
+                             U=mol.make_upccgsd_ansatz(name="HCB-PNO-UpCCD", direct_compiling=True))
     result2 = tq.minimize(E2)
     assert numpy.isclose(result.energy, result2.energy, atol=1.e-4)
 
     for x in range(10):
-        variables = {k:numpy.random.uniform(-2.0*numpy.pi, 2.0*numpy.pi,1)[0] for k in E.extract_variables()}
+        variables = {k: numpy.random.uniform(-2.0 * numpy.pi, 2.0 * numpy.pi, 1)[0] for k in E.extract_variables()}
         f1 = tq.simulate(E, variables=variables)
         f2 = tq.simulate(E2, variables=variables)
         assert numpy.isclose(f1, f2, atol=1.e-4)
