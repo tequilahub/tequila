@@ -306,7 +306,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 return molx.compute_energy(method=method)
 
 
-    def local_qubit_map(self, hcb=False):
+    def local_qubit_map(self, hcb=False, up_then_down=False):
         # re-arrange orbitals to result in more local circuits
         # does not make the circuit more local, but rather will show locality better in pictures
         # transform circuits and Hamiltonians with this map
@@ -320,9 +320,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 up = [i for i in pnos]
                 ordered_qubits += up
             else:
-                up = [self.transformation.up(i) for i in pnos]
-                down = [self.transformation.down(i) for i in pnos]
-                ordered_qubits += up + down
+                if up_then_down:
+                    up = [self.transformation.up(i) for i in pnos]
+                    down = [self.transformation.down(i) for i in pnos]
+                    ordered_qubits += up + down
+                else:
+                    for i in pnos:
+                        ordered_qubits.append(self.transformation.up(i))
+                        ordered_qubits.append(self.transformation.down(i))
 
         qubit_map = {x: i for i, x in enumerate(ordered_qubits)}
         return qubit_map
