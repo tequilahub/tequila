@@ -91,7 +91,7 @@ def test_madness_upccgsd(trafo):
     n_pno = 2
     if os.path.isfile('balanced_be_gtensor.npy'):
         n_pno = None
-    mol = tq.Molecule(name="balanced_be", geometry="Be 0.0 0.0 0.0", n_pno=n_pno, pno={"diagonal": True, "maxrank": 1},
+    mol = tq.Molecule(name="balanced_be", frozen_core=False, geometry="Be 0.0 0.0 0.0", n_pno=n_pno, pno={"diagonal": True, "maxrank": 1},
                       transformation=trafo)
 
     H = mol.make_hardcore_boson_hamiltonian()
