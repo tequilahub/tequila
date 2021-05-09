@@ -82,7 +82,7 @@ def show_available_optimizers(module=None):
 def minimize(objective,
              method: str = "bfgs",
              variables: list=None,
-             initial_values: typing.Union[dict,numbers.Number]=0.0,
+             initial_values: typing.Union[dict,numbers.Number, typing.Callable]=0.0,
              maxiter: int=None,
              *args,
              **kwargs):
@@ -138,6 +138,8 @@ def minimize(objective,
                 initial_values = {assign_variable(k): float(numpy.random.uniform(-2.0*numpy.pi, 2.0*numpy.pi,1)) for k in objective.extract_variables()}
             elif hasattr(initial_values, "lower") and initial_values.lower not in ["random", "zero"]:
                 raise TequilaException("Initial values needs to be Dict[hashable variable name, float] or a single float,'zero','random'. You gave\n{}={}".format(type(initial_values),initial_values))
+            elif callable(initial_values):
+                initial_values = {k:initial_values(k) for k in objective.extract_variables()}
             else:
                 initial_values = {assign_variable(k): float(v) for k, v in initial_values.items()}
             return v.minimize(

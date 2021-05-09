@@ -52,7 +52,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  active_orbitals: list = "auto",
                  executable: str = None,
                  n_pno: int = None,
-                 frozen_core=False,
+                 frozen_core=True,
                  n_virt: int = 0,
                  *args,
                  **kwargs):
@@ -351,7 +351,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             name="HCB-"+name
         return self.make_upccgsd_ansatz(name=name, label=label)
 
-    def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None, hcb_optimization=None, *args, **kwargs):
+    def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None, hcb_optimization=None, include_reference=True, *args, **kwargs):
         """
         Overwriting baseclass to allow names like : PNO-UpCCD etc
         Parameters
@@ -393,7 +393,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if "T" in excitations or "Q" in excitations:
             raise warnings.warn("name={}, only singles and doubles supported".format(name), TequilaWarning)
 
-        if (have_hcb_trafo or "HCB" in name) and hcb_optimization is None:
+        if (have_hcb_trafo and "D" in excitations or "HCB" in name) and include_reference and hcb_optimization is None:
             hcb_optimization = True
 
         if hcb_optimization and direct_compiling is None:
@@ -401,8 +401,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         if ("A" in excitations) and neglect_z is None:
             neglect_z = True
+            # spin adaption does not work with z neglected
+            if "spin_adapt_singles" not in kwargs:
+                kwargs["spin_adapt_singles"] = False
         else:
             neglect_z = False
+            # switch on by default
+            if "spin_adapt_singles" not in kwargs:
+                kwargs["spin_adapt_singles"] = True
 
         if direct_compiling and not have_hcb_trafo and not "HCB" in name:
             raise TequilaMadnessException(
@@ -420,15 +426,20 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 order = 1
 
         # first layer
+        U = QCircuit()
         if hcb_optimization:
-            U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=True, direct_compiling=direct_compiling,
+            if "D" in excitations:
+                U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=include_reference, direct_compiling=direct_compiling,
                                                           label=(label, 0))
+            elif include_reference:
+                U = mol.prepare_hardcore_boson_reference()
+
             indices0 = [k.name[0] for k in U.extract_variables()]
             indices1 = self.make_upccgsd_indices(label=label, name=name, exclude=indices0, *args, **kwargs)
             if "D" in excitations:
                 U += self.make_hardcore_boson_upccgd_layer(indices=indices1, label=(label, 0), *args, **kwargs)
             indices = indices0 + indices1
-            if "HCB" not in name:
+            if "HCB" not in name and len(U.gates) > 0:
                 U = self.hcb_to_me(U=U)
             else:
                 assert "S" not in excitations
@@ -436,7 +447,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 U += self.make_upccgsd_singles(indices=indices, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
         else:
             indices = self.make_upccgsd_indices(label=(label, 0), name=name, *args, **kwargs)
-            U = self.prepare_reference()
+            if include_reference:
+                U = self.prepare_reference()
             U += self.make_upccgsd_layer(indices=indices, include_singles="S" in excitations, include_doubles="D" in excitations, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
 
         if order > 1:
@@ -575,7 +587,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             raise TequilaMadnessException(
                 "Currently only closed shell supported for MRA-PNO-MP2, you demanded multiplicity={} for the surrogate".format(
                     self.parameters.multiplicity))
-        data["dft"] = {"charge": self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 3.e-4,
+        data["dft"] = {"charge": self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 5.e-4, "localize":"boys",
                        "ncf": "( none , 1.0 )"}
         data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4, "diagonal":True}
         if not frozen_core:

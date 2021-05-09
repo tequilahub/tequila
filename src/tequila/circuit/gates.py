@@ -1024,8 +1024,13 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         mapped_control = self.control
         if mapped_control is not None:
             mapped_control=tuple([qubit_map[i] for i in self.control])
-        return type(self)(angle=self.parameter, generator=mapped_generator, p0=mapped_p0, assume_real=self.assume_real, control=mapped_control)
-
+        result = copy.deepcopy(self)
+        result.generator=mapped_generator
+        result.p0 = mapped_p0
+        result._target = result.extract_targets(mapped_generator)
+        result._control = mapped_control
+        result.finalize()
+        return result
 
     def compile(self):
         # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475

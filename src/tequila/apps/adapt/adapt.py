@@ -410,3 +410,4 @@ class ObjectiveFactorySequentialExcitedState(ObjectiveFactoryBase):
             S2 = ExpectationValue(H=Qp, U=circuit+Ux.dagger())
             objective += numpy.abs(self.factors[i])*S2
         return objective
+
