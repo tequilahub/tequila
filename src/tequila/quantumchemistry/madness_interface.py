@@ -432,7 +432,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=include_reference, direct_compiling=direct_compiling,
                                                           label=(label, 0))
             elif include_reference:
-                U = mol.prepare_hardcore_boson_reference()
+                U = self.prepare_hardcore_boson_reference()
 
             indices0 = [k.name[0] for k in U.extract_variables()]
             indices1 = self.make_upccgsd_indices(label=label, name=name, exclude=indices0, *args, **kwargs)
