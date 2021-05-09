@@ -1218,7 +1218,7 @@ class QuantumChemistryBase:
                             order: int = None,
                             assume_real: bool = True,
                             use_hcb: bool = None,
-                            spin_adapt_singles: bool = False,
+                            spin_adapt_singles: bool = True,
                             neglect_z = False,
                             *args, **kwargs):
         """
@@ -1314,7 +1314,7 @@ class QuantumChemistryBase:
         return U
 
     def make_upccgsd_layer(self, indices, include_singles=True, include_doubles=True, assume_real=True, label=None,
-                           spin_adapt_singles: bool = False, angle_transform=None, mix_sd=False, neglect_z=False, *args, **kwargs):
+                           spin_adapt_singles: bool = True, angle_transform=None, mix_sd=False, neglect_z=False, *args, **kwargs):
         U = QCircuit()
         for idx in indices:
             assert len(idx) == 1
@@ -1338,7 +1338,7 @@ class QuantumChemistryBase:
                                            spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform, neglect_z=neglect_z)
         return U
 
-    def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapt_singles=False, label=None, angle_transform=None,
+    def make_upccgsd_singles(self, indices="UpCCGSD", spin_adapt_singles=True, label=None, angle_transform=None,
                              assume_real=True, neglect_z=False, *args, **kwargs):
         if neglect_z and "jordanwigner" not in self.transformation.name.lower():
             raise TequilaException("neglegt-z approximation in UpCCGSD singles needs the (Reversed)JordanWigner representation")
