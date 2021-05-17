@@ -35,7 +35,7 @@ def assign_name(parameter):
     return str(parameter)
 
 
-def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True, decompose_control_generators=False,
+def export_to_qpic(circuit: QCircuit, filename=None, filepath=None, always_use_generators=True, decompose_control_generators=False,
                    group_together=False, qubit_names=None, mark_parametrized_gates=True, *args, **kwargs) -> str:
     result = ""
     # define tequila blue color
@@ -118,6 +118,8 @@ def export_to_qpic(circuit: QCircuit, filename=None, always_use_generators=True,
         filenamex = filename
         if not filenamex.endswith(".qpic"):
             filenamex = filename + ".qpic"
+        if filepath is not None:
+            filenamex = "{}/{}".format(filepath, filenamex)
         with open(filenamex, "w") as file:
             file.write(result)
     return result
@@ -157,19 +159,29 @@ def export_to(circuit: QCircuit,
         raise Exception("export_to: No filetype given {}, expected something like {}.pdf".format(filename, filename))
 
     filename_tmp = filename.split(".")
-    ftype = filename_tmp[-1]
-    fname = "".join(filename_tmp[:-1])
     if len(filename_tmp) == 1:
         ftype = ".pdf"
         fname = filename
+    else:
+        ftype = filename_tmp[-1]
+        fname = "".join(filename_tmp[:-1])
+
+    fpath=None
+    tmp = fname.split("/")
+    fname = tmp[-1]
+    if len(tmp) > 1:
+        fpath="".join([x+"/" for x in tmp[:-1]])
+        if filename[0] == "/":
+            fpath = "/"+fpath
 
     compiled = Compiler(trotterized=True)(circuit)
 
     export_to_qpic(circuit=compiled,
                    filename=fname,
+                   filepath=fpath,
                    always_use_generators=always_use_generators,
                    decompose_control_generators=decompose_control_generators,
                    group_together=group_together,
                    qubit_names=qubit_names, *args, **kwargs)
     if ftype != "qpic":
-        subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype])
+        subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype], cwd=fpath)
