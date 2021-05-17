@@ -34,6 +34,9 @@ def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable 
     else:
         variable = assign_variable(variable)
 
+    if variable not in objective.extract_variables():
+        return 0.0
+
     if no_compile:
         compiled = objective
     else:
@@ -195,7 +198,8 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
 
     hamiltonian = E.H
     unitary = E.U
-    assert (unitary.verify())
+    if not (unitary.verify()):
+        raise TequilaException("error in grad_expectationvalue unitary is {}".format(unitary))
 
     # fast return if possible
     if variable not in unitary.extract_variables():
@@ -206,14 +210,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
     dO = Objective()
     for idx_g in param_gates:
         idx, g = idx_g
-        # failsafe
-        if g.is_controlled():
-            raise TequilaException("controlled gate in gradient: Compiler was not called. Gate is {}".format(g))
-        if not hasattr(g, "eigenvalues_magnitude"):
-            raise TequilaException('No shift found for gate {}'.format(g))
-
         dOinc = __grad_shift_rule(unitary, g, idx, variable, hamiltonian)
-
         dO += dOinc
 
     assert dO is not None
@@ -245,25 +242,6 @@ def __grad_shift_rule(unitary, g, i, variable, hamiltonian):
             Ex = Objective.ExpectationValue(U=Ux, H=hamiltonian)
             dOinc += wx*Ex
         return dOinc
+    else:
+        raise TequilaException('No shift found for gate {}\nWas the compiler called?'.format(g))
 
-    if not hasattr(g, "eigenvalues_magnitude"):
-        raise TequilaException("No shift-rule found for gate {}. Neither shifted_gates nor eigenvalues_magnitude not defined".format(g))
-
-    # neo_a and neo_b are the shifted versions of gate g needed to evaluate its gradient
-    shift_a = g._parameter + pi / (4 * g.eigenvalues_magnitude)
-    shift_b = g._parameter - pi / (4 * g.eigenvalues_magnitude)
-    neo_a = copy.deepcopy(g)
-    neo_a._parameter = shift_a
-    neo_b = copy.deepcopy(g)
-    neo_b._parameter = shift_b
-
-    U1 = unitary.replace_gates(positions=[i], circuits=[neo_a])
-    w1 = g.eigenvalues_magnitude * __grad_inner(g.parameter, variable)
-
-    U2 = unitary.replace_gates(positions=[i], circuits=[neo_b])
-    w2 = -g.eigenvalues_magnitude * __grad_inner(g.parameter, variable)
-
-    Oplus = ExpectationValueImpl(U=U1, H=hamiltonian)
-    Ominus = ExpectationValueImpl(U=U2, H=hamiltonian)
-    dOinc = w1 * Objective(args=[Oplus]) + w2 * Objective(args=[Ominus])
-    return dOinc

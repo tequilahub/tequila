@@ -11,13 +11,16 @@ import pytest
 
 # Get QC backends for parametrized testing
 import select_backends
+
 simulators = select_backends.get()
 samplers = select_backends.get(sampler=True)
 
+
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("assume_real", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0 * numpy.pi, 1))
-def test_gradient_UY_HX(simulator, angle_value, controlled, silent=True):
+def test_gradient_UY_HX(simulator, angle_value, controlled, assume_real, silent=True):
     # case X Y
     # U = cos(angle/2) + sin(-angle/2)*i*Y
     # <0|Ud H U |0> = cos^2(angle/2)*<0|X|0>
@@ -35,7 +38,7 @@ def test_gradient_UY_HX(simulator, angle_value, controlled, silent=True):
     H = paulis.X(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, assume_real=assume_real, angle=angle)
     else:
         U = gates.X(target=qubit) + gates.X(target=qubit) + gates.Ry(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
@@ -54,8 +57,9 @@ def test_gradient_UY_HX(simulator, angle_value, controlled, silent=True):
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("assume_real", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0 * numpy.pi, 1))
-def test_gradient_UY_HX_sample(simulator, angle_value, controlled, silent=True):
+def test_gradient_UY_HX_sample(simulator, angle_value, controlled, assume_real, silent=True):
     # case X Y
     # U = cos(angle/2) + sin(-angle/2)*i*Y
     # <0|Ud H U |0> = cos^2(angle/2)*<0|X|0>
@@ -73,7 +77,7 @@ def test_gradient_UY_HX_sample(simulator, angle_value, controlled, silent=True):
     H = paulis.X(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, assume_real=assume_real, angle=angle)
     else:
         U = gates.X(target=qubit) + gates.X(target=qubit) + gates.Ry(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
@@ -92,8 +96,9 @@ def test_gradient_UY_HX_sample(simulator, angle_value, controlled, silent=True):
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("assume_real", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0 * numpy.pi, 1))
-def test_gradient_UX_HY(simulator, angle_value, controlled, silent=False):
+def test_gradient_UX_HY(simulator, angle_value, controlled, assume_real, silent=True):
     # case YX
     # U = cos(angle/2) + sin(-angle/2)*i*X
     # O = cos*sin*i*<0|YX|0> + sin*cos*(-i)<0|XY|0>
@@ -107,7 +112,7 @@ def test_gradient_UX_HY(simulator, angle_value, controlled, silent=False):
     H = paulis.Y(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Rx(target=qubit, control=control, assume_real=assume_real, angle=angle)
     else:
         U = gates.Rx(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
@@ -125,8 +130,9 @@ def test_gradient_UX_HY(simulator, angle_value, controlled, silent=False):
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("assume_real", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0 * numpy.pi, 1))
-def test_gradient_UHZH_HY(simulator, angle_value, controlled, silent=False):
+def test_gradient_UHZH_HY(simulator, angle_value, controlled, assume_real, silent=True):
     angle = Variable(name="angle")
     variables = {angle: angle_value}
 
@@ -135,6 +141,7 @@ def test_gradient_UHZH_HY(simulator, angle_value, controlled, silent=False):
     if controlled:
         control = 1
         U = gates.X(target=control) + gates.H(target=qubit) + gates.Rz(target=qubit, control=control,
+                                                                       assume_real=assume_real,
                                                                        angle=angle) + gates.H(target=qubit)
     else:
         U = gates.H(target=qubit) + gates.Rz(target=qubit, angle=angle) + gates.H(target=qubit)
@@ -153,8 +160,9 @@ def test_gradient_UHZH_HY(simulator, angle_value, controlled, silent=False):
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("assume_real", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0 * numpy.pi, 1))
-def test_gradient_PHASE_HY(simulator, angle_value, controlled, silent=False):
+def test_gradient_PHASE_HY(simulator, angle_value, controlled, assume_real, silent=True):
     angle = Variable(name="angle")
     variables = {angle: angle_value}
 
@@ -163,6 +171,7 @@ def test_gradient_PHASE_HY(simulator, angle_value, controlled, silent=False):
     if controlled:
         control = 1
         U = gates.X(target=control) + gates.H(target=qubit) + gates.Phase(target=qubit, control=control,
+                                                                          assume_real=assume_real,
                                                                           phi=angle) + gates.H(target=qubit)
     else:
         U = gates.H(target=qubit) + gates.Phase(target=qubit, phi=angle) + gates.H(target=qubit)
@@ -182,8 +191,9 @@ def test_gradient_PHASE_HY(simulator, angle_value, controlled, silent=False):
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("assume_real", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0 * numpy.pi, 1))
-def test_gradient_UY_HX_wfnsim(simulator, angle_value, controlled, silent=True):
+def test_gradient_UY_HX_wfnsim(simulator, angle_value, controlled, assume_real, silent=True):
     # same as before just with wavefunction simulation
 
     # case X Y
@@ -203,7 +213,7 @@ def test_gradient_UY_HX_wfnsim(simulator, angle_value, controlled, silent=True):
     H = paulis.X(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Ry(target=qubit, control=control, assume_real=assume_real, angle=angle)
     else:
         U = gates.Ry(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
@@ -223,8 +233,9 @@ def test_gradient_UY_HX_wfnsim(simulator, angle_value, controlled, silent=True):
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
+@pytest.mark.parametrize("assume_real", [False, True])
 @pytest.mark.parametrize("angle", numpy.random.uniform(0.0, 2.0 * numpy.pi, 1))
-def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
+def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, assume_real, silent=True):
     # same as before just with wavefunction simulation
 
     # case YX
@@ -241,7 +252,7 @@ def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, silent=True):
     H = paulis.Y(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control) + gates.Rx(target=qubit, control=control, angle=angle)
+        U = gates.X(target=control) + gates.Rx(target=qubit, control=control, assume_real=assume_real, angle=angle)
     else:
         U = gates.Rx(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
@@ -440,10 +451,10 @@ def test_gradient_deep_H(simulator, power, controls):
 
     assert (numpy.isclose(dE, numpy.pi * numpy.sin(angle(variables) * (numpy.pi)) / 2, atol=1.e-4))
 
-def test_qubit_excitations():
 
+def test_qubit_excitations():
     H = paulis.Projector("1.0*|100>")
-    U1 = gates.X(0) + gates.QubitExcitation(target=[0,1], angle="a", assume_real=True)
+    U1 = gates.X(0) + gates.QubitExcitation(target=[0, 1], angle="a", assume_real=True)
     U2 = gates.X(0) + gates.Trotterized(generators=[U1.gates[1].make_generator()], angles=["a"], steps=1)
     E1 = ExpectationValue(H=H, U=U1)
     E2 = ExpectationValue(H=H, U=U2)
@@ -453,17 +464,17 @@ def test_qubit_excitations():
     for a in numpy.random.uniform(-numpy.pi, numpy.pi, 5):
         a = float(a)
         variables = {"a": a}
-        wfn1 = simulate(U1,variables=variables)
-        wfn2 = simulate(U2,variables=variables)
-        F = numpy.abs(wfn1.inner(wfn2))**2
+        wfn1 = simulate(U1, variables=variables)
+        wfn2 = simulate(U2, variables=variables)
+        F = numpy.abs(wfn1.inner(wfn2)) ** 2
         assert numpy.isclose(F, 1.0, 1.e-4)
         eval1 = simulate(dE1, variables=variables)
         eval2 = simulate(dE2, variables=variables)
         assert numpy.isclose(eval1, eval2, 1.e-4)
 
     H = paulis.Projector("1.0*|0110>")
-    U1 = gates.X([1,2]) + gates.QubitExcitation(target=[0,1,3,2], angle="a", assume_real=True)
-    U2 = gates.X([1,2]) + gates.Trotterized(generators=[U1.gates[2].make_generator()], angles=["a"], steps=1)
+    U1 = gates.X([1, 2]) + gates.QubitExcitation(target=[0, 1, 3, 2], angle="a", assume_real=True)
+    U2 = gates.X([1, 2]) + gates.Trotterized(generators=[U1.gates[2].make_generator()], angles=["a"], steps=1)
     E1 = ExpectationValue(H=H, U=U1)
     E2 = ExpectationValue(H=H, U=U2)
     dE1 = grad(E1, "a")
@@ -472,10 +483,11 @@ def test_qubit_excitations():
     for a in numpy.random.uniform(-numpy.pi, numpy.pi, 5):
         a = float(a)
         variables = {"a": a}
-        wfn1 = simulate(U1,variables=variables)
-        wfn2 = simulate(U2,variables=variables)
-        F = numpy.abs(wfn1.inner(wfn2))**2
+        wfn1 = simulate(U1, variables=variables)
+        wfn2 = simulate(U2, variables=variables)
+        F = numpy.abs(wfn1.inner(wfn2)) ** 2
         assert numpy.isclose(F, 1.0, 1.e-4)
         eval1 = simulate(dE1, variables=variables)
         eval2 = simulate(dE2, variables=variables)
+        print(dE1.get_expectationvalues()[1].U)
         assert numpy.isclose(eval1, eval2, 1.e-4)
