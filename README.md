@@ -136,33 +136,33 @@ print("FCI : {:+2.8}f".format(fci))
 Do you want to create your own methods? Check out the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials)!
 
 # Research projects using Tequila
-J.S. Kottmann, A. Anand, A. Aspuru-Guzik.
-A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.
-Chemical Science, 2021, [doi.org/10.1039/D0SC06627C](https://doi.org/10.1039/D0SC06627C).
-[arxiv.org/abs/2011.05938](https://arxiv.org/abs/2011.05938)
-General techniques are implemented in the chemistry modules of tequila.
-See the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials) for examples.
+J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
+A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.  
+Chemical Science, 2021, [doi.org/10.1039/D0SC06627C](https://doi.org/10.1039/D0SC06627C).  
+[arxiv.org/abs/2011.05938](https://arxiv.org/abs/2011.05938)  
+General techniques are implemented in the chemistry modules of tequila.  
+See the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials) for examples.  
 
-J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.
-Reducing Qubit Requirements while Maintaining Numerical Precision for the Variational Quantum Eigensolver: A Basis-Set-Free Approach.
-J.Phys.Chem.Lett., 2021, [doi.org/10.1021/acs.jpclett.0c03410](https://doi.org/10.1021/acs.jpclett.0c03410).
-[arxiv.org/abs/2008.02819](https://arxiv.org/abs/2008.02819)
-[example code](https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryBasisSetFreeVQE.ipynb)
-[tutorial on the madness interface](https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryMadnessInterface.ipynb)
+J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.  
+Reducing Qubit Requirements while Maintaining Numerical Precision for the Variational Quantum Eigensolver: A Basis-Set-Free Approach.  
+J.Phys.Chem.Lett., 2021, [doi.org/10.1021/acs.jpclett.0c03410](https://doi.org/10.1021/acs.jpclett.0c03410).  
+[arxiv.org/abs/2008.02819](https://arxiv.org/abs/2008.02819)  
+[example code](https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryBasisSetFreeVQE.ipynb)  
+[tutorial on the madness interface](https://github.com/aspuru-guzik-group/tequila/blob/master/tutorials/ChemistryMadnessInterface.ipynb)  
 
-A. Cervera-Lierta, J.S. Kottmann, A. Aspuru-Guzik.
-The Meta-Variational Quantum Eigensolver.
-[arxiv.org/abs/2009.13545](https://arxiv.org/abs/2009.13545)
-[example code](https://github.com/aspuru-guzik-group/Meta-VQE)
+A. Cervera-Lierta, J.S. Kottmann, A. Aspuru-Guzik.  
+The Meta-Variational Quantum Eigensolver.  
+[arxiv.org/abs/2009.13545](https://arxiv.org/abs/2009.13545)  
+[example code](https://github.com/aspuru-guzik-group/Meta-VQE)    
 
-J.S. Kottmann, M. Krenn, T.H. Kyaw, S. Alperin-Lea, A. Aspuru-Guzik.
-Quantum Computer-Aided design of Quantum Optics Hardware.
-[arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)
-[example code](https://github.com/kottmanj/Photonic)
+J.S. Kottmann, M. Krenn, T.H. Kyaw, S. Alperin-Lea, A. Aspuru-Guzik.  
+Quantum Computer-Aided design of Quantum Optics Hardware.  
+[arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)  
+[example code](https://github.com/kottmanj/Photonic)  
 
-A. Anand, M. Degroote, A. Aspuru-Guzik.
-Natural Evolutionary Strategies for Variational Quantum Computation.
-[arxiv.org/abs/2012.00101](https://arxiv.org/abs/2012.00101)
+A. Anand, M. Degroote, A. Aspuru-Guzik.  
+Natural Evolutionary Strategies for Variational Quantum Computation.  
+[arxiv.org/abs/2012.00101](https://arxiv.org/abs/2012.00101)  
 
 J. S. Kottmann, A. Aspuru-Guzik,  
 Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a Separable Pair Approximation,  
