@@ -164,6 +164,12 @@ A. Anand, M. Degroote, A. Aspuru-Guzik.
 Natural Evolutionary Strategies for Variational Quantum Computation.
 [arxiv.org/abs/2012.00101](https://arxiv.org/abs/2012.00101)
 
+J. S. Kottmann, A. Aspuru-Guzik,  
+Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a Separable Pair Approximation,  
+[arxiv.org/abs/2105.03836](https://arxiv.org/abs/2105.03836)  
+example code coming soon  
+implementation currently only on [devel](https://github.com/aspuru-guzik-group/tequila/tree/devel) branch.  
+
 Let us know, if you want your research project to be included in this list!
 
 # Dependencies
