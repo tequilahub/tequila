@@ -56,7 +56,7 @@ def test_madness_full_li_plus():
     # relies on madness being compiled and MAD_ROOT_DIR exported
     # or pno_integrals in the path
     geomstring = "Li 0.0 0.0 0.0"
-    molecule = tq.Molecule(name="li+", geometry=geomstring, n_pno=1, charge=1)
+    molecule = tq.Molecule(name="li+", geometry=geomstring, n_pno=1, charge=1, frozen_core=False) # need to deactivate frozen_core, otherwise there is no active orbital
     H = molecule.make_hamiltonian()
     UHF = molecule.prepare_reference()
     EHF = tq.simulate(tq.ExpectationValue(H=H, U=UHF))
