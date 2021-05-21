@@ -53,6 +53,10 @@ You can install `tequila` directly with pip over:
 ```bash
 pip install git+https://github.com/aspuru-guzik-group/tequila.git
 ```
+Install from devel branch (most recent updates):
+```bash
+pip install git+https://github.com/aspuru-guzik-group/tequila.git@devel
+```
 
 Recommended Python version is 3.7.
 Python 3.8 works, but not all (optional) dependencies support it yet (e.g. Psi4).
@@ -77,6 +81,15 @@ pip install tequila-basic
 # install qulacs and/or other backends and use it within tequila
 pip install qulacs
 ```
+
+# Install with Windows
+```bash
+pip install git+https://github.com/aspuru-guzik-group/tequila.git@windows
+```
+See also the troubleshooting below if you want to tweak things manually.  
+The command above will not install the qulacs simulator.  
+You can install it on windows OS, but you need to have cmake and c++ compilers ready (can be installed for example over visual studio).  
+Of course you can also use one of the other backends (see above).  
 
 # Getting Started
 Check out the tutorial notebooks provided in tutorials.
