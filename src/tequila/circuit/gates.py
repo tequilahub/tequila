@@ -845,7 +845,7 @@ def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union
 
 
 def QubitExcitation(angle: typing.Union[numbers.Real, Variable, typing.Hashable], target: typing.List, control=None,
-                    assume_real: bool = False, compile_options="optimized"):
+                    assume_real: bool = False, compile_options="optimize"):
     """
     A Qubit Excitation, as described under "qubit perspective" in https://doi.org/10.1039/D0SC06627C
     For the Fermionic operators under corresponding Qubit encodings: Use the chemistry interface
@@ -1016,7 +1016,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         if compile_options is None:
             self.compile_options = "optimize"
         else:
-            self.compile_options = compile_options
+            self.compile_options = compile_options.lower()
 
     def map_qubits(self, qubit_map: dict):
         mapped_generator = self.generator.map_qubits(qubit_map=qubit_map)
@@ -1035,14 +1035,14 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
     def compile(self):
         # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475
         # Alternative representation in arxiv:2104.05695 (not implemented -> could be added and controlled with optional compile keywords)
-        if self.compile == "optimize" and len(self.target) == 2:
+        if self.compile_options == "optimize" and len(self.target) == 2:
             p,q = self.target
             U0 = X(target=p)
             U0 += X(target=p, control=q)
             U0 += X(target=p)
             U1 = Ry(angle=self.parameter, target=q, control=p)
             return U0 + U1 + U0
-        elif self.compile == "optimize" and len(self.target) == 4:
+        elif self.compile_options == "optimize" and len(self.target) == 4:
             p,q,r,s = self.target
             U0 = X(target=q, control=p)
             U0 += X(target=s, control=r)
