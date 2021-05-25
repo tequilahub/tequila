@@ -1015,8 +1015,10 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         self.assume_real = assume_real
         if compile_options is None:
             self.compile_options = "optimize"
-        else:
+        elif hasattr(compile_options, "lower"):
             self.compile_options = compile_options.lower()
+        else:
+            self.compile_options = compile_options
 
     def map_qubits(self, qubit_map: dict):
         mapped_generator = self.generator.map_qubits(qubit_map=qubit_map)
