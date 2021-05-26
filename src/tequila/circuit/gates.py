@@ -974,18 +974,12 @@ returns a QCircuit of primitive tq gates
 """
 
 class QubitExcitationImpl(impl.DifferentiableGateImpl):
-    @staticmethod
-    def extract_targets(generator):
-        targets = []
-        for ps in generator.paulistrings:
-            targets += [k for k in ps.keys()]
-        return tuple(set(targets))
 
     @property
     def steps(self):
         return 1
 
-    def __init__(self, angle, target=None, generator=None, p0=None, assume_real=True, control=None, compile_options=None):
+    def __init__(self, angle, target, generator=None, p0=None, assume_real=True, control=None, compile_options=None):
         angle = assign_variable(angle)
 
         if generator is None:
@@ -1004,8 +998,6 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         else:
             assert generator is not None
             assert p0 is not None
-            target=self.extract_targets(generator)
-            #raise Exception("Unsafe, target order matters")
 
         super().__init__(name="QubitExcitation", parameter=angle, target=target, control=control)
         self.generator = generator
@@ -1047,7 +1039,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             U1 = Ry(angle=self.parameter, target=q, control=p)
             return U0 + U1 + U0
         elif self.compile_options == "optimize" and len(self.target) == 4:
-            p,q,r,s = self.target
+            p,r,q,s = self.target
             U0 = X(target=q, control=p)
             U0 += X(target=s, control=r)
             U0 += X(target=r, control=p)
