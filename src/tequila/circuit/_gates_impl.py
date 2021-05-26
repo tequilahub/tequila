@@ -426,7 +426,7 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", angle=" + str(self.angle)
+        result += ", angle=" + str(self.parameter)
         result += ", generator=" + str(self.generator)
         result += ")"
         return result
