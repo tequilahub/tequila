@@ -1004,8 +1004,10 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         else:
             assert generator is not None
             assert p0 is not None
+            target=self.extract_targets(generator)
+            #raise Exception("Unsafe, target order matters")
 
-        super().__init__(name="QubitExcitation", parameter=angle, target=self.extract_targets(generator), control=control)
+        super().__init__(name="QubitExcitation", parameter=angle, target=target, control=control)
         self.generator = generator
         if control is not None:
             # augment p0 for control qubits
@@ -1029,7 +1031,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         result = copy.deepcopy(self)
         result.generator=mapped_generator
         result.p0 = mapped_p0
-        result._target = result.extract_targets(mapped_generator)
+        result._target = tuple([qubit_map[x] for x in self.target])
         result._control = mapped_control
         result.finalize()
         return result

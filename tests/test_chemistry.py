@@ -310,7 +310,9 @@ def test_hcb(trafo):
 
     mol2 = tq.Molecule(geometry=geomstring, active_orbitals=[1,2,3,4,5,6], basis_set="sto-3g", transformation=trafo)
     H = mol2.make_hamiltonian()
-    U = mol2.make_upccgsd_ansatz(name="UpCCGD", use_hcb=False)
+    U = mol2.make_upccgsd_ansatz(name="UpCCGD", hcb_optimization=False)
+    #U = mol2.prepare_reference() + mol2.make_excitation_gate(indices=[(0,4),(1,5)], angle="a")# tq.gates.QubitExcitation(angle="a", target=[0,2,6,8])
+    print(U)
     E = tq.ExpectationValue(H=H, U=U)
     energy2 = tq.minimize(E).energy
 

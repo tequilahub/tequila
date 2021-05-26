@@ -1217,7 +1217,7 @@ class QuantumChemistryBase:
                             label: str = None,
                             order: int = None,
                             assume_real: bool = True,
-                            use_hcb: bool = None,
+                            hcb_optimization: bool = None,
                             spin_adapt_singles: bool = True,
                             neglect_z = False,
                             *args, **kwargs):
@@ -1273,14 +1273,14 @@ class QuantumChemistryBase:
         have_hcb_trafo = self.transformation.hcb_to_me() is not None
 
         # consistency checks for optimization
-        if have_hcb_trafo and use_hcb is None:
-            use_hcb = True
+        if have_hcb_trafo and hcb_optimization is None:
+            hcb_optimization = True
         if "HCB" in name:
-            use_hcb = True
-        if use_hcb and not have_hcb_trafo and "HCB" not in name:
+            hcb_optimization = True
+        if hcb_optimization and not have_hcb_trafo and "HCB" not in name:
             raise TequilaException(
                 "use_hcb={} but transformation={} has no \'hcb_to_me\' function. Try transformation=\'ReorderedJordanWigner\'".format(
-                    use_hcb, self.transformation))
+                    hcb_optimization, self.transformation))
         if "S" in name and "HCB" in name:
             if "HCB" in name and "S" in name:
                 raise Exception(
@@ -1288,7 +1288,7 @@ class QuantumChemistryBase:
                         name))
 
         # first layer
-        if not use_hcb:
+        if not hcb_optimization:
             U = QCircuit()
             if include_reference:
                 U = self.prepare_reference()
@@ -1321,10 +1321,10 @@ class QuantumChemistryBase:
             idx = idx[0]
             angle = (tuple([idx]), "D", label)
             if include_doubles:
-                if  "jordanwigner" in self.transformation.name.lower():
+                if  "jordanwigner" in self.transformation.name.lower() and not self.transformation.up_then_down:
                     # we can optimize with qubit excitations for the JW representation
                     target=[self.transformation.up(idx[0]), self.transformation.up(idx[1]), self.transformation.down(idx[0]), self.transformation.down(idx[1])]
-                    U += gates.QubitExcitation(angle=angle, target=target, **kwargs)
+                    U += gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, **kwargs)
                 else:
                     U += self.make_excitation_gate(angle=angle,
                                                    indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
