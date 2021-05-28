@@ -6,7 +6,7 @@ from tequila import TequilaException
 from tequila.objective.objective import Variable, FixedVariable, assign_variable,Objective,VectorObjective
 from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
-from numpy import pi
+from numpy import pi, sqrt
 
 from dataclasses import dataclass
 
@@ -228,6 +228,18 @@ class DifferentiableGateImpl(ParametrizedGateImpl):
             r = self.eigenvalues_magnitude
 
         s =  pi / (4 * r)
+        if self.is_controlled() and not self.assume_real:
+            shifts = [s, -s, 3 * s, -3 * s]
+            coeff1 = (sqrt(2) + 1)/(2 * sqrt(2)) * r
+            coeff2 = (sqrt(2) - 1)/(2 * sqrt(2)) * r
+            coefficients = [coeff1, -coeff1, -coeff2, coeff2]
+            circuits = []
+            for i, shift in enumerate(shifts):
+                shifted_gate = copy.deepcopy(self)
+                shifted_gate.parameter += shift
+                circuits.append((coefficients[i], shifted_gate))
+            return circuits
+
         shift_a = self.parameter + s
         shift_b = self.parameter - s
         right = copy.deepcopy(self)
@@ -240,11 +252,7 @@ class DifferentiableGateImpl(ParametrizedGateImpl):
             p0 = paulis.Qp(self.control) # Qp = |0><0|
             right2 = GeneralizedRotationImpl(angle=s, generator=p0, eigenvalues_magnitude=r/2)  # controls are in p0
             left2 = GeneralizedRotationImpl(angle=-s, generator=p0, eigenvalues_magnitude=r/2)  # controls are in p0
-            if not self.assume_real:
-                # 4-point shift rule of arxiv:2104.05695 would saves gates here
-                return [(r/2, [right, right2]), (-r/2, [left , left2]), (r/2, [right , left2]), (-r/2, [left , right2])]
-            else:
-                return [(r, [right, right2]), (-r, [left , left2])]
+            return [(r, [right, right2]), (-r, [left , left2])]
         else:
             return [ (r, right), (-r, left) ]
 
