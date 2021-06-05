@@ -1,4 +1,4 @@
-from tequila.circuit._gates_impl import QGateImpl
+from tequila.circuit._gates_impl import QGateImpl, assign_variable
 from tequila import TequilaException
 from tequila import BitNumbering
 import typing, copy
@@ -519,6 +519,35 @@ class QCircuit():
         # could speed up by applying qubit_map to parameter_map here
         # currently its recreated in the init function
         return QCircuit(gates=new_gates)
+
+    def map_variables(self, variables: dict, inplace=False, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        variables
+            dictionary with old variable names as keys and new variable names or values as values
+        Returns
+        -------
+        Circuit with changed variables
+
+        """
+
+        if not inplace:
+            return copy.deepcopy(self).map_variables(variables=variables, inplace=True, *args, **kwargs)
+
+        variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+
+        # failsafe
+        my_variables = self.extract_variables()
+        for k,v in variables.items():
+            if k not in my_variables:
+                warnings.warn("map_variables: variable {} is not part of circuit with variables {}".format(k,my_variables))
+
+        new_gates = [gate.map_variables(variables) for gate in self.gates]
+
+        return QCircuit(gates=new_gates)
+
 
 
 class Moment(QCircuit):
