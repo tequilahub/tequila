@@ -229,9 +229,10 @@ class DifferentiableGateImpl(ParametrizedGateImpl):
 
         s =  pi / (4 * r)
         if self.is_controlled() and not self.assume_real:
+            # following https://arxiv.org/abs/2104.05695
             shifts = [s, -s, 3 * s, -3 * s]
-            coeff1 = (sqrt(2) + 1)/(2 * sqrt(2)) * r
-            coeff2 = (sqrt(2) - 1)/(2 * sqrt(2)) * r
+            coeff1 = (sqrt(2) + 1)/sqrt(8) * r
+            coeff2 = (sqrt(2) - 1)/sqrt(8) * r
             coefficients = [coeff1, -coeff1, -coeff2, coeff2]
             circuits = []
             for i, shift in enumerate(shifts):
