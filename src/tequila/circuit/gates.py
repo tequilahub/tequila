@@ -1059,8 +1059,8 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             # following https://arxiv.org/abs/2104.05695
             s = 0.25 * np.pi
             shifts = [s, -s, 3 * s, -3 * s]
-            coeff1 = (sqrt(2) + 1)/sqrt(8)
-            coeff2 = (sqrt(2) - 1)/sqrt(8)
+            coeff1 = (np.sqrt(2) + 1)/np.sqrt(8)
+            coeff2 = (np.sqrt(2) - 1)/np.sqrt(8)
             coefficients = [coeff1, -coeff1, -coeff2, coeff2]
             circuits = []
             for i, shift in enumerate(shifts):
