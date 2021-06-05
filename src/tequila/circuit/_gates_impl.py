@@ -62,6 +62,7 @@ class QGateImpl:
         return self.generator
 
     def map_variables(self, variables):
+
         if self.is_parametrized():
             self.parameter=self.parameter.map_variables(variables)
 

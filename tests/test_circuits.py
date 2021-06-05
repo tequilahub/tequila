@@ -300,10 +300,10 @@ def test_variable_map():
     variables = {"a":"aa", "b":"bb", "c":"cc", "d":"dd", "e":"ee"}
     U2 = U.map_variables(variables=variables)
     variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+    manual_extract = sum([g.extract_variables() for g in U.gates], [])
+    assert sorted([str(x) for x in manual_extract]) == sorted([str(x) for x in list(variables.keys())])
     assert sorted([str(x) for x in U.extract_variables()]) == sorted([str(x) for x in list(variables.keys())])
     assert sorted([str(x) for x in U2.extract_variables()]) == sorted([str(x) for x in list(variables.values())])
-    U.map_variables(variables=variables, inplace=True)
-    assert sorted([str(x) for x in U.extract_variables()]) == sorted([str(x) for x in list(variables.values())])
 
 
 

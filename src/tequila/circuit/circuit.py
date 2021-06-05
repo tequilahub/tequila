@@ -520,7 +520,7 @@ class QCircuit():
         # currently its recreated in the init function
         return QCircuit(gates=new_gates)
 
-    def map_variables(self, variables: dict, inplace=False, *args, **kwargs):
+    def map_variables(self, variables: dict, *args, **kwargs):
         """
 
         Parameters
@@ -533,9 +533,6 @@ class QCircuit():
 
         """
 
-        if not inplace:
-            return copy.deepcopy(self).map_variables(variables=variables, inplace=True, *args, **kwargs)
-
         variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
 
         # failsafe
@@ -544,7 +541,7 @@ class QCircuit():
             if k not in my_variables:
                 warnings.warn("map_variables: variable {} is not part of circuit with variables {}".format(k,my_variables))
 
-        new_gates = [gate.map_variables(variables) for gate in self.gates]
+        new_gates = [copy.deepcopy(gate).map_variables(variables) for gate in self.gates]
 
         return QCircuit(gates=new_gates)
 

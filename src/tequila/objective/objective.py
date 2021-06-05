@@ -208,7 +208,7 @@ class Objective:
 
         return Objective(args=mapped_args, transformation=self.transformation)
 
-    def map_variables(self, variables, inplace=False, *args, **kwargs):
+    def map_variables(self, variables, *args, **kwargs):
         """
 
         Parameters
@@ -221,15 +221,12 @@ class Objective:
 
         """
 
-        if not inplace:
-            return copy.deepcopy(self).map_variables(variables=variables, inplace=True)
-
         variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
 
         mapped_args = []
         for arg in self.args:
             if hasattr(arg, "map_variables"):
-                mapped_args.append(arg.map_variables(variables=variables, inplace=inplace))
+                mapped_args.append(arg.map_variables(variables=variables))
             else:
                 mapped_args.append(arg)
 

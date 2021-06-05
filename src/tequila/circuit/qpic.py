@@ -35,7 +35,7 @@ def assign_name(parameter):
 
     try:
         return repr(parameter)
-    except
+    except:
         return str(parameter)
 
 
