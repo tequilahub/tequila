@@ -170,6 +170,7 @@ J.S. Kottmann, M. Krenn, T.H. Kyaw, S. Alperin-Lea, A. Aspuru-Guzik.
 Quantum Computer-Aided design of Quantum Optics Hardware.  
 [arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)  
 [example code](https://github.com/kottmanj/Photonic)  
+[slides](https://github.com/kottmanj/Photonic/blob/master/slides.pdf)  
 
 A. Anand, M. Degroote, A. Aspuru-Guzik.  
 Natural Evolutionary Strategies for Variational Quantum Computation.  
