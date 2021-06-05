@@ -1055,21 +1055,31 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             return Trotterized(angle=self.parameter, generator=self.generator, steps=1)
 
     def shifted_gates(self):
+        if not self.assume_real:
+            # following https://arxiv.org/abs/2104.05695
+            s = 0.25 * np.pi
+            shifts = [s, -s, 3 * s, -3 * s]
+            coeff1 = (sqrt(2) + 1)/sqrt(8)
+            coeff2 = (sqrt(2) - 1)/sqrt(8)
+            coefficients = [coeff1, -coeff1, -coeff2, coeff2]
+            circuits = []
+            for i, shift in enumerate(shifts):
+                shifted_gate = copy.deepcopy(self)
+                shifted_gate.parameter += shift
+                circuits.append((coefficients[i], shifted_gate))
+            return circuits
+
         r = 0.25
         s = 0.5*np.pi
 
         Up1 = copy.deepcopy(self)
-        Up1._parameter=self.parameter+s
+        Up1._parameter = self.parameter+s
         Up1 = QCircuit.wrap_gate(Up1)
         Up2 = GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
         Um1 = copy.deepcopy(self)
-        Um1._parameter=self.parameter-s
+        Um1._parameter = self.parameter-s
         Um1 = QCircuit.wrap_gate(Um1)
         Um2 = GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
 
-        if not self.assume_real:
-            # 4-point shift rule of arxiv:2104.05695 saves gates
-            return [(r, Up1 + Up2), (-r, Um1 + Um2), (r, Up1 + Um2), (-r, Um1 + Up2)]
-        else:
-            return [(2.0 * r, Up1 +  Up2), (-2.0 * r, Um1 + Um2)]
+        return [(2.0 * r, Up1 +  Up2), (-2.0 * r, Um1 + Um2)]
 
