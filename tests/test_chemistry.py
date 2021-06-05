@@ -233,12 +233,24 @@ def test_upccgsd(geometry, trafo):
     energy2 = do_test_upccgsd(molecule, label="asd", order=2)
     assert numpy.isclose(fci, energy2, atol=1.e-3)
 
-
 def do_test_upccgsd(molecule, *args, **kwargs):
     U = molecule.make_upccgsd_ansatz(*args, **kwargs)
     H = molecule.make_hamiltonian()
     E = tq.ExpectationValue(U=U, H=H)
     result = tq.minimize(objective=E, initial_values=0.0, gradient="2-point", method="bfgs", method_options={"finite_diff_rel_step": 1.e-4, "eps": 1.e-4})
+
+    # test variable map in action
+    variables=result.variables
+    vm = {k:str(k)+"X" for k in E.extract_variables()}
+    variables2 = {vm[k]:v for k,v in variables.items()}
+    E2 = E.map_variables(vm)
+    print(E.extract_variables())
+    print(E2.extract_variables())
+    energy1 = tq.simulate(E, variables=variables)
+    energy2 = tq.simulate(E2, variables=variables2)
+    assert energy1 == energy2
+
+
     return result.energy
 
 @pytest.mark.parametrize("backend", tq.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
