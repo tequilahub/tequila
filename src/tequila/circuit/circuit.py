@@ -1,8 +1,9 @@
 from tequila.circuit._gates_impl import QGateImpl, assign_variable
-from tequila import TequilaException
+from tequila import TequilaException, TequilaWarning
 from tequila import BitNumbering
 import typing, copy
 from collections import defaultdict
+import warnings
 
 
 class QCircuit():
@@ -539,7 +540,7 @@ class QCircuit():
         my_variables = self.extract_variables()
         for k,v in variables.items():
             if k not in my_variables:
-                warnings.warn("map_variables: variable {} is not part of circuit with variables {}".format(k,my_variables))
+                warnings.warn("map_variables: variable {} is not part of circuit with variables {}".format(k,my_variables), TequilaWarning)
 
         new_gates = [copy.deepcopy(gate).map_variables(variables) for gate in self.gates]
 
