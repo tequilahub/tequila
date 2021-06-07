@@ -254,7 +254,7 @@ class OptimizerGD(Optimizer):
         last = e
 
         if not self.silent:
-            print("iter.        <O>          Δ<O>      max(d<O>)   rms(d<O>)")   
+            print("iter.        <O>          Δ<O>      max(d<O>)   rms(d<O>)")
 
         for step in range(1, maxiter):
             comment = ""
@@ -367,7 +367,10 @@ class OptimizerGD(Optimizer):
 
         if compile_gradient:
             grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
-            dE = CallableVector([comp_grad_obj[k] for k in comp_grad_obj.keys()])
+            if(gradient['method'] == 'standard_spsa'):
+                dE = comp_grad_obj
+            else:
+                dE = CallableVector([comp_grad_obj[k] for k in comp_grad_obj.keys()])
 
         ostring = id(comp)
         if not self.silent:
@@ -656,7 +659,7 @@ class DIIS:
                  drop: str='error',
                  ) -> None:
         """DIIS accelerator for gradient descent methods.
-        
+
         Setup a DIIS accelerator. Every gradient step, the optimizer should
         call the push() method to update the DIIS internal list of error
         vectors (i.e. gradients) and parameter vectors. A DIIS parameter
@@ -668,15 +671,15 @@ class DIIS:
         vectors exceed ndiis, older vectors are dropped according to,
         - Age, if drop == 'first'
         - Error magnitude if drop == 'error' (the default).
-        
+
         Note: DIIS only works when the optimizer is fairly close to the sought
         value. If initiated too far, the DIIS iteration will often start
         oscillating wildly and generally not converge at all. However, if DIIS
         is initiated close to the true solution, the acceleration can be
         massive, and will often yields the last few sig figs way faster than
         GD on its own.
-        
-        
+
+
         Parameters
         ----------
         ndiis: int:
@@ -733,7 +736,7 @@ class DIIS:
         """Update DIIS calculator with parameter and error vectors."""
         if len(self.error) == self.ndiis:
             self.drop(self.P, self.error)
-            
+
         self.error += [error_vector]
         self.P += [param_vector]
 

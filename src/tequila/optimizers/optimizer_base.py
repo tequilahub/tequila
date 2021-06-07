@@ -10,6 +10,7 @@ from tequila.circuit.gradient import grad
 from dataclasses import dataclass, field
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 import numpy
+from random import choices
 
 
 class TequilaOptimizerException(TequilaException):
@@ -486,6 +487,10 @@ class Optimizer:
             if all([isinstance(x, Objective) for x in gradient.values()]):
                 dO = gradient
                 compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
+            elif 'method' in gradient and gradient['method'] == 'standard_spsa':
+                dO = None
+                compiled = self.compile_objective(objective=objective)
+                compiled_grad = _SPSAGrad(objective=compiled, variables=variables, **gradient)
             else:
                 dO = None
                 compiled = self.compile_objective(objective=objective)
@@ -743,3 +748,97 @@ class _NumGrad:
             how many expectationvalues are in self.objective
         """
         return self.objective.count_expectationvalues(*args, **kwargs)
+
+class _SPSAGrad:
+    """ Simultaneous Perturbation Stochastic Approximation Gradient object.
+
+    Should not be used outside of optimizers.
+    Can't interact with other tequila structures.
+
+    Attributes
+    ----------
+
+    objective:
+        the objective whose gradient is to be approximated.
+    variables:
+        the variables with respect to which the gradient is taken.
+    stepsize:
+        the size of the small constant for shifting.
+
+    """
+
+    def __init__(self, objective, variables, stepsize, method=None):
+        """
+
+        Parameters
+        ----------
+        objective: Objective:
+            the objective whose gradient is to be approximated.
+        variables:
+            the variables the gradient of objective with respect to which is taken.
+        stepsize:
+            the small shift by which to displace variable around a point.
+        """
+        self.objective = objective
+        self.variables = variables
+        self.stepsize = stepsize
+        if method is None or method == "standard_spsa":
+            self.method = self.standard_spsa
+        else:
+            self.method = method
+
+    @staticmethod
+    def standard_spsa(obj, vars, keys, step, *args, **kwargs):
+        """
+        calculate objective gradient using standar spsa.
+        Parameters
+        ----------
+        obj: Objective:
+            objective to call.
+        vars:
+            variables to feed to the objective.
+        key:
+            which variables to shift, i.e, which variable's gradient is being called.
+        step:
+            the size of the shift; a small float.
+        args
+        kwargs
+
+        Returns
+        -------
+        the approximated gradient of obj w.r.t var at point vars as a float.
+
+        """
+
+        dim = len(keys)
+        perturbation_vector = choices([-1,1],k = dim)
+        left = copy.deepcopy(vars)
+        right = copy.deepcopy(vars)
+        for i, key in enumerate(keys):
+            left[key] += perturbation_vector[i] * step
+            right[key] -= perturbation_vector[i] * step
+        numerator = obj(left, *args, **kwargs) - obj(right, *args, **kwargs)
+        gradient = list()
+        for i in range(dim):
+            gradientComponent = numerator / (2 * step * perturbation_vector[i])
+            gradient.append(gradientComponent)
+        return gradient
+
+    def __call__(self, variables, *args, **kwargs):
+        """
+        convenience function to call self.method, e.g one of the staticmethods of this class.
+
+        Parameters
+        ----------
+        variables:
+            the variables constitutive of the point at which numerical gradients of self.objective are to be taken
+        args
+        kwargs
+
+        Returns
+        -------
+        type:
+            generally, float, the result of the numerical gradient.
+        """
+
+        return self.method(self.objective, variables, self.variables, self.stepsize, *args, **kwargs)
