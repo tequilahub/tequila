@@ -48,6 +48,8 @@ class OptimizerGD(Optimizer):
     rho:
         a float. Hyperparameter: scales (perhaps nonlinearly) all second moment terms in any relavant method.
         in some literature, may be referred to as 'beta_2'.
+    c:
+        a float. Hyperparameter: The step rate used in the spsa gradient.
     epsilon:
         a float. Hyperparameter: used to prevent division by zero in some methods.
     tol:
@@ -73,7 +75,7 @@ class OptimizerGD(Optimizer):
     @classmethod
     def available_methods(cls):
         """:return: All tested available methods"""
-        return ['adam', 'adagrad', 'adamax', 'nadam', 'sgd', 'momentum', 'nesterov', 'rmsprop', 'rmsprop-nesterov']
+        return ['adam', 'adagrad', 'adamax', 'nadam', 'sgd', 'momentum', 'nesterov', 'rmsprop', 'rmsprop-nesterov', 'spsa']
 
 
     @classmethod
@@ -87,6 +89,7 @@ class OptimizerGD(Optimizer):
                  lr: numbers.Real = 0.1,
                  beta: numbers.Real = 0.9,
                  rho: numbers.Real = 0.999,
+                 c: numbers.Real = 0.2,
                  epsilon: numbers.Real = 1.0 * 10 ** (-7),
                  diis: typing.Optional[dict] = None,
                  backend=None,
@@ -152,7 +155,9 @@ class OptimizerGD(Optimizer):
             'momentum': self._momentum,
             'nesterov': self._nesterov,
             'rmsprop': self._rms,
-            'rmsprop-nesterov': self._rms_nesterov}
+            'rmsprop-nesterov': self._rms_nesterov,
+            'spsa':'spsa'
+            }
 
         self.f = method_dict[method.lower()]
         self.gradient_lookup = {}
@@ -165,6 +170,7 @@ class OptimizerGD(Optimizer):
         self.lr = lr
         self.beta = beta
         self.rho = rho
+        self.c = c
         self.epsilon = epsilon
 
         # DIIS quantities
@@ -340,9 +346,11 @@ class OptimizerGD(Optimizer):
                     self.device = arg.U.device
                     break
 
+        if(self.f == 'spsa'):
+            gradient = {"method": "standard_spsa", "stepsize": self.c}
+            self.f = self._sgd
 
         compile_gradient = True
-
         dE = None
         if isinstance(gradient, str):
             if gradient.lower() == 'qng':
