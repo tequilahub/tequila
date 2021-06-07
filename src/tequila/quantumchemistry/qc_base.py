@@ -1681,9 +1681,6 @@ class QuantumChemistryBase:
         def _get_qop_hermitian(of_operator) -> QubitHamiltonian:
             """ Returns Hermitian part of Fermion operator as QubitHamiltonian """
             qop = self.transformation(of_operator)
-            from openfermion import QubitOperator
-            print(isinstance(qop, QubitOperator))
-            qop = QubitHamiltonian(of_operator)
             #qop = QubitHamiltonian(self.transformation(of_operator))
             real, imag = qop.split(hermitian=True)
             if real:
