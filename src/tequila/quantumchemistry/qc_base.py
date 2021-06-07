@@ -1680,7 +1680,11 @@ class QuantumChemistryBase:
 
         def _get_qop_hermitian(of_operator) -> QubitHamiltonian:
             """ Returns Hermitian part of Fermion operator as QubitHamiltonian """
-            qop = QubitHamiltonian(self.transformation(of_operator))
+            qop = self.transformation(of_operator)
+            from openfermion import QubitOperator
+            print(isinstance(qop, QubitOperator))
+            qop = QubitHamiltonian(of_operator)
+            #qop = QubitHamiltonian(self.transformation(of_operator))
             real, imag = qop.split(hermitian=True)
             if real:
                 return real
@@ -1911,6 +1915,42 @@ class QuantumChemistryBase:
                 rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q + 1, 2 * r + 1, 2 * s + 1]
 
         return rdm1_spinsum, rdm2_spinsum
+
+    def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None,
+                                    gamma: float = 1.4, n_ri: int = None,
+                                    external_info: dict = None, **kwargs) -> float:
+        """
+        Computes the spin-free [2]_R12 correction, needing only the 1- and 2-RDM of a reference method
+        Requires either 1-RDM, 2-RDM or information to compute them in kwargs
+
+        Parameters
+        ----------
+        rdm1 :
+            1-electron reduced density matrix
+        rdm2 :
+            2-electron reduced density matrix
+        gamma :
+            f12-exponent, for a correlation factor f_12 = -1/gamma * exp[-gamma*r_12]
+        n_ri :
+            dimensionality of RI-basis; specify only, if want to truncate available RI-basis
+            if None, then the maximum available via tensors / basis-set is used
+            must not be larger than size of available RI-basis, and not smaller than size of OBS
+            for n_ri==dim(OBS), the correction returns zero
+        external_info :
+            for usage in qc_base, need to provide information where to find one-body tensor f12-tensor <rs|f_12|pq>;
+            pass dictionary with {"f12_filename": where to find f12-tensor, "scheme": ordering scheme of tensor}
+        kwargs :
+            e.g. RDM-information via {"U": QCircuit, "variables": optimal angles}, needs to be passed if rdm1,rdm2 not
+            yet computed
+
+        Returns
+        -------
+            the f12 correction for the energy
+        """
+        from .f12_corrections._f12_correction_base import ExplicitCorrelationCorrection
+        correction = ExplicitCorrelationCorrection(mol=self, rdm1=rdm1, rdm2=rdm2, gamma=gamma,
+                                                   n_ri=n_ri, external_info=external_info, **kwargs)
+        return correction.compute()
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
