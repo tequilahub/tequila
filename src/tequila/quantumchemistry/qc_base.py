@@ -52,8 +52,7 @@ class ActiveSpaceData:
 class FermionicGateImpl(gates.QubitExcitationImpl):
     # keep the overview in circuits
     def __init__(self, generator, p0, transformation,  *args, **kwargs):
-        # minus is for consistency with QubitExcitations
-        super().__init__(generator=-generator, target=generator.qubits, p0=p0, *args, **kwargs)
+        super().__init__(generator=generator, target=generator.qubits, p0=p0, *args, **kwargs)
         self._name = "FermionicExcitation"
         self.transformation=transformation
 
