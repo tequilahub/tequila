@@ -540,7 +540,7 @@ class Objective:
         evaluated = {}
         ev_array = []
         for E in self.args:
-            if E not in evaluated:
+            if E not in evaluated:#
                 expval_result = E(variables=variables, *args, **kwargs)
                 evaluated[E] = expval_result
             else:
