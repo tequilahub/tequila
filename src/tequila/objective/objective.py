@@ -548,7 +548,7 @@ class Objective:
             try:
                 expval_result = float(expval_result)
             except:
-                raise TequilaException("Objectives can only take scalar or contracted expectationvalues")
+                pass # allow array evaluation (non-standard operation)
             ev_array.append(expval_result)
         result = onp.asarray(self.transformation(*ev_array),dtype=float)
         if result.shape == ():
