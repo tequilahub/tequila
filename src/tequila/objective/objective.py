@@ -545,10 +545,16 @@ class Objective:
                 evaluated[E] = expval_result
             else:
                 expval_result = evaluated[E]
+            try:
+                expval_result = float(expval_result)
+            except:
+                raise TequilaException("Objectives can only take scalar or contracted expectationvalues")
             ev_array.append(expval_result)
         result = onp.asarray(self.transformation(*ev_array),dtype=float)
         if result.shape == ():
             return float(result)
+        elif len(result) == 1:
+            return float(result[0])
         else:
             return result
 
