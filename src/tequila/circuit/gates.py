@@ -993,14 +993,14 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
                 generator *= paulis.Sp(target[2 * i]) * paulis.Sm(target[2 * i + 1])
                 p0a *= paulis.Qp(target[2 * i]) * paulis.Qm(target[2 * i + 1])
                 p0b *= paulis.Qm(target[2 * i]) * paulis.Qp(target[2 * i + 1])
-            generator = (-1.0j * (generator - generator.dagger())).simplify()
+            generator = (1.0j * (generator - generator.dagger())).simplify()
             p0 = paulis.I() - p0a - p0b
         else:
             assert generator is not None
             assert p0 is not None
 
         super().__init__(name="QubitExcitation", parameter=angle, target=target, control=control)
-        self.generator = -generator
+        self.generator = generator
         if control is not None:
             # augment p0 for control qubits
             # Qp = 1/2(1+Z) = |0><0|
@@ -1045,7 +1045,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             U0 += X(target=r, control=p)
             U0 += X(target=q)
             U0 += X(target=s)
-            U1 = Ry(angle=-self.parameter, target=p, control=[q,r,s])
+            U1 = Ry(angle=self.parameter, target=p, control=[q,r,s])
             return U0 + U1 + U0.dagger()
         else:
             return Trotterized(angle=self.parameter, generator=self.generator, steps=1)
