@@ -295,6 +295,16 @@ def test_swap():
     wfnx = simulate(X(2)+X(3))
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
 
+def test_variable_map():
+    U = Ry(angle="a", target=0) + Rx(angle="b", target=1) + Rz(angle="c", target=2) + H(angle="d", target=3) + ExpPauli(paulistring="X(0)Y(1)Z(2)", angle="e")
+    variables = {"a":"aa", "b":"bb", "c":"cc", "d":"dd", "e":"ee"}
+    U2 = U.map_variables(variables=variables)
+    variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+    manual_extract = sum([g.extract_variables() for g in U.gates], [])
+    assert sorted([str(x) for x in manual_extract]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in U.extract_variables()]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in U2.extract_variables()]) == sorted([str(x) for x in list(variables.values())])
+
 
 
 

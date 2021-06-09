@@ -23,7 +23,7 @@ def assign_name(parameter):
     if isinstance(parameter, tuple):
         return "\\theta"
     if hasattr(parameter, "extract_variables"):
-        return str(parameter.extract_variables()).lstrip('[').rstrip(']')
+        return repr(parameter.extract_variables()).lstrip('[').rstrip(']')
     if isinstance(parameter, FixedVariable):
         for i in [1,2,3,4]:
             if numpy.isclose(numpy.abs(float(parameter)), numpy.pi/i, atol=1.e-4):
@@ -32,7 +32,11 @@ def assign_name(parameter):
                 else:
                     return "+\\pi/{}".format(i)
         return "{:+2.4f}".format(float(parameter))
-    return str(parameter)
+
+    try:
+        return repr(parameter)
+    except:
+        return str(parameter)
 
 
 def export_to_qpic(circuit: QCircuit, filename=None, filepath=None, always_use_generators=True, decompose_control_generators=False,

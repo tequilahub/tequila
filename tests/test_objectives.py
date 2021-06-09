@@ -52,6 +52,35 @@ def test_qubit_maps():
         variables = {"a":angle}
         assert np.isclose(tq.simulate(E2, variables=variables), tq.simulate(E3, variables=variables))
 
+def test_variable_map():
+    x = tq.Variable("x")
+    y = tq.Variable("y")
+    z = tq.Variable("z")
+
+    v = x**2+y+z/2
+    U = tq.gates.Ry(angle="a", target=0) + tq.gates.Rx(angle="b", target=1) + tq.gates.Rz(angle="c", target=2) + tq.gates.H(angle="d", target=3) + tq.gates.ExpPauli(paulistring="X(0)Y(1)Z(2)", angle="e")
+    U+= tq.gates.GeneralizedRotation(angle=v, generator=tq.paulis.X([0,1,2]))
+
+    H = tq.paulis.X([0,1,2,3,4])
+    E = tq.ExpectationValue(H=H, U=U)
+    O = E**2 + v + E + 2.0
+
+    variables = {"a":"aa", "b":"bb", "c":"cc", "d":"dd", "e":"ee", "x":"xx", "y":"yy", "z":"zz"}
+    variables = {tq.assign_variable(k):tq.assign_variable(v) for k,v in variables.items()}
+
+    U2 = U.map_variables(variables=variables)
+    assert sorted([str(x) for x in U.extract_variables()]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in U2.extract_variables()]) == sorted([str(x) for x in list(variables.values())])
+
+    E2 = E.map_variables(variables=variables)
+    assert sorted([str(x) for x in E.extract_variables()]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in E2.extract_variables()]) == sorted([str(x) for x in list(variables.values())])
+
+    O2 = O.map_variables(variables=variables)
+    assert sorted([str(x) for x in O.extract_variables()]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in O2.extract_variables()]) == sorted([str(x) for x in list(variables.values())])
+
+
 
 
 

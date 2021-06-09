@@ -61,6 +61,13 @@ class QGateImpl:
 
         return self.generator
 
+    def map_variables(self, variables):
+
+        if self.is_parametrized():
+            self.parameter=self.parameter.map_variables(variables)
+
+        return self
+
     def __init__(self, name, target: UnionList, control: UnionList = None, generator: QubitHamiltonian = None):
         self._name = name
         self._target = tuple(list_assignment(target))
@@ -184,7 +191,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", parameter=" + str(self._parameter)
+        result += ", parameter=" + repr(self._parameter)
         result += ")"
         return result
 
@@ -382,7 +389,7 @@ class ExponentialPauliGateImpl(DifferentiableGateImpl):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", parameter=" + str(self.parameter)
+        result += ", parameter=" + repr(self.parameter)
         result += ", paulistring=" + str(self.paulistring)
         result += ")"
         return result
@@ -426,7 +433,7 @@ class TrotterizedGateImpl(ParametrizedGateImpl):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", angle=" + str(self.parameter)
+        result += ", angle=" + repr(self.parameter)
         result += ", generator=" + str(self.generator)
         result += ")"
         return result
