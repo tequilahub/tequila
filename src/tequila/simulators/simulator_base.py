@@ -779,6 +779,8 @@ class BackendExpectationValue:
 
         if self._shape is not None:
             data = data.reshape(self._shape)
+        else:
+            data = float(data)
         if self._contraction is None:
             return data
         else:
