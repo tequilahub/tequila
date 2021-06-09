@@ -38,6 +38,9 @@ Currently you need to compile from a separate [fork](https://github.com/kottmanj
 See the github page of this fork for installation instruction.
 Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb) that illustrates the usage.
 
+- [PySCF](https://github.com/pyscf/pyscf)  
+Works similar as Psi4. Classical methods are also integrated in the madness interface allowing to use them in a basis-set-free representation.
+
 # Install from source
 **Do not** install like this: (Minecraft lovers excluded)
 <strike>`pip install tequila`</strike>

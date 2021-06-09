@@ -15,7 +15,6 @@ import tequila as tq
 
 # Get QC backends for parametrized testing
 import select_backends
-
 backends = select_backends.get()
 
 
@@ -68,7 +67,7 @@ def test_dependencies():
         assert key in qc.INSTALLED_QCHEMISTRY_BACKENDS.keys()
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="no quantum chemistry backends installed")
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="no quantum chemistry backends installed")
 def test_interface():
     molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JordanWigner")
 
@@ -345,12 +344,14 @@ def test_hcb(trafo):
     assert numpy.isclose(energy1, energy2)
 
 
+# cross testing
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.parametrize("method", ["hf", "mp2", "ccsd", "ccsd(t)", "fci"])
-@pytest.mark.parametrize("geometry", ["h 0.0 0.0 0.0\nh 0.0 0.0 0.7", "li 0.0 0.0 0.0\nh 0.0 0.0 1.5"])
+@pytest.mark.parametrize("geometry", ["h 0.0 0.0 0.0\nh 0.0 0.0 0.7", "li 0.0 0.0 0.0\nh 0.0 0.0 1.5", "Be 0.0 0.0 0.0\nH 0.0 0.0 1.5\nH 0.0 0.0 -1.5"])
 @pytest.mark.parametrize("basis_set", ["sto-3g"])
 def test_pyscf_methods(method, geometry, basis_set):
-    mol = tq.Molecule(geometry=geometry, basis_set=basis_set)
+    mol = tq.Molecule(geometry=geometry, basis_set=basis_set, backend="psi4")
     e1 = mol.compute_energy(method=method)
     c, h1, h2 = mol.get_integrals()
     mol = tq.Molecule(geometry=geometry,
@@ -360,5 +361,9 @@ def test_pyscf_methods(method, geometry, basis_set):
                       two_body_integrals=h2,
                       backend="pyscf")
     e2 = mol.compute_energy(method)
-
     assert numpy.isclose(e1, e2, atol=1.e-4)
+
+    mol = tq.Molecule(geometry=geometry, basis_set=basis_set, backend="pyscf")
+    e3 = mol.compute_energy(method)
+    assert numpy.isclose(e1, e3, atol=1.e-4)
+
