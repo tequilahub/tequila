@@ -65,7 +65,7 @@ def show_available_optimizers(module=None):
         print("available methods for optimizer module {}".format(module))
         if module not in INSTALLED_OPTIMIZERS:
             print("module {} not found!".format(module))
-            module = None 
+            module = None
 
     print("{:20} | {}".format("method", "optimizer module"))
     print("--------------------------")
@@ -74,7 +74,7 @@ def show_available_optimizers(module=None):
             continue
         for method in v.methods:
             print("{:20} | {}".format(method, k))
-    
+
     if module is None:
         print("Supported optimizer modules: ", SUPPORTED_OPTIMIZERS)
         print("Installed optimizer modules: ", list(INSTALLED_OPTIMIZERS.keys()))
@@ -133,7 +133,7 @@ def minimize(objective,
             if initial_values is None or (hasattr(initial_values, "lower") and initial_values.lower() == "zero"):
                 initial_values = {assign_variable(k): 0.0 for k in objective.extract_variables()}
             elif isinstance(initial_values, numbers.Number):
-                initial_values = {assign_variable(k): initial_values for k in objective.extract_variables()}        
+                initial_values = {assign_variable(k): initial_values for k in objective.extract_variables()}
             elif hasattr(initial_values, "lower") and initial_values.lower() == "random":
                 initial_values = {assign_variable(k): float(numpy.random.uniform(-2.0*numpy.pi, 2.0*numpy.pi,1)) for k in objective.extract_variables()}
             elif hasattr(initial_values, "lower") and initial_values.lower not in ["random", "zero"]:

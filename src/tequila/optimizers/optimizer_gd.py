@@ -41,7 +41,7 @@ class OptimizerGD(Optimizer):
     diis:
         Dictionary of parameters for the DIIS accelerator.
     lr:
-        a float. Hyperparameter: The learning rate (unscaled) to be used in each update;
+        a float or list of floats. Hyperparameter: The learning rate (unscaled) to be used in each update;
         in some literature, called a step size.
     beta:
         a float. Hyperparameter: scales (perhaps nonlinearly) all first moment terms in any relavant method.
@@ -49,7 +49,8 @@ class OptimizerGD(Optimizer):
         a float. Hyperparameter: scales (perhaps nonlinearly) all second moment terms in any relavant method.
         in some literature, may be referred to as 'beta_2'.
     c:
-        a float. Hyperparameter: The step rate used in the spsa gradient.
+        a float or list of floats. Hyperparameter: The step rate used in the spsa gradient.
+        If it is a list, the steprate will change each iteration until the last item of the list is reached.
     epsilon:
         a float. Hyperparameter: used to prevent division by zero in some methods.
     tol:
@@ -86,10 +87,10 @@ class OptimizerGD(Optimizer):
     def __init__(self, maxiter=100,
                  method='sgd',
                  tol: numbers.Real = None,
-                 lr: numbers.Real = 0.1,
+                 lr: typing.Union[numbers.Real, typing.List[numbers.Real]] = 0.1,
                  beta: numbers.Real = 0.9,
                  rho: numbers.Real = 0.999,
-                 c: numbers.Real = 0.2,
+                 c: typing.Union[numbers.Real, typing.List[numbers.Real]] = 0.2,
                  epsilon: numbers.Real = 1.0 * 10 ** (-7),
                  diis: typing.Optional[dict] = None,
                  backend=None,
@@ -111,7 +112,7 @@ class OptimizerGD(Optimizer):
         tol: numbers.Real, optional:
             if specified a tolerance that specifies when to deem that an optimization has converged.
             If None: no convergence criterion specified; __call__ runs till maxiter is reached. Must be positive, >0.
-        lr:  numbers.Real: Default = 0.1:
+        lr: numbers.Real or list of numbers.Real: Default = 0.1:
             the learning rate to use. Rescales all steps; used by every optimizer.
             Default value is 0.1; chosen by fiat.
         beta: numbers.Real: Default = 0.9
@@ -120,6 +121,8 @@ class OptimizerGD(Optimizer):
         rho: numbers.Real: Default = 0.999
             rescaling parameter for second moments in a number of methods. Must obey 0<beta<1.
             Default value suggested by original adam paper.
+        c: numbers.Real or list of numbers.Real: Default = 0.2
+            stepsize for the gradient of the spsa method
         epsilon: numbers.Real: Default = 10^-7:
             a float for prevention of division by zero in methods like adam. Must be positive.
             Default value suggested by original adam paper.
@@ -190,7 +193,15 @@ class OptimizerGD(Optimizer):
         else:
             raise TypeError("Type of DIIS is not dict")
 
-        assert all([k > .0 for k in [lr, beta, rho, epsilon]])
+        if(isinstance(lr, list)):
+            self.nextLRIndex = 0
+            for i in lr:
+                assert(i > .0)
+        else:
+            self.nextLRIndex = -1
+            assert(lr > .0)
+
+        assert all([k > .0 for k in [beta, rho, epsilon]])
         self.tol = tol
         if self.tol is not None:
             self.tol = abs(float(tol))
@@ -510,7 +521,7 @@ class OptimizerGD(Optimizer):
         r_hat = r / (1 - self.rho ** t)
         updates = []
         for i in range(len(grads)):
-            rule = - self.lr * s_hat[i] / (numpy.sqrt(r_hat[i]) + self.epsilon)
+            rule = - self.nextLearningRate() * s_hat[i] / (numpy.sqrt(r_hat[i]) + self.epsilon)
             updates.append(rule)
         new = {}
         for i, k in enumerate(active_keys):
@@ -526,7 +537,7 @@ class OptimizerGD(Optimizer):
         r += numpy.square(grads)
         new = {}
         for i, k in enumerate(active_keys):
-            new[k] = v[k] - self.lr * grads[i] / numpy.sqrt(r[i] + self.epsilon)
+            new[k] = v[k] - self.nextLearningRate() * grads[i] / numpy.sqrt(r[i] + self.epsilon)
 
         back_moments = [moments[0], r]
         return new, back_moments, grads
@@ -541,7 +552,7 @@ class OptimizerGD(Optimizer):
         r = self.rho * r + (1 - self.rho) * numpy.linalg.norm(grads, numpy.inf)
         updates = []
         for i in range(len(grads)):
-            rule = - self.lr * s[i] / r[i]
+            rule = - self.nextLearningRate() * s[i] / r[i]
             updates.append(rule)
         new = {}
         for i, k in enumerate(active_keys):
@@ -563,7 +574,7 @@ class OptimizerGD(Optimizer):
         r_hat = r / (1 - self.rho ** t)
         updates = []
         for i in range(len(grads)):
-            rule = - self.lr * (self.beta * s_hat[i] + (1 - self.beta) * grads[i] / (1 - self.beta ** t)) / (
+            rule = - self.nextLearningRate() * (self.beta * s_hat[i] + (1 - self.beta) * grads[i] / (1 - self.beta ** t)) / (
                         numpy.sqrt(r_hat[i]) + self.epsilon)
             updates.append(rule)
         new = {}
@@ -578,7 +589,7 @@ class OptimizerGD(Optimizer):
         grads = gradients(v, samples=self.samples)
         new = {}
         for i, k in enumerate(active_keys):
-            new[k] = v[k] - self.lr * grads[i]
+            new[k] = v[k] - self.nextLearningRate() * grads[i]
         return new, moments, grads
 
     def _momentum(self, gradients,
@@ -587,7 +598,7 @@ class OptimizerGD(Optimizer):
         m = moments[0]
         grads = gradients(v, samples=self.samples)
 
-        m = self.beta * m - self.lr * grads
+        m = self.beta * m - self.nextLearningRate() * grads
         new = {}
         for i, k in enumerate(active_keys):
             new[k] = v[k] + m[i]
@@ -610,7 +621,7 @@ class OptimizerGD(Optimizer):
                 interim[k] = v[k]
         grads = gradients(interim, samples=self.samples)
 
-        m = self.beta * m - self.lr * grads
+        m = self.beta * m - self.nextLearningRate() * grads
         new = {}
         for i, k in enumerate(active_keys):
             new[k] = v[k] + m[i]
@@ -627,7 +638,7 @@ class OptimizerGD(Optimizer):
         r = self.rho * r + (1 - self.rho) * numpy.square(grads)
         new = {}
         for i, k in enumerate(active_keys):
-            new[k] = v[k] - self.lr * grads[i] / numpy.sqrt(self.epsilon + r[i])
+            new[k] = v[k] - self.nextLearningRate() * grads[i] / numpy.sqrt(self.epsilon + r[i])
 
         back_moments = [moments[0], r]
         return new, back_moments, grads
@@ -651,13 +662,29 @@ class OptimizerGD(Optimizer):
 
         r = self.rho * r + (1 - self.rho) * numpy.square(grads)
         for i in range(len(m)):
-            m[i] = self.beta * m[i] - self.lr * grads[i] / numpy.sqrt(r[i])
+            m[i] = self.beta * m[i] - self.nextLearningRate() * grads[i] / numpy.sqrt(r[i])
         new = {}
         for i, k in enumerate(active_keys):
             new[k] = v[k] + m[i]
 
         back_moments = [m, r]
         return new, back_moments, grads
+
+    def nextLearningRate(self):
+        """ Return the learning rate to use
+
+        Returns
+        -------
+            float representing the learning rate to use
+        """
+        if(self.nextLRIndex == -1):
+            return self.lr
+        else:
+            if(self.nextLRIndex != len(self.lr) - 1):
+                self.nextLRIndex += 1
+                return self.lr[self.nextLRIndex-1]
+            else:
+                return self.lr[self.nextLRIndex]
 
 class DIIS:
     def __init__(self: 'DIIS',
@@ -793,7 +820,7 @@ class DIIS:
 
 
 def minimize(objective: Objective,
-             lr=0.1,
+             lr: typing.Union[float, typing.List[float]] = 0.1,
              method='sgd',
              initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
              variables: typing.List[typing.Hashable] = None,
@@ -809,6 +836,7 @@ def minimize(objective: Objective,
              save_history: bool = True,
              beta: float = 0.9,
              rho: float = 0.999,
+             c: typing.Union[float, typing.List[float]] = 0.2,
              epsilon: float = 1. * 10 ** (-7),
              *args,
              **kwargs) -> GDResults:
@@ -818,15 +846,16 @@ def minimize(objective: Objective,
     ----------
     objective: Objective :
         The tequila objective to optimize
-    lr: float >0:
+    lr: float or list of floats >0:
         the learning rate. Default 0.1.
     beta: float >0:
         scaling factor for first moments. default 0.9
     rho: float >0:
         scaling factor for second moments. default 0.999
+    c: float or list of floats:
+        stepsize for the gradient of the spsa method
     epsilon: float>0:
         small float for stability of division. default 10^-7
-
     method: string: Default = 'sgd'
         which variation on Gradient Descent to use. Options include 'sgd','adam','nesterov','adagrad','rmsprop', etc.
     initial_values: typing.Dict[typing.Hashable, numbers.Real], optional:
@@ -877,6 +906,7 @@ def minimize(objective: Objective,
                             lr=lr,
                             beta=beta,
                             rho=rho,
+                            c=c,
                             tol=tol,
                             diis=diis,
                             epsilon=epsilon,

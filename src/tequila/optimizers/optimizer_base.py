@@ -778,9 +778,17 @@ class _SPSAGrad:
             the variables the gradient of objective with respect to which is taken.
         stepsize:
             the small shift by which to displace variable around a point.
+        nextIndex:
+            Integer indicating the next index of the list stepsize to use
+            if(nextIndex == -1) stepsize is a float
         """
         self.objective = objective
         self.variables = variables
+
+        if isinstance(stepsize, list):
+            self.nextIndex = 0
+        else:
+            self.nextIndex = -1
         self.stepsize = stepsize
         if method is None or method == "standard_spsa":
             self.method = self.standard_spsa
@@ -809,7 +817,6 @@ class _SPSAGrad:
         the approximated gradient of obj w.r.t var at point vars as a float.
 
         """
-
         dim = len(keys)
         perturbation_vector = choices([-1,1],k = dim)
         left = copy.deepcopy(vars)
@@ -840,5 +847,11 @@ class _SPSAGrad:
         type:
             generally, float, the result of the numerical gradient.
         """
+        if(self.nextIndex == -1):
+            stepsize = self.stepsize
+        else:
+            stepsize = self.stepsize[self.nextIndex]
+            if(self.nextIndex != len(self.stepsize) - 1):
+                self.nextIndex += 1
 
-        return self.method(self.objective, variables, self.variables, self.stepsize, *args, **kwargs)
+        return self.method(self.objective, variables, self.variables, stepsize, *args, **kwargs)
