@@ -159,7 +159,7 @@ class OptimizerGD(Optimizer):
             'nesterov': self._nesterov,
             'rmsprop': self._rms,
             'rmsprop-nesterov': self._rms_nesterov,
-            'spsa':'spsa'
+            'spsa': self._spsa
             }
 
         self.f = method_dict[method.lower()]
@@ -357,9 +357,8 @@ class OptimizerGD(Optimizer):
                     self.device = arg.U.device
                     break
 
-        if(self.f == 'spsa'):
+        if(self.f == self._spsa):
             gradient = {"method": "standard_spsa", "stepsize": self.c}
-            self.f = self._sgd
 
         compile_gradient = True
         dE = None
@@ -591,6 +590,9 @@ class OptimizerGD(Optimizer):
         for i, k in enumerate(active_keys):
             new[k] = v[k] - self.nextLearningRate() * grads[i]
         return new, moments, grads
+
+    def _spsa(self, gradients, v, moments, active_keys, **kwargs):
+        return self._sgd(gradients=gradients, v=v, moments=moments, active_keys=active_keys, **kwargs)
 
     def _momentum(self, gradients,
                   v, moments, active_keys, **kwargs):
