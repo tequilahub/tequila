@@ -385,8 +385,9 @@ class OptimizerGD(Optimizer):
 
         if compile_gradient:
             grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
-            if(gradient['method'] == 'standard_spsa'):
-                dE = comp_grad_obj
+            if(isinstance(gradient,dict)):
+                if ('method' in gradient and gradient['method'] == 'standard_spsa'):
+                    dE = comp_grad_obj
             else:
                 dE = CallableVector([comp_grad_obj[k] for k in comp_grad_obj.keys()])
 
