@@ -240,6 +240,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
+        self.kwargs = kwargs
+
     @property
     def point_group(self):
         return self._point_group
@@ -633,7 +635,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, gamma: float = 1.4,
                                     n_ri: int = None, cabs_type: str = "active", cabs_options: dict = None,
-                                    ** kwargs) -> float:
+                                    **kwargs) -> float:
         """
         Computes the spin-free [2]_R12 correction, needing only the 1- and 2-RDM of a reference method
         Requires either 1-RDM, 2-RDM or information to compute them in kwargs

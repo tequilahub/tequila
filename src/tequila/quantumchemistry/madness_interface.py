@@ -1,5 +1,5 @@
 from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning, \
-    QCircuit, gates
+    QCircuit, gates, NBodyTensor
 from tequila import ExpectationValue, PauliString, QubitHamiltonian, simulate
 import typing
 import numpy
@@ -155,7 +155,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         assert len(h.shape) == 2
 
         # openfermion conventions
-        g = numpy.einsum("psqr", g, optimize='optimize')
+        g = NBodyTensor(elems=g, ordering='mulliken') 
+        g.reorder(to='openfermion')
+        g = g.elems
+        #g = numpy.einsum("psqr", g, optimize='optimize')
 
         orbitals = []
         if pairinfo is not None:
