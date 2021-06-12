@@ -749,7 +749,7 @@ class _NumGrad:
         """
         return self.objective.count_expectationvalues(*args, **kwargs)
 
-class _SPSAGrad:
+class _SPSAGrad(_NumGrad):
     """ Simultaneous Perturbation Stochastic Approximation Gradient object.
 
     Should not be used outside of optimizers.

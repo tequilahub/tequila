@@ -385,9 +385,9 @@ class OptimizerGD(Optimizer):
 
         if compile_gradient:
             grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
-            if(isinstance(gradient,dict)):
-                if ('method' in gradient and gradient['method'] == 'standard_spsa'):
-                    dE = comp_grad_obj
+            spsa = isinstance(gradient, dict) and "method" in gradient and "spsa" in gradient["method"].lower()
+            if spsa:
+                dE = comp_grad_obj
             else:
                 dE = CallableVector([comp_grad_obj[k] for k in comp_grad_obj.keys()])
 
@@ -396,14 +396,16 @@ class OptimizerGD(Optimizer):
             print(self)
             print("{:15} : {} expectationvalues".format("Objective", objective.count_expectationvalues()))
             if compile_gradient:
-                counts = [x.count_expectationvalues() for x in comp_grad_obj.values()]
-                print("{:15} : {} expectationvalues".format("Gradient", sum(counts)))
+                if not spsa:
+                    counts = [x.count_expectationvalues() for x in comp_grad_obj.values()]
+                    print("{:15} : {} expectationvalues".format("Gradient", sum(counts)))
                 print("{:15} : {}".format("gradient instr", gradient))
             print("{:15} : {}".format("active variables", len(active_angles)))
 
         vec_len = len(active_angles)
         first = numpy.zeros(vec_len)
         second = numpy.zeros(vec_len)
+        print(dE)
         self.gradient_lookup[ostring] = dE
         self.active_key_lookup[ostring] = active_angles.keys()
         self.moments_lookup[ostring] = (first, second)
@@ -593,6 +595,7 @@ class OptimizerGD(Optimizer):
         return new, moments, grads
 
     def _spsa(self, gradients, v, moments, active_keys, **kwargs):
+        print(gradients)
         return self._sgd(gradients=gradients, v=v, moments=moments, active_keys=active_keys, **kwargs)
 
     def _momentum(self, gradients,
