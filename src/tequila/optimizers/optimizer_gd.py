@@ -405,7 +405,7 @@ class OptimizerGD(Optimizer):
         vec_len = len(active_angles)
         first = numpy.zeros(vec_len)
         second = numpy.zeros(vec_len)
-        print(dE)
+
         self.gradient_lookup[ostring] = dE
         self.active_key_lookup[ostring] = active_angles.keys()
         self.moments_lookup[ostring] = (first, second)
@@ -595,7 +595,6 @@ class OptimizerGD(Optimizer):
         return new, moments, grads
 
     def _spsa(self, gradients, v, moments, active_keys, **kwargs):
-        print(gradients)
         return self._sgd(gradients=gradients, v=v, moments=moments, active_keys=active_keys, **kwargs)
 
     def _momentum(self, gradients,
