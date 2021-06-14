@@ -577,15 +577,21 @@ class Objective:
         evaluated = {}
         ev_array = []
         for E in self.args:
-            if E not in evaluated:
+            if E not in evaluated:#
                 expval_result = E(variables=variables, *args, **kwargs)
                 evaluated[E] = expval_result
             else:
                 expval_result = evaluated[E]
+            try:
+                expval_result = float(expval_result)
+            except:
+                pass # allow array evaluation (non-standard operation)
             ev_array.append(expval_result)
         result = onp.asarray(self.transformation(*ev_array),dtype=float)
         if result.shape == ():
             return float(result)
+        elif len(result) == 1:
+            return float(result[0])
         else:
             return result
 
