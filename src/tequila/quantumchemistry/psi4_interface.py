@@ -653,7 +653,10 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         cabs_type :
             - either "active" for using a given basis set as is as approximative CBS (complete basis set), and specify
             OBS (orbital basis) by an active space
-            - or "cabs+" for CABS+-approach by Valeev in [...] -> pass cabs_name in cabs_options
+            - or "cabs+" for CABS+-approach as in 
+                Valeev, E. F. (2004). Improving on the resolution of the identity in linear R12 ab initio theories. 
+                Chemical Physics Letters, 395(4–6), 190–195. https://doi.org/10.1016/j.cplett.2004.07.061 
+                -> pass cabs_name in cabs_options
         cabs_options :
             dict, which needs at least {"cabs_name": some CABS basis set} if cabs_type=="cabs+"
         kwargs :
