@@ -56,10 +56,6 @@ You can install `tequila` directly with pip over:
 ```bash
 pip install git+https://github.com/aspuru-guzik-group/tequila.git
 ```
-Install from devel branch (most recent updates):
-```bash
-pip install git+https://github.com/aspuru-guzik-group/tequila.git@devel
-```
 
 Recommended Python version is 3.7.
 Python 3.8 works, but not all (optional) dependencies support it yet (e.g. Psi4).
@@ -84,15 +80,6 @@ pip install tequila-basic
 # install qulacs and/or other backends and use it within tequila
 pip install qulacs
 ```
-
-# Install with Windows
-```bash
-pip install git+https://github.com/aspuru-guzik-group/tequila.git@windows
-```
-See also the troubleshooting below if you want to tweak things manually.  
-The command above will not install the qulacs simulator.  
-You can install it on windows OS, but you need to have cmake and c++ compilers ready (can be installed for example over visual studio).  
-Of course you can also use one of the other backends (see above).  
 
 # Getting Started
 Check out the tutorial notebooks provided in tutorials.
@@ -173,7 +160,6 @@ J.S. Kottmann, M. Krenn, T.H. Kyaw, S. Alperin-Lea, A. Aspuru-Guzik.
 Quantum Computer-Aided design of Quantum Optics Hardware.  
 [arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)  
 [example code](https://github.com/kottmanj/Photonic)  
-[slides](https://github.com/kottmanj/Photonic/blob/master/slides.pdf)  
 
 A. Anand, M. Degroote, A. Aspuru-Guzik.  
 Natural Evolutionary Strategies for Variational Quantum Computation.  
@@ -183,6 +169,7 @@ J. S. Kottmann, A. Aspuru-Guzik,
 Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a Separable Pair Approximation,  
 [arxiv.org/abs/2105.03836](https://arxiv.org/abs/2105.03836)  
 [example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistrySeparablePairAnsatz.ipynb)    
+currently needs the [devel](https://github.com/aspuru-guzik-group/tequila/tree/devel) branch of tequila  
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
