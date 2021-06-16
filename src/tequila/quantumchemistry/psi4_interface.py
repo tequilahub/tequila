@@ -240,6 +240,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
+        self.kwargs = kwargs
+
     @property
     def point_group(self):
         return self._point_group
@@ -630,3 +632,46 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 rdm2.reorder(to='phys')  # RDMs in physics ordering (cp. to NBodyTensor in qc_base.py)
                 rdm2 = 2*rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
                 self._rdm2 = rdm2
+
+    def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, gamma: float = 1.4,
+                                    n_ri: int = None, cabs_type: str = "active", cabs_options: dict = None,
+                                    **kwargs) -> float:
+        """
+        Computes the spin-free [2]_R12 correction, needing only the 1- and 2-RDM of a reference method
+        Requires either 1-RDM, 2-RDM or information to compute them in kwargs
+
+        Parameters
+        ----------
+        rdm1 :
+            1-electron reduced density matrix
+        rdm2 :
+            2-electron reduced density matrix
+        gamma :
+            f12-exponent, for a correlation factor f_12 = -1/gamma * exp[-gamma*r_12]
+        n_ri :
+            dimensionality of RI-basis; if None, then the maximum available via tensors / basis-set is used
+        cabs_type :
+            - either "active" for using a given basis set as is as approximative CBS (complete basis set), and specify
+            OBS (orbital basis) by an active space
+            - or "cabs+" for CABS+-approach as in 
+                Valeev, E. F. (2004). Improving on the resolution of the identity in linear R12 ab initio theories. 
+                Chemical Physics Letters, 395(4–6), 190–195. https://doi.org/10.1016/j.cplett.2004.07.061 
+                -> pass cabs_name in cabs_options
+        cabs_options :
+            dict, which needs at least {"cabs_name": some CABS basis set} if cabs_type=="cabs+"
+        kwargs :
+            e.g. RDM-information via {"U": QCircuit, "variables": optimal angles} if computation via VQE,
+            or {"rdm__psi4_method": some CI method, "rdm__psi4_options": dict with psi4 options} if computation via
+            psi4, compare to psi4_interface.compute_rdms
+            one of the above needs to be passed if rdm1,rdm2 not yet computed
+
+        Returns
+        -------
+            the f12 correction for the energy
+        """
+        from .f12_corrections._f12_correction_psi4 import ExplicitCorrelationCorrectionPsi4
+        correction = ExplicitCorrelationCorrectionPsi4(mol=self, rdm1=rdm1, rdm2=rdm2, gamma=gamma,
+                                                       n_ri=n_ri, cabs_type=cabs_type, cabs_options=cabs_options,
+                                                       **kwargs)
+
+        return correction.compute()
