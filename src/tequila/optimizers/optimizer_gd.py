@@ -43,6 +43,13 @@ class OptimizerGD(Optimizer):
     lr:
         a float or list of floats. Hyperparameter: The learning rate (unscaled) to be used in each update;
         in some literature, called a step size.
+    alpha:
+        a float. Hyperparameter: used to adjust the learning rate each iteration using the formula: lr := original_lr / (iteration ** alpha)
+        Default: None. If not specify alpha or lr given as a list: lr will not be adjusted
+    gamma:
+        a float. Hyperparameter: used to adjust the step of the gradient for spsa method in each iteration 
+        following: c := original_c / (iteration ** gamma)
+        Default value: None. If not specify gamma or c given as a list: c will not be adjusted
     beta:
         a float. Hyperparameter: scales (perhaps nonlinearly) all first moment terms in any relavant method.
     rho:
@@ -55,6 +62,10 @@ class OptimizerGD(Optimizer):
         a float. Hyperparameter: used to prevent division by zero in some methods.
     tol:
         a float. If specified, __call__ aborts when the difference in energies between two steps is smaller than tol.
+    calibrate_lr:
+        a boolean. It specifies to calibrate lr value for spsa method.
+    iteration:
+        a integer. It indicates the number of the iteration being runned.
 
 
     Methods
@@ -88,6 +99,8 @@ class OptimizerGD(Optimizer):
                  method='sgd',
                  tol: numbers.Real = None,
                  lr: typing.Union[numbers.Real, typing.List[numbers.Real]] = 0.1,
+                 alpha: numbers.Real = None,
+                 gamma: numbers.Real = None,
                  beta: numbers.Real = 0.9,
                  rho: numbers.Real = 0.999,
                  c: typing.Union[numbers.Real, typing.List[numbers.Real]] = 0.2,
@@ -98,6 +111,7 @@ class OptimizerGD(Optimizer):
                  device=None,
                  noise=None,
                  silent=True,
+                 calibrate_lr: bool = False,
                  **kwargs):
 
         """
@@ -115,6 +129,13 @@ class OptimizerGD(Optimizer):
         lr: numbers.Real or list of numbers.Real: Default = 0.1:
             the learning rate to use. Rescales all steps; used by every optimizer.
             Default value is 0.1; chosen by fiat.
+        alpha:
+            a float. Hyperparameter: used to adjust the learning rate each iteration using the formula: lr := original_lr / (iteration ** alpha)
+            Default value: None. If not specify alpha or lr given as a list: lr will not be adjusted
+        gamma:
+            a float. Hyperparameter: used to adjust the step of the gradient for spsa method in each iteration 
+            following: c := original_c / (iteration ** gamma)
+            Default value: None. If not specify gamma or c given as a list: c will not be adjusted
         beta: numbers.Real: Default = 0.9
             rescaling parameter for first moments in a number of methods. Must obey 0<beta<1.
             Default value suggested by original adam paper.
@@ -142,6 +163,8 @@ class OptimizerGD(Optimizer):
             Default value none means: simulate without any noise.
         silent: bool: Default = False:
             suppresses printout during calls if True.
+        calibrate_lr: bool: Default = False
+            It specifies to calibrate lr value for spsa method.
         kwargs
         """
 
@@ -171,11 +194,13 @@ class OptimizerGD(Optimizer):
         ### scaling parameters. lr is learning rate.
         ### beta rescales first moments. rho rescales second moments. epsilon is for division stability.
         self.lr = lr
+        self.alpha = alpha
+        self.gamma = gamma
         self.beta = beta
         self.rho = rho
         self.c = c
         self.epsilon = epsilon
-
+        self.calibrate_lr = calibrate_lr
         # DIIS quantities
         if diis is True:
             # Use default parameters
@@ -251,11 +276,12 @@ class OptimizerGD(Optimizer):
         if self.save_history and reset_history:
             self.reset_history()
 
+        self.iteration = 1
+
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         v = {**active_angles, **passive_angles}
 
         comp = self.prepare(objective=objective, initial_values=v, variables=variables, gradient=gradient)
-
         ### prefactor. Early stopping, initialization, etc. handled here
 
         if maxiter is None:
@@ -318,6 +344,7 @@ class OptimizerGD(Optimizer):
 
             last = e
             v = vn
+            self.iteration += 1
         E_final, angles_final = best, best_angles
         return GDResults(energy=E_final, variables=format_variable_dictionary(angles_final), history=self.history,
                             moments=self.moments_trajectory[id(comp)])
@@ -358,7 +385,7 @@ class OptimizerGD(Optimizer):
                     break
 
         if(self.f == self._spsa):
-            gradient = {"method": "standard_spsa", "stepsize": self.c}
+            gradient = {"method": "standard_spsa", "stepsize": self.c, "gamma": self.gamma}
 
         compile_gradient = True
         dE = None
@@ -385,9 +412,11 @@ class OptimizerGD(Optimizer):
 
         if compile_gradient:
             grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
-            spsa = isinstance(gradient, dict) and "method" in gradient and "spsa" in gradient["method"].lower()
+            spsa = isinstance(gradient, dict) and "method" in gradient and isinstance(gradient["method"], str) and "spsa" in gradient["method"].lower()
             if spsa:
                 dE = comp_grad_obj
+                if(self.calibrate_lr):
+                    self.lr = dE.calibrated_lr(self.lr,initial_values, 50, samples=self.samples)
             else:
                 dE = CallableVector([comp_grad_obj[k] for k in comp_grad_obj.keys()])
 
@@ -442,7 +471,8 @@ class OptimizerGD(Optimizer):
                                      gradients=gradients,
                                      active_keys=active_keys,
                                      moments=last_moment,
-                                     v=parameters)
+                                     v=parameters,
+                                     iteration=self.iteration)
         back = {**parameters}
         for k in new.keys():
             back[k] = new[k]
@@ -513,6 +543,8 @@ class OptimizerGD(Optimizer):
     def _adam(self, gradients, step,
               v, moments, active_keys,
               **kwargs):
+        
+        learningRate = self.nextLearningRate()
         t = step + 1
         s = moments[0]
         r = moments[1]
@@ -523,7 +555,7 @@ class OptimizerGD(Optimizer):
         r_hat = r / (1 - self.rho ** t)
         updates = []
         for i in range(len(grads)):
-            rule = - self.nextLearningRate() * s_hat[i] / (numpy.sqrt(r_hat[i]) + self.epsilon)
+            rule = - learningRate * s_hat[i] / (numpy.sqrt(r_hat[i]) + self.epsilon)
             updates.append(rule)
         new = {}
         for i, k in enumerate(active_keys):
@@ -533,20 +565,23 @@ class OptimizerGD(Optimizer):
 
     def _adagrad(self, gradients,
                  v, moments, active_keys, **kwargs):
+        
+        learningRate = self.nextLearningRate()         
         r = moments[1]
         grads = gradients(v, self.samples)
 
         r += numpy.square(grads)
         new = {}
         for i, k in enumerate(active_keys):
-            new[k] = v[k] - self.nextLearningRate() * grads[i] / numpy.sqrt(r[i] + self.epsilon)
+            new[k] = v[k] - learningRate * grads[i] / numpy.sqrt(r[i] + self.epsilon)
 
         back_moments = [moments[0], r]
         return new, back_moments, grads
 
     def _adamax(self, gradients,
                 v, moments, active_keys, **kwargs):
-
+        
+        learningRate = self.nextLearningRate()
         s = moments[0]
         r = moments[1]
         grads = gradients(v, samples=self.samples)
@@ -554,7 +589,7 @@ class OptimizerGD(Optimizer):
         r = self.rho * r + (1 - self.rho) * numpy.linalg.norm(grads, numpy.inf)
         updates = []
         for i in range(len(grads)):
-            rule = - self.nextLearningRate() * s[i] / r[i]
+            rule = - learningRate * s[i] / r[i]
             updates.append(rule)
         new = {}
         for i, k in enumerate(active_keys):
@@ -566,6 +601,7 @@ class OptimizerGD(Optimizer):
                v, moments, active_keys,
                **kwargs):
 
+        learningRate = self.nextLearningRate()
         s = moments[0]
         r = moments[1]
         t = step + 1
@@ -576,7 +612,7 @@ class OptimizerGD(Optimizer):
         r_hat = r / (1 - self.rho ** t)
         updates = []
         for i in range(len(grads)):
-            rule = - self.nextLearningRate() * (self.beta * s_hat[i] + (1 - self.beta) * grads[i] / (1 - self.beta ** t)) / (
+            rule = - learningRate * (self.beta * s_hat[i] + (1 - self.beta) * grads[i] / (1 - self.beta ** t)) / (
                         numpy.sqrt(r_hat[i]) + self.epsilon)
             updates.append(rule)
         new = {}
@@ -588,10 +624,11 @@ class OptimizerGD(Optimizer):
     def _sgd(self, gradients,
              v, moments, active_keys, **kwargs):
 
-        grads = gradients(v, samples=self.samples)
+        learningRate = self.nextLearningRate()
+        grads = gradients(v, samples=self.samples, iteration = self.iteration)
         new = {}
         for i, k in enumerate(active_keys):
-            new[k] = v[k] - self.nextLearningRate() * grads[i]
+            new[k] = v[k] - learningRate * grads[i]
         return new, moments, grads
 
     def _spsa(self, gradients, v, moments, active_keys, **kwargs):
@@ -600,10 +637,11 @@ class OptimizerGD(Optimizer):
     def _momentum(self, gradients,
                   v, moments, active_keys, **kwargs):
 
+        learningRate = self.nextLearningRate()
         m = moments[0]
         grads = gradients(v, samples=self.samples)
 
-        m = self.beta * m - self.nextLearningRate() * grads
+        m = self.beta * m - learningRate * grads
         new = {}
         for i, k in enumerate(active_keys):
             new[k] = v[k] + m[i]
@@ -614,6 +652,7 @@ class OptimizerGD(Optimizer):
     def _nesterov(self, gradients,
                   v, moments, active_keys, **kwargs):
 
+        learningRate = self.nextLearningRate()
         m = moments[0]
 
         interim = {}
@@ -626,7 +665,7 @@ class OptimizerGD(Optimizer):
                 interim[k] = v[k]
         grads = gradients(interim, samples=self.samples)
 
-        m = self.beta * m - self.nextLearningRate() * grads
+        m = self.beta * m - learningRate * grads
         new = {}
         for i, k in enumerate(active_keys):
             new[k] = v[k] + m[i]
@@ -638,12 +677,13 @@ class OptimizerGD(Optimizer):
              v, moments, active_keys,
              **kwargs):
 
+        learningRate = self.nextLearningRate()
         r = moments[1]
         grads = gradients(v, samples=self.samples)
         r = self.rho * r + (1 - self.rho) * numpy.square(grads)
         new = {}
         for i, k in enumerate(active_keys):
-            new[k] = v[k] - self.nextLearningRate() * grads[i] / numpy.sqrt(self.epsilon + r[i])
+            new[k] = v[k] - learningRate * grads[i] / numpy.sqrt(self.epsilon + r[i])
 
         back_moments = [moments[0], r]
         return new, back_moments, grads
@@ -652,6 +692,7 @@ class OptimizerGD(Optimizer):
                       v, moments, active_keys,
                       **kwargs):
 
+        learningRate = self.nextLearningRate()
         m = moments[0]
         r = moments[1]
 
@@ -667,7 +708,7 @@ class OptimizerGD(Optimizer):
 
         r = self.rho * r + (1 - self.rho) * numpy.square(grads)
         for i in range(len(m)):
-            m[i] = self.beta * m[i] - self.nextLearningRate() * grads[i] / numpy.sqrt(r[i])
+            m[i] = self.beta * m[i] - learningRate * grads[i] / numpy.sqrt(r[i])
         new = {}
         for i, k in enumerate(active_keys):
             new[k] = v[k] + m[i]
@@ -683,6 +724,8 @@ class OptimizerGD(Optimizer):
             float representing the learning rate to use
         """
         if(self.nextLRIndex == -1):
+            if(self.alpha != None):
+                return self.lr/(self.iteration ** self.alpha)
             return self.lr
         else:
             if(self.nextLRIndex != len(self.lr) - 1):
@@ -839,10 +882,13 @@ def minimize(objective: Objective,
              tol: float = None,
              silent: bool = False,
              save_history: bool = True,
+             alpha: float = None,
+             gamma: float = None,
              beta: float = 0.9,
              rho: float = 0.999,
              c: typing.Union[float, typing.List[float]] = 0.2,
              epsilon: float = 1. * 10 ** (-7),
+             calibrate_lr: bool = False,
              *args,
              **kwargs) -> GDResults:
 
@@ -853,6 +899,10 @@ def minimize(objective: Objective,
         The tequila objective to optimize
     lr: float or list of floats >0:
         the learning rate. Default 0.1.
+    alpha: float >0:
+        scaling factor to adjust learning rate each iteration. default None
+    gamma: float >0:
+        scaling facto to adjust step for gradient in spsa method. default None
     beta: float >0:
         scaling factor for first moments. default 0.9
     rho: float >0:
@@ -890,6 +940,8 @@ def minimize(objective: Objective,
          No printout if True
     save_history: bool: Default = True:
         Save the history throughout the optimization
+    calibrate_lr: bool: Default = False:
+        Calibrates the value of the learning rate
 
     Note
     ----
@@ -909,6 +961,8 @@ def minimize(objective: Objective,
     optimizer = OptimizerGD(save_history=save_history,
                             method=method,
                             lr=lr,
+                            alpha=alpha,
+                            gamma=gamma,
                             beta=beta,
                             rho=rho,
                             c=c,
@@ -919,7 +973,8 @@ def minimize(objective: Objective,
                             device=device,
                             noise=noise,
                             maxiter=maxiter,
-                            silent=silent)
+                            silent=silent,
+                            calibrate_lr=calibrate_lr)
     return optimizer(objective=objective,
                      maxiter=maxiter,
                      gradient=gradient,

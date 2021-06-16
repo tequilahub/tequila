@@ -767,7 +767,7 @@ class _SPSAGrad(_NumGrad):
 
     """
 
-    def __init__(self, objective, variables, stepsize, method=None):
+    def __init__(self, objective, variables, stepsize, gamma=None,method=None):
         """
 
         Parameters
@@ -784,9 +784,12 @@ class _SPSAGrad(_NumGrad):
         """
         self.objective = objective
         self.variables = variables
+        self.gamma = gamma
 
         if isinstance(stepsize, list):
             self.nextIndex = 0
+        elif gamma != None:
+            self.nextIndex = "adjust"
         else:
             self.nextIndex = -1
         self.stepsize = stepsize
@@ -831,7 +834,7 @@ class _SPSAGrad(_NumGrad):
             gradient.append(gradientComponent)
         return gradient
 
-    def __call__(self, variables, *args, **kwargs):
+    def __call__(self, variables, iteration=1, *args, **kwargs):
         """
         convenience function to call self.method, e.g one of the staticmethods of this class.
 
@@ -847,11 +850,51 @@ class _SPSAGrad(_NumGrad):
         type:
             generally, float, the result of the numerical gradient.
         """
-        if(self.nextIndex == -1):
-            stepsize = self.stepsize
-        else:
+        if(self.nextIndex != -1 and self.nextIndex != "adjust"):
             stepsize = self.stepsize[self.nextIndex]
             if(self.nextIndex != len(self.stepsize) - 1):
                 self.nextIndex += 1
-
+        elif(self.nextIndex == -1):
+            stepsize = self.stepsize
+        else:
+            stepsize = self.stepsize / (iteration ** self.gamma)
+   
         return self.method(self.objective, variables, self.variables, stepsize, *args, **kwargs)
+
+    def calibrated_lr(self, lr, initial_value, max_iter, *args, **kwargs):
+        """
+        Calculates a calibrated learning rate for spsa
+        Parameters
+        ----------
+        lr:
+            learning rate (a variable in spsa related papers)
+        initial_value:
+            the initial values of the variables used in the optimization
+        max_iter:
+            number of iteration used for the calibration
+        args
+        kwargs
+
+        Returns
+        -------
+        type:
+            float: the learning rate calibrated
+        """
+        dim = len(initial_value)
+        delta = 0
+        if(self.nextIndex != -1 and self.nextIndex != "adjust"):
+            stepsize = self.stepsize[0]
+        else:
+            stepsize = self.stepsize
+ 
+        for i in range(max_iter):
+            perturbation_vector = choices([-1,1],k = dim)
+            left = copy.deepcopy(initial_value)
+            right = copy.deepcopy(initial_value)
+            for j, v in enumerate(initial_value):
+                left[v] += perturbation_vector[j] * stepsize
+                right[v] -= perturbation_vector[j] * stepsize
+            numeratorLeft = self.objective(left, *args, **kwargs) 
+            numeratorRight = self.objective(right, *args, **kwargs)
+            delta += numpy.absolute(numeratorRight - numeratorLeft) / max_iter
+        return lr * 2 * stepsize / delta 
