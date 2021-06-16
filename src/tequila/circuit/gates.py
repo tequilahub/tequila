@@ -1053,10 +1053,10 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
     def shifted_gates(self):
         if not self.assume_real:
             # following https://arxiv.org/abs/2104.05695
-            s = 0.25 * np.pi
+            s = 0.5 * np.pi
             shifts = [s, -s, 3 * s, -3 * s]
-            coeff1 = (np.sqrt(2) + 1)/np.sqrt(8)
-            coeff2 = (np.sqrt(2) - 1)/np.sqrt(8)
+            coeff1 = 0.25 * (np.sqrt(2) + 1)/np.sqrt(2)
+            coeff2 = 0.25 * (np.sqrt(2) - 1)/np.sqrt(2)
             coefficients = [coeff1, -coeff1, -coeff2, coeff2]
             circuits = []
             for i, shift in enumerate(shifts):
