@@ -625,14 +625,20 @@ class OptimizerGD(Optimizer):
              v, moments, active_keys, **kwargs):
 
         learningRate = self.nextLearningRate()
-        grads = gradients(v, samples=self.samples, iteration = self.iteration)
+        grads = gradients(v, samples=self.samples)
         new = {}
         for i, k in enumerate(active_keys):
             new[k] = v[k] - learningRate * grads[i]
         return new, moments, grads
 
     def _spsa(self, gradients, v, moments, active_keys, **kwargs):
-        return self._sgd(gradients=gradients, v=v, moments=moments, active_keys=active_keys, **kwargs)
+        
+        learningRate = self.nextLearningRate()
+        grads = gradients(v, samples=self.samples, iteration=self.iteration)
+        new = {}
+        for i, k in enumerate(active_keys):
+            new[k] = v[k] - learningRate * grads[i]
+        return new, moments, grads
 
     def _momentum(self, gradients,
                   v, moments, active_keys, **kwargs):
