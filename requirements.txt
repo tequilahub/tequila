@@ -24,4 +24,5 @@ qulacs # default simulator (best integration), remove if the installation gives 
 
 #optional third party libraries
 #pyzx
-
+#pyscf # if used also restrict h5py version untill the issue is fixed upstream in pyscf
+#h5py <= 3.2.1 # version 3.3.0 leads to crashes when pyscf is imported
