@@ -368,7 +368,6 @@ class QCircuit():
         return not (self.is_fully_parametrized() or self.is_fully_unparametrized())
 
     def __iadd__(self, other):
-        # duck typing
         other = self.wrap_gate(gate=other)
 
         offset = len(self.gates)
@@ -381,6 +380,7 @@ class QCircuit():
         return self
 
     def __add__(self, other):
+        other = self.wrap_gate(other)
         gates = [g.copy() for g in (self.gates + other.gates)]
         result = QCircuit(gates=gates)
         result._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
