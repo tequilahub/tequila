@@ -221,6 +221,17 @@ If you used `tequila` for your research, feel free to include your algorithms he
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need:
 Don't hesitate to contact us directly or raise an issue here on github.
 
+## PySCF
+If pyscf crashes on import with
+```
+Using default_file_mode other than 'r' is no longer supported. Pass the mode to h5py.File() instead
+```
+then you need to downgrade the h5py version
+```
+pip install --upgrade 'h5py <= 3.1' 
+```
+The issue will probably be fixed soon in pyscf.
+
 ## Qiskit backend
 Qiskit version 0.25 is not yet supported.
 `pip install --upgrade qiskit<0.25` fixes potential issues. If not: Please let us know.
