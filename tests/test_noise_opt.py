@@ -5,8 +5,9 @@ from tequila.circuit.noise import BitFlip
 import numpy
 import pytest
 import tequila as tq
-from tequila.simulators.simulator_api import SUPPORTED_NOISE_BACKENDS
-samplers = [k for k in tequila.INSTALLED_SAMPLERS.keys() if k in SUPPORTED_NOISE_BACKENDS]
+
+from tequila.simulators.simulator_api import SUPPORTED_NOISE_BACKENDS, INSTALLED_SAMPLERS
+samplers = [k for k in INSTALLED_SAMPLERS.keys() if k in SUPPORTED_NOISE_BACKENDS]
 
 
 @pytest.mark.dependencies
