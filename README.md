@@ -19,6 +19,7 @@ Currently supported
 - [Qiskit](https://github.com/qiskit/qiskit) -- currently needs to be qiskit<0.25
 - [Cirq](https://github.com/quantumlib/cirq)
 - [PyQuil](https://github.com/rigetti/pyquil)
+- [QLM](https://atos.net/en/solutions/quantum-learning-machine) (works also whith [myQLM](https://myqlm.github.io/index.html))
 
 Tequila detects backends automatically if they are installed on your systems.
 All of them are available over standard pip installation like for example `pip install qulacs`.

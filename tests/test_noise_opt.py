@@ -6,16 +6,14 @@ import numpy
 import pytest
 import tequila as tq
 
-samplers = [k for k in tq.INSTALLED_SAMPLERS.keys()]
+from tequila.simulators.simulator_api import SUPPORTED_NOISE_BACKENDS, INSTALLED_SAMPLERS
+samplers = [k for k in INSTALLED_SAMPLERS.keys() if k in SUPPORTED_NOISE_BACKENDS]
 
 
 @pytest.mark.dependencies
 def test_dependencies():
-    assert 'qiskit' in samplers
-    assert 'pyquil' in samplers
-    assert 'cirq' in samplers
-    assert 'qulacs' in samplers
-    assert 'qibo' in samplers
+    for k in SUPPORTED_NOISE_BACKENDS:
+        assert k in samplers
 
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
