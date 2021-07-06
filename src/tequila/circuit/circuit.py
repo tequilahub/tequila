@@ -1,8 +1,11 @@
-from tequila.circuit._gates_impl import QGateImpl
-from tequila import TequilaException
+from __future__ import annotations
+from tequila.circuit._gates_impl import QGateImpl, list_assignment
+from tequila import TequilaException, TequilaWarning
 from tequila import BitNumbering
-import typing, copy
+import typing
+import copy
 from collections import defaultdict
+import warnings
 
 
 class QCircuit():
@@ -519,6 +522,94 @@ class QCircuit():
         # could speed up by applying qubit_map to parameter_map here
         # currently its recreated in the init function
         return QCircuit(gates=new_gates)
+
+    def control_circ(self, control, inpl: Optional[bool] = True) -> Optional[QCircuit]:
+        """Depending on the truth value of inpl:
+            - return controlled version of self with control as the control qubits if inpl;
+            - mutate self so that the qubits in control are added as the control qubits if not inpl.
+
+        Raise ValueError if there any qubits in common between self and control.
+        """
+        if inpl:
+            self._inpl_control_unitary(control)
+        else:
+            return self._mutate_control_circ(control)
+
+    def _mutate_control_circ(self, control) -> QCircuit:
+        """Return controlled version of self with control as the control qubits.
+
+        This is not an in-place method, so it DOES NOT mutates self, and only returns a circuit.
+
+        Raise TequilaWarning if there any qubits in common between self and control.
+        """
+        control = list(set(list_assignment(control)))
+
+        gates = self.gates
+        cgates = []
+
+        for gate in gates:
+            cgate = copy.deepcopy(gate)
+
+            if cgate.is_controlled():
+                control_lst = list(set(list(cgate.control) + list(control)))
+
+                if len(control_lst) < len(gate.control) + len(control):
+                    # warnings.warn("Some of the controls {} were already included in the control "
+                    #               "of a gate {}.".format(control, gate), TequilaWarning)
+                    raise TequilaWarning(f'Some of the controls {control} were already included '
+                                         f'in the control of a gate {gate}.')
+            else:
+                control_lst, not_control = list(control), list()
+
+            # Raise TequilaWarning if target and control are the same qubit
+            if any(qubit in control for qubit in not_control):
+                # warnings.warn("The target and control {} were the same qubit for a gate {}."
+                #               .format(control, gate), TequilaWarning)
+                raise TequilaWarning(f'The target for a gate {gate} '
+                                     f'and the control list {control_lst} had a common qubit.')
+
+            cgate._control = tuple(control_lst)
+            cgate.finalize()
+            cgates.append(cgate)
+
+        return QCircuit(gates=cgates)
+
+    def _inpl_control_circ(self, control) -> None:
+        """Mutate self such that the qubits in control are added as the control qubits
+
+        This is an in-place method, so it mutates self and doesn't return any value.
+
+        Raise TequilaWarning if there any qubits in common between self and control.
+        """
+        gates = self.gates
+        control = list_assignment(control)
+
+        for gate in gates:
+            if gate.is_controlled():
+                control_lst = list(set(list(gate.control) + list(control)))
+
+                # Need to check duplicates
+                not_control = list(set(qubit for qubit in list(gate.qubits)
+                                       if qubit not in list(gate.control)))
+
+                # Raise TequilaWarning if control qubit is duplicated
+                if len(control_lst) < len(gate.control) + len(control):
+                    # warnings.warn("Some of the controls {} were already included in the control "
+                    #               "of a gate {}.".format(control, gate), TequilaWarning)
+                    raise TequilaWarning(f'Some of the controls {control} were already included '
+                                         f'in the control of a gate {gate}.')
+            else:
+                control_lst, not_control = list(control), list()
+
+            # Raise TequilaWarning if target and control are the same qubit
+            if any(qubit in control for qubit in not_control):
+                # warnings.warn("The target and control {} were the same qubit for a gate {}."
+                #               .format(control, gate), TequilaWarning)
+                raise TequilaWarning(f'The target for a gate {gate} '
+                                     f'and the control list {control} had a common qubit.')
+
+            gate._control = tuple(control_lst)
+            gate.finalize()
 
 
 class Moment(QCircuit):

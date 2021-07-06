@@ -1,12 +1,15 @@
-from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized, \
-                                  U, u1, u2, u3, S, T, SWAP
-from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from random import randint
+
+import numpy
+import pytest
+import sympy
+from tequila import assign_variable, paulis, TequilaWarning
 from tequila.circuit._gates_impl import RotationGateImpl
+from tequila.circuit.gates import CNOT, ExpPauli, H, Phase, QCircuit, RotationGate, Rx, Ry, Rz, S, \
+    SWAP, T, Trotterized, u1, u2, u3, X, Y, Z
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
-from tequila import assign_variable, paulis
-import numpy, sympy
-import pytest
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
 
 def test_qubit_map():
@@ -296,6 +299,32 @@ def test_swap():
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
 
 
+def test_in_place_control() -> None:
+    """Test whether the in place version of controlled_unitary works as expected."""
+    circ = X(randint(0, 10)) + CNOT(control=randint(1, 10), target=0)
+    length = randint(1, 10)
+    anc = [randint(11, 20) for _ in range(length)]
+
+    circ._inpl_control_circ(anc)
+
+    for gate in circ.gates:
+        assert gate.is_controlled() and all(qubit in gate.control for qubit in anc)
 
 
+def test_control_exception() -> None:
+    """Test whether the TequilaWarning is raised as intended."""
 
+    with pytest.raises(TequilaWarning):
+        circ = X(0) + CNOT(control=1, target=0)
+        length = randint(1, 10)
+        anc = [1 for _ in range(length)]
+
+        circ._inpl_control_circ(anc)
+
+
+# if __name__ == '__main__':
+#     test_in_place_control()
+#     import pytest
+#     pytest.main(['test_circuits.py::test_in_place_control',
+#                  'test_circuits.py::test_in_place_control'])
+#     pytest.main()
