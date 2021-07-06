@@ -4,6 +4,7 @@ import os
 import tequila as tq
 
 from tequila.quantumchemistry import INSTALLED_QCHEMISTRY_BACKENDS
+
 has_pyscf = "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS
 
 root = os.environ.get("MAD_ROOT_DIR")
@@ -56,7 +57,8 @@ def test_madness_full_li_plus():
     # relies on madness being compiled and MAD_ROOT_DIR exported
     # or pno_integrals in the path
     geomstring = "Li 0.0 0.0 0.0"
-    molecule = tq.Molecule(name="li+", geometry=geomstring, n_pno=1, charge=1, frozen_core=False) # need to deactivate frozen_core, otherwise there is no active orbital
+    molecule = tq.Molecule(name="li+", geometry=geomstring, n_pno=1, charge=1,
+                           frozen_core=False)  # need to deactivate frozen_core, otherwise there is no active orbital
     H = molecule.make_hamiltonian()
     UHF = molecule.prepare_reference()
     EHF = tq.simulate(tq.ExpectationValue(H=H, U=UHF))
@@ -91,11 +93,12 @@ def test_madness_upccgsd(trafo):
     n_pno = 2
     if os.path.isfile('balanced_be_gtensor.npy'):
         n_pno = None
-    mol = tq.Molecule(name="balanced_be", frozen_core=False, geometry="Be 0.0 0.0 0.0", n_pno=n_pno, pno={"diagonal": True, "maxrank": 1},
+    mol = tq.Molecule(name="balanced_be", frozen_core=False, geometry="Be 0.0 0.0 0.0", n_pno=n_pno,
+                      pno={"diagonal": True, "maxrank": 1},
                       transformation=trafo)
 
     H = mol.make_hardcore_boson_hamiltonian()
-    oigawert=numpy.linalg.eigvalsh(H.to_matrix())[0]
+    oigawert = numpy.linalg.eigvalsh(H.to_matrix())[0]
     U = mol.make_upccgsd_ansatz(name="HCB-UpCCGD", direct_compiling=True)
     E = tq.ExpectationValue(H=H, U=U)
     assert (len(E.extract_variables()) == 6)
@@ -109,7 +112,7 @@ def test_madness_upccgsd(trafo):
     assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
 
     H = mol.make_hamiltonian()
-    oigawert2=numpy.linalg.eigvalsh(H.to_matrix())[0]
+    oigawert2 = numpy.linalg.eigvalsh(H.to_matrix())[0]
     U = mol.make_upccgsd_ansatz(name="SPA-D")
     E = tq.ExpectationValue(H=H, U=U)
     assert (len(E.extract_variables()) == 2)
@@ -134,7 +137,7 @@ def test_madness_upccgsd(trafo):
     result = tq.minimize(E)
     assert numpy.isclose(result.energy, -14.60266198, atol=1.e-3)
 
-    U = mol.make_upccgsd_ansatz(name="SPA-UpCCGSD") # in this case no difference to SPA-UpCCSD
+    U = mol.make_upccgsd_ansatz(name="SPA-UpCCGSD")  # in this case no difference to SPA-UpCCSD
     E = tq.ExpectationValue(H=H, U=U)
     assert (len(E.extract_variables()) == 4)
     result = tq.minimize(E)
@@ -159,8 +162,10 @@ def test_madness_upccgsd(trafo):
     result = tq.minimize(E)
     assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
 
+
 @pytest.mark.skipif(not has_pyscf, reason="PySCF not installed")
-@pytest.mark.skipif(executable is None and not os.path.isfile('balanced_be_gtensor.npy'), reason="madness not installed and no files found")
+@pytest.mark.skipif(executable is None and not os.path.isfile('balanced_be_gtensor.npy'),
+                    reason="madness not installed and no files found")
 def test_madness_pyscf_bridge():
     mol = tq.Molecule(name="balanced_be", geometry="Be 0.0 0.0 0.0", n_pno=2, pno={"diagonal": True, "maxrank": 1}, )
     H = mol.make_hamiltonian()

@@ -62,6 +62,8 @@ def Molecule(geometry: str,
 
     parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
+    integrals_provided = all([key in kwargs for key in ["one_body_integrals", "two_body_integrals"]])
+
     if backend is None:
         if basis_set is None or basis_set.lower() in ["madness", "mra", "pno"]:
             backend = "madness"
@@ -72,8 +74,7 @@ def Molecule(geometry: str,
         else:
             raise Exception("No quantum chemistry backends installed on your system")
     elif backend == "base":
-            requirements = [key in kwargs for key in ["one_body_integrals", "two_body_integrals"]]
-            if not all(requirements):
+            if not integrals_provided:
                 raise Exception("No quantum chemistry backends installed on your system\n"
                             "To use the base functionality you need to pass the following tensors via keyword\n"
                             "one_body_integrals, two_body_integrals\n")
@@ -89,8 +90,8 @@ def Molecule(geometry: str,
     if guess_wfn is not None and backend != 'psi4':
         raise Exception("guess_wfn only works for psi4")
 
-    if basis_set is None and backend.lower() not in  ["base", "madness"]:
-        raise Exception("no basis_set provided for backend={}".format(backend))
+    if basis_set is None and backend.lower() not in  ["base", "madness"] and not integrals_provided:
+        raise Exception("no basis_set or integrals provided for backend={}".format(backend))
     elif basis_set is None:
         basis_set = "custom"
         parameters.basis_set=basis_set

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from tequila.circuit._gates_impl import QGateImpl, list_assignment
+from tequila.circuit._gates_impl import QGateImpl, assign_variable, list_assignment
 from tequila import TequilaException, TequilaWarning
 from tequila import BitNumbering
 import typing
@@ -523,6 +523,7 @@ class QCircuit():
         # currently its recreated in the init function
         return QCircuit(gates=new_gates)
 
+
     def control_circ(self, control, inpl: Optional[bool] = True) -> Optional[QCircuit]:
         """Depending on the truth value of inpl:
             - return controlled version of self with control as the control qubits if inpl;
@@ -531,7 +532,7 @@ class QCircuit():
         Raise ValueError if there any qubits in common between self and control.
         """
         if inpl:
-            self._inpl_control_unitary(control)
+            self._inpl_control_circ(control)
         else:
             return self._mutate_control_circ(control)
 
@@ -610,6 +611,32 @@ class QCircuit():
 
             gate._control = tuple(control_lst)
             gate.finalize()
+
+
+    def map_variables(self, variables: dict, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        variables
+            dictionary with old variable names as keys and new variable names or values as values
+        Returns
+        -------
+        Circuit with changed variables
+
+        """
+
+        variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+
+        # failsafe
+        my_variables = self.extract_variables()
+        for k,v in variables.items():
+            if k not in my_variables:
+                warnings.warn("map_variables: variable {} is not part of circuit with variables {}".format(k,my_variables), TequilaWarning)
+
+        new_gates = [copy.deepcopy(gate).map_variables(variables) for gate in self.gates]
+
+        return QCircuit(gates=new_gates)
 
 
 class Moment(QCircuit):

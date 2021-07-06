@@ -116,6 +116,19 @@ class ExpectationValueImpl:
         """
         return ExpectationValueImpl(H=tuple([H.map_qubits(qubit_map=qubit_map) for H in self.H]), U=self.U.map_qubits(qubit_map=qubit_map), contraction=self._contraction, shape=self._shape)
 
+    def map_variables(self, variables: dict, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        variables
+            dictionary with old variable names as keys and new variable names or values as values
+        Returns
+        -------
+        Circuit with changed variables
+
+        """
+        return ExpectationValueImpl(H=self.H, U=self.U.map_variables(variables=variables, *args, **kwargs), contraction=self._contraction, shape=self._shape)
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
@@ -192,6 +205,30 @@ class Objective:
                 assert not hasattr(arg, "U") # failsave
                 assert not hasattr(arg, "H") # failsave
                 mapped_args.append(arg) # for purely variable dependend arguments
+
+        return Objective(args=mapped_args, transformation=self.transformation)
+
+    def map_variables(self, variables, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        variables
+            dictionary with old variable names as keys and new variable names or values as values
+        Returns
+        -------
+        Circuit with changed variables
+
+        """
+
+        variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+
+        mapped_args = []
+        for arg in self.args:
+            if hasattr(arg, "map_variables"):
+                mapped_args.append(arg.map_variables(variables=variables))
+            else:
+                mapped_args.append(arg)
 
         return Objective(args=mapped_args, transformation=self.transformation)
 
@@ -484,10 +521,10 @@ class Objective:
         else:
             return len(self.get_expectationvalues())
 
-    def __str__(self):
+    def __repr__(self):
         return "f({})".format(self.extract_variables())
 
-    def __repr__(self):
+    def __str__(self):
         variables = self.extract_variables()
         if len(variables) > 5:
             variables = len(variables)
@@ -540,15 +577,21 @@ class Objective:
         evaluated = {}
         ev_array = []
         for E in self.args:
-            if E not in evaluated:
+            if E not in evaluated:#
                 expval_result = E(variables=variables, *args, **kwargs)
                 evaluated[E] = expval_result
             else:
                 expval_result = evaluated[E]
+            try:
+                expval_result = float(expval_result)
+            except:
+                pass # allow array evaluation (non-standard operation)
             ev_array.append(expval_result)
         result = onp.asarray(self.transformation(*ev_array),dtype=float)
         if result.shape == ():
             return float(result)
+        elif len(result) == 1:
+            return float(result[0])
         else:
             return result
 
@@ -1379,6 +1422,15 @@ class Variable:
         :return: self wrapped in list
         """
         return [self]
+
+    def map_variables(self, variables, *args, **kwargs):
+        """
+        see same function in Objective
+        """
+        if self in variables:
+            return variables[self]
+        else:
+            return self
 
     def __eq__(self, other):
         if hasattr(other, "name"):
