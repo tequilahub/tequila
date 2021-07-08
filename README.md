@@ -181,6 +181,10 @@ Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a 
 [arxiv.org/abs/2105.03836](https://arxiv.org/abs/2105.03836)  
 [example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistrySeparablePairAnsatz.ipynb)    
 
+K. Choudhary,  
+Quantum Computation for Predicting Electron and Phonon Properties of Solids  
+[arxiv.org/abs/2102.11452](https://arxiv.org/abs/2102.11452)  
+
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
 # Dependencies
