@@ -1,5 +1,5 @@
 from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning, \
-    QCircuit, gates
+    QCircuit, gates, NBodyTensor
 from tequila import ExpectationValue, PauliString, QubitHamiltonian, simulate
 import typing
 import numpy
@@ -54,6 +54,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  n_pno: int = None,
                  frozen_core=True,
                  n_virt: int = 0,
+                 keep_mad_files = False,
                  *args,
                  **kwargs):
 
@@ -154,7 +155,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         assert len(h.shape) == 2
 
         # openfermion conventions
-        g = numpy.einsum("psqr", g, optimize='optimize')
+        g = NBodyTensor(elems=g, ordering='mulliken') 
+        g.reorder(to='openfermion')
+        g = g.elems
+        #g = numpy.einsum("psqr", g, optimize='optimize')
 
         orbitals = []
         if pairinfo is not None:
@@ -193,7 +197,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
 
         # delete *.bin files and pnoinfo.txt form madness calculation
-        self.cleanup(warn=False, delete_all_files=False)
+        if not keep_mad_files:
+            self.cleanup(warn=False, delete_all_files=False)
 
     def cleanup(self, warn=False, delete_all_files=False):
 
@@ -640,6 +645,39 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             h = "failed"
 
         return h, g
+
+    def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, n_ri: int = None,
+                                    f12_filename: str = "molecule_f12tensor.bin", **kwargs) -> float:
+        """
+        Computes the spin-free [2]_R12 correction, needing only the 1- and 2-RDM of a reference method
+        Requires either 1-RDM, 2-RDM or information to compute them in kwargs
+
+        Parameters
+        ----------
+        rdm1 :
+            1-electron reduced density matrix
+        rdm2 :
+            2-electron reduced density matrix
+        gamma :
+            f12-exponent, for a correlation factor f_12 = -1/gamma * exp[-gamma*r_12]
+        n_ri :
+            dimensionality of RI-basis; if None, then the maximum available via tensors / basis-set is used
+        f12_filename :
+            when using madness_interface, <q|h|p> and <rs|1/r_12|pq> already available;
+            need to provide f12-tensor <rs|f_12|pq> as ".bin" from madness or ".npy", assuming Mulliken ordering
+        kwargs :
+            e.g. RDM-information via {"U": QCircuit, "variables": optimal angles}, needs to be passed if rdm1,rdm2 not
+            yet computed
+
+        Returns
+        -------
+            the f12 correction for the energy
+        """
+        from .f12_corrections._f12_correction_madness import ExplicitCorrelationCorrectionMadness
+        correction = ExplicitCorrelationCorrectionMadness(mol=self, rdm1=rdm1, rdm2=rdm2, n_ri=n_ri,
+                                                          f12_filename=f12_filename, **kwargs)
+
+        return correction.compute()
 
     def __str__(self):
         info = super().__str__()
