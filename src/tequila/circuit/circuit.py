@@ -535,9 +535,11 @@ class QCircuit():
         if inpl:
             self._inpl_control_circ(control)
         else:
-            return self._mutate_control_circ(control)
+            # return self._return_control_circ(control)
+            circ = copy.deepcopy(self)
+            return circ.add_controls(control, inpl=True)
 
-    def _mutate_control_circ(self, control) -> QCircuit:
+    def _return_control_circ(self, control) -> QCircuit:
         """Return controlled version of self with control as the control qubits.
 
         This is not an in-place method, so it DOES NOT mutates self, and only returns a circuit.
