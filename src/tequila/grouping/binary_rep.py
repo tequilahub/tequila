@@ -5,7 +5,6 @@ import numpy as np
 import tequila as tq
 import numbers
 
-
 class BinaryHamiltonian:
     def __init__(self, binary_terms):
         '''
