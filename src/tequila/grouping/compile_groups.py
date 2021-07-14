@@ -1,6 +1,8 @@
 from tequila.grouping.binary_rep import BinaryHamiltonian
 import tequila as tq
 
+#comment
+
 def compile_commuting_parts(H, method="zb", *args, **kwargs):
     """
     Compile the commuting parts of a QubitHamiltonian
