@@ -313,7 +313,7 @@ def test_in_place_control() -> None:
     """Test whether the in place version of controlled_unitary works as expected."""
     circ = X(randint(0, 10)) + CNOT(control=randint(1, 10), target=0)
     length = randint(1, 10)
-    anc = [randint(11, 20) for _ in range(length)]
+    anc = list(set([randint(11, 20) for _ in range(length)]))
 
     circ._inpl_control_circ(anc)
 
@@ -330,11 +330,3 @@ def test_control_exception() -> None:
         anc = [1 for _ in range(length)]
 
         circ._inpl_control_circ(anc)
-
-
-# if __name__ == '__main__':
-#     test_in_place_control()
-#     import pytest
-#     pytest.main(['test_circuits.py::test_in_place_control',
-#                  'test_circuits.py::test_in_place_control'])
-#     pytest.main()
