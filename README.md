@@ -183,7 +183,11 @@ Natural Evolutionary Strategies for Variational Quantum Computation.
 J. S. Kottmann, A. Aspuru-Guzik,  
 Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a Separable Pair Approximation,  
 [arxiv.org/abs/2105.03836](https://arxiv.org/abs/2105.03836)  
-[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistrySeparablePairAnsatz.ipynb)    
+[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistrySeparablePairAnsatz.ipynb)   
+ 
+K. Choudhary,  
+Quantum Computation for Predicting Electron and Phonon Properties of Solids  
+[arxiv.org/abs/2102.11452](https://arxiv.org/abs/2102.11452)  
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
@@ -224,6 +228,17 @@ If you used `tequila` for your research, feel free to include your algorithms he
 # Troubleshooting
 If you experience trouble of any kind or if you either want to implement a new feature or want us to implement a new feature that you need:
 Don't hesitate to contact us directly or raise an issue here on github.
+
+## PySCF
+If pyscf crashes on import with
+```
+Using default_file_mode other than 'r' is no longer supported. Pass the mode to h5py.File() instead
+```
+then you need to downgrade the h5py version
+```
+pip install --upgrade 'h5py <= 3.1' 
+```
+The issue will probably be fixed soon in pyscf.
 
 ## Qiskit backend
 Qiskit version 0.25 is not yet supported.
