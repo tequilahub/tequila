@@ -462,7 +462,7 @@ class BackendCircuitPyquil(BackendCircuit):
 
         n_qubits = self.n_qubits
         p = circuit
-
+        p.write_memory(self.resolver)
         if self.device is None:
             qc = get_qc('{}q-qvm'.format(str(n_qubits)))
             p.wrap_in_numshots_loop(samples)
@@ -470,7 +470,7 @@ class BackendCircuitPyquil(BackendCircuit):
             qc = self.device
             p = qc.compile(p)
             p.attributes['num_shots'] = samples
-        stacked = qc.run(p, memory_map=self.resolver)
+        stacked = qc.run(p)
         return self.convert_measurements(stacked)
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
