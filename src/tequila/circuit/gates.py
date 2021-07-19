@@ -845,7 +845,7 @@ def u3(theta, phi, lambd, target: typing.Union[list, int], control: typing.Union
 
 
 def QubitExcitation(angle: typing.Union[numbers.Real, Variable, typing.Hashable], target: typing.List, control=None,
-                    assume_real: bool = False, compile_options="optimized"):
+                    assume_real: bool = False, compile_options="optimize"):
     """
     A Qubit Excitation, as described under "qubit perspective" in https://doi.org/10.1039/D0SC06627C
     For the Fermionic operators under corresponding Qubit encodings: Use the chemistry interface
@@ -974,18 +974,12 @@ returns a QCircuit of primitive tq gates
 """
 
 class QubitExcitationImpl(impl.DifferentiableGateImpl):
-    @staticmethod
-    def extract_targets(generator):
-        targets = []
-        for ps in generator.paulistrings:
-            targets += [k for k in ps.keys()]
-        return tuple(set(targets))
 
     @property
     def steps(self):
         return 1
 
-    def __init__(self, angle, target=None, generator=None, p0=None, assume_real=True, control=None, compile_options=None):
+    def __init__(self, angle, target, generator=None, p0=None, assume_real=True, control=None, compile_options=None):
         angle = assign_variable(angle)
 
         if generator is None:
@@ -1005,7 +999,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             assert generator is not None
             assert p0 is not None
 
-        super().__init__(name="QubitExcitation", parameter=angle, target=self.extract_targets(generator), control=control)
+        super().__init__(name="QubitExcitation", parameter=angle, target=target, control=control)
         self.generator = generator
         if control is not None:
             # augment p0 for control qubits
@@ -1015,6 +1009,8 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         self.assume_real = assume_real
         if compile_options is None:
             self.compile_options = "optimize"
+        elif hasattr(compile_options, "lower"):
+            self.compile_options = compile_options.lower()
         else:
             self.compile_options = compile_options
 
@@ -1027,7 +1023,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         result = copy.deepcopy(self)
         result.generator=mapped_generator
         result.p0 = mapped_p0
-        result._target = result.extract_targets(mapped_generator)
+        result._target = tuple([qubit_map[x] for x in self.target])
         result._control = mapped_control
         result.finalize()
         return result
@@ -1035,41 +1031,51 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
     def compile(self):
         # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475
         # Alternative representation in arxiv:2104.05695 (not implemented -> could be added and controlled with optional compile keywords)
-        if self.compile == "optimize" and len(self.target) == 2:
+        if self.compile_options == "optimize" and len(self.target) == 2:
             p,q = self.target
             U0 = X(target=p)
             U0 += X(target=p, control=q)
             U0 += X(target=p)
             U1 = Ry(angle=self.parameter, target=q, control=p)
             return U0 + U1 + U0
-        elif self.compile == "optimize" and len(self.target) == 4:
-            p,q,r,s = self.target
+        elif self.compile_options == "optimize" and len(self.target) == 4:
+            p,r,q,s = self.target
             U0 = X(target=q, control=p)
             U0 += X(target=s, control=r)
             U0 += X(target=r, control=p)
             U0 += X(target=q)
             U0 += X(target=s)
-            U1 = Ry(angle=-self.parameter, target=p, control=[q,r,s])
+            U1 = Ry(angle=self.parameter, target=p, control=[q,r,s])
             return U0 + U1 + U0.dagger()
         else:
             return Trotterized(angle=self.parameter, generator=self.generator, steps=1)
 
     def shifted_gates(self):
+        if not self.assume_real:
+            # following https://arxiv.org/abs/2104.05695
+            s = 0.5 * np.pi
+            shifts = [s, -s, 3 * s, -3 * s]
+            coeff1 = 0.25 * (np.sqrt(2) + 1)/np.sqrt(2)
+            coeff2 = 0.25 * (np.sqrt(2) - 1)/np.sqrt(2)
+            coefficients = [coeff1, -coeff1, -coeff2, coeff2]
+            circuits = []
+            for i, shift in enumerate(shifts):
+                shifted_gate = copy.deepcopy(self)
+                shifted_gate.parameter += shift
+                circuits.append((coefficients[i], shifted_gate))
+            return circuits
+
         r = 0.25
         s = 0.5*np.pi
 
         Up1 = copy.deepcopy(self)
-        Up1._parameter=self.parameter+s
+        Up1._parameter = self.parameter+s
         Up1 = QCircuit.wrap_gate(Up1)
         Up2 = GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
         Um1 = copy.deepcopy(self)
-        Um1._parameter=self.parameter-s
+        Um1._parameter = self.parameter-s
         Um1 = QCircuit.wrap_gate(Um1)
         Um2 = GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
 
-        if not self.assume_real:
-            # 4-point shift rule of arxiv:2104.05695 saves gates
-            return [(r, Up1 + Up2), (-r, Um1 + Um2), (r, Up1 + Um2), (-r, Um1 + Up2)]
-        else:
-            return [(2.0 * r, Up1 +  Up2), (-2.0 * r, Um1 + Um2)]
+        return [(2.0 * r, Up1 +  Up2), (-2.0 * r, Um1 + Um2)]
 

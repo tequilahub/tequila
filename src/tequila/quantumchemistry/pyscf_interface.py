@@ -1,6 +1,6 @@
 from tequila import TequilaException, TequilaWarning
 from openfermion import MolecularData
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase
+from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, NBodyTensor
 
 import pyscf
 
@@ -39,7 +39,53 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                                                     one_body_integrals=one_body_integrals,
                                                     two_body_integrals=two_body_integrals, *args, **kwargs)
             else:
-                raise TequilaException("not here yet, use openfermionpyscf and feed the integrals to the init")
+
+                # determine if the molecular structure was given over a file already
+                # if not, write the file
+                geometry = self.parameters.get_geometry()
+                pyscf_geomstring = ""
+                for atom in geometry:
+                    pyscf_geomstring += "{} {} {} {};".format(atom[0],atom[1][0],atom[1][1],atom[1][2])
+
+                if "point_group" in kwargs:
+                    point_group = kwargs["point_group"]
+                else:
+                    point_group = None
+
+                mol = pyscf.gto.Mole()
+                mol.atom = pyscf_geomstring
+                mol.basis = self.parameters.basis_set
+
+                if point_group is not None:
+                    if point_group.lower() != "c1":
+                        mol.symmetry = True
+                        mol.symmetry_subgroup = point_group
+                    else:
+                        mol.symmetry = False
+                else:
+                    mol.symmetry=True
+
+                mol.build()
+
+                # solve restricted HF
+                mf = pyscf.scf.RHF(mol)
+                mf.kernel()
+                self.irreps=mf.get_irrep_nelec()
+
+                # compute mo integrals
+                mo_coeff = mf.mo_coeff
+                h_ao = mol.intor_symmetric('int1e_kin') + mol.intor_symmetric('int1e_nuc')
+                h = numpy.einsum('pi,pq,qj->ij', mo_coeff, h_ao, mo_coeff)
+                g = pyscf.ao2mo.kernel(mol, mo_coeff)
+                g = pyscf.ao2mo.restore(1, numpy.asarray(g), mo_coeff.shape[1])
+
+                # Mulliken to Openfermion convention
+                g = NBodyTensor(elems=g, ordering="mulliken").reorder(to="openfermion").elems
+
+                self.pyscf_molecule=mol
+                self.point_group = mol.symmetry_subgroup
+                molecule=super().do_make_molecule(one_body_integrals=h, two_body_integrals=g, nuclear_repulsion=mol.energy_nuc())
+
         return molecule
 
     def compute_fci(self, *args, **kwargs):
@@ -126,3 +172,14 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         mp2 = mp.MP2(hf)
         mp2.kernel()
         return mp2
+
+    def __str__(self):
+        base = super().__str__()
+        try:
+            if hasattr(self, "pyscf_molecule"):
+                base += "{:15} : {} ({})\n".format("point_group", self.pyscf_molecule.groupname, self.pyscf_molecule.topgroup)
+            if hasattr(self, "irreps"):
+                base += "{:15} : {}\n".format("irreps", self.irreps)
+        except:
+            return base
+        return base

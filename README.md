@@ -19,6 +19,7 @@ Currently supported
 - [Qiskit](https://github.com/qiskit/qiskit) -- currently needs to be qiskit<0.25
 - [Cirq](https://github.com/quantumlib/cirq)
 - [PyQuil](https://github.com/rigetti/pyquil)
+- [QLM](https://atos.net/en/solutions/quantum-learning-machine) (works also whith [myQLM](https://myqlm.github.io/index.html))
 
 Tequila detects backends automatically if they are installed on your systems.
 All of them are available over standard pip installation like for example `pip install qulacs`.
@@ -37,6 +38,9 @@ Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutoria
 Currently you need to compile from a separate [fork](https://github.com/kottmanj/madness).
 See the github page of this fork for installation instruction.
 Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb) that illustrates the usage.
+
+- [PySCF](https://github.com/pyscf/pyscf)  
+Works similar as Psi4. Classical methods are also integrated in the madness interface allowing to use them in a basis-set-free representation.
 
 # Install from source
 **Do not** install like this: (Minecraft lovers excluded)
@@ -179,8 +183,8 @@ Natural Evolutionary Strategies for Variational Quantum Computation.
 J. S. Kottmann, A. Aspuru-Guzik,  
 Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a Separable Pair Approximation,  
 [arxiv.org/abs/2105.03836](https://arxiv.org/abs/2105.03836)  
-[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistrySeparablePairAnsatz.ipynb)    
-
+[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistrySeparablePairAnsatz.ipynb)   
+ 
 K. Choudhary,  
 Quantum Computation for Predicting Electron and Phonon Properties of Solids  
 [arxiv.org/abs/2102.11452](https://arxiv.org/abs/2102.11452)  

@@ -52,7 +52,7 @@ class ActiveSpaceData:
 class FermionicGateImpl(gates.QubitExcitationImpl):
     # keep the overview in circuits
     def __init__(self, generator, p0, transformation,  *args, **kwargs):
-        super().__init__(generator=generator, p0=p0, *args, **kwargs)
+        super().__init__(generator=generator, target=generator.qubits, p0=p0, *args, **kwargs)
         self._name = "FermionicExcitation"
         self.transformation=transformation
 
@@ -799,7 +799,7 @@ class QuantumChemistryBase:
                           "indices = " + str(indices), category=TequilaWarning)
         return qop
 
-    def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, assume_real=True):
+    def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, assume_real=True, compile_options="optimize"):
         target = []
         for pair in indices:
             assert len(pair) == 2
@@ -809,9 +809,9 @@ class QuantumChemistryBase:
             raise TequilaException(
                 "make_hardcore_boson_excitation_gate: Inconsistencies in indices={}. Should be indexed from 0 ... n_orbitals={}".format(
                     indices, self.n_orbitals))
-        return gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control)
+        return gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control, compile_options=compile_options)
 
-    def make_excitation_gate(self, indices, angle, control=None, assume_real=True):
+    def make_excitation_gate(self, indices, angle, control=None, assume_real=True, **kwargs):
         """
         Initialize a fermionic excitation gate defined as
 
@@ -837,7 +837,7 @@ class QuantumChemistryBase:
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
 
         return QCircuit.wrap_gate(
-            FermionicGateImpl(angle=angle, generator=generator, p0=p0, transformation=type(self.transformation).__name__.lower(), assume_real=assume_real, control=control))
+            FermionicGateImpl(angle=angle, generator=generator, p0=p0, transformation=type(self.transformation).__name__.lower(), assume_real=assume_real, control=control, **kwargs))
 
     def make_molecule(self, *args, **kwargs) -> MolecularData:
         """Creates a molecule in openfermion format by running psi4 and extracting the data
@@ -1217,7 +1217,7 @@ class QuantumChemistryBase:
                             label: str = None,
                             order: int = None,
                             assume_real: bool = True,
-                            use_hcb: bool = None,
+                            hcb_optimization: bool = None,
                             spin_adapt_singles: bool = True,
                             neglect_z = False,
                             *args, **kwargs):
@@ -1273,14 +1273,14 @@ class QuantumChemistryBase:
         have_hcb_trafo = self.transformation.hcb_to_me() is not None
 
         # consistency checks for optimization
-        if have_hcb_trafo and use_hcb is None:
-            use_hcb = True
+        if have_hcb_trafo and hcb_optimization is None:
+            hcb_optimization = True
         if "HCB" in name:
-            use_hcb = True
-        if use_hcb and not have_hcb_trafo and "HCB" not in name:
+            hcb_optimization = True
+        if hcb_optimization and not have_hcb_trafo and "HCB" not in name:
             raise TequilaException(
                 "use_hcb={} but transformation={} has no \'hcb_to_me\' function. Try transformation=\'ReorderedJordanWigner\'".format(
-                    use_hcb, self.transformation))
+                    hcb_optimization, self.transformation))
         if "S" in name and "HCB" in name:
             if "HCB" in name and "S" in name:
                 raise Exception(
@@ -1288,7 +1288,7 @@ class QuantumChemistryBase:
                         name))
 
         # first layer
-        if not use_hcb:
+        if not hcb_optimization:
             U = QCircuit()
             if include_reference:
                 U = self.prepare_reference()
@@ -1321,14 +1321,14 @@ class QuantumChemistryBase:
             idx = idx[0]
             angle = (tuple([idx]), "D", label)
             if include_doubles:
-                if  "jordanwigner" in self.transformation.name.lower():
+                if  "jordanwigner" in self.transformation.name.lower() and not self.transformation.up_then_down:
                     # we can optimize with qubit excitations for the JW representation
                     target=[self.transformation.up(idx[0]), self.transformation.up(idx[1]), self.transformation.down(idx[0]), self.transformation.down(idx[1])]
-                    U += gates.QubitExcitation(angle=angle, target=target)
+                    U += gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, **kwargs)
                 else:
                     U += self.make_excitation_gate(angle=angle,
                                                    indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
-                                                   assume_real=assume_real)
+                                                   assume_real=assume_real, **kwargs)
             if include_singles and mix_sd:
                 U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label,
                                                spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform, neglect_z=neglect_z)
@@ -1356,12 +1356,12 @@ class QuantumChemistryBase:
                 if neglect_z:
                     targeta=[self.transformation.up(idx[0]), self.transformation.up(idx[1])]
                     targetb=[self.transformation.down(idx[0]), self.transformation.down(idx[1])]
-                    U += gates.QubitExcitation(angle=angle, target=targeta, assume_real=assume_real)
-                    U += gates.QubitExcitation(angle=angle, target=targetb, assume_real=assume_real)
+                    U += gates.QubitExcitation(angle=angle, target=targeta, assume_real=assume_real, **kwargs)
+                    U += gates.QubitExcitation(angle=angle, target=targetb, assume_real=assume_real, **kwargs)
                 else:
-                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real)
+                    U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0], 2 * idx[1])], assume_real=assume_real, **kwargs)
                     U += self.make_excitation_gate(angle=angle, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
-                                               assume_real=assume_real)
+                                               assume_real=assume_real, **kwargs)
             else:
                 angle1 = (idx, "SU", label)
                 angle2 = (idx, "SD", label)
@@ -1371,13 +1371,13 @@ class QuantumChemistryBase:
                 if neglect_z:
                     targeta=[self.transformation.up(idx[0]), self.transformation.up(idx[1])]
                     targetb=[self.transformation.down(idx[0]), self.transformation.down(idx[1])]
-                    U += gates.QubitExcitation(angle=angle1, target=targeta, assume_real=assume_real)
-                    U += gates.QubitExcitation(angle=angle2, target=targetb, assume_real=assume_real)
+                    U += gates.QubitExcitation(angle=angle1, target=targeta, assume_real=assume_real, *kwargs)
+                    U += gates.QubitExcitation(angle=angle2, target=targetb, assume_real=assume_real, *kwargs)
                 else:
                     U += self.make_excitation_gate(angle=angle1, indices=[(2 * idx[0], 2 * idx[1])],
-                                               assume_real=assume_real)
+                                               assume_real=assume_real, **kwargs)
                     U += self.make_excitation_gate(angle=angle2, indices=[(2 * idx[0] + 1, 2 * idx[1] + 1)],
-                                               assume_real=assume_real)
+                                               assume_real=assume_real, **kwargs)
 
         return U
 
@@ -1680,7 +1680,8 @@ class QuantumChemistryBase:
 
         def _get_qop_hermitian(of_operator) -> QubitHamiltonian:
             """ Returns Hermitian part of Fermion operator as QubitHamiltonian """
-            qop = QubitHamiltonian(self.transformation(of_operator))
+            qop = self.transformation(of_operator)
+            #qop = QubitHamiltonian(self.transformation(of_operator))
             real, imag = qop.split(hermitian=True)
             if real:
                 return real
@@ -1911,6 +1912,42 @@ class QuantumChemistryBase:
                 rdm2_spinsum[p, q, r, s] += self._rdm2[2 * p + 1, 2 * q + 1, 2 * r + 1, 2 * s + 1]
 
         return rdm1_spinsum, rdm2_spinsum
+
+    def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None,
+                                    gamma: float = 1.4, n_ri: int = None,
+                                    external_info: dict = None, **kwargs) -> float:
+        """
+        Computes the spin-free [2]_R12 correction, needing only the 1- and 2-RDM of a reference method
+        Requires either 1-RDM, 2-RDM or information to compute them in kwargs
+
+        Parameters
+        ----------
+        rdm1 :
+            1-electron reduced density matrix
+        rdm2 :
+            2-electron reduced density matrix
+        gamma :
+            f12-exponent, for a correlation factor f_12 = -1/gamma * exp[-gamma*r_12]
+        n_ri :
+            dimensionality of RI-basis; specify only, if want to truncate available RI-basis
+            if None, then the maximum available via tensors / basis-set is used
+            must not be larger than size of available RI-basis, and not smaller than size of OBS
+            for n_ri==dim(OBS), the correction returns zero
+        external_info :
+            for usage in qc_base, need to provide information where to find one-body tensor f12-tensor <rs|f_12|pq>;
+            pass dictionary with {"f12_filename": where to find f12-tensor, "scheme": ordering scheme of tensor}
+        kwargs :
+            e.g. RDM-information via {"U": QCircuit, "variables": optimal angles}, needs to be passed if rdm1,rdm2 not
+            yet computed
+
+        Returns
+        -------
+            the f12 correction for the energy
+        """
+        from .f12_corrections._f12_correction_base import ExplicitCorrelationCorrection
+        correction = ExplicitCorrelationCorrection(mol=self, rdm1=rdm1, rdm2=rdm2, gamma=gamma,
+                                                   n_ri=n_ri, external_info=external_info, **kwargs)
+        return correction.compute()
 
     def __str__(self) -> str:
         result = str(type(self)) + "\n"

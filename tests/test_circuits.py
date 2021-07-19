@@ -1,12 +1,15 @@
-from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized, \
-                                  U, u1, u2, u3, S, T, SWAP
-from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from random import randint
+
+import numpy
+import pytest
+import sympy
+from tequila import assign_variable, paulis, TequilaWarning
 from tequila.circuit._gates_impl import RotationGateImpl
+from tequila.circuit.gates import CNOT, ExpPauli, H, Phase, QCircuit, RotationGate, Rx, Ry, Rz, S, \
+    SWAP, T, Trotterized, u1, u2, u3, X, Y, Z
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
-from tequila import assign_variable, paulis
-import numpy, sympy
-import pytest
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
 
 def test_qubit_map():
@@ -295,7 +298,35 @@ def test_swap():
     wfnx = simulate(X(2)+X(3))
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
 
+def test_variable_map():
+    U = Ry(angle="a", target=0) + Rx(angle="b", target=1) + Rz(angle="c", target=2) + H(angle="d", target=3) + ExpPauli(paulistring="X(0)Y(1)Z(2)", angle="e")
+    variables = {"a":"aa", "b":"bb", "c":"cc", "d":"dd", "e":"ee"}
+    U2 = U.map_variables(variables=variables)
+    variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+    manual_extract = sum([g.extract_variables() for g in U.gates], [])
+    assert sorted([str(x) for x in manual_extract]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in U.extract_variables()]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in U2.extract_variables()]) == sorted([str(x) for x in list(variables.values())])
 
 
+def test_in_place_control() -> None:
+    """Test whether the in place version of controlled_unitary works as expected."""
+    circ = X(randint(0, 10)) + CNOT(control=randint(1, 10), target=0)
+    length = randint(1, 10)
+    anc = list(set([randint(11, 20) for _ in range(length)]))
+
+    circ._inpl_control_circ(anc)
+
+    for gate in circ.gates:
+        assert gate.is_controlled() and all(qubit in gate.control for qubit in anc)
 
 
+def test_control_exception() -> None:
+    """Test whether the TequilaWarning is raised as intended."""
+
+    with pytest.raises(TequilaWarning):
+        circ = X(0) + CNOT(control=1, target=0)
+        length = randint(1, 10)
+        anc = [1 for _ in range(length)]
+
+        circ._inpl_control_circ(anc)
