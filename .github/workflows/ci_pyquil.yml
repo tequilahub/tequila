@@ -29,7 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install --upgrade pytest
         pip install -r requirements.txt
-        pip install pyquil
+        pip install "pyquil<3.0"
         pip install -e .
         docker pull rigetti/qvm
         docker pull rigetti/quilc
