@@ -522,37 +522,37 @@ def robustness_interval(U: QCircuit,
             return (max_lower_bound, gramian_exp_interval.expectation, min_upper_bound), obj
 
 
-if __name__ == '__main__':
-    import tequila as tq
-    from tequila.circuit.noise import DepolarizingError
-
-    geometry = 'H .0 .0 .0\nH .0 .0 0.75'
-    mol = tq.Molecule(geometry=geometry, basis_set='sto-3g', transformation='JORDANWIGNER')
-
-    backend_options = dict(backend='qiskit', samples=8192, noise=DepolarizingError(0.001, level=2))
-    # backend_options = dict(backend='qulacs')
-
-    H = mol.make_hamiltonian()
-    U = mol.make_upccgsd_ansatz()
-    E = tq.ExpectationValue(U=U, H=H)
-
-    result = tq.minimize(E, maxiter=0, **backend_options)
-
-    # compute fidelity with ground state
-    eigvals, eigvecs = np.linalg.eigh(H.to_matrix())
-    ground_state_vec = eigvecs[:, 0]
-
-    if backend_options.get('samples') is None:
-        ground_state_wfn = tq.QubitWaveFunction.from_array(ground_state_vec)
-        U_wfn = tq.simulate(U, variables=result.variables, **backend_options)
-        fidelity = abs(ground_state_wfn.inner(U_wfn)) ** 2
-    else:
-        exact_wfn = tq.QubitWaveFunction.from_array(ground_state_vec)
-        exact_wfn = tq.paulis.Projector(wfn=exact_wfn)
-        fidelity = tq.ExpectationValue(U=U, H=exact_wfn)
-        fidelity = tq.simulate(objective=fidelity, variables=result.variables, **backend_options)
-
-    intervals, interval_obj = robustness_interval(U=U, H=H, fidelity=fidelity, kind='expectation', method='best',
-                                                  variables=result.variables, return_object=True, **backend_options)
-
-    print(eigvals[0], intervals, interval_obj.expectation, interval_obj.variance)
+# if __name__ == '__main__':
+#     import tequila as tq
+#     from tequila.circuit.noise import DepolarizingError
+#
+#     geometry = 'H .0 .0 .0\nH .0 .0 0.75'
+#     mol = tq.Molecule(geometry=geometry, basis_set='sto-3g', transformation='JORDANWIGNER')
+#
+#     backend_options = dict(backend='qiskit', samples=8192, noise=DepolarizingError(0.001, level=2))
+#     # backend_options = dict(backend='qulacs')
+#
+#     H = mol.make_hamiltonian()
+#     U = mol.make_upccgsd_ansatz()
+#     E = tq.ExpectationValue(U=U, H=H)
+#
+#     result = tq.minimize(E, maxiter=0, **backend_options)
+#
+#     # compute fidelity with ground state
+#     eigvals, eigvecs = np.linalg.eigh(H.to_matrix())
+#     ground_state_vec = eigvecs[:, 0]
+#
+#     if backend_options.get('samples') is None:
+#         ground_state_wfn = tq.QubitWaveFunction.from_array(ground_state_vec)
+#         U_wfn = tq.simulate(U, variables=result.variables, **backend_options)
+#         fidelity = abs(ground_state_wfn.inner(U_wfn)) ** 2
+#     else:
+#         exact_wfn = tq.QubitWaveFunction.from_array(ground_state_vec)
+#         exact_wfn = tq.paulis.Projector(wfn=exact_wfn)
+#         fidelity = tq.ExpectationValue(U=U, H=exact_wfn)
+#         fidelity = tq.simulate(objective=fidelity, variables=result.variables, **backend_options)
+#
+#     intervals, interval_obj = robustness_interval(U=U, H=H, fidelity=fidelity, kind='expectation', method='best',
+#                                                   variables=result.variables, return_object=True, **backend_options)
+#
+#     print(eigvals[0], intervals, interval_obj.expectation, interval_obj.variance)
