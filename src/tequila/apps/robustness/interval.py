@@ -17,7 +17,7 @@ _EXPECTATION_ALIASES = ['expectation']
 _EIGENVALUE_ALIASES = ['eigenvalue', 'eigval']
 
 _GRAMIAN_ALIASES = ['gramian', 'gram']
-_METHODS = ['sdp'] + _GRAMIAN_ALIASES
+_METHODS = ['sdp'] + ['best'] + _GRAMIAN_ALIASES
 
 
 class RobustnessInterval(ABC):
@@ -36,8 +36,8 @@ class RobustnessInterval(ABC):
         self._U = U
         self._H = H
 
-        self._expectation_repeated = precomputed_stats.get('expectationvalues')
-        self._variance_repeated = precomputed_stats.get('variances')
+        self._expectations_reps = precomputed_stats.get('expectationvalues')
+        self._variances_reps = precomputed_stats.get('variances')
         self._pauli_strings = precomputed_stats.get('paulistrings')
         self._pauli_coeffs = precomputed_stats.get('paulicoeffs')
         self._pauli_eigenvalues = precomputed_stats.get('paulieigenvalues')
@@ -59,28 +59,24 @@ class RobustnessInterval(ABC):
         if self._fidelity < 0 or self._fidelity > 1:
             raise ValueError(f'encountered invalid fidelity; got {self._fidelity}, must be within [0, 1]!')
 
-        if self._variance_repeated is not None:
-            for i, v in enumerate(self._variance_repeated):
+        if self._variances_reps is not None:
+            for i, v in enumerate(self._variances_reps):
                 if v < 0:
                     warnings.warn(message=f'CAUTION! negative variance encountered; got {v}, setting to 0.0;'
                                           + 'this can lead to unreliable results', category=RuntimeWarning)
                     v = 0.0
 
-                self._variance_repeated[i] = v
+                self._variances_reps[i] = v
 
-    @abstractmethod
     def _compute_interval(self, *args, **kwargs):
         pass
 
-    @abstractmethod
     def _compute_stats(self, **kwargs):
         pass
 
-    @abstractmethod
     def _calc_lower_bound(self, **kwargs):
         pass
 
-    @abstractmethod
     def _calc_upper_bound(self, **kwargs):
         pass
 
@@ -99,14 +95,14 @@ class RobustnessInterval(ABC):
     @property
     def expectation(self):
         if self._expectation is None:
-            self._expectation = np.mean(self._expectation_repeated)
+            self._expectation = np.mean(self._expectations_reps)
 
         return self._expectation
 
     @property
     def variance(self):
         if self._variance is None:
-            self._variance = np.mean(self._variance_repeated)
+            self._variance = np.mean(self._variances_reps)
 
         return self._variance
 
@@ -122,11 +118,27 @@ class RobustnessInterval(ABC):
     def H(self):
         return self._H
 
+    @property
+    def expectations_reps(self):
+        return self._expectations_reps
+
+    @property
+    def variances_reps(self):
+        return self._variances_reps
+
+    @lower_bound.setter
+    def lower_bound(self, v):
+        self._lower_bound = v
+
+    @upper_bound.setter
+    def upper_bound(self, v):
+        self._lower_bound = v
+
 
 class SDPInterval(RobustnessInterval):
 
-    def _compute_stats(self, variables=None, samples=None, backend=None, device=None, noise=None, nreps=None, *args,
-                       **kwargs):
+    def _compute_stats(self, variables=None, samples=None, backend=None, device=None, noise=None, nreps=None,
+                       group_terms=True, *args, **kwargs):
         if self._U is None or self._H is None:
             # in this case, stats must be precomputed
             if None in [self._pauli_expectations, self._pauli_strings, self._pauli_coeffs, self._pauli_eigenvalues]:
@@ -138,9 +150,14 @@ class SDPInterval(RobustnessInterval):
             nreps = 1
 
         # compute expectation values
-        paulicliques = make_paulicliques(H=self._H)
-        pauli_strings = [ps.naked() for ps in paulicliques]
-        pauli_coeffs = [ps.coeff.real for ps in paulicliques]
+        if group_terms:
+            paulicliques = make_paulicliques(H=self._H)
+            pauli_strings = [ps.naked() for ps in paulicliques]
+            pauli_coeffs = [ps.coeff.real for ps in paulicliques]
+        else:
+            pauli_strings = [ps.naked() for ps in self._H.paulistrings]
+            pauli_coeffs = [ps.coeff.real for ps in self._H.paulistrings]
+
         objectives = [ExpectationValue(U=self._U + p_str.U, H=p_str.H) for p_str in pauli_strings]
 
         # compute expectation values
@@ -185,8 +202,8 @@ class SDPInterval(RobustnessInterval):
                 q=1 - self._conf_level, df=n_reps - 1)
 
         # compute expectations
-        self._expectation_repeated = [np.dot(self._pauli_coeffs, pauli_expecs) for pauli_expecs in
-                                      self._pauli_expectations]
+        self._expectations_reps = [np.dot(self._pauli_coeffs, pauli_expecs) for pauli_expecs in
+                                   self._pauli_expectations]
 
     def _compute_interval_single(self, pauli_strings, pauli_coeffs, pauli_eigvals, pauli_expecs):
         lower_bound = upper_bound = 0.0
@@ -238,13 +255,16 @@ class GramianExpectationBound(RobustnessInterval):
                        **kwargs):
         if self._U is None or self._H is None:
             # in this case, stats must be precomputed
-            if None in [self._expectation_repeated, self._pauli_strings, self._pauli_coeffs, self._pauli_eigenvalues]:
+            if None in [self._expectations_reps, self._variances_reps]:
                 raise ValueError('If U or H is not provided, you must provide precomputed stats!')
 
             return
 
-        pauli_coeffs = [ps.coeff.real for ps in self._H.paulistrings]
-        self._normalization_const = pauli_coeffs[0] - np.sum(np.abs(pauli_coeffs[1:]))
+        # divide into constant and non constant terms
+        const_coeffs = [ps.coeff.real for ps in self._H.paulistrings if len(ps.naked()) == 0]
+        other_coeffs = [ps.coeff.real for ps in self._H.paulistrings if len(ps.naked()) > 0]
+
+        self._normalization_const = np.sum(const_coeffs) - np.sum(other_coeffs)
         objective = ExpectationValue(U=self._U, H=self._H)
         expectation_values = [simulate(objective, variables=variables, samples=samples, backend=backend,
                                        device=device, noise=noise) for _ in range(nreps)]
@@ -253,12 +273,12 @@ class GramianExpectationBound(RobustnessInterval):
         variances = [simulate(ExpectationValue(U=self._U, H=(self._H - e) ** 2), variables=variables, samples=samples,
                               backend=backend, device=device, noise=noise) for e in expectation_values]
 
-        self._expectation_repeated = expectation_values
-        self._variance_repeated = variances
+        self._expectations_reps = expectation_values
+        self._variances_reps = variances
 
     def _compute_interval(self, *args, **kwargs):
         lower_bounds = [self._calc_lower_bound(e, v, self._normalization_const, self.fidelity) for e, v in
-                        zip(self._expectation_repeated, self._variance_repeated)]
+                        zip(self._expectations_reps, self._variances_reps)]
 
         n_reps = len(lower_bounds)
 
@@ -293,7 +313,7 @@ class GramianEigenvalueInterval(RobustnessInterval):
                        **kwargs):
         if self._U is None or self._H is None:
             # in this case, stats must be precomputed
-            if None in [self._expectation_repeated, self._pauli_strings, self._pauli_coeffs, self._pauli_eigenvalues]:
+            if None in [self._expectations_reps, self._variances_reps]:
                 raise ValueError('If U or H is not provided, you must provide precomputed stats!')
             return
 
@@ -305,8 +325,8 @@ class GramianEigenvalueInterval(RobustnessInterval):
         variances = [simulate(ExpectationValue(U=self._U, H=(self._H - e) ** 2), variables=variables, samples=samples,
                               backend=backend, device=device, noise=noise) for e in expectation_values]
 
-        self._expectation_repeated = expectation_values
-        self._variance_repeated = variances
+        self._expectations_reps = expectation_values
+        self._variances_reps = variances
 
     def _compute_interval(self, *args, **kwargs):
 
@@ -316,9 +336,9 @@ class GramianEigenvalueInterval(RobustnessInterval):
             return
 
         lower_bounds = [self._calc_lower_bound(e, v, self.fidelity) for e, v in
-                        zip(self._expectation_repeated, self._variance_repeated)]
+                        zip(self._expectations_reps, self._variances_reps)]
         upper_bounds = [self._calc_upper_bound(e, v, self.fidelity) for e, v in
-                        zip(self._expectation_repeated, self._variance_repeated)]
+                        zip(self._expectations_reps, self._variances_reps)]
 
         n_reps = len(lower_bounds)
 
@@ -356,10 +376,11 @@ class GramianEigenvalueInterval(RobustnessInterval):
 
 def robustness_interval(U: QCircuit,
                         H: QubitHamiltonian,
-                        variables: Dict[Union[Variable, Hashable], RealNumber],
                         fidelity: float,
+                        variables: Dict[Union[Variable, Hashable], RealNumber] = None,
                         kind: str = 'expectation',
                         method: str = 'best',
+                        group_terms: bool = True,
                         samples: int = None,
                         backend: str = None,
                         noise: Union[str, NoiseModel] = None,
@@ -385,6 +406,9 @@ def robustness_interval(U: QCircuit,
     method: str, optional:
         method used to compute the interval, must be one of `sdp`, `gramian` or `best`. If `best`, then intervals for
         methods are calculated and the tightest is returned
+    group_terms: bool, optional:
+        only applies if `method` is set to sdp. If True, pauli terms are grouped into groups of commuting terms and for
+        each group a robustness interval is calculated which is then aggreated to compute the final interval
     samples: int, optional:
         number of samples
     backend: str, optional:
@@ -405,7 +429,7 @@ def robustness_interval(U: QCircuit,
     Returns
     -------
         tuple with ((float, float, float), RobustnessInterval or None) where (float, float, float) is the lower bound,
-        expectation of H with U is measured, and the upper bound.
+        expectation of H with U, and the upper bound.
 
     Raises
     ------
@@ -425,62 +449,110 @@ def robustness_interval(U: QCircuit,
         nreps = 1
 
     if method == 'sdp':
-        interval = SDPInterval(U=U, H=H, fidelity=fidelity, normalization_const=None, conf_level=conf_level,
+        interval = SDPInterval(U=U, H=H, fidelity=fidelity, conf_level=conf_level,
                                nreps=nreps, variables=variables, backend=backend, noise=noise, device=device,
-                               samples=samples)
+                               samples=samples, group_terms=group_terms)
 
         return interval.interval, (interval if return_object else None)
 
     if method in _GRAMIAN_ALIASES:
 
         if kind in _EXPECTATION_ALIASES:
-            interval = GramianExpectationBound(U=U, H=H, fidelity=fidelity, normalization_const=None,
+            interval = GramianExpectationBound(U=U, H=H, fidelity=fidelity,
                                                conf_level=conf_level, nreps=nreps, variables=variables, backend=backend,
                                                noise=noise, device=device, samples=samples)
 
             return interval.interval, (interval if return_object else None)
 
         if kind in _EIGENVALUE_ALIASES:
-            interval = GramianEigenvalueInterval(U=U, H=H, fidelity=fidelity, normalization_const=None,
+            interval = GramianEigenvalueInterval(U=U, H=H, fidelity=fidelity,
                                                  conf_level=conf_level, nreps=nreps, variables=variables,
                                                  backend=backend, noise=noise, device=device, samples=samples)
 
             return interval.interval, (interval if return_object else None)
 
     if method == 'best':
-        # TODO
-        raise NotImplementedError
+        sdp_interval = SDPInterval(U=U, H=H, fidelity=fidelity, conf_level=conf_level,
+                                   nreps=nreps, variables=variables, backend=backend, noise=noise, device=device,
+                                   samples=samples)
 
-# if __name__ == '__main__':
-#     import tequila as tq
-#     from tequila.circuit.noise import DepolarizingError
-#
-#     geometry = 'H .0 .0 .0\nH .0 .0 0.75'
-#     mol = tq.Molecule(geometry=geometry, basis_set='sto-3g', transformation='JORDANWIGNER')
-#
-#     backend_options = dict(backend='qiskit', samples=8192, noise=DepolarizingError(0.001, level=2))
-#
-#     H = mol.make_hamiltonian()
-#     U = mol.make_upccgsd_ansatz()
-#     E = tq.ExpectationValue(U=U, H=H)
-#
-#     result = tq.minimize(E, maxiter=0, **backend_options)
-#
-#     # compute fidelity with ground state
-#     eigvals, eigvecs = np.linalg.eigh(H.to_matrix())
-#     ground_state_vec = eigvecs[:, 0]
-#
-#     if backend_options.get('samples') is None:
-#         ground_state_wfn = tq.QubitWaveFunction.from_array(ground_state_vec)
-#         U_wfn = tq.simulate(U, variables=result.variables, **backend_options)
-#         fidelity = abs(ground_state_wfn.inner(U_wfn)) ** 2
-#     else:
-#         exact_wfn = tq.QubitWaveFunction.from_array(ground_state_vec)
-#         exact_wfn = tq.paulis.Projector(wfn=exact_wfn)
-#         fidelity = tq.ExpectationValue(U=U, H=exact_wfn)
-#         fidelity = tq.simulate(objective=fidelity, variables=result.variables, **backend_options)
-#
-#     intervals, interval_obj = compute_interval(U=U, H=H, fidelity=fidelity, kind='eigenvalue', method='gramian',
-#                                                variables=result.variables, return_object=True, **backend_options)
-#
-#     print(eigvals[0], intervals, interval_obj.expectation, interval_obj.variance)
+        gramian_exp_interval = GramianExpectationBound(U=U, H=H, fidelity=fidelity,
+                                                       conf_level=conf_level, nreps=nreps, variables=variables,
+                                                       backend=backend, noise=noise, device=device, samples=samples)
+        if kind in _EXPECTATION_ALIASES:
+            max_lower_bound = max([sdp_interval.lower_bound, gramian_exp_interval.lower_bound])
+            min_upper_bound = sdp_interval.upper_bound
+
+            obj = None
+            if return_object:
+                obj = RobustnessInterval(fidelity=fidelity)
+
+                obj.__dict__.update(sdp_interval.__dict__)  # so that pauli decomposition and strings are included
+                obj.__dict__.update(gramian_exp_interval.__dict__)  # variance is included; overrides expectations
+
+                obj.lower_bound = max_lower_bound
+                obj.upper_bound = min_upper_bound
+
+            return (max_lower_bound, gramian_exp_interval.expectation, min_upper_bound), obj
+
+        if kind in _EIGENVALUE_ALIASES:
+            # reuse expectation and variance
+            precomputed_stats = {'expectationvalues': gramian_exp_interval.expectations_reps,
+                                 'variances': gramian_exp_interval.variances_reps}
+
+            gramian_eigv_interval = GramianEigenvalueInterval(fidelity=fidelity,
+                                                              precomputed_stats=precomputed_stats,
+                                                              conf_level=conf_level)
+
+            max_lower_bound = max(
+                [sdp_interval.lower_bound, gramian_exp_interval.lower_bound, gramian_eigv_interval.lower_bound])
+            min_upper_bound = min(
+                [sdp_interval.upper_bound, gramian_eigv_interval.upper_bound])
+
+            obj = None
+            if return_object:
+                obj = RobustnessInterval(fidelity=fidelity)
+
+                obj.__dict__.update(sdp_interval.__dict__)  # so that pauli decomposition and strings are included
+                obj.__dict__.update(gramian_exp_interval.__dict__)  # variance is included; overrides expectations
+
+                obj.lower_bound = max_lower_bound
+                obj.upper_bound = min_upper_bound
+
+            return (max_lower_bound, gramian_exp_interval.expectation, min_upper_bound), obj
+
+
+if __name__ == '__main__':
+    import tequila as tq
+    from tequila.circuit.noise import DepolarizingError
+
+    geometry = 'H .0 .0 .0\nH .0 .0 0.75'
+    mol = tq.Molecule(geometry=geometry, basis_set='sto-3g', transformation='JORDANWIGNER')
+
+    backend_options = dict(backend='qiskit', samples=8192, noise=DepolarizingError(0.001, level=2))
+    # backend_options = dict(backend='qulacs')
+
+    H = mol.make_hamiltonian()
+    U = mol.make_upccgsd_ansatz()
+    E = tq.ExpectationValue(U=U, H=H)
+
+    result = tq.minimize(E, maxiter=0, **backend_options)
+
+    # compute fidelity with ground state
+    eigvals, eigvecs = np.linalg.eigh(H.to_matrix())
+    ground_state_vec = eigvecs[:, 0]
+
+    if backend_options.get('samples') is None:
+        ground_state_wfn = tq.QubitWaveFunction.from_array(ground_state_vec)
+        U_wfn = tq.simulate(U, variables=result.variables, **backend_options)
+        fidelity = abs(ground_state_wfn.inner(U_wfn)) ** 2
+    else:
+        exact_wfn = tq.QubitWaveFunction.from_array(ground_state_vec)
+        exact_wfn = tq.paulis.Projector(wfn=exact_wfn)
+        fidelity = tq.ExpectationValue(U=U, H=exact_wfn)
+        fidelity = tq.simulate(objective=fidelity, variables=result.variables, **backend_options)
+
+    intervals, interval_obj = robustness_interval(U=U, H=H, fidelity=fidelity, kind='expectation', method='best',
+                                                  variables=result.variables, return_object=True, **backend_options)
+
+    print(eigvals[0], intervals, interval_obj.expectation, interval_obj.variance)
