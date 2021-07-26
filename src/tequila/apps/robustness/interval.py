@@ -102,6 +102,9 @@ class RobustnessInterval(ABC):
     @property
     def variance(self):
         if self._variance is None:
+            if self._variances_reps is None:
+                return None
+
             self._variance = np.mean(self._variances_reps)
 
         return self._variance
@@ -261,10 +264,9 @@ class GramianExpectationBound(RobustnessInterval):
             return
 
         # divide into constant and non constant terms
-        const_coeffs = [ps.coeff.real for ps in self._H.paulistrings if len(ps.naked()) == 0]
-        other_coeffs = [ps.coeff.real for ps in self._H.paulistrings if len(ps.naked()) > 0]
+        pauli_coeffs = [ps.coeff.real for ps in self._H.paulistrings]
 
-        self._normalization_const = np.sum(const_coeffs) - np.sum(other_coeffs)
+        self._normalization_const = -np.sum(np.abs(pauli_coeffs))
         objective = ExpectationValue(U=self._U, H=self._H)
         expectation_values = [simulate(objective, variables=variables, samples=samples, backend=backend,
                                        device=device, noise=noise) for _ in range(nreps)]
@@ -529,7 +531,8 @@ def robustness_interval(U: QCircuit,
 #     geometry = 'H .0 .0 .0\nH .0 .0 0.75'
 #     mol = tq.Molecule(geometry=geometry, basis_set='sto-3g', transformation='JORDANWIGNER')
 #
-#     backend_options = dict(backend='qiskit', samples=8192, noise=DepolarizingError(0.001, level=2))
+#     backend_options = dict(backend='qiskit', samples=8192, noise=DepolarizingError(0.05, level=2))
+#
 #     # backend_options = dict(backend='qulacs')
 #
 #     H = mol.make_hamiltonian()
@@ -552,7 +555,8 @@ def robustness_interval(U: QCircuit,
 #         fidelity = tq.ExpectationValue(U=U, H=exact_wfn)
 #         fidelity = tq.simulate(objective=fidelity, variables=result.variables, **backend_options)
 #
-#     intervals, interval_obj = robustness_interval(U=U, H=H, fidelity=fidelity, kind='expectation', method='best',
+#     intervals, interval_obj = robustness_interval(U=U, H=H, fidelity=fidelity, kind='expectation', method='gram',
 #                                                   variables=result.variables, return_object=True, **backend_options)
 #
 #     print(eigvals[0], intervals, interval_obj.expectation, interval_obj.variance)
+
