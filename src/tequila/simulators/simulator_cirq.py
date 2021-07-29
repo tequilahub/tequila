@@ -173,12 +173,12 @@ class BackendCircuitCirq(BackendCircuit):
                                             initial_state=initial_state)
         return QubitWaveFunction.from_array(arr=backend_result.final_state_vector, numbering=self.numbering)
 
-    def convert_measurements(self, backend_result: cirq.TrialResult) -> QubitWaveFunction:
+    def convert_measurements(self, backend_result: cirq.Result) -> QubitWaveFunction:
         """
         Take the results of a cirq measurement and translate them to teuqila QubitWaveFunction.
         Parameters
         ----------
-        backend_result: cirq.TrialResult:
+        backend_result: cirq.Result:
             the result of sampled measurements.
 
         Returns
