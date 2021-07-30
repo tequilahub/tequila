@@ -254,14 +254,17 @@ class BackendCircuitCirq(BackendCircuit):
         None
         """
         op, mapping = self.op_lookup[gate.name]
-        if isinstance(gate.parameter, float):
-            par = gate.parameter
+        parameter = gate.parameter
+        if hasattr(gate, 'power'):
+            parameter = gate.power
+        if isinstance(parameter, float):
+            par = parameter
         else:
             try:
-                par = self.tq_to_sympy[gate.parameter]
+                par = self.tq_to_sympy[parameter]
             except:
-                par = sympy.Symbol('{}_{}'.format(self._name_variable_objective(gate.parameter), str(self.counter)))
-                self.tq_to_sympy[gate.parameter] = par
+                par = sympy.Symbol('{}_{}'.format(self._name_variable_objective(parameter), str(self.counter)))
+                self.tq_to_sympy[parameter] = par
                 self.counter += 1
         cirq_gate = op(**mapping(par)).on(*[self.qubit(t) for t in gate.target])
         if gate.is_controlled():

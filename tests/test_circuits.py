@@ -1,10 +1,15 @@
-from tequila.circuit.gates import X, Y, Z, Rx, Ry, Rz, H, CNOT, QCircuit, RotationGate, Phase, ExpPauli, Trotterized
-from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from random import randint
+
+import numpy
+import pytest
+import sympy
+from tequila import assign_variable, paulis, TequilaWarning
 from tequila.circuit._gates_impl import RotationGateImpl
+from tequila.circuit.gates import CNOT, ExpPauli, H, Phase, QCircuit, RotationGate, Rx, Ry, Rz, S, \
+    SWAP, T, Trotterized, u1, u2, u3, X, Y, Z
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
-from tequila import assign_variable, paulis
-import numpy, sympy
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
 
 def test_qubit_map():
@@ -37,8 +42,10 @@ def test_qubit_map():
                 assert U2.gates[i].__dict__[k] == v
 
     for gate in [Trotterized]:
-        U1 = gate(generators=[paulis.X(0) + paulis.Y(0)*paulis.Z(1), paulis.Z(3)*paulis.Z(4)], angles=["a", "b"], control=2, steps=1)
-        U2 = gate(generators=[paulis.X(1) + paulis.Y(1)*paulis.Z(2), paulis.Z(4)*paulis.Z(5)], angles=["a", "b"], control=0, steps=1)
+        U1 = gate(generator=paulis.X(0) + paulis.Y(0)*paulis.Z(1), angle="a", control=2, steps=1)
+        U1 += gate(generator=paulis.Z(3)*paulis.Z(4), angle="b", control=2, steps=1)
+        U2 = gate(generator=paulis.X(1) + paulis.Y(1)*paulis.Z(2), angle="a", control=0, steps=1)
+        U2 += gate(generator=paulis.Z(4)*paulis.Z(5), angle="b", control=0)
         mapped = U1.map_qubits(qubit_map={0:1, 1:2, 3:4, 4:5, 2:0})
         assert len(mapped.gates) == len(U2.gates)
         for i in range(len(mapped.gates)):
@@ -101,7 +108,7 @@ def test_basic_gates():
         1 / sympy.sqrt(2) * (BS(0) + BS(1))
     ]
     for i, g in enumerate(gates):
-        wfn = simulate(g, backend="symbolic", variables={angle: sympy.pi})
+        wfn = simulate(g, backend="symbolic", variables={angle: numpy.pi})
         assert wfn.isclose(strip_sympy_zeros(results[i]))
 
 
@@ -166,3 +173,160 @@ def test_circuit_from_moments():
     moms = c.moments
     c2 = QCircuit.from_moments(moms)
     assert c == c2
+
+
+@pytest.mark.parametrize(
+    "gate, angle",
+    [
+        (Z(target=0, control=None), numpy.pi),              # Z = u1(pi)
+        (Z(target=0, control=1), numpy.pi),
+        (S(target=0, control=None), numpy.pi/2),            # S = u1(pi/2)
+        (S(target=0, control=1), numpy.pi/2),
+        (S(target=0, control=None).dagger(), -numpy.pi/2),  # Sdg = u1(-pi/2)
+        (S(target=0, control=1).dagger(), -numpy.pi/2),
+        (T(target=0, control=None), numpy.pi/4),            # T = u1(pi/4)
+        (T(target=0, control=1), numpy.pi/4),
+        (T(target=0, control=None).dagger(), -numpy.pi/4),  # Tdg = u1(-pi/4)
+        (T(target=0, control=1).dagger(), -numpy.pi/4)
+    ]
+)
+def test_unitary_gate_u1(gate, angle):
+    """
+    Test some equivalences for u1 gate
+    """
+    c_u1 = u1(lambd=angle, target=gate.gates[0].target,
+              control=None if len(gate.gates[0].control) == 0 else gate.gates[0].control)
+
+    if len(gate.gates[0].control) > 0:
+        c_u1 = X(target=gate.gates[0].control) + c_u1
+        gate = X(target=gate.gates[0].control) + gate
+
+    wfn1 = simulate(c_u1, backend="symbolic")
+    wfn2 = simulate(gate, backend="symbolic")
+
+    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+
+
+@pytest.mark.parametrize(
+    "ctrl, phi, lambd",
+    [
+        (None, numpy.pi / 13, numpy.pi / 7),
+        (1, numpy.pi / 13, numpy.pi / 7),
+        (None, 0, 0),
+        (1, 0, 0),
+        (None, numpy.pi, numpy.pi),
+        (1, numpy.pi, numpy.pi),
+        (None, 0, numpy.pi),
+        (1, numpy.pi, 0),
+    ]
+)
+def test_unitary_gate_u2(ctrl, phi, lambd):
+    """
+    Test some equivalences for u2 gate
+    Since u2(\\phi, \\lambda) = Rz(\\phi)Ry(\\pi/2)Rz(\\lambda)
+    """
+    c_u2 = u2(phi=phi, lambd=lambd, target=0, control=ctrl)
+    c_equiv = Rz(target=0, control=ctrl, angle=lambd) + \
+              Ry(target=0, control=ctrl, angle=numpy.pi / 2) + \
+              Rz(target=0, control=ctrl, angle=phi)
+
+    if ctrl is not None:
+        c_u2 = X(target=ctrl) + c_u2
+        c_equiv = X(target=ctrl) + c_equiv
+
+    wfn1 = simulate(c_u2, backend="symbolic")
+    wfn2 = simulate(c_equiv, backend="symbolic")
+
+    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+
+
+@pytest.mark.parametrize(
+    "gate, theta, phi, lambd",
+    [
+        (Rx(target=0, control=None, angle=numpy.pi/5), numpy.pi/5, -numpy.pi/2, numpy.pi/2),  # Rx(angle) = u3(angle, -pi/2, pi/2)
+        (Rx(target=0, control=1, angle=numpy.pi/6), numpy.pi/6, -numpy.pi/2, numpy.pi/2),
+        (Rx(target=0, control=None, angle=numpy.pi/7), numpy.pi/7, -numpy.pi/2, numpy.pi/2),
+        (Rx(target=0, control=1, angle=numpy.pi/8), numpy.pi/8, -numpy.pi/2, numpy.pi/2),
+        (Ry(target=0, control=1, angle=numpy.pi/4), numpy.pi/4, 0, 0),                        # Ry(angle) = u3(angle, 0, 0)
+        (Ry(target=0, control=1, angle=numpy.pi/5), numpy.pi/5, 0, 0),
+        (Ry(target=0, control=1, angle=numpy.pi/3), numpy.pi/3, 0, 0),
+        (Ry(target=0, control=1, angle=numpy.pi/2), numpy.pi/2, 0, 0),
+        (Rz(target=0, control=None, angle=numpy.pi), 0, 0, numpy.pi),                         # Rz(angle) = U(0, 0, angle)
+        (Rz(target=0, control=1, angle=numpy.pi/6), 0, 0, numpy.pi/6),
+        (Rz(target=0, control=None, angle=numpy.pi/7), 0, 0, numpy.pi/7),
+        (Rz(target=0, control=1, angle=numpy.pi/8), 0, 0, numpy.pi/8)
+    ]
+)
+def test_unitary_gate_u_u3(gate, theta, phi, lambd):
+    """
+    Test some equivalences for u3 gate (also U gate, because U = u3)
+    """
+    c_u3 = u3(theta=theta, phi=phi, lambd=lambd, target=gate.gates[0].target,
+              control=None if len(gate.gates[0].control) == 0 else gate.gates[0].control)
+
+    if len(gate.gates[0].control) > 0:
+        c_u3 = X(target=gate.gates[0].control) + c_u3
+        gate = X(target=gate.gates[0].control) + gate
+
+    wfn1 = simulate(c_u3, backend="symbolic")
+    wfn2 = simulate(gate, backend="symbolic")
+
+    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+
+def test_swap():
+    U = X(0)
+    U += SWAP(0,2)
+    wfn = simulate(U)
+    wfnx = simulate(X(2))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+
+    U = X(2)
+    U += SWAP(0,2, power=2.0)
+    wfn = simulate(U)
+    wfnx = simulate(X(0))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+
+    U = X(0)+X(3)
+    U += SWAP(0,2, control=3)
+    wfn = simulate(U)
+    wfnx = simulate(X(2)+X(3))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+
+    U = X(2)+X(3)
+    U += SWAP(0,2, control=3, power=2.0)
+    wfn = simulate(U)
+    wfnx = simulate(X(2)+X(3))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+
+def test_variable_map():
+    U = Ry(angle="a", target=0) + Rx(angle="b", target=1) + Rz(angle="c", target=2) + H(angle="d", target=3) + ExpPauli(paulistring="X(0)Y(1)Z(2)", angle="e")
+    variables = {"a":"aa", "b":"bb", "c":"cc", "d":"dd", "e":"ee"}
+    U2 = U.map_variables(variables=variables)
+    variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+    manual_extract = sum([g.extract_variables() for g in U.gates], [])
+    assert sorted([str(x) for x in manual_extract]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in U.extract_variables()]) == sorted([str(x) for x in list(variables.keys())])
+    assert sorted([str(x) for x in U2.extract_variables()]) == sorted([str(x) for x in list(variables.values())])
+
+
+def test_in_place_control() -> None:
+    """Test whether the in place version of controlled_unitary works as expected."""
+    circ = X(randint(0, 10)) + CNOT(control=randint(1, 10), target=0)
+    length = randint(1, 10)
+    anc = list(set([randint(11, 20) for _ in range(length)]))
+
+    circ._inpl_control_circ(anc)
+
+    for gate in circ.gates:
+        assert gate.is_controlled() and all(qubit in gate.control for qubit in anc)
+
+
+def test_control_exception() -> None:
+    """Test whether the TequilaWarning is raised as intended."""
+
+    with pytest.raises(TequilaWarning):
+        circ = X(0) + CNOT(control=1, target=0)
+        length = randint(1, 10)
+        anc = [1 for _ in range(length)]
+
+        circ._inpl_control_circ(anc)

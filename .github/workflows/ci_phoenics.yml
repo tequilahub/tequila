@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.7, 3.8]
 
     steps:
     - uses: actions/checkout@v2
@@ -34,9 +34,10 @@ jobs:
                 #pip install --upgrade -r requirements_phoenics_36.txt
                 #pytest tests/test_phoenics.py
               elif [ $ver -eq 7 ]; then
-                python -m pip install --upgrade pip
-                pip install --upgrade -r requirements.txt
-                pip install --upgrade -r requirements_phoenics.txt
-                pip install -e .
-                pytest tests/test_phoenics.py --slow  
+                echo "skipping python 3.7"
+                #python -m pip install --upgrade pip
+                #pip install --upgrade -r requirements.txt
+                #pip install --upgrade -r requirements_phoenics.txt
+                #pip install -e .
+                #pytest tests/test_phoenics.py --slow  
               fi

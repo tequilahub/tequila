@@ -2,12 +2,18 @@ import typing
 from .qc_base import ParametersQC, QuantumChemistryBase, NBodyTensor
 from .madness_interface import QuantumChemistryMadness
 
-SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness"]
+SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness", "pyscf"]
 INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase, "madness": QuantumChemistryMadness}
 
 try:
     from .psi4_interface import QuantumChemistryPsi4
     INSTALLED_QCHEMISTRY_BACKENDS["psi4"] = QuantumChemistryPsi4
+except ImportError:
+    pass
+
+try:
+    from .pyscf_interface import QuantumChemistryPySCF
+    INSTALLED_QCHEMISTRY_BACKENDS["pyscf"] = QuantumChemistryPySCF
 except ImportError:
     pass
 
@@ -56,6 +62,8 @@ def Molecule(geometry: str,
 
     parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
+    integrals_provided = all([key in kwargs for key in ["one_body_integrals", "two_body_integrals"]])
+
     if backend is None:
         if basis_set is None or basis_set.lower() in ["madness", "mra", "pno"]:
             backend = "madness"
@@ -66,8 +74,7 @@ def Molecule(geometry: str,
         else:
             raise Exception("No quantum chemistry backends installed on your system")
     elif backend == "base":
-            requirements = [key in kwargs for key in ["one_body_integrals", "two_body_integrals"]]
-            if not all(requirements):
+            if not integrals_provided:
                 raise Exception("No quantum chemistry backends installed on your system\n"
                             "To use the base functionality you need to pass the following tensors via keyword\n"
                             "one_body_integrals, two_body_integrals\n")
@@ -83,14 +90,13 @@ def Molecule(geometry: str,
     if guess_wfn is not None and backend != 'psi4':
         raise Exception("guess_wfn only works for psi4")
 
-    if basis_set is None and backend.lower() not in  ["base", "madness"]:
-        raise Exception("no basis_set provided for backend={}".format(backend))
+    if basis_set is None and backend.lower() not in  ["base", "madness"] and not integrals_provided:
+        raise Exception("no basis_set or integrals provided for backend={}".format(backend))
     elif basis_set is None:
         basis_set = "custom"
         parameters.basis_set=basis_set
 
     return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation, guess_wfn=guess_wfn, *args, **kwargs)
-
 
 def MoleculeFromOpenFermion(molecule,
                             transformation: typing.Union[str, typing.Callable] = None,

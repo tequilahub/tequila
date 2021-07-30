@@ -1,4 +1,4 @@
-from tequila.utils import TequilaException, to_float
+from tequila.utils import TequilaException, to_float, TequilaWarning
 from tequila.circuit.circuit import QCircuit
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila.utils.misc import to_float
@@ -8,7 +8,7 @@ from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
 
-import numbers, typing, numpy, copy
+import numbers, typing, numpy, copy, warnings
 
 from dataclasses import dataclass
 
@@ -154,7 +154,8 @@ class BackendCircuit():
         kwargs
         """
 
-        self._input_args = {"abstract_circuit":abstract_circuit, "variables":variables, "noise":noise, "qubit_map":qubit_map, "optimize_circuits":optimize_circuit, "device":device, **kwargs}
+        self._input_args = {"abstract_circuit": abstract_circuit, "variables": variables, "noise": noise,
+                            "qubit_map": qubit_map, "optimize_circuits": optimize_circuit, "device": device, **kwargs}
 
         self.no_translation = False
         self._variables = tuple(abstract_circuit.extract_variables())
@@ -171,6 +172,15 @@ class BackendCircuit():
 
         if qubit_map is None:
             qubit_map = {q: i for i, q in enumerate(abstract_circuit.qubits)}
+        elif not qubit_map == {q: i for i, q in enumerate(abstract_circuit.qubits)}:
+            warnings.warn("reveived custom qubit_map = {}\n"
+                        "This is not fully integrated and might result in unexpected behaviour!"
+                          .format(qubit_map), TequilaWarning)
+
+            if len(qubit_map) > abstract_circuit.max_qubit()+1:
+                raise TequilaException("Custom qubit_map has too many qubits {} vs {}".format(len(qubit_map), abstract_circuit.max_qubit()+1))
+            if max(qubit_map.keys()) > abstract_circuit.max_qubit():
+                raise TequilaException("Custom qubit_map tries to assign qubit {} but we only have {}".format(max(qubit_map.keys()), abstract_circuit.max_qubit()))
 
         # qubit map is initialized to have BackendQubits as values (they carry number and instance attributes)
         self.qubit_map = self.make_qubit_map(qubit_map)
@@ -179,9 +189,7 @@ class BackendCircuit():
         compiled = c(abstract_circuit)
         self.abstract_circuit = compiled
 
-
         self.noise = noise
-
         self.check_device(device)
         self.device = self.retrieve_device(device)
 
@@ -190,8 +198,6 @@ class BackendCircuit():
 
         if optimize_circuit and noise is None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
-
-
 
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
@@ -349,7 +355,8 @@ class BackendCircuit():
             initial_state = list(initial_state.keys())[0].integer
 
         all_qubits = [i for i in range(self.abstract_circuit.n_qubits)]
-        active_qubits = self.abstract_circuit.qubits
+        active_qubits = self.qubit_map.keys()
+
         # maps from reduced register to full register
         keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
 
@@ -410,7 +417,7 @@ class BackendCircuit():
         """
         # make measurement instruction (measure all qubits in the Hamiltonian that are also in the circuit)
         abstract_qubits_H = hamiltonian.qubits
-        assert len(abstract_qubits_H) != 0 # this case should be filtered out before
+        assert len(abstract_qubits_H) != 0  # this case should be filtered out before
         # assert that the Hamiltonian was mapped before
         if not all(q in self.qubit_map.keys() for q in abstract_qubits_H):
             raise TequilaException(
@@ -706,6 +713,9 @@ class BackendExpectationValue:
     def U(self):
         return self._U
 
+    def count_measurements(self):
+        return self.abstract_expectationvalue.count_measurements()
+
     def extract_variables(self) -> typing.Dict[str, numbers.Real]:
         """
         wrapper over circuit extract variables
@@ -734,7 +744,7 @@ class BackendExpectationValue:
             device for compilation of circuit
         """
         self.abstract_expectationvalue = E
-        self._input_args = {"variables":variables, "device":device, "noise":noise, **kwargs}
+        self._input_args = {"variables": variables, "device": device, "noise": noise, **kwargs}
         self._U = self.initialize_unitary(E.U, variables=variables, noise=noise, device=device, **kwargs)
         self._reduced_hamiltonians = self.reduce_hamiltonians(self.abstract_expectationvalue.H)
         self._H = self.initialize_hamiltonian(self._reduced_hamiltonians)
@@ -769,6 +779,8 @@ class BackendExpectationValue:
 
         if self._shape is not None:
             data = data.reshape(self._shape)
+        else:
+            data = float(data)
         if self._contraction is None:
             return data
         else:

@@ -52,11 +52,14 @@ class ExpectationValueImpl:
             return self._unitary
 
     @property
-    def H(self):
+    def H(self) -> list:
         if self._hamiltonian is None:
             return paulis.QubitHamiltonian.unit()
         else:
             return self._hamiltonian
+
+    def count_measurements(self):
+        return sum([H.count_measurements() for H in self.H])
 
     def extract_variables(self) -> typing.Dict[str, numbers.Real]:
         """
@@ -74,7 +77,7 @@ class ExpectationValueImpl:
         if self.U is not None:
             self.U.replace_variables(replacement)
 
-    def __init__(self, U=None, H=None, contraction=None, shape=None):
+    def __init__(self, U=None, H=None, contraction=None, shape=None, *args, **kwargs):
         """
 
         Parameters
@@ -113,6 +116,19 @@ class ExpectationValueImpl:
         """
         return ExpectationValueImpl(H=tuple([H.map_qubits(qubit_map=qubit_map) for H in self.H]), U=self.U.map_qubits(qubit_map=qubit_map), contraction=self._contraction, shape=self._shape)
 
+    def map_variables(self, variables: dict, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        variables
+            dictionary with old variable names as keys and new variable names or values as values
+        Returns
+        -------
+        Circuit with changed variables
+
+        """
+        return ExpectationValueImpl(H=self.H, U=self.U.map_variables(variables=variables, *args, **kwargs), contraction=self._contraction, shape=self._shape)
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
@@ -189,6 +205,30 @@ class Objective:
                 assert not hasattr(arg, "U") # failsave
                 assert not hasattr(arg, "H") # failsave
                 mapped_args.append(arg) # for purely variable dependend arguments
+
+        return Objective(args=mapped_args, transformation=self.transformation)
+
+    def map_variables(self, variables, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        variables
+            dictionary with old variable names as keys and new variable names or values as values
+        Returns
+        -------
+        Circuit with changed variables
+
+        """
+
+        variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+
+        mapped_args = []
+        for arg in self.args:
+            if hasattr(arg, "map_variables"):
+                mapped_args.append(arg.map_variables(variables=variables))
+            else:
+                mapped_args.append(arg)
 
         return Objective(args=mapped_args, transformation=self.transformation)
 
@@ -451,6 +491,18 @@ class Objective:
         """
         return [arg for arg in self.args if hasattr(arg, "U")]
 
+    def count_measurements(self):
+        """
+        Count all measurements necessary for this objective:
+        Function will iterate to all unique expectation values and count the
+        number of Pauli strings in the corresponding Hamiltonians
+        Returns
+        -------
+        Number of measurements required for this objective
+        Measurements can be on different circuits (with regards to gates, depth, size, qubits)
+        """
+        return sum(E.count_measurements() for E in list(set(self.get_expectationvalues())))
+
     def count_expectationvalues(self, unique=True):
         """
         Parameters
@@ -469,11 +521,14 @@ class Objective:
         else:
             return len(self.get_expectationvalues())
 
-    def __str__(self):
-        return self.__repr__()
-
     def __repr__(self):
+        return "f({})".format(self.extract_variables())
+
+    def __str__(self):
         variables = self.extract_variables()
+        if len(variables) > 5:
+            variables = len(variables)
+
         types = [type(E) for E in self.get_expectationvalues()]
         types = list(set(types))
 
@@ -484,9 +539,11 @@ class Objective:
                 types = "partially compiled to " + str([t for t in types if t is not ExpectationValueImpl])
 
         unique = self.count_expectationvalues(unique=True)
+        measurements = self.count_measurements()
         return "Objective with {} unique expectation values\n" \
-               "variables = {}\n" \
-               "types     = {}".format(unique, variables, types)
+               "total measurements = {}\n" \
+               "variables          = {}\n" \
+               "types              = {}".format(unique, measurements, variables, types)
 
     def __call__(self, variables=None, *args, **kwargs):
         """
@@ -520,18 +577,24 @@ class Objective:
         evaluated = {}
         ev_array = []
         for E in self.args:
-            if E not in evaluated:
+            if E not in evaluated:#
                 expval_result = E(variables=variables, *args, **kwargs)
                 evaluated[E] = expval_result
             else:
                 expval_result = evaluated[E]
+            try:
+                expval_result = float(expval_result)
+            except:
+                pass # allow array evaluation (non-standard operation)
             ev_array.append(expval_result)
         result = onp.asarray(self.transformation(*ev_array),dtype=float)
         if result.shape == ():
             return float(result)
+        elif len(result) == 1:
+            return float(result[0])
         else:
             return result
-        
+
 
     def contract(self):
         """
@@ -1138,10 +1201,10 @@ class VectorObjective:
             back += group[i]
         return back
 
-    def __str__(self):
-        return self.__repr__()
-
     def __repr__(self):
+        return "f({})".format(self.extract_variables())
+
+    def __str__(self):
         variables = self.extract_variables()
         types = [type(E) for E in self.get_expectationvalues()]
         types = list(set(types))
@@ -1256,7 +1319,7 @@ def ExpectationValue(U, H, optimize_measurements: bool = False, *args, **kwargs)
     if optimize_measurements:
         binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
         commuting_parts = binary_H.commuting_groups()
-        result = VectorObjective()
+        result = 0.0
         for cH in commuting_parts:
             qwc, Um = cH.get_qubit_wise()
             Etmp = ExpectationValue(H=qwc, U=U + Um, optimize_measurements=False)
@@ -1322,6 +1385,9 @@ class Variable:
     def name(self):
         return self._name
 
+    def __lt__(self, other):
+        return hash(self.name) < hash(other.name)
+
     def __hash__(self):
         return hash(self.name)
 
@@ -1356,6 +1422,15 @@ class Variable:
         :return: self wrapped in list
         """
         return [self]
+
+    def map_variables(self, variables, *args, **kwargs):
+        """
+        see same function in Objective
+        """
+        if self in variables:
+            return variables[self]
+        else:
+            return self
 
     def __eq__(self, other):
         if hasattr(other, "name"):

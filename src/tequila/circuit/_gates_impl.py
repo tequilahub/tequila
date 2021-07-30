@@ -4,8 +4,9 @@ import numbers
 from abc import ABC
 from tequila import TequilaException
 from tequila.objective.objective import Variable, FixedVariable, assign_variable,Objective,VectorObjective
-from tequila.hamiltonian import PauliString, QubitHamiltonian
+from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
+from numpy import pi, sqrt
 
 from dataclasses import dataclass
 
@@ -15,6 +16,10 @@ UnionParam = typing.Union[Variable, FixedVariable]
 
 
 class QGateImpl:
+    """"
+    BaseClass for internal gate representation
+    All other gate classes should derive from here
+    """
 
     @property
     def name(self):
@@ -30,30 +35,45 @@ class QGateImpl:
 
     @property
     def qubits(self):
-        return self._qubits
+        # Set the active qubits
+        if self.control:
+            qubits = self.target + self.control
+        else:
+            qubits = self.target
+        return sorted(tuple(set(qubits)))
 
     @property
     def max_qubit(self):
-        return self._max_qubit
+        return self.compute_max_qubit()
 
     def extract_variables(self):
-        return []
+        if self.is_parametrized() and hasattr(self.parameter, "extract_variables"):
+            return self.parameter.extract_variables()
+        else:
+            return []
 
     def is_parametrized(self) -> bool:
         return hasattr(self, "parameter")
 
-    def __init__(self, name, target: UnionList, control: UnionList = None):
+    def make_generator(self, include_controls=False):
+        if self.generator and include_controls and self.is_controlled():
+            return paulis.Qm(self.control) * self.generator
+
+        return self.generator
+
+    def map_variables(self, variables):
+
+        if self.is_parametrized():
+            self.parameter=self.parameter.map_variables(variables)
+
+        return self
+
+    def __init__(self, name, target: UnionList, control: UnionList = None, generator: QubitHamiltonian = None):
         self._name = name
         self._target = tuple(list_assignment(target))
         self._control = tuple(list_assignment(control))
         self.finalize()
-        # Set the active qubits
-        if self.control:
-            self._qubits = self.target + self.control
-        else:
-            self._qubits = self.target
-        self._qubits = sorted(tuple(set(self._qubits)))
-        self._max_qubit = self.compute_max_qubit()
+        self.generator = generator
 
     def copy(self):
         return copy.deepcopy(self)
@@ -62,9 +82,9 @@ class QGateImpl:
         """
         :return: return the hermitian conjugate of the gate.
         """
-
-        return QGateImpl(name=copy.copy(self.name), target=self.target,
-                         control=self.control)
+        result=copy.deepcopy(self)
+        result.generator *= -1.0
+        return result
 
     def is_controlled(self) -> bool:
         """
@@ -77,7 +97,7 @@ class QGateImpl:
 
     def is_single_qubit_gate(self) -> bool:
         """
-        Convenience and easier to interpret
+        Convenience and easier to interpret in code
         :return: True if the Gate only acts on one qubit (not controlled)
         """
         return (not self.control) and (len(self.target) == 1)
@@ -89,7 +109,7 @@ class QGateImpl:
             for c in self.target:
                 if c in self.control:
                     raise Exception("control and target are the same qubit: " + self.__str__())
-        if hasattr(self,"generator"):
+        if hasattr(self,"generator") and self.generator:
             if set(list(self.generator.qubits)) != set(list(self.target)):
                 raise Exception("qubits of generator and targets don't agree -- mapping error?\n gate = {}".format(self.__str__()))
         if hasattr(self, "generators"):
@@ -134,17 +154,15 @@ class QGateImpl:
     def map_qubits(self, qubit_map: dict):
         mapped = copy.deepcopy(self)
         mapped._target = tuple([qubit_map[i] for i in self.target])
-        qubits = mapped._target
         if self.control is not None:
             mapped._control = tuple([qubit_map[i] for i in self.control])
-            qubits += mapped._control
-        mapped._qubits = sorted(tuple(set(qubits)))
-        mapped._max_qubit = mapped.compute_max_qubit()
-        if hasattr(self, "generator"):
+        if hasattr(self, "generator") and self.generator:
             mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
         if hasattr(self, "generators"):
             mapped.generators = [i.map_qubits(qubit_map=qubit_map) for i in self.generators]
         mapped.finalize()
+        if hasattr(self, "generator"):
+            mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
         return mapped
 
 class ParametrizedGateImpl(QGateImpl, ABC):
@@ -152,25 +170,18 @@ class ParametrizedGateImpl(QGateImpl, ABC):
     the base class from which all parametrized gates inherit. User defined gates, when implemented, are liable to be members of this class directly.
     '''
 
-    def extract_variables(self):
-        if hasattr(self.parameter, "extract_variables"):
-            return self.parameter.extract_variables()
-        else:
-            return []
-
-    def dagger(self):
-        raise TequilaException("should not be called from ABC")
-
     @property
     def parameter(self):
         return self._parameter
 
     @parameter.setter
     def parameter(self, other):
-        self.parameter = assign_variable(variable=other)
+        self._parameter = assign_variable(variable=other)
 
-    def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None):
-        super().__init__(name=name, target=target, control=control)
+    def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None,
+                generator: QubitHamiltonian = None):
+        super().__init__(name=name, target=target, control=control, generator=generator)
+        # failsafe
         if isinstance(parameter, VectorObjective):
             raise TequilaException('Received VectorObjective {} as parameter. This is forbidden.'.format(parameter))
         self._parameter = assign_variable(variable=parameter)
@@ -180,7 +191,7 @@ class ParametrizedGateImpl(QGateImpl, ABC):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", parameter=" + str(self._parameter)
+        result += ", parameter=" + repr(self._parameter)
         result += ")"
         return result
 
@@ -193,15 +204,68 @@ class ParametrizedGateImpl(QGateImpl, ABC):
             return False
         return True
 
+    def dagger(self):
+        result = copy.deepcopy(self)
+        result._parameter = assign_variable(-self.parameter)
+        return result
+
 class DifferentiableGateImpl(ParametrizedGateImpl):
 
     @property
     def eigenvalues_magnitude(self):
         return self._eigenvalues_magnitude
 
-    def __init__(self,eigenvalues_magnitude, *args, **kwargs):
+    def __init__(self,eigenvalues_magnitude=None, assume_real=False, *args, **kwargs):
         self._eigenvalues_magnitude=eigenvalues_magnitude
         super().__init__(*args, **kwargs)
+        self.assume_real=assume_real
+
+    def shifted_gates(self, r=None):
+        """
+        Default shift rule, override this for special strategies
+        Returns
+        -------
+            List of Tuples: [(weight, shifted_gate), (weight, shifted_gate)]
+            The gradient compiler will assemble this the following way
+            <H>_U with U = AU(a)B --> \sum weight <H>_V , with V=A shifted_gate
+
+            shifted_gate can also be a whole circuit (either as QCircuit object or a list of gates)
+        """
+        if r is None:
+            r = self.eigenvalues_magnitude
+
+        s =  pi / (4 * r)
+        if self.is_controlled() and not self.assume_real:
+            # following https://arxiv.org/abs/2104.05695
+            shifts = [s, -s, 3 * s, -3 * s]
+            coeff1 = (sqrt(2) + 1)/sqrt(8) * r
+            coeff2 = (sqrt(2) - 1)/sqrt(8) * r
+            coefficients = [coeff1, -coeff1, -coeff2, coeff2]
+            circuits = []
+            for i, shift in enumerate(shifts):
+                shifted_gate = copy.deepcopy(self)
+                shifted_gate.parameter += shift
+                circuits.append((coefficients[i], shifted_gate))
+            return circuits
+
+        shift_a = self.parameter + s
+        shift_b = self.parameter - s
+        right = copy.deepcopy(self)
+        right.parameter = shift_a
+        left = copy.deepcopy(self)
+        left.parameter = shift_b
+
+        if self.is_controlled():
+            # following https://doi.org/10.1039/D0SC06627C
+            p0 = paulis.Qp(self.control) # Qp = |0><0|
+            right2 = GeneralizedRotationImpl(angle=s, generator=p0, eigenvalues_magnitude=r/2)  # controls are in p0
+            left2 = GeneralizedRotationImpl(angle=-s, generator=p0, eigenvalues_magnitude=r/2)  # controls are in p0
+            return [(r, [right, right2]), (-r, [left , left2])]
+        else:
+            return [ (r, right), (-r, left) ]
+
+    def finalize(self):
+        super().finalize()
 
 class RotationGateImpl(DifferentiableGateImpl):
     axis_to_string = {0: "x", 1: "y", 2: "z"}
@@ -229,10 +293,11 @@ class RotationGateImpl(DifferentiableGateImpl):
         result.parameter *= power
         return result
 
-    def __init__(self, axis, angle, target: list, control: list = None):
+    def __init__(self, axis, angle, target: list, control: list = None, assume_real=False):
         assert (angle is not None)
-        super().__init__(eigenvalues_magnitude=0.5, name=self.get_name(axis=axis), parameter=angle, target=target, control=control)
+        super().__init__(eigenvalues_magnitude=0.5, assume_real=assume_real, name=self.get_name(axis=axis), parameter=angle, target=target, control=control)
         self._axis = self.assign_axis(axis)
+        self.generator = self.assign_generator(self.axis, self.target)
 
     @staticmethod
     def assign_axis(axis):
@@ -244,10 +309,14 @@ class RotationGateImpl(DifferentiableGateImpl):
             assert (axis in [0, 1, 2])
             return axis
 
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = assign_variable(-self.parameter)
-        return result
+    @staticmethod
+    def assign_generator(axis, qubits):
+        if axis == 0:
+            return sum(paulis.X(q) for q in qubits)
+        if axis == 1:
+            return sum(paulis.Y(q) for q in qubits)
+
+        return sum(paulis.Z(q) for q in qubits)
 
 
 class PhaseGateImpl(DifferentiableGateImpl):
@@ -255,26 +324,37 @@ class PhaseGateImpl(DifferentiableGateImpl):
     def __init__(self, phase, target: list, control: list = None):
         assert (phase is not None)
         super().__init__(eigenvalues_magnitude=0.5, name='Phase', parameter=phase, target=target, control=control)
-
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = -self.parameter
-        return result
+        self.generator = paulis.Z(target) - paulis.I(target)
 
     def __pow__(self, power, modulo=None):
         result = copy.deepcopy(self)
         result.parameter *= power
         return result
 
-
 class PowerGateImpl(ParametrizedGateImpl):
+    """
+    Attributes
+    ---------
+    power
+        numeric type (fixed exponent) or hashable type (parametrized exponent)
+    parameter
+        power multiplied by pi
+        to be consitent with exp(-i a/2 G) representation [a: gate.parameter, G: gate.generator]
+    """
 
-    def __init__(self, name, target: list, power=None, control: list = None):
-        super().__init__(name=name, parameter=power, target=target, control=control)
+    @property
+    def power(self):
+        return self.parameter/pi
 
-    def dagger(self):
-        result = copy.deepcopy(self)
-        return result
+    def __init__(self, name, generator: QubitHamiltonian,  target: list, power, control: list = None):
+        if generator is None:
+            assert name is not None and name.upper() in ["X", "Y", "Z"]
+            generator = QubitHamiltonian.from_string("{}({})".format(name.upper(), target))
+        if name is None:
+            assert generator is not None
+            name = str(generator)
+        super().__init__(name=name, parameter=power * pi, target=target, control=control, generator=generator)
+
 
 class GeneralizedRotationImpl(DifferentiableGateImpl):
     """
@@ -296,16 +376,10 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
             targets += [k for k in ps.keys()]
         return tuple(set(targets))
 
-    def __init__(self, angle, generator, control=None, eigenvalues_magnitude=0.5, steps=1):
-        super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, name="GenRot", parameter=angle, target=self.extract_targets(generator), control=control)
+    def __init__(self, angle, generator, control=None, eigenvalues_magnitude=0.5, steps=1, assume_real=False):
+        super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, assume_real=assume_real, name="GenRot", parameter=angle, target=self.extract_targets(generator), control=control)
         self.steps = steps
         self.generator = generator
-
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = assign_variable(-self.parameter)
-        return result
-
 
 class ExponentialPauliGateImpl(DifferentiableGateImpl):
     """
@@ -313,14 +387,10 @@ class ExponentialPauliGateImpl(DifferentiableGateImpl):
     Exp(-i angle/2 * paulistring)
     """
 
-    def dagger(self):
-        result = copy.deepcopy(self)
-        result._parameter = -self.parameter
-        return result
-
     def __init__(self, paulistring: PauliString, angle: float, control: typing.List[int] = None):
         super().__init__(eigenvalues_magnitude=0.5, name="Exp-Pauli", target=tuple(t for t in paulistring.keys()), control=control, parameter=angle)
         self.paulistring = paulistring
+        self.generator = QubitHamiltonian.from_paulistrings(paulistring)
         self.finalize()
 
     def __str__(self):
@@ -328,7 +398,7 @@ class ExponentialPauliGateImpl(DifferentiableGateImpl):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", parameter=" + str(self._parameter)
+        result += ", parameter=" + repr(self.parameter)
         result += ", paulistring=" + str(self.paulistring)
         result += ")"
         return result
@@ -338,60 +408,32 @@ class ExponentialPauliGateImpl(DifferentiableGateImpl):
         mapped.paulistring = self.paulistring.map_qubits(qubit_map)
         return mapped
 
-@dataclass
-class TrotterParameters:
-    threshold: float = 0.0
-    join_components: bool = True
-    randomize_component_order: bool = False
-    randomize: bool = False
 
+class TrotterizedGateImpl(ParametrizedGateImpl):
 
-class TrotterizedGateImpl(QGateImpl):
-
-    def is_parametrized(self) -> bool:
-        return True
-
-    def extract_variables(self) -> typing.Dict[str, numbers.Number]:
-        tmp = []
-        for angle in self.angles:
-            if hasattr(angle, "extract_variables"):
-                tmp += angle.extract_variables()
-        return list(set(tmp))
-
-    @property
-    def angles(self):
-        return self._parameter
-
-    @angles.setter
-    def angles(self, other):
-        self._parameter = other
-
-    def __init__(self, generators: typing.Union[QubitHamiltonian, typing.List[QubitHamiltonian]],
+    def __init__(self, generator: QubitHamiltonian,
+                 angle: typing.Union[numbers.Real, Variable],
                  steps: int = 1,
-                 angles: typing.Union[list, numbers.Real, Variable] = None,
                  control: typing.Union[list, int] = None,
                  threshold: numbers.Real = 0.0,
-                 join_components: bool = True,
-                 randomize_component_order: bool = True,
-                 randomize: bool = True):
+                 randomize: bool = True, **kwargs):
         """
         :param generators: list of generators
         :param angles: coefficients for each generator
         :param steps: Trotter Steps
         :param control: control qubits
         :param threshold: neglect terms in the given Hamiltonians if their coefficients are below this threshold
-        :param join_components: The generators are trotterized together. If False the first generator is trotterized, then the second etc
         Note that for steps==1 as well as len(generators)==1 this has no effect
-        :param randomize_component_order: randomize the order in the generators order before trotterizing
-        :param randomize: randomize the trotter decomposition of each generator
+        :param randomize: randomize the trotter decomposition of the PauliStrings in the generator
         """
-        super().__init__(name="Trotterized", target=self.extract_targets(generators), control=control)
-        self.generators = list_assignment(generators)
-        self.angles = angles
+
+        assert angle is not None
+        assert generator is not None
+
+        super().__init__(name="Trotterized", target=self.extract_targets(generator), control=control, generator=generator, parameter=angle)
+        self._parameter = angle
         self.steps = steps
         self.threshold = threshold
-        self.join_components = join_components
-        self.randomize_component_order = randomize_component_order
         self.randomize = randomize
         self.finalize()
 
@@ -400,24 +442,15 @@ class TrotterizedGateImpl(QGateImpl):
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
 
-        result += ", angles=" + str(self._parameter)
-        result += ", generators=" + str(self.generators)
+        result += ", angle=" + repr(self.parameter)
+        result += ", generator=" + str(self.generator)
         result += ")"
         return result
 
     @staticmethod
-    def extract_targets(generators):
+    def extract_targets(generator):
         targets = []
-        for g in generators:
-            for ps in g.paulistrings:
-                targets += [k for k in ps.keys()]
+        for ps in generator.paulistrings:
+            targets += [k for k in ps.keys()]
         return tuple(set(targets))
-
-    def dagger(self):
-        result = copy.deepcopy(self)
-        angles = []
-        for angle in self.angles:
-            angles.append(-angle)
-        result.angles = angles
-        return result
 

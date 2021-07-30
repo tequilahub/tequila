@@ -10,7 +10,7 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 
-SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic"]
+SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic", "qlm"]
 SUPPORTED_NOISE_BACKENDS = ["qiskit",'qibo', 'cirq', 'pyquil', 'qulacs', "qulacs_gpu"]
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
@@ -105,6 +105,16 @@ try:
     INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
 except ImportError:
     HAS_PYQUIL = False
+
+
+HAS_QLM = True
+try:
+    from tequila.simulators.simulator_qlm import BackendCircuitQLM, BackendExpectationValueQLM
+
+    INSTALLED_SIMULATORS["qlm"] = BackendTypes(BackendCircuitQLM, BackendExpectationValueQLM)
+    INSTALLED_SAMPLERS["qlm"] = BackendTypes(BackendCircuitQLM, BackendExpectationValueQLM)
+except ImportError:
+    HAS_QLM = False
 
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
 
@@ -342,7 +352,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
         else:
             return abstract_circuit
 
-    return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device)
+    return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device, *args, **kwargs)
 
 
 def simulate(objective: typing.Union['Objective', 'QCircuit'],
@@ -394,9 +404,10 @@ def simulate(objective: typing.Union['Objective', 'QCircuit'],
     return compiled_objective(variables=variables, samples=samples, *args, **kwargs)
 
 
-def draw(objective, variables=None, backend: str = None):
+def draw(objective, variables=None, backend: str = None, name=None, *args, **kwargs):
     """
-    Pretty output (depends on installed backends)
+    Pretty output (depends on installed backends) for jupyter notebooks
+    or similar HTML environments
 
     Parameters
     ----------
@@ -404,14 +415,21 @@ def draw(objective, variables=None, backend: str = None):
         the tequila objective to print out
     variables : optional:
          Give variables if the objective is parametrized (not necesarry for displaying)
+    name: optional:
+         Name the objective (changes circuit filenames for qpic backend)
     backend: str, optional:
          chose preferred backend (of None or not found it will be automatically picked)
     """
     if backend not in INSTALLED_SIMULATORS:
         backend = None
+    if name is None:
+        name = abs(hash("tmp"))
 
     if backend is None:
-        if "cirq" in INSTALLED_SIMULATORS:
+        from tequila.circuit.qpic import system_has_qpic
+        if system_has_qpic:
+            backend = "qpic"
+        elif "cirq" in INSTALLED_SIMULATORS:
             backend = "cirq"
         elif "qiskit" in INSTALLED_SIMULATORS:
             backend = "qiskit"
@@ -423,26 +441,46 @@ def draw(objective, variables=None, backend: str = None):
             if E in drawn:
                 print("\nExpectation Value {} is the same as {}".format(i, drawn[E]))
             else:
-                print("\nExpectation Value {}".format(i))
-                print("Hamiltonian : ", E.H)
-                print("variables : ", E.U.extract_variables())
-                print("circuit:\n")
-                draw(E.U, backend=backend)
+                print("\nExpectation Value {}:".format(i))
+                measurements = E.count_measurements()
+                print("total measurements = {}".format(measurements))
+                variables = E.U.extract_variables()
+                print("variables          = {}".format(len(variables)))
+                filename = "{}_{}.png".format(name,i)
+                print("circuit            = {}".format(filename))
+                draw(E.U, backend=backend, filename=filename)
             drawn[E] = i
 
     else:
         if backend is None:
             print(objective)
+        elif backend.lower() in ["qpic", "html"]:
+            try:
+                import IPython
+                import qpic
+                from tequila.circuit.qpic import export_to
+                if "filename" not in kwargs:
+                    kwargs["filename"] = "tmp_{}.png".format(hash(backend))
+
+                circuit = objective
+                if hasattr(circuit, "U"):
+                    circuit = circuit.U
+                if hasattr(circuit, "abstract_circuit"):
+                    circuit = objective.abstract_circuit
+
+                export_to(circuit=circuit, *args, **kwargs)
+                image=IPython.display.Image(filename=kwargs["filename"])
+                IPython.display.display(image)
+
+            except ImportError as E:
+                raise Exception("Original Error Message:{}\nYou are missing dependencies for drawing: You need IPython, qpic and pdfatex.\n".format(E))
         else:
-            if variables is None:
-                variables = {}
-            for k in objective.extract_variables():
-                if k not in variables:
-                    variables[k] = 0.0
-            variables = format_variable_dictionary(variables)
-            compiled = compile_circuit(abstract_circuit=objective, backend=backend,
-                                       variables=variables)
-            print(compiled.circuit)
+            compiled = compile_circuit(abstract_circuit=objective, backend=backend)
+            if backend == "qiskit":
+                return compiled.circuit.draw(*args, **kwargs)
+            else:
+                print(compiled.circuit)
+                return str(compiled.circuit)
 
 
 def compile(objective: typing.Union['Objective', 'QCircuit'],

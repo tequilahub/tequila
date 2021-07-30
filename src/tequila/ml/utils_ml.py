@@ -64,7 +64,10 @@ def preamble(objective: Objective, compile_args: dict = None, input_vars: list =
         the compiled objective, it's compile arguments, its weight variables, dicts for the weight and input gradients,
         and a dictionary that links positions in an array to each variable (parses parameters).
     """
+    def var_sorter(e):
+        return hash(e.name)
     all_vars = objective.extract_variables()
+    all_vars.sort(key=var_sorter)
     compile_args = check_compiler_args(compile_args)
 
     weight_vars = []
@@ -89,7 +92,7 @@ def preamble(objective: Objective, compile_args: dict = None, input_vars: list =
     gradients = get_gradients(objective, compile_args)
     w_grad, i_grad = separate_gradients(gradients, weight_vars=weight_vars, input_vars=input_vars)
     first, second = get_variable_orders(weight_vars, input_vars)
-    return comped, compile_args, weight_vars, w_grad, i_grad, first, second
+    return comped, compile_args, input_vars, weight_vars, i_grad, w_grad, first, second
 
 
 def get_gradients(objective: Objective, compile_args: dict):

@@ -1,5 +1,7 @@
+from __future__ import annotations
 import copy
 import typing
+from typing import Dict, Union
 import numpy
 import numbers
 
@@ -27,7 +29,11 @@ class QubitWaveFunction:
         self.n_qubits = keymap.n_qubits
         mapped_state = dict()
         for k, v in self.state.items():
-            mapped_state[keymap(input_state=k, initial_state=initial_state)] = v
+            mapped_key=keymap(input_state=k, initial_state=initial_state)
+            if mapped_key in mapped_state:
+                mapped_state[mapped_key] += v
+            else:
+                mapped_state[mapped_key] = v
 
         self.state = mapped_state
         return self
@@ -60,11 +66,11 @@ class QubitWaveFunction:
             return self._state
 
     @state.setter
-    def state(self, other: typing.Dict[BitString, complex]):
+    def state(self, other: Dict[BitString, complex]):
         assert (isinstance(other, dict))
         self._state = other
 
-    def __init__(self, state: typing.Dict[BitString, complex] = None, n_qubits=None):
+    def __init__(self, state: Dict[BitString, complex] = None, n_qubits=None):
         if state is None:
             self._state = dict()
         elif isinstance(state, int):
@@ -89,7 +95,7 @@ class QubitWaveFunction:
         return self.state.values()
 
     @staticmethod
-    def convert_bitstring(key: typing.Union[BitString, numbers.Integral], n_qubits):
+    def convert_bitstring(key: Union[BitString, numbers.Integral], n_qubits):
         if isinstance(key, numbers.Integral):
             return BitString.from_int(integer=key, nbits=n_qubits)
         elif isinstance(key, str):
@@ -281,6 +287,7 @@ class QubitWaveFunction:
         result = QubitWaveFunction()
         for ps in operator.paulistrings:
             result += self.apply_paulistring(paulistring=ps)
+        result = result.simplify()
         return result
 
     def apply_paulistring(self, paulistring: 'PauliString'):

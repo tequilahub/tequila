@@ -65,7 +65,7 @@ class OptimizerGPyOpt(Optimizer):
     """
     @classmethod
     def available_methods(cls):
-        return ['lbfgs', 'direct', 'cma']
+        return ['gpyopt-lbfgs', 'gpyopt-direct', 'gpyopt-cma']
 
     def __init__(self, maxiter=100, backend=None,
                  samples=None, noise=None, device=None,
@@ -235,7 +235,13 @@ class OptimizerGPyOpt(Optimizer):
 
         f = self.construct_function(O, passive_angles)
         opt = self.get_object(f, dom, method)
-        opt.run_optimization(self.maxiter, verbosity=not self.silent)
+
+        method_options={"max_iter": self.maxiter, "verbosity": not self.silent, "eps": 1.e-4}
+
+        if "method_options" in kwargs:
+            tmp={**method_options, **kwargs["method_options"]}
+
+        opt.run_optimization(**method_options)
         if self.save_history:
             self.history.energies = opt.get_evaluations()[1].flatten()
             self.history.angles = [self.redictify(v, objective, passive_angles) for v in opt.get_evaluations()[0]]

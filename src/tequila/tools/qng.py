@@ -5,7 +5,7 @@ from tequila.circuit.circuit import QCircuit
 from tequila.simulators.simulator_api import compile_objective
 from tequila.circuit.gradient import __grad_inner
 from tequila.autograd_imports import jax
-from tequila.circuit.compiler import compile_controlled_rotation, compile_h_power, compile_power_gate, \
+from tequila.circuit.compiler import compile_controlled_rotation, compile_power_gate, \
     compile_trotterized_gate, compile_controlled_phase, compile_multitarget
 import typing
 import numpy
@@ -456,7 +456,6 @@ def get_qng_combos(objective, func=stokes_block,
     objective.contract()
     compiled = compile_multitarget(gate=objective)
     compiled = compile_trotterized_gate(gate=compiled)
-    compiled = compile_h_power(gate=compiled)
     compiled = compile_power_gate(gate=compiled)
     compiled = compile_controlled_phase(gate=compiled)
     compiled = compile_controlled_rotation(gate=compiled)
