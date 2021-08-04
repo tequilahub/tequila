@@ -38,10 +38,8 @@ def _compile_commuting_parts_zb(H):
     rotations = rotation_circuit(commuting_parts)
     
     return (rotations)
-    
-    
-        
-    
+
+
 def rotation_circuit(commuting_groups):
     """returns all z paulis and corresponding circuit that transforms commuting to QWC """
 
