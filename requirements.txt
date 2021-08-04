@@ -7,7 +7,7 @@ jaxlib
 # autograd # use if jaxlib gives you trouble (e.g. on Windows), make sure jax and jaxlib are uninstalled and install autograd
 setuptools
 pytest
-openfermion >= 1.0*
+openfermion == 1.0*
 cmake # needed by qulacs, can be removed otherwise
 qulacs # default simulator (best integration), remove if the installation gives you trouble and just install one of the other supported backend
 
