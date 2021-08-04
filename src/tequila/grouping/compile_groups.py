@@ -21,7 +21,7 @@ def compile_commuting_parts(H, method="zb", *args, **kwargs):
     """
     if method is None or method.lower() == "zb":
         # @ Zack
-        return _compile_commuting_parts_zm(H, *args, **kwargs)
+        return _compile_commuting_parts_zb(H, *args, **kwargs)
     else:
         # original implementation of Thomson (T.C. Yen)
         binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
