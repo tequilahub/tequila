@@ -10,7 +10,7 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 
-SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic"]
+SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic", "qlm"]
 SUPPORTED_NOISE_BACKENDS = ["qiskit",'qibo', 'cirq', 'pyquil', 'qulacs', "qulacs_gpu"]
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
@@ -105,6 +105,16 @@ try:
     INSTALLED_NOISE_SAMPLERS["pyquil"] = BackendTypes(BackendCircuitPyquil, BackendExpectationValuePyquil)
 except ImportError:
     HAS_PYQUIL = False
+
+
+HAS_QLM = True
+try:
+    from tequila.simulators.simulator_qlm import BackendCircuitQLM, BackendExpectationValueQLM
+
+    INSTALLED_SIMULATORS["qlm"] = BackendTypes(BackendCircuitQLM, BackendExpectationValueQLM)
+    INSTALLED_SAMPLERS["qlm"] = BackendTypes(BackendCircuitQLM, BackendExpectationValueQLM)
+except ImportError:
+    HAS_QLM = False
 
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
 

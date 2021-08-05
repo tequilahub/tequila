@@ -98,6 +98,7 @@ jobs:
         python -m pip install -r requirements.txt
         python -m pip install -e .
         python -m pip install pyscf
+        python -m pip install 'h5py <= 3.1'
         cd tests
         ls
         pytest test_chemistry.py
