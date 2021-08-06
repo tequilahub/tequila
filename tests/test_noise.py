@@ -7,18 +7,14 @@ import tequila
 from tequila.circuit.noise import BitFlip, PhaseDamp, PhaseFlip, AmplitudeDamp, PhaseAmplitudeDamp, DepolarizingError
 import numpy
 import pytest
-
-samplers = [k for k in tequila.INSTALLED_SAMPLERS.keys()]
+from tequila.simulators.simulator_api import SUPPORTED_NOISE_BACKENDS
+samplers = [k for k in tequila.INSTALLED_SAMPLERS.keys() if k in SUPPORTED_NOISE_BACKENDS]
 
 
 @pytest.mark.dependencies
 def test_dependencies():
-    assert 'qiskit' in samplers
-    assert 'pyquil' in samplers
-    assert 'cirq' in samplers
-    assert 'qulacs' in samplers
-    assert 'qibo' in samplers
-
+    for k in SUPPORTED_NOISE_BACKENDS:
+        assert k in samplers
 
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
 @pytest.mark.parametrize("simulator", samplers)
