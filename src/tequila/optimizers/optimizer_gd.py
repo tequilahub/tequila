@@ -10,7 +10,8 @@ from tequila.utils import TequilaException
 class GDResults(OptimizerResults):
 
     moments: dict = None
-
+    num_iteration: int = 0
+    
 class OptimizerGD(Optimizer):
     """
     The gradient descent optimizer for tequila.
@@ -47,7 +48,7 @@ class OptimizerGD(Optimizer):
         a float. Hyperparameter: used to adjust the learning rate each iteration using the formula: lr := original_lr / (iteration ** alpha)
         Default: None. If not specify alpha or lr given as a list: lr will not be adjusted
     gamma:
-        a float. Hyperparameter: used to adjust the step of the gradient for spsa method in each iteration 
+        a float. Hyperparameter: used to adjust the step of the gradient for spsa method in each iteration
         following: c := original_c / (iteration ** gamma)
         Default value: None. If not specify gamma or c given as a list: c will not be adjusted
     beta:
@@ -133,7 +134,7 @@ class OptimizerGD(Optimizer):
             a float. Hyperparameter: used to adjust the learning rate each iteration using the formula: lr := original_lr / (iteration ** alpha)
             Default value: None. If not specify alpha or lr given as a list: lr will not be adjusted
         gamma:
-            a float. Hyperparameter: used to adjust the step of the gradient for spsa method in each iteration 
+            a float. Hyperparameter: used to adjust the step of the gradient for spsa method in each iteration
             following: c := original_c / (iteration ** gamma)
             Default value: None. If not specify gamma or c given as a list: c will not be adjusted
         beta: numbers.Real: Default = 0.9
@@ -347,7 +348,7 @@ class OptimizerGD(Optimizer):
             self.iteration += 1
         E_final, angles_final = best, best_angles
         return GDResults(energy=E_final, variables=format_variable_dictionary(angles_final), history=self.history,
-                            moments=self.moments_trajectory[id(comp)])
+                            moments=self.moments_trajectory[id(comp)], num_iteration=self.iteration)
 
     def prepare(self, objective: Objective, initial_values: dict = None,
                 variables: list = None, gradient=None):
@@ -543,7 +544,7 @@ class OptimizerGD(Optimizer):
     def _adam(self, gradients, step,
               v, moments, active_keys,
               **kwargs):
-        
+
         learningRate = self.nextLearningRate()
         t = step + 1
         s = moments[0]
@@ -565,8 +566,8 @@ class OptimizerGD(Optimizer):
 
     def _adagrad(self, gradients,
                  v, moments, active_keys, **kwargs):
-        
-        learningRate = self.nextLearningRate()         
+
+        learningRate = self.nextLearningRate()
         r = moments[1]
         grads = gradients(v, self.samples)
 
@@ -580,7 +581,7 @@ class OptimizerGD(Optimizer):
 
     def _adamax(self, gradients,
                 v, moments, active_keys, **kwargs):
-        
+
         learningRate = self.nextLearningRate()
         s = moments[0]
         r = moments[1]
@@ -632,7 +633,7 @@ class OptimizerGD(Optimizer):
         return new, moments, grads
 
     def _spsa(self, gradients, v, moments, active_keys, **kwargs):
-        
+
         learningRate = self.nextLearningRate()
         grads = gradients(v, samples=self.samples, iteration=self.iteration)
         new = {}
