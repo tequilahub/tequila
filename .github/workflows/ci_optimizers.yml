@@ -27,7 +27,7 @@ jobs:
     - name: Install quantum backends
       run: |
               pip install "cirq" "qiskit<0.25" "qulacs"
-              pip uninstall pyquil
+              pip uninstall pyquil -y
               
     - name: Install and test GPyOpt interface (no qibo)
       run: |  
