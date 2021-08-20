@@ -143,9 +143,16 @@ class ParametersQC:
 
         """
         result = []
-        for line in geometry.split('\n'):
+        # Remove blank lines
+        lines = [l for l in geometry.split("\n") if l]
+
+        for line in lines:
             words = line.split()
-            if len(words) != 4:  break
+            
+            # Pad coordinates
+            if len(words) < 4:
+                words += [0.0] * (4 - len(words))
+
             try:
                 tmp = (ParametersQC.format_element_name(words[0]),
                        (float(words[1]), float(words[2]), float(words[3])))
