@@ -4,7 +4,7 @@ from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z,
 from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
-from tequila.objective.objective import Variable
+from tequila.objective.objective import Variable, FixedVariable
 from tequila.objective.objective import Objective, VectorObjective
 from tequila.objective.objective import ExpectationValueImpl
 from tequila.autograd_imports import numpy as jnp
@@ -219,7 +219,7 @@ class Compiler:
             E = arg.abstract_expectationvalue
             E._U = self.compile_circuit(abstract_circuit=E.U, *args, **kwargs)
             return type(arg)(E, **arg._input_args)
-        elif isinstance(arg, Variable) or hasattr(arg, "name"):
+        elif isinstance(arg, Variable) or hasattr(arg, "name") or isinstance(arg, FixedVariable):
             return arg
         else:
             raise TequilaCompilerException(

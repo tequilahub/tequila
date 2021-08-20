@@ -1,6 +1,6 @@
 from tequila.circuit.compiler import Compiler
 from tequila.objective.objective import Objective, ExpectationValueImpl, Variable,\
-    assign_variable, identity, VectorObjective
+    assign_variable, identity, VectorObjective, FixedVariable
 from tequila import TequilaException
 from tequila.simulators.simulator_api import compile
 import typing
@@ -178,6 +178,8 @@ def __grad_inner(arg, variable):
             return 1.0
         else:
             return 0.0
+    elif isinstance(arg, FixedVariable):
+        return 0.0
     elif isinstance(arg, ExpectationValueImpl):
         return __grad_expectationvalue(arg, variable=variable)
     elif hasattr(arg, "abstract_expectationvalue"):
