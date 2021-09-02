@@ -19,6 +19,12 @@ _EIGENVALUE_ALIASES = ['eigenvalue', 'eigval']
 _GRAMIAN_ALIASES = ['gramian', 'gram']
 _METHODS = ['sdp'] + ['best'] + _GRAMIAN_ALIASES
 
+__all__ = ['robustness_interval',
+           'RobustnessInterval',
+           'SDPInterval',
+           'GramianExpectationBound',
+           'GramianEigenvalueInterval']
+
 
 class RobustnessInterval(ABC):
     def __init__(self,
@@ -26,22 +32,22 @@ class RobustnessInterval(ABC):
                  U: QCircuit = None,
                  H: QubitHamiltonian = None,
                  conf_level: float = 1e-2,
-                 precomputed_stats: Dict[str, Union[List[List[float]], List[float], float]] = None, **kwargs):
-        if precomputed_stats is None:
-            precomputed_stats = {}
-
-        # clean stats keys
-        precomputed_stats = {k.replace('_', '').replace(' ', ''): v for k, v in precomputed_stats.items()}
-
+                 precomputed_stats: Dict[str, Union[List[List[float]], List[float], float]] = None):
         self._U = U
         self._H = H
 
-        self._expectations_reps = precomputed_stats.get('expectationvalues')
-        self._variances_reps = precomputed_stats.get('variances')
-        self._pauli_strings = precomputed_stats.get('paulistrings')
-        self._pauli_coeffs = precomputed_stats.get('paulicoeffs')
-        self._pauli_eigenvalues = precomputed_stats.get('paulieigenvalues')
-        self._pauli_expectations_repeated = precomputed_stats.get('pauliexpectations')
+        # clean stats keys
+        self._precomputed_stats = {k.replace(' ', '_'): v for k, v in (precomputed_stats or {}).items()}
+
+        self._pauligroups = self._precomputed_stats.get('pauligroups', [])
+        self._pauligroups_coeffs = self._precomputed_stats.get('pauligroups_coeffs')
+        self._pauligroups_eigenvalues = self._precomputed_stats.get('pauligroups_eigenvalues')
+        self._pauligroups_expectations = self._precomputed_stats.get('pauligroups_expectations')
+        self._pauligroups_variances = self._precomputed_stats.get('pauligroups_variances')
+
+        self._hamiltonian_expectations = self._precomputed_stats.get('hamiltonian_expectations')
+        self._hamiltonian_variances = self._precomputed_stats.get('hamiltonian_variances')
+        self._normalization_constant = self._precomputed_stats.get('normalization_const')
 
         self._fidelity = fidelity
         self._conf_level = conf_level
@@ -51,22 +57,27 @@ class RobustnessInterval(ABC):
         self._expectation = None
         self._variance = None
 
-        self._compute_stats(**kwargs)
-        self._sanity_checks()
-        self._compute_interval()
-
     def _sanity_checks(self):
         if self._fidelity < 0 or self._fidelity > 1:
             raise ValueError(f'encountered invalid fidelity; got {self._fidelity}, must be within [0, 1]!')
 
-        if self._variances_reps is not None:
-            for i, v in enumerate(self._variances_reps):
-                if v < 0:
-                    warnings.warn(message=f'CAUTION! negative variance encountered; got {v}, setting to 0.0;'
-                                          + 'this can lead to unreliable results', category=RuntimeWarning)
-                    v = 0.0
+        # make sure that vairance is positive
+        if self._pauligroups_variances is not None:
+            for i, group_vars in enumerate(self._pauligroups_variances):
+                for j, v in enumerate(group_vars):
+                    if v <= -1e-6:
+                        raise ValueError(f'negative variance encountered: {v}')
 
-                self._variances_reps[i] = v
+                    group_vars[j] = max(0, v)
+
+                self._pauligroups_variances[i] = group_vars
+
+        if self._hamiltonian_variances is not None:
+            for i, v in enumerate(self._hamiltonian_variances):
+                if v <= -1e-6:
+                    raise ValueError(f'negative variance encountered: v={v}')
+
+                self._hamiltonian_variances[i] = max(0, v)
 
     def _compute_interval(self, *args, **kwargs):
         pass
@@ -94,19 +105,10 @@ class RobustnessInterval(ABC):
 
     @property
     def expectation(self):
-        if self._expectation is None:
-            self._expectation = np.mean(self._expectations_reps)
-
         return self._expectation
 
     @property
     def variance(self):
-        if self._variance is None:
-            if self._variances_reps is None:
-                return None
-
-            self._variance = np.mean(self._variances_reps)
-
         return self._variance
 
     @property
@@ -121,14 +123,6 @@ class RobustnessInterval(ABC):
     def H(self):
         return self._H
 
-    @property
-    def expectations_reps(self):
-        return self._expectations_reps
-
-    @property
-    def variances_reps(self):
-        return self._variances_reps
-
     @lower_bound.setter
     def lower_bound(self, v):
         self._lower_bound = v
@@ -140,48 +134,68 @@ class RobustnessInterval(ABC):
 
 class SDPInterval(RobustnessInterval):
 
-    def _compute_stats(self, variables=None, samples=None, backend=None, device=None, noise=None, nreps=None,
-                       group_terms=True, *args, **kwargs):
-        if self._U is None or self._H is None:
-            # in this case, stats must be precomputed
-            if None in [self._pauli_expectations, self._pauli_strings, self._pauli_coeffs, self._pauli_eigenvalues]:
-                raise ValueError('If U or H is not provided, you must provide precomputed stats!')
+    def __init__(self,
+                 fidelity: float,
+                 U: QCircuit = None,
+                 H: QubitHamiltonian = None,
+                 conf_level: float = 1e-2,
+                 precomputed_stats: Dict[str, Union[List[List[float]], List[float], float]] = None,
+                 variables=None,
+                 samples=None,
+                 backend=None,
+                 device=None,
+                 noise=None,
+                 nreps=None,
+                 group_terms=True):
 
+        super(SDPInterval, self).__init__(fidelity, U, H, conf_level, precomputed_stats)
+
+        self._compute_stats(variables, samples, backend, device, noise, nreps, group_terms)
+        self._sanity_checks()
+        self._lower_bound, self._upper_bound = self._compute_interval()
+        self._expectation = self._compute_expectation()
+
+    def _compute_stats(self, variables, samples, backend, device, noise, nreps, group_terms):
+        if None not in [self._pauligroups, self._pauligroups_coeffs, self._pauligroups_expectations,
+                        self._pauligroups_eigenvalues]:
+            # here we assume that stats have been provided; no need to recompute
             return
+
+        if self._U is None or self._H is None:
+            raise ValueError('If U or H is not provided, you must provide precomputed_stats!')
 
         if samples is None:
             nreps = 1
 
         # compute expectation values
         if group_terms:
-            paulicliques = make_paulicliques(H=self._H)
-            pauli_strings = [ps.naked() for ps in paulicliques]
-            pauli_coeffs = [ps.coeff.real for ps in paulicliques]
+            self._pauligroups = make_paulicliques(H=self._H)
+            self._pauligroups_coeffs = [ps.coeff.real for ps in self._pauligroups]
         else:
-            pauli_strings = [ps.naked() for ps in self._H.paulistrings]
-            pauli_coeffs = [ps.coeff.real for ps in self._H.paulistrings]
+            self._pauligroups = [ps.naked() for ps in self._H.paulistrings]
+            self._pauligroups_coeffs = [ps.coeff.real for ps in self._H.paulistrings]
 
-        objectives = [ExpectationValue(U=self._U + p_str.U, H=p_str.H) for p_str in pauli_strings]
+        objectives = [ExpectationValue(U=self._U + p_str.U, H=p_str.H) for p_str in self._pauligroups]
 
         # compute expectation values
-        pauli_expectations = [[simulate(
-            objective=objective, variables=variables, samples=samples, backend=backend, device=device, noise=noise)
-            for objective in objectives] for _ in range(nreps)]
+        self._pauligroups_expectations = [[simulate(objective=objective,  # noqa
+                                                    variables=variables,
+                                                    samples=samples,
+                                                    backend=backend,
+                                                    device=device,
+                                                    noise=noise) for objective in objectives] for _ in range(nreps)]
 
         # compute eigenvalues for each term
-        pauli_eigenvalues = [p_str.compute_eigenvalues() for p_str in pauli_strings]
-
-        self._pauli_expectations = pauli_expectations
-        self._pauli_eigenvalues = pauli_eigenvalues
-        self._pauli_strings = pauli_strings
-        self._pauli_coeffs = pauli_coeffs
+        self._pauligroups_eigenvalues = [p_str.compute_eigenvalues() for p_str in self._pauligroups]
 
     def _compute_interval(self, *args, **kwargs):
 
         bounds = np.array([self._compute_interval_single(
-            self._pauli_strings, self._pauli_coeffs, self._pauli_eigenvalues, pauli_expecs)
-            for pauli_expecs in self._pauli_expectations
-        ])
+            pauligroups=self._pauligroups,
+            pauligroups_coeffs=self._pauligroups_coeffs,
+            pauligroups_eigvals=self._pauligroups_eigenvalues,
+            pauligroups_expectations=pauli_expecs
+        ) for pauli_expecs in self._pauligroups_expectations])
 
         lower_bounds = bounds[:, 0]
         upper_bounds = bounds[:, 1]
@@ -189,29 +203,27 @@ class SDPInterval(RobustnessInterval):
         n_reps = len(lower_bounds)
 
         if n_reps == 1:
-            self._lower_bound = lower_bounds[0]
-            self._upper_bound = upper_bounds[0]
+            lower_bound, upper_bound = lower_bounds[0], upper_bounds[0]
         else:
             # one sided confidence interval for lower bound
             lower_bound_mean = np.mean(lower_bounds)
             lower_bound_variance = np.var(lower_bounds, ddof=1, dtype=np.float64)
-            self._lower_bound = lower_bound_mean - np.sqrt(lower_bound_variance / n_reps) * stats.t.ppf(
+            lower_bound = lower_bound_mean - np.sqrt(lower_bound_variance / n_reps) * stats.t.ppf(
                 q=1 - self._conf_level, df=n_reps - 1)
 
             # one sided confidence interval for upper bound
             upper_bound_mean = np.mean(upper_bounds)
             upper_bound_variance = np.var(upper_bounds, ddof=1, dtype=np.float64)
-            self._upper_bound = upper_bound_mean - np.sqrt(upper_bound_variance / n_reps) * stats.t.ppf(
+            upper_bound = upper_bound_mean - np.sqrt(upper_bound_variance / n_reps) * stats.t.ppf(
                 q=1 - self._conf_level, df=n_reps - 1)
 
-        # compute expectations
-        self._expectations_reps = [np.dot(self._pauli_coeffs, pauli_expecs) for pauli_expecs in
-                                   self._pauli_expectations]
+        return lower_bound, upper_bound
 
-    def _compute_interval_single(self, pauli_strings, pauli_coeffs, pauli_eigvals, pauli_expecs):
-        lower_bound = upper_bound = 0.0
+    def _compute_interval_single(self, pauligroups, pauligroups_coeffs, pauligroups_eigvals, pauligroups_expectations):
+        lower_bound, upper_bound = 0.0, 0.0
 
-        for p_str, p_coeff, p_eigvals, p_expec in zip(pauli_strings, pauli_coeffs, pauli_eigvals, pauli_expecs):
+        for p_str, p_coeff, p_eigvals, p_expec in zip(pauligroups, pauligroups_coeffs, pauligroups_eigvals,
+                                                      pauligroups_expectations):
 
             min_eigval = min(p_eigvals)
             max_eigval = max(p_eigvals)
@@ -233,138 +245,298 @@ class SDPInterval(RobustnessInterval):
 
         return lower_bound, upper_bound
 
-    @staticmethod
-    def _calc_lower_bound(a, f):
-        assert -1.0 <= a <= 1.0, 'data not normalized to [-1, 1]'
+    def _compute_expectation(self):
+        # compute expectations
+        expectation_samples = []
+        for pauligroups_expecs in self._pauligroups_expectations:
+            expectation_samples.append(np.dot(self._pauligroups_coeffs, pauligroups_expecs))
 
-        if f < 0.5 * (1 - a):
+        mean_expectation = np.mean(expectation_samples)
+
+        return mean_expectation
+
+    @staticmethod
+    def _calc_lower_bound(e, f):
+        assert -1.0 <= e <= 1.0, 'expectation not normalized to [-1, 1]'
+
+        if f < 0.5 * (1 - e):
             return -1.0
 
-        return (2 * f - 1) * a - 2 * np.sqrt(f * (1 - f) * (1 - a ** 2))
+        return (2 * f - 1) * e - 2 * np.sqrt(f * (1 - f) * (1 - e ** 2))
 
     @staticmethod
-    def _calc_upper_bound(a, f):
-        assert -1.0 <= a <= 1.0, 'data not normalized to [-1, 1]'
+    def _calc_upper_bound(e, f):
+        assert -1.0 <= e <= 1.0, 'expectation not normalized to [-1, 1]'
 
-        if f < 0.5 * (1 + a):
+        if f < 0.5 * (1 + e):
             return 1.0
 
-        return (2.0 * f - 1.0) * a + 2.0 * np.sqrt(f * (1.0 - f) * (1.0 - a ** 2))
+        return (2.0 * f - 1.0) * e + 2.0 * np.sqrt(f * (1.0 - f) * (1.0 - e ** 2))
 
 
 class GramianExpectationBound(RobustnessInterval):
 
-    def _compute_stats(self, variables=None, samples=None, backend=None, device=None, noise=None, nreps=None, *args,
-                       **kwargs):
-        if self._U is None or self._H is None:
-            # in this case, stats must be precomputed
-            if None in [self._expectations_reps, self._variances_reps]:
-                raise ValueError('If U or H is not provided, you must provide precomputed stats!')
+    def __init__(self,
+                 fidelity: float,
+                 U: QCircuit = None,
+                 H: QubitHamiltonian = None,
+                 conf_level: float = 1e-2,
+                 precomputed_stats: Dict[str, Union[List[List[float]], List[float], float]] = None,
+                 variables=None,
+                 samples=None,
+                 backend=None,
+                 device=None,
+                 noise=None,
+                 nreps=None,
+                 group_terms=True):
+        super(GramianExpectationBound, self).__init__(fidelity, U, H, conf_level, precomputed_stats)
 
+        self._compute_stats(variables, samples, backend, device, noise, nreps, group_terms)
+        self._sanity_checks()
+        self._lower_bound = self._compute_interval(group_terms)
+        self._upper_bound = np.inf
+        self._expectation = self._compute_expectation(group_terms)
+        self._variance = self._compute_variance(group_terms)
+
+    def _compute_stats(self, variables, samples, backend, device, noise, nreps, group_terms):
+        if None not in [self._pauligroups, self._pauligroups_coeffs, self._pauligroups_expectations,
+                        self._pauligroups_variances, self._pauligroups_eigenvalues]:
+            # here we assume that stats have been provided; no need to recompute
             return
 
-        # divide into constant and non constant terms
-        pauli_coeffs = [ps.coeff.real for ps in self._H.paulistrings]
+        if self._U is None or self._H is None:
+            raise ValueError('If U or H is not provided, you must provide precomputed_stats!')
 
-        self._normalization_const = -np.sum(np.abs(pauli_coeffs))
-        objective = ExpectationValue(U=self._U, H=self._H)
-        expectation_values = [simulate(objective, variables=variables, samples=samples, backend=backend,
-                                       device=device, noise=noise) for _ in range(nreps)]
+        if samples is None:
+            nreps = 1
 
-        # compute variance
-        variances = [simulate(ExpectationValue(U=self._U, H=(self._H - e) ** 2), variables=variables, samples=samples,
-                              backend=backend, device=device, noise=noise) for e in expectation_values]
+        if group_terms:
+            # here we group pauli terms into groups of commuting terms
+            self._pauligroups = make_paulicliques(H=self._H)
+            self._pauligroups_coeffs = [ps.coeff.real for ps in self._pauligroups]
+            self._pauligroups_eigenvalues = [p_str.compute_eigenvalues() for p_str in self._pauligroups]
 
-        self._expectations_reps = expectation_values
-        self._variances_reps = variances
+            objectives = [ExpectationValue(U=self._U + group.U, H=group.H) for group in self._pauligroups]
 
-    def _compute_interval(self, *args, **kwargs):
-        lower_bounds = [self._calc_lower_bound(e, v, self._normalization_const, self.fidelity) for e, v in
-                        zip(self._expectations_reps, self._variances_reps)]
+            self._pauligroups_expectations = []
+            self._pauligroups_variances = []
 
-        n_reps = len(lower_bounds)
+            for _ in range(nreps):
+                # expectation
+                group_expecs = [simulate(objective=objective,  # noqa
+                                         variables=variables,
+                                         samples=samples,
+                                         backend=backend,
+                                         device=device,
+                                         noise=noise) for objective in objectives]
+
+                # variance
+                group_vars = [simulate(ExpectationValue(U=self._U + group.U, H=(group.H - e) ** 2),  # noqa
+                                       variables=variables,
+                                       samples=samples,
+                                       backend=backend,
+                                       device=device,
+                                       noise=noise) for group, e in zip(self._pauligroups, group_expecs)]
+
+                self._pauligroups_expectations.append(group_expecs)
+                self._pauligroups_variances.append(group_vars)
+
+        else:
+            # here we compute stats for the entire hamiltonian and add a const than s.t. it is ≥ 0
+            pauli_strings = self._H.paulistrings
+            pauli_coeffs = [ps.coeff.real for ps in pauli_strings]
+            const_pauli_terms = [i for i, pstr in enumerate(pauli_strings) if len(pstr) == 0]
+
+            self._normalization_constant = -np.sum([pauli_coeffs[i] for i in const_pauli_terms])
+            self._normalization_constant += np.sum([
+                np.abs(pauli_coeffs[i]) for i in set(range(len(pauli_coeffs))) - set(const_pauli_terms)])
+
+            objective = ExpectationValue(U=self._U, H=self._H)
+
+            # compute expectation reps
+            self._hamiltonian_expectations = [simulate(objective,  # noqa
+                                                       variables=variables,
+                                                       samples=samples,
+                                                       backend=backend,
+                                                       device=device,
+                                                       noise=noise) for _ in range(nreps)]
+
+            # compute variance reps
+            self._hamiltonian_variances = [simulate(ExpectationValue(U=self._U, H=(self._H - e) ** 2),  # noqa
+                                                    variables=variables,
+                                                    samples=samples,
+                                                    backend=backend,
+                                                    device=device,
+                                                    noise=noise) for e in self._hamiltonian_expectations]
+
+    def _compute_interval(self, group_terms):
+        if group_terms:
+            bounds = self._compute_bounds_grouped()
+        else:
+            assert self._normalization_constant is not None
+            bounds = self._compute_bounds_hamiltonian()
+
+        n_reps = len(bounds)
 
         if n_reps == 1:
-            self._lower_bound = lower_bounds[0]
+            bound = bounds[0]
         else:
             # one sided confidence interval for lower bound
-            lower_bound_mean = np.mean(lower_bounds)
-            lower_bound_variance = np.var(lower_bounds, ddof=1, dtype=np.float64)
-            self._lower_bound = lower_bound_mean - np.sqrt(lower_bound_variance / n_reps) * stats.t.ppf(
-                q=1 - self._conf_level, df=n_reps - 1)
+            bound_mean = np.mean(bounds)
+            bound_variance = np.var(bounds, ddof=1, dtype=np.float64)
+            bound = bound_mean - np.sqrt(bound_variance / n_reps) * stats.t.ppf(q=1 - self._conf_level, df=n_reps - 1)
+
+        return bound
+
+    def _compute_bounds_hamiltonian(self):
+        bounds = []
+
+        for expectation, variance in zip(self._hamiltonian_expectations, self._hamiltonian_variances):
+            bound = -self._normalization_constant + self._calc_lower_bound(
+                e=self._normalization_constant + expectation, v=variance, f=self.fidelity)  # noqa
+            bounds.append(bound)
+
+        return bounds
+
+    def _compute_bounds_grouped(self):
+        bounds = []
+
+        for pg_expectations, pg_variances in zip(self._pauligroups_expectations, self._pauligroups_variances):
+
+            bound = 0.0
+            for eigvals, expec, variance in zip(self._pauligroups_eigenvalues, pg_expectations, pg_variances):
+                min_eigval = min(eigvals)
+                expec_pos = np.clip(expec - min_eigval, 0, None, dtype=np.float)
+                group_lower_bound = min_eigval + self._calc_lower_bound(expec_pos, variance, self.fidelity)
+
+                bound += group_lower_bound
+
+            bounds.append(bound)
+
+        return bounds
+
+    def _compute_expectation(self, group_tems):
+        if group_tems:
+            expectation_samples = []
+            for pauligroups_expecs in self._pauligroups_expectations:
+                expectation_samples.append(np.dot(self._pauligroups_coeffs, pauligroups_expecs))
+        else:
+            expectation_samples = self._hamiltonian_expectations
+
+        mean_expectation = np.mean(expectation_samples)
+        return mean_expectation
+
+    def _compute_variance(self, group_tems):
+        if group_tems:
+            return np.nan
+        else:
+            mean_variance = np.mean(self._hamiltonian_variances)
+            return mean_variance
 
     @staticmethod
-    def _calc_lower_bound(expectation, variance, normalization_const, fidelity):
-        variance = max(variance, 0.0)
+    def _calc_lower_bound(e, v, f):
+        assert e >= 0
 
-        if fidelity / (1 - fidelity) < variance / ((expectation - variance) ** 2):
-            return normalization_const
+        if f / (1 - f) < v / (e ** 2):
+            return 0.0
 
-        return normalization_const + (np.sqrt(fidelity) * (
-                expectation - normalization_const) - np.sqrt(1 - fidelity) * np.sqrt(variance)) ** 2 / (
-                       expectation - normalization_const)
+        return f * e + (1 - f) / e * v - 2 * np.sqrt(v * f * (1 - f))
 
     @staticmethod
-    def _calc_upper_bound(self, **kwargs):
+    def _calc_upper_bound():
         return np.inf
 
 
 class GramianEigenvalueInterval(RobustnessInterval):
 
-    def _compute_stats(self, variables=None, samples=None, backend=None, device=None, noise=None, nreps=None, *args,
-                       **kwargs):
-        if self._U is None or self._H is None:
-            # in this case, stats must be precomputed
-            if None in [self._expectations_reps, self._variances_reps]:
-                raise ValueError('If U or H is not provided, you must provide precomputed stats!')
+    def __init__(self,
+                 fidelity: float,
+                 U: QCircuit = None,
+                 H: QubitHamiltonian = None,
+                 conf_level: float = 1e-2,
+                 precomputed_stats: Dict[str, Union[List[List[float]], List[float], float]] = None,
+                 variables=None,
+                 samples=None,
+                 backend=None,
+                 device=None,
+                 noise=None,
+                 nreps=None):
+        super(GramianEigenvalueInterval, self).__init__(fidelity, U, H, conf_level, precomputed_stats)
+
+        self._compute_stats(variables, samples, backend, device, noise, nreps)
+        self._sanity_checks()
+        self._lower_bound, self._upper_bound = self._compute_interval()
+        self._expectation = self._compute_expectation()
+        self._variance = self._compute_variance()
+
+    def _compute_stats(self, variables, samples, backend, device, noise, nreps):
+        if None not in [self._hamiltonian_expectations, self._hamiltonian_variances]:
+            # here we assume that stats have been provided; no need to recompute
             return
+
+        if self._U is None or self._H is None:
+            raise ValueError('If U or H is not provided, you must provide precomputed_stats!')
+
+        if samples is None:
+            nreps = 1
 
         objective = ExpectationValue(U=self._U, H=self._H)
-        expectation_values = [simulate(objective, variables=variables, samples=samples, backend=backend,
-                                       device=device, noise=noise) for _ in range(nreps)]
 
-        # compute variance
-        variances = [simulate(ExpectationValue(U=self._U, H=(self._H - e) ** 2), variables=variables, samples=samples,
-                              backend=backend, device=device, noise=noise) for e in expectation_values]
+        # compute expectation for nreps repetitions
+        expectation_values = [simulate(objective,  # noqa
+                                       variables=variables,
+                                       samples=samples,
+                                       backend=backend,
+                                       device=device,
+                                       noise=noise) for _ in range(nreps)]
 
-        self._expectations_reps = expectation_values
-        self._variances_reps = variances
+        # compute variance for nreps repetitions
+        variances = [simulate(ExpectationValue(U=self._U, H=(self._H - e) ** 2),  # noqa
+                              variables=variables,
+                              samples=samples,
+                              backend=backend,
+                              device=device,
+                              noise=noise) for e in expectation_values]
 
-    def _compute_interval(self, *args, **kwargs):
+        self._hamiltonian_expectations = expectation_values
+        self._hamiltonian_variances = variances
 
-        if self.fidelity <= 0:
-            self._lower_bound = -np.inf
-            self._upper_bound = np.inf
-            return
+    def _compute_interval(self):
 
-        lower_bounds = [self._calc_lower_bound(e, v, self.fidelity) for e, v in
-                        zip(self._expectations_reps, self._variances_reps)]
-        upper_bounds = [self._calc_upper_bound(e, v, self.fidelity) for e, v in
-                        zip(self._expectations_reps, self._variances_reps)]
+        lower_bounds = [self._calc_lower_bound(e, v, self.fidelity)
+                        for e, v in zip(self._hamiltonian_expectations, self._hamiltonian_variances)]
+        upper_bounds = [self._calc_upper_bound(e, v, self.fidelity)
+                        for e, v in zip(self._hamiltonian_expectations, self._hamiltonian_variances)]
 
         n_reps = len(lower_bounds)
 
         if n_reps == 1:
-            self._lower_bound = lower_bounds[0]
-            self._upper_bound = upper_bounds[0]
+            lower_bound = lower_bounds[0]
+            upper_bound = upper_bounds[0]
         else:
             # one sided confidence interval for lower bound
             lower_bound_mean = np.mean(lower_bounds)
             lower_bound_variance = np.var(lower_bounds, ddof=1, dtype=np.float64)
-            self._lower_bound = lower_bound_mean - np.sqrt(lower_bound_variance / n_reps) * stats.t.ppf(
+            lower_bound = lower_bound_mean - np.sqrt(lower_bound_variance / n_reps) * stats.t.ppf(
                 q=1 - self._conf_level, df=n_reps - 1)
 
             # one sided confidence interval for upper bound
             upper_bound_mean = np.mean(upper_bounds)
             upper_bound_variance = np.var(upper_bounds, ddof=1, dtype=np.float64)
-            self._upper_bound = upper_bound_mean - np.sqrt(upper_bound_variance / n_reps) * stats.t.ppf(
+            upper_bound = upper_bound_mean - np.sqrt(upper_bound_variance / n_reps) * stats.t.ppf(
                 q=1 - self._conf_level, df=n_reps - 1)
 
-    @staticmethod
-    def _calc_lower_bound(expectation, variance, fidelity):
-        variance = max(variance, 0.0)
+        return lower_bound, upper_bound
 
-        return expectation - np.sqrt(variance) * np.sqrt((1.0 - fidelity) / fidelity)
+    def _compute_expectation(self):
+        return np.mean(self._hamiltonian_expectations)
+
+    def _compute_variance(self):
+        return np.mean(self._hamiltonian_variances)
+
+    @staticmethod
+    def _calc_lower_bound(e, v, f):
+        return e - np.sqrt(v) * np.sqrt((1.0 - f) / f)
 
     @staticmethod
     def _calc_upper_bound(expectation, variance, fidelity):
@@ -409,8 +581,8 @@ def robustness_interval(U: QCircuit,
         method used to compute the interval, must be one of `sdp`, `gramian` or `best`. If `best`, then intervals for
         methods are calculated and the tightest is returned
     group_terms: bool, optional:
-        only applies if `method` is set to sdp. If True, pauli terms are grouped into groups of commuting terms and for
-        each group a robustness interval is calculated which is then aggreated to compute the final interval
+        If True, pauli terms are grouped into groups of commuting terms and for each group a robustness interval is
+        calculated which is then aggreated to compute the final interval. Applies if kind is set to 'expectation'.
     samples: int, optional:
         number of samples
     backend: str, optional:
@@ -460,9 +632,9 @@ def robustness_interval(U: QCircuit,
     if method in _GRAMIAN_ALIASES:
 
         if kind in _EXPECTATION_ALIASES:
-            interval = GramianExpectationBound(U=U, H=H, fidelity=fidelity,
-                                               conf_level=conf_level, nreps=nreps, variables=variables, backend=backend,
-                                               noise=noise, device=device, samples=samples)
+            interval = GramianExpectationBound(U=U, H=H, fidelity=fidelity, conf_level=conf_level,
+                                               nreps=nreps, variables=variables, backend=backend, noise=noise,
+                                               device=device, samples=samples, group_terms=group_terms)
 
             return interval.interval, (interval if return_object else None)
 
@@ -476,49 +648,74 @@ def robustness_interval(U: QCircuit,
     if method == 'best':
         sdp_interval = SDPInterval(U=U, H=H, fidelity=fidelity, conf_level=conf_level,
                                    nreps=nreps, variables=variables, backend=backend, noise=noise, device=device,
-                                   samples=samples)
+                                   samples=samples, group_terms=True)
 
-        gramian_exp_interval = GramianExpectationBound(U=U, H=H, fidelity=fidelity,
-                                                       conf_level=conf_level, nreps=nreps, variables=variables,
-                                                       backend=backend, noise=noise, device=device, samples=samples)
+        gramian_exp_interval = GramianExpectationBound(U=U, H=H, fidelity=fidelity, conf_level=conf_level, nreps=nreps,
+                                                       variables=variables, backend=backend, noise=noise, device=device,
+                                                       samples=samples, group_terms=True)
         if kind in _EXPECTATION_ALIASES:
             max_lower_bound = max([sdp_interval.lower_bound, gramian_exp_interval.lower_bound])
             min_upper_bound = sdp_interval.upper_bound
 
-            obj = None
+            interval = None
             if return_object:
-                obj = RobustnessInterval(fidelity=fidelity)
+                interval = RobustnessInterval(fidelity=fidelity)
 
-                obj.__dict__.update(sdp_interval.__dict__)  # so that pauli decomposition and strings are included
-                obj.__dict__.update(gramian_exp_interval.__dict__)  # variance is included; overrides expectations
+                interval.__dict__.update(sdp_interval.__dict__)  # so that pauli decomposition and strings are included
+                interval.__dict__.update(gramian_exp_interval.__dict__)  # variance is included; overrides expectations
 
-                obj.lower_bound = max_lower_bound
-                obj.upper_bound = min_upper_bound
+                interval.lower_bound = max_lower_bound
+                interval.upper_bound = min_upper_bound
 
-            return (max_lower_bound, gramian_exp_interval.expectation, min_upper_bound), obj
+            return (max_lower_bound, gramian_exp_interval.expectation, min_upper_bound), interval
 
         if kind in _EIGENVALUE_ALIASES:
             # reuse expectation and variance
-            precomputed_stats = {'expectationvalues': gramian_exp_interval.expectations_reps,
-                                 'variances': gramian_exp_interval.variances_reps}
+            gramian_eigv_interval = GramianEigenvalueInterval(U=U, H=H, fidelity=fidelity, conf_level=conf_level,
+                                                              nreps=nreps, variables=variables, backend=backend,
+                                                              noise=noise, device=device, samples=samples)
 
-            gramian_eigv_interval = GramianEigenvalueInterval(fidelity=fidelity,
-                                                              precomputed_stats=precomputed_stats,
-                                                              conf_level=conf_level)
+            max_lower_bound = max([sdp_interval.lower_bound,
+                                   gramian_exp_interval.lower_bound,
+                                   gramian_eigv_interval.lower_bound])
 
-            max_lower_bound = max(
-                [sdp_interval.lower_bound, gramian_exp_interval.lower_bound, gramian_eigv_interval.lower_bound])
-            min_upper_bound = min(
-                [sdp_interval.upper_bound, gramian_eigv_interval.upper_bound])
+            min_upper_bound = min([sdp_interval.upper_bound,
+                                   gramian_eigv_interval.upper_bound])
 
-            obj = None
+            interval = None
             if return_object:
-                obj = RobustnessInterval(fidelity=fidelity)
+                interval = RobustnessInterval(fidelity=fidelity)
 
-                obj.__dict__.update(sdp_interval.__dict__)  # so that pauli decomposition and strings are included
-                obj.__dict__.update(gramian_exp_interval.__dict__)  # variance is included; overrides expectations
+                interval.__dict__.update(sdp_interval.__dict__)  # so that pauli decomposition and strings are included
+                interval.__dict__.update(gramian_exp_interval.__dict__)  # variance is included; overrides expectations
 
-                obj.lower_bound = max_lower_bound
-                obj.upper_bound = min_upper_bound
+                interval.lower_bound = max_lower_bound
+                interval.upper_bound = min_upper_bound
 
-            return (max_lower_bound, gramian_exp_interval.expectation, min_upper_bound), obj
+            return (max_lower_bound, gramian_exp_interval.expectation, min_upper_bound), interval
+
+# if __name__ == '__main__':
+#     from tequila import Molecule, minimize, QubitWaveFunction, paulis
+#     from tequila.circuit.noise import DepolarizingError
+#
+#     geometry = 'H .0 .0 .0\nH .0 .0 0.75'
+#     mol = Molecule(geometry='H .0 .0 .0\nH .0 .0 0.75', basis_set='sto-3g')
+#
+#     h = mol.make_hamiltonian()
+#     u = mol.make_upccgsd_ansatz()
+#     e = ExpectationValue(U=u, H=h)
+#     noise_model = DepolarizingError(p=0.05, level=2)
+#
+#     result = minimize(e, backend='qiskit', samples=512, noise=noise_model, maxiter=2)
+#
+#     eigvals, eigvecs = np.linalg.eigh(h.to_matrix())
+#     exact_wfn = QubitWaveFunction.from_array(eigvecs[:, 0])
+#     exact_wfn = paulis.Projector(wfn=exact_wfn)
+#     f = simulate(objective=ExpectationValue(U=u, H=exact_wfn), variables=result.variables,
+#                  backend='qiskit', noise=noise_model, samples=512)
+#     f = float(f)
+#     (lower_bound, vqe_energy, upper_bound), _ = robustness_interval(U=u, H=h, fidelity=f, kind='expectation',
+#                                                                     method='best', noise=noise_model, samples=512,
+#                                                                     backend='qiskit', variables=result.variables)
+#
+#     print(lower_bound, vqe_energy, upper_bound)
