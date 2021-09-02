@@ -693,29 +693,3 @@ def robustness_interval(U: QCircuit,
                 interval.upper_bound = min_upper_bound
 
             return (max_lower_bound, gramian_exp_interval.expectation, min_upper_bound), interval
-
-# if __name__ == '__main__':
-#     from tequila import Molecule, minimize, QubitWaveFunction, paulis
-#     from tequila.circuit.noise import DepolarizingError
-#
-#     geometry = 'H .0 .0 .0\nH .0 .0 0.75'
-#     mol = Molecule(geometry='H .0 .0 .0\nH .0 .0 0.75', basis_set='sto-3g')
-#
-#     h = mol.make_hamiltonian()
-#     u = mol.make_upccgsd_ansatz()
-#     e = ExpectationValue(U=u, H=h)
-#     noise_model = DepolarizingError(p=0.05, level=2)
-#
-#     result = minimize(e, backend='qiskit', samples=512, noise=noise_model, maxiter=2)
-#
-#     eigvals, eigvecs = np.linalg.eigh(h.to_matrix())
-#     exact_wfn = QubitWaveFunction.from_array(eigvecs[:, 0])
-#     exact_wfn = paulis.Projector(wfn=exact_wfn)
-#     f = simulate(objective=ExpectationValue(U=u, H=exact_wfn), variables=result.variables,
-#                  backend='qiskit', noise=noise_model, samples=512)
-#     f = float(f)
-#     (lower_bound, vqe_energy, upper_bound), _ = robustness_interval(U=u, H=h, fidelity=f, kind='expectation',
-#                                                                     method='best', noise=noise_model, samples=512,
-#                                                                     backend='qiskit', variables=result.variables)
-#
-#     print(lower_bound, vqe_energy, upper_bound)
