@@ -103,7 +103,7 @@ def test_ucc_singles_psi4():
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31G")
     # default backend is fine
     # will not converge if singles are not added
-    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.15016, trafo=trafo, backend=None)
+    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.15016, trafo="JordanWigner", backend=None)
 
 
 
