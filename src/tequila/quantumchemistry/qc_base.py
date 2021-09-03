@@ -264,7 +264,6 @@ class ClosedShellAmplitudes:
             for (I, A), value, in numpy.ndenumerate(self.tIA):
                 if not numpy.isclose(value, 0.0, atol=threshold):
                     variables[(A + nocc, I)] = value
-
         return dict(sorted(variables.items(), key=lambda x: numpy.abs(x[1]), reverse=True))
 
 
@@ -1388,8 +1387,8 @@ class QuantumChemistryBase:
 
         return U
 
-    def make_uccsd_ansatz(self, trotter_steps: int,
-                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
+    def make_uccsd_ansatz(self, trotter_steps: int=1,
+                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "cc2",
                           include_reference_ansatz=True,
                           parametrized=True,
                           threshold=1.e-8,
@@ -1412,7 +1411,7 @@ class QuantumChemistryBase:
         Amplitudes :
 
         ClosedShellAmplitudes] :
-             (Default value = "mp2")
+             (Default value = "cc2")
 
         Returns
         -------
@@ -1443,63 +1442,57 @@ class QuantumChemistryBase:
                 except Exception as exc:
                     raise TequilaException(
                         "{}\nDon't know how to initialize \'{}\' amplitudes".format(exc, initial_amplitudes))
-
         if amplitudes is None:
             amplitudes = ClosedShellAmplitudes(
                 tIjAb=numpy.zeros(shape=[nocc, nocc, nvirt, nvirt]),
                 tIA=numpy.zeros(shape=[nocc, nvirt]))
 
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
-        indices = []
-        variables = []
+        indices = {}
 
         if not isinstance(amplitudes, dict):
             amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
             amplitudes = dict(sorted(amplitudes.items(), key=lambda x: numpy.fabs(x[1]), reverse=True))
-
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0, atol=threshold):
-
                 if closed_shell:
-                    spin_indices = []
+                    
                     if len(key) == 2:
-                        spin_indices = [[2 * key[0], 2 * key[1]], [2 * key[0] + 1, 2 * key[1] + 1]]
-                        partner = None
+                        # singles
+                        angle=2.0*t
+                        if parametrized:
+                            angle=2.0*Variable(name=key)
+                        idx_a = (2*key[0], 2*key[1])
+                        idx_b = (2*key[0]+1, 2*key[1]+1)
+                        indices[idx_a]=angle
+                        indices[idx_b]=angle
                     else:
-                        spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
-                        #spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
-                        if key[0] != key[2] and key[1] != key[3]:
-                            spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
-                            #spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
-                        partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
-                    for idx in spin_indices:
-                        idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
-                        indices.append(idx)
+                        assert len(key)==4
+                        angle=2.0*t
+                        if parametrized:
+                            angle=2.0*Variable(name=key)
+                        idx_abab=(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])
+                        indices[idx_abab]=angle
+                        if key[0]!=key[2] and key[1]!=key[3]: 
+                            idx_aaaa=(2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3])
+                            idx_bbbb=(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2]+1, 2 * key[3]+1)
+                            partner = tuple([key[2], key[1], key[0], key[3]]) 
+                            anglex=2.0*(t - amplitudes[partner])
+                            if parametrized:
+                                anglex=2.0*(Variable(name=key) - Variable(partner))
+                            indices[idx_aaaa]=anglex
+                            indices[idx_bbbb]=anglex
 
-                    if parametrized:
-                        variables.append(2.0*Variable(name=key))  # abab
-                        #variables.append(Variable(name=key))  # baba
-                        if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(2.0*(Variable(name=key) - Variable(partner))) # aaaa
-                            #variables.append(Variable(name=key) - Variable(partner))  # bbbb
-                    else:
-                        variables.append(2.0*t)
-                        #variables.append(t)
-                        if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(2.0*(t - amplitudes[partner]))
-                            #variables.append(t - amplitudes[partner])
+
                 else:
-                    indices.append(spin_indices)
-                    if parametrized:
-                        variables.append(Variable(name=key))
-                    else:
-                        variables.append(t)
+                    raise Exception("only closed-shell supported, please assemble yourself .... sorry :-)")
+
         UCCSD = QCircuit()
         factor = 1.0 / trotter_steps
         for step in range(trotter_steps):
-            for i, idx in enumerate(indices):
-                UCCSD += self.make_excitation_gate(indices=idx, angle=factor * variables[i])
+            for idx, angle in indices.items():
+                UCCSD += self.make_excitation_gate(indices=idx, angle=factor * angle)
 
         return Uref + UCCSD
 
