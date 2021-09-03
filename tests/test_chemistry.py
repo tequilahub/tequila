@@ -99,8 +99,6 @@ def test_ucc_psi4(trafo, backend):
                 backend=backend)
 
 def test_ucc_singles_psi4(trafo):
-    if backend == "symbolic":
-        pytest.skip("skipping for symbolic simulator  ... way too slow")
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31G")
     # default backend is fine
     # will not converge if singles are not added
