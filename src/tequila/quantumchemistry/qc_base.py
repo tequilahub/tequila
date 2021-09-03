@@ -1392,7 +1392,7 @@ class QuantumChemistryBase:
                           include_reference_ansatz=True,
                           parametrized=True,
                           threshold=1.e-8,
-                          add_singles=True,
+                          add_singles=None,
                           *args, **kwargs) -> QCircuit:
         """
 
@@ -1420,7 +1420,15 @@ class QuantumChemistryBase:
             Parametrized QCircuit
 
         """
-
+        
+        if hasattr(initial_amplitudes, "lower"):
+            if initial_amplitudes.lower() == "mp2" and add_singles is None:
+                add_singles=True
+        elif initial_amplitudes is not None and add_singles is not None:
+            warnings.warn("make_uccsd_anstatz: add_singles has no effect when explicit amplitudes are passed down", TequilaWarning)
+        elif add_singles is None:
+            add_singles=True
+            
         if self.n_electrons % 2 != 0:
             raise TequilaException("make_uccsd_ansatz currently only for closed shell systems")
 
@@ -1444,9 +1452,11 @@ class QuantumChemistryBase:
                     raise TequilaException(
                         "{}\nDon't know how to initialize \'{}\' amplitudes".format(exc, initial_amplitudes))
         if amplitudes is None:
+            tia=None
+            if add_singles: tia=numpy.zeros(shape=[nocc, nvirt])
             amplitudes = ClosedShellAmplitudes(
                 tIjAb=numpy.zeros(shape=[nocc, nocc, nvirt, nvirt]),
-                tIA=numpy.zeros(shape=[nocc, nvirt]))
+                tIA=tia)
 
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
         indices = {}
@@ -1492,7 +1502,7 @@ class QuantumChemistryBase:
         for step in range(trotter_steps):
             for idx, angle in indices.items():
                 UCCSD += self.make_excitation_gate(indices=idx, angle=factor * angle)
-        if (initial_amplitudes,"lower") and initial_amplitudes.lower()=="mp2" and parametrized and add_singles:
+        if hasattr(initial_amplitudes,"lower") and initial_amplitudes.lower()=="mp2" and parametrized and add_singles:
             # mp2 has no singles, need to initialize them here (if not parametrized initializling as 0.0 makes no sense though)
             UCCSD += self.make_upccgsd_layer(indices="upccsd", include_singles=True, include_doubles=False)
         return Uref + UCCSD
