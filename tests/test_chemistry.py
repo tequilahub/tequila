@@ -98,6 +98,15 @@ def test_ucc_psi4(trafo, backend):
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo,
                 backend=backend)
 
+def test_ucc_singles_psi4(trafo):
+    if backend == "symbolic":
+        pytest.skip("skipping for symbolic simulator  ... way too slow")
+    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31G")
+    # default backend is fine
+    # will not converge if singles are not added
+    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.15016, trafo=trafo, backend=None)
+
+
 
 def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     # check examples for comments
@@ -239,6 +248,17 @@ def test_upccgsd(geometry, trafo):
     assert numpy.isclose(fci, energy, atol=1.e-3)
     energy2 = do_test_upccgsd(molecule, label="asd", order=2)
     assert numpy.isclose(fci, energy2, atol=1.e-3)
+
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_upccgsd_singles():
+    molecule = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nH 0.0 0.0 0.7", basis_set="6-31G")
+    H = molecule.make_hamiltonian()
+    energy1 = numpy.linalg.eigvalsh(H.to_matrix())[0]
+    energy2 = do_test_upccgsd(molecule)
+    fci = molecule.compute_energy("fci")
+    assert numpy.isclose(fci, energy1, atol=1.e-3)
+    assert numpy.isclose(fci, energy2, atol=1.e-3)
+
 
 def do_test_upccgsd(molecule, *args, **kwargs):
     U = molecule.make_upccgsd_ansatz(*args, **kwargs)
