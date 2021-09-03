@@ -118,7 +118,7 @@ def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     H = psi4_interface.make_hamiltonian()
     ex = ExpectationValue(U=U, H=H)
     energy = simulate(ex, variables=variables, backend=backend)
-    assert (numpy.isclose(energy, result))
+    assert (numpy.isclose(energy, result, atol=1.e-3))
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
