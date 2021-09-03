@@ -98,7 +98,8 @@ def test_ucc_psi4(trafo, backend):
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo,
                 backend=backend)
 
-def test_ucc_singles_psi4(trafo):
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
+def test_ucc_singles_psi4():
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31G")
     # default backend is fine
     # will not converge if singles are not added
