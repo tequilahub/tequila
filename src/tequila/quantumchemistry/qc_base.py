@@ -1190,10 +1190,10 @@ class QuantumChemistryBase:
             # ladder structure of the pair excitations
             # ensures local connectivity
             indices = [[(n, n + 1)] for n in range(self.n_orbitals - 1)]
-        elif hasattr(key, "lower") and "g" not in key:
+        elif hasattr(key, "lower") and "g" not in key.lower():
             indices = [[(n, m)] for n in reference_orbitals for m in range(self.n_orbitals) if
                        n < m and m not in reference_orbitals]
-        elif hasattr(key, "lower") and "g" in key:
+        elif hasattr(key, "lower") and "g" in key.lower():
             indices = [[(n, m)] for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n < m]
         else:
             raise TequilaException("Unknown recipe: {}".format(key))
