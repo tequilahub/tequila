@@ -1311,7 +1311,7 @@ class QuantumChemistryBase:
                 U = self.hcb_to_me(U=U)
 
             if "S" in name:
-                self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label, 0),
+                U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label, 0),
                                           spin_adapt_singles=spin_adapt_singles, neglect_z=neglect_z, *args, **kwargs)
 
         for k in range(1, order):
