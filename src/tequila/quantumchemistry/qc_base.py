@@ -1388,10 +1388,11 @@ class QuantumChemistryBase:
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int=1,
-                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "cc2",
+                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
                           include_reference_ansatz=True,
                           parametrized=True,
                           threshold=1.e-8,
+                          add_singles=True,
                           *args, **kwargs) -> QCircuit:
         """
 
@@ -1458,7 +1459,7 @@ class QuantumChemistryBase:
             if not numpy.isclose(t, 0.0, atol=threshold):
                 if closed_shell:
                     
-                    if len(key) == 2:
+                    if len(key) == 2 and add_singles:
                         # singles
                         angle=2.0*t
                         if parametrized:
@@ -1483,8 +1484,6 @@ class QuantumChemistryBase:
                                 anglex=2.0*(Variable(name=key) - Variable(partner))
                             indices[idx_aaaa]=anglex
                             indices[idx_bbbb]=anglex
-
-
                 else:
                     raise Exception("only closed-shell supported, please assemble yourself .... sorry :-)")
 
@@ -1493,7 +1492,9 @@ class QuantumChemistryBase:
         for step in range(trotter_steps):
             for idx, angle in indices.items():
                 UCCSD += self.make_excitation_gate(indices=idx, angle=factor * angle)
-
+        if (initial_amplitudes,"lower") and initial_amplitudes.lower()=="mp2" and parametrized and add_singles:
+            # mp2 has no singles, need to initialize them here (if not parametrized initializling as 0.0 makes no sense though)
+            UCCSD += self.make_upccgsd_layer(indices="upccsd", include_singles=True, include_doubles=False)
         return Uref + UCCSD
 
     def compute_amplitudes(self, method: str, *args, **kwargs):
