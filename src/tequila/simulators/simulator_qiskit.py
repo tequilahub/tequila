@@ -262,6 +262,7 @@ class BackendCircuitQiskit(BackendCircuit):
         if "optimization_level" in kwargs:
             optimization_level = kwargs['optimization_level']
 
+        #nothing
         opts = {}
         if initial_state != 0:
             array = numpy.zeros(shape=[2 ** self.n_qubits])
