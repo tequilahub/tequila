@@ -228,6 +228,8 @@ class BackendCircuit():
                 raise TequilaException(
                     "BackendCircuit received not all variables. Circuit depends on variables {}, you gave {}".format(
                         self._variables, variables))
+
+        self.update_variables(variables)
         if samples is None:
             return self.simulate(variables=variables, noise=self.noise, *args, **kwargs)
         else:
