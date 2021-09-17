@@ -62,13 +62,12 @@ gate_qubit_lookup = {
     'multicontrol': 3
 }
 
-full_basis = ['x', 'y', 'z', 'id', 'u1', 'u2', 'u3', 'h','UNITARY',
+full_basis = ['x', 'y', 'z', 'id', 'u1', 'u2', 'u3', 'h','unitary','sx',
               'cx', 'cy', 'cz', 'cu3', 'ccx']
 
 def qiskit_device_dict():
     devices = {}
     devices.update({str(x).lower():x for x in qiskit.Aer.backends()})
-    devices.update({str(x).lower(): x for x in qiskit.BasicAer.backends()})
     devices.update({str(x).lower(): x for x in qiskit.test.mock.FakeProvider().backends()})
 
     return devices
@@ -298,8 +297,8 @@ class BackendCircuitQiskit(BackendCircuit):
             array[i.integer] = 1.0
             opts = {"initial_statevector": array}
 
-        qiskit_job = qiskit.execute(experiments=self.circuit,optimization_level=optimization_level,
-                                    parameter_binds=[self.resolver],
+        circuit = self.circuit.bind_parameters(self.resolver)
+        qiskit_job = qiskit.execute(experiments=circuit,optimization_level=optimization_level,
                                     backend=qiskit_backend,**opts)
 
         backend_result = qiskit_job.result()
@@ -322,7 +321,6 @@ class BackendCircuitQiskit(BackendCircuit):
         QubitWaveFunction:
             the result of sampling.
         """
-        print(self.noise_model)
         optimization_level = 0
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
@@ -331,25 +329,33 @@ class BackendCircuitQiskit(BackendCircuit):
         else:
             qiskit_backend = self.retrieve_device(self.device)
 
+
         if 'qasm_simulator' in str(qiskit_backend):
-            return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend,
+            qiskit_backend.set_options(noise_model=self.noise_model) # fits better with our methodology.
+            circuit = circuit.bind_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
+            job=qiskit.execute(circuit, backend=qiskit_backend,
                                                             shots=samples,
                                                             basis_gates=full_basis,
                                                             optimization_level=optimization_level,
-                                                            noise_model=self.noise_model,
-                                                            parameter_binds=[self.resolver]),
+                                                            noise_model=self.noise_model)
+            return self.convert_measurements(job,
                                                             target_qubits=read_out_qubits)
         else:
             if isinstance(qiskit_backend, qiskit.test.mock.FakeBackend):
+                circuit = circuit.bind_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
                 coupling_map = qiskit_backend.configuration().coupling_map
-                basis = qiskitnoise.NoiseModel.from_backend(qiskit_backend).basis_gates
-                return self.convert_measurements(qiskit.execute(circuit, self.retrieve_device('qasm_simulator'),
+                from_back = qiskitnoise.NoiseModel.from_backend(qiskit_backend)
+                basis = from_back.basis_gates
+                use_backend = self.retrieve_device('qasm_simulator')
+                use_backend.set_options(noise_model=from_back)
+                return self.convert_measurements(qiskit.execute(circuit,
+                                                                backend=use_backend,
                                                                 shots=samples,
                                                                 basis_gates=basis,
                                                                 coupling_map=coupling_map,
                                                                 noise_model=self.noise_model,
-                                                                optimization_level=optimization_level,
-                                                                parameter_binds=[self.resolver]),
+                                                                optimization_level=optimization_level
+                                                                ),
                                                                 target_qubits=read_out_qubits)
             else:
                 if self.noise_model is not None:
@@ -538,9 +544,9 @@ class BackendCircuitQiskit(BackendCircuit):
                            'u1',
                            'u2',
                            'h',
-                           'rx',
-                           'ry',
-                           'rz']
+                           'sx',
+                           'unitary'
+                           ]
 
             elif noise.level == 3:
                 targets = ['ccx']
@@ -585,7 +591,7 @@ class BackendCircuitQiskit(BackendCircuit):
         if device is None:
             return
 
-        elif any([isinstance(device,x) for device in qiskit_device_typing()]):
+        elif any([isinstance(device,back) for back in qiskit_device_typing()]):
             return
 
         elif isinstance(device, dict):
