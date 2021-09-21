@@ -4,6 +4,7 @@ from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
 import qiskit, numpy, warnings
+from qiskit.providers import aer
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
 import qiskit.test.mock.backends
