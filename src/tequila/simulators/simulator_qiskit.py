@@ -4,7 +4,6 @@ from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
 import qiskit, numpy, warnings
-from qiskit.providers.aer.backends import AerSimulator,QasmSimulator,StatevectorSimulator,UnitarySimulator
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
 import qiskit.test.mock.backends
@@ -68,24 +67,9 @@ full_basis = ['x', 'y', 'z', 'id', 'u1', 'u2', 'u3', 'h','unitary','sx',
 def qiskit_device_dict():
     devices = {}
     devices.update({str(x).lower():x for x in qiskit.Aer.backends()})
-    devices.update({str(x).lower(): x for x in qiskit.test.mock.FakeProvider().backends()})
+    devices.update({str(x).lower():x for x in qiskit.test.mock.FakeProvider().backends()})
 
     return devices
-
-def qiskit_device_typing():
-    expected = []
-    expected.extend([qiskit.providers.basicaer.qasm_simulator.QasmSimulatorPy,
-                     qiskit.providers.basicaer.statevector_simulator.StatevectorSimulatorPy,
-                     qiskit.providers.basicaer.unitary_simulator.UnitarySimulatorPy])
-
-    expected.extend([AerSimulator,
-                     QasmSimulator,
-                     StatevectorSimulator,
-                     UnitarySimulator])
-
-    expected.append(qiskit.test.mock.FakeBackend)
-
-    return expected
 
 class TequilaQiskitException(TequilaException):
     def __str__(self):
@@ -589,7 +573,7 @@ class BackendCircuitQiskit(BackendCircuit):
         if device is None:
             return
 
-        elif any([isinstance(device,back) for back in qiskit_device_typing()]):
+        elif isinstance(device,qiskit.providers.Backend):
             return
 
         elif isinstance(device, dict):
@@ -606,9 +590,10 @@ class BackendCircuitQiskit(BackendCircuit):
                 return
             else:
                 if qiskit.IBMQ.active_account() is None:
-                    qiskit.IBMQ.load_account()
-                qiskit_provider = qiskit.IBMQ.get_provider()
-                qiskit_provider.get_backend(name=device)
+                    qiskit_provider = qiskit.IBMQ.load_account()
+                else:
+                    qiskit_provider = qiskit.IBMQ.providers()[-1]
+                qiskit_provider.get_backend(device)
                 return
         else:
             raise TequilaQiskitException(
@@ -632,7 +617,7 @@ class BackendCircuitQiskit(BackendCircuit):
         if device is None:
             return device
 
-        if any([isinstance(device,x) for x in qiskit_device_typing()]):
+        elif isinstance(device, qiskit.providers.Backend):
             return device
 
         elif isinstance(device, dict):
@@ -646,10 +631,10 @@ class BackendCircuitQiskit(BackendCircuit):
                 return check[device.lower()]
             else:
                 if qiskit.IBMQ.active_account() is None:
-                    qiskit.IBMQ.load_account()
-                qiskit_provider = qiskit.IBMQ.get_provider()
-                qiskit_provider.get_backend(name=device)
-                return
+                    qiskit_provider = qiskit.IBMQ.load_account()
+                else:
+                    qiskit_provider = qiskit.IBMQ.providers()[-1]
+                return qiskit_provider.get_backend(device)
         else:
             raise TequilaQiskitException(
                 'received device {} of unrecognized type {}; only None, strings, dicts, and qiskit backends allowed'.format(
