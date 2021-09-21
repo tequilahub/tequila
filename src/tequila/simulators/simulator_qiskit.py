@@ -7,6 +7,7 @@ import qiskit, numpy, warnings
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
 import qiskit.test.mock.backends
+from qiskit.providers.ibmq import IBMQBackend
 
 
 def get_bit_flip(p):
@@ -303,25 +304,26 @@ class BackendCircuitQiskit(BackendCircuit):
         QubitWaveFunction:
             the result of sampling.
         """
-        optimization_level = 0
+        optimization_level = 1
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
         if self.device is None:
-            qiskit_backend = self.retrieve_device('qasm_simulator')
+            if self.noise_model is not None:
+                qiskit_backend = self.retrieve_device('qasm_simulator')
+            else:
+                qiskit_backend = self.retrieve_device('aer_simulator')
         else:
             qiskit_backend = self.retrieve_device(self.device)
 
 
-        if 'qasm_simulator' in str(qiskit_backend):
-            qiskit_backend.set_options(noise_model=self.noise_model) # fits better with our methodology.
+        if isinstance(qiskit_backend,IBMQBackend):
+            if self.noise_model is not None:
+                raise TequilaException('Cannot combine backend {} with custom noise models.'.format(str(qiskit_backend)))
             circuit = circuit.bind_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
-            job=qiskit.execute(circuit, backend=qiskit_backend,
-                                                            shots=samples,
-                                                            basis_gates=full_basis,
-                                                            optimization_level=optimization_level,
-                                                            noise_model=self.noise_model)
-            return self.convert_measurements(job,
-                                                            target_qubits=read_out_qubits)
+            circuit = qiskit.transpile(circuit, qiskit_backend)
+            return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
+                                                            optimization_level=optimization_level),
+                                             target_qubits=read_out_qubits)
         else:
             if isinstance(qiskit_backend, qiskit.test.mock.FakeBackend):
                 circuit = circuit.bind_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
@@ -330,22 +332,30 @@ class BackendCircuitQiskit(BackendCircuit):
                 basis = from_back.basis_gates
                 use_backend = self.retrieve_device('qasm_simulator')
                 use_backend.set_options(noise_model=from_back)
+                circuit = qiskit.transpile(circuit, use_backend)
+
                 return self.convert_measurements(qiskit.execute(circuit,
                                                                 backend=use_backend,
                                                                 shots=samples,
                                                                 basis_gates=basis,
                                                                 coupling_map=coupling_map,
-                                                                noise_model=self.noise_model,
                                                                 optimization_level=optimization_level
                                                                 ),
                                                                 target_qubits=read_out_qubits)
             else:
                 if self.noise_model is not None:
-                    raise TequilaQiskitException("noise model was type {} and not NoneType, but deivce was real device {} ".format(type(self.noise_model),qiskit_backend))
-                return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
-                                                                optimization_level=optimization_level,
-                                                                parameter_binds=[self.resolver]), target_qubits=read_out_qubits)
-
+                    qiskit_backend.set_options(noise_model=self.noise_model)  # fits better with our methodology.
+                    use_basis = full_basis
+                else:
+                    use_basis = qiskit_backend.basis_gates
+                circuit = circuit.bind_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
+                circuit = qiskit.transpile(circuit, qiskit_backend)
+                job = qiskit.execute(circuit, backend=qiskit_backend,
+                                     shots=samples,
+                                     basis_gates=use_basis,
+                                     optimization_level=optimization_level)
+                return self.convert_measurements(job,
+                                                 target_qubits=read_out_qubits)
     def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
         """
         map backend results to QubitWaveFunction
@@ -590,9 +600,8 @@ class BackendCircuitQiskit(BackendCircuit):
                 return
             else:
                 if qiskit.IBMQ.active_account() is None:
-                    qiskit_provider = qiskit.IBMQ.load_account()
-                else:
-                    qiskit_provider = qiskit.IBMQ.providers()[-1]
+                    qiskit.IBMQ.load_account()
+                qiskit_provider = qiskit.IBMQ.providers()[-1]
                 qiskit_provider.get_backend(device)
                 return
         else:
@@ -631,9 +640,8 @@ class BackendCircuitQiskit(BackendCircuit):
                 return check[device.lower()]
             else:
                 if qiskit.IBMQ.active_account() is None:
-                    qiskit_provider = qiskit.IBMQ.load_account()
-                else:
-                    qiskit_provider = qiskit.IBMQ.providers()[-1]
+                    qiskit.IBMQ.load_account()
+                qiskit_provider = qiskit.IBMQ.providers()[-1]
                 return qiskit_provider.get_backend(device)
         else:
             raise TequilaQiskitException(
