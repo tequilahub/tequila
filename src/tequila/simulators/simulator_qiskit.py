@@ -3,9 +3,6 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
-
-import qiskit.providers.aer.backends as qpa
-import qiskit.providers.basicaer as qpb
 import qiskit, numpy, warnings
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
@@ -76,14 +73,14 @@ def qiskit_device_dict():
 
 def qiskit_device_typing():
     expected = []
-    expected.extend([qpb.qasm_simulator.QasmSimulatorPy,
-                     qpb.statevector_simulator.StatevectorSimulatorPy,
-                     qpb.unitary_simulator.UnitarySimulatorPy])
+    expected.extend([qiskit.providers.basicaer.qasm_simulator.QasmSimulatorPy,
+                     qiskit.providers.basicaer.statevector_simulator.StatevectorSimulatorPy,
+                     qiskit.providers.basicaer.unitary_simulator.UnitarySimulatorPy])
 
-    expected.extend([qpa.aer_simulator.AerSimulator,
-                     qpa.qasm_simulator.QasmSimulator,
-                     qpa.statevector_simulator.StatevectorSimulator,
-                     qpa.unitary_simulator.UnitarySimulator])
+    expected.extend([qiskit.providers.aer.backends.aer_simulator.AerSimulator,
+                     qiskit.providers.aer.backends.qasm_simulator.QasmSimulator,
+                     qiskit.providers.aer.backends.StatevectorSimulator,
+                     qiskit.providers.aer.backends.unitary_simulator.UnitarySimulator])
 
     expected.append(qiskit.test.mock.FakeBackend)
 
