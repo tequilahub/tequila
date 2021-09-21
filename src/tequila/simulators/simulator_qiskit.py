@@ -4,7 +4,7 @@ from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
 import qiskit, numpy, warnings
-from qiskit.providers import aer
+from qiskit.providers.aer.backends import AerSimulator,QasmSimulator,StatevectorSimulator,UnitarySimulator
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
 import qiskit.test.mock.backends
@@ -78,10 +78,10 @@ def qiskit_device_typing():
                      qiskit.providers.basicaer.statevector_simulator.StatevectorSimulatorPy,
                      qiskit.providers.basicaer.unitary_simulator.UnitarySimulatorPy])
 
-    expected.extend([qiskit.providers.aer.backends.aer_simulator.AerSimulator,
-                     qiskit.providers.aer.backends.qasm_simulator.QasmSimulator,
-                     qiskit.providers.aer.backends.StatevectorSimulator,
-                     qiskit.providers.aer.backends.unitary_simulator.UnitarySimulator])
+    expected.extend([AerSimulator,
+                     QasmSimulator,
+                     StatevectorSimulator,
+                     UnitarySimulator])
 
     expected.append(qiskit.test.mock.FakeBackend)
 
