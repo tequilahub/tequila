@@ -4,6 +4,8 @@ from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
 
+import qiskit.providers.aer.backends as qpa
+import qiskit.providers.basicaer as qpb
 import qiskit, numpy, warnings
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
@@ -74,16 +76,14 @@ def qiskit_device_dict():
 
 def qiskit_device_typing():
     expected = []
-    qp = qiskit.providers.basicaer
-    expected.extend([qp.qasm_simulator.QasmSimulatorPy,
-                     qp.statevector_simulator.StatevectorSimulatorPy,
-                     qp.unitary_simulator.UnitarySimulatorPy])
+    expected.extend([qpb.qasm_simulator.QasmSimulatorPy,
+                     qpb.statevector_simulator.StatevectorSimulatorPy,
+                     qpb.unitary_simulator.UnitarySimulatorPy])
 
-    qp = qiskit.providers.aer.backends
-    expected.extend([qp.aer_simulator.AerSimulator,
-                     qp.qasm_simulator.QasmSimulator,
-                     qp.statevector_simulator.StatevectorSimulator,
-                     qp.unitary_simulator.UnitarySimulator])
+    expected.extend([qpa.aer_simulator.AerSimulator,
+                     qpa.qasm_simulator.QasmSimulator,
+                     qpa.statevector_simulator.StatevectorSimulator,
+                     qpa.unitary_simulator.UnitarySimulator])
 
     expected.append(qiskit.test.mock.FakeBackend)
 
