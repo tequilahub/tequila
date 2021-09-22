@@ -48,6 +48,24 @@ def test_base(trafo):
         assert numpy.isclose(eigvals[-1], 7.10921141e-01)
         assert len(eigvals) == 16
 
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4 or pyscf")
+@pytest.mark.parametrize("trafo", ["JordanWigner","BravyiKitaev","BravyiKitaevTree"])
+def test_prepare_reference(trafo):
+    mol = tq.molecule(geometry=geometry, basis_set=basis_set, transformation=trafo)
+    H = mol.make_hamiltonian()
+    U = mol.prepare_reference()
+    E = tq.ExpectationValue(H=H, U=U)
+    energy = tq.simulate(E)
+    hf_energy = mol.compute_energy("hf")
+    assert numpy.isclose(energy, hf_energy, atol=1.e-4)
+    mol = tq.molecule(geometry=geometry, basis_set=basis_set, transformation="reordered"+trafo)
+    H = mol.make_hamiltonian()
+    U = mol.prepare_reference()
+    E = tq.ExpectationValue(H=H, U=U)
+    energy2 = tq.simulate(E)
+    assert numpy.isclose(energy, energy2, atol=1.e-4)
+
+
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo_args", [{"transformation": "JordanWigner"}, {"transformation": "BravyiKitaev"},
