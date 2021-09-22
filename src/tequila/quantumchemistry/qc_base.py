@@ -143,9 +143,16 @@ class ParametersQC:
 
         """
         result = []
-        for line in geometry.split('\n'):
+        # Remove blank lines
+        lines = [l for l in geometry.split("\n") if l]
+
+        for line in lines:
             words = line.split()
-            if len(words) != 4:  break
+            
+            # Pad coordinates
+            if len(words) < 4:
+                words += [0.0] * (4 - len(words))
+
             try:
                 tmp = (ParametersQC.format_element_name(words[0]),
                        (float(words[1]), float(words[2]), float(words[3])))
@@ -257,7 +264,6 @@ class ClosedShellAmplitudes:
             for (I, A), value, in numpy.ndenumerate(self.tIA):
                 if not numpy.isclose(value, 0.0, atol=threshold):
                     variables[(A + nocc, I)] = value
-
         return dict(sorted(variables.items(), key=lambda x: numpy.abs(x[1]), reverse=True))
 
 
@@ -1183,10 +1189,10 @@ class QuantumChemistryBase:
             # ladder structure of the pair excitations
             # ensures local connectivity
             indices = [[(n, n + 1)] for n in range(self.n_orbitals - 1)]
-        elif hasattr(key, "lower") and "g" not in key:
+        elif hasattr(key, "lower") and "g" not in key.lower():
             indices = [[(n, m)] for n in reference_orbitals for m in range(self.n_orbitals) if
                        n < m and m not in reference_orbitals]
-        elif hasattr(key, "lower") and "g" in key:
+        elif hasattr(key, "lower") and "g" in key.lower():
             indices = [[(n, m)] for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n < m]
         else:
             raise TequilaException("Unknown recipe: {}".format(key))
@@ -1304,7 +1310,7 @@ class QuantumChemistryBase:
                 U = self.hcb_to_me(U=U)
 
             if "S" in name:
-                self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label, 0),
+                U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label, 0),
                                           spin_adapt_singles=spin_adapt_singles, neglect_z=neglect_z, *args, **kwargs)
 
         for k in range(1, order):
@@ -1381,11 +1387,12 @@ class QuantumChemistryBase:
 
         return U
 
-    def make_uccsd_ansatz(self, trotter_steps: int,
+    def make_uccsd_ansatz(self, trotter_steps: int=1,
                           initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
                           include_reference_ansatz=True,
                           parametrized=True,
                           threshold=1.e-8,
+                          add_singles=None,
                           *args, **kwargs) -> QCircuit:
         """
 
@@ -1405,7 +1412,7 @@ class QuantumChemistryBase:
         Amplitudes :
 
         ClosedShellAmplitudes] :
-             (Default value = "mp2")
+             (Default value = "cc2")
 
         Returns
         -------
@@ -1413,7 +1420,15 @@ class QuantumChemistryBase:
             Parametrized QCircuit
 
         """
-
+        
+        if hasattr(initial_amplitudes, "lower"):
+            if initial_amplitudes.lower() == "mp2" and add_singles is None:
+                add_singles=True
+        elif initial_amplitudes is not None and add_singles is not None:
+            warnings.warn("make_uccsd_anstatz: add_singles has no effect when explicit amplitudes are passed down", TequilaWarning)
+        elif add_singles is None:
+            add_singles=True
+            
         if self.n_electrons % 2 != 0:
             raise TequilaException("make_uccsd_ansatz currently only for closed shell systems")
 
@@ -1436,64 +1451,60 @@ class QuantumChemistryBase:
                 except Exception as exc:
                     raise TequilaException(
                         "{}\nDon't know how to initialize \'{}\' amplitudes".format(exc, initial_amplitudes))
-
         if amplitudes is None:
+            tia=None
+            if add_singles: tia=numpy.zeros(shape=[nocc, nvirt])
             amplitudes = ClosedShellAmplitudes(
                 tIjAb=numpy.zeros(shape=[nocc, nocc, nvirt, nvirt]),
-                tIA=numpy.zeros(shape=[nocc, nvirt]))
+                tIA=tia)
 
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
-        indices = []
-        variables = []
+        indices = {}
 
         if not isinstance(amplitudes, dict):
             amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
             amplitudes = dict(sorted(amplitudes.items(), key=lambda x: numpy.fabs(x[1]), reverse=True))
-
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
             if not numpy.isclose(t, 0.0, atol=threshold):
-
                 if closed_shell:
-                    spin_indices = []
-                    if len(key) == 2:
-                        spin_indices = [[2 * key[0], 2 * key[1]], [2 * key[0] + 1, 2 * key[1] + 1]]
-                        partner = None
+                    
+                    if len(key) == 2 and add_singles:
+                        # singles
+                        angle=2.0*t
+                        if parametrized:
+                            angle=2.0*Variable(name=key)
+                        idx_a = (2*key[0], 2*key[1])
+                        idx_b = (2*key[0]+1, 2*key[1]+1)
+                        indices[idx_a]=angle
+                        indices[idx_b]=angle
                     else:
-                        spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3]])
-                        #spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2] + 1, 2 * key[3] + 1])
-                        if key[0] != key[2] and key[1] != key[3]:
-                            spin_indices.append([2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3]])
-                            #spin_indices.append([2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2] + 1, 2 * key[3] + 1])
-                        partner = tuple([key[2], key[1], key[0], key[3]])  # taibj -> tbiaj
-                    for idx in spin_indices:
-                        idx = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
-                        indices.append(idx)
-
-                    if parametrized:
-                        variables.append(2.0*Variable(name=key))  # abab
-                        #variables.append(Variable(name=key))  # baba
-                        if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(2.0*(Variable(name=key) - Variable(partner))) # aaaa
-                            #variables.append(Variable(name=key) - Variable(partner))  # bbbb
-                    else:
-                        variables.append(2.0*t)
-                        #variables.append(t)
-                        if partner is not None and key[0] != key[1] and key[2] != key[3]:
-                            variables.append(2.0*(t - amplitudes[partner]))
-                            #variables.append(t - amplitudes[partner])
+                        assert len(key)==4
+                        angle=2.0*t
+                        if parametrized:
+                            angle=2.0*Variable(name=key)
+                        idx_abab=(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2], 2 * key[3])
+                        indices[idx_abab]=angle
+                        if key[0]!=key[2] and key[1]!=key[3]: 
+                            idx_aaaa=(2 * key[0], 2 * key[1], 2 * key[2], 2 * key[3])
+                            idx_bbbb=(2 * key[0] + 1, 2 * key[1] + 1, 2 * key[2]+1, 2 * key[3]+1)
+                            partner = tuple([key[2], key[1], key[0], key[3]]) 
+                            anglex=2.0*(t - amplitudes[partner])
+                            if parametrized:
+                                anglex=2.0*(Variable(name=key) - Variable(partner))
+                            indices[idx_aaaa]=anglex
+                            indices[idx_bbbb]=anglex
                 else:
-                    indices.append(spin_indices)
-                    if parametrized:
-                        variables.append(Variable(name=key))
-                    else:
-                        variables.append(t)
+                    raise Exception("only closed-shell supported, please assemble yourself .... sorry :-)")
+
         UCCSD = QCircuit()
         factor = 1.0 / trotter_steps
         for step in range(trotter_steps):
-            for i, idx in enumerate(indices):
-                UCCSD += self.make_excitation_gate(indices=idx, angle=factor * variables[i])
-
+            for idx, angle in indices.items():
+                UCCSD += self.make_excitation_gate(indices=idx, angle=factor * angle)
+        if hasattr(initial_amplitudes,"lower") and initial_amplitudes.lower()=="mp2" and parametrized and add_singles:
+            # mp2 has no singles, need to initialize them here (if not parametrized initializling as 0.0 makes no sense though)
+            UCCSD += self.make_upccgsd_layer(indices="upccsd", include_singles=True, include_doubles=False)
         return Uref + UCCSD
 
     def compute_amplitudes(self, method: str, *args, **kwargs):
