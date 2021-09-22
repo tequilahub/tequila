@@ -10,7 +10,7 @@ simulators = select_backends.get()
 samplers = select_backends.get(sampler=True)
 
 @pytest.mark.parametrize("simulator", simulators)
-@pytest.mark.parametrize('method', numpy.random.choice(tq.optimizers.optimizer_gd.OptimizerGD.available_methods(),1))
+@pytest.mark.parametrize('method', tq.optimizers.optimizer_gd.OptimizerGD.available_methods())
 @pytest.mark.parametrize('options', [None, '2-point', {"method":"2-point", "stepsize": 1.e-4}, {"method":"2-point-forward", "stepsize": 1.e-4}, {"method":"2-point-backward", "stepsize": 1.e-4} ])
 def test_execution(simulator,method, options):
     U = tq.gates.Rz(angle="a", target=0) \

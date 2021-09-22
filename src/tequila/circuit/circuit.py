@@ -1,7 +1,9 @@
-from tequila.circuit._gates_impl import QGateImpl, assign_variable
+from __future__ import annotations
+from tequila.circuit._gates_impl import QGateImpl, assign_variable, list_assignment
 from tequila import TequilaException, TequilaWarning
 from tequila import BitNumbering
-import typing, copy
+import typing
+import copy
 from collections import defaultdict
 import warnings
 
@@ -158,7 +160,8 @@ class QCircuit():
         self._min_n_qubits = other
         if other < self.max_qubit() + 1:
             raise TequilaException(
-                "You are trying to set n_qubits to " + str(other) + " but your circuit needs at least: " + str(
+                "You are trying to set n_qubits to " + str(
+                    other) + " but your circuit needs at least: " + str(
                     self.max_qubit() + 1))
         return self
 
@@ -453,7 +456,7 @@ class QCircuit():
                         control = int(cstr)
                         Gdict[p].append(control)  # add control to key of correlated targets
             else:
-               for s in gate.target:
+                for s in gate.target:
                     for t in gate.target:
                         tstr2 = ''
                         tstr2 += str(t)
@@ -521,6 +524,97 @@ class QCircuit():
         # currently its recreated in the init function
         return QCircuit(gates=new_gates)
 
+    def add_controls(self, control, inpl: typing.Optional[bool] = True) \
+            -> typing.Optional[QCircuit]:
+        """Depending on the truth value of inpl:
+            - return controlled version of self with control as the control qubits if inpl;
+            - mutate self so that the qubits in control are added as the control qubits if not inpl.
+
+        Raise ValueError if there any qubits in common between self and control.
+        """
+        if inpl:
+            self._inpl_control_circ(control)
+        else:
+            # return self._return_control_circ(control)
+            circ = copy.deepcopy(self)
+            return circ.add_controls(control, inpl=True)
+
+    def _return_control_circ(self, control) -> QCircuit:
+        """Return controlled version of self with control as the control qubits.
+
+        This is not an in-place method, so it DOES NOT mutates self, and only returns a circuit.
+
+        Raise TequilaWarning if there any qubits in common between self and control.
+        """
+        control = list(set(list_assignment(control)))
+
+        gates = self.gates
+        cgates = []
+
+        for gate in gates:
+            cgate = copy.deepcopy(gate)
+
+            if cgate.is_controlled():
+                control_lst = list(set(list(cgate.control) + list(control)))
+
+                if len(control_lst) < len(gate.control) + len(control):
+                    # warnings.warn("Some of the controls {} were already included in the control "
+                    #               "of a gate {}.".format(control, gate), TequilaWarning)
+                    raise TequilaWarning(f'Some of the controls {control} were already included '
+                                         f'in the control of a gate {gate}.')
+            else:
+                control_lst, not_control = list(control), list()
+
+            # Raise TequilaWarning if target and control are the same qubit
+            if any(qubit in control for qubit in not_control):
+                # warnings.warn("The target and control {} were the same qubit for a gate {}."
+                #               .format(control, gate), TequilaWarning)
+                raise TequilaWarning(f'The target for a gate {gate} '
+                                     f'and the control list {control_lst} had a common qubit.')
+
+            cgate._control = tuple(control_lst)
+            cgate.finalize()
+            cgates.append(cgate)
+
+        return QCircuit(gates=cgates)
+
+    def _inpl_control_circ(self, control) -> None:
+        """Mutate self such that the qubits in control are added as the control qubits
+
+        This is an in-place method, so it mutates self and doesn't return any value.
+
+        Raise TequilaWarning if there any qubits in common between self and control.
+        """
+        gates = self.gates
+        control = list_assignment(control)
+
+        for gate in gates:
+            if gate.is_controlled():
+                control_lst = list(set(list(gate.control) + list(control)))
+
+                # Need to check duplicates
+                not_control = list(set(qubit for qubit in list(gate.qubits)
+                                       if qubit not in list(gate.control)))
+
+                # Raise TequilaWarning if control qubit is duplicated
+                if len(control_lst) < len(gate.control) + len(control):
+                    # warnings.warn("Some of the controls {} were already included in the control "
+                    #               "of a gate {}.".format(control, gate), TequilaWarning)
+                    raise TequilaWarning(f'Some of the controls {control} were already included '
+                                         f'in the control of a gate {gate}.')
+            else:
+                control_lst, not_control = list(control), list()
+
+            # Raise TequilaWarning if target and control are the same qubit
+            if any(qubit in control for qubit in not_control):
+                # warnings.warn("The target and control {} were the same qubit for a gate {}."
+                #               .format(control, gate), TequilaWarning)
+                raise TequilaWarning(f'The target for a gate {gate} '
+                                     f'and the control list {control} had a common qubit.')
+
+            gate._control = tuple(control_lst)
+            gate.finalize()
+
     def map_variables(self, variables: dict, *args, **kwargs):
         """
 
@@ -534,18 +628,20 @@ class QCircuit():
 
         """
 
-        variables = {assign_variable(k):assign_variable(v) for k,v in variables.items()}
+        variables = {assign_variable(k): assign_variable(v) for k, v in variables.items()}
 
         # failsafe
         my_variables = self.extract_variables()
-        for k,v in variables.items():
+        for k, v in variables.items():
             if k not in my_variables:
-                warnings.warn("map_variables: variable {} is not part of circuit with variables {}".format(k,my_variables), TequilaWarning)
+                warnings.warn(
+                    "map_variables: variable {} is not part of circuit with variables {}".format(k,
+                                                                                                 my_variables),
+                    TequilaWarning)
 
         new_gates = [copy.deepcopy(gate).map_variables(variables) for gate in self.gates]
 
         return QCircuit(gates=new_gates)
-
 
 
 class Moment(QCircuit):
@@ -614,7 +710,8 @@ class Moment(QCircuit):
                 for q in g.qubits:
                     if q in occ:
                         raise TequilaException(
-                            'cannot have doubly occupied qubits, which occurred at qubit {}'.format(str(q)))
+                            'cannot have doubly occupied qubits, which occurred at qubit {}'.format(
+                                str(q)))
                     else:
                         occ.append(q)
         if sort:
@@ -675,7 +772,8 @@ class Moment(QCircuit):
                 if q not in first_overlap:
                     first_overlap.append(q)
                 else:
-                    raise TequilaException('cannot have a moment with multiple operations acting on the same qubit!')
+                    raise TequilaException(
+                        'cannot have a moment with multiple operations acting on the same qubit!')
 
         new = self.with_gate(gl[0])
         for g in gl[1:]:
@@ -702,7 +800,8 @@ class Moment(QCircuit):
         for n in newq:
             if n in prev:
                 raise TequilaException(
-                    'cannot add gate {} to moment; qubit {} already occupied.'.format(str(gate), str(n)))
+                    'cannot add gate {} to moment; qubit {} already occupied.'.format(str(gate),
+                                                                                      str(n)))
 
         self._gates.append(gate)
         self.sort_gates()
@@ -811,7 +910,8 @@ class Moment(QCircuit):
                     result._min_n_qubits += len(other.qubits)
                 except:
                     result = self.as_circuit() + QCircuit.wrap_gate(other)
-                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
+                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits,
+                                               QCircuit.wrap_gate(other)._min_n_qubits)
 
         else:
             if isinstance(other, QGateImpl):
@@ -820,7 +920,8 @@ class Moment(QCircuit):
                     result._min_n_qubits += len(other.qubits)
                 except:
                     result = self.as_circuit() + QCircuit.wrap_gate(other)
-                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
+                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits,
+                                               QCircuit.wrap_gate(other)._min_n_qubits)
             else:
                 raise TequilaException(
                     'cannot add moments to types other than QCircuit,Moment,or Gate; recieved summand of type {}'.format(
