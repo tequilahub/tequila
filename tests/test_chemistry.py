@@ -60,7 +60,7 @@ def test_prepare_reference(trafo):
     energy = tq.simulate(E)
     hf_energy = mol.compute_energy("hf")
     assert numpy.isclose(energy, hf_energy, atol=1.e-4)
-    mol = tq.molecule(geometry=geometry, basis_set=basis_set, transformation="reordered"+trafo)
+    mol = tq.Molecule(geometry=geometry, basis_set=basis_set, transformation="reordered"+trafo)
     H = mol.make_hamiltonian()
     U = mol.prepare_reference()
     E = tq.ExpectationValue(H=H, U=U)
