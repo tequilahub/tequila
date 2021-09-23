@@ -53,7 +53,7 @@ def test_base(trafo):
 def test_prepare_reference(trafo):
     geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 1.5"
     basis_set="sto-3g"
-    mol = tq.molecule(geometry=geometry, basis_set=basis_set, transformation=trafo)
+    mol = tq.Molecule(geometry=geometry, basis_set=basis_set, transformation=trafo)
     H = mol.make_hamiltonian()
     U = mol.prepare_reference()
     E = tq.ExpectationValue(H=H, U=U)
