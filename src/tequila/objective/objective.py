@@ -1,10 +1,9 @@
 import typing, copy, numbers
-
+from tequila.grouping.compile_groups import compile_commuting_parts
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
 from tequila.tools.convenience import list_assignment
 from tequila.hamiltonian import paulis
-from tequila.grouping.binary_rep import BinaryHamiltonian
 import numpy as onp
 from tequila.autograd_imports import numpy as numpy
 
@@ -1317,11 +1316,10 @@ def ExpectationValue(U, H, optimize_measurements: bool = False, *args, **kwargs)
     Initialize an VectorObjective which is just a single expectationvalue
     """
     if optimize_measurements:
-        binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-        commuting_parts = binary_H.commuting_groups()
+        commuting_parts = compile_commuting_parts(H=H)
         result = 0.0
-        for cH in commuting_parts:
-            qwc, Um = cH.get_qubit_wise()
+        for HandU in commuting_parts:
+            qwc, Um = HandU
             Etmp = ExpectationValue(H=qwc, U=U + Um, optimize_measurements=False)
             result += Etmp
         return result
