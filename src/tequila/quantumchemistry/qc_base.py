@@ -1039,13 +1039,7 @@ class QuantumChemistryBase:
             state = [0]*(self.n_orbitals*2)
             for i in range(self.n_electrons):
                 state[i]=1
-            # tequila top level convention is: even qubits spin-up, odd qubits spin-down
-            # but that may change in the underlying qubit mapping
-            mapped_state = [0]*(self.n_orbitals*2)
-            for i in range(len(state)//2):
-                mapped_state[self.transformation.up(i)]=state[2*i]
-                mapped_state[self.transformation.down(i)]=state[2*i+1]
-        reference_state = BitString.from_array(self.transformation.map_state(state=mapped_state))
+        reference_state = BitString.from_array(self.transformation.map_state(state=state))
         return prepare_product_state(reference_state)
 
 
