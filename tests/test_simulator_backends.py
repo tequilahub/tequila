@@ -386,7 +386,7 @@ def test_sampling_read_out_qubits(backend):
 def test_qubit_excitations(backend):
     if backend == "symbolic":
         return
-    U1 = tq.gates.X(0) + tq.gates.QubitExcitation(angle=numpy.pi / 2, target=[0, 1])
+    U1 = tq.gates.X(0) + tq.gates.QubitExcitation(angle=-numpy.pi / 2, target=[0, 1])
     U2 = tq.gates.H(0) + tq.gates.X(1) + tq.gates.CNOT(0, 1)
     wfn1 = tq.simulate(U1, backend=backend)
     wfn2 = tq.simulate(U2, backend=backend)
