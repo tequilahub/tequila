@@ -180,10 +180,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
                 raise TequilaException(
                     "Noise requires sampling; please provide a positive, integer value for samples")
             for f in SUPPORTED_NOISE_BACKENDS:
-                if noise == 'device':
-                    raise TequilaException('device noise requires a device, which requires a named backend!')
-                else:
-                    return f
+                return f
             raise TequilaException(
                             'Could not find any installed sampler!')
 
@@ -206,11 +203,6 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
             while (backend == "symbolic"):
                 backend = state.choice(list(INSTALLED_SIMULATORS.keys()), 1)[0]
         return backend
-
-    if device is not None and samples is None:
-        raise TequilaException('Use of a device requires sampling!')
-    if noise == 'device' and device is None:
-        raise TequilaException('Use of device noise requires a device!')
 
     if backend not in SUPPORTED_BACKENDS:
         raise TequilaException("Backend {backend} not supported ".format(backend=backend))
@@ -481,7 +473,6 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
             else:
                 print(compiled.circuit)
                 return str(compiled.circuit)
-
 
 def compile(objective: typing.Union['Objective', 'QCircuit'],
             variables: Dict[Union['Variable', Hashable], RealNumber] = None,
