@@ -26,7 +26,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install quantum backends
       run: |
-              pip install "cirq" "qiskit<0.25" "qulacs"
+              pip install "cirq" "qiskit>=0.30" "qulacs"
               pip uninstall pyquil -y
               
     - name: Install and test GPyOpt interface (no qibo)
