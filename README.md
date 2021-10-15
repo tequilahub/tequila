@@ -189,6 +189,12 @@ K. Choudhary,
 Quantum Computation for Predicting Electron and Phonon Properties of Solids  
 [arxiv.org/abs/2102.11452](https://arxiv.org/abs/2102.11452)  
 
+
+P. Schleich, J.S. Kottmann, A. Aspuru-Guzik,  
+Improving the Accuracy of the Variational Quantum Eigensolver for Molecular Systems by the Explicitly-Correlated Perturbative [2]-R12-Correction  
+[arxiv.org/abs/2110.06812](https://arxiv.org/abs/2110.06812)  
+[tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryF12Correction.ipynb)  
+
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
 # Dependencies
