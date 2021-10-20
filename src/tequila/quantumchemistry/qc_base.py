@@ -1034,12 +1034,14 @@ class QuantumChemistryBase:
         -------
         A tequila circuit object which prepares the reference of this molecule in the chosen transformation
         """
-
         if state is None:
-            state = [1 for i in range(self.n_electrons)]
-            state += [0 for i in range(2 * self.n_orbitals - self.n_electrons)]
+            assert self.n_electrons %2 == 0
+            state = [0]*(self.n_orbitals*2)
+            for i in range(self.n_electrons):
+                state[i]=1
         reference_state = BitString.from_array(self.transformation.map_state(state=state))
         return prepare_product_state(reference_state)
+
 
     def prepare_hcb_reference(self, state=None, *args, **kwargs):
         """
