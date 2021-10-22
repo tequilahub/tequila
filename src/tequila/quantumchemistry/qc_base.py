@@ -1886,7 +1886,6 @@ class QuantumChemistryBase:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
         
         if get_rdm2:
-            print(rdm2.shape)
             rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac")
             rdm2.reorder(to=ordering)
             rdm2 = rdm2.elems
