@@ -897,6 +897,14 @@ class QuantumChemistryBase:
         assert ("two_body_integrals" in kwargs)
         one_body_integrals = kwargs["one_body_integrals"]
         two_body_integrals = kwargs["two_body_integrals"]
+        
+        # tequila assumes "openfermion" ordering, integrals can however be passed
+        # down in other orderings, but it needs to be indicated by keyword
+        if "ordering" in kwargs:
+            two_body_integrals = NBodyTensor(two_body_integrals, ordering=kwargs["ordering"])
+            two_body_integrals.reorder(to="openfermion")
+            two_body_integrals = two_body_integrals.elems
+
         if "nuclear_repulsion" in kwargs:
             nuclear_repulsion = kwargs["nuclear_repulsion"]
         else:
@@ -1877,17 +1885,17 @@ class QuantumChemistryBase:
         else:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
         
-        if compute_rdm2:
+        if get_rdm2:
             rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac")
             rdm2.reorder(to=ordering)
             self._rdm2 = rdm2
 
-        if compute_rdm1:
-            if compute_rdm2:
+        if get_rdm1:
+            if get_rdm2:
                 return self.rdm1, self.rdm2
             else:
                 return self.rdm1
-        elif compute_rdm2:
+        elif get_rdm2:
             return self.rdm2
         else:
             warnings.warn("compute_rdms called with instruction to not compute?", TequilaWarning)
