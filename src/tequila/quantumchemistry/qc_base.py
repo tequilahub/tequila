@@ -1617,7 +1617,9 @@ class QuantumChemistryBase:
 
     @property
     def rdm1(self):
-        """ """
+        """ 
+        Returns RMD1 if computed with compute_rdms function before
+        """
         if self._rdm1 is not None:
             return self._rdm1
         else:
@@ -1626,7 +1628,10 @@ class QuantumChemistryBase:
 
     @property
     def rdm2(self):
-        """ """
+        """
+        Returns RMD2 if computed with compute_rdms function before
+        This is returned in Dirac (physics) notation by default (can be changed in compute_rdms with keyword)!
+        """
         if self._rdm2 is not None:
             return self._rdm2
         else:
@@ -1634,7 +1639,7 @@ class QuantumChemistryBase:
             return None
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True):
+                     get_rdm1: bool = True, get_rdm2: bool = True, rdm2_ordering="dirac"):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -1871,6 +1876,21 @@ class QuantumChemistryBase:
             self._rdm2 = _assemble_rdm2_spinfree(evals_2) if get_rdm2 else self._rdm2
         else:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
+        
+        if compute_rdm2:
+            rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac")
+            rdm2.reorder(to=ordering)
+            self._rdm2 = rdm2
+
+        if compute_rdm1:
+            if compute_rdm2:
+                return self.rdm1, self.rdm2
+            else:
+                return self.rdm1
+        elif compute_rdm2:
+            return self.rdm2
+        else:
+            warnings.warn("compute_rdms called with instruction to not compute?", TequilaWarning)
 
     def rdm_spinsum(self, sum_rdm1: bool = True, sum_rdm2: bool = True) -> tuple:
         """
