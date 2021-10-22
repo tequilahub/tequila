@@ -1048,37 +1048,17 @@ class QuantumChemistryBase:
             for i in range(self.n_electrons):
                 state[i]=1
         reference_state = BitString.from_array(self.transformation.map_state(state=state))
-        return prepare_product_state(reference_state)
+        U = prepare_product_state(reference_state)
+        # prevent trace out in direct wfn simulation
+        U.n_qubits = self.n_orbitals*2 # adapt when tapered transformations work
+        return U
 
-
-    def prepare_hcb_reference(self, state=None, *args, **kwargs):
-        """
-
-        Returns
-        -------
-        A tequila circuit object which prepares the reference of this molecule in hardcore-boson representation
-        (a pair function represented only by the spin-up orbitals)
-        this is independent of the qubit encoding (except the up_then_down key) and can be transformed via
-        U = self.transfomration.hcb_to_me
-        so
-        self.prepare_reference == self.prepare_hcb_reference + self.transformation.hcb_to_me()
-
-        state can define a given product state (expected in full spin orbital notation up, down, up, down)
-        """
-
-        if state is None:
-            state = [1 for i in range(self.n_electrons)]
-            state += [0 for i in range(2 * self.n_orbitals - self.n_electrons)]
-        reference_state = [0] * len(state)
-        for i in range(self.n_orbitals):
-            assert state[2 * i] == state[2 * i + 1]
-            reference_state[self.transformation.up(i)] = state[2 * i]
-
-        return prepare_product_state(BitString.from_array(reference_state))
 
     def prepare_hardcore_boson_reference(self):
-        # todo: integrate with transformation
-        return gates.X(target=[i for i in range(self.n_electrons // 2)])
+        # HF state in the HCB representation (paired electrons)
+        U = gates.X(target=[i for i in range(self.n_electrons // 2)])
+        U.n_qubits = self.n_orbitals
+        return U
 
     def hcb_to_me(self, U=None):
         """
