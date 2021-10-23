@@ -897,6 +897,14 @@ class QuantumChemistryBase:
         assert ("two_body_integrals" in kwargs)
         one_body_integrals = kwargs["one_body_integrals"]
         two_body_integrals = kwargs["two_body_integrals"]
+        
+        # tequila assumes "openfermion" ordering, integrals can however be passed
+        # down in other orderings, but it needs to be indicated by keyword
+        if "ordering" in kwargs:
+            two_body_integrals = NBodyTensor(two_body_integrals, ordering=kwargs["ordering"])
+            two_body_integrals.reorder(to="openfermion")
+            two_body_integrals = two_body_integrals.elems
+
         if "nuclear_repulsion" in kwargs:
             nuclear_repulsion = kwargs["nuclear_repulsion"]
         else:
@@ -1040,37 +1048,17 @@ class QuantumChemistryBase:
             for i in range(self.n_electrons):
                 state[i]=1
         reference_state = BitString.from_array(self.transformation.map_state(state=state))
-        return prepare_product_state(reference_state)
+        U = prepare_product_state(reference_state)
+        # prevent trace out in direct wfn simulation
+        U.n_qubits = self.n_orbitals*2 # adapt when tapered transformations work
+        return U
 
-
-    def prepare_hcb_reference(self, state=None, *args, **kwargs):
-        """
-
-        Returns
-        -------
-        A tequila circuit object which prepares the reference of this molecule in hardcore-boson representation
-        (a pair function represented only by the spin-up orbitals)
-        this is independent of the qubit encoding (except the up_then_down key) and can be transformed via
-        U = self.transfomration.hcb_to_me
-        so
-        self.prepare_reference == self.prepare_hcb_reference + self.transformation.hcb_to_me()
-
-        state can define a given product state (expected in full spin orbital notation up, down, up, down)
-        """
-
-        if state is None:
-            state = [1 for i in range(self.n_electrons)]
-            state += [0 for i in range(2 * self.n_orbitals - self.n_electrons)]
-        reference_state = [0] * len(state)
-        for i in range(self.n_orbitals):
-            assert state[2 * i] == state[2 * i + 1]
-            reference_state[self.transformation.up(i)] = state[2 * i]
-
-        return prepare_product_state(BitString.from_array(reference_state))
 
     def prepare_hardcore_boson_reference(self):
-        # todo: integrate with transformation
-        return gates.X(target=[i for i in range(self.n_electrons // 2)])
+        # HF state in the HCB representation (paired electrons)
+        U = gates.X(target=[i for i in range(self.n_electrons // 2)])
+        U.n_qubits = self.n_orbitals
+        return U
 
     def hcb_to_me(self, U=None):
         """
@@ -1617,7 +1605,9 @@ class QuantumChemistryBase:
 
     @property
     def rdm1(self):
-        """ """
+        """ 
+        Returns RMD1 if computed with compute_rdms function before
+        """
         if self._rdm1 is not None:
             return self._rdm1
         else:
@@ -1626,7 +1616,10 @@ class QuantumChemistryBase:
 
     @property
     def rdm2(self):
-        """ """
+        """
+        Returns RMD2 if computed with compute_rdms function before
+        This is returned in Dirac (physics) notation by default (can be changed in compute_rdms with keyword)!
+        """
         if self._rdm2 is not None:
             return self._rdm2
         else:
@@ -1634,7 +1627,7 @@ class QuantumChemistryBase:
             return None
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True):
+                     get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac"):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -1871,6 +1864,22 @@ class QuantumChemistryBase:
             self._rdm2 = _assemble_rdm2_spinfree(evals_2) if get_rdm2 else self._rdm2
         else:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
+        
+        if get_rdm2:
+            rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac")
+            rdm2.reorder(to=ordering)
+            rdm2 = rdm2.elems
+            self._rdm2 = rdm2
+
+        if get_rdm1:
+            if get_rdm2:
+                return self.rdm1, self.rdm2
+            else:
+                return self.rdm1
+        elif get_rdm2:
+            return self.rdm2
+        else:
+            warnings.warn("compute_rdms called with instruction to not compute?", TequilaWarning)
 
     def rdm_spinsum(self, sum_rdm1: bool = True, sum_rdm2: bool = True) -> tuple:
         """
