@@ -1,7 +1,7 @@
-from tequila import TequilaException, TequilaWarning
+from tequila import TequilaException, TequilaWarning, ExpectationValue, QCircuit, minimize
 from openfermion import MolecularData
 from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, NBodyTensor
-
+from dataclasses import dataclass, field
 import pyscf
 
 import numpy, typing, warnings
@@ -21,6 +21,8 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
     @classmethod
     def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
         c, h1, h2 = molecule.get_integrals(two_body_ordering="openfermion")
+        if transformation is None:
+            transformation=molecule.transformation
         return cls(nuclear_repulsion=c,
                           one_body_integrals=h1,
                           two_body_integrals=h2,
@@ -183,3 +185,6 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         except:
             return base
         return base
+
+if __name__ == "__main__":
+    pass
