@@ -4,22 +4,22 @@ scipy >= 1.5 # can in principle be smaller, we recommend >= 1.5 for consistency 
 sympy
 jax
 jaxlib
-#autograd # use if jaxlib gives you trouble (e.g. on Windows), make sure jax and jaxlib are uninstalled and install autograd
-setuptools 
+# autograd # use if jaxlib gives you trouble (e.g. on Windows), make sure jax and jaxlib are uninstalled and install autograd
+setuptools
 pytest
-openfermion >= 1.0*
+openfermion <= 1.0.0
 cmake # needed by qulacs, can be removed otherwise
 qulacs # default simulator (best integration), remove if the installation gives you trouble and just install one of the other supported backend
 
 #optional quantum backends
 #cirq >= 0.9.2 #
 #qiskit>=0.7.0,<0.25
-#pyquil # you need to install the forest-sdk
+#pyquil<3.0 # you also need to install the forest-sdk
 #qulacs-gpu # you can't have qulacs and qulacs-gpu at the same time
 #qibo <= 0.1.1 # can not be installed in the same environment as gpyopt
 
 #optional optimizers
-#phoenics # version on PyPi  isc urrently broken, we recommend to install from source (AAG github) 
+#phoenics # version on PyPi  isc urrently broken, we recommend to install from source (AAG github)
 #gpyopt # not in combination with qibo as quantum backend
 
 #optional third party libraries
