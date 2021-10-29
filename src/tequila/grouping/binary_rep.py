@@ -17,14 +17,16 @@ class BinaryHamiltonian:
         self.n_term = len(self.binary_terms)
 
     @classmethod
-    def init_from_qubit_hamiltonian(cls, hamiltonian: QubitHamiltonian):
-        n_qubit = hamiltonian.n_qubits
+    def init_from_qubit_hamiltonian(cls, hamiltonian: QubitHamiltonian, n_qubits=None):
+        if n_qubits is None:
+            n_qubits = hamiltonian.n_qubits
         binary_terms = [
             BinaryPauliString(
-                p.binary(n_qubit).binary,
-                p.binary(n_qubit).coeff) for p in hamiltonian.paulistrings
+                p.binary(n_qubits).binary,
+                p.binary(n_qubits).coeff) for p in hamiltonian.paulistrings
         ]
         return BinaryHamiltonian(binary_terms)
+
 
     def get_binary(self):
         matrix = [p.get_binary() for p in self.binary_terms]
