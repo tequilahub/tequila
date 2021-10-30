@@ -294,3 +294,5 @@ You need to install latest GNU compile (at least gcc-7 and g++7) and set them as
 
 ## Qibo and GPyOpt
 Currently you can't use Qibo and GPyOpt within the same environment.
+
+
