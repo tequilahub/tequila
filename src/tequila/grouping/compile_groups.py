@@ -284,7 +284,6 @@ def Lwr_CNOT_Synth(C_NOT_matrix):
         m += iter
     return (C_NOT_matrix, circ)
 
-
 def is_canonical(tableau, phase_stab, phase_destab):
     dim = len(tableau)
     eye = np.identity(dim)
@@ -292,7 +291,6 @@ def is_canonical(tableau, phase_stab, phase_destab):
         return True
     else:
         return False
-
 
 def initial_tableau(circuit, number_of_qubits):
     """Goes through Thomsons circuit (expressed only in H,CNOT and S gates) to update the standard initial tableau
@@ -557,6 +555,7 @@ def first_round_hadamard(A, phase_stabilizer, phase_destabilizer):
     z_stab = A[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
     x_stab = A[num_qubits:2 * num_qubits, 0:num_qubits]
     rank = npl.matrix_rank(x_stab)
+
     if is_canonical(A, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -605,6 +604,7 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
     x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -639,6 +639,7 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                         # guassian elimination on lower rows
                     target_qubit = j
                     control_qubit = i
+
                     circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                     for k in range(0, num_qubits):
                         phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
@@ -651,6 +652,7 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                         x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                         z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
                         z_destab[k, control_qubit] = int(z_destab[k, control_qubit]) ^ int(z_destab[k, target_qubit])
+
 
         # making matrix identity
         for i in reversed(range(num_qubits)):
@@ -677,6 +679,7 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
+
 def first_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     """This phase round adds a diagonal matrix D to the Z stabilizer matrix such that Z + D = M*M' for some
     invertible M"""
@@ -688,6 +691,7 @@ def first_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     matrix = copy.deepcopy(z_stab)
     M = np.identity(num_qubits)
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -726,6 +730,7 @@ def first_round_phase(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
+
 def second_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     """performs a cholesky decompostion of the symmetric Z = D + M*M' stabilizer matrix """
     num_qubits = int(len(tableau[0, :]) / 2)
@@ -735,6 +740,7 @@ def second_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
     matrix = copy.deepcopy(z_stab)
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -778,6 +784,7 @@ def second_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
+
 def second_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     """phase on all the qubits eliminates the Z_stabilizer to the Zero Matrix, additional phases set all the stabilizer
     phase bits to zero"""
@@ -788,6 +795,7 @@ def second_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
     bits_to_flip = []
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -833,6 +841,7 @@ def third_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
     x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -862,6 +871,7 @@ def third_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
+
 def second_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
     """"Apply Hadmard on all the bits puts the stabilizer matrix into canonical form"""
     num_qubits = int(len(tableau[0, :]) / 2)
@@ -871,6 +881,7 @@ def second_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
     x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
     bits_to_flip = []
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -892,6 +903,7 @@ def second_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
+
 def third_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     """Adds a diagonal matrix to the Z destabilizer matrix such that Zd + D = M*M' for some invertible M"""
     num_qubits = int(len(tableau[0, :]) / 2)
@@ -902,6 +914,7 @@ def third_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     matrix = copy.deepcopy(z_destab)
     M = np.identity(num_qubits)
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -939,6 +952,7 @@ def third_round_phase(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
+
 def fourth_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     """"Performs a binary cholesky decomposition on the Z destabilizer matrix"""
     num_qubits = int(len(tableau[0, :]) / 2)
@@ -949,6 +963,7 @@ def fourth_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     matrix = copy.deepcopy(z_destab)
     M = np.identity(num_qubits)
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -990,6 +1005,7 @@ def fourth_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
+
 def fourth_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     """"Phase gates make the Z destabilizer the Zero matrix, additional phases set all the destabilizer
     phase bits to 0"""
@@ -1000,6 +1016,7 @@ def fourth_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
     bits_to_flip = []
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -1039,6 +1056,7 @@ def fourth_round_phase(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
+
 def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     """Final round of CNOT gates puts the Tableau into canonical form: a 2n X 2n identity matrix with all phase
     bits zero"""
@@ -1048,6 +1066,7 @@ def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
     x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
     circ = []
+
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
@@ -1070,6 +1089,7 @@ def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                     z_destab[k, control_qubit] = int(z_destab[k, control_qubit]) ^ int(z_destab[k, target_qubit])
 
                 control_qubit, target_qubit = target_qubit, control_qubit
+
                 circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                 for k in range(0, num_qubits):
                     phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
@@ -1082,6 +1102,7 @@ def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                     x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                     z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
                     z_destab[k, control_qubit] = int(z_destab[k, control_qubit]) ^ int(z_destab[k, target_qubit])
+
 
             if x_destab[i, i] == 1:
                 ones = np.where(x_destab[i, :] == 1)[0]
@@ -1105,6 +1126,7 @@ def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         stabilizer = np.concatenate((x_stab, z_stab), axis=1)
         tableau = np.concatenate((destabilizer, stabilizer), axis=0)
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
+
 
 
 #
