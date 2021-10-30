@@ -12,6 +12,14 @@ This basically does what is described here in the context of orbital-optimized u
 Of course we don't have to use UCC circuits but can pass whatever we want as circuit, or use pass a "vqe_solver" object.
 
 The Interface with the PySCF module follows the original PySCF article  https://arxiv.org/abs/2002.12531 (see Fig.3)
+
+Currently this is a beta version, we still need:
+- unit test
+- tutorial
+- test in combination with adapt module (flexibility test)
+
+What wold be nice in the future (anyone interested? Just let me (jakob) know.):
+- have access to the orbital rotation parameters from pyscf instead of doing a 100% black-box
 """
 
 
