@@ -409,12 +409,14 @@ def test_pyscf_methods(method, geometry, basis_set):
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 def test_orbital_optimization():
+    from tequila.apps import optimize_orbitals
     mol = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", basis_set="STO-3G")
+    no = mol.n_orbitals
     circuit = mol.make_upccgsd_ansatz(name="UpCCGD")
     mol2 = optimize_orbitals(molecule=mol, circuit=circuit)
     H = mol2.make_hamiltonian()
     E = tq.ExpectationValue(H=H,U=circuit)
     result = tq.minimize(E, print_level=2)
     print(result.energy)
-    assert numpy.is_close(-9.14199223, result.energy, atol=1.e-3) 
+    assert numpy.is_close(-7.79860454, result.energy, atol=1.e-3) 
 
