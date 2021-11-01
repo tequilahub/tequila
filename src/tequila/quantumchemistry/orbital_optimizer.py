@@ -30,7 +30,7 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
         raise Exception("optimize_orbitals: Need pyscf to run")
 
     if pyscf_arguments is None:
-        pyscf_arguments = {"max_cycle_macro":10, "max_cycle_micro":3, "conv_tol":1.e-4, "conv_tol_grad":1.e-3}
+        pyscf_arguments = {"max_cycle_macro":10, "max_cycle_micro":3, "conv_tol":1.e-4, "conv_tol_grad":1.0}
 
     pyscf_molecule = QuantumChemistryPySCF.from_tequila(molecule=molecule, transformation=molecule.transformation)
     mf = pyscf_molecule._get_hf()
@@ -145,7 +145,7 @@ class PySCFVQEWrapper:
         self.rdm2 = rdm2
         self.one_body_integrals=h1
         self.two_body_integrals=h2
-        return result.energy, [0.0]
+        return result.energy, None
 
     def make_rdm12(self, *args, **kwargs):
         return self.rdm1, self.rdm2
@@ -163,6 +163,10 @@ if __name__ == "__main__":
     import tequila as tq
 
     mol = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", basis_set="STO-3G")
-    circuit = mol.make_upccgsd_ansatz(name="UpCCD")
+    circuit = mol.make_upccgsd_ansatz(name="UpCCGD")
     mol2 = optimize_orbitals(molecule=mol, circuit=circuit)
-
+    H = mol2.make_hamiltonian()
+    E = tq.ExpectationValue(H=H,U=circuit)
+    result = tq.minimize(E, print_level=2)
+    print(result.energy)
+    
