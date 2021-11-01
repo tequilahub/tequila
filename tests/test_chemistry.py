@@ -406,3 +406,15 @@ def test_pyscf_methods(method, geometry, basis_set):
     e3 = mol.compute_energy(method)
     assert numpy.isclose(e1, e3, atol=1.e-4)
 
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_orbital_optimization():
+    mol = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", basis_set="STO-3G")
+    circuit = mol.make_upccgsd_ansatz(name="UpCCGD")
+    mol2 = optimize_orbitals(molecule=mol, circuit=circuit)
+    H = mol2.make_hamiltonian()
+    E = tq.ExpectationValue(H=H,U=circuit)
+    result = tq.minimize(E, print_level=2)
+    print(result.energy)
+    assert numpy.is_close(-9.14199223, result.energy, atol=1.e-3) 
+
