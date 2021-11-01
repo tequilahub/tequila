@@ -20,18 +20,24 @@ Currently this is a beta version, we still need:
 
 What wold be nice in the future (anyone interested? Just let me (jakob) know.):
 - have access to the orbital rotation parameters from pyscf instead of doing a 100% black-box
+
+Pyscf paramters:
+    https://pyscf.org/pyscf_api_docs/pyscf.mcscf.html
 """
 
 
-def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments={}, silent=False, vqe_solver_arguments=None, *args, **kwargs):
+def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=None, silent=False, vqe_solver_arguments=None, *args, **kwargs):
     try:
         from pyscf import mcscf
     except:
         raise Exception("optimize_orbitals: Need pyscf to run")
 
+    if pyscf_arguments is None:
+        pyscf_arguments = {"max_cycle_macro":10, "max_cycle_micro":3, "conv_tol":1.e-4, "conv_tol_grad":1.e-3}
+
     pyscf_molecule = QuantumChemistryPySCF.from_tequila(molecule=molecule, transformation=molecule.transformation)
     mf = pyscf_molecule._get_hf()
-    mc = mcscf.CASSCF(mf, pyscf_molecule.n_orbitals, pyscf_molecule.n_electrons, **pyscf_arguments)
+    mc = mcscf.CASSCF(mf, pyscf_molecule.n_orbitals, pyscf_molecule.n_electrons)
     c = pyscf_molecule.compute_constant_part()
 
     if circuit is None and vqe_solver is None:
@@ -40,21 +46,29 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments={
     wrapper = PySCFVQEWrapper(molecule_arguments=pyscf_molecule.parameters, n_electrons=pyscf_molecule.n_electrons, const_part=c, circuit=circuit, vqe_solver_arguments=vqe_solver_arguments, silent=silent, vqe_solver=vqe_solver, *args, **kwargs)
     mc.fcisolver = wrapper
     mc.internal_rotation = True
+    if pyscf_arguments is not None:
+        for k,v in pyscf_arguments.items():
+            if hasattr(mc,str(k)):
+                setattr(mc, str(k), v)
+            else:
+                print("unknown arguments: {}".format(k))
+
     if not silent:
         print("Optimizing Orbitals with PySCF and VQE Solver:")
+        print("{:25} : {}".format("pyscf_arguments", pyscf_arguments))
         print(wrapper)
     mc.kernel()
     # make new molecule
-    h1 = vqe_solver.one_body_integrals
-    h2 = vqe_solver.two_body_integrals
+    h1 = wrapper.one_body_integrals
+    h2 = wrapper.two_body_integrals
 
     transformed_molecule=QuantumChemistryBase(nuclear_repulsion=c,
                                               one_body_integrals=h1,
                                               two_body_integrals=h2,
                                               n_electrons=pyscf_molecule.n_electrons,
-                                              transformation=pyscf_molecule.transformation.transformation,
+                                              transformation=pyscf_molecule.transformation,
                                               parameters=pyscf_molecule.parameters)
-    return QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule, transformation=pyscf_molecule.transformation.transformation)
+    return QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule, transformation=pyscf_molecule.transformation)
 
 @dataclass
 class PySCFVQEWrapper:
