@@ -18,15 +18,12 @@ Currently this is a beta version, we still need:
 - tutorial
 - test in combination with adapt module (flexibility test)
 
-What wold be nice in the future (anyone interested? Just let me (jakob) know.):
-- have access to the orbital rotation parameters from pyscf instead of doing a 100% black-box
-
 Pyscf paramters:
     https://pyscf.org/pyscf_api_docs/pyscf.mcscf.html
 """
 
 
-def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=None, silent=False, vqe_solver_arguments=None, *args, **kwargs):
+def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=None, silent=False, vqe_solver_arguments=None, return_mcscf=False, *args, **kwargs):
     try:
         from pyscf import mcscf
     except:
@@ -68,7 +65,11 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
                                               n_electrons=pyscf_molecule.n_electrons,
                                               transformation=pyscf_molecule.transformation,
                                               parameters=pyscf_molecule.parameters)
-    return QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule, transformation=pyscf_molecule.transformation)
+    if return_mcscf:
+        # have access to different stored results in mcscf class (i.e. optimized mo coefficients)
+        return QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule, transformation=pyscf_molecule.transformation), mc
+    else:
+        return QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule, transformation=pyscf_molecule.transformation)
 
 @dataclass
 class PySCFVQEWrapper:
