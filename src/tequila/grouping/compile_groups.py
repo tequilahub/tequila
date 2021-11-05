@@ -548,15 +548,15 @@ def initial_tableau(circuit, number_of_qubits):
 
 def first_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
     """Hadamard gates makes the X stabilizer matrix of the tableau have full rank """
-    num_qubits = int(len(A[0, :]) / 2)
+    num_qubits = int(len(tableau[0, :]) / 2)
     circ = []
-    x_destab = A[0:num_qubits, 0:num_qubits]
-    z_destab = A[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = A[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = A[num_qubits:2 * num_qubits, 0:num_qubits]
+    x_destab = tableau[0:num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
+    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
+    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
     rank = npl.matrix_rank(x_stab)
 
-    if is_canonical(A, phase_stabilizer, phase_destabilizer):
+    if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
     else:
         if rank != len(x_stab[0, :]):
