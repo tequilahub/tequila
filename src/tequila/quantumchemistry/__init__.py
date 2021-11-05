@@ -63,6 +63,8 @@ def Molecule(geometry: str,
     parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
     integrals_provided = all([key in kwargs for key in ["one_body_integrals", "two_body_integrals"]])
+    if integrals_provided and backend is None:
+        backend = "base"
 
     if backend is None:
         if basis_set is None or basis_set.lower() in ["madness", "mra", "pno"]:
