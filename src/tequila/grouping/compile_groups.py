@@ -549,7 +549,7 @@ def initial_tableau(circuit, number_of_qubits):
     return (tableau, phase_stabilizer, phase_destabilizer,test_circuit)
 
 
-def first_round_hadamard(A, phase_stabilizer, phase_destabilizer):
+def first_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
     """Hadamard gates makes the X stabilizer matrix of the tableau have full rank """
     num_qubits = int(len(A[0, :]) / 2)
     circ = []
