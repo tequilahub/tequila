@@ -214,7 +214,7 @@ You can build the documentation by navigating to `docs` and entering `make html`
 Open the documentation with a browser over like `firefox docs/build/html/index.html`
 Note that you will need some additional python packages like `sphinx` and `mr2` that are not explicitly listed in the requirements.txt
 
-You can also visit our prebuild online [documentation](https://aspuru-guzik-group.github.io/tequila/)
+You can also visit our prebuild online [documentation](https://tequilahub.github.io/tequila/)
 that will correspond to the github master branch
 
 # How to contribute
