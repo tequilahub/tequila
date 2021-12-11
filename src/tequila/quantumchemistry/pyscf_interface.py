@@ -127,7 +127,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         mo_occ = numpy.zeros(norb)
         mo_occ[:nelec // 2] = 2
 
-        pyscf_mol = pyscf.gto.M()
+        pyscf_mol = pyscf.gto.M(verbose=0)
         pyscf_mol.nelectron = nelec
         pyscf_mol.incore_anyway = True  # ensure that custom integrals are used
         pyscf_mol.energy_nuc = lambda *args: c
