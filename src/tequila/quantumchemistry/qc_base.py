@@ -1206,6 +1206,31 @@ class QuantumChemistryBase:
                                                            assume_real=assume_real)
 
         return UD
+    
+    def make_ansatz(self, name:str, *args, **kwargs):
+
+        name = name.lower()
+        if name.strip()=="":
+            return QCircuit()
+
+        if "+" in name:
+            U = QCircuit()
+            subparts = name.split("+")
+            U = self.make_ansatz(name=subparts[0], *args ,**kwargs)
+            if "include_reference" in kwargs:
+                kwargs.pop("include_reference")
+            if "hcb_optimization" in kwargs:
+                kwargs.pop("hcb_optimization")
+            for subpart in subparts[1:]:
+                U += self.make_ansatz(name=subpart, *args, include_reference=False, hcb_optimization=False, **kwargs)
+            return U
+        
+        if name=="uccsd":
+            return self.make_uccsd_ansatz(*args, **kwargs)
+        elif "d" in name or "s" in name:
+            return self.make_upccgsd_ansatz(name=name, *args, **kwargs)
+        else:
+            raise TequilaException("unknown ansatz with name={}".format(name))
 
     def make_upccgsd_ansatz(self,
                             include_reference: bool = True,
