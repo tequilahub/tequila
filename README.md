@@ -204,6 +204,11 @@ M. Weber, A. Anand, A. Cervera-Lierta, J. S. Kottmann, T.-H. Kyaw, B. Li, A. Asp
 Toward Reliability in the NISQ Era: Robust Interval Guarantee for Quantum Measurements on Approximate States  
 [arxiv.org/abs/2110.09793](https://arxiv.org/abs/2110.09793)  
 [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/robustness_tutorial.ipynb)  
+  
+M. S. Rudolph, S. Sim, A. Raza, M. Stechly, J. R. McClean, E. R. Anschuetz, L. Serrano, A. Perdomo-Ortiz  
+ORQVIZ: Visualizing High-Dimensional Landscapes in Variational Quantum Algorithms  
+[arxiv.org/abs/2111.04695](https://arxiv.org/abs/2111.04695)  
+
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
