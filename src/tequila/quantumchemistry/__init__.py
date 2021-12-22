@@ -25,7 +25,7 @@ def show_available_modules():
 def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
 
-def Molecule(geometry: str,
+def Molecule(geometry: str=None,
              basis_set: str = None,
              transformation: typing.Union[str, typing.Callable] = None,
              backend: str = None,
@@ -59,6 +59,13 @@ def Molecule(geometry: str,
     for k, v in kwargs.items():
         if k in ParametersQC.__dict__.keys():
             keyvals[k] = v
+
+    # try to auto assign geometry
+    if geometry is None:
+        if "name" not in keyvals:
+            raise Exception("tq.Molecule: No geometry given, please give name of xyz file or geometry as string")
+        else:
+            geometry=keyvals["name"]+".xyz"
 
     parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
@@ -124,3 +131,6 @@ def MoleculeFromOpenFermion(molecule,
     else:
         INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(molecule=molecule, transformation=transformation, *args,
                                                                 **kwargs)
+
+# needs pyscf (handeled in call)
+from . orbital_optimizer import optimize_orbitals

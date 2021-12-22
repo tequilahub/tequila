@@ -395,7 +395,6 @@ class Optimizer:
         """
         # bring into right format
         variables = format_variable_list(variables)
-        initial_values = format_variable_dictionary(initial_values)
         all_variables = objective.extract_variables()
         if variables is None:
             variables = all_variables
@@ -404,8 +403,22 @@ class Optimizer:
         elif hasattr(initial_values, "lower"):
             if initial_values.lower() == "zero":
                 initial_values = {k:0.0 for k in all_variables}
+            elif "zero" in initial_values.lower():
+                scale=0.1
+                if "scale" in initial_values.lower():
+                    # pass as: near_zero_scale=0.1_...
+                    scale = float(initial_values.split("scale")[1].split("_")[0].split("=")[1])
+                initial_values = {k: numpy.random.normal(loc=0.0, scale=scale) for k in all_variables}
             elif initial_values.lower() == "random":
-                initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
+                initial_values = {k: numpy.random.uniform(0.0, 4*numpy.pi) for k in all_variables}
+            elif "random" in initial_values.lower():
+                scale=2*numpy.pi
+                loc=0.0
+                if "scale" in initial_values.lower():
+                    scale = float(initial_values.split("scale")[1].split("_")[0].split("=")[1])
+                if "loc" in initial_values.lower():
+                    loc = float(initial_values.split("loc")[1].split("_")[0].split("=")[1])
+                initial_values = {k: numpy.random.normal(loc=loc, scale=scale) for k in all_variables}
             else:
                 raise TequilaOptimizerException("unknown initialization instruction: {}".format(initial_values))
         elif callable(initial_values):
@@ -421,6 +434,7 @@ class Optimizer:
                     detected = True
             if detected and not self.silent:
                 warnings.warn("initial_variables given but not complete: Autocompleted with zeroes", TequilaWarning)
+        initial_values = format_variable_dictionary(initial_values)
 
         active_angles = {}
         for v in variables:

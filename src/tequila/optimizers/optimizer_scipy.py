@@ -423,8 +423,6 @@ def minimize(objective: Objective,
                                tol=tol,
                                *args,
                                **kwargs)
-    if initial_values is not None:
-        initial_values = {assign_variable(k): v for k, v in initial_values.items()}
     return optimizer(objective=objective,
                      gradient=gradient,
                      hessian=hessian,

@@ -4,17 +4,18 @@ import typing
 import numbers
 from tequila.objective.objective import Variable
 import warnings
+
 warnings.simplefilter("ignore")
 import GPyOpt
 from GPyOpt.methods import BayesianOptimization
 import numpy as np
-from tequila.simulators.simulator_api import compile
 from tequila.utils import to_float
+
 
 @dataclass
 class GPyOptResults(OptimizerResults):
-
     gpyopt_instance: GPyOpt.methods.BayesianOptimization = None
+
 
 def array_to_objective_dict(objective, array, passives=None) -> typing.Dict[Variable, float]:
     """
@@ -44,7 +45,7 @@ def array_to_objective_dict(objective, array, passives=None) -> typing.Dict[Vari
     if passives is not None:
         for k, v in passives.items():
             back[k] = v
-    back={k: to_float(v) for k,v in back.items()}
+    back = {k: to_float(v) for k, v in back.items()}
     return back
 
 
@@ -63,13 +64,14 @@ class OptimizerGPyOpt(Optimizer):
     redictify:
         transform an array of parameters into a dictionary.
     """
+
     @classmethod
     def available_methods(cls):
         return ['gpyopt-lbfgs', 'gpyopt-direct', 'gpyopt-cma']
 
     def __init__(self, maxiter=100, backend=None,
                  samples=None, noise=None, device=None,
-                 save_history=True,silent=False):
+                 save_history=True, silent=False):
 
         """
 
@@ -94,7 +96,7 @@ class OptimizerGPyOpt(Optimizer):
         silent: bool: Default = False:
             suppresses printouts if true.
         """
-        super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history,device=device,
+        super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history, device=device,
                          noise=noise, silent=silent)
 
     def get_domain(self, objective: Objective, passive_angles: dict = None) -> typing.List[typing.Dict]:
@@ -225,8 +227,7 @@ class OptimizerGPyOpt(Optimizer):
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         dom = self.get_domain(objective, passive_angles)
 
-        O = compile(objective=objective, variables=initial_values, backend=self.backend,
-                    noise=self.noise, samples=self.samples,device=self.device)
+        O = self.compile_objective(objective=objective)
 
         if not self.silent:
             print(self)
@@ -236,17 +237,17 @@ class OptimizerGPyOpt(Optimizer):
         f = self.construct_function(O, passive_angles)
         opt = self.get_object(f, dom, method)
 
-        method_options={"max_iter": self.maxiter, "verbosity": not self.silent, "eps": 1.e-4}
+        method_options = {"max_iter": self.maxiter, "verbosity": not self.silent, "eps": 1.e-4}
 
         if "method_options" in kwargs:
-            tmp={**method_options, **kwargs["method_options"]}
+            tmp = {**method_options, **kwargs["method_options"]}
 
         opt.run_optimization(**method_options)
         if self.save_history:
             self.history.energies = opt.get_evaluations()[1].flatten()
             self.history.angles = [self.redictify(v, objective, passive_angles) for v in opt.get_evaluations()[0]]
         return GPyOptResults(energy=opt.fx_opt, variables=self.redictify(opt.x_opt, objective, passive_angles),
-                                history=self.history, gpyopt_instance=opt)
+                             history=self.history, gpyopt_instance=opt)
 
 
 def minimize(objective: Objective,
@@ -255,14 +256,13 @@ def minimize(objective: Objective,
              initial_values: typing.Dict = None,
              samples: int = None,
              backend: str = None,
-             noise = None,
+             noise=None,
              device: str = None,
              method: str = 'lbfgs',
              silent: bool = False,
              *args,
              **kwargs
              ) -> GPyOptResults:
-
     """
     Minimize an objective using GPyOpt.
     Parameters
