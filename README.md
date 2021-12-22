@@ -96,7 +96,12 @@ You can install it on windows OS, but you need to have cmake and c++ compilers r
 Of course you can also use one of the other backends (see above).  
 
 # Getting Started
-Check out the tutorial notebooks provided in tutorials.
+We have a collection of [*tutorials*](https://github.com/tequilahub/tequila-tutorials) covering basic usage of tequila as well as cutting edge research content:
+- Tutorial on [Basic Usage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb)  
+- Chemistry tutorial with psi4: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/Chemistry.ipynb)
+- Chemistry tutorial with madness: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)
+- check the list of research projects below for links to specific examples.  
+- all tutorials: [github/tequilahub/tequila-tutorials](https://github.com/tequilahub/tequila-tutorials).  
 
 ## Tequila Hello World
 ```python
