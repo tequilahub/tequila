@@ -141,14 +141,15 @@ class Adapt:
                 variables[k] = 0.0
 
         if len(initial_objective.extract_variables())>0:
-            print("initial optimization")
             active_variables = [k for k in variables if k not in static_variables]
-            result = minimize(objective=initial_objective,
-                              variables=active_variables,
-                              initial_values=variables,
-                               **self.parameters.compile_args, **self.parameters.optimizer_args)
+            if len(active_variables)>0:
+                print("initial optimization")
+                result = minimize(objective=initial_objective,
+                                  variables=active_variables,
+                                  initial_values=variables,
+                                   **self.parameters.compile_args, **self.parameters.optimizer_args)
 
-            variables = result.variables
+                variables = result.variables
 
         energy = simulate(initial_objective, variables=variables)
         for iter in range(self.parameters.maxiter):
