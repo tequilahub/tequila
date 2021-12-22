@@ -212,6 +212,10 @@ ORQVIZ: Visualizing High-Dimensional Landscapes in Variational Quantum Algorithm
 P. Schleich    
 Regularization of Quantum Chemistryon Quantum Computers by means of Explicit Correlation  
 [Master thesis](http://www.acom.rwth-aachen.de/_media/3teaching/00projects/2020_ma_schleich.pdf)  
+W 
+T.-H. Kyaw, T. Menke, S. Sim, A. Anand, N. P. D. Sawaya, W. D. Oliver, G. G. Guerreschi, A. Aspuru-Guzik
+Quantum computer-aided design: digital quantum simulation of quantum processors  
+[arxiv.org/abs/2006.03070](https://arxiv.org/abs/2006.03070)  
 
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
