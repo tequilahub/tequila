@@ -410,7 +410,7 @@ class Optimizer:
                     scale = float(initial_values.split("scale")[1].split("_")[0].split("=")[1])
                 initial_values = {k: numpy.random.normal(loc=0.0, scale=scale) for k in all_variables}
             elif initial_values.lower() == "random":
-                initial_values = {k: numpy.random.uniform(0.0, 4*pi) for k in all_variables}
+                initial_values = {k: numpy.random.uniform(0.0, 4*numpy.pi) for k in all_variables}
             elif "random" in initial_values.lower():
                 scale=2*numpy.pi
                 loc=0.0
