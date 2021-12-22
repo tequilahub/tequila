@@ -209,6 +209,10 @@ M. S. Rudolph, S. Sim, A. Raza, M. Stechly, J. R. McClean, E. R. Anschuetz, L. S
 ORQVIZ: Visualizing High-Dimensional Landscapes in Variational Quantum Algorithms  
 [arxiv.org/abs/2111.04695](https://arxiv.org/abs/2111.04695)  
 
+P. Schleich    
+Regularization of Quantum Chemistryon Quantum Computers by means of Explicit Correlation  
+[Master thesis](http://www.acom.rwth-aachen.de/_media/3teaching/00projects/2020_ma_schleich.pdf)  
+
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
