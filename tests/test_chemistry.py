@@ -198,8 +198,13 @@ def do_test_amplitudes(method, qc_interface, parameters, result):
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.parametrize("method", ["mp2", "mp3", "mp4", "cc2", "cc3", "ccsd", "ccsd(t)", "cisd", "cisdt"])
 def test_energies_psi4(method):
+    # mp3 needs C1 symmetry
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31g")
-    psi4_interface = qc.QuantumChemistryPsi4(parameters=parameters_qc)
+    if method in ["mp3", "mp4"]:
+        psi4_interface = qc.QuantumChemistryPsi4(parameters=parameters_qc, point_group="c1")
+    else:
+        psi4_interface = qc.QuantumChemistryPsi4(parameters=parameters_qc)
+
     result = psi4_interface.compute_energy(method=method)
     assert result is not None
 
