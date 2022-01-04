@@ -23,8 +23,9 @@ class OptimizeOrbitalsResult:
     old_molecule: QuantumChemistryBase = None # the old tequila molecule
     molecule: QuantumChemistryBase = None # the new tequila molecule with transformed orbitals
     mcscf_object:object = None # the pyscf mcscf object
-    mcscf_local_data:dict = None # local data of mcscf, contains the rotation matrix "u"
-    rotation_matrix = None # rotation matrix that rotates orbitals from old_molecule to new_molecule
+    mcscf_local_data:dict = None
+    mo_coeff = None # the optimized mo coefficients
+    energy: float = None # the optimized energy
     iterations:int = 0
 
     def __call__(self, local_data, *args, **kwargs):
@@ -95,7 +96,6 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
                 setattr(mc, str(k), v)
             else:
                 print("unknown arguments: {}".format(k))
-
     if not silent:
         print("Optimizing Orbitals with PySCF and VQE Solver:")
         print("{:25} : {}".format("pyscf_arguments", pyscf_arguments))
@@ -117,7 +117,7 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
         assert initial_guess.shape[0] == no
         assert initial_guess.shape[1] == no
         initial_guess = mcscf.project_init_guess(mc, initial_guess)
-        mc.kernel(initial_guess)
+        mc.kernel(mo_coeff=initial_guess)
     else:
         mc.kernel()
     # make new molecule
@@ -135,6 +135,8 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
     transformed_molecule = QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule, transformation=pyscf_molecule.transformation)
     result.molecule=transformed_molecule
     result.old_molecule=molecule
+    result.mo_coeff=mc.mo_coeff
+    result.energy=mc.e_tot
     
     if return_mcscf:
         result.mcscf_object = mc
