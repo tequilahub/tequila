@@ -1,5 +1,6 @@
 import numpy
 import typing
+import copy
 from dataclasses import dataclass, field
 
 from tequila import QCircuit, ExpectationValue, minimize
@@ -16,6 +17,22 @@ The Interface with the PySCF module follows the original PySCF article  https://
 Currently this is a beta version (not extensively used in real life), so be careful when using it and please report issues on github :-)
 """
 
+@dataclass
+class OptimizeOrbitalsResult:
+    
+    old_molecule: QuantumChemistryBase = None # the old tequila molecule
+    molecule: QuantumChemistryBase = None # the new tequila molecule with transformed orbitals
+    mcscf_object:object = None # the pyscf mcscf object
+    mcscf_local_data:dict = None # local data of mcscf, contains the rotation matrix "u"
+    rotation_matrix = None # rotation matrix that rotates orbitals from old_molecule to new_molecule
+    iterations:int = 0
+
+    def __call__(self, local_data, *args, **kwargs):
+        # use as callback
+        if "u" in local_data:
+            self.rotation_matrix = copy.deepcopy(local_data["u"])
+        self.mcscf_local_data=local_data
+        self.iterations += 1
 
 def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=None, silent=False,
                       vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, *args, **kwargs):
@@ -59,7 +76,9 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
     no = molecule.n_orbitals
     pyscf_molecule = QuantumChemistryPySCF.from_tequila(molecule=molecule, transformation=molecule.transformation)
     mf = pyscf_molecule._get_hf()
+    result=OptimizeOrbitalsResult()
     mc = mcscf.CASSCF(mf, pyscf_molecule.n_orbitals, pyscf_molecule.n_electrons)
+    mc.callback=result
     c = pyscf_molecule.compute_constant_part()
 
     if circuit is None and vqe_solver is None:
@@ -112,14 +131,15 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
                                                 n_electrons=pyscf_molecule.n_electrons,
                                                 transformation=pyscf_molecule.transformation,
                                                 parameters=pyscf_molecule.parameters)
+    
+    transformed_molecule = QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule, transformation=pyscf_molecule.transformation)
+    result.molecule=transformed_molecule
+    result.old_molecule=molecule
+    
     if return_mcscf:
-        # have access to different stored results in mcscf class (i.e. optimized mo coefficients)
-        return QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule,
-                                                  transformation=pyscf_molecule.transformation), mc
-    else:
-        return QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule,
-                                                  transformation=pyscf_molecule.transformation)
-
+        result.mcscf_object = mc
+    
+    return result
 
 @dataclass
 class PySCFVQEWrapper:

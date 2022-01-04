@@ -191,7 +191,7 @@ def test_orbital_optimization(restrict_to_hcb):
         U = mol.make_upccgsd_ansatz("SPA")
         if restrict_to_hcb:
             U = mol.make_upccgsd_ansatz("HCB-SPA")
-        opt_mol = tq.quantumchemistry.optimize_orbitals(molecule=mol, circuit=U, silent=False, initial_guess="random_loc=0.0_scale=1.0", vqe_solver_arguments={"restrict_to_hcb":restrict_to_hcb})
+        opt_mol = tq.quantumchemistry.optimize_orbitals(molecule=mol, circuit=U, silent=False, initial_guess="random_loc=0.0_scale=1.0", vqe_solver_arguments={"restrict_to_hcb":restrict_to_hcb}).molecule
         if restrict_to_hcb:
             H = opt_mol.make_hardcore_boson_hamiltonian()
         else:
@@ -231,7 +231,7 @@ def test_orbital_optimization_adapt():
                 final_circuit = self.spa + result.U
                 return self.ReturnWrapper(circuit=final_circuit, variables=result.variables, energy=result.energy)
 
-        opt_mol = tq.quantumchemistry.optimize_orbitals(molecule=mol, circuit=U, silent=False, initial_guess="random_loc=0.0_scale=1.0", vqe_solver=AdaptWrapper(operator_pool, U))
+        opt_mol = tq.quantumchemistry.optimize_orbitals(molecule=mol, circuit=U, silent=False, initial_guess="random_loc=0.0_scale=1.0", vqe_solver=AdaptWrapper(operator_pool, U)).molecule
         H = opt_mol.make_hamiltonian()
         E = tq.ExpectationValue(H=H, U=U)
         result = tq.minimize(E, silent=False)
