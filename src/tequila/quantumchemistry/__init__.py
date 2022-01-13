@@ -30,6 +30,7 @@ def Molecule(geometry: str=None,
              transformation: typing.Union[str, typing.Callable] = None,
              backend: str = None,
              guess_wfn=None,
+             name: str = None,
              *args,
              **kwargs) -> QuantumChemistryBase:
     """
@@ -47,6 +48,9 @@ def Molecule(geometry: str=None,
     guess_wfn
         pass down a psi4 guess wavefunction to start the scf cycle from
         can also be a filename leading to a stored wavefunction
+    name
+        name of the molecule, if not given it's auto-deduced from the geometry
+        can also be done vice versa (i.e. geometry is then auto-deduced to name.xyz)
     args
     kwargs
 
@@ -60,14 +64,7 @@ def Molecule(geometry: str=None,
         if k in ParametersQC.__dict__.keys():
             keyvals[k] = v
 
-    # try to auto assign geometry
-    if geometry is None:
-        if "name" not in keyvals:
-            raise Exception("tq.Molecule: No geometry given, please give name of xyz file or geometry as string")
-        else:
-            geometry=keyvals["name"]+".xyz"
-
-    parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
+    parameters = ParametersQC(name=name,geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
     integrals_provided = all([key in kwargs for key in ["one_body_integrals", "two_body_integrals"]])
     if integrals_provided and backend is None:

@@ -420,7 +420,7 @@ def test_orbital_optimization():
     mol = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", basis_set="STO-3G")
     no = mol.n_orbitals
     circuit = mol.make_upccgsd_ansatz(name="UpCCGD")
-    mol2 = optimize_orbitals(molecule=mol, circuit=circuit)
+    mol2 = optimize_orbitals(molecule=mol, circuit=circuit).molecule
     H = mol2.make_hamiltonian()
     E = tq.ExpectationValue(H=H,U=circuit)
     result = tq.minimize(E, print_level=2)
