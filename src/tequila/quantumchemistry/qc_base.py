@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from tequila import TequilaException, BitString, TequilaWarning
 from tequila.hamiltonian import QubitHamiltonian
@@ -85,14 +86,62 @@ def prepare_product_state(state: BitString) -> QCircuit:
 @dataclass
 class ParametersQC:
     """Specialization of ParametersHamiltonian"""
-    basis_set: str = ''  # Quantum chemistry basis set
-    geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!),
+    basis_set: str = None  # Quantum chemistry basis set
+    geometry: str = None  # geometry of the underlying molecule (units: Angstrom!),
     # this can be a filename leading to an .xyz file or the geometry given as a string
-    description: str = ''
+    description: str = ""
     multiplicity: int = 1
     charge: int = 0
-    closed_shell: bool = True
-    name: str = "molecule"
+    name: str = None
+    
+    @property
+    def n_electrons(self, *args, **kwargs):
+        return self.get_nuc_charge() - self.charge
+    
+    def get_nuc_charge(self):
+        return sum(self.get_atom_number(name=atom) for atom in self.get_atoms())
+
+    def get_atom_number(self, name):
+        atom_numbers={"h":1, "he":2, "li":3, "be":4, "b":5, "c":6, "n":7, "o":8, "f":9, "ne":10, "na":11, "mg":12, "al":13, "si":14, "ph":15, "s":16, "cl":17, "ar":18}
+        if name.lower() in atom_numbers:
+            return atom_numbers[name.lower()]
+        try:
+            import periodictable as pt
+            atom=name.lower()
+            atom[0]=atom[0].upper()
+            element = pt.elements.symbol(atom)
+            return element.number()
+        except:
+            raise TequilaException("can not assign atomic number to element {}\npip install periodictable will fix it".format(atom))
+
+
+    def get_atoms(self):
+        return [x[0] for x in self.get_geometry()]
+    
+    def __post_init__(self,*args, **kwargs):
+
+        if self.name is None and self.geometry is None:
+            raise TequilaException("no geometry or name given to molecule\nprovide geometry=filename.xyz or geometry=`h 0.0 0.0 0.0\\n...`\nor name=whatever with file whatever.xyz being present")
+        # auto naming
+        if self.name is None:
+            if ".xyz" in self.geometry:
+                self.name=self.geometry.split(".xyz")[0]
+                if self.description is None:
+                    coord, description = self.read_xyz_from_file()
+                    self.description=description
+            else:
+                atoms=self.get_atoms()
+                atom_names=sorted(list(set(atoms)), key=lambda x: self.get_atom_number(x), reverse=True)
+                if self.name is None:
+                    drop_ones=lambda x: "" if x==1 else x
+                    self.name="".join(["{}{}".format(x,drop_ones(atoms.count(x))) for x in atom_names])
+        self.name = self.name.lower()
+        
+        if self.geometry is None:
+            self.geometry=self.name+".xyz"
+        
+        if ".xyz" in self.geometry and not os.path.isfile(self.geometry):
+            raise TequilaException("could not find file for molecular coordinates {}".format(self.geometry))
 
     @property
     def filename(self):
@@ -200,8 +249,6 @@ class ParametersQC:
             geomstring, comment = self.read_xyz_from_file(self.geometry)
             if self.description == '':
                 self.description = comment
-            if self.name == "molecule":
-                self.name = self.geometry.split('.')[0]
             return self.convert_to_list(geomstring)
         elif self.geometry is not None:
             return self.convert_to_list(self.geometry)
@@ -1560,7 +1607,6 @@ class QuantumChemistryBase:
         -------
 
         """
-        assert self.parameters.closed_shell
         g = self.molecule.two_body_integrals
         fij = self.molecule.orbital_energies
         nocc = self.molecule.n_electrons // 2  # this is never the active space

@@ -584,9 +584,33 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def write_madness_input(self, n_pno, n_virt=0, frozen_core=True, filename="input", *args, **kwargs):
+    def write_madness_input(self, n_pno=None, n_virt=0, frozen_core=True, filename="input", maxrank=None, n_orbitals=None, *args, **kwargs):
+        
+        if n_pno is not None and n_orbitals is not None:
+            raise TequilaMadnessException("n_pno={} and n_orbitals={} given ... please pick one".format(n_pno, n_orbitals))
+        
+        n_electrons = self.parameters.n_electrons
+        if frozen_core:
+            # only count active electrons (will not compute pnos for frozen pairs)
+            for atom in self.parameters.get_atoms():
+                number = self.parameters.get_atom_number(name=atom)
+                if number > 18:
+                    n_electrons -= 18
+                elif number > 10:
+                    n_electrons -= 10
+                elif number > 2:
+                    n_electrons -= 2
+
+        n_pairs = n_electrons//2
+        if n_orbitals is None:
+            n_orbitals = n_electrons # minimal correlated (each active pair will have one virtual)
+
         if n_pno is None:
-            raise TequilaMadnessException("Can't write madness input without n_pno keyword!")
+            n_pno = n_orbitals-n_pairs
+        
+        if maxrank is None:
+            maxrank = int(numpy.ceil(n_pno//n_pairs))
+
         data = {}
         if self.parameters.multiplicity != 1:
             raise TequilaMadnessException(
@@ -594,7 +618,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     self.parameters.multiplicity))
         data["dft"] = {"charge": self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 5.e-4, "localize":"boys",
                        "ncf": "( none , 1.0 )"}
-        data["pno"] = {"maxrank": n_pno, "f12": "false", "thresh": 1.e-4, "diagonal":True}
+        data["pno"] = {"maxrank": maxrank, "f12": "false", "thresh": 1.e-4, "diagonal":True}
         if not frozen_core:
             data["pno"]["freeze"] = 0
         data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "symmetric"}
