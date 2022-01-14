@@ -273,7 +273,7 @@ class Objective:
 
     def has_expectationvalues(self):
         """
-        :return: bool: wether or not this objective has expectationvalues or is just a function of the variables
+        :return: bool: whether or not this objective has expectationvalues or is just a function of the variables
         """
         # testing if all arguments are only variables and give back the negative
         return not all([hasattr(arg, "name") for arg in self.args])
