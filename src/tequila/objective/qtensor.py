@@ -4,12 +4,12 @@ from tequila import TequilaException
 
 class QTensor(numpy.ndarray):
     # see here: https://numpy.org/devdocs/user/basics.subclassing.html
-    
+
     def __new__(subtype, objective_list=None, *args, **kwargs):
         if "dtype" not in kwargs:
             kwargs["dtype"] = Objective
         return super().__new__(subtype, *args, **kwargs)
-    
+
     def __init__(self, objective_list=None, *args, **kwargs):
         super().__init__()
         # do all-zero initialization
@@ -24,11 +24,8 @@ class QTensor(numpy.ndarray):
                 for x in it:
                     x[...] = objective_list[j]
                     j=j+1
-    
+
     def __call__(self,variables=None, *args, **kwargs):
-#         helper = lambda x: x(*args, **kwargs)
-#         ff = numpy.vectorize(helper)
-#         return ff(self)
         """
         Return the output of the calculation the objective represents.
 
@@ -63,21 +60,6 @@ class QTensor(numpy.ndarray):
         for obj in newtensor:
             a = obj(variables=variables, *args, **kwargs)
             ev_array.append(a)
-#             print(obj)
-#             for E in obj.args:
-#                 if E not in evaluated:#
-#                     expval_result = E(variables=variables, *args, **kwargs)
-#                     evaluated[E] = expval_result
-#                 else:
-#                     expval_result = evaluated[E]
-#                 try:
-#                     expval_result = float(expval_result)
-#                 except:
-#                     pass # allow array evaluation (non-standard operation)
-#                 print('\n expected value results:',expval_result)
-#             ev_array.append(a)
-            #result.append(numpy.asarray(newtensor[i].transformation(*ev_array),dtype=float))
-        
         ev_array = numpy.reshape(ev_array,self.shape)
         if ev_array.shape == ():
             return float(ev_array)
@@ -85,12 +67,12 @@ class QTensor(numpy.ndarray):
             return float(ev_array[0])
         else:
             return ev_array
-        
+
     def apply(self, fn):
         _f = self.HelperObject(func=fn)
         _fn = numpy.vectorize(_f)
         return _fn(self)
-    
+
     def extract_variables(self)->list:
         newtensor = self.flatten()
         unique = []
@@ -101,8 +83,7 @@ class QTensor(numpy.ndarray):
                     if j not in unique:
                         unique.append(j)
         return unique
-       
-    
+
     def get_expectationvalues(self):
         """
         Returns
@@ -116,7 +97,7 @@ class QTensor(numpy.ndarray):
             if hasattr(obj, 'get_expectationvalues'):
                 expvals += obj.get_expectationvalues()
         return expvals
-    
+
     def count_measurements(self):
         """
         Count all measurements necessary for this objective:
@@ -128,7 +109,7 @@ class QTensor(numpy.ndarray):
         Measurements can be on different circuits (with regards to gates, depth, size, qubits)
         """
         return sum(E.count_measurements() for E in list(set(self.get_expectationvalues())))
-    
+
     def count_expectationvalues(self, unique=True):
         """
         Parameters
@@ -146,22 +127,20 @@ class QTensor(numpy.ndarray):
             return len(set(self.get_expectationvalues()))
         else:
             return len(self.get_expectationvalues())
-    
-    def __repr__(self): ## should give back a tensor
-#         return "f({})".format(self.extract_variables())
+
+    def __repr__(self):
         _repmat = numpy.empty(self.shape,dtype = object)
         _repmat = _repmat.flatten()
         newtensor = self.flatten()
         for i in range(len(newtensor)):
             _repmat[i] = repr(newtensor[i])
         _repmat = _repmat.reshape(self.shape)
-        return repr(_repmat) #"f({})".format(self.extract_variables())
-    
+        return repr(_repmat)
+
     def __str__(self):
         variables = self.extract_variables()
         if len(variables) > 5:
             variables = len(variables)
-
         newtensor = self.flatten()
         types = []
         for obj in newtensor:
@@ -182,7 +161,7 @@ class QTensor(numpy.ndarray):
               "total measurements = {}\n" \
               "variables          = {}\n" \
               "types              = {}".format(self.shape, unique, measurements, variables, types)
-    
+
     class HelperObject:
         """
         This is a small helper object class for tequila objectives
@@ -196,4 +175,3 @@ class QTensor(numpy.ndarray):
             self.func = func
         def __call__(self, objective):
             return objective.apply(self.func)
-
