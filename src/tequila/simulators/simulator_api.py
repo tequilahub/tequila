@@ -1,11 +1,11 @@
 from collections import namedtuple
-import typing, warnings
+import typing, warnings, numpy
 from numbers import Real as RealNumber
 from typing import Dict, Union, Hashable
 import pkg_resources
 from pkg_resources import DistributionNotFound
 
-from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, VectorObjective
+from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, VectorObjective, QTensor
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
@@ -180,10 +180,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
                 raise TequilaException(
                     "Noise requires sampling; please provide a positive, integer value for samples")
             for f in SUPPORTED_NOISE_BACKENDS:
-                if noise == 'device':
-                    raise TequilaException('device noise requires a device, which requires a named backend!')
-                else:
-                    return f
+                return f
             raise TequilaException(
                             'Could not find any installed sampler!')
 
@@ -206,11 +203,6 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
             while (backend == "symbolic"):
                 backend = state.choice(list(INSTALLED_SIMULATORS.keys()), 1)[0]
         return backend
-
-    if device is not None and samples is None:
-        raise TequilaException('Use of a device requires sampling!')
-    if noise == 'device' and device is None:
-        raise TequilaException('Use of device noise requires a device!')
 
     if backend not in SUPPORTED_BACKENDS:
         raise TequilaException("Backend {backend} not supported ".format(backend=backend))
@@ -355,7 +347,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device, *args, **kwargs)
 
 
-def simulate(objective: typing.Union['Objective', 'QCircuit'],
+def simulate(objective: typing.Union['Objective', 'QCircuit','QTensor'],
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,
              samples: int = None,
              backend: str = None,
@@ -482,8 +474,7 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
                 print(compiled.circuit)
                 return str(compiled.circuit)
 
-
-def compile(objective: typing.Union['Objective', 'QCircuit'],
+def compile(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
             variables: Dict[Union['Variable', Hashable], RealNumber] = None,
             samples: int = None,
             backend: str = None,
@@ -517,12 +508,14 @@ def compile(objective: typing.Union['Objective', 'QCircuit'],
 
     backend = pick_backend(backend=backend, noise=noise, samples=samples, device=device)
 
-    if variables is None and not (len(objective.extract_variables()) == 0):
-        variables = {key: 0.0 for key in objective.extract_variables()}
-    elif variables is not None:
+    if variables is not None:
         # allow hashable types as keys without casting it to variables
         variables = {assign_variable(k): v for k, v in variables.items()}
 
+    if isinstance(objective, QTensor):
+        ff = numpy.vectorize(compile_objective)
+        return ff(objective=objective, samples=samples, variables=variables, backend=backend, noise=noise, device=device, *args, **kwargs)
+    
     if isinstance(objective, Objective) or hasattr(objective, "args"):
         return compile_objective(objective=objective, samples=samples, variables=variables, backend=backend, noise=noise, device=device, *args, **kwargs)
     elif hasattr(objective, "gates") or hasattr(objective, "abstract_circuit"):

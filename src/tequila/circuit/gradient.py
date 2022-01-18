@@ -2,14 +2,15 @@ from tequila.circuit.compiler import Compiler
 from tequila.objective.objective import Objective, ExpectationValueImpl, Variable,\
     assign_variable, identity, VectorObjective, FixedVariable
 from tequila import TequilaException
+from tequila.objective import QTensor
 from tequila.simulators.simulator_api import compile
 import typing
 import copy
-from numpy import pi
+from numpy import pi, vectorize
 from tequila.autograd_imports import jax, __AUTOGRAD__BACKEND__
 
 
-def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable = None, no_compile=False, *args, **kwargs):
+def grad(objective: typing.Union[Objective,VectorObjective,QTensor], variable: Variable = None, no_compile=False, *args, **kwargs):
 
     '''
     wrapper function for getting the gradients of Objectives,ExpectationValues, Unitaries (including single gates), and Transforms.
@@ -18,7 +19,11 @@ def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable 
         default None: total gradient.
     return: dictionary of Objectives, if called on gate, circuit, exp.value, or objective; if Variable or Transform, returns number.
     '''
-
+    if isinstance(objective, QTensor):
+        f = lambda x: grad(objective = x, variable = variable, *args, **kwargs)
+        ff= vectorize(f)
+        return ff(objective)
+    
     if variable is None:
         # None means that all components are created
         variables = objective.extract_variables()
@@ -35,7 +40,7 @@ def grad(objective: typing.Union[Objective,VectorObjective], variable: Variable 
         variable = assign_variable(variable)
 
     if variable not in objective.extract_variables():
-        return 0.0
+        return Objective()
 
     if no_compile:
         compiled = objective
