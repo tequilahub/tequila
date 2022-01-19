@@ -33,6 +33,7 @@ def test_equality():
     assert a != b
 
 
+# test backward compatibility (VectorObjective is now a special case of QTensor)
 def test_transform_update():
     a = Variable('a')
     b = Variable('a.')

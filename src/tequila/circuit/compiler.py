@@ -357,8 +357,6 @@ def compiler(f):
                 outer.append(compiled)
             if isinstance(gate, Objective):
                 return type(gate)(args=outer[0], transformation=gate._transformation)
-            if isinstance(gate, VectorObjective):
-                return type(gate)(argsets=outer, transformations=gate._transformations)
         else:
             return f(gate=gate, **kwargs)
 

@@ -657,6 +657,7 @@ def test_really_awfull_thing(simulator, value1=(numpy.random.randint(10, 1000) /
     assert np.isclose(deval, an2 * (uen + den), atol=1.e-4)
     assert np.isclose(doval, dtrue, atol=1.e-4)
 
+# testing backward compatibility (VectorObjective is now QTensor)
 def test_stacking():
     a=Variable('a')
     b=Variable('b')
