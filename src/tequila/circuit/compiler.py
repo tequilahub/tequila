@@ -1,18 +1,16 @@
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, Y, S, CX
+from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z
 from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
 from tequila.objective.objective import Variable, FixedVariable
-from tequila.objective.objective import Objective, VectorObjective
+from tequila.objective.objective import Objective
 from tequila.objective.objective import ExpectationValueImpl
-from tequila.autograd_imports import numpy as jnp
 import numpy
 from numpy import pi as pi
 
 import copy, typing
-import time
 
 
 class TequilaCompilerException(TequilaException):
@@ -190,8 +188,6 @@ class Compiler:
             compiled_sets.append(compiled_args)
         if isinstance(objective,Objective):
             return type(objective)(args=compiled_sets[0],transformation=objective.transformation)
-        if isinstance(objective, VectorObjective):
-            return type(objective)(argsets=compiled_sets, transformations=objective.transformations)
 
 
     def compile_objective_argument(self, arg, *args, **kwargs):

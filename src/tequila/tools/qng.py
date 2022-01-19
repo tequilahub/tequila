@@ -1,6 +1,6 @@
 from tequila import TequilaException
 from tequila.hamiltonian import paulis
-from tequila.objective.objective import Objective, ExpectationValueImpl, ExpectationValue, VectorObjective
+from tequila.objective.objective import Objective, ExpectationValueImpl, ExpectationValue
 from tequila.circuit.circuit import QCircuit
 from tequila.simulators.simulator_api import compile_objective
 from tequila.circuit.gradient import __grad_inner
@@ -489,12 +489,9 @@ def get_qng_combos(objective, func=stokes_block,
                     indict[v] = g
                 mapping[j] = indict
 
-        if isinstance(objective,VectorObjective):
-            pos_arg = jax.grad(compiled.transformations[0], i)
-            p = VectorObjective(argsets=compiled.argsets, transformations=[pos_arg])
-        elif isinstance(objective, Objective):
-            pos_arg = jax.grad(compiled.transformation, i)
-            p = Objective(compiled.args, transformation=pos_arg)
+
+        pos_arg = jax.grad(compiled.transformation, i)
+        p = Objective(compiled.args, transformation=pos_arg)
 
         pos = compile_objective(p, variables=initial_values, samples=samples, device=device,
                                 backend=backend, noise=noise)
