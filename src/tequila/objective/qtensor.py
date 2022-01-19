@@ -1,4 +1,4 @@
-import numpy
+import numpy, typing
 from .objective import Objective, ExpectationValueImpl, format_variable_dictionary
 from tequila import TequilaException
 
@@ -175,3 +175,39 @@ class QTensor(numpy.ndarray):
             self.func = func
         def __call__(self, objective):
             return objective.apply(self.func)
+
+# ------------------------------------------------------
+# backward compatibility with old VectorObjective class
+# ------------------------------------------------------
+
+def vectorize(objectives):
+    """
+    Combine several objectives in order, into one longer vector.
+
+    Parameters
+    ----------
+    objectives: iterable:
+        the objectives to combine as a vector. Note that this is not addition, but the 'end to end' combination of
+        vectors; the new objective will have length Sum(len(x) for x in objectives)
+
+    Returns
+    -------
+    QTensor:
+        Objectives stacked together.
+    """
+    return QTensor(objective_list=objectives, shape=(len(objectives),))
+
+def VectorObjective(argsets: typing.Iterable = None, transformations: typing.Iterable[callable] = None):
+    if argsets is None:
+        return QTensor()
+    objective_list = []
+    if transformations is None:
+        for argset in argsets:
+            objective_list.append(Objective(args=argset))
+    else:
+        assert len(argsets) == len(transformations)
+        for i in range(len(argsets)):
+            objective_list.append(Objective(args=argsets[i], transformation=transformations[i]))
+
+    return vectorize(objectives=objective_list)
+
