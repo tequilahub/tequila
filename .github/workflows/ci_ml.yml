@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Tequila-Test-Optimizers
+name: Tequila-Test-ML-Interfaces
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
               python -m pip install --upgrade pip 
               pip install --upgrade -r requirements.txt
               pip install -e .
-              pip install --upgrade -r tensorflow
+              pip install --upgrade tensorflow
 
               pytest tests/test_tf_interface.py
     - name: Install and test torch interface
@@ -41,7 +41,7 @@ jobs:
               pip uninstall tensorflow
               pip install --upgrade -r requirements.txt
               pip install -e .
-              pip install --upgrade -r torch
+              pip install --upgrade torch
 
               pytest tests/test_torch_interface.py
 
