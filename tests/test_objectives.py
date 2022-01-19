@@ -1,6 +1,6 @@
 import tequila.simulators.simulator_api
 from tequila.circuit import gates
-from tequila.objective import Objective, ExpectationValue, VectorObjective
+from tequila import Objective, ExpectationValue, VectorObjective
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.circuit.gradient import grad
