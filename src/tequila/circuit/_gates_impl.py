@@ -182,8 +182,8 @@ class ParametrizedGateImpl(QGateImpl, ABC):
                 generator: QubitHamiltonian = None):
         super().__init__(name=name, target=target, control=control, generator=generator)
         # failsafe
-        if hasattr(parameter, "shape") and parameter.shape not in [(1,), None, 1]:
-            raise TequilaException("parameter has to be a scalar. Received {}\n{}".format(repr(parameter), str(parameter)))
+        if hasattr(parameter, "shape") and parameter.shape not in [tuple()]: # take care of new numpy conventions where scalars have shape ()
+            raise TequilaException("parameter has to be a scalar. Received {}\n{}\n{}".format(repr(parameter), type(parameter), str(parameter)))
         self._parameter = assign_variable(variable=parameter)
 
     def __str__(self):
