@@ -663,10 +663,9 @@ def test_stacking():
     b=Variable('b')
     def f(x):
         return np.cos(x)**2. + np.sin(x)**2.
-    funcs=[f,f,f,f]
     vals = {Variable('a'):numpy.random.uniform(0,np.pi),Variable('b'):numpy.random.uniform(0,np.pi)}
     O = VectorObjective(argsets=[[a],[b],[a],[b]],transformations=funcs)
-    O1 = O.apply_op_list(funcs)
+    O1 = O.apply(f)
     O2 = O1/4
     output = simulate(O2,variables=vals)
     assert np.isclose(1.,np.sum(output))

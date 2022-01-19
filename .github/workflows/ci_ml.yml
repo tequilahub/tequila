@@ -38,7 +38,6 @@ jobs:
               pytest tests/test_tf_interface.py
     - name: Install and test torch interface
       run: |
-              pip uninstall tensorflow
               pip install --upgrade -r requirements.txt
               pip install -e .
               pip install --upgrade torch
