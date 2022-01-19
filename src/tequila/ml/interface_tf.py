@@ -4,7 +4,7 @@ from typing import List
 from typing import Union, Dict, Callable, Any
 
 from tequila.ml.utils_ml import preamble, TequilaMLException
-from tequila.objective import Objective, Variable, vectorize
+from tequila.objective import Objective, Variable, vectorize, QTensor
 from tequila.tools import list_assignment
 from tequila.simulators.simulator_api import simulate
 import numpy as np

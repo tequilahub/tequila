@@ -17,10 +17,6 @@ def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None,
         default None: total gradient.
     return: dictionary of Objectives, if called on gate, circuit, exp.value, or objective; if Variable or Transform, returns number.
     '''
-    if isinstance(objective, QTensor):
-        f = lambda x: grad(objective=x, variable=variable, *args, **kwargs)
-        ff = vectorize(f)
-        return ff(objective)
 
     if variable is None:
         # None means that all components are created
@@ -36,6 +32,12 @@ def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None,
         return result
     else:
         variable = assign_variable(variable)
+
+
+    if isinstance(objective, QTensor):
+        f = lambda x: grad(objective=x, variable=variable, *args, **kwargs)
+        ff = vectorize(f)
+        return ff(objective)
 
     if variable not in objective.extract_variables():
         return Objective()
