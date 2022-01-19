@@ -1,7 +1,7 @@
 import pytest
 from tequila import numpy as np
 from tequila.circuit.gradient import grad
-from tequila.objective.objective import Objective, Variable, VectorObjective
+from tequila import Objective, Variable, VectorObjective
 import operator
 
 
@@ -33,6 +33,7 @@ def test_equality():
     assert a != b
 
 
+# test backward compatibility (VectorObjective is now a special case of QTensor)
 def test_transform_update():
     a = Variable('a')
     b = Variable('a.')

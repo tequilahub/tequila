@@ -49,7 +49,6 @@ def test_example_training(initial_values):
 
     stackable = [tq.ExpectationValue(U, H1), tq.ExpectationValue(U, H2), tq.ExpectationValue(U, H3)]
     stacked = tq.vectorize(stackable)
-
     cargs = {'samples': None, 'initial_values': initial_values}
     tensorflowed = tq.ml.to_platform(stacked, platform='tensorflow', compile_args=cargs)
     learning_rate = .1
