@@ -52,9 +52,9 @@ class TFLayer(tf.keras.layers.Layer):
                                              "".format(i, type(objective), elem))
             objective = vectorize(list_assignment(objective))
 
-        elif isinstance(objective, Objective) or isinstance(objective, QTensor):
+        elif isinstance(objective, Objective):
             objective = vectorize(list_assignment(objective))
-        else:
+        elif not isinstance(objective, QTensor):
             raise TequilaMLException("Objective must be a Tequila Objective, QTensor "
                                      "or list/tuple of Objectives. Received a {}".format(type(objective)))
         self.objective = objective

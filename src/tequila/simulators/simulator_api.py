@@ -515,6 +515,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
 
     if isinstance(objective, QTensor):
         ff = numpy.vectorize(compile_objective)
+        print("compile: ", id(objective))
         return ff(objective=objective, samples=samples, variables=variables, backend=backend, noise=noise, device=device, *args, **kwargs)
     
     if isinstance(objective, Objective) or hasattr(objective, "args"):
