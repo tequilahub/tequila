@@ -30,9 +30,9 @@ jobs:
         pip install -r requirements.txt
         if [ $ver -eq 7 ]; then
             # myqlm does not work in python3.7
-            pip install "cirq" "qiskit<0.25" "qulacs" "qibo==0.1.1"
+            pip install "cirq" "qiskit>=0.30" "qulacs" "qibo==0.1.1"
         elif [ $ver -eq 8 ]; then
-            pip install "cirq" "qiskit<0.25" "qulacs" "qibo==0.1.1" "myqlm"
+            pip install "cirq" "qiskit>=0.30" "qulacs" "qibo==0.1.1" "myqlm"
         fi
         pip install -e .
     - name: Lint with flake8
