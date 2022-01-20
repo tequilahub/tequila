@@ -96,7 +96,12 @@ You can install it on windows OS, but you need to have cmake and c++ compilers r
 Of course you can also use one of the other backends (see above).  
 
 # Getting Started
-Check out the tutorial notebooks provided in tutorials.
+We have a collection of [*tutorials*](https://github.com/tequilahub/tequila-tutorials) covering basic usage of tequila as well as cutting edge research content:
+- Tutorial on [Basic Usage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb)  
+- Chemistry tutorial with psi4: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/Chemistry.ipynb)
+- Chemistry tutorial with madness: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)
+- check the list of research projects below for links to specific examples.  
+- all tutorials: [github/tequilahub/tequila-tutorials](https://github.com/tequilahub/tequila-tutorials).  
 
 ## Tequila Hello World
 ```python
@@ -189,6 +194,31 @@ K. Choudhary,
 Quantum Computation for Predicting Electron and Phonon Properties of Solids  
 [arxiv.org/abs/2102.11452](https://arxiv.org/abs/2102.11452)  
 
+
+P. Schleich, J.S. Kottmann, A. Aspuru-Guzik,  
+Improving the Accuracy of the Variational Quantum Eigensolver for Molecular Systems by the Explicitly-Correlated Perturbative [2]-R12-Correction  
+[arxiv.org/abs/2110.06812](https://arxiv.org/abs/2110.06812)  
+[tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryF12Correction.ipynb)  
+
+M. Weber, A. Anand, A. Cervera-Lierta, J. S. Kottmann, T.-H. Kyaw, B. Li, A. Aspuru-Guzik, C. Zhang and Z. Zhao,  
+Toward Reliability in the NISQ Era: Robust Interval Guarantee for Quantum Measurements on Approximate States  
+[arxiv.org/abs/2110.09793](https://arxiv.org/abs/2110.09793)  
+[tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/robustness_tutorial.ipynb)  
+  
+M. S. Rudolph, S. Sim, A. Raza, M. Stechly, J. R. McClean, E. R. Anschuetz, L. Serrano, A. Perdomo-Ortiz  
+ORQVIZ: Visualizing High-Dimensional Landscapes in Variational Quantum Algorithms  
+[arxiv.org/abs/2111.04695](https://arxiv.org/abs/2111.04695)  
+
+P. Schleich    
+Regularization of Quantum Chemistryon Quantum Computers by means of Explicit Correlation  
+[Master thesis](http://www.acom.rwth-aachen.de/_media/3teaching/00projects/2020_ma_schleich.pdf)  
+  
+  
+T.-H. Kyaw, T. Menke, S. Sim, A. Anand, N. P. D. Sawaya, W. D. Oliver, G. G. Guerreschi, A. Aspuru-Guzik
+Quantum computer-aided design: digital quantum simulation of quantum processors  
+[arxiv.org/abs/2006.03070](https://arxiv.org/abs/2006.03070)  
+
+
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
 # Dependencies
@@ -203,7 +233,7 @@ You can build the documentation by navigating to `docs` and entering `make html`
 Open the documentation with a browser over like `firefox docs/build/html/index.html`
 Note that you will need some additional python packages like `sphinx` and `mr2` that are not explicitly listed in the requirements.txt
 
-You can also visit our prebuild online [documentation](https://aspuru-guzik-group.github.io/tequila/)
+You can also visit our prebuild online [documentation](https://tequilahub.github.io/tequila/)
 that will correspond to the github master branch
 
 # How to contribute

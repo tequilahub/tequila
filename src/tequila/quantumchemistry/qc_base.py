@@ -1100,7 +1100,6 @@ class QuantumChemistryBase:
         U.n_qubits = self.n_orbitals*2 # adapt when tapered transformations work
         return U
 
-
     def prepare_hardcore_boson_reference(self):
         # HF state in the HCB representation (paired electrons)
         U = gates.X(target=[i for i in range(self.n_electrons // 2)])

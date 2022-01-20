@@ -3,11 +3,11 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
-
 import qiskit, numpy, warnings
 import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
 import qiskit.test.mock.backends
+from qiskit.providers.ibmq import IBMQBackend
 
 
 def get_bit_flip(p):
@@ -62,9 +62,15 @@ gate_qubit_lookup = {
     'multicontrol': 3
 }
 
-full_basis = ['x', 'y', 'z', 'id', 'u1', 'u2', 'u3', 'h',
+full_basis = ['x', 'y', 'z', 'id', 'u1', 'u2', 'u3', 'h','unitary','sx',
               'cx', 'cy', 'cz', 'cu3', 'ccx']
 
+def qiskit_device_dict():
+    devices = {}
+    devices.update({str(x).lower():x for x in qiskit.Aer.backends()})
+    devices.update({str(x).lower():x for x in qiskit.test.mock.FakeProvider().backends()})
+
+    return devices
 
 class TequilaQiskitException(TequilaException):
     def __str__(self):
@@ -180,7 +186,7 @@ class BackendCircuitQiskit(BackendCircuit):
         n_qubits = max(qubit_map.values()) + 1
 
         self.q = qiskit.QuantumRegister(n_qubits, "q")
-        self.c  = qiskit.ClassicalRegister(n_qubits, "c")
+        self.c = qiskit.ClassicalRegister(n_qubits, "c")
 
         super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device,
                          qubit_map=qubit_map, *args, **kwargs)
@@ -197,19 +203,16 @@ class BackendCircuitQiskit(BackendCircuit):
                 'depolarizing': qiskitnoise.depolarizing_error
             }
 
-            if isinstance(noise, str):
-                if noise == 'device':
-                    if device is not None:
-                        self.noise_model = qiskitnoise.NoiseModel.from_backend(self.device)
-                    else:
-                        raise TequilaException('cannot get device noise without specifying a device!')
-                else:
-                    raise TequilaException(
-                        'The only allowed string for noise is \'device\'; recieved {}. Please try again!'.format(
-                            str(noise)))
+            if isinstance(noise, str): #string noise means "use the same noise as the device I tell you to get."
+                try:
+                    self.check_device(noise)
+                    self.noise_model = qiskitnoise.NoiseModel.from_backend(noise)
+                except TequilaQiskitException:
+                    raise TequilaException("noise init from string requires that noise names a device. Got {}".format(noise))
+
             else:
-                nm = self.noise_model_converter(noise)
-                self.noise_model = nm
+                self.noise_model = self.noise_model_converter(noise)
+
         else:
             self.noise_model = None
 
@@ -254,9 +257,15 @@ class BackendCircuitQiskit(BackendCircuit):
             the result of simulation.
         """
         if self.noise_model is None:
-            qiskit_backend = self.retrieve_device('statevector_simulator')
+            if self.device is None:
+                qiskit_backend = self.retrieve_device('statevector_simulator')
+            else:
+                if 'statevector' not in str(self.device):
+                    raise TequilaException('For simulation, only state vector simulators are supported; recieved {}'.format(self.device))
+                else:
+                    qiskit_backend = self.retrieve_device(self.device)
         else:
-            raise TequilaQiskitException("wave function simulation with noise cannot be performed presently")
+            raise TequilaQiskitException("wave function simulation with noise cannot be performed presently.")
 
         optimization_level = None
         if "optimization_level" in kwargs:
@@ -269,12 +278,13 @@ class BackendCircuitQiskit(BackendCircuit):
             print(initial_state, " -> ", i)
             array[i.integer] = 1.0
             opts = {"initial_statevector": array}
-            print(opts)
 
-        backend_result = qiskit.execute(experiments=self.circuit, optimization_level=optimization_level,
-                                        backend=qiskit_backend, parameter_binds=[self.resolver],
-                                        **opts).result()
-        return QubitWaveFunction.from_array(arr=backend_result.get_statevector(self.circuit), numbering=self.numbering)
+        circuit = self.circuit.bind_parameters(self.resolver)
+
+        qiskit_job = qiskit_backend.run(circuit,optimization_level=optimization_level,**opts)
+
+        backend_result = qiskit_job.result()
+        return QubitWaveFunction.from_array(arr=backend_result.get_statevector(circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, *args, **kwargs) -> QubitWaveFunction:
         """
@@ -297,34 +307,51 @@ class BackendCircuitQiskit(BackendCircuit):
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
         if self.device is None:
-            qiskit_backend = self.retrieve_device('qasm_simulator')
+            qiskit_backend = self.retrieve_device('aer_simulator')
         else:
-            qiskit_backend = self.device
+            qiskit_backend = self.retrieve_device(self.device)
 
-        if qiskit_backend in qiskit.Aer.backends() or str(qiskit_backend).lower() in ["ibmq_qasm_simulator", "quasm_simulator"] or isinstance(qiskit_backend, qiskit.providers.aer.backends.qasm_simulator.QasmSimulator):
-            return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
-                                                            basis_gates=full_basis,
-                                                            optimization_level=optimization_level,
-                                                            noise_model=self.noise_model,
-                                                            parameter_binds=[self.resolver]), target_qubits=read_out_qubits)
+        if isinstance(qiskit_backend,IBMQBackend):
+            if self.noise_model is not None:
+                raise TequilaException('Cannot combine backend {} with custom noise models.'.format(str(qiskit_backend)))
+            circuit = circuit.bind_parameters(self.resolver)  # this is necessary in spite of qiskit "fixing" it
+            circuit = qiskit.transpile(circuit, qiskit_backend)
+            return self.convert_measurements(qiskit_backend.run(circuit,shots=samples,
+                                                            optimization_level=optimization_level),
+                                             target_qubits=read_out_qubits)
         else:
             if isinstance(qiskit_backend, qiskit.test.mock.FakeBackend):
+                circuit = circuit.bind_parameters(self.resolver)  # this is necessary in spite of qiskit "fixing" it
                 coupling_map = qiskit_backend.configuration().coupling_map
-                basis = qiskitnoise.NoiseModel.from_backend(qiskit_backend).basis_gates
-                return self.convert_measurements(qiskit.execute(circuit, self.retrieve_device('qasm_simulator'),
-                                                                shots=samples,
-                                                                basis_gates=basis,
-                                                                coupling_map=coupling_map,
-                                                                noise_model=self.noise_model,
-                                                                optimization_level=optimization_level,
-                                                                parameter_binds=[self.resolver]),
-                                                                target_qubits=read_out_qubits)
+                from_back = qiskitnoise.NoiseModel.from_backend(qiskit_backend)
+                if self.noise_model is not None:
+                    from_back = self.noise_model
+                basis = from_back.basis_gates
+                use_backend = self.retrieve_device('aer_simulator')
+                use_backend.set_options(noise_model=from_back)
+                circuit = qiskit.transpile(circuit, backend=use_backend,
+                                           basis_gates=basis,
+                                           coupling_map=coupling_map,
+                                           optimization_level=optimization_level
+                                           )
+
+                job=qiskit_backend.run(circuit, shots=samples)
+                return self.convert_measurements(job,target_qubits=read_out_qubits)
             else:
                 if self.noise_model is not None:
-                    print("WARNING: There are no noise models when running on real machines!")
-                return self.convert_measurements(qiskit.execute(circuit, backend=qiskit_backend, shots=samples,
-                                                                optimization_level=optimization_level,
-                                                                parameter_binds=[self.resolver]), target_qubits=read_out_qubits)
+                    qiskit_backend.set_options(noise_model=self.noise_model)  # fits better with our methodology.
+                    use_basis = full_basis
+                else:
+                    use_basis = qiskit_backend.configuration().basis_gates
+                circuit = circuit.bind_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
+                circuit = qiskit.transpile(circuit, backend=qiskit_backend,
+                                           basis_gates=use_basis,
+                                           optimization_level=optimization_level
+                                           )
+
+                job = qiskit_backend.run(circuit, shots=samples)
+                return self.convert_measurements(job,
+                                                 target_qubits=read_out_qubits)
 
     def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
         """
@@ -505,7 +532,10 @@ class BackendCircuitQiskit(BackendCircuit):
                            'u3',
                            'u1',
                            'u2',
-                           'h']
+                           'h',
+                           'sx',
+                           'unitary'
+                           ]
 
             elif noise.level == 3:
                 targets = ['ccx']
@@ -550,7 +580,7 @@ class BackendCircuitQiskit(BackendCircuit):
         if device is None:
             return
 
-        if isinstance(device, qiskit.providers.basebackend.BaseBackend):
+        elif isinstance(device,qiskit.providers.Backend):
             return
 
         elif isinstance(device, dict):
@@ -563,19 +593,14 @@ class BackendCircuitQiskit(BackendCircuit):
                 raise TequilaQiskitException('dictionary initialization with device = {} failed.'.format(str(device)))
 
         elif isinstance(device, str):
-            l = device.lower()
-            if 'fake_' in l:
-                qiskit_provider = qiskit.test.mock.FakeProvider()
+            if device.lower() in qiskit_device_dict().keys():
+                return
             else:
-                if device in [str(x).lower() for x in qiskit.Aer.backends()] + [qiskit.Aer.backends()]:
-                    qiskit_provider = qiskit.Aer
-                else:
-                    if qiskit.IBMQ.active_account() is None:
-                        qiskit.IBMQ.load_account()
-                    qiskit_provider = qiskit.IBMQ.get_provider()
-
-            qiskit_provider.get_backend(name=device)
-            return
+                if qiskit.IBMQ.active_account() is None:
+                    qiskit.IBMQ.load_account()
+                qiskit_provider = qiskit.IBMQ.providers()[-1]
+                qiskit_provider.get_backend(device)
+                return
         else:
             raise TequilaQiskitException(
                 'received device {} of unrecognized type {}; only None, strings, dicts, and qiskit backends allowed'.format(
@@ -597,7 +622,8 @@ class BackendCircuitQiskit(BackendCircuit):
 
         if device is None:
             return device
-        if isinstance(device, qiskit.providers.basebackend.BaseBackend):
+
+        elif isinstance(device, qiskit.providers.Backend):
             return device
 
         elif isinstance(device, dict):
@@ -606,20 +632,14 @@ class BackendCircuitQiskit(BackendCircuit):
             return qiskit_provider.get_backend(name=d)
 
         elif isinstance(device, str):
-            device = device.lower()
-            if device in [str(x).lower() for x in qiskit.Aer.backends()] + [qiskit.Aer.backends()]:
-                return qiskit.Aer.get_backend(device)
+            check = qiskit_device_dict()
+            if device.lower() in check.keys():
+                return check[device.lower()]
             else:
-                if 'fake_' in device:
-                    try:
-                        return qiskit.test.mock.FakeProvider().get_backend(device)
-                    except:
-                        raise TequilaQiskitException('Unable to retrieve fake device {}'.format(device))
-                else:
-                    if qiskit.IBMQ.active_account() is None:
-                        qiskit.IBMQ.load_account()
-                    qiskit_provider = qiskit.IBMQ.get_provider()
-                    return qiskit_provider.get_backend(name=device)
+                if qiskit.IBMQ.active_account() is None:
+                    qiskit.IBMQ.load_account()
+                qiskit_provider = qiskit.IBMQ.providers()[-1]
+                return qiskit_provider.get_backend(device)
         else:
             raise TequilaQiskitException(
                 'received device {} of unrecognized type {}; only None, strings, dicts, and qiskit backends allowed'.format(
