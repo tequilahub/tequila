@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from tequila import TequilaException, BitString, TequilaWarning
 from tequila.hamiltonian import QubitHamiltonian
@@ -85,14 +86,62 @@ def prepare_product_state(state: BitString) -> QCircuit:
 @dataclass
 class ParametersQC:
     """Specialization of ParametersHamiltonian"""
-    basis_set: str = ''  # Quantum chemistry basis set
-    geometry: str = ''  # geometry of the underlying molecule (units: Angstrom!),
+    basis_set: str = None  # Quantum chemistry basis set
+    geometry: str = None  # geometry of the underlying molecule (units: Angstrom!),
     # this can be a filename leading to an .xyz file or the geometry given as a string
-    description: str = ''
+    description: str = ""
     multiplicity: int = 1
     charge: int = 0
-    closed_shell: bool = True
-    name: str = "molecule"
+    name: str = None
+    
+    @property
+    def n_electrons(self, *args, **kwargs):
+        return self.get_nuc_charge() - self.charge
+    
+    def get_nuc_charge(self):
+        return sum(self.get_atom_number(name=atom) for atom in self.get_atoms())
+
+    def get_atom_number(self, name):
+        atom_numbers={"h":1, "he":2, "li":3, "be":4, "b":5, "c":6, "n":7, "o":8, "f":9, "ne":10, "na":11, "mg":12, "al":13, "si":14, "ph":15, "s":16, "cl":17, "ar":18}
+        if name.lower() in atom_numbers:
+            return atom_numbers[name.lower()]
+        try:
+            import periodictable as pt
+            atom=name.lower()
+            atom[0]=atom[0].upper()
+            element = pt.elements.symbol(atom)
+            return element.number()
+        except:
+            raise TequilaException("can not assign atomic number to element {}\npip install periodictable will fix it".format(atom))
+
+
+    def get_atoms(self):
+        return [x[0] for x in self.get_geometry()]
+    
+    def __post_init__(self,*args, **kwargs):
+
+        if self.name is None and self.geometry is None:
+            raise TequilaException("no geometry or name given to molecule\nprovide geometry=filename.xyz or geometry=`h 0.0 0.0 0.0\\n...`\nor name=whatever with file whatever.xyz being present")
+        # auto naming
+        if self.name is None:
+            if ".xyz" in self.geometry:
+                self.name=self.geometry.split(".xyz")[0]
+                if self.description is None:
+                    coord, description = self.read_xyz_from_file()
+                    self.description=description
+            else:
+                atoms=self.get_atoms()
+                atom_names=sorted(list(set(atoms)), key=lambda x: self.get_atom_number(x), reverse=True)
+                if self.name is None:
+                    drop_ones=lambda x: "" if x==1 else x
+                    self.name="".join(["{}{}".format(x,drop_ones(atoms.count(x))) for x in atom_names])
+        self.name = self.name.lower()
+        
+        if self.geometry is None:
+            self.geometry=self.name+".xyz"
+        
+        if ".xyz" in self.geometry and not os.path.isfile(self.geometry):
+            raise TequilaException("could not find file for molecular coordinates {}".format(self.geometry))
 
     @property
     def filename(self):
@@ -200,8 +249,6 @@ class ParametersQC:
             geomstring, comment = self.read_xyz_from_file(self.geometry)
             if self.description == '':
                 self.description = comment
-            if self.name == "molecule":
-                self.name = self.geometry.split('.')[0]
             return self.convert_to_list(geomstring)
         elif self.geometry is not None:
             return self.convert_to_list(self.geometry)
@@ -897,6 +944,14 @@ class QuantumChemistryBase:
         assert ("two_body_integrals" in kwargs)
         one_body_integrals = kwargs["one_body_integrals"]
         two_body_integrals = kwargs["two_body_integrals"]
+        
+        # tequila assumes "openfermion" ordering, integrals can however be passed
+        # down in other orderings, but it needs to be indicated by keyword
+        if "ordering" in kwargs:
+            two_body_integrals = NBodyTensor(two_body_integrals, ordering=kwargs["ordering"])
+            two_body_integrals.reorder(to="openfermion")
+            two_body_integrals = two_body_integrals.elems
+
         if "nuclear_repulsion" in kwargs:
             nuclear_repulsion = kwargs["nuclear_repulsion"]
         else:
@@ -1040,37 +1095,16 @@ class QuantumChemistryBase:
             for i in range(self.n_electrons):
                 state[i]=1
         reference_state = BitString.from_array(self.transformation.map_state(state=state))
-        return prepare_product_state(reference_state)
-
-
-    def prepare_hcb_reference(self, state=None, *args, **kwargs):
-        """
-
-        Returns
-        -------
-        A tequila circuit object which prepares the reference of this molecule in hardcore-boson representation
-        (a pair function represented only by the spin-up orbitals)
-        this is independent of the qubit encoding (except the up_then_down key) and can be transformed via
-        U = self.transfomration.hcb_to_me
-        so
-        self.prepare_reference == self.prepare_hcb_reference + self.transformation.hcb_to_me()
-
-        state can define a given product state (expected in full spin orbital notation up, down, up, down)
-        """
-
-        if state is None:
-            state = [1 for i in range(self.n_electrons)]
-            state += [0 for i in range(2 * self.n_orbitals - self.n_electrons)]
-        reference_state = [0] * len(state)
-        for i in range(self.n_orbitals):
-            assert state[2 * i] == state[2 * i + 1]
-            reference_state[self.transformation.up(i)] = state[2 * i]
-
-        return prepare_product_state(BitString.from_array(reference_state))
+        U = prepare_product_state(reference_state)
+        # prevent trace out in direct wfn simulation
+        U.n_qubits = self.n_orbitals*2 # adapt when tapered transformations work
+        return U
 
     def prepare_hardcore_boson_reference(self):
-        # todo: integrate with transformation
-        return gates.X(target=[i for i in range(self.n_electrons // 2)])
+        # HF state in the HCB representation (paired electrons)
+        U = gates.X(target=[i for i in range(self.n_electrons // 2)])
+        U.n_qubits = self.n_orbitals
+        return U
 
     def hcb_to_me(self, U=None):
         """
@@ -1218,6 +1252,31 @@ class QuantumChemistryBase:
                                                            assume_real=assume_real)
 
         return UD
+    
+    def make_ansatz(self, name:str, *args, **kwargs):
+
+        name = name.lower()
+        if name.strip()=="":
+            return QCircuit()
+
+        if "+" in name:
+            U = QCircuit()
+            subparts = name.split("+")
+            U = self.make_ansatz(name=subparts[0], *args ,**kwargs)
+            if "include_reference" in kwargs:
+                kwargs.pop("include_reference")
+            if "hcb_optimization" in kwargs:
+                kwargs.pop("hcb_optimization")
+            for subpart in subparts[1:]:
+                U += self.make_ansatz(name=subpart, *args, include_reference=False, hcb_optimization=False, **kwargs)
+            return U
+        
+        if name=="uccsd":
+            return self.make_uccsd_ansatz(*args, **kwargs)
+        elif "d" in name or "s" in name:
+            return self.make_upccgsd_ansatz(name=name, *args, **kwargs)
+        else:
+            raise TequilaException("unknown ansatz with name={}".format(name))
 
     def make_upccgsd_ansatz(self,
                             include_reference: bool = True,
@@ -1547,7 +1606,6 @@ class QuantumChemistryBase:
         -------
 
         """
-        assert self.parameters.closed_shell
         g = self.molecule.two_body_integrals
         fij = self.molecule.orbital_energies
         nocc = self.molecule.n_electrons // 2  # this is never the active space
@@ -1617,7 +1675,9 @@ class QuantumChemistryBase:
 
     @property
     def rdm1(self):
-        """ """
+        """ 
+        Returns RMD1 if computed with compute_rdms function before
+        """
         if self._rdm1 is not None:
             return self._rdm1
         else:
@@ -1626,7 +1686,10 @@ class QuantumChemistryBase:
 
     @property
     def rdm2(self):
-        """ """
+        """
+        Returns RMD2 if computed with compute_rdms function before
+        This is returned in Dirac (physics) notation by default (can be changed in compute_rdms with keyword)!
+        """
         if self._rdm2 is not None:
             return self._rdm2
         else:
@@ -1634,7 +1697,7 @@ class QuantumChemistryBase:
             return None
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True):
+                     get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac"):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -1871,6 +1934,22 @@ class QuantumChemistryBase:
             self._rdm2 = _assemble_rdm2_spinfree(evals_2) if get_rdm2 else self._rdm2
         else:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
+        
+        if get_rdm2:
+            rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac")
+            rdm2.reorder(to=ordering)
+            rdm2 = rdm2.elems
+            self._rdm2 = rdm2
+
+        if get_rdm1:
+            if get_rdm2:
+                return self.rdm1, self.rdm2
+            else:
+                return self.rdm1
+        elif get_rdm2:
+            return self.rdm2
+        else:
+            warnings.warn("compute_rdms called with instruction to not compute?", TequilaWarning)
 
     def rdm_spinsum(self, sum_rdm1: bool = True, sum_rdm2: bool = True) -> tuple:
         """

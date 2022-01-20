@@ -86,12 +86,15 @@ def preamble(objective: Objective, compile_args: dict = None, input_vars: list =
             if assign_variable(k) in input_vars:
                 raise TequilaMLException('initial_values contained key {},'
                                          'which is meant to be an input variable.'.format(k))
-        compile_args['initial_values'] = format_variable_dictionary(init_vals)
+        init_vals = format_variable_dictionary(init_vals)
+    compile_args.pop('initial_values')
 
     comped = compile(objective, **compile_args)
+
     gradients = get_gradients(objective, compile_args)
     w_grad, i_grad = separate_gradients(gradients, weight_vars=weight_vars, input_vars=input_vars)
     first, second = get_variable_orders(weight_vars, input_vars)
+    compile_args['initial_values']=init_vals
     return comped, compile_args, input_vars, weight_vars, i_grad, w_grad, first, second
 
 

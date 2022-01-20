@@ -25,11 +25,12 @@ def show_available_modules():
 def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
 
-def Molecule(geometry: str,
+def Molecule(geometry: str=None,
              basis_set: str = None,
              transformation: typing.Union[str, typing.Callable] = None,
              backend: str = None,
              guess_wfn=None,
+             name: str = None,
              *args,
              **kwargs) -> QuantumChemistryBase:
     """
@@ -47,6 +48,9 @@ def Molecule(geometry: str,
     guess_wfn
         pass down a psi4 guess wavefunction to start the scf cycle from
         can also be a filename leading to a stored wavefunction
+    name
+        name of the molecule, if not given it's auto-deduced from the geometry
+        can also be done vice versa (i.e. geometry is then auto-deduced to name.xyz)
     args
     kwargs
 
@@ -60,9 +64,11 @@ def Molecule(geometry: str,
         if k in ParametersQC.__dict__.keys():
             keyvals[k] = v
 
-    parameters = ParametersQC(geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
+    parameters = ParametersQC(name=name,geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
     integrals_provided = all([key in kwargs for key in ["one_body_integrals", "two_body_integrals"]])
+    if integrals_provided and backend is None:
+        backend = "base"
 
     if backend is None:
         if basis_set is None or basis_set.lower() in ["madness", "mra", "pno"]:
@@ -122,3 +128,6 @@ def MoleculeFromOpenFermion(molecule,
     else:
         INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(molecule=molecule, transformation=transformation, *args,
                                                                 **kwargs)
+
+# needs pyscf (handeled in call)
+from . orbital_optimizer import optimize_orbitals

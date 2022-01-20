@@ -1,6 +1,6 @@
 import tequila.simulators.simulator_api
 from tequila.circuit import gates
-from tequila.objective import Objective, ExpectationValue, VectorObjective
+from tequila import Objective, ExpectationValue, VectorObjective
 from tequila.objective.objective import Variable
 from tequila.hamiltonian import paulis
 from tequila.circuit.gradient import grad
@@ -657,15 +657,15 @@ def test_really_awfull_thing(simulator, value1=(numpy.random.randint(10, 1000) /
     assert np.isclose(deval, an2 * (uen + den), atol=1.e-4)
     assert np.isclose(doval, dtrue, atol=1.e-4)
 
+# testing backward compatibility (VectorObjective is now QTensor)
 def test_stacking():
     a=Variable('a')
     b=Variable('b')
     def f(x):
         return np.cos(x)**2. + np.sin(x)**2.
-    funcs=[f,f,f,f]
     vals = {Variable('a'):numpy.random.uniform(0,np.pi),Variable('b'):numpy.random.uniform(0,np.pi)}
-    O = VectorObjective(argsets=[[a],[b],[a],[b]],transformations=funcs)
-    O1 = O.apply_op_list(funcs)
+    O = VectorObjective(argsets=[[a],[b],[a],[b]])
+    O1 = O.apply(f)
     O2 = O1/4
     output = simulate(O2,variables=vals)
     assert np.isclose(1.,np.sum(output))

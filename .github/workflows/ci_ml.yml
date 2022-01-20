@@ -1,0 +1,46 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Tequila-Test-ML-Interfaces
+
+on:
+  push:
+    branches: [ master, devel ]
+  pull_request:
+    branches: [ master, devel ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install quantum backends
+      run: |
+              pip install "qulacs"
+              
+    - name: Install and test tensorflow interface
+      run: |  
+              python -m pip install --upgrade pip 
+              pip install --upgrade -r requirements.txt
+              pip install -e .
+              pip install --upgrade tensorflow
+
+              pytest tests/test_tf_interface.py
+    - name: Install and test torch interface
+      run: |
+              pip install --upgrade -r requirements.txt
+              pip install -e .
+              pip install --upgrade torch
+
+              pytest tests/test_torch_interface.py
+

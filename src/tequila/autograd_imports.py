@@ -5,7 +5,7 @@ __AUTOGRAD__BACKEND__ = None
 try:
     import jax
     from jax import numpy
-
+    jax.config.update('jax_platform_name', 'cpu')
     __AUTOGRAD__BACKEND__ = "jax"
 except ImportError:
     try:

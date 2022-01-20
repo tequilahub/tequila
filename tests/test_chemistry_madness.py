@@ -178,3 +178,64 @@ def test_madness_pyscf_bridge():
     # primarily testing a functioning interface and keywords here
     assert numpy.isclose(e1, e4, atol=1.e-3)
     assert numpy.isclose(e3, e4, atol=1.e-3)
+
+@pytest.mark.skipif(condition=not has_pyscf, reason="pyscf not found")
+@pytest.mark.parametrize("restrict_to_hcb", [False, True])
+def test_orbital_optimization(restrict_to_hcb):
+    name="data/beh2_{R}"
+    R=4.5
+    n_pno=None
+    success=False
+    for _ in range(10):
+        mol = tq.Molecule(n_pno=n_pno, name=name.format(R=R))
+        U = mol.make_upccgsd_ansatz("SPA")
+        if restrict_to_hcb:
+            U = mol.make_upccgsd_ansatz("HCB-SPA")
+        opt_mol = tq.quantumchemistry.optimize_orbitals(molecule=mol, circuit=U, silent=False, initial_guess="random_loc=0.0_scale=1.0", vqe_solver_arguments={"restrict_to_hcb":restrict_to_hcb}).molecule
+        if restrict_to_hcb:
+            H = opt_mol.make_hardcore_boson_hamiltonian()
+        else:
+            H = opt_mol.make_hamiltonian()
+        E = tq.ExpectationValue(H=H, U=U)
+        result = tq.minimize(E, silent=False)
+        success=numpy.isclose(result.energy,-15.562016590541667, atol=1.e-2)
+        if success:
+            break
+    assert success
+
+# test takes a while
+@pytest.mark.skipif(condition=not has_pyscf, reason="pyscf not found")
+def test_orbital_optimization_adapt():
+
+    name="data/beh2_{R}"
+    R=4.5
+    n_pno=None
+    success=False
+    for _ in range(1):
+        mol = tq.Molecule(n_pno=n_pno, name=name.format(R=R))
+        U = mol.make_upccgsd_ansatz("SPA")
+        operator_pool = tq.adapt.MolecularPool(molecule=mol, indices="UCCD")
+        class AdaptWrapper:
+            class ReturnWrapper:
+                def __init__(self, circuit, variables, energy):
+                    self.circuit = circuit
+                    self.variables = variables
+                    self.energy = energy
+
+            def __init__(self, operator_pool, spa):
+                self.operator_pool=operator_pool
+                self.spa = spa
+            def __call__(self, H, circuit, molecule, *args, **kwargs):
+                solver = tq.adapt.Adapt(H=H, Upre=self.spa, operator_pool=self.operator_pool, maxiter=1)
+                result = solver(Upre=self.spa, operator_pool=self.operator_pool)
+                final_circuit = self.spa + result.U
+                return self.ReturnWrapper(circuit=final_circuit, variables=result.variables, energy=result.energy)
+
+        opt_mol = tq.quantumchemistry.optimize_orbitals(molecule=mol, circuit=U, silent=False, initial_guess="random_loc=0.0_scale=1.0", vqe_solver=AdaptWrapper(operator_pool, U)).molecule
+        H = opt_mol.make_hamiltonian()
+        E = tq.ExpectationValue(H=H, U=U)
+        result = tq.minimize(E, silent=False)
+        success=numpy.isclose(result.energy,-15.562016590541667, atol=1.e-2)
+        if success:
+            break
+    assert success

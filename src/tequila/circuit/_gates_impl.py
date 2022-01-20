@@ -3,7 +3,7 @@ import copy
 import numbers
 from abc import ABC
 from tequila import TequilaException
-from tequila.objective.objective import Variable, FixedVariable, assign_variable,Objective,VectorObjective
+from tequila.objective.objective import Variable, FixedVariable, assign_variable
 from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
 from numpy import pi, sqrt
@@ -182,8 +182,8 @@ class ParametrizedGateImpl(QGateImpl, ABC):
                 generator: QubitHamiltonian = None):
         super().__init__(name=name, target=target, control=control, generator=generator)
         # failsafe
-        if isinstance(parameter, VectorObjective):
-            raise TequilaException('Received VectorObjective {} as parameter. This is forbidden.'.format(parameter))
+        if hasattr(parameter, "shape") and parameter.shape not in [tuple()]: # take care of new numpy conventions where scalars have shape ()
+            raise TequilaException("parameter has to be a scalar. Received {}\n{}\n{}".format(repr(parameter), type(parameter), str(parameter)))
         self._parameter = assign_variable(variable=parameter)
 
     def __str__(self):

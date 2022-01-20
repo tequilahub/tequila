@@ -4,7 +4,7 @@ from typing import List
 from typing import Union, Dict, Callable, Any
 
 from tequila.ml.utils_ml import preamble, TequilaMLException
-from tequila.objective import Objective, VectorObjective, Variable, vectorize
+from tequila.objective import Objective, Variable, vectorize, QTensor
 from tequila.tools import list_assignment
 from tequila.simulators.simulator_api import simulate
 import numpy as np
@@ -19,10 +19,10 @@ class TFLayer(tf.keras.layers.Layer):
     This is very much a WIP, since we are not exactly sure how users intend to use it. Please feel free to raise issues
     and give feedback without hesitation.
     """
-    def __init__(self, objective: Union[Objective, VectorObjective], compile_args: Dict[str, Any] = None,
+    def __init__(self, objective: Union[Objective, QTensor], compile_args: Dict[str, Any] = None,
                  input_vars: Dict[str, Any] = None, **kwargs):
         """
-        Tensorflow layer that compiles the Objective (or VectorObjective) with the given compile arguments and/or
+        Tensorflow layer that compiles the Objective (or QTensor) with the given compile arguments and/or
         input variables if there are any when initialized. When called, it will forward the input variables into the
         compiled objective (if there are any inputs needed) alongside the parameters and will return the output.
         The gradient values can also be returned.
@@ -30,7 +30,7 @@ class TFLayer(tf.keras.layers.Layer):
         Parameters
         ----------
         objective
-            Objective or VectorObjective to compile and run.
+            Objective or QTensor to compile and run.
         compile_args
             dict of all the necessary information to compile the objective
         input_vars
@@ -52,10 +52,10 @@ class TFLayer(tf.keras.layers.Layer):
                                              "".format(i, type(objective), elem))
             objective = vectorize(list_assignment(objective))
 
-        elif isinstance(objective, Objective) or isinstance(objective, VectorObjective):
+        elif isinstance(objective, Objective):
             objective = vectorize(list_assignment(objective))
-        else:
-            raise TequilaMLException("Objective must be a Tequila Objective, VectorObjective "
+        elif not isinstance(objective, QTensor):
+            raise TequilaMLException("Objective must be a Tequila Objective, QTensor "
                                      "or list/tuple of Objectives. Received a {}".format(type(objective)))
         self.objective = objective
 
