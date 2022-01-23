@@ -32,7 +32,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             h = mol.get_hcore()
             obi = numpy.einsum("ki, kl, lj -> ij" , c ,h, c)
                             
-            eri = mol.ao2mo(orb)
+            eri = mol.ao2mo(c)
             eri = pyscf.ao2mo.restore(1, eri, c.shape[0])
             
             eri = tq.chemistry.NBodyTensor(elems=eri, ordering="mulliken")
