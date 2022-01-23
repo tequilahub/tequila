@@ -35,7 +35,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             eri = mol.ao2mo(c)
             eri = pyscf.ao2mo.restore(1, eri, c.shape[0])
             
-            eri = tq.chemistry.NBodyTensor(elems=eri, ordering="mulliken")
+            eri = NBodyTensor(elems=eri, ordering="mulliken")
             eri = eri.reorder("openfermion").elems
             mol = gto.M(atom=geometry, basis=kwargs["basis_set"])
            
