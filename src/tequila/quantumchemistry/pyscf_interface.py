@@ -27,11 +27,13 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             mf = pyscf.scf.RHF(mol)
             mf.kernel()
             
+            c=mf.mo_coeff
+
             h = mol.get_hcore()
-            obi = numpy.einsum("ki, kl, lj -> ij" , orb ,h,orb)
+            obi = numpy.einsum("ki, kl, lj -> ij" , c ,h, c)
                             
             eri = mol.ao2mo(orb)
-            eri = pyscf.ao2mo.restore(1, eri, orb.shape[0])
+            eri = pyscf.ao2mo.restore(1, eri, c.shape[0])
             
             eri = tq.chemistry.NBodyTensor(elems=eri, ordering="mulliken")
             eri = eri.reorder("openfermion").elems
