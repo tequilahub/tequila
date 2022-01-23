@@ -23,7 +23,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             assert "one_body_integrals" not in kwargs
             assert "two_body_integrals" not in kwargs
 
-            mol = pyscf.gto.M(atom=geometry, basis="6-31g")
+            mol = pyscf.gto.M(atom=parameters.get_geometry_string(), basis=kwargs["basis_set"])
             mf = pyscf.scf.RHF(mol)
             mf.kernel()
             
