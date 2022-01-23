@@ -42,6 +42,6 @@ jobs:
         python -m pip install 'h5py <= 3.1'
         cd tests
         ls
-        pytest test_chemistry.py
-        pytest test_adapt.py
+        pytest test_chemistry.py  -m "not dependencies"
+        pytest test_adapt.py  -m "not dependencies"
         cd ../
