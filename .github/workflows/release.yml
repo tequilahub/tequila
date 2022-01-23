@@ -5,6 +5,7 @@ on:
 
 jobs:
   tweet:
+    environment: twitter
     runs-on: ubuntu-latest
     steps:
       - name: Tweet
