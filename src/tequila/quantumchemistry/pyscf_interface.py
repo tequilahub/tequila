@@ -37,7 +37,6 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             
             eri = NBodyTensor(elems=eri, ordering="mulliken")
             eri = eri.reorder("openfermion").elems
-            mol = gto.M(atom=geometry, basis=kwargs["basis_set"])
            
             kwargs["two_body_integrals"]=eri
             kwargs["one_body_integrals"]=obi

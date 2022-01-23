@@ -462,7 +462,13 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
                     circuit = objective.abstract_circuit
 
                 export_to(circuit=circuit, *args, **kwargs)
-                image=IPython.display.Image(filename=kwargs["filename"])
+                width=None
+                height=200
+                if "width" in kwargs:
+                    width=kwargs["width"]
+                if "height" in kwargs:
+                    height=kwargs["height"]
+                image=IPython.display.Image(filename=kwargs["filename"], height=height)
                 IPython.display.display(image)
 
             except ImportError as E:
