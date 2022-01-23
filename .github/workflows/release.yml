@@ -17,6 +17,6 @@ jobs:
           ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
         with:
           text: |
-            New Evomark-it released ${{ github.event.release.name }}
+            New version released: ${{ github.event.release.name }}
             ${{ github.event.release.html_url }}
       - run: echo ${{ steps.tweet.outputs.response }}
