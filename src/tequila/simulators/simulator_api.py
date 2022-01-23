@@ -462,13 +462,13 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
                     circuit = objective.abstract_circuit
 
                 export_to(circuit=circuit, *args, **kwargs)
-                width=None
+                width=None # full size
                 height=200
                 if "width" in kwargs:
                     width=kwargs["width"]
                 if "height" in kwargs:
-                    height=kwargs["height"]
-                image=IPython.display.Image(filename=kwargs["filename"], height=height)
+                    height=kwargs["height"] # this is buggy in jupyter and will be ignored
+                image=IPython.display.Image(filename=kwargs["filename"], height=height, width=width)
                 IPython.display.display(image)
 
             except ImportError as E:
@@ -479,7 +479,7 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
                 return compiled.circuit.draw(*args, **kwargs)
             else:
                 print(compiled.circuit)
-                return str(compiled.circuit)
+                return ""
 
 def compile(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
             variables: Dict[Union['Variable', Hashable], RealNumber] = None,
