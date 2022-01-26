@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Test-Tequila-Chemistry
+name: Test-Madness
 
 on:
   push:
@@ -77,30 +77,3 @@ jobs:
         pytest test_chemistry_madness.py
         cd ../
 
-    - name: Install and test Psi4 interface
-      run: |
-        ver=$(python -c"import sys; print(sys.version_info.minor)")
-        fullver=$(echo "3.$ver")
-        wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-        export CONDABASE=$HOME/miniconda
-        bash miniconda.sh -b -p $CONDABASE
-        export PATH=$CONDABASE:$PATH
-        export PATH="$CONDABASE/bin:$PATH"
-        conda update -q conda
-        conda create -n test_psi4 python=$fullver
-        conda init bash
-        bash
-        source $HOME/.bashrc
-        source $CONDABASE/bin/activate
-        conda activate test_psi4
-        conda install psi4 -c psi4
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt
-        python -m pip install -e .
-        python -m pip install pyscf
-        python -m pip install 'h5py <= 3.1'
-        cd tests
-        ls
-        pytest test_chemistry.py
-        pytest test_adapt.py
-        cd ../
