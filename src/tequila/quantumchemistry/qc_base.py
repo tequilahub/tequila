@@ -1293,8 +1293,6 @@ class QuantumChemistryBase:
 
         Parameters
         ----------
-        include_singles
-            include singles excitations. Is overwritten if indices are a string (i.e. indices=UpCCGSD will always include singles, UpCCGD will not)
         include_reference
             include the HF reference state as initial state
         indices
@@ -1340,7 +1338,7 @@ class QuantumChemistryBase:
         have_hcb_trafo = self.transformation.hcb_to_me() is not None
 
         # consistency checks for optimization
-        if have_hcb_trafo and hcb_optimization is None:
+        if have_hcb_trafo and hcb_optimization is None and include_reference:
             hcb_optimization = True
         if "HCB" in name:
             hcb_optimization = True
@@ -1354,23 +1352,27 @@ class QuantumChemistryBase:
                     "name={}, Singles can't be realized without mapping back to the standard encoding leave S or HCB out of the name".format(
                         name))
 
+        #convenience
+        S = "S" in name.upper()
+        D = "D" in name.upper()
+
         # first layer
         if not hcb_optimization:
             U = QCircuit()
             if include_reference:
                 U = self.prepare_reference()
-            U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, assume_real=assume_real,
+            U += self.make_upccgsd_layer(include_singles=S, include_doubles=D, indices=indices, assume_real=assume_real,
                                          label=(label, 0), spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
         else:
             U = QCircuit()
             if include_reference:
                 U = self.prepare_hardcore_boson_reference()
-            U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0),
-                                                       *args, **kwargs)
-            if "HCB" not in name:
+            if D:
+                U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0), *args, **kwargs)
+            if "HCB" not in name and (include_reference or D):
                 U = self.hcb_to_me(U=U)
 
-            if "S" in name:
+            if S:
                 U += self.make_upccgsd_singles(indices=indices, assume_real=assume_real, label=(label, 0),
                                           spin_adapt_singles=spin_adapt_singles, neglect_z=neglect_z, *args, **kwargs)
 
