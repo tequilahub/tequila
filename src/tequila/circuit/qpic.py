@@ -34,7 +34,7 @@ def assign_name(parameter):
         return str(parameter)
 
 
-def export_to_qpic(circuit: 'QCircuit', filename=None, filepath=None, always_use_generators=True,
+def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=True,
                    decompose_control_generators=False,
                    group_together=False, qubit_names=None, mark_parametrized_gates=True, gatecolor1="tq",
                    textcolor1="white", gatecolor2="guo", textcolor2="black", *args, **kwargs) -> str:
@@ -157,7 +157,7 @@ def export_to_qpic(circuit: 'QCircuit', filename=None, filepath=None, always_use
     return result
 
 
-def export_to(circuit: 'QCircuit',
+def export_to(circuit,
               filename: str,
               style="tequila",
               qubit_names: list = None, *args, **kwargs):

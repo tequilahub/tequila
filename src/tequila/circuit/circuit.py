@@ -7,6 +7,7 @@ import copy
 from collections import defaultdict
 import warnings
 
+from .qpic import export_to
 
 class QCircuit():
     """
@@ -38,6 +39,14 @@ class QCircuit():
 
 
     """
+
+    def export_to(self, *args, **kwargs):
+        """
+        Export to png, pdf, qpic, tex with qpic backend
+        Convenience: see src/tequila/circuit/qpic.py - export_to for more
+        Parameters
+        """
+        return export_to(circuit=self, *args, **kwargs)
 
     @property
     def moments(self):
