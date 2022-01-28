@@ -57,7 +57,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self._name = "FermionicExcitation"
         self.transformation = transformation
 
-    def compile(self):
+    def compile(self, *args, **kwargs):
         return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
 
 
@@ -1377,6 +1377,7 @@ class QuantumChemistryBase:
                 U = self.prepare_hardcore_boson_reference()
             if D:
                 U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0), *args, **kwargs)
+
             if "HCB" not in name and (include_reference or D):
                 U = self.hcb_to_me(U=U)
 

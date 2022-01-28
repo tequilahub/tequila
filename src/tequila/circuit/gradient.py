@@ -1,4 +1,4 @@
-from tequila.circuit.compiler import Compiler
+from tequila.circuit.compiler import CircuitCompiler
 from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, \
     assign_variable, identity, FixedVariable
 from tequila import TequilaException
@@ -45,13 +45,13 @@ def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None,
     if no_compile:
         compiled = objective
     else:
-        compiler = Compiler(multitarget=True,
-                            trotterized=True,
-                            hadamard_power=True,
-                            power=True,
-                            controlled_phase=True,
-                            controlled_rotation=True,
-                            gradient_mode=True)
+        compiler = CircuitCompiler(multitarget=True,
+                                   trotterized=True,
+                                   hadamard_power=True,
+                                   power=True,
+                                   controlled_phase=True,
+                                   controlled_rotation=True,
+                                   gradient_mode=True)
 
         compiled = compiler(objective, variables=[variable])
 

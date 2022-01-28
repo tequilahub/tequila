@@ -67,10 +67,14 @@ def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=
         gcol = gatecolor1
         tcol = textcolor1
         param = None
-        if hasattr(g, "parameter") and not isinstance(g.parameter, numbers.Number) and mark_parametrized_gates:
-            tcol = textcolor2
-            gcol = gatecolor2
+        if hasattr(g, "parameter"):
+            if not isinstance(g.parameter, numbers.Number) and mark_parametrized_gates:
+                tcol = textcolor2
+                gcol = gatecolor2
             param = g.parameter
+
+        if isinstance(param, numbers.Number):
+            param = "{:1.2f}".format(param)
 
         # special gates
         # generator decomposition of H is misleading
@@ -134,9 +138,9 @@ def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=
                     gname=gname.replace("R", "R_")
 
                 if param is not None:
-                    gname="${{{x}}}({angle})$".format(x=gname, angle=assign_name(g.parameter))
+                    gname="{{{x}}}({angle})".format(x=gname, angle=assign_name(g.parameter))
 
-                result += "\\textcolor{tcol}{{{op}}} ".format(tcol="{" + tcol + "}", op=gname)
+                result += "\\textcolor{tcol}{{${op}$}} ".format(tcol="{" + tcol + "}", op=gname)
                 if hasattr(g, "parameter") and g.parameter is not None:
                     result += "width=" + str(25 + 5 * len(assign_name(g.parameter))) + " "
 
@@ -187,15 +191,15 @@ def export_to(circuit,
     if "." not in filename:
         raise Exception("export_to: No filetype given {}, expected something like {}.pdf".format(filename, filename))
 
-    if style is None:
-        style = {}
-
-    if style == "tequila":
-        # a mix between standard and generators
+    if style is None or style == "tequila":
         style = {
             'decompose_control_generators': False,
             'always_use_generators': True,
-            'group_together': False
+            'group_together': False,
+            'textcolor1': "white",
+            "textcolor2": "black",
+            "gatecolor1": "tq",
+            "gatecolor2": "guo"
         }
     elif style == "standard":
         style = {
@@ -224,6 +228,14 @@ def export_to(circuit,
         raise Exception(
             "style needs to be `tequila`, or `standard` or `generators` or a dictionary, you gave: {}".format(
                 str(style)))
+
+    pop = []
+    for k,v in kwargs.items():
+        if k in style:
+            style[k]=kwargs[k]
+            pop.append(k)
+    for k in pop:
+        kwargs.pop(k)
 
     filename_tmp = filename.split(".")
     if len(filename_tmp) == 1:

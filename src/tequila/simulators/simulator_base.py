@@ -168,7 +168,7 @@ class BackendCircuit():
             compiler_arguments["hadamard_power"] = True
 
         # compile the abstract_circuit
-        c = compiler.Compiler(**compiler_arguments)
+        c = compiler.CircuitCompiler(**compiler_arguments)
 
         if qubit_map is None:
             qubit_map = {q: i for i, q in enumerate(abstract_circuit.qubits)}
