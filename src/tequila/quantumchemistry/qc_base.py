@@ -57,7 +57,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self._name = "FermionicExcitation"
         self.transformation = transformation
 
-    def compile(self):
+    def compile(self, *args, **kwargs):
         return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
 
 
