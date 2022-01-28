@@ -5,7 +5,6 @@ import typing, numbers
 from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
 import numpy as np
-import functools
 import copy
 
 
@@ -1028,17 +1027,17 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         result.finalize()
         return result
 
-    def compile(self):
+    def compile(self, exponential_pauli=False, *args, **kwargs):
         # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475
         # Alternative representation in arxiv:2104.05695 (not implemented -> could be added and controlled with optional compile keywords)
-        if self.compile_options == "optimize" and len(self.target) == 2:
+        if self.compile_options == "optimize" and len(self.target) == 2 and exponential_pauli:
             p,q = self.target
             U0 = X(target=p)
             U0 += X(target=p, control=q)
             U0 += X(target=p)
             U1 = Ry(angle=self.parameter, target=q, control=p)
             return U0 + U1 + U0
-        elif self.compile_options == "optimize" and len(self.target) == 4:
+        elif self.compile_options == "optimize" and len(self.target) == 4 and exponential_pauli:
             p,r,q,s = self.target
             U0 = X(target=q, control=p)
             U0 += X(target=s, control=r)

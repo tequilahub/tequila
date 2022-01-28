@@ -3,7 +3,7 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 from tequila import BitString, BitNumbering
 import sympy
-from tequila.objective.objective import to_float
+from tequila.utils import to_float
 
 import numpy as np
 import typing, numbers

@@ -17,7 +17,7 @@ class TequilaCompilerException(TequilaException):
     pass
 
 
-class Compiler:
+class CircuitCompiler:
     """
     an object that performs abstract compilation of QCircuits and Objectives.
 
@@ -34,6 +34,43 @@ class Compiler:
     compile_circuit:
         perform compilation on a circuit.
     """
+
+    @classmethod
+    def all_flags_true(cls, *args, **kwargs):
+        # convenience: Initialize with all flags set to true
+        # set exceptions in kwargs
+        c = cls()
+        for k in c.__dict__.keys():
+            try:
+                c.__dict__[k]=True
+            except:
+                pass
+        for k,v in kwargs.items():
+            if k in c.__dict__:
+                c.__dict__[k]=v
+        c.gradient_mode=False
+
+        if not c.multicontrol:
+            c.cc_max = False
+        return c
+
+    @classmethod
+    def standard_gate_set(cls, *args, **kwargs):
+        # convenience: Initialize with all flags set to true
+        # but not for standard gates like ry
+        # set exceptions in kwargs
+        c = cls.all_flags_true()
+        c.gradient_mode=False
+        c.y_gate=False
+        c.ry_gate=False
+
+        for k,v in kwargs.items():
+            if k in c.__dict__:
+                c.__dict__[k]=v
+
+        if not c.multicontrol:
+            c.cc_max = False
+        return c
 
     def __init__(self,
                  multitarget=False,
@@ -265,7 +302,7 @@ class Compiler:
                 continue
             else:
                 if hasattr(cg, "compile"):
-                    cg = QCircuit.wrap_gate(cg.compile())
+                    cg = QCircuit.wrap_gate(cg.compile(**self.__dict__))
                     for g in cg.gates:
                         if g.is_controlled():
                             controlled = True

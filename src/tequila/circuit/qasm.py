@@ -7,7 +7,7 @@ https://arxiv.org/pdf/1707.03429v2.pdf
 """
 from tequila import TequilaException
 from tequila.circuit import QCircuit
-from tequila.circuit.compiler import Compiler
+from tequila.circuit.compiler import CircuitCompiler
 import tequila.circuit.gates as gates
 from numpy import pi
 from typing import Dict
@@ -104,26 +104,26 @@ def convert_to_open_qasm_2(circuit: QCircuit, variables=None, zx_calculus: bool 
             "You called export_open_qasm for a parametrized type but forgot to pass down the variables: {}".format(
                 circuit.extract_variables()))
 
-    compiler = Compiler(multitarget=True,
-                        multicontrol=False,
-                        trotterized=True,
-                        generalized_rotation=True,
-                        exponential_pauli=True,
-                        controlled_exponential_pauli=True,
-                        hadamard_power=True,
-                        controlled_power=True,
-                        power=True,
-                        toffoli=True,
-                        controlled_phase=True,
-                        phase=True,
-                        phase_to_z=True,
-                        controlled_rotation=True,
-                        swap=True,
-                        cc_max=True,
-                        gradient_mode=False,
-                        ry_gate=zx_calculus,
-                        y_gate=zx_calculus,
-                        ch_gate=zx_calculus)
+    compiler = CircuitCompiler(multitarget=True,
+                               multicontrol=False,
+                               trotterized=True,
+                               generalized_rotation=True,
+                               exponential_pauli=True,
+                               controlled_exponential_pauli=True,
+                               hadamard_power=True,
+                               controlled_power=True,
+                               power=True,
+                               toffoli=True,
+                               controlled_phase=True,
+                               phase=True,
+                               phase_to_z=True,
+                               controlled_rotation=True,
+                               swap=True,
+                               cc_max=True,
+                               gradient_mode=False,
+                               ry_gate=zx_calculus,
+                               y_gate=zx_calculus,
+                               ch_gate=zx_calculus)
 
     compiled = compiler(circuit, variables=None)
 
