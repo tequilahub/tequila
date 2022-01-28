@@ -1376,8 +1376,8 @@ class QuantumChemistryBase:
             if include_reference:
                 U = self.prepare_hardcore_boson_reference()
             if D:
-                U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0),
-                                                           *args, **kwargs)
+                U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0), *args, **kwargs)
+
             if "HCB" not in name and (include_reference or D):
                 U = self.hcb_to_me(U=U)
 
