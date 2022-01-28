@@ -54,7 +54,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  n_pno: int = None,
                  frozen_core=True,
                  n_virt: int = 0,
-                 keep_mad_files = False,
+                 keep_mad_files=False,
                  *args,
                  **kwargs):
 
@@ -155,10 +155,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         assert len(h.shape) == 2
 
         # openfermion conventions
-        g = NBodyTensor(elems=g, ordering='mulliken') 
+        g = NBodyTensor(elems=g, ordering='mulliken')
         g.reorder(to='openfermion')
         g = g.elems
-        #g = numpy.einsum("psqr", g, optimize='optimize')
+        # g = numpy.einsum("psqr", g, optimize='optimize')
 
         orbitals = []
         if pairinfo is not None:
@@ -289,10 +289,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         -------
 
         """
+
         if any([x in method.upper() for x in ["U", "SPA", "PNO", "HCB"]]):
             # simulate entirely in HCB representation if no singles are involved
             if "S" not in method.upper().split("-")[-1] and "HCB" not in method.upper():
-                method = "HCB-"+method
+                method = "HCB-" + method
             U = self.make_upccgsd_ansatz(name=method)
             if "hcb" in method.lower():
                 H = self.make_hardcore_boson_hamiltonian()
@@ -302,14 +303,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             from tequila import minimize
             return minimize(objective=E, *args, **kwargs).energy
         else:
-            from tequila.quantumchemistry import INSTALLED_QCHEMISTRY_BACKENDS
-            if "pyscf" not in INSTALLED_QCHEMISTRY_BACKENDS:
-                raise TequilaMadnessException("PySCF needs to be installed to compute {}/MRA-PNO".format(method))
-            else:
-                from tequila.quantumchemistry import QuantumChemistryPySCF
-                molx = QuantumChemistryPySCF.from_tequila(self)
-                return molx.compute_energy(method=method)
-
+            return super().compute_energy(method=method, *args, **kwargs)
 
     def local_qubit_map(self, hcb=False, up_then_down=False):
         # re-arrange orbitals to result in more local circuits
@@ -351,12 +345,13 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         Default SPA ansatz (equivalent to PNO-UpCCD with madness PNOs)
 
         """
-        name="SPA-UpCCD"
+        name = "SPA-UpCCD"
         if hcb:
-            name="HCB-"+name
+            name = "HCB-" + name
         return self.make_upccgsd_ansatz(name=name, label=label)
 
-    def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None, hcb_optimization=None, include_reference=True, *args, **kwargs):
+    def make_upccgsd_ansatz(self, name="UpCCGSD", label=None, direct_compiling=None, order=None, neglect_z=None,
+                            hcb_optimization=None, include_reference=True, *args, **kwargs):
         """
         Overwriting baseclass to allow names like : PNO-UpCCD etc
         Parameters
@@ -382,7 +377,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         # Default Method
         if "SPA" in name and name.split("-")[-1] in ["SPA", "HCB"]:
-            name+= "-D"
+            name += "-D"
 
         excitations = name.split("-")[-1]
 
@@ -434,8 +429,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         U = QCircuit()
         if hcb_optimization:
             if "D" in excitations:
-                U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=include_reference, direct_compiling=direct_compiling,
-                                                          label=(label, 0))
+                U = self.make_hardcore_boson_pno_upccd_ansatz(include_reference=include_reference,
+                                                              direct_compiling=direct_compiling,
+                                                              label=(label, 0))
             elif include_reference:
                 U = self.prepare_hardcore_boson_reference()
 
@@ -454,7 +450,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             indices = self.make_upccgsd_indices(label=(label, 0), name=name, *args, **kwargs)
             if include_reference:
                 U = self.prepare_reference()
-            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in excitations, include_doubles="D" in excitations, label=(label, 0), neglect_z=neglect_z, *args, **kwargs)
+            U += self.make_upccgsd_layer(indices=indices, include_singles="S" in excitations,
+                                         include_doubles="D" in excitations, label=(label, 0), neglect_z=neglect_z,
+                                         *args, **kwargs)
 
         if order > 1:
             for layer in range(1, order):
@@ -462,13 +460,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if "HCB" in name:
                     U += self.make_hardcore_boson_upccgd_layer(indices=indices, label=(label, layer), *args, **kwargs)
                 else:
-                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in excitations, include_doubles="D" in excitations, label=(label, layer), neglect_z=neglect_z, *args, **kwargs)
+                    U += self.make_upccgsd_layer(indices=indices, include_singles="S" in excitations,
+                                                 include_doubles="D" in excitations, label=(label, layer),
+                                                 neglect_z=neglect_z, *args, **kwargs)
         return U
 
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
                                              direct_compiling=False):
         if pairs is None:
-            pairs = [x for x in self.get_reference_orbitals()] #[i for i in range(self.n_electrons // 2)]
+            pairs = [x for x in self.get_reference_orbitals()]  # [i for i in range(self.n_electrons // 2)]
         U = QCircuit()
         if direct_compiling:
             if not include_reference:
@@ -584,11 +584,13 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def write_madness_input(self, n_pno=None, n_virt=0, frozen_core=True, filename="input", maxrank=None, n_orbitals=None, *args, **kwargs):
-        
+    def write_madness_input(self, n_pno=None, n_virt=0, frozen_core=True, filename="input", maxrank=None,
+                            n_orbitals=None, *args, **kwargs):
+
         if n_pno is not None and n_orbitals is not None:
-            raise TequilaMadnessException("n_pno={} and n_orbitals={} given ... please pick one".format(n_pno, n_orbitals))
-        
+            raise TequilaMadnessException(
+                "n_pno={} and n_orbitals={} given ... please pick one".format(n_pno, n_orbitals))
+
         n_electrons = self.parameters.n_electrons
         if frozen_core:
             # only count active electrons (will not compute pnos for frozen pairs)
@@ -601,24 +603,25 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 elif number > 2:
                     n_electrons -= 2
 
-        n_pairs = n_electrons//2
+        n_pairs = n_electrons // 2
         if n_orbitals is None:
-            n_orbitals = n_electrons # minimal correlated (each active pair will have one virtual)
+            n_orbitals = n_electrons  # minimal correlated (each active pair will have one virtual)
 
         if n_pno is None:
-            n_pno = n_orbitals-n_pairs
-        
+            n_pno = n_orbitals - n_pairs
+
         if maxrank is None:
-            maxrank = int(numpy.ceil(n_pno//n_pairs))
+            maxrank = int(numpy.ceil(n_pno // n_pairs))
 
         data = {}
         if self.parameters.multiplicity != 1:
             raise TequilaMadnessException(
                 "Currently only closed shell supported for MRA-PNO-MP2, you demanded multiplicity={} for the surrogate".format(
                     self.parameters.multiplicity))
-        data["dft"] = {"charge": self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 5.e-4, "localize":"boys",
+        data["dft"] = {"charge": self.parameters.charge, "xc": "hf", "k": 7, "econv": 1.e-4, "dconv": 5.e-4,
+                       "localize": "boys",
                        "ncf": "( none , 1.0 )"}
-        data["pno"] = {"maxrank": maxrank, "f12": "false", "thresh": 1.e-4, "diagonal":True}
+        data["pno"] = {"maxrank": maxrank, "f12": "false", "thresh": 1.e-4, "diagonal": True}
         if not frozen_core:
             data["pno"]["freeze"] = 0
         data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "symmetric"}
