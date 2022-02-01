@@ -1,8 +1,7 @@
 import typing, copy, numbers
 from tequila.grouping.compile_groups import compile_commuting_parts
 from tequila import TequilaException
-from tequila.utils import JoinedTransformation, to_float
-from tequila.tools.convenience import list_assignment
+from tequila.utils import JoinedTransformation
 from tequila.hamiltonian import paulis
 import numpy as onp
 from tequila.autograd_imports import numpy as numpy

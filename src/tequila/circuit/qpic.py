@@ -3,15 +3,10 @@ Export QCircuits as qpic files
 https://github.com/qpic/qpic/blob/master/doc/qpic_doc.pdf
 """
 
-from tequila.circuit.compiler import Compiler
-from tequila.circuit import gates
-from tequila.circuit import QCircuit
-from tequila.tools import number_to_string
 from tequila.objective.objective import FixedVariable
 
 import subprocess, numpy
-from shutil import which, move
-from os import remove
+from shutil import which
 
 import numbers
 
@@ -25,8 +20,8 @@ def assign_name(parameter):
     if hasattr(parameter, "extract_variables"):
         return repr(parameter.extract_variables()).lstrip('[').rstrip(']')
     if isinstance(parameter, FixedVariable):
-        for i in [1,2,3,4]:
-            if numpy.isclose(numpy.abs(float(parameter)), numpy.pi/i, atol=1.e-4):
+        for i in [1, 2, 3, 4]:
+            if numpy.isclose(numpy.abs(float(parameter)), numpy.pi / i, atol=1.e-4):
                 if float(parameter) < 0.0:
                     return "-\\pi/{}".format(i)
                 else:
@@ -39,13 +34,21 @@ def assign_name(parameter):
         return str(parameter)
 
 
-def export_to_qpic(circuit: QCircuit, filename=None, filepath=None, always_use_generators=True, decompose_control_generators=False,
-                   group_together=False, qubit_names=None, mark_parametrized_gates=True, *args, **kwargs) -> str:
+def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=True,
+                   decompose_control_generators=False,
+                   group_together=False, qubit_names=None, mark_parametrized_gates=True, gatecolor1="tq",
+                   textcolor1="white", gatecolor2="guo", textcolor2="black", *args, **kwargs) -> str:
     result = ""
-    # define tequila blue color
-    result = "COLOR tq 0.03137254901960784 0.1607843137254902 0.23921568627450981\n"
-    # define other colors
-    result += "COLOR guo 0.988 0.141 0.757\n"
+
+    colors = [{"name": "tq", "rgb": (0.03137254901960784, 0.1607843137254902, 0.23921568627450981)}]
+    colors += [{"name": "guo", "rgb": (0.988, 0.141, 0.757)}]
+
+    # define colors as list of dictionaries with "name":str, "rgb":tuple entries
+    if "colors" in kwargs:
+        colors += kwargs["colors"]
+
+    for color in colors:
+        result += "COLOR {} {} {} {}\n".format(color["name"], *tuple(color["rgb"]))
 
     if group_together is True:
         group_together = "TOUCH"
@@ -61,24 +64,50 @@ def export_to_qpic(circuit: QCircuit, filename=None, filepath=None, always_use_g
         result += name + " W " + str(qubit_names[i]) + "\n"
 
     for g in circuit.gates:
-        gcol = "tq"
-        tcol = "white"
-        if hasattr(g, "parameter") and not isinstance(g.parameter, numbers.Number) and mark_parametrized_gates:
-            tcol = "black"
-            gcol = "guo"
+        gcol = gatecolor1
+        tcol = textcolor1
+        param = None
+        if hasattr(g, "parameter"):
+            if not isinstance(g.parameter, numbers.Number) and mark_parametrized_gates:
+                tcol = textcolor2
+                gcol = gatecolor2
+            param = g.parameter
+
+        if isinstance(param, numbers.Number):
+            param = "{:1.2f}".format(param)
 
         # special gates
+        # generator decomposition of H is misleading
         if g.name in ["H", "h"]:
             for target in g.target:
-                result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=target, gcol=gcol,tcol="{" + tcol + "}", op="H")
+                result += " a{qubit} G:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=target, gcol=gcol,
+                                                                                       tcol="{" + tcol + "}", op="H")
                 if g.is_controlled():
                     for c in g.control:
                         result += names[c] + " "
         elif always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
             for ps in g.make_generator(include_controls=decompose_control_generators).paulistrings:
                 if len(ps) == 0: continue
-                for k,v in ps.items():
-                    result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=k, gcol=gcol, tcol="{"+tcol+"}", op=v.upper())
+
+                # if controls are not decomposed this will become a mess
+                # so we will represent NOT gates as + (and not as X)
+                # and will use standard notation for Y and H
+                if not decompose_control_generators and g.name.upper() in ["X", "Y", "Z", "H"]:
+                    if g.name.upper() == "X":
+                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=g.target[0],
+                                                                                               gcol=gcol,
+                                                                                               tcol="{" + tcol + "}",
+                                                                                               op="+")
+                    else:
+                        result += " a{qubit} G:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=g.target[0],
+                                                                                               gcol=gcol,
+                                                                                               tcol="{" + tcol + "}",
+                                                                                               op=g.name.upper())
+                else:
+                    for k, v in ps.items():
+                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=k, gcol=gcol,
+                                                                                               tcol="{" + tcol + "}",
+                                                                                               op=v.upper())
                 if g.is_controlled() and not decompose_control_generators:
                     for c in g.control:
                         result += names[c] + " "
@@ -94,23 +123,26 @@ def export_to_qpic(circuit: QCircuit, filename=None, filepath=None, always_use_g
                 for ps in g.generator.paulistrings:
                     if len(ps) == 0: continue
                     for k, v in ps.items():
-                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=k, gcol=gcol,tcol="{" + tcol + "}",op=v.upper())
+                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=k, gcol=gcol,
+                                                                                               tcol="{" + tcol + "}",
+                                                                                               op=v.upper())
                     if g.is_controlled():
                         for c in g.control:
                             result += names[c] + " "
                     result += "\n"
             else:
                 for t in g.target:
-                    result += names[t] + " "
-                if hasattr(g, "angle"):
-                    result += " G $R_{" + g.axis_to_string[g.axis] + "}(" + assign_name(
-                        g.parameter) + ")$ width=" + str(
-                        25 + 5 * len(assign_name(g.parameter))) + " "
-                elif hasattr(g, "parameter") and g.parameter is not None:
-                    result += " G $" + g.name + "(" + assign_name(g.parameter) + ")$ width=" + str(
-                        25 + 5 * len(assign_name(g.parameter))) + " "
-                else:
-                    result += g.name + " "
+                    result += names[t] + " G:fill={gcol} ".format(gcol=gcol)
+                gname=g.name
+                if "R" in gname.upper():
+                    gname=gname.replace("R", "R_")
+
+                if param is not None:
+                    gname="{{{x}}}({angle})".format(x=gname, angle=assign_name(g.parameter))
+
+                result += "\\textcolor{tcol}{{${op}$}} ".format(tcol="{" + tcol + "}", op=gname)
+                if hasattr(g, "parameter") and g.parameter is not None:
+                    result += "width=" + str(25 + 5 * len(assign_name(g.parameter))) + " "
 
                 if g.is_controlled():
                     for c in g.control:
@@ -129,11 +161,9 @@ def export_to_qpic(circuit: QCircuit, filename=None, filepath=None, always_use_g
     return result
 
 
-def export_to(circuit: QCircuit,
+def export_to(circuit,
               filename: str,
-              always_use_generators: bool = True,
-              decompose_control_generators: bool = False,
-              group_together: bool = False,
+              style="tequila",
               qubit_names: list = None, *args, **kwargs):
     """
     Parameters
@@ -142,12 +172,11 @@ def export_to(circuit: QCircuit,
         the tequila circuit to export
     filename:
         filename.filetype, e.g. my_circuit.pdf, my_circuit.png (everything that qpic supports)
-    always_use_generators:
-        represent all gates with their generators
-    decompose_control_generators:
-        Decompose the controls to generators. Effective only in combination with always_use_generators=True.
-    group_together:
-        Keep PauliStrings from the same generator together. Effective only in combination with always_use_generators=True.
+    style:
+        string keyword (tequila, standard, generators) or dictionary containing the following keys:
+        always_use_generators: represent all gates with their generators
+        decompose_control_generators: Decompose the controls to generators. Effective only in combination with always_use_generators=True.
+        group_together: Keep PauliStrings from the same generator together. Effective only in combination with always_use_generators=True.
         possible values: False, True, 'TOUCH' and 'BARRIER'. True is the same as TOUCH.
         BARRIER will create a visible barrier in qpic
     args
@@ -162,6 +191,52 @@ def export_to(circuit: QCircuit,
     if "." not in filename:
         raise Exception("export_to: No filetype given {}, expected something like {}.pdf".format(filename, filename))
 
+    if style is None or style == "tequila":
+        style = {
+            'decompose_control_generators': False,
+            'always_use_generators': True,
+            'group_together': False,
+            'textcolor1': "white",
+            "textcolor2": "black",
+            "gatecolor1": "tq",
+            "gatecolor2": "guo"
+        }
+    elif style == "standard":
+        style = {
+            'decompose_control_generators': False,
+            'always_use_generators': False,
+            'group_together': False
+        }
+    elif style == "plain":
+        # standard without colors
+        style = {
+            'decompose_control_generators': False,
+            'always_use_generators': False,
+            'group_together': False,
+            'textcolor1': "black",
+            "textcolor2": "black",
+            "gatecolor1": "white",
+            "gatecolor2": "white"
+        }
+    elif style == "generators":
+        style = {
+            'decompose_control_generators': True,
+            'always_use_generators': True,
+            'group_together': "BARRIER"
+        }
+    elif not hasattr("style", "items"):
+        raise Exception(
+            "style needs to be `tequila`, or `standard` or `generators` or a dictionary, you gave: {}".format(
+                str(style)))
+
+    pop = []
+    for k,v in kwargs.items():
+        if k in style:
+            style[k]=kwargs[k]
+            pop.append(k)
+    for k in pop:
+        kwargs.pop(k)
+
     filename_tmp = filename.split(".")
     if len(filename_tmp) == 1:
         ftype = ".pdf"
@@ -170,22 +245,17 @@ def export_to(circuit: QCircuit,
         ftype = filename_tmp[-1]
         fname = "".join(filename_tmp[:-1])
 
-    fpath=None
+    fpath = None
     tmp = fname.split("/")
     fname = tmp[-1]
     if len(tmp) > 1:
-        fpath="".join([x+"/" for x in tmp[:-1]])
+        fpath = "".join([x + "/" for x in tmp[:-1]])
         if filename[0] == "/":
-            fpath = "/"+fpath
+            fpath = "/" + fpath
 
-    compiled = Compiler(trotterized=True)(circuit)
-
-    export_to_qpic(circuit=compiled,
+    export_to_qpic(circuit=circuit,
                    filename=fname,
                    filepath=fpath,
-                   always_use_generators=always_use_generators,
-                   decompose_control_generators=decompose_control_generators,
-                   group_together=group_together,
-                   qubit_names=qubit_names, *args, **kwargs)
+                   qubit_names=qubit_names, **style, **kwargs)
     if ftype != "qpic":
         subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype], cwd=fpath)

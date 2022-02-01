@@ -15,6 +15,33 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  *args, **kwargs):
+        
+        if "basis_set" in kwargs and kwargs["basis_set"] is not None:
+            
+            # either compute integrals form basis_set or give them
+            # can't do both
+            assert "one_body_integrals" not in kwargs
+            assert "two_body_integrals" not in kwargs
+
+            mol = pyscf.gto.M(atom=parameters.get_geometry_string(), basis=kwargs["basis_set"])
+            mf = pyscf.scf.RHF(mol)
+            mf.kernel()
+            
+            c=mf.mo_coeff
+
+            h = mol.get_hcore()
+            obi = numpy.einsum("ki, kl, lj -> ij" , c ,h, c)
+                            
+            eri = mol.ao2mo(c)
+            eri = pyscf.ao2mo.restore(1, eri, c.shape[0])
+            
+            eri = NBodyTensor(elems=eri, ordering="mulliken")
+            eri = eri.reorder("openfermion").elems
+           
+            kwargs["two_body_integrals"]=eri
+            kwargs["one_body_integrals"]=obi
+            if "nuclear_repulsion" not in kwargs:
+                kwargs["nuclear_repulsion"]=mol.energy_nuc()
 
         super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
 

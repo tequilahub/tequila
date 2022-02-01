@@ -10,6 +10,8 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.tools import list_assignment
 import numpy
 
+def from_string(string, openfermion_format=False):
+    return QubitHamiltonian.from_string(string=string, openfermion_format=openfermion_format)
 
 def pauli(qubit, type) -> QubitHamiltonian:
     """

@@ -92,7 +92,7 @@ def test_interface():
     molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JordanWigner")
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4")
 def test_h2_hamiltonian_psi4():
     do_test_h2_hamiltonian(qc_interface=qc.QuantumChemistryPsi4)
 
@@ -263,7 +263,7 @@ def test_rdms_psi4():
     assert (numpy.allclose(rdm2, rdm2_ref, atol=1e-8))
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="quantum chemistry backend not found")
 @pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 0.7"])
 @pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "ReorderedJordanWigner",
                                    "ReorderedBravyiKitaev"])
@@ -275,7 +275,7 @@ def test_upccgsd(geometry, trafo):
     energy2 = do_test_upccgsd(molecule, label="asd", order=2)
     assert numpy.isclose(fci, energy2, atol=1.e-3)
 
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4 or pyscf not found")
 def test_upccgsd_singles():
     molecule = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nH 0.0 0.0 0.7", basis_set="6-31G")
     H = molecule.make_hamiltonian()
@@ -308,7 +308,7 @@ def do_test_upccgsd(molecule, *args, **kwargs):
 
 
 @pytest.mark.parametrize("backend", tq.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
 def test_hamiltonian_reduction(backend):
     mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nH 0.0 0.0 0.7", basis_set="6-31G")
     hf = mol.energies["hf"]
@@ -322,7 +322,7 @@ def test_hamiltonian_reduction(backend):
         assert numpy.isclose(E, hf, atol=1.e-4)
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("assume_real", [True, False])
 @pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "tapered_bravyi_kitaev"])
 def test_fermionic_gates(assume_real, trafo):
@@ -364,7 +364,7 @@ def test_fermionic_gates(assume_real, trafo):
     assert numpy.isclose(test2, test2x, atol=1.e-6)
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "ReorderedJordanWigner",
                                    "ReorderedBravyiKitaev"])
 def test_hcb(trafo):
