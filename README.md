@@ -6,11 +6,11 @@ Tequila is an Extensible Quantum Information and Learning Architecture where the
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
 Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.
 
-[You can get an overview from this presentation](/docs/tequila.pdf) or from it's [video recording](https://www.youtube.com/watch?v=hUdf0P2fW2E)
+Get an overview through different slides and recordings of talks on different level of detail: See [here](https://kottmanj.github.io/talks_and_material/).  
 
-[Get started with our Tutorials](https://github.com/aspuru-guzik-group/tequila-tutorials)
+Get started with our [BasicUsage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb) Tutorial or find more in the [Tutorial collection](https://github.com/aspuru-guzik-group/tequila-tutorials)  
 
-or checkout our [overview article](https://arxiv.org/abs/2011.03057)
+or checkout our [overview article](https://arxiv.org/abs/2011.03057)  
 
 # Quantum Backends
 Currently supported
@@ -126,7 +126,47 @@ result.history.plot("angles")
 result.history.plot("gradients")
 ```
 
-## Chemistry Hello World
+## Chemistry Hello World (Madness backend)
+install backend by following instructions given [here](https://github.com/kottmanj/madness)  
+more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)  
+```python
+import tequila as tq
+
+# initialize molecule (also works over .xyz files --> see next example)
+geomstring="Li 0.0 0.0 0.0\nH 0.0 0.0 1.6"
+mol = tq.Molecule(geometry=geomstring)
+
+# get the qubit hamiltonian
+H = mol.make_hamiltonian()
+
+# get the ansatz (circuit)
+U = mol.make_ansatz(name="SPA") # or e.g. UpCCGSD
+
+# define the expectation value
+E = tq.ExpectationValue(H=H, U=U)
+
+# minimize the expectation value
+result = tq.minimize(E)
+
+# optional:compute classical reference energies
+# needs pyscf
+cisd = mol.compute_energy("cisd")
+fci = mol.compute_energy("fci")
+
+print("VQE : {:+2.8}f".format(result.energy))
+print("CISD: {:+2.8}f".format(cisd))
+print("FCI : {:+2.8}f".format(fci))
+
+```
+
+## Chemistry Hello World (Psi4 or PySCF backend)
+install backends with
+```bash
+pip install pyscf
+# and/or
+conda install psi4 -c psi4 
+```
+more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/Chemistry.ipynb)
 ```python
 # define a molecule within an active space
 active = {"a1": [1], "b1":[0]}
@@ -159,64 +199,68 @@ Do you want to create your own methods? Check out the [tutorials](https://github
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
 A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.  
 Chemical Science, 2021, [doi.org/10.1039/D0SC06627C](https://doi.org/10.1039/D0SC06627C).  
-[arxiv.org/abs/2011.05938](https://arxiv.org/abs/2011.05938)  
+[arxiv:2011.05938](https://arxiv.org/abs/2011.05938)  
 General techniques are implemented in the chemistry modules of tequila.  
 See the [tutorials](https://github.com/aspuru-guzik-group/tequila-tutorials) for examples.  
 
 J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.  
 Reducing Qubit Requirements while Maintaining Numerical Precision for the Variational Quantum Eigensolver: A Basis-Set-Free Approach.  
 J.Phys.Chem.Lett., 2021, [doi.org/10.1021/acs.jpclett.0c03410](https://doi.org/10.1021/acs.jpclett.0c03410).  
-[arxiv.org/abs/2008.02819](https://arxiv.org/abs/2008.02819)  
+[arxiv:2008.02819](https://arxiv.org/abs/2008.02819)  
 [example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryBasisSetFreeVQE.ipynb)  
 [tutorial on the madness interface](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)  
 
 A. Cervera-Lierta, J.S. Kottmann, A. Aspuru-Guzik.  
 The Meta-Variational Quantum Eigensolver.  
-[arxiv.org/abs/2009.13545](https://arxiv.org/abs/2009.13545)  
+[arxiv:2009.13545](https://arxiv.org/abs/2009.13545)  
 [example code](https://github.com/aspuru-guzik-group/Meta-VQE)    
 
 J.S. Kottmann, M. Krenn, T.H. Kyaw, S. Alperin-Lea, A. Aspuru-Guzik.  
 Quantum Computer-Aided design of Quantum Optics Hardware.  
-[arxiv.org/abs/2006.03075](https://arxiv.org/abs/2006.03075)  
+[arxiv:2006.03075](https://arxiv.org/abs/2006.03075)  
 [example code](https://github.com/kottmanj/Photonic)  
 [slides](https://github.com/kottmanj/Photonic/blob/master/slides.pdf)  
 
 A. Anand, M. Degroote, A. Aspuru-Guzik.  
 Natural Evolutionary Strategies for Variational Quantum Computation.  
-[arxiv.org/abs/2012.00101](https://arxiv.org/abs/2012.00101)  
+[arxiv:2012.00101](https://arxiv.org/abs/2012.00101)  
 
 J. S. Kottmann, A. Aspuru-Guzik,  
 Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a Separable Pair Approximation,  
-[arxiv.org/abs/2105.03836](https://arxiv.org/abs/2105.03836)  
+[arxiv:2105.03836](https://arxiv.org/abs/2105.03836)  
 [example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistrySeparablePairAnsatz.ipynb)   
  
 K. Choudhary,  
 Quantum Computation for Predicting Electron and Phonon Properties of Solids  
-[arxiv.org/abs/2102.11452](https://arxiv.org/abs/2102.11452)  
+[arxiv:2102.11452](https://arxiv.org/abs/2102.11452)  
 
 
 P. Schleich, J.S. Kottmann, A. Aspuru-Guzik,  
 Improving the Accuracy of the Variational Quantum Eigensolver for Molecular Systems by the Explicitly-Correlated Perturbative [2]-R12-Correction  
-[arxiv.org/abs/2110.06812](https://arxiv.org/abs/2110.06812)  
+[arxiv:2110.06812](https://arxiv.org/abs/2110.06812)  
 [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryF12Correction.ipynb)  
 
 M. Weber, A. Anand, A. Cervera-Lierta, J. S. Kottmann, T.-H. Kyaw, B. Li, A. Aspuru-Guzik, C. Zhang and Z. Zhao,  
 Toward Reliability in the NISQ Era: Robust Interval Guarantee for Quantum Measurements on Approximate States  
-[arxiv.org/abs/2110.09793](https://arxiv.org/abs/2110.09793)  
+[arxiv:2110.09793](https://arxiv.org/abs/2110.09793)  
 [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/robustness_tutorial.ipynb)  
   
 M. S. Rudolph, S. Sim, A. Raza, M. Stechly, J. R. McClean, E. R. Anschuetz, L. Serrano, A. Perdomo-Ortiz  
 ORQVIZ: Visualizing High-Dimensional Landscapes in Variational Quantum Algorithms  
-[arxiv.org/abs/2111.04695](https://arxiv.org/abs/2111.04695)  
+[arxiv:2111.04695](https://arxiv.org/abs/2111.04695)  
 
 P. Schleich    
 Regularization of Quantum Chemistryon Quantum Computers by means of Explicit Correlation  
 [Master thesis](http://www.acom.rwth-aachen.de/_media/3teaching/00projects/2020_ma_schleich.pdf)  
   
-  
-T.-H. Kyaw, T. Menke, S. Sim, A. Anand, N. P. D. Sawaya, W. D. Oliver, G. G. Guerreschi, A. Aspuru-Guzik
+T.-H. Kyaw, T. Menke, S. Sim, A. Anand, N. P. D. Sawaya, W. D. Oliver, G. G. Guerreschi, A. Aspuru-Guzik  
 Quantum computer-aided design: digital quantum simulation of quantum processors  
-[arxiv.org/abs/2006.03070](https://arxiv.org/abs/2006.03070)  
+[arxiv:2006.03070](https://arxiv.org/abs/2006.03070)  
+
+
+H. Lim, H.-N. Jeon, J.-K. Rhee, B. Oh, K. T. No  
+Quantum computational study of chloride ion attack on chloromethane for chemical accuracy and quantum noise effects with UCCSD and k-UpCCGSD ansatzes  
+[arxiv:2112.15314](https://arxiv.org/abs/2112.15314)
 
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
