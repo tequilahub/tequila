@@ -1468,11 +1468,12 @@ class QuantumChemistryBase:
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int = 1,
-                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
+                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = None,
                           include_reference_ansatz=True,
                           parametrized=True,
                           threshold=1.e-8,
                           add_singles=None,
+                          screening=True,
                           *args, **kwargs) -> QCircuit:
         """
 
@@ -1538,16 +1539,20 @@ class QuantumChemistryBase:
             amplitudes = ClosedShellAmplitudes(
                 tIjAb=numpy.zeros(shape=[nocc, nocc, nvirt, nvirt]),
                 tIA=tia)
+            screening=False
 
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
         indices = {}
+        
+        if not screening:
+            threshold=0.0
 
         if not isinstance(amplitudes, dict):
             amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
             amplitudes = dict(sorted(amplitudes.items(), key=lambda x: numpy.fabs(x[1]), reverse=True))
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
-            if not numpy.isclose(t, 0.0, atol=threshold):
+            if not numpy.isclose(t, 0.0, atol=threshold) or not screening:
                 if closed_shell:
 
                     if len(key) == 2 and add_singles:
