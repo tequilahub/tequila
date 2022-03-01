@@ -3,7 +3,7 @@ from openfermion import MolecularData
 
 from tequila.circuit import QCircuit
 from tequila.objective.objective import Variables
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase,\
+from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, \
     ClosedShellAmplitudes, Amplitudes, NBodyTensor
 
 import copy
@@ -318,7 +318,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         molecule.n_orbitals = molecule.canonical_orbitals.shape[0]
         molecule.n_qubits = 2 * molecule.n_orbitals
         molecule.orbital_energies = numpy.asarray(wfn.epsilon_a())
-        molecule.fock_matrix = numpy.asarray(wfn.Fa())
         molecule.save()
         return molecule
 
@@ -528,10 +527,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if self.active_space is not None and self.active_space.psi4_representable:
             options['frozen_docc'] = self.active_space.frozen_docc
             if sum(self.active_space.frozen_uocc) > 0 and method.lower() not in ["hf", "fci", "detci"]:
-                print("There are known issues with some psi4 methods and frozen virtual orbitals. Proceed with fingers crossed for {}.".format(method))
+                print(
+                    "There are known issues with some psi4 methods and frozen virtual orbitals. Proceed with fingers crossed for {}.".format(
+                        method))
             options['frozen_uocc'] = self.active_space.frozen_uocc
         return self._run_psi4(method=method, options=options, *args, **kwargs)[0]
-
 
     def __str__(self):
         result = super().__str__()
@@ -611,7 +611,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 print("Changed psi4_method from 'cisd' to 'detci' with ex_level=2 s.th. psi4 returns a CIWavefunction.")
                 psi4_method = "detci"
             # Set options if not handed over
-            psi4_options = {k.lower(): v for k,v in psi4_options.items()}  # set to lower-case for string comparison
+            psi4_options = {k.lower(): v for k, v in psi4_options.items()}  # set to lower-case for string comparison
             if "detci__opdm" not in psi4_options.keys():
                 psi4_options.update({"detci__opdm": get_rdm1})
             if "detci__tpdm" not in psi4_options.keys():
@@ -630,7 +630,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
                 rdm2 = NBodyTensor(elems=rdm2, ordering='chem')
                 rdm2.reorder(to='phys')  # RDMs in physics ordering (cp. to NBodyTensor in qc_base.py)
-                rdm2 = 2*rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
+                rdm2 = 2 * rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
                 self._rdm2 = rdm2
 
     def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, gamma: float = 1.4,

@@ -1376,7 +1376,8 @@ class QuantumChemistryBase:
             if include_reference:
                 U = self.prepare_hardcore_boson_reference()
             if D:
-                U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0), *args, **kwargs)
+                U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0),
+                                                           *args, **kwargs)
 
             if "HCB" not in name and (include_reference or D):
                 U = self.hcb_to_me(U=U)
@@ -1652,7 +1653,7 @@ class QuantumChemistryBase:
     def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
         """
 
-        Compute closed-shell mp2 amplitudes
+        Compute closed-shell mp2 amplitudes (canonical amplitudes only)
 
         .. math::
             t(a,i,b,j) = 0.25 * g(a,i,b,j)/(e(i) + e(j) -a(i) - b(j) )
@@ -1667,22 +1668,29 @@ class QuantumChemistryBase:
 
         """
         g = self.molecule.two_body_integrals
-        fij = self.molecule.orbital_energies
+        fi = self.molecule.orbital_energies
+        # if orbital energies or fock matrix is not set or if fock matrix is not diagonal then orbitals are not canonical
+        self.is_canonical(verify=True)
+        self.is_closed_shell(verify=True)
         nocc = self.molecule.n_electrons // 2  # this is never the active space
-        ei = fij[:nocc]
-        ai = fij[nocc:]
+        ei = fi[:nocc]
+        ai = fi[nocc:]
         abgij = g[nocc:, nocc:, :nocc, :nocc]
         amplitudes = abgij * 1.0 / (
                 ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
         E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
                                                                                 optimize='greedy')
 
-        self.molecule.mp2_energy = E + self.molecule.hf_energy
+        hf_energy = self.molecule.hf_energy
+        if hf_energy is None:
+            hf_energy = self.compute_energy("hf")
+        self.molecule.mp2_energy = E + hf_energy
         return ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='greedy'))
 
     def compute_cis_amplitudes(self):
         """
         Compute the CIS amplitudes of the molecule
+        Warning: Not field tested!
         """
 
         @dataclass
@@ -1697,10 +1705,12 @@ class QuantumChemistryBase:
             def __len__(self):
                 return len(self.omegas)
 
+        self.is_canonical(verify=True)
+        self.is_closed_shell(verify=True)
         g = self.molecule.two_body_integrals
         fij = self.molecule.orbital_energies
 
-        nocc = self.n_alpha_electrons
+        nocc = self.n_electrons // 2
         nvirt = self.n_orbitals - nocc
 
         pairs = []
@@ -1732,6 +1742,23 @@ class QuantumChemistryBase:
             amplitudes.append(ClosedShellAmplitudes(tIA=t))
 
         return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
+
+    def is_closed_shell(self, verify=False):
+        cs = self.n_electrons % 2 == 0
+        if verify and not cs:
+            raise TequilaException("not a closed shell molecule: having {} electrons".format(self.n_electrons))
+        return cs
+
+    def is_canonical(self, verify=False):
+        canonical = True
+
+        if self.molecule.orbital_energies is None:
+            canonical = False
+
+        if verify and not canonical:
+            raise TequilaException(
+                "orbitals are not canonical or can not be verified as such -> implemented method only works for standard orbitals (preferably from psi4)")
+        return canonical
 
     @property
     def rdm1(self):

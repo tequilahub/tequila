@@ -15,6 +15,7 @@ import tequila as tq
 
 # Get QC backends for parametrized testing
 import select_backends
+
 backends = select_backends.get()
 
 
@@ -48,11 +49,12 @@ def test_base(trafo):
         assert numpy.isclose(eigvals[-1], 7.10921141e-01)
         assert len(eigvals) == 16
 
+
 @pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4 or pyscf")
-@pytest.mark.parametrize("trafo", ["JordanWigner","BravyiKitaev","BravyiKitaevTree"])
+@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree"])
 def test_prepare_reference(trafo):
-    geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 1.5"
-    basis_set="sto-3g"
+    geometry = "Li 0.0 0.0 0.0\nH 0.0 0.0 1.5"
+    basis_set = "sto-3g"
     mol = tq.Molecule(geometry=geometry, basis_set=basis_set, transformation=trafo)
     H = mol.make_hamiltonian()
     U = mol.prepare_reference()
@@ -60,13 +62,12 @@ def test_prepare_reference(trafo):
     energy = tq.simulate(E)
     hf_energy = mol.compute_energy("hf")
     assert numpy.isclose(energy, hf_energy, atol=1.e-4)
-    mol = tq.Molecule(geometry=geometry, basis_set=basis_set, transformation="reordered"+trafo)
+    mol = tq.Molecule(geometry=geometry, basis_set=basis_set, transformation="reordered" + trafo)
     H = mol.make_hamiltonian()
     U = mol.prepare_reference()
     E = tq.ExpectationValue(H=H, U=U)
     energy2 = tq.simulate(E)
     assert numpy.isclose(energy, energy2, atol=1.e-4)
-
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
@@ -118,13 +119,14 @@ def test_ucc_psi4(trafo, backend):
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo,
                 backend=backend)
 
+
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 def test_ucc_singles_psi4():
     parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31G")
     # default backend is fine
     # will not converge if singles are not added
-    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.15016, trafo="JordanWigner", backend=None)
-
+    do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.15016, trafo="JordanWigner",
+                backend=None)
 
 
 def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
@@ -275,6 +277,7 @@ def test_upccgsd(geometry, trafo):
     energy2 = do_test_upccgsd(molecule, label="asd", order=2)
     assert numpy.isclose(fci, energy2, atol=1.e-3)
 
+
 @pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4 or pyscf not found")
 def test_upccgsd_singles():
     molecule = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nH 0.0 0.0 0.7", basis_set="6-31G")
@@ -291,12 +294,13 @@ def do_test_upccgsd(molecule, *args, **kwargs):
     H = molecule.make_hamiltonian()
     E = tq.ExpectationValue(U=U, H=H)
 
-    result = tq.minimize(objective=E, initial_values=0.0, gradient="2-point", method="bfgs", method_options={"finite_diff_rel_step": 1.e-4, "eps": 1.e-4})
+    result = tq.minimize(objective=E, initial_values=0.0, gradient="2-point", method="bfgs",
+                         method_options={"finite_diff_rel_step": 1.e-4, "eps": 1.e-4})
 
     # test variable map in action
-    variables=result.variables
-    vm = {k:str(k)+"X" for k in E.extract_variables()}
-    variables2 = {vm[k]:v for k,v in variables.items()}
+    variables = result.variables
+    vm = {k: str(k) + "X" for k in E.extract_variables()}
+    variables2 = {vm[k]: v for k, v in variables.items()}
     E2 = E.map_variables(vm)
     print(E.extract_variables())
     print(E2.extract_variables())
@@ -394,7 +398,8 @@ def test_hcb(trafo):
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.parametrize("method", ["hf", "mp2", "ccsd", "ccsd(t)", "fci"])
-@pytest.mark.parametrize("geometry", ["h 0.0 0.0 0.0\nh 0.0 0.0 0.7", "li 0.0 0.0 0.0\nh 0.0 0.0 1.5", "Be 0.0 0.0 0.0\nH 0.0 0.0 1.5\nH 0.0 0.0 -1.5"])
+@pytest.mark.parametrize("geometry", ["h 0.0 0.0 0.0\nh 0.0 0.0 0.7", "li 0.0 0.0 0.0\nh 0.0 0.0 1.5",
+                                      "Be 0.0 0.0 0.0\nH 0.0 0.0 1.5\nH 0.0 0.0 -1.5"])
 @pytest.mark.parametrize("basis_set", ["sto-3g"])
 def test_pyscf_methods(method, geometry, basis_set):
     mol = tq.Molecule(geometry=geometry, basis_set=basis_set, backend="psi4")
@@ -413,6 +418,7 @@ def test_pyscf_methods(method, geometry, basis_set):
     e3 = mol.compute_energy(method)
     assert numpy.isclose(e1, e3, atol=1.e-4)
 
+
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 def test_orbital_optimization():
@@ -422,8 +428,54 @@ def test_orbital_optimization():
     circuit = mol.make_upccgsd_ansatz(name="UpCCGD")
     mol2 = optimize_orbitals(molecule=mol, circuit=circuit).molecule
     H = mol2.make_hamiltonian()
-    E = tq.ExpectationValue(H=H,U=circuit)
+    E = tq.ExpectationValue(H=H, U=circuit)
     result = tq.minimize(E, print_level=2)
     print(result.energy)
     assert numpy.isclose(-7.79860454, result.energy, atol=1.e-3)
 
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_crosscheck_mp2():
+    # Be has issues with degeneracies and ordering (t1-t2 is not necessarily 0)
+    mol1 = tq.Molecule(geometry="he 0.0 0.0 0.0", basis_set="6-31G", backend="psi4")
+    mol2 = tq.Molecule(geometry="he 0.0 0.0 0.0", basis_set="6-31G", backend="pyscf")
+    t2_1 = mol1.compute_mp2_amplitudes().tIjAb
+    t2_2 = mol2.compute_mp2_amplitudes().tIjAb
+    e1 = mol1.molecule.mp2_energy
+    e2 = mol2.molecule.mp2_energy
+    assert numpy.isclose(e1, e2, atol=1.e-4)
+    assert numpy.isclose(numpy.linalg.norm(t2_1 - t2_2), 0.0, atol=1.e-4)
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_crosscheck_cis():
+    mol1 = tq.Molecule(geometry="he 0.0 0.0 0.0", basis_set="6-31G", backend="psi4")
+    mol2 = tq.Molecule(geometry="he 0.0 0.0 0.0", basis_set="6-31G", backend="pyscf")
+    r_1 = mol1.compute_cis_amplitudes()
+    r_2 = mol2.compute_cis_amplitudes()
+    for i in range(len(r_1.omegas)):
+        assert numpy.isclose(r_1.omegas[i], r_2.omegas[i], atol=1.e-4)
+        x = r_1.amplitudes[i].tIA.T.dot(r_1.amplitudes[i].tIA)
+        y = r_2.amplitudes[i].tIA.T.dot(r_2.amplitudes[i].tIA)
+        assert numpy.isclose(numpy.linalg.norm(x - y), 0.0, atol=1.e-4)
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_crosscheck_cis_mp2_large():
+    # only energies (degeneracies: orbitals change places)
+    mol1 = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="6-31G", backend="psi4")
+    mol2 = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="6-31G", backend="pyscf")
+    r_1 = mol1.compute_cis_amplitudes()
+    r_2 = mol2.compute_cis_amplitudes()
+    for i in range(len(r_1.omegas)):
+        assert numpy.isclose(r_1.omegas[i], r_2.omegas[i], atol=1.e-4)
+    mol1.compute_mp2_amplitudes()
+    e_1 = mol1.molecule.mp2_energy
+    mol2.compute_mp2_amplitudes()
+    e_2 = mol2.molecule.mp2_energy
+    assert e_1 is not None
+    assert e_2 is not None
+    assert numpy.isclose(mol1.molecule.mp2_energy, mol2.molecule.mp2_energy, atol=1.e-4)
