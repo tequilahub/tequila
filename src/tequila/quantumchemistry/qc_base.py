@@ -289,7 +289,7 @@ class ClosedShellAmplitudes:
     tIjAb: numpy.ndarray = None
     tIA: numpy.ndarray = None
 
-    def make_parameter_dictionary(self, threshold=1.e-8):
+    def make_parameter_dictionary(self, threshold=1.e-8, screening=True):
         """
 
         Parameters
@@ -307,12 +307,12 @@ class ClosedShellAmplitudes:
             nocc = self.tIjAb.shape[0]
             assert (self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt)
             for (I, J, A, B), value in numpy.ndenumerate(self.tIjAb):
-                if not numpy.isclose(value, 0.0, atol=threshold):
+                if not numpy.isclose(value, 0.0, atol=threshold) or not screening:
                     variables[(nocc + A, I, nocc + B, J)] = value
         if self.tIA is not None:
             nocc = self.tIA.shape[0]
             for (I, A), value, in numpy.ndenumerate(self.tIA):
-                if not numpy.isclose(value, 0.0, atol=threshold):
+                if not numpy.isclose(value, 0.0, atol=threshold) or not screening:
                     variables[(A + nocc, I)] = value
         return dict(sorted(variables.items(), key=lambda x: numpy.abs(x[1]), reverse=True))
 
@@ -1548,7 +1548,7 @@ class QuantumChemistryBase:
             threshold=0.0
 
         if not isinstance(amplitudes, dict):
-            amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
+            amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold, screening=screening)
             amplitudes = dict(sorted(amplitudes.items(), key=lambda x: numpy.fabs(x[1]), reverse=True))
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
