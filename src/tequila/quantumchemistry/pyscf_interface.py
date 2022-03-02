@@ -15,9 +15,9 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  *args, **kwargs):
-        
+
         if "basis_set" in kwargs and kwargs["basis_set"] is not None:
-            
+
             # either compute integrals form basis_set or give them
             # can't do both
             assert "one_body_integrals" not in kwargs
@@ -26,22 +26,22 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             mol = pyscf.gto.M(atom=parameters.get_geometry_string(), basis=kwargs["basis_set"])
             mf = pyscf.scf.RHF(mol)
             mf.kernel()
-            
-            c=mf.mo_coeff
+
+            c = mf.mo_coeff
 
             h = mol.get_hcore()
-            obi = numpy.einsum("ki, kl, lj -> ij" , c ,h, c)
-                            
+            obi = numpy.einsum("ki, kl, lj -> ij", c, h, c)
+
             eri = mol.ao2mo(c)
             eri = pyscf.ao2mo.restore(1, eri, c.shape[0])
-            
+
             eri = NBodyTensor(elems=eri, ordering="mulliken")
             eri = eri.reorder("openfermion").elems
-           
-            kwargs["two_body_integrals"]=eri
-            kwargs["one_body_integrals"]=obi
+
+            kwargs["two_body_integrals"] = eri
+            kwargs["one_body_integrals"] = obi
             if "nuclear_repulsion" not in kwargs:
-                kwargs["nuclear_repulsion"]=mol.energy_nuc()
+                kwargs["nuclear_repulsion"] = mol.energy_nuc()
 
         super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
 
@@ -49,15 +49,16 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
     def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
         c, h1, h2 = molecule.get_integrals(two_body_ordering="openfermion")
         if transformation is None:
-            transformation=molecule.transformation
+            transformation = molecule.transformation
         return cls(nuclear_repulsion=c,
-                          one_body_integrals=h1,
-                          two_body_integrals=h2,
-                          n_electrons=molecule.n_electrons,
-                          transformation=transformation,
-                          parameters=molecule.parameters, *args, **kwargs)
+                   one_body_integrals=h1,
+                   two_body_integrals=h2,
+                   n_electrons=molecule.n_electrons,
+                   transformation=transformation,
+                   parameters=molecule.parameters, *args, **kwargs)
 
     def do_make_molecule(self, molecule=None, nuclear_repulsion=None, one_body_integrals=None, two_body_integrals=None,
+                         orbital_energies=None,
                          *args, **kwargs) -> MolecularData:
         if molecule is None:
             if one_body_integrals is not None and two_body_integrals is not None:
@@ -74,7 +75,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                 geometry = self.parameters.get_geometry()
                 pyscf_geomstring = ""
                 for atom in geometry:
-                    pyscf_geomstring += "{} {} {} {};".format(atom[0],atom[1][0],atom[1][1],atom[1][2])
+                    pyscf_geomstring += "{} {} {} {};".format(atom[0], atom[1][0], atom[1][1], atom[1][2])
 
                 if "point_group" in kwargs:
                     point_group = kwargs["point_group"]
@@ -92,14 +93,15 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                     else:
                         mol.symmetry = False
                 else:
-                    mol.symmetry=True
+                    mol.symmetry = True
 
                 mol.build()
 
                 # solve restricted HF
                 mf = pyscf.scf.RHF(mol)
                 mf.kernel()
-                self.irreps=mf.get_irrep_nelec()
+                self.irreps = mf.get_irrep_nelec()
+                orbital_energies = mf.mo_energy
 
                 # compute mo integrals
                 mo_coeff = mf.mo_coeff
@@ -111,9 +113,12 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                 # Mulliken to Openfermion convention
                 g = NBodyTensor(elems=g, ordering="mulliken").reorder(to="openfermion").elems
 
-                self.pyscf_molecule=mol
+                self.pyscf_molecule = mol
                 self.point_group = mol.symmetry_subgroup
-                molecule=super().do_make_molecule(one_body_integrals=h, two_body_integrals=g, nuclear_repulsion=mol.energy_nuc())
+                molecule = super().do_make_molecule(one_body_integrals=h, two_body_integrals=g,
+                                                    nuclear_repulsion=mol.energy_nuc())
+        if molecule.orbital_energies is None:
+            molecule.orbital_energies = orbital_energies
 
         return molecule
 
@@ -206,12 +211,14 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         base = super().__str__()
         try:
             if hasattr(self, "pyscf_molecule"):
-                base += "{:15} : {} ({})\n".format("point_group", self.pyscf_molecule.groupname, self.pyscf_molecule.topgroup)
+                base += "{:15} : {} ({})\n".format("point_group", self.pyscf_molecule.groupname,
+                                                   self.pyscf_molecule.topgroup)
             if hasattr(self, "irreps"):
                 base += "{:15} : {}\n".format("irreps", self.irreps)
         except:
             return base
         return base
+
 
 if __name__ == "__main__":
     pass
