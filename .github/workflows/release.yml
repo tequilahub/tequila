@@ -1,0 +1,22 @@
+name: 'Tweet when released'
+on:
+  release:
+    types: [released]
+
+jobs:
+  tweet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tweet
+        id: tweet
+        uses: doomspec/auto-tweet-v2@v0.1.0
+        env:
+          CONSUMER_API_KEY: ${{ secrets.TWITTER_CONSUMER_API_KEY }}
+          CONSUMER_API_SECRET_KEY: ${{ secrets.TWITTER_CONSUMER_API_SECRET_KEY }}
+          ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+        with:
+          text: |
+            New version released: ${{ github.event.release.name }}
+            ${{ github.event.release.html_url }}
+      - run: echo ${{ steps.tweet.outputs.response }}

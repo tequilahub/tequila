@@ -162,6 +162,15 @@ class QTensor(numpy.ndarray):
               "variables          = {}\n" \
               "types              = {}".format(self.shape, unique, measurements, variables, types)
 
+    def contract(self):
+        newtensor = self.flatten()
+        out_array=[obj for obj in newtensor]
+        summed = out_array[0]
+        for entry in out_array[1:]:
+            summed += entry
+        return summed
+
+
     class HelperObject:
         """
         This is a small helper object class for tequila objectives

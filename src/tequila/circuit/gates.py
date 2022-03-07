@@ -345,7 +345,7 @@ def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing
     if isinstance(paulistring, str):
         ps = PauliString.from_string(string=paulistring)
     elif isinstance(paulistring, list):
-        ps = PauliString.from_openfermion(key=list)
+        ps = PauliString.from_openfermion(key=paulistring)
     elif isinstance(paulistring, dict):
         ps = PauliString(data=paulistring)
     else:
