@@ -844,7 +844,9 @@ class FixedVariable(float):
 
     def wrap(self, other):
         return self.apply(other)
-
+    
+    def map_variables(self, *args, **kwargs):
+        return self
 
 def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List[Variable]:
     """
