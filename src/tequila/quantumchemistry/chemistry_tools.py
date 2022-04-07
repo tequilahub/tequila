@@ -44,7 +44,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self.indices = indices
 
     def compile(self, *args, **kwargs):
-        if self.transformation.lower().remove("_") == "jordanwigner" and self.i_am_spin_paired_pair_excitation():
+        if self.transformation.lower() == "jordanwigner" and self.i_am_spin_paired_pair_excitation():
             target = []
             for x in self.indices:
                 for y in x:
