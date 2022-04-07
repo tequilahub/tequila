@@ -234,7 +234,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return h, g
 
-    def get_pno_indices(self, i: OrbitalData, j: OrbitalData):
+    def get_pno_indices(self, i: QuantumChemistryBase.OrbitalData, j: QuantumChemistryBase.OrbitalData):
         if isinstance(i, int):
             i = self.orbitals[i]
         if isinstance(j, int):
