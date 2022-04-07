@@ -56,7 +56,7 @@ class QuantumChemistryBase:
 
     active_space: ActiveSpaceData = None
     orbitals: list = None
-    reference_orbitals: list = None
+    _reference_orbitals: list = None
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
@@ -90,7 +90,7 @@ class QuantumChemistryBase:
         self.parameters = parameters
         if reference_orbitals is None:
             reference_orbitals = [i for i in range(parameters.n_electrons//2)]
-        self.reference_orbitals=reference_orbitals
+        self._reference_orbitals=reference_orbitals
 
         if "molecule" in kwargs:
             self.molecule = kwargs["molecule"]
@@ -114,7 +114,7 @@ class QuantumChemistryBase:
             orbitals = []
             for i in range(self.molecule.n_orbitals): # molecule.n_orbitals goes over all orbitals of the basis
                 occ = 0.0
-                if i in self.reference_orbitals:
+                if i in self._reference_orbitals:
                     occ = 2.0
                 orbitals.append(self.OrbitalData(idx_total=i, occ=occ))
             # assign active space indices
@@ -450,6 +450,13 @@ class QuantumChemistryBase:
             molecule.n_electrons = kwargs["n_electrons"]
         molecule.save()
         return molecule
+
+    @property
+    def reference_orbitals(self):
+        if self.active_space is None:
+            return self._reference_orbitals
+        else:
+            return self.active_space.active_reference_orbitals
 
     @property
     def n_orbitals(self) -> int:
