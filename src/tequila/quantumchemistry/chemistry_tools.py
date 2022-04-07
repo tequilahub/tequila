@@ -49,7 +49,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
             for x in self.indices:
                 for y in x:
                     target.append(y)
-            return gates.QubitExcitation(target=target, control=self.control)
+            return gates.QubitExcitation(target=target, angle=self.parameter, control=self.control)
         else:
             return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
 
