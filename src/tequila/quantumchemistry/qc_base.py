@@ -80,7 +80,10 @@ class QuantumChemistryBase:
         if orbitals is not None:
             self.orbitals = []
             for x in orbitals:
-                self.orbitals.append(self.OrbitalData(**x))
+                if isinstance(x, self.OrbitalData):
+                    self.orbitals.append(x)
+                else:
+                    self.orbitals.append(self.OrbitalData(**x))
         else:
             self.orbitals = orbitals
 
