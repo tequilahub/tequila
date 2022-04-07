@@ -142,7 +142,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         orbitals = []
         if pairinfo is not None:
-            orbitals = [self.OrbitalData(idx_total=i, idx=i, pair=eval(p), occ=occinfo[i]) for i, p in
+            orbitals = [self.OrbitalData(idx_total=i, idx=i, pair=p, occ=occinfo[i]) for i, p in
                         enumerate(pairinfo)]
             if active_orbitals == "auto":
                 reference_orbitals = [x for x in orbitals if len(x.pair) == 1]
