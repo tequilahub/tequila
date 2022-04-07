@@ -165,6 +165,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                          two_body_integrals=g,
                          nuclear_repulsion=nuclear_repulsion,
                          n_orbitals=n_orbitals,
+                         orbitals=self.orbitals,
                          *args,
                          **kwargs)
 
