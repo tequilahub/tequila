@@ -1,5 +1,6 @@
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning, \
-    QCircuit, gates, NBodyTensor
+from tequila.quantumchemistry.qc_base import QuantumChemistryBase, TequilaException, TequilaWarning, \
+    QCircuit, gates
+from tequila.quantumchemistry import ParametersQC, NBodyTensor
 from tequila import ExpectationValue, PauliString, QubitHamiltonian, simulate
 import typing
 import numpy
@@ -16,27 +17,6 @@ class TequilaMadnessException(TequilaException):
 
 
 class QuantumChemistryMadness(QuantumChemistryBase):
-    @dataclass
-    class OrbitalData:
-        idx: int = None  # active index
-        idx_total: int = None  # total index
-        pno_pair: tuple = None  # pno origin if tuple of len 2, otherwise occupied or virtual orbital
-        occ: float = None  # original MP2 occupation number, or orbital energies
-
-        def __str__(self):
-            if len(self.pno_pair) == 2:
-                return "orbital {}, pno from pair {}, MP2 occ {} ".format(self.idx_total, self.pno_pair, self.occ)
-            elif self.pno_pair[0] < 0:
-                return "orbital {}, virtual orbital {}, energy {} ".format(self.idx_total, self.pno_pair, self.occ)
-            else:
-                return "orbital {}, occupied reference orbital {}, energy {} ".format(self.idx_total, self.pno_pair,
-                                                                                      self.occ)
-
-        def __repr__(self):
-            return self.__str__()
-
-        def __hash__(self):
-            return hash((self.idx, self.idx_total, self.pno_pair, self.occ))
 
     @staticmethod
     def find_executable(madness_root_dir=None):
@@ -165,9 +145,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             orbitals = [self.OrbitalData(idx_total=i, idx=i, pno_pair=p, occ=occinfo[i]) for i, p in
                         enumerate(pairinfo)]
             if active_orbitals == "auto":
-                reference_orbitals = [x for x in orbitals if len(x.pno_pair) == 1]
+                reference_orbitals = [x for x in orbitals if len(x.pair) == 1]
                 not_active = [i for i in reference_orbitals if
-                              sum([1 for x in orbitals if i.idx_total in x.pno_pair]) < 2]
+                              sum([1 for x in orbitals if i.idx_total in x.pair]) < 2]
                 active_orbitals = [x.idx_total for x in orbitals if x not in not_active]
 
             if active_orbitals is not None:
@@ -259,16 +239,16 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             i = self.orbitals[i]
         if isinstance(j, int):
             j = self.orbitals[j]
-        return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pno_pair]
+        return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pair]
 
     def get_reference_orbital(self, i):
-        return [x for x in self.orbitals if (i) == x.pno_pair]
+        return [x for x in self.orbitals if (i) == x.pair]
 
     def get_reference_orbitals(self):
-        return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] >= 0]
+        return [x for x in self.orbitals if len(x.pair) == 1 and x.pair[0] >= 0]
 
     def get_virtual_orbitals(self):
-        return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
+        return [x for x in self.orbitals if len(x.pair) == 1 and x.pair[0] < 0]
 
     def compute_energy(self, method, *args, **kwargs):
         """
@@ -526,7 +506,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if "PNO" in name or "SPA" in name:
             return indices
 
-        virtuals = [i for i in self.orbitals if len(i.pno_pair) == 2]
+        virtuals = [i for i in self.orbitals if len(i.pair) == 2]
         virtuals += self.get_virtual_orbitals()  # this is usually empty
         # HF-X -- PNO-XY/PNO-YY indices
         for i in self.get_reference_orbitals():
@@ -708,9 +688,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
     def __str__(self):
         info = super().__str__()
-        info += "{key:15} :\n".format(key="MRA Orbitals")
-        for orb in self.orbitals:
-            info += "{}\n".format(orb)
         info += "\n"
         info += "{:15} : {}\n".format("executable", self.executable)
         info += "{:15} : {}\n".format("htensor", "{}_htensor.npy".format(self.parameters.name))

@@ -1,6 +1,7 @@
 from tequila import TequilaException, TequilaWarning, ExpectationValue, QCircuit, minimize
 from openfermion import MolecularData
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, NBodyTensor
+from tequila.quantumchemistry.qc_base import QuantumChemistryBase
+from tequila.quantumchemistry import ParametersQC, NBodyTensor
 from dataclasses import dataclass, field
 import pyscf
 

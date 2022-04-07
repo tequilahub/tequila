@@ -3,8 +3,9 @@ from openfermion import MolecularData
 
 from tequila.circuit import QCircuit
 from tequila.objective.objective import Variables
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, \
-    ClosedShellAmplitudes, Amplitudes, NBodyTensor
+from tequila.quantumchemistry.qc_base import QuantumChemistryBase
+from tequila.quantumchemistry.chemistry_tools import ClosedShellAmplitudes, Amplitudes
+from tequila.quantumchemistry import ParametersQC, NBodyTensor
 
 import copy
 import numpy
@@ -32,15 +33,6 @@ class Psi4Results:
 
 
 class QuantumChemistryPsi4(QuantumChemistryBase):
-    @dataclass
-    class OrbitalData:
-        irrep: str = None
-        idx_irrep: int = None
-        idx_total: int = None
-        energy: float = None
-
-        def __str__(self):
-            return "{} : {}{} energy = {:+2.6f} ".format(self.idx_total, self.idx_irrep, self.irrep, self.energy)
 
     def _make_psi4_active_space_data(self, active_orbitals, reference=None):
         """
@@ -213,8 +205,12 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             oenergies += [(i, j, x) for j, x in enumerate(self.orbital_energies(irrep=i))]
 
         oenergies = sorted(oenergies, key=lambda x: x[2])
-        self.orbitals = [self.OrbitalData(irrep=data[0], idx_irrep=data[1], idx_total=i, energy=data[2]) for i, data in
-                         enumerate(oenergies)]
+
+        for x in self.orbitals:
+            x.irrep = oenergies[x.idx_total][0]
+            x.idx_irrep = oenergies[x.idx_total][1]
+            x.energy = oenergies[x.idx_total][2]
+
         orbitals_by_irrep = {o.irrep: [] for o in self.orbitals}
         for o in self.orbitals:
             orbitals_by_irrep[o.irrep] += [o]
@@ -237,6 +233,10 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             # (psi4 won't take over active space information otherwise)
             self.compute_energy(method="hf", recompute=True, *args, **kwargs)
             self.ref_wfn = self.logs["hf"].wfn
+            for x in self.orbitals:
+                for ii,i in enumerate(self.active_space.active_orbitals):
+                    if x.idx_total == i:
+                        x.idx_active = ii
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
@@ -535,7 +535,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def __str__(self):
         result = super().__str__()
-        result += "Psi4 Data\n"
+        result += "\nPsi4 Data\n"
         result += "{key:15} : {value:15} \n".format(key="Point Group (full)",
                                                     value=self.psi4_mol.get_full_point_group().lower())
         result += "{key:15} : {value:15} \n".format(key="Point Group (used)", value=self.point_group)
@@ -543,12 +543,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         result += "{key:15} : {value} \n".format(key="irreps", value=self.irreps)
         result += "{key:15} : {value:15} \n".format(key="mos per irrep", value=str(
             [len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)]))
-        if self.active_space is not None:
-            result += str(self.active_space)
-
-        result += "\nOrbitals:\n"
-        for orb in self.orbitals:
-            result += "{}\n".format(orb)
 
         return result
 
