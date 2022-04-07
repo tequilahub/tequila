@@ -46,7 +46,7 @@ class QuantumChemistryBase:
         irrep: str = None # irrep of symmetry group (if assigned)
         idx_irrep: int = None # index within the irrep
         idx_total: int = None # index within the total set of orbitals
-        idx_active: int = None # index within the active space
+        idx: int = None # index within the active space
         energy: float = None # energy assigned to orbital
         occ: float = None # occupation number assigned to orbital
         pair: tuple = None # potential electron pair that the orbital is assigned to

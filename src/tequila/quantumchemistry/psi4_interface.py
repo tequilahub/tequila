@@ -236,7 +236,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             for x in self.orbitals:
                 for ii,i in enumerate(self.active_space.active_orbitals):
                     if x.idx_total == i:
-                        x.idx_active = ii
+                        x.idx = ii
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
