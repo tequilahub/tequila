@@ -44,12 +44,12 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self.indices = indices
 
     def compile(self, *args, **kwargs):
-        if self.transformation.lower() == "jordanwigner" and self.i_am_spin_paired_pair_excitation():
+        if self.is_convertable_to_qubit_excitation():
             target = []
             for x in self.indices:
                 for y in x:
                     target.append(y)
-            return gates.QubitExcitation(target=target, angle=self.parameter, control=self.control)
+            return gates.QubitExcitation(target=target, angle=-self.parameter, control=self.control)
         else:
             return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
 
@@ -61,10 +61,20 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
     def __repr__(self):
         return self.__str__()
 
-    def i_am_spin_paired_pair_excitation(self):
-        if len(self.indices) != 2: return False
-        if self.indices[0][0]//2 != self.indices[1][0]//2: return False
-        if self.indices[0][1]//2 != self.indices[1][1]//2: return False
+    def is_convertable_to_qubit_excitation(self):
+        """
+        spin-paired double excitations (both electrons occupy the same spatial orbital and are excited to another spatial orbital)
+        in the jordan-wigner representation are identical to 4-qubit excitations which can be compiled more efficient
+        this function hels to automatically detect those cases
+        Returns
+        -------
+
+        """
+        return False
+        if not self.transformation.lower().strip("_") == "jordanwigner": return False
+        if not len(self.indices) == 2: return False
+        if not self.indices[0][0]//2 == self.indices[1][0]//2: return False
+        if not self.indices[0][1]//2 == self.indices[1][1]//2: return False
         return True
 
 
