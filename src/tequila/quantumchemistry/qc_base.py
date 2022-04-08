@@ -71,7 +71,7 @@ class QuantumChemistryBase:
         parameters: the quantum chemistry parameters handed over as instance of the ParametersQC class (see there for content)
         transformation: the fermion to qubit transformation (default is JordanWigner). See encodings.py for supported encodings or to extend
         active_orbitals: list of active orbitals (others will be frozen, if we have N-electrons then the first N//2 orbitals will be considered occpied when creating the active space)
-        reference_orbitals: give list of orbitals that shall be considered occupied when creating a possible active space (default is the first N//2)
+        reference_orbitals: give list of orbitals that shall be considered occupied when creating a possible active space (default is the first N//2). The indices are expected to be total indices (including possible frozen orbitals in the counting)
         orbitals: information about the orbitals (should be in OrbitalData format, can be a dictionary)
         args
         kwargs
@@ -89,7 +89,7 @@ class QuantumChemistryBase:
 
         self.parameters = parameters
         if reference_orbitals is None:
-            reference_orbitals = [i for i in range(parameters.n_electrons//2)]
+            reference_orbitals = [self.OrbitalData(idx_total=i, occ=2.0) for i in range(parameters.n_electrons//2)]
         self._reference_orbitals=reference_orbitals
 
         if "molecule" in kwargs:
@@ -456,7 +456,9 @@ class QuantumChemistryBase:
         if self.active_space is None:
             return self._reference_orbitals
         else:
-            return self.active_space.active_reference_orbitals
+            total_indices= self.active_space.active_reference_orbitals
+            active_indices = [self.orbitals[i].idx for i in total_indices]
+            return active_indices
 
     @property
     def n_orbitals(self) -> int:
@@ -593,6 +595,19 @@ class QuantumChemistryBase:
         """ """
         raise Exception("BaseClass Method")
 
+    def _reference_state(self):
+        """
+        used internally
+        gives back reference state occupation vector (in second quantization or JW notation)
+        transformation to current encoding is done in def prepare_reference
+        """
+        assert self.n_electrons % 2 == 0
+        state = [0] * (self.n_orbitals * 2)
+        for i in self.reference_orbitals:
+            state[2 * i] = 1
+            state[2 * i + 1] = 1
+        return state
+
     def prepare_reference(self, state=None, *args, **kwargs):
         """
         Returns
@@ -600,11 +615,7 @@ class QuantumChemistryBase:
         A tequila circuit object which prepares the reference of this molecule in the chosen transformation
         """
         if state is None:
-            assert self.n_electrons % 2 == 0
-            state = [0] * (self.n_orbitals * 2)
-            for i in self.reference_orbitals:
-                state[2*i] = 1
-                state[2*i+1] = 1
+            state = self._reference_state()
 
         reference_state = BitString.from_array(self.transformation.map_state(state=state))
         U = prepare_product_state(reference_state)
@@ -735,7 +746,7 @@ class QuantumChemistryBase:
     def make_upccgsd_indices(self, key, reference_orbitals=None, *args, **kwargs):
 
         if reference_orbitals is None:
-            reference_orbitals = [i for i in range(self.n_electrons // 2)]
+            reference_orbitals = [x for x in self.reference_orbitals]
         indices = []
         # add doubles in hcb encoding
         if hasattr(key, "lower") and key.lower() == "ladder":
@@ -1649,6 +1660,10 @@ class QuantumChemistryBase:
         result += "Parameters\n"
         for k, v in self.parameters.__dict__.items():
             result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
+
+        result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals**2))
+        result += "{key:15} : {value:15} \n".format(key="reference state", value=str(self._reference_state()))
+
 
         if self.active_space is not None:
             result += "\nActive Space:"

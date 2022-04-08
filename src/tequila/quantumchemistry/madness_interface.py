@@ -158,6 +158,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             raise TequilaMadnessException("No pairinfo given")
         self.orbitals = tuple(orbitals)
 
+        reference_orbitals = [x for x in self.orbitals if x.occ == 2.0]
+        assert len(reference_orbitals)==self.n_electrons//2
+
         super().__init__(parameters=parameters,
                          transformation=transformation,
                          active_orbitals=active_orbitals,
@@ -166,6 +169,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                          nuclear_repulsion=nuclear_repulsion,
                          n_orbitals=n_orbitals,
                          orbitals=self.orbitals,
+                         reference_orbitals=reference_orbitals,
                          *args,
                          **kwargs)
 

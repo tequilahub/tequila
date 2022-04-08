@@ -18,8 +18,8 @@ class ActiveSpaceData:
     def __str__(self):
         result = "Active Space Data:\n"
         result += "{key:15} : {value:15} \n".format(key="active_orbitals", value=str(self.active_orbitals))
-        result += "{key:15} : {value:15} \n".format(key="reference_orbitals",
-                                                    value=str(self.reference_orbitals))
+        result += "{key:15} : {value:15} \n".format(key="reference_orbitals", value=str(self.reference_orbitals))
+        result += "{key:15} : {value:15} \n".format(key="active_reference_orbitals", value=str(self.active_reference_orbitals))
         return result
 
     @property
