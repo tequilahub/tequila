@@ -144,8 +144,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if pairinfo is not None:
             orbitals = [self.OrbitalData(idx_total=i, idx=i, pair=p, occ=occinfo[i]) for i, p in
                         enumerate(pairinfo)]
+            reference_orbitals = [x for x in orbitals if len(x.pair) == 1]
             if active_orbitals == "auto":
-                reference_orbitals = [x for x in orbitals if len(x.pair) == 1]
                 not_active = [i for i in reference_orbitals if
                               sum([1 for x in orbitals if i.idx_total in x.pair]) < 2]
                 active_orbitals = [x.idx_total for x in orbitals if x not in not_active]
@@ -156,8 +156,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     orbitals[i].idx = i
         else:
             raise TequilaMadnessException("No pairinfo given: madness interface needs a file moleculename_pnoinfo.txt")
-        self.orbitals = tuple(orbitals)
 
+        self.orbitals = list(orbitals)
+
+        # convert to indices only
+        # active space data will be set in baseclass constructor
         reference_orbitals = [x.idx_total for x in reference_orbitals]
         super().__init__(parameters=parameters,
                          transformation=transformation,
