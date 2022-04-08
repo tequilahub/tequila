@@ -155,12 +155,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 for i, x in enumerate(orbitals):
                     orbitals[i].idx = i
         else:
-            raise TequilaMadnessException("No pairinfo given")
+            raise TequilaMadnessException("No pairinfo given: madness interface needs a file moleculename_pnoinfo.txt")
         self.orbitals = tuple(orbitals)
 
-        reference_orbitals = [x for x in self.orbitals if x.occ == 2.0]
-        assert len(reference_orbitals)==self.n_electrons//2
-
+        reference_orbitals = [x.idx_total for x in reference_orbitals]
         super().__init__(parameters=parameters,
                          transformation=transformation,
                          active_orbitals=active_orbitals,
