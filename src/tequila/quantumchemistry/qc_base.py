@@ -89,7 +89,7 @@ class QuantumChemistryBase:
 
         self.parameters = parameters
         if reference_orbitals is None:
-            reference_orbitals = [self.OrbitalData(idx_total=i, occ=2.0) for i in range(parameters.n_electrons//2)]
+            reference_orbitals = [i for i in range(parameters.n_electrons//2)]
         self._reference_orbitals=reference_orbitals
 
         if "molecule" in kwargs:
