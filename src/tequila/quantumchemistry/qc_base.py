@@ -774,6 +774,7 @@ class QuantumChemistryBase:
         else:
             raise TequilaException("Unknown recipe: {}".format(key))
         indices = [self.format_excitation_indices(idx) for idx in indices]
+
         return indices
 
     def make_hardcore_boson_upccgd_layer(self,
@@ -1675,12 +1676,11 @@ class QuantumChemistryBase:
         result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals**2))
         result += "{key:15} : {value:15} \n".format(key="reference state", value=str(self._reference_state()))
 
-
         if self.active_space is not None:
             result += "\nActive Space:"
             result += str(self.active_space)
 
-        result += "\nOrbitals:\n"
+        result += "\nOrbitals (idx=None -> frozen):\n"
         for orb in self._orbitals:
             result += "{}\n".format(orb)
 

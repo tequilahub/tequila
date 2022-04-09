@@ -184,7 +184,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         self.active_space = None  # will be assigned in super
         # psi4 active space will be formed later
-        super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None, reference_orbitals=None,
+        super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None, reference_orbitals=reference_orbitals,
                          *args, **kwargs)
         self.ref_energy = self.molecule.hf_energy
         self.ref_wfn = self.logs['hf'].wfn
@@ -206,7 +206,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             orbitals_by_irrep[o.irrep] += [o]
 
         self.orbitals_by_irrep = orbitals_by_irrep
-
+        if reference_orbitals is None:
+            reference_orbitals = self.reference_orbitals
         if active_orbitals is not None:
             if not hasattr(active_orbitals, "keys"):
                 # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
@@ -218,7 +219,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                     else:
                         active_dict[orbital.irrep] += [orbital.idx_irrep]
                 active_orbitals = active_dict
-            if reference_orbitals is not None and not hasattr(reference_orbitals, "keys"):
+            if not hasattr(reference_orbitals, "keys"):
                 # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
                 reference_dict = {}
                 for x in reference_orbitals:
@@ -228,7 +229,10 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                     else:
                         reference_dict[orbital.irrep] += [orbital.idx_irrep]
                 reference_orbitals = reference_dict
+
             self.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals, reference=reference_orbitals)
+            for i,idx in enumerate(self.active_space.active_orbitals):
+                self._orbitals[idx].idx=i
             # need to recompute
             # (psi4 won't take over active space information otherwise)
             self.compute_energy(method="hf", recompute=True, *args, **kwargs)
