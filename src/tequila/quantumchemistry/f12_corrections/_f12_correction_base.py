@@ -1,7 +1,7 @@
 import tequila as tq
 from tequila import TequilaException, TequilaWarning
 
-from tequila.quantumchemistry.qc_base import NBodyTensor
+from tequila.quantumchemistry import NBodyTensor
 
 import numpy
 from itertools import product

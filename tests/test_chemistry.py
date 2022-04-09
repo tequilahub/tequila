@@ -3,6 +3,7 @@ import tequila.quantumchemistry as qc
 import numpy
 import os, glob
 
+import tequila.quantumchemistry.chemistry_tools
 import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
 from tequila.quantumchemistry.encodings import known_encodings
@@ -99,7 +100,7 @@ def test_h2_hamiltonian_psi4():
 
 
 def do_test_h2_hamiltonian(qc_interface):
-    parameters = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
+    parameters = tequila.quantumchemistry.chemistry_tools.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     H = qc_interface(parameters=parameters).make_hamiltonian().to_matrix()
     vals = numpy.linalg.eigvalsh(H)
     assert (numpy.isclose(vals[0], -1.1368354639104123, atol=1.e-4))
@@ -115,14 +116,14 @@ def do_test_h2_hamiltonian(qc_interface):
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
         pytest.skip("skipping for symbolic simulator  ... way too slow")
-    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
+    parameters_qc = tequila.quantumchemistry.chemistry_tools.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1368354639104123, trafo=trafo,
                 backend=backend)
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 def test_ucc_singles_psi4():
-    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31G")
+    parameters_qc = tequila.quantumchemistry.chemistry_tools.ParametersQC(geometry="data/h2.xyz", basis_set="6-31G")
     # default backend is fine
     # will not converge if singles are not added
     do_test_ucc(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.15016, trafo="JordanWigner",
@@ -147,7 +148,7 @@ def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
 def test_mp2_psi4():
     # the number might be wrong ... its definetely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
-    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
+    parameters_qc = tequila.quantumchemistry.chemistry_tools.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_mp2(qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc, result=-1.1344497203826904)
 
 
@@ -174,7 +175,7 @@ def test_amplitudes_psi4(method):
     results = {"mp2": -1.1279946983462537, "cc2": -1.1344484090805054, "ccsd": None, "cc3": None}
     # the number might be wrong ... its definitely not what psi4 produces
     # however, no reason to expect projected MP2 is the same as UCC with MP2 amplitudes
-    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
+    parameters_qc = tequila.quantumchemistry.chemistry_tools.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
     do_test_amplitudes(method=method, qc_interface=qc.QuantumChemistryPsi4, parameters=parameters_qc,
                        result=results[method])
 
@@ -201,7 +202,7 @@ def do_test_amplitudes(method, qc_interface, parameters, result):
 @pytest.mark.parametrize("method", ["mp2", "mp3", "mp4", "cc2", "cc3", "ccsd", "ccsd(t)", "cisd", "cisdt"])
 def test_energies_psi4(method):
     # mp3 needs C1 symmetry
-    parameters_qc = qc.ParametersQC(geometry="data/h2.xyz", basis_set="6-31g")
+    parameters_qc = tequila.quantumchemistry.chemistry_tools.ParametersQC(geometry="data/h2.xyz", basis_set="6-31g")
     if method in ["mp3", "mp4"]:
         psi4_interface = qc.QuantumChemistryPsi4(parameters=parameters_qc, point_group="c1")
     else:
