@@ -7,7 +7,7 @@ from tequila.quantumchemistry.qc_base import QuantumChemistryBase
 from tequila.quantumchemistry.chemistry_tools import ClosedShellAmplitudes, Amplitudes
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
 
-from .chemistry_tools import ActiveSpaceData
+from .chemistry_tools import ActiveSpaceData, IntegralManager
 
 import copy
 import numpy
@@ -231,6 +231,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 reference_orbitals = reference_dict
 
             self.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals, reference=reference_orbitals)
+            self.integral_manager._active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals, reference=reference_orbitals)
             for i,idx in enumerate(self.active_space.active_orbitals):
                 self._orbitals[idx].idx=i
             # need to recompute
@@ -299,6 +300,35 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                                                            active_indices=self.active_space.active_orbitals)
         else:
             return self.molecule.get_molecular_hamiltonian()
+
+    def initialize_integral_manager(self, *args, **kwargs):
+        # get HF wavefunction and orbital coefficients
+        if "ref_wfn" in kwargs:
+            ref_wfn = kwargs["ref_wfn"]
+        else:
+            self.compute_energy(method="hf")
+            ref_wfn = self.logs['hf'].wfn
+
+        if ref_wfn.nirrep() != 1:
+            wfn = ref_wfn.c1_deep_copy(ref_wfn.basisset())
+        else:
+            wfn = ref_wfn
+        Ca = numpy.asarray(wfn.Ca())
+
+        basisset = ref_wfn.basisset()
+        mints = psi4.core.MintsHelper(basisset)
+
+        # get integrals in atomic basis
+        S = numpy.asarray(mints.ao_overlap())
+        h = wfn.H()
+        g = numpy.asarray(mints.ao_eri())
+        c = wfn.variables()['NUCLEAR REPULSION ENERGY']
+
+        g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
+        g.reoder("openfermion")
+
+        return IntegralManager(overlap_integrals=S, one_body_integrals=h, two_body_integrals=g, constant_term=c, basis_type="GBS", basis_name=self.parameters.basis_set, orbital_coefficients=Ca)
+
 
     def do_make_molecule(self, *args, **kwargs) -> MolecularData:
 

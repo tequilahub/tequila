@@ -98,6 +98,12 @@ class QuantumChemistryBase:
             reference_orbitals = [i for i in range(parameters.n_electrons//2)]
         self._reference_orbitals=reference_orbitals
 
+        # initialize integral manager
+        if "integral_manager" in kwargs:
+            self.integral_manager = kwargs["integral_manager"]
+        else:
+            self.integral_manager = self.initialize_integral_manager(*args, **kwargs)
+
         if "molecule" in kwargs:
             self.molecule = kwargs["molecule"]
         else:
@@ -110,6 +116,7 @@ class QuantumChemistryBase:
         self.active_space = None
         if active_orbitals is not None:
             self.active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))
+            self.integral_manager._active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
@@ -406,38 +413,54 @@ class QuantumChemistryBase:
         molecule.save()
         return molecule
 
-    def do_make_molecule(self, *args, **kwargs):
+    def initialize_integral_manager(self, *args, **kwargs):
         """
-        Called by self.make_molecule with args and kwargs passed through
-        Override this in derived class
+        Called by self.__init__() with args and kwargs passed through
+        Override this in derived class such that it returns an intitialized instance of the integral manager
 
-        In the BaseClass it is required to pass the following with kwargs:
+        In the BaseClass it is required to pass the following with kwargs on init:
         - one_body_integrals as matrix
-        - two_body_integrals as NBTensor of numpy.ndarray (four indices, openfermion odering)
+        - two_body_integrals as NBTensor of numpy.ndarray (four indices, openfermion ordering)
         - nuclear_repulsion (constant part of hamiltonian - optional)
 
         Method sets:
         - result of self.get_integrals()
         - openfermion molecule in self.molecule
         """
-        # integrals need to be passed in base class
+
         assert ("one_body_integrals" in kwargs)
         assert ("two_body_integrals" in kwargs)
         one_body_integrals = kwargs["one_body_integrals"]
         two_body_integrals = kwargs["two_body_integrals"]
 
-        # tequila assumes "openfermion" ordering, integrals can however be passed
-        # down in other orderings, but it needs to be indicated by keyword
         if "ordering" in kwargs:
             two_body_integrals = NBodyTensor(two_body_integrals, ordering=kwargs["ordering"])
             two_body_integrals.reorder(to="openfermion")
-            two_body_integrals = two_body_integrals.elems
 
+        constant_part = 0.0
+        if "constant_part" in kwargs:
+            constant_part += kwargs["constant_part"]
         if "nuclear_repulsion" in kwargs:
-            nuclear_repulsion = kwargs["nuclear_repulsion"]
-        else:
-            nuclear_repulsion = 0.0
-            warnings.warn("No nuclear_repulsion given for custom molecule, setting to zero", category=TequilaWarning)
+            constant_part += kwargs["nuclear_repulsion"]
+
+        basis_type = "custom"
+        # if no overlap orbitals are given, we assume the basis is orthogonal
+        S = numpy.eye(one_body_integrals.shape[0])
+        if "overlap_integrals" in kwargs:
+            S = kwargs["overlap_integrals"]
+
+        manager = IntegralManager(overlap_integrals=S, one_body_integrals=one_body_integrals, two_body_integrals=two_body_integrals, constant_term=constant_part, basis_name=self.parameters.basis_set, basis_type=basis_type)
+
+        return manager
+
+
+    def do_make_molecule(self, *args, **kwargs):
+        """
+        Called by self.make_molecule with args and kwargs passed through
+        Override this in derived class if needed
+        """
+
+        constant_term,one_body_integrals,two_body_integrals = self.get_integrals(two_body_ordering="openfermion")
 
         if ("n_orbitals" in kwargs):
             n_orbitals = kwargs["n_orbitals"]
@@ -450,7 +473,7 @@ class QuantumChemistryBase:
 
         molecule.one_body_integrals = one_body_integrals
         molecule.two_body_integrals = two_body_integrals
-        molecule.nuclear_repulsion = nuclear_repulsion
+        molecule.nuclear_repulsion = constant_term
         molecule.n_orbitals = n_orbitals
         if "n_electrons" in kwargs:
             molecule.n_electrons = kwargs["n_electrons"]
@@ -567,28 +590,18 @@ class QuantumChemistryBase:
         else:
             return self.molecule.get_molecular_hamiltonian()
 
-    def get_integrals(self, two_body_ordering="openfermion"):
+    def get_integrals(self, *args, **kwargs):
         """
         Returns
+
+        options for kwargs: "ordering = ["openfermion", "chem", "phys"], ignore_active_space = [True, False]"
         -------
         Tuple with:
         constant part (nuclear_repulsion + possible integrated parts from active-spaces)
         one_body_integrals
         two_body_integrals
-
         """
-        if self.active_space is not None:
-            c, h1, h2 = self.molecule.get_active_space_integrals(active_indices=self.active_space.active_orbitals,
-                                                                 occupied_indices=self.active_space.frozen_reference_orbitals)
-        else:
-            c = 0.0
-            h1 = self.molecule.one_body_integrals
-            h2 = self.molecule.two_body_integrals
-        c += self.molecule.nuclear_repulsion
-        h2 = NBodyTensor(h2, ordering="openfermion")
-        h2 = h2.reorder(to=two_body_ordering).elems
-
-        return c, h1, h2
+        return self.integral_manager.get_integrals(*args, **kwargs)
 
     def compute_one_body_integrals(self):
         """ convenience function """

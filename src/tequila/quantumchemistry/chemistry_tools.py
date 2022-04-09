@@ -6,6 +6,10 @@ import numpy
 from tequila import BitString, QCircuit, TequilaException
 from tequila.circuit import gates
 
+try:
+    from openfermion.ops.representations import get_active_space_integrals # needs openfermion 1.3
+except ImportError as E:
+    raise TequilaException("{}\nplease update openfermion to version 1.3 or higher".format(str(E)))
 
 @dataclass
 class ActiveSpaceData:
@@ -672,16 +676,20 @@ class IntegralManager:
     _constant_term: numpy.float = None
     _basis_type: str = None
     _basis_name: str = None
+    _orbital_coefficients: numpy.ndarray = None
+    _active_space: ActiveSpaceData = None
+
 
     def __init__(self, overlap_integrals, one_body_integrals, two_body_integrals, basis_type="custom",
                  basis_name="unknown",
-                 constant_term=0.0):
+                 constant_term=0.0, orbital_coefficients=None, active_space = None):
         self._overlap_integrals = overlap_integrals
         self._one_body_integrals = one_body_integrals
         self._two_body_integrals = two_body_integrals
         self._constant_term = constant_term
         self._basis_type = basis_type
         self._basis_name = basis_name
+
         assert len(self._one_body_integrals.shape) == 2
         assert len(self._overlap_integrals.shape) == 2
         assert len(self._two_body_integrals.shape) == 4
@@ -695,6 +703,13 @@ class IntegralManager:
         for i in range(4):
             assert self._one_body_integrals.shape[0] == self._two_body_integrals.elems.shape[i]
         assert self._one_body_integrals.shape[0] == self._one_body_integrals.shape[1]
+
+        if orbital_coefficients is None:
+            # default are symmetrically orthogonalized orbitals in the given basis
+            orbital_coefficients = self.get_orthonormalized_orbital_coefficients()
+        self._orbital_coefficients = orbital_coefficients
+
+        self._active_space = active_space
 
     def get_orthonormalized_orbital_coefficients(self):
         """
@@ -715,28 +730,114 @@ class IntegralManager:
 
     @property
     def overlap_integrals(self):
+        """
+        Returns
+        -------
+        Overlap integrals in given basis (using basis functions, not molecular orbitals. No active space considered)
+        """
         return self._overlap_integrals
 
     @property
     def one_body_integrals(self):
+        """
+        Returns
+        -------
+        one_body integrals in given basis (using basis functions, not molecular orbitals. No active space considered)
+        """
         return self._one_body_integrals
 
     @property
     def two_body_integrals(self):
+        """
+        Returns
+        -------
+        two-body orbitals in given basis (using basis functions, not molecular orbitals. No active space considered)
+        ordering is "chem" i.e. Mulliken i.e. integrals_{abcd} = <ac|g|bd>
+        """
         return self._two_body_integrals.elems
 
     @property
     def constant_term(self):
+        """
+        Returns
+        -------
+        return constant term (usually nuclear repulsion). No active space considered
+        """
         return self._constant_term
 
-    def get_transformed_one_body_integrals(self, orbital_coefficients, verify=True):
-        if verify: assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
+    @property
+    def orbital_coefficients(self):
+        """
+        second index is the orbital index, first the basis index
+        Returns
+        -------
+        orbital coefficient matrix C_{basis,orbital}
+        """
+        return self._orbital_coefficients
+
+    @orbital_coefficients.setter
+    def orbital_coefficients(self, other):
+        self.verify_orbital_coefficients(orbital_coefficients=other)
+        self._orbital_coefficients = other
+
+    def transform_orbitals(self, U):
+        """
+        Transform orbitals
+        Parameters
+        ----------
+        U: second index is new orbital indes, first is old orbital index (summed over)
+
+        Returns
+        -------
+        updates the structure with new orbitals: c = cU
+        """
+        c = self.orbital_coefficients
+        c = numpy.einsum("ix -> xj -> ij", c, U, optimize="greedy")
+        self.orbital_coefficients = c
+
+    def get_integrals(self, orbital_coefficients=None, ordering="openfermion", ignore_active_space=False):
+        """
+        Get all molecular integrals in given orbital basis (determined by orbital_coefficients in self or the ones passed here)
+        active space is considered if not explicitly ignored
+        Parameters
+        ----------
+        orbital_coefficients: orbital coefficients in the given basis (first index is basis, second index is orbitals). Need to go over full basis (no active space)
+        ordering: ordering of the two-body integrals (default is openfermion)
+        ignore_active_space: ignore active space and give back full integrals
+
+        Returns
+        -------
+
+        """
+        c = self.constant_term
+        h = self.get_transformed_one_body_integrals(orbital_coefficients=orbital_coefficients)
+        g = self.get_transformed_two_body_integrals(orbital_coefficients=orbital_coefficients, ordering="openfermion")
+
+        if not ignore_active_space and self._active_space is not None:
+            active_integrals = get_active_space_integrals(one_body_integrals=h, two_body_integrals=g, occupied_indices=self._active_space.frozen_reference_orbitals, active_indices=self._active_space.active_orbitals)
+            c = active_integrals[0] + c
+            h = active_integrals[1]
+            g = active_integrals[2]
+
+        g.reorder(to=ordering)
+
+        return c,h,g
+
+    def _get_transformed_one_body_integrals(self, orbital_coefficients=None, verify=True):
+        if orbital_coefficients is None:
+            orbital_coefficients = self.orbital_coefficients
+        elif verify: assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
         h = self.one_body_integrals
         h = numpy.einsum("ix, xj -> ij", h, orbital_coefficients, optimize='greedy')
         h = numpy.einsum("xj, xi -> ij", h, orbital_coefficients, optimize='greedy')
+
         return h
 
-    def get_transformed_two_body_integrals(self, orbital_coefficients, ordering="openfermion", verify=True):
+    def _get_transformed_two_body_integrals(self, orbital_coefficients=None, ordering="openfermion", verify=True):
+        if orbital_coefficients is None:
+            orbital_coefficients = self.orbital_coefficients
+        elif verify: assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
+
         g = self.two_body_integrals
         g = numpy.einsum("ijkx, xl -> ijkl", g, orbital_coefficients, optimize='greedy')
         g = numpy.einsum("ijxl, xk -> ijkl", g, orbital_coefficients, optimize='greedy')
@@ -746,6 +847,8 @@ class IntegralManager:
         g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
         # Order tensor. default: meet openfermion conventions
         g.reorder(to=ordering)
+
+
 
         return g
 
