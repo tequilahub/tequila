@@ -144,20 +144,22 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if pairinfo is not None:
             orbitals = [self.OrbitalData(idx_total=i, idx=i, pair=p, occ=occinfo[i]) for i, p in
                         enumerate(pairinfo)]
-            reference_orbitals = [x for x in orbitals if len(x.pair) == 1]
+            reference_orbitals = [x for x in orbitals if x.occ == 2.0]
             if active_orbitals == "auto":
                 not_active = [i for i in reference_orbitals if
                               sum([1 for x in orbitals if i.idx_total in x.pair]) < 2]
                 active_orbitals = [x.idx_total for x in orbitals if x not in not_active]
 
             if active_orbitals is not None:
-                orbitals = [x for x in orbitals if x.idx_total in active_orbitals]
-                for i, x in enumerate(orbitals):
-                    orbitals[i].idx = i
+                i = 0
+                for x in orbitals:
+                    if x.idx_total in active_orbitals:
+                        orbitals[x.idx_total].idx = i
+                        i += 1
+                    else:
+                        orbitals[x.idx_total].idx = None
         else:
             raise TequilaMadnessException("No pairinfo given: madness interface needs a file moleculename_pnoinfo.txt")
-
-        self.orbitals = list(orbitals)
 
         # convert to indices only
         # active space data will be set in baseclass constructor
@@ -169,7 +171,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                          two_body_integrals=g,
                          nuclear_repulsion=nuclear_repulsion,
                          n_orbitals=n_orbitals,
-                         orbitals=self.orbitals,
+                         orbitals=orbitals,
                          reference_orbitals=reference_orbitals,
                          *args,
                          **kwargs)
@@ -240,18 +242,24 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return h, g
 
-    def get_pno_indices(self, i: QuantumChemistryBase.OrbitalData, j: QuantumChemistryBase.OrbitalData):
+    def get_pair_orbitals(self, i: QuantumChemistryBase.OrbitalData, j: QuantumChemistryBase.OrbitalData,
+                          exclude: typing.List[QuantumChemistryBase.OrbitalData] = None):
         if isinstance(i, int):
             i = self.orbitals[i]
         if isinstance(j, int):
             j = self.orbitals[j]
-        return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pair]
+        if exclude is None or isinstance(exclude, QuantumChemistryBase.OrbitalData):
+            exclude = [exclude]
+
+        return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pair and x not in exclude]
 
     def get_reference_orbital(self, i):
-        return [x for x in self.orbitals if (i) == x.pair]
+        return [x for x in self.orbitals if (i, i) == x.pair and x.occ == 2.0]
 
     def get_reference_orbitals(self):
-        return [x for x in self.orbitals if len(x.pair) == 1 and x.pair[0] >= 0]
+        active_ref_idx = self.reference_orbitals
+        active_orbitals = [x for x in self.orbitals if x.idx is not None]
+        return [active_orbitals[i] for i in active_ref_idx]
 
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pair) == 1 and x.pair[0] < 0]
@@ -300,7 +308,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         ordered_qubits = []
         pairs = [i for i in range(self.n_electrons // 2)]
         for i in pairs:
-            pnos = [i] + [a.idx for a in self.get_pno_indices(i=i, j=i)]
+            pnos = [i] + [a.idx for a in self.get_pair_orbitals(i=i, j=i, exclude=i)]
             if hcb:
                 up = [i for i in pnos]
                 ordered_qubits += up
@@ -462,7 +470,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             for x in pairs:
                 U += gates.X(x.idx)
                 c = [None, x.idx]
-                for a in self.get_pno_indices(i=x, j=x):
+                for a in self.get_pair_orbitals(i=x, j=x):
+                    if a == x:
+                        continue
                     idx = self.format_excitation_indices([(x.idx, a.idx)])
                     U += gates.Ry(angle=(idx, "D", label), target=a.idx, control=c[0])
                     U += gates.X(target=c[1], control=a.idx)
@@ -474,7 +484,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             for x in pairs:
                 if include_reference:
                     U += gates.X(x.idx)
-                for a in self.get_pno_indices(i=x, j=x):
+                for a in self.get_pair_orbitals(i=x, j=x):
+                    if x == a:
+                        continue
                     idx = self.format_excitation_indices([(x.idx, a.idx)])
                     U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
         return U
@@ -495,16 +507,18 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         # HF-X -- PNO-XX indices
         for i in self.get_reference_orbitals():
-            for a in self.get_pno_indices(i=i, j=i):
+            for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
                 idx = self.format_excitation_indices([(i.idx, a.idx)])
                 if idx not in exclude and idx not in indices:
                     indices.append(idx)
+
         if "G" in name:
             for i in self.get_reference_orbitals():
-                for a in self.get_pno_indices(i=i, j=i):
-                    for b in self.get_pno_indices(i=i, j=i):
+                for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
+                    for b in self.get_pair_orbitals(i=i, j=i, exclude=i):
                         if a.idx <= b.idx:
                             continue
+
                         idx = self.format_excitation_indices([(a.idx, b.idx)])
                         if idx not in exclude and idx not in indices:
                             indices.append(idx)
@@ -512,7 +526,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if "PNO" in name or "SPA" in name:
             return indices
 
-        virtuals = [i for i in self.orbitals if len(i.pair) == 2]
+        virtuals = [i for i in self.orbitals if len(i.pair) == 2 and i.occ != 2.0]
         virtuals += self.get_virtual_orbitals()  # this is usually empty
         # HF-X -- PNO-XY/PNO-YY indices
         for i in self.get_reference_orbitals():
@@ -536,7 +550,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     idx = self.format_excitation_indices([(a.idx, b.idx)])
                     if idx not in exclude and idx not in indices:
                         indices.append(idx)
-
         return indices
 
     def make_pno_upccgsd_ansatz(self, generalized=False, include_offdiagonals=False,
@@ -544,11 +557,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         indices = []
         refs = self.get_reference_orbitals()
         for i in self.get_reference_orbitals():
-            for a in self.get_pno_indices(i=i, j=i):
+            for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
                 indices.append((i.idx, a.idx))
             if generalized:
-                for a in self.get_pno_indices(i, i):
-                    for b in self.get_pno_indices(i, i):
+                for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
+                    for b in self.get_pair_orbitals(i=i, j=i, exclude=i):
                         if b.idx_total <= a.idx_total:
                             continue
                         indices.append((i.idx, a.idx))
@@ -556,14 +569,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if include_offdiagonals:
             for i in self.get_reference_orbitals():
                 for j in self.get_reference_orbitals():
+                    pairs_ij = self.get_pair_orbitals(i=i, j=j, exclude=[i, j])
                     if i.idx <= j.idx:
                         continue
-                    for a in self.get_pno_indices(i, j):
+                    for a in pairs_ij:
                         indices.append((j.idx, a.idx))
 
                     if generalized:
-                        for a in self.get_pno_indices(i, j):
-                            for b in self.get_pno_indices(i, j):
+                        for a in pairs_ij:
+                            for b in pairs_ij:
                                 if a.idx <= b.idx:
                                     continue
                                 indices.append((a.idx, b.idx))

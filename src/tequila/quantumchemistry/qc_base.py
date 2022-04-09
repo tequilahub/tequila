@@ -10,7 +10,7 @@ from tequila.objective.objective import Variable, Variables, ExpectationValue
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
 from .chemistry_tools import ActiveSpaceData, FermionicGateImpl, prepare_product_state, ClosedShellAmplitudes, \
-    Amplitudes,  ParametersQC, NBodyTensor
+    Amplitudes,  ParametersQC, NBodyTensor, IntegralManager
 
 from .encodings import known_encodings
 
@@ -51,11 +51,17 @@ class QuantumChemistryBase:
         occ: float = None # occupation number assigned to orbital
         pair: tuple = None # potential electron pair that the orbital is assigned to
 
+        def __post_init__(self):
+            # backward compatibility
+            if self.pair is not None and len(self.pair) == 1:
+                self.pair = (self.pair[0], self.pair[0])
+                self.occ = 2.0 # mark as reference
+
         def __str__(self):
             return "Orbital {}".format(str(self.__dict__))
 
     active_space: ActiveSpaceData = None
-    orbitals: list = None
+    _orbitals: list = None
     _reference_orbitals: list = None
 
     def __init__(self, parameters: ParametersQC,
@@ -78,14 +84,14 @@ class QuantumChemistryBase:
         """
 
         if orbitals is not None:
-            self.orbitals = []
+            self._orbitals = []
             for x in orbitals:
                 if isinstance(x, self.OrbitalData):
                     self.orbitals.append(x)
                 else:
                     self.orbitals.append(self.OrbitalData(**x))
         else:
-            self.orbitals = orbitals
+            self._orbitals = orbitals
 
         self.parameters = parameters
         if reference_orbitals is None:
@@ -110,7 +116,7 @@ class QuantumChemistryBase:
         self._rdm1 = None
         self._rdm2 = None
 
-        if self.orbitals is None:
+        if self._orbitals is None:
             orbitals = []
             for i in range(self.molecule.n_orbitals): # molecule.n_orbitals goes over all orbitals of the basis
                 occ = 0.0
@@ -122,8 +128,8 @@ class QuantumChemistryBase:
                 for ii, i in enumerate(self.active_space.active_orbitals):
                     for x in orbitals:
                         if x.idx_total == i:
-                            x.active_idx = ii
-            self.orbitals=orbitals
+                            x.idx = ii
+            self._orbitals=orbitals
 
 
     def _initialize_transformation(self, transformation=None, *args, **kwargs):
@@ -452,12 +458,19 @@ class QuantumChemistryBase:
         return molecule
 
     @property
+    def orbitals(self):
+        if self.active_space is None:
+            return self._orbitals
+        else:
+            return [x for x in self._orbitals if x.idx is not None]
+
+    @property
     def reference_orbitals(self):
         if self.active_space is None:
             return self._reference_orbitals
         else:
             total_indices= self.active_space.active_reference_orbitals
-            active_indices = [self.orbitals[i].idx for i in total_indices]
+            active_indices = [self._orbitals[i].idx for i in total_indices]
             return active_indices
 
     @property
@@ -760,9 +773,7 @@ class QuantumChemistryBase:
             indices = [[(n, m)] for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n < m]
         else:
             raise TequilaException("Unknown recipe: {}".format(key))
-
         indices = [self.format_excitation_indices(idx) for idx in indices]
-
         return indices
 
     def make_hardcore_boson_upccgd_layer(self,
@@ -1670,7 +1681,7 @@ class QuantumChemistryBase:
             result += str(self.active_space)
 
         result += "\nOrbitals:\n"
-        for orb in self.orbitals:
+        for orb in self._orbitals:
             result += "{}\n".format(orb)
 
         return result

@@ -6,6 +6,7 @@ import numpy
 from tequila import BitString, QCircuit, TequilaException
 from tequila.circuit import gates
 
+
 @dataclass
 class ActiveSpaceData:
     """
@@ -19,7 +20,8 @@ class ActiveSpaceData:
         result = "Active Space Data:\n"
         result += "{key:15} : {value:15} \n".format(key="active_orbitals", value=str(self.active_orbitals))
         result += "{key:15} : {value:15} \n".format(key="reference_orbitals", value=str(self.reference_orbitals))
-        result += "{key:15} : {value:15} \n".format(key="active_reference_orbitals", value=str(self.active_reference_orbitals))
+        result += "{key:15} : {value:15} \n".format(key="active_reference_orbitals",
+                                                    value=str(self.active_reference_orbitals))
         return result
 
     @property
@@ -73,10 +75,9 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         return False
         if not self.transformation.lower().strip("_") == "jordanwigner": return False
         if not len(self.indices) == 2: return False
-        if not self.indices[0][0]//2 == self.indices[1][0]//2: return False
-        if not self.indices[0][1]//2 == self.indices[1][1]//2: return False
+        if not self.indices[0][0] // 2 == self.indices[1][0] // 2: return False
+        if not self.indices[0][1] // 2 == self.indices[1][1] // 2: return False
         return True
-
 
 
 def prepare_product_state(state: BitString) -> QCircuit:
@@ -657,3 +658,115 @@ class NBodyTensor:
                 self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
 
         return self
+
+
+class IntegralManager:
+    """
+    Manage Basis Integrals of Quantum Chemistry
+    All integrals are held in their original basis, the corresponding mo-coefficients have to be passed down
+    and are usually held by the QuantumChemistryBaseClass
+    """
+    _overlap_integrals: numpy.ndarray = None
+    _one_body_integrals: numpy.ndarray = None
+    _two_body_integrals: NBodyTensor = None
+    _constant_term: numpy.float = None
+    _basis_type: str = None
+    _basis_name: str = None
+
+    def __init__(self, overlap_integrals, one_body_integrals, two_body_integrals, basis_type="custom",
+                 basis_name="unknown",
+                 constant_term=0.0):
+        self._overlap_integrals = overlap_integrals
+        self._one_body_integrals = one_body_integrals
+        self._two_body_integrals = two_body_integrals
+        self._constant_term = constant_term
+        self._basis_type = basis_type
+        self._basis_name = basis_name
+        assert len(self._one_body_integrals.shape) == 2
+        assert len(self._overlap_integrals.shape) == 2
+        assert len(self._two_body_integrals.shape) == 4
+        try:
+            assert two_body_integrals.ordering == "chem"
+        except Exception as E:
+            raise TequilaException(
+                "two_body_integrals given in wrong format. Needs to be a tq.chemistry.NBodyTensor in chem ordering.\n{}".format(
+                    str(E)))
+        assert self._overlap_integrals.shape == self._one_body_integrals.shape
+        for i in range(4):
+            assert self._one_body_integrals.shape[0] == self._two_body_integrals.elems.shape[i]
+        assert self._one_body_integrals.shape[0] == self._one_body_integrals.shape[1]
+
+    def get_orthonormalized_orbital_coefficients(self):
+        """
+        Computes orbitals in this basis that are orthonormal (through loewdin orthonormalization)
+
+        Returns
+        -------
+        coefficient matrix of orthonormalized orbitals
+        """
+        if self.basis_is_orthogonal():
+            return numpy.eye(self._one_body_integrals.shape[0])
+
+        S = self._overlap_integrals
+        sv, U = numpy.linalg.eigh(S)
+        s = numpy.diag(numpy.asarray([1.0 / numpy.sqrt(x) for x in sv]))
+        C = U.dot(s.dot(U.transpose()))
+        return C
+
+    @property
+    def overlap_integrals(self):
+        return self._overlap_integrals
+
+    @property
+    def one_body_integrals(self):
+        return self._one_body_integrals
+
+    @property
+    def two_body_integrals(self):
+        return self._two_body_integrals.elems
+
+    @property
+    def constant_term(self):
+        return self._constant_term
+
+    def get_transformed_one_body_integrals(self, orbital_coefficients, verify=True):
+        if verify: assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
+        h = self.one_body_integrals
+        h = numpy.einsum("ix, xj -> ij", h, orbital_coefficients, optimize='greedy')
+        h = numpy.einsum("xj, xi -> ij", h, orbital_coefficients, optimize='greedy')
+        return h
+
+    def get_transformed_two_body_integrals(self, orbital_coefficients, ordering="openfermion", verify=True):
+        g = self.two_body_integrals
+        g = numpy.einsum("ijkx, xl -> ijkl", g, orbital_coefficients, optimize='greedy')
+        g = numpy.einsum("ijxl, xk -> ijkl", g, orbital_coefficients, optimize='greedy')
+        g = numpy.einsum("ixkl, xj -> ijkl", g, orbital_coefficients, optimize='greedy')
+        g = numpy.einsum("xjkl, xi -> ijkl", g, orbital_coefficients, optimize='greedy')
+
+        g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
+        # Order tensor. default: meet openfermion conventions
+        g.reorder(to=ordering)
+
+        return g
+
+    def verify_orbital_coefficients(self, orbital_coefficients, tolerance=1.e-5):
+        """
+        Verify if orbital coefficients are valid (i.e. if they define a orthonormal set of orbitals)
+        Parameters
+        ----------
+        orbital_coefficients: the orbital coefficients C_ij with i:basis and j:orbitals
+        tolerance
+
+        Returns
+        -------
+        True or False depending if the overlap matrix of the basis is transformed to a unit matrix
+
+        """
+        S = self.overlap_integrals
+        St = numpy.einsum("ix, xj -> ij", S, orbital_coefficients, optimize='greedy')
+        St = numpy.einsum("xj, xi -> ij", St, orbital_coefficients, optimize='greedy')
+        return numpy.linalg.norm(St - numpy.eye(S.shape[0])) < tolerance
+
+    def basis_is_orthogonal(self, tolerance=1.e-5):
+        S = self.overlap_integrals
+        return numpy.linalg.norm(S - numpy.eye(S.shape[0])) < tolerance
