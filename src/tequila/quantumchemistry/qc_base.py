@@ -10,7 +10,7 @@ from tequila.objective.objective import Variable, Variables, ExpectationValue
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
 from .chemistry_tools import ActiveSpaceData, FermionicGateImpl, prepare_product_state, ClosedShellAmplitudes, \
-    Amplitudes,  ParametersQC, NBodyTensor, IntegralManager, OrbitalData
+    Amplitudes, ParametersQC, NBodyTensor, IntegralManager, OrbitalData
 
 from .encodings import known_encodings
 
@@ -33,7 +33,6 @@ import warnings
 
 
 class QuantumChemistryBase:
-
     """
     Base Class for tequila chemistry functionality
     This is what is initialized with tq.Molecule(...)
@@ -72,14 +71,16 @@ class QuantumChemistryBase:
 
         self.parameters = parameters
         if reference_orbitals is None:
-            reference_orbitals = [i for i in range(parameters.n_electrons//2)]
-        self._reference_orbitals=reference_orbitals
+            reference_orbitals = [i for i in range(parameters.n_electrons // 2)]
+        self._reference_orbitals = reference_orbitals
 
         # initialize integral manager
         if "integral_manager" in kwargs:
             self.integral_manager = kwargs["integral_manager"]
         else:
-            self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals, reference_orbitals=reference_orbitals, *args, **kwargs)
+            self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
+                                                                     reference_orbitals=reference_orbitals, *args,
+                                                                     **kwargs)
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
         self.molecule = self.make_molecule(*args, **kwargs)
@@ -90,7 +91,6 @@ class QuantumChemistryBase:
 
         self._rdm1 = None
         self._rdm2 = None
-
 
     def _initialize_transformation(self, transformation=None, *args, **kwargs):
         """
@@ -128,8 +128,6 @@ class QuantumChemistryBase:
                                                                                          list(encodings.keys())))
 
         return transformation
-
-
 
     @classmethod
     def from_openfermion(cls, molecule: openfermion.MolecularData,
@@ -329,7 +327,8 @@ class QuantumChemistryBase:
 
         return QCircuit.wrap_gate(
             FermionicGateImpl(angle=angle, generator=generator, p0=p0,
-                              transformation=type(self.transformation).__name__.lower(), indices=indices, assume_real=assume_real,
+                              transformation=type(self.transformation).__name__.lower(), indices=indices,
+                              assume_real=assume_real,
                               control=control, **kwargs))
 
     def make_molecule(self, *args, **kwargs) -> MolecularData:
@@ -412,20 +411,21 @@ class QuantumChemistryBase:
             if "active_orbitals" in kwargs and kwargs["active_orbitals"] is not None:
                 active_orbitals = kwargs["active_orbitals"]
 
-            reference_orbitals = [i for i in range(self.parameters.n_electrons//2)]
+            reference_orbitals = [i for i in range(self.parameters.n_electrons // 2)]
             if "reference_orbitals" in kwargs and kwargs["reference_orbitals"] is not None:
                 reference_orbitals = kwargs["reference_orbitals"]
 
-            active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))
+            active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals),
+                                           reference_orbitals=sorted(reference_orbitals))
             kwargs["active_space"] = active_space
 
         if "basis_name" not in kwargs:
             kwargs["basis_name"] = self.parameters.basis_set
 
-        manager = IntegralManager(one_body_integrals=one_body_integrals, two_body_integrals=two_body_integrals, constant_term=constant_part, *args, **kwargs)
+        manager = IntegralManager(one_body_integrals=one_body_integrals, two_body_integrals=two_body_integrals,
+                                  constant_term=constant_part, *args, **kwargs)
 
         return manager
-
 
     def do_make_molecule(self, *args, **kwargs):
         """
@@ -434,7 +434,8 @@ class QuantumChemistryBase:
         """
 
         assert hasattr(self, "integral_manager") and self.integral_manager is not None
-        constant_term,one_body_integrals,two_body_integrals = self.integral_manager.get_integrals(ordering="openfermion")
+        constant_term, one_body_integrals, two_body_integrals = self.integral_manager.get_integrals(
+            ordering="openfermion")
 
         if ("n_orbitals" in kwargs):
             n_orbitals = kwargs["n_orbitals"]
@@ -500,7 +501,8 @@ class QuantumChemistryBase:
         if active_indices is None:
             active_indices = self.integral_manager.active_space.active_orbitals
 
-        fop = openfermion.transforms.get_fermion_operator(self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
+        fop = openfermion.transforms.get_fermion_operator(
+            self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
         try:
             qop = self.transformation(fop)
         except TypeError:
@@ -1650,7 +1652,7 @@ class QuantumChemistryBase:
         for k, v in self.parameters.__dict__.items():
             result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
 
-        result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals**2))
+        result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals ** 2))
         result += "{key:15} : {value:15} \n".format(key="reference state", value=str(self._reference_state()))
 
         result += "\nBasis\n"

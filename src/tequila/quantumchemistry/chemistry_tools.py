@@ -891,7 +891,7 @@ class IntegralManager:
             c = active_integrals[0] + c
             print("c=", c)
             h = active_integrals[1]
-            g = NBodyTensor(elems=active_integrals[2], ordering=ordering)
+            g = NBodyTensor(elems=active_integrals[2], ordering="openfermion")
 
         g.reorder(to=ordering)
 
