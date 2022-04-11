@@ -57,7 +57,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
             # compute mo integrals
             mo_coeff = mf.mo_coeff
-            h_ao = mol.intor_symmetric('int1e_kin') + mol.intor_symmetric('int1e_nuc')
+            h_ao = mol.intor('int1e_kin') + mol.intor('int1e_nuc')
             g_ao = mol.intor('int2e', aosym='s1')
             S = mol.intor_symmetric("int1e_ovlp")
             g_ao = NBodyTensor(elems=g_ao, ordering="mulliken")
@@ -77,7 +77,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
     @classmethod
     def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
-        c, h1, h2 = molecule.get_integrals(two_body_ordering="openfermion")
+        c, h1, h2 = molecule.get_integrals(ordering="openfermion")
         if transformation is None:
             transformation = molecule.transformation
         return cls(nuclear_repulsion=c,
@@ -152,11 +152,10 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
     def compute_fci(self, *args, **kwargs):
         from pyscf import fci
-        c, h1, h2 = self.get_integrals(two_body_ordering="mulliken")
+        c, h1, h2 = self.get_integrals(ordering="chem")
         norb = self.n_orbitals
         nelec = self.n_electrons
         e, fcivec = fci.direct_spin1.kernel(h1, h2.elems, norb, nelec, **kwargs)
-        print(e)
         return e + c
 
     def compute_energy(self, method: str, *args, **kwargs) -> float:
@@ -180,7 +179,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             raise TequilaException("unknown method: {}".format(method))
 
     def _get_hf(self, do_not_solve=True, **kwargs):
-        c, h1, h2 = self.get_integrals(two_body_ordering="mulliken")
+        c, h1, h2 = self.get_integrals(ordering="mulliken")
         norb = self.n_orbitals
         nelec = self.n_electrons
 

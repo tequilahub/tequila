@@ -873,6 +873,9 @@ class IntegralManager:
         -------
 
         """
+        if orbital_coefficients is None:
+            orbital_coefficients = self.orbital_coefficients
+
         c = self.constant_term
         h = self._get_transformed_one_body_integrals(orbital_coefficients=orbital_coefficients)
         g = self._get_transformed_two_body_integrals(orbital_coefficients=orbital_coefficients, ordering=ordering)

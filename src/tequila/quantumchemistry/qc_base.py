@@ -434,7 +434,7 @@ class QuantumChemistryBase:
         """
 
         assert hasattr(self, "integral_manager") and self.integral_manager is not None
-        constant_term,one_body_integrals,two_body_integrals = self.get_integrals(two_body_ordering="openfermion")
+        constant_term,one_body_integrals,two_body_integrals = self.integral_manager.get_integrals(ordering="openfermion")
 
         if ("n_orbitals" in kwargs):
             n_orbitals = kwargs["n_orbitals"]
@@ -500,6 +500,7 @@ class QuantumChemistryBase:
         if active_indices is None:
             active_indices = self.integral_manager.active_space.active_orbitals
 
+        print(self.molecule.nuclear_repulsion)
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
         try:
@@ -561,6 +562,11 @@ class QuantumChemistryBase:
         one_body_integrals
         two_body_integrals
         """
+
+        # backward compatibility
+        if "two_body_ordering" in kwargs:
+            kwargs["ordering"] = kwargs["two_body_ordering"]
+
         return self.integral_manager.get_integrals(*args, **kwargs)
 
     def compute_one_body_integrals(self):
@@ -568,9 +574,9 @@ class QuantumChemistryBase:
         c, h1, h2 = self.get_integrals()
         return h1
 
-    def compute_two_body_integrals(self, two_body_ordering="openfermion"):
+    def compute_two_body_integrals(self, ordering="openfermion"):
         """ """
-        c, h1, h2 = self.get_integrals(two_body_ordering=two_body_ordering)
+        c, h1, h2 = self.get_integrals(ordering=ordering)
         return h2
 
     def compute_constant_part(self):
