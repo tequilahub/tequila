@@ -79,40 +79,17 @@ class QuantumChemistryBase:
         if "integral_manager" in kwargs:
             self.integral_manager = kwargs["integral_manager"]
         else:
-            self.integral_manager = self.initialize_integral_manager(*args, **kwargs)
+            self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals, reference_orbitals=reference_orbitals, *args, **kwargs)
 
-        if "molecule" in kwargs:
-            self.molecule = kwargs["molecule"]
-        else:
-            self.molecule = self.make_molecule(*args, **kwargs)
+        self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
+        self.molecule = self.make_molecule(*args, **kwargs)
 
         assert (parameters.basis_set.lower() == self.molecule.basis.lower())
         assert (parameters.multiplicity == self.molecule.multiplicity)
         assert (parameters.charge == self.molecule.charge)
 
-        if active_orbitals is None:
-            active_orbitals = [i for i in range(self.n_orbitals)]
-
-        self.integral_manager._active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))
-        self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
-
         self._rdm1 = None
         self._rdm2 = None
-
-        if self._orbitals is None:
-            orbitals = []
-            for i in range(self.molecule.n_orbitals): # molecule.n_orbitals goes over all orbitals of the basis
-                occ = 0.0
-                if i in self._reference_orbitals:
-                    occ = 2.0
-                orbitals.append(OrbitalData(idx_total=i, occ=occ))
-            # assign active space indices
-            if self.integral_manager._active_space is not None:
-                for ii, i in enumerate(self.orbitals):
-                    for x in orbitals:
-                        if x.idx_total == i.idx:
-                            x.idx = ii
-            self._orbitals=orbitals
 
 
     def _initialize_transformation(self, transformation=None, *args, **kwargs):
@@ -430,12 +407,13 @@ class QuantumChemistryBase:
             kwargs.pop("nuclear_repulsion")
 
         if "active_space" not in kwargs:
+
             active_orbitals = [i for i in range(one_body_integrals.shape[0])]
-            if "active_orbitals" in kwargs:
+            if "active_orbitals" in kwargs and kwargs["active_orbitals"] is not None:
                 active_orbitals = kwargs["active_orbitals"]
 
             reference_orbitals = [i for i in range(self.parameters.n_electrons//2)]
-            if "reference_orbitals" in kwargs:
+            if "reference_orbitals" in kwargs and kwargs["reference_orbitals"] is not None:
                 reference_orbitals = kwargs["reference_orbitals"]
 
             active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))

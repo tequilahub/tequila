@@ -884,7 +884,9 @@ class IntegralManager:
             active_integrals = get_active_space_integrals(one_body_integrals=h, two_body_integrals=g,
                                                           occupied_indices=self._active_space.frozen_reference_orbitals,
                                                           active_indices=self._active_space.active_orbitals)
+            print("c=", c)
             c = active_integrals[0] + c
+            print("c=", c)
             h = active_integrals[1]
             g = NBodyTensor(elems=active_integrals[2], ordering=ordering)
 
