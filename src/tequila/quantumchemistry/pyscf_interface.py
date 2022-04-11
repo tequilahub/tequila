@@ -17,14 +17,14 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                  transformation: typing.Union[str, typing.Callable] = None,
                  *args, **kwargs):
 
-        if "basis_set" in kwargs and kwargs["basis_set"] is not None:
+        if parameters.basis_set is not None:
 
             # either compute integrals form basis_set or give them
             # can't do both
             assert "one_body_integrals" not in kwargs
             assert "two_body_integrals" not in kwargs
 
-            mol = pyscf.gto.M(atom=parameters.get_geometry_string(), basis=kwargs["basis_set"])
+            mol = pyscf.gto.M(atom=parameters.get_geometry_string(), basis=parameters.basis_set)
             mf = pyscf.scf.RHF(mol)
             mf.kernel()
 
@@ -33,14 +33,16 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             h = mol.get_hcore()
             obi = numpy.einsum("ki, kl, lj -> ij", c, h, c)
 
-            eri = mol.ao2mo(c)
-            eri = pyscf.ao2mo.restore(1, eri, c.shape[0])
+            dummy = numpy.eye(h.shape[0])
+            eri = mol.ao2mo(dummy)
+            eri = pyscf.ao2mo.restore(1, eri, dummy.shape[0])
 
             eri = NBodyTensor(elems=eri, ordering="mulliken")
-            eri = eri.reorder("openfermion").elems
 
             kwargs["two_body_integrals"] = eri
-            kwargs["one_body_integrals"] = obi
+            kwargs["one_body_integrals"] = h
+            kwargs["orbital_coefficients"] = c
+
             if "nuclear_repulsion" not in kwargs:
                 kwargs["nuclear_repulsion"] = mol.energy_nuc()
 
@@ -58,9 +60,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                    transformation=transformation,
                    parameters=molecule.parameters, *args, **kwargs)
 
-    def do_make_molecule(self, molecule=None, nuclear_repulsion=None, one_body_integrals=None, two_body_integrals=None,
-                         orbital_energies=None,
-                         *args, **kwargs) -> MolecularData:
+    def xx__initialize_integral_manager(self, *args, **kwargs):
         if molecule is None:
             if one_body_integrals is not None and two_body_integrals is not None:
                 if nuclear_repulsion is None:
@@ -128,7 +128,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         c, h1, h2 = self.get_integrals(two_body_ordering="mulliken")
         norb = self.n_orbitals
         nelec = self.n_electrons
-        e, fcivec = fci.direct_spin1.kernel(h1, h2, norb, nelec, **kwargs)
+        e, fcivec = fci.direct_spin1.kernel(h1, h2.elems, norb, nelec, **kwargs)
         return e + c
 
     def compute_energy(self, method: str, *args, **kwargs) -> float:

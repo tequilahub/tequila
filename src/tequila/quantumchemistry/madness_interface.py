@@ -1,15 +1,13 @@
 from tequila.quantumchemistry.qc_base import QuantumChemistryBase, TequilaException, TequilaWarning, \
     QCircuit, gates
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
-from tequila import ExpectationValue, PauliString, QubitHamiltonian, simulate
+from tequila import ExpectationValue
+from .chemistry_tools import OrbitalData
 import typing
 import numpy
 import warnings
 import os
 import shutil
-
-from dataclasses import dataclass
-
 
 class TequilaMadnessException(TequilaException):
     def __str__(self):
@@ -142,7 +140,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         orbitals = []
         if pairinfo is not None:
-            orbitals = [self.OrbitalData(idx_total=i, idx=i, pair=p, occ=occinfo[i]) for i, p in
+            orbitals = [OrbitalData(idx_total=i, idx=i, pair=p, occ=occinfo[i]) for i, p in
                         enumerate(pairinfo)]
             reference_orbitals = [x for x in orbitals if x.occ == 2.0]
             if active_orbitals == "auto":
@@ -242,13 +240,13 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return h, g
 
-    def get_pair_orbitals(self, i: QuantumChemistryBase.OrbitalData, j: QuantumChemistryBase.OrbitalData,
-                          exclude: typing.List[QuantumChemistryBase.OrbitalData] = None):
+    def get_pair_orbitals(self, i: OrbitalData, j: OrbitalData,
+                          exclude: typing.List[OrbitalData] = None):
         if isinstance(i, int):
             i = self.orbitals[i]
         if isinstance(j, int):
             j = self.orbitals[j]
-        if exclude is None or isinstance(exclude, QuantumChemistryBase.OrbitalData):
+        if exclude is None or isinstance(exclude, OrbitalData):
             exclude = [exclude]
 
         return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pair and x not in exclude]

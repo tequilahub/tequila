@@ -10,7 +10,7 @@ from tequila.objective.objective import Variable, Variables, ExpectationValue
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
 from .chemistry_tools import ActiveSpaceData, FermionicGateImpl, prepare_product_state, ClosedShellAmplitudes, \
-    Amplitudes,  ParametersQC, NBodyTensor, IntegralManager
+    Amplitudes,  ParametersQC, NBodyTensor, IntegralManager, OrbitalData
 
 from .encodings import known_encodings
 
@@ -41,29 +41,6 @@ class QuantumChemistryBase:
     Derived classes interface specific backends (e.g. Psi4, PySCF and Madness). See PACKAGE_interface.py for more
     """
 
-    @dataclass
-    class OrbitalData:
-        irrep: str = None # irrep of symmetry group (if assigned)
-        idx_irrep: int = None # index within the irrep
-        idx_total: int = None # index within the total set of orbitals
-        idx: int = None # index within the active space
-        energy: float = None # energy assigned to orbital
-        occ: float = None # occupation number assigned to orbital
-        pair: tuple = None # potential electron pair that the orbital is assigned to
-
-        def __post_init__(self):
-            # backward compatibility
-            if self.pair is not None and len(self.pair) == 1:
-                self.pair = (self.pair[0], self.pair[0])
-                self.occ = 2.0 # mark as reference
-
-        def __str__(self):
-            return "Orbital {}".format(str(self.__dict__))
-
-    active_space: ActiveSpaceData = None
-    _orbitals: list = None
-    _reference_orbitals: list = None
-
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
@@ -86,10 +63,10 @@ class QuantumChemistryBase:
         if orbitals is not None:
             self._orbitals = []
             for x in orbitals:
-                if isinstance(x, self.OrbitalData):
+                if isinstance(x, OrbitalData):
                     self.orbitals.append(x)
                 else:
-                    self.orbitals.append(self.OrbitalData(**x))
+                    self.orbitals.append(OrbitalData(**x))
         else:
             self._orbitals = orbitals
 
@@ -113,11 +90,10 @@ class QuantumChemistryBase:
         assert (parameters.multiplicity == self.molecule.multiplicity)
         assert (parameters.charge == self.molecule.charge)
 
-        self.active_space = None
-        if active_orbitals is not None:
-            self.active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))
-            self.integral_manager._active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))
+        if active_orbitals is None:
+            active_orbitals = [i for i in range(self.n_orbitals)]
 
+        self.integral_manager._active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
         self._rdm1 = None
@@ -129,12 +105,12 @@ class QuantumChemistryBase:
                 occ = 0.0
                 if i in self._reference_orbitals:
                     occ = 2.0
-                orbitals.append(self.OrbitalData(idx_total=i, occ=occ))
+                orbitals.append(OrbitalData(idx_total=i, occ=occ))
             # assign active space indices
-            if self.active_space is not None:
-                for ii, i in enumerate(self.active_space.active_orbitals):
+            if self.integral_manager._active_space is not None:
+                for ii, i in enumerate(self.orbitals):
                     for x in orbitals:
-                        if x.idx_total == i:
+                        if x.idx_total == i.idx:
                             x.idx = ii
             self._orbitals=orbitals
 
@@ -431,25 +407,44 @@ class QuantumChemistryBase:
         assert ("one_body_integrals" in kwargs)
         assert ("two_body_integrals" in kwargs)
         one_body_integrals = kwargs["one_body_integrals"]
+        kwargs.pop("one_body_integrals")
         two_body_integrals = kwargs["two_body_integrals"]
+        kwargs.pop("two_body_integrals")
 
-        if "ordering" in kwargs:
-            two_body_integrals = NBodyTensor(two_body_integrals, ordering=kwargs["ordering"])
-            two_body_integrals.reorder(to="openfermion")
+        if not isinstance(two_body_integrals, NBodyTensor):
+            # assuming two_body_integrals are given in openfermion ordering
+            ordering = "openfermion"
+            if "ordering" in kwargs:
+                ordering = kwargs["ordering"]
+                kwargs.pop("ordering")  # let's not confuse the IntegralManager
+            two_body_integrals = NBodyTensor(two_body_integrals, ordering=ordering)
+
+        two_body_integrals = two_body_integrals.reorder(to="chem")
 
         constant_part = 0.0
-        if "constant_part" in kwargs:
-            constant_part += kwargs["constant_part"]
+        if "constant_term" in kwargs:
+            constant_part += kwargs["constant_term"]
+            kwargs.pop("constant_term")
         if "nuclear_repulsion" in kwargs:
             constant_part += kwargs["nuclear_repulsion"]
+            kwargs.pop("nuclear_repulsion")
 
-        basis_type = "custom"
-        # if no overlap orbitals are given, we assume the basis is orthogonal
-        S = numpy.eye(one_body_integrals.shape[0])
-        if "overlap_integrals" in kwargs:
-            S = kwargs["overlap_integrals"]
+        if "active_space" not in kwargs:
+            active_orbitals = [i for i in range(one_body_integrals.shape[0])]
+            if "active_orbitals" in kwargs:
+                active_orbitals = kwargs["active_orbitals"]
 
-        manager = IntegralManager(overlap_integrals=S, one_body_integrals=one_body_integrals, two_body_integrals=two_body_integrals, constant_term=constant_part, basis_name=self.parameters.basis_set, basis_type=basis_type)
+            reference_orbitals = [i for i in range(self.parameters.n_electrons//2)]
+            if "reference_orbitals" in kwargs:
+                reference_orbitals = kwargs["reference_orbitals"]
+
+            active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals), reference_orbitals=sorted(reference_orbitals))
+            kwargs["active_space"] = active_space
+
+        if "basis_name" not in kwargs:
+            kwargs["basis_name"] = self.parameters.basis_set
+
+        manager = IntegralManager(one_body_integrals=one_body_integrals, two_body_integrals=two_body_integrals, constant_term=constant_part, *args, **kwargs)
 
         return manager
 
@@ -460,6 +455,7 @@ class QuantumChemistryBase:
         Override this in derived class if needed
         """
 
+        assert hasattr(self, "integral_manager") and self.integral_manager is not None
         constant_term,one_body_integrals,two_body_integrals = self.get_integrals(two_body_ordering="openfermion")
 
         if ("n_orbitals" in kwargs):
@@ -472,7 +468,7 @@ class QuantumChemistryBase:
         molecule = MolecularData(**self.parameters.molecular_data_param)
 
         molecule.one_body_integrals = one_body_integrals
-        molecule.two_body_integrals = two_body_integrals
+        molecule.two_body_integrals = two_body_integrals.elems
         molecule.nuclear_repulsion = constant_term
         molecule.n_orbitals = n_orbitals
         if "n_electrons" in kwargs:
@@ -482,43 +478,33 @@ class QuantumChemistryBase:
 
     @property
     def orbitals(self):
-        if self.active_space is None:
-            return self._orbitals
-        else:
-            return [x for x in self._orbitals if x.idx is not None]
+        return self.integral_manager.active_orbitals
 
     @property
     def reference_orbitals(self):
-        if self.active_space is None:
-            return self._reference_orbitals
-        else:
-            total_indices= self.active_space.active_reference_orbitals
-            active_indices = [self._orbitals[i].idx for i in total_indices]
-            return active_indices
+        return self.integral_manager.active_reference_orbitals
 
     @property
     def n_orbitals(self) -> int:
         """
         Returns
         -------
-        The number of orbitals in this Molecule
+        The number of active orbitals in this Molecule
         """
-        if self.active_space is None:
-            return self.molecule.n_orbitals
-        else:
-            return len(self.active_space.active_orbitals)
+        return len(self.integral_manager.active_orbitals)
+
+    @property
+    def active_space(self):
+        return self.integral_manager.active_space
 
     @property
     def n_electrons(self) -> int:
         """
         Returns
         -------
-        The number of electrons in this molecule
+        The number of active electrons in this molecule
         """
-        if self.active_space is None:
-            return self.molecule.n_electrons
-        else:
-            return 2 * len(self.active_space.active_reference_orbitals)
+        return 2 * len(self.integral_manager.active_reference_orbitals)
 
     def make_hamiltonian(self, occupied_indices=None, active_indices=None, *args, **kwargs) -> QubitHamiltonian:
         """
@@ -531,10 +517,10 @@ class QuantumChemistryBase:
         -------
         Qubit Hamiltonian in the Fermion-to-Qubit transformation defined in self.parameters
         """
-        if occupied_indices is None and self.active_space is not None:
-            occupied_indices = self.active_space.frozen_reference_orbitals
-        if active_indices is None and self.active_space is not None:
-            active_indices = self.active_space.active_orbitals
+        if occupied_indices is None:
+            occupied_indices = self.integral_manager.active_space.frozen_reference_orbitals
+        if active_indices is None:
+            active_indices = self.integral_manager.active_space.active_orbitals
 
         fop = openfermion.transforms.get_fermion_operator(
             self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
@@ -577,18 +563,14 @@ class QuantumChemistryBase:
 
         return H
 
-    def make_molecular_hamiltonian(self):
+    def make_molecular_hamiltonian(self, occupied_indices=None, active_indices=None):
         """
         Returns
         -------
         Create a MolecularHamiltonian as openfermion Class
         (used internally here, not used in tequila)
         """
-        if self.active_space:
-            return self.molecule.get_molecular_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals,
-                                                           active_indices=self.active_space.active_orbitals)
-        else:
-            return self.molecule.get_molecular_hamiltonian()
+        return self.molecule.get_molecular_hamiltonian(occupied_indices=occupied_indices, active_indices=active_indices)
 
     def get_integrals(self, *args, **kwargs):
         """
@@ -1689,12 +1671,7 @@ class QuantumChemistryBase:
         result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals**2))
         result += "{key:15} : {value:15} \n".format(key="reference state", value=str(self._reference_state()))
 
-        if self.active_space is not None:
-            result += "\nActive Space:"
-            result += str(self.active_space)
-
-        result += "\nOrbitals (idx=None -> frozen):\n"
-        for orb in self._orbitals:
-            result += "{}\n".format(orb)
+        result += "\nBasis\n"
+        result += str(self.integral_manager)
 
         return result
