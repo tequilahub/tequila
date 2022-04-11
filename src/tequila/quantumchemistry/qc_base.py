@@ -500,9 +500,7 @@ class QuantumChemistryBase:
         if active_indices is None:
             active_indices = self.integral_manager.active_space.active_orbitals
 
-        print(self.molecule.nuclear_repulsion)
-        fop = openfermion.transforms.get_fermion_operator(
-            self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
+        fop = openfermion.transforms.get_fermion_operator(self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
         try:
             qop = self.transformation(fop)
         except TypeError:
