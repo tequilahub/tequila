@@ -191,7 +191,7 @@ class ExplicitCorrelationCorrection:
         g.reorder(to="phys")
 
         # Load one-body tensor
-        h = NBodyTensor(elems=h.elems, active_indices=self.active, size_full=self.n_ri)
+        h = NBodyTensor(elems=h, active_indices=self.active, size_full=self.n_ri)
 
         return h, g, r
 
