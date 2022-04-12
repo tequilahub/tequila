@@ -543,6 +543,7 @@ class QCircuit():
         """
         if inpl:
             self._inpl_control_circ(control)
+            return self
         else:
             # return self._return_control_circ(control)
             circ = copy.deepcopy(self)
