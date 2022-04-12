@@ -604,9 +604,6 @@ class NBodyTensor:
     def shape(self, *args, **kwargs):
         return self.elems.shape
 
-    def __getitem__(self, item):
-        return self.elems[item]
-
     def sub_lists(self, idx_lists: list = None) -> numpy.ndarray:
         """
         Get subspace of tensor by a set of index lists

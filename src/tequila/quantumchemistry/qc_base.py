@@ -521,9 +521,9 @@ class QuantumChemistryBase:
         for p in range(n_orbitals):
             h[p, p] += 2 * obt[p, p]
             for q in range(n_orbitals):
-                h[p, q] += + tbt[p, p, q, q]
+                h[p, q] += + tbt.elems[p, p, q, q]
                 if p != q:
-                    g[p, q] += 2 * tbt[p, q, q, p] - tbt[p, q, p, q]
+                    g[p, q] += 2 * tbt[p, q, q, p] - tbt.elems[p, q, p, q]
 
         H = c
         for p in range(n_orbitals):
