@@ -311,7 +311,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         c = wfn.variables()['NUCLEAR REPULSION ENERGY']
 
         g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
-        g.reorder("openfermion")
 
         kwargs["overlap_integrals"] = S
         kwargs["two_body_integrals"] = g

@@ -389,7 +389,7 @@ class QuantumChemistryBase:
 
         if not isinstance(two_body_integrals, NBodyTensor):
             # assuming two_body_integrals are given in openfermion ordering
-            ordering = "openfermion"
+            ordering = None # will be auto-detected
             if "ordering" in kwargs:
                 ordering = kwargs["ordering"]
                 kwargs.pop("ordering")  # let's not confuse the IntegralManager
@@ -434,7 +434,8 @@ class QuantumChemistryBase:
         """
 
         assert hasattr(self, "integral_manager") and self.integral_manager is not None
-        constant_term, one_body_integrals, two_body_integrals = self.integral_manager.get_integrals(ordering="openfermion")
+        constant_term, one_body_integrals, two_body_integrals = self.integral_manager.get_integrals(ordering="of")
+        two_body_integrals=two_body_integrals.reorder(to="of")
 
         if ("n_orbitals" in kwargs):
             n_orbitals = kwargs["n_orbitals"]

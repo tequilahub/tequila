@@ -1,5 +1,6 @@
 import os
 import typing
+import warnings
 from dataclasses import dataclass
 
 import numpy
@@ -477,6 +478,77 @@ class NBodyTensor:
         def __str__(self):
             return self._scheme
 
+    def identify_ordering(self, trials=25):
+        if len(self.shape) != 4:
+            return None
+        chem=False
+        phys=False
+        of=False
+        if self._verify_ordering_mulliken(trials=trials):
+            chem=self.Ordering(scheme="mulliken")
+        if self._verify_ordering_dirac(trials=trials):
+            phys=self.Ordering(scheme="dirac")
+        if self._verify_ordering_of(trials=trials):
+            of=self.Ordering(scheme="openfermion")
+
+        uniqueness = (chem,phys,of)
+        if not uniqueness.count(False) == 2 and trials<100:
+            return self.identify_ordering(trials=trials*2)
+        if chem: return self.Ordering(scheme="chem")
+        elif phys: return self.Ordering(scheme="phys")
+        elif of: return self.Ordering(scheme="openfermion")
+        else:
+            raise Exception("NBTensor ordering could not be identified")
+
+    def _verify_ordering_dirac(self, trials=100):
+        if len(self.shape) != 4:
+            return False
+        # dirac ordering: ijkl = <ij|kl> i.e 1212
+        # check for two_body symetries: <ij|kl> = <kj|il> , <il|kj>
+        elems = self.elems
+        n = self.shape[0]
+        for _ in range(trials):
+            idx = numpy.random.randint(0,n,4)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[1],idx[0],idx[3]], atol=1.e-6)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[3],idx[2],idx[1]], atol=1.e-6)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[3],idx[0],idx[1]], atol=1.e-6)
+            if not (test1 and test2 and test3):
+                return False
+
+        return True
+
+    def _verify_ordering_mulliken(self, trials=100):
+        if len(self.shape) != 4:
+            return False
+        # mulliken ordering: ijkl = (ij|kl) i.e 1122
+        elems = self.elems
+        n = self.shape[0]
+        for _ in range(trials):
+            idx = numpy.random.randint(0,n,4)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[2],idx[3]], atol=1.e-6)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[1],idx[3],idx[2]], atol=1.e-6)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[3],idx[2]], atol=1.e-6)
+            if not (test1 and test2 and test3):
+                return False
+
+        return True
+
+    def _verify_ordering_of(self, trials=100):
+        if len(self.shape) != 4:
+            return False
+        # openfermion ordering: ijkl = [ij|kl] i.e 1221
+        elems = self.elems
+        n = self.shape[0]
+        for _ in range(trials):
+            idx = numpy.random.randint(0,n,4)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[1],idx[2],idx[0]], atol=1.e-6)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[2],idx[1],idx[3]], atol=1.e-6)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[2],idx[1],idx[0]], atol=1.e-6)
+            if not (test1 and test2 and test3):
+                return False
+
+        return True
+
     def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, ordering: str = None,
                  size_full: int = None):
         """
@@ -518,6 +590,11 @@ class NBodyTensor:
             self._size_full = size_full
         # 2-body tensors (<=> order 4) currently allow reordering
         if self.order == 4:
+            auto_ordering = self.identify_ordering()
+            if ordering is None:
+                ordering = auto_ordering
+            if auto_ordering is not ordering:
+                warnings.warn("Auto identified ordering of NBTensor does not match given ordering: {} vs {}".format(auto_ordering, ordering))
             self.ordering = self.Ordering(ordering)
         else:
             if ordering is not None:
@@ -648,9 +725,10 @@ class NBodyTensor:
             -------
         """
         if self.order != 4:
-            raise Exception('Reordering currently only implemented for two-body tensors.')
+            warnings.warn('Reordering currently only implemented for two-body tensors.')
+            return self
 
-        to = self.Ordering(to)
+        to = self.Ordering(scheme=to)
 
         if self.ordering == to:
             return self
@@ -670,6 +748,7 @@ class NBodyTensor:
             elif to.is_of():
                 self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
 
+        self.ordering=to
         return self
 
 
@@ -818,7 +897,7 @@ class IntegralManager:
         two-body orbitals in given basis (using basis functions, not molecular orbitals. No active space considered)
         ordering is "chem" i.e. Mulliken i.e. integrals_{abcd} = <ac|g|bd>
         """
-        return self._two_body_integrals.elems
+        return self._two_body_integrals
 
     @property
     def constant_term(self):
@@ -879,7 +958,6 @@ class IntegralManager:
         c = self.constant_term
         h = self._get_transformed_one_body_integrals(orbital_coefficients=orbital_coefficients)
         g = self._get_transformed_two_body_integrals(orbital_coefficients=orbital_coefficients, ordering=ordering)
-
         if not ignore_active_space and self._active_space is not None:
 
             g = g.reorder(to="openfermion").elems
@@ -887,14 +965,10 @@ class IntegralManager:
             active_integrals = get_active_space_integrals(one_body_integrals=h, two_body_integrals=g,
                                                           occupied_indices=self._active_space.frozen_reference_orbitals,
                                                           active_indices=self._active_space.active_orbitals)
-            print("c=", c)
             c = active_integrals[0] + c
-            print("c=", c)
             h = active_integrals[1]
             g = NBodyTensor(elems=active_integrals[2], ordering="openfermion")
-
         g.reorder(to=ordering)
-
         return c, h, g
 
     def _get_transformed_one_body_integrals(self, orbital_coefficients=None, verify=True):
@@ -915,14 +989,13 @@ class IntegralManager:
             assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
 
         g = self.two_body_integrals
+        g = g.reorder("chem").elems
         g = numpy.einsum("ijkx, xl -> ijkl", g, orbital_coefficients, optimize='greedy')
         g = numpy.einsum("ijxl, xk -> ijkl", g, orbital_coefficients, optimize='greedy')
         g = numpy.einsum("ixkl, xj -> ijkl", g, orbital_coefficients, optimize='greedy')
         g = numpy.einsum("xjkl, xi -> ijkl", g, orbital_coefficients, optimize='greedy')
-
         g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
-        # Order tensor. default: meet openfermion conventions
-        g.reorder(to=ordering)
+        g = g.reorder(to=ordering)
 
         return g
 
