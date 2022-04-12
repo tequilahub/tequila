@@ -176,21 +176,22 @@ class ExplicitCorrelationCorrection:
             self.n_ri = n_ri_max
         self.size_check(n_ri_max=n_ri_max)
         # This assumes a f12-operator of the kind -1/gamma*exp(-gamma*r12), adjust your integrals if necessary
-        r = NBodyTensor(elems=r_elems, ordering=self.external_info["ordering"],
-                        active_indices=self.active, size_full=self.n_ri)
+        r = NBodyTensor(elems=r_elems, ordering=self.external_info["ordering"], active_indices=self.active, size_full=self.n_ri)
         r.reorder(to="phys")
 
-        # Load coulomb-tensor elements
-        if "two_body_ordering" in self.mol.kwargs:
-            ordering = self.mol.kwargs["two_body_ordering"]
-        else:
-            ordering = "openfermion"
-        g = NBodyTensor(elems=self.mol.molecule.two_body_integrals, ordering=ordering,
-                        active_indices=self.active, size_full=self.n_ri)
+        # # Load coulomb-tensor elements
+        # if "two_body_ordering" in self.mol.kwargs:
+        #     ordering = self.mol.kwargs["two_body_ordering"]
+        # else:
+        #     ordering = "openfermion"
+        # g = NBodyTensor(elems=self.mol.molecule.two_body_integrals, ordering=ordering,
+        #                 active_indices=self.active, size_full=self.n_ri)
+        c,h,g = self.mol.integral_manager.get_integrals(ignore_active_space=True)
+        g = NBodyTensor(elems=g.elems, ordering=g.ordering, active_indices=self.active, size_full=self.n_ri)
         g.reorder(to="phys")
 
         # Load one-body tensor
-        h = NBodyTensor(elems=self.mol.molecule.one_body_integrals, active_indices=self.active, size_full=self.n_ri)
+        h = NBodyTensor(elems=h.elems, active_indices=self.active, size_full=self.n_ri)
 
         return h, g, r
 
