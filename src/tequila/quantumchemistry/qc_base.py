@@ -588,8 +588,8 @@ class QuantumChemistryBase:
         assert self.n_electrons % 2 == 0
         state = [0] * (self.n_orbitals * 2)
         for i in self.reference_orbitals:
-            state[2 * i] = 1
-            state[2 * i + 1] = 1
+            state[2 * i.idx] = 1
+            state[2 * i.idx + 1] = 1
         return state
 
     def prepare_reference(self, state=None, *args, **kwargs):
@@ -614,7 +614,7 @@ class QuantumChemistryBase:
         -------
         tq.QCircuit that prepares the HCB reference
         """
-        U = gates.X(target=[i for i in self.reference_orbitals])
+        U = gates.X(target=[i.idx for i in self.reference_orbitals])
         U.n_qubits = self.n_orbitals
         return U
 
@@ -730,7 +730,7 @@ class QuantumChemistryBase:
     def make_upccgsd_indices(self, key, reference_orbitals=None, *args, **kwargs):
 
         if reference_orbitals is None:
-            reference_orbitals = [x for x in self.reference_orbitals]
+            reference_orbitals = [x.idx for x in self.reference_orbitals]
         indices = []
         # add doubles in hcb encoding
         if hasattr(key, "lower") and key.lower() == "ladder":
