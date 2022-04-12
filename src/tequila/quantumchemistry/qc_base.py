@@ -1167,10 +1167,10 @@ class QuantumChemistryBase:
         F = numpy.zeros(shape=h.shape)
         for k in range(F.shape[0]):
             for l in range(F.shape[1]):
-                tmp = 0.0
+                tmp = h[k,l]
                 for ii in self.reference_orbitals:
                     i = ii.idx
-                    tmp += h[k, l] + 2.0 * g.elems[k, i, l, i] - g.elems[k, i, i, l]
+                    tmp += (2.0*g.elems[k, i, l, i] - g.elems[k, i, i, l])
                 F[k, l] = tmp
         return F
 
