@@ -485,7 +485,7 @@ class QuantumChemistryBase:
         """
         return 2 * len(self.integral_manager.active_reference_orbitals)
 
-    def make_hamiltonian(self, occupied_indices=None, active_indices=None, *args, **kwargs) -> QubitHamiltonian:
+    def make_hamiltonian(self, *args, **kwargs) -> QubitHamiltonian:
         """
         Parameters
         ----------
@@ -496,13 +496,12 @@ class QuantumChemistryBase:
         -------
         Qubit Hamiltonian in the Fermion-to-Qubit transformation defined in self.parameters
         """
-        if occupied_indices is None:
-            occupied_indices = self.integral_manager.active_space.frozen_reference_orbitals
-        if active_indices is None:
-            active_indices = self.integral_manager.active_space.active_orbitals
 
-        fop = openfermion.transforms.get_fermion_operator(
-            self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
+        # warnings for backward comp
+        if "active_indices" in kwargs:
+            warnings.warn("active space can't be changed in molecule. Will ignore active_orbitals passed to make_hamiltonian")
+
+        fop = self.molecule.get_molecular_hamiltonian()
         try:
             qop = self.transformation(fop)
         except TypeError:

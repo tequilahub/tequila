@@ -1,5 +1,4 @@
-from tequila import TequilaException
-from openfermion import MolecularData
+from tequila import TequilaException, TequilaWarning
 
 from tequila.circuit import QCircuit
 from tequila.objective.objective import Variables
@@ -7,7 +6,7 @@ from tequila.quantumchemistry.qc_base import QuantumChemistryBase
 from tequila.quantumchemistry.chemistry_tools import ClosedShellAmplitudes, Amplitudes
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
 
-from .chemistry_tools import ActiveSpaceData, IntegralManager, OrbitalData
+from .chemistry_tools import ActiveSpaceData, OrbitalData
 
 import copy
 import numpy
@@ -78,7 +77,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
             @property
             def psi4_representable(self):
-                return self.frozen_docc is not None and self.frozen_uocc is not None
+                standard_ref = [self.reference_orbitals[0]==0] + [self.reference_orbitals[i]==self.reference_orbitals[i+1]-1 for i in range(len(self.reference_orbitals)-1)]
+                return self.frozen_docc is not None and self.frozen_uocc is not None and all(standard_ref)
 
         # transform irrep notation to absolute ints
         active_idx = active_orbitals
@@ -134,9 +134,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                     break
 
         return ActiveSpaceDataPsi4(active_orbitals=sorted(active_idx),
-                               reference_orbitals=sorted(ref_idx),
-                               frozen_docc=frozen_docc,
-                               frozen_uocc=frozen_uocc)
+                                   reference_orbitals=sorted(ref_idx),
+                                   frozen_docc=frozen_docc,
+                                   frozen_uocc=frozen_uocc)
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
@@ -182,9 +182,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         self.energies = {}  # history to avoid recomputation
         self.logs = {}  # store full psi4 output
 
-
         # psi4 active space will be formed later
-        super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None, reference_orbitals=reference_orbitals,
+        super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None,
+                         reference_orbitals=reference_orbitals,
                          *args, **kwargs)
 
         oenergies = []
@@ -228,12 +228,14 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                         reference_dict[orbital.irrep] += [orbital.idx_irrep]
                 reference_orbitals = reference_dict
 
-            self.integral_manager.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals, reference=reference_orbitals)
+            self.integral_manager.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals,
+                                                                                   reference=reference_orbitals)
 
             # need to recompute
             # (psi4 won't take over active space information otherwise)
             self.compute_energy(method="hf", recompute=True, *args, **kwargs)
             self.ref_wfn = self.logs["hf"].wfn
+            self.molecule = self.make_molecule()
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
@@ -292,7 +294,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             ref_wfn = kwargs["ref_wfn"]
             hf_energy = 0.0
         else:
-            hf_energy = self.compute_energy(method="hf", ignore_active_space=True, options={"RHF__FAIL_ON_MAXITER":False})
+            hf_energy = self.compute_energy(method="hf", ignore_active_space=True,
+                                            options={"RHF__FAIL_ON_MAXITER": False})
             ref_wfn = self.logs['hf'].wfn
 
         if ref_wfn.nirrep() != 1:
@@ -328,7 +331,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             oenergies += [(i, j, x) for j, x in enumerate(self.orbital_energies(irrep=i, wfn=ref_wfn))]
 
         oenergies = sorted(oenergies, key=lambda x: x[2])
-
 
         if "orbitals" in kwargs:
             orbitals = kwargs["orbitals"]
@@ -455,7 +457,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         """
         if self.integral_manager.active_space is None:
             return arr
-        elif len(self.integral_manager.active_space.active_orbitals) == self.integral_manager.one_body_integrals.shape[0]:
+        elif len(self.integral_manager.active_space.active_orbitals) == self.integral_manager.one_body_integrals.shape[
+            0]:
             return arr
 
         if isinstance(arr, ClosedShellAmplitudes):
@@ -549,7 +552,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                                        "Make sure that you don't read in previous wavefunctions."
                                        "Active spaces might get you in trouble.".format(method))
 
-    def compute_energy(self, method: str = "fci", options=None, recompute: bool = True, ignore_active_space=False, *args, **kwargs):
+    def compute_energy(self, method: str = "fci", options=None, recompute: bool = True, ignore_active_space=False,
+                       *args, **kwargs):
         if not recompute and method.lower() in self.energies and not "point_group" in kwargs:
             return self.energies[method.lower()]
 
@@ -564,8 +568,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                     "There are known issues with some psi4 methods and frozen virtual orbitals. Proceed with fingers crossed for {}.".format(
                         method))
             options['frozen_uocc'] = self.active_space.frozen_uocc
-        if not ignore_active_space and self.active_space.psi4_representable:
-            warnings.warn("Warning: Active space is not Psi4 representable")
+        if not ignore_active_space and not self.active_space.psi4_representable:
+            warnings.warn("Warning: Active space is not Psi4 representable", TequilaWarning)
         return self._run_psi4(method=method, options=options, ignore_active_space=ignore_active_space, *args, **kwargs)[0]
 
     def __str__(self):
