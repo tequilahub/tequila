@@ -1193,11 +1193,8 @@ class QuantumChemistryBase:
         """
         g = self.molecule.two_body_integrals
         fi = self.compute_fock_matrix()
-        is_diagonal = numpy.isclose(numpy.linalg.norm(fi - numpy.diag(fi)),0.0,atol=1.e-4)
-        assert is_diagonal
+        self.is_canonical(verify=True, fock_matrix=fi)
         fi = numpy.diag(fi)
-
-        # if orbital energies or fock matrix is not set or if fock matrix is not diagonal then orbitals are not canonical
         self.is_closed_shell(verify=True)
         nocc = self.molecule.n_electrons // 2  # this is never the active space
         ei = fi[:nocc]
@@ -1284,7 +1281,7 @@ class QuantumChemistryBase:
         if fock_matrix is None:
             fock_matrix = self.compute_fock_matrix()
 
-        is_diagonal = numpy.isclose(numpy.linalg.norm(F-numpy.diag(F)), 0.0, atol=1.e-4)
+        is_diagonal = numpy.isclose(numpy.linalg.norm(fock_matrix-numpy.diag(fock_matrix)), 0.0, atol=1.e-4)
 
         if not is_diagonal:
             canonical = False
