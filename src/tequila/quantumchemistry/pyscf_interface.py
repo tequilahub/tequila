@@ -132,7 +132,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         hf = pyscf.scf.RHF(pyscf_mol)
         hf.get_hcore = lambda *args: h1
         hf.get_ovlp = lambda *args: numpy.eye(norb)
-        hf._eri = pyscf.ao2mo.restore(8, h2, norb)
+        hf._eri = pyscf.ao2mo.restore(8, h2.elems, norb)
 
         if do_not_solve:
             hf.mo_coeff = mo_coeff

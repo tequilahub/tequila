@@ -209,36 +209,37 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if reference_orbitals is None:
             reference_orbitals = [x.idx_total for x in self.reference_orbitals]
 
-        if active_orbitals is not None:
-            if not hasattr(active_orbitals, "keys"):
-                # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
-                active_dict = {}
-                for x in active_orbitals:
-                    orbital = self.orbitals[x]
-                    if orbital.irrep not in active_dict:
-                        active_dict[orbital.irrep] = [orbital.idx_irrep]
-                    else:
-                        active_dict[orbital.irrep] += [orbital.idx_irrep]
-                active_orbitals = active_dict
-            if not hasattr(reference_orbitals, "keys"):
-                # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
-                reference_dict = {}
-                for x in reference_orbitals:
-                    orbital = self.orbitals[x]
-                    if orbital.irrep not in reference_dict:
-                        reference_dict[orbital.irrep] = [orbital.idx_irrep]
-                    else:
-                        reference_dict[orbital.irrep] += [orbital.idx_irrep]
-                reference_orbitals = reference_dict
+        if active_orbitals is None:
+            active_orbitals = [i for i in range(self.n_orbitals)]
 
-            self.integral_manager.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals,
-                                                                                   reference=reference_orbitals)
+        if not hasattr(active_orbitals, "keys"):
+            # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
+            active_dict = {}
+            for x in active_orbitals:
+                orbital = self.orbitals[x]
+                if orbital.irrep not in active_dict:
+                    active_dict[orbital.irrep] = [orbital.idx_irrep]
+                else:
+                    active_dict[orbital.irrep] += [orbital.idx_irrep]
+            active_orbitals = active_dict
+        if not hasattr(reference_orbitals, "keys"):
+            # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
+            reference_dict = {}
+            for x in reference_orbitals:
+                orbital = self.orbitals[x]
+                if orbital.irrep not in reference_dict:
+                    reference_dict[orbital.irrep] = [orbital.idx_irrep]
+                else:
+                    reference_dict[orbital.irrep] += [orbital.idx_irrep]
+            reference_orbitals = reference_dict
 
-            # need to recompute
-            # (psi4 won't take over active space information otherwise)
-            self.compute_energy(method="hf", recompute=True, *args, **kwargs)
-            self.ref_wfn = self.logs["hf"].wfn
-            self.molecule = self.make_molecule()
+        self.integral_manager.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals,
+                                                                               reference=reference_orbitals)
+        # need to recompute
+        # (psi4 won't take over active space information otherwise)
+        self.compute_energy(method="hf", recompute=True, *args, **kwargs)
+        self.ref_wfn = self.logs["hf"].wfn
+        self.molecule = self.make_molecule()
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
@@ -679,9 +680,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         cabs_type :
             - either "active" for using a given basis set as is as approximative CBS (complete basis set), and specify
             OBS (orbital basis) by an active space
-            - or "cabs+" for CABS+-approach as in 
-                Valeev, E. F. (2004). Improving on the resolution of the identity in linear R12 ab initio theories. 
-                Chemical Physics Letters, 395(4–6), 190–195. https://doi.org/10.1016/j.cplett.2004.07.061 
+            - or "cabs+" for CABS+-approach as in
+                Valeev, E. F. (2004). Improving on the resolution of the identity in linear R12 ab initio theories.
+                Chemical Physics Letters, 395(4–6), 190–195. https://doi.org/10.1016/j.cplett.2004.07.061
                 -> pass cabs_name in cabs_options
         cabs_options :
             dict, which needs at least {"cabs_name": some CABS basis set} if cabs_type=="cabs+"
