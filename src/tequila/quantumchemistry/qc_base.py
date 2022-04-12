@@ -493,6 +493,7 @@ class QuantumChemistryBase:
             warnings.warn("active space can't be changed in molecule. Will ignore active_orbitals passed to make_hamiltonian")
 
         fop = self.molecule.get_molecular_hamiltonian()
+        fop = openfermion.transforms.get_fermion_operator(fop)
         try:
             qop = self.transformation(fop)
         except TypeError:
