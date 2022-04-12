@@ -11,7 +11,6 @@ from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
-
 def test_qubit_map():
 
     for gate in [Rx, Ry, Rz]:
@@ -89,6 +88,42 @@ def strip_sympy_zeros(wfn: QubitWaveFunction):
             result[k] = v
     return result
 
+def test_add_controls():
+    U3 = X(0)
+    U0 = X(0)
+    U1 = CNOT(1,0)
+    U2 = U0.add_controls([1])
+    
+    for UC in [X(0), Z(0)]:
+        wfn0 = simulate(UC+U0)
+        wfn1 = simulate(UC+U1)
+        wfn2 = simulate(UC+U2)
+        wfn3 = simulate(UC+U3)
+
+        f03 = abs(wfn0.inner(wfn3))**2 # test if inplace is deactivated
+        assert numpy.isclose(f03,1.0)
+        f12 = abs(wfn1.inner(wfn2))**2
+        assert numpy.isclose(f12,1.0)
+    
+    t0 = numpy.random.randint(1,4)
+    t1 = numpy.random.randint(1,4)
+    c0 = numpy.random.randint(5,8)
+    c1 = numpy.random.randint(5,8)
+    U3 = X(t0)+Z(t1)
+    U0 = X(t0)+Z(t1)
+    U1 = X(t0,control=[c0,c1])+Z(t1,control=[c0,c1])
+    U2 = U0.add_controls([c0,c1])
+    
+    for UC in [X(c0)+X(c1), Z(c0)+X(c1)]:
+        wfn0 = simulate(UC+U0)
+        wfn1 = simulate(UC+U1)
+        wfn2 = simulate(UC+U2)
+        wfn3 = simulate(UC+U3)
+
+        f03 = abs(wfn0.inner(wfn3))**2 # test if inplace is deactivated
+        assert numpy.isclose(f03,1.0)
+        f12 = abs(wfn1.inner(wfn2))**2
+        assert numpy.isclose(f12,1.0)
 
 def test_basic_gates():
     I = sympy.I
