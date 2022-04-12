@@ -299,7 +299,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             hf_energy = 0.0
         else:
             hf_energy = self.compute_energy(method="hf", ignore_active_space=True,
-                                            options={"RHF__FAIL_ON_MAXITER": False})
+                                            options={"RHF__FAIL_ON_MAXITER": False}, point_group=self.point_group)
             ref_wfn = self.logs['hf'].wfn
 
         if ref_wfn.nirrep() != 1:
@@ -327,10 +327,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         kwargs["basis_type"] = "GBS"
         kwargs["basis_name"] = self.parameters.basis_set
 
-        oenergies = []
         irreps = [self.psi4_mol.point_group().char_table().gamma(i).symbol().upper() for i in range(ref_wfn.nirrep())]
+
         self.irreps = irreps
 
+        oenergies = []
         for i in self.irreps:
             oenergies += [(i, j, x) for j, x in enumerate(self.orbital_energies(irrep=i, wfn=ref_wfn))]
 
@@ -585,8 +586,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         result += "{key:15} : {value:15} \n".format(key="Point Group (used)", value=self.point_group)
         result += "{key:15} : {value} \n".format(key="nirrep", value=self.nirrep)
         result += "{key:15} : {value} \n".format(key="irreps", value=self.irreps)
-        result += "{key:15} : {value:15} \n".format(key="mos per irrep", value=str(
-            [len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)]))
+        result += "{key:15} : {value:15} \n".format(key="mos per irrep", value=str([len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)]))
 
         return result
 

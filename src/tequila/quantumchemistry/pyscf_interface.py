@@ -17,12 +17,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                  transformation: typing.Union[str, typing.Callable] = None,
                  *args, **kwargs):
 
-        if parameters.basis_set not in [None, "custom", "mra", "mra-pno"]:
-
-            # either compute integrals form basis_set or give them
-            # can't do both
-            assert "one_body_integrals" not in kwargs
-            assert "two_body_integrals" not in kwargs
+        if "one_body_integrals" not in kwargs:
 
             geometry = parameters.get_geometry()
             pyscf_geomstring = ""
