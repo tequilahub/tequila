@@ -1291,7 +1291,7 @@ class QuantumChemistryBase:
         if refo[0].idx != 0:
             canonical = False
         for i in range(len(refo) - 1):
-            if refo[i] + 1 != refo[i + 1]:
+            if refo[i].idx_total + 1 != refo[i + 1].idx_total:
                 canonical = False
 
         if verify and not canonical:
