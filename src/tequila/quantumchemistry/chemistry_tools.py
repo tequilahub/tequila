@@ -508,9 +508,9 @@ class NBodyTensor:
         n = self.shape[0]
         for _ in range(trials):
             idx = numpy.random.randint(0,n,4)
-            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[1],idx[0],idx[3]], atol=1.e-6)
-            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[3],idx[2],idx[1]], atol=1.e-6)
-            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[3],idx[0],idx[1]], atol=1.e-6)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[1],idx[0],idx[3]], atol=1.e-4)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[3],idx[2],idx[1]], atol=1.e-4)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[3],idx[0],idx[1]], atol=1.e-4)
             if not (test1 and test2 and test3):
                 return False
 
@@ -524,9 +524,9 @@ class NBodyTensor:
         n = self.shape[0]
         for _ in range(trials):
             idx = numpy.random.randint(0,n,4)
-            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[2],idx[3]], atol=1.e-6)
-            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[1],idx[3],idx[2]], atol=1.e-6)
-            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[3],idx[2]], atol=1.e-6)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[2],idx[3]], atol=1.e-4)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[1],idx[3],idx[2]], atol=1.e-4)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[3],idx[2]], atol=1.e-4)
             if not (test1 and test2 and test3):
                 return False
 
@@ -540,9 +540,9 @@ class NBodyTensor:
         n = self.shape[0]
         for _ in range(trials):
             idx = numpy.random.randint(0,n,4)
-            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[1],idx[2],idx[0]], atol=1.e-6)
-            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[2],idx[1],idx[3]], atol=1.e-6)
-            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[2],idx[1],idx[0]], atol=1.e-6)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[1],idx[2],idx[0]], atol=1.e-4)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[2],idx[1],idx[3]], atol=1.e-4)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[2],idx[1],idx[0]], atol=1.e-4)
             if not (test1 and test2 and test3):
                 return False
 
@@ -589,11 +589,15 @@ class NBodyTensor:
             self._size_full = size_full
         # 2-body tensors (<=> order 4) currently allow reordering
         if self.order == 4:
-            auto_ordering = self.identify_ordering()
             if ordering is None:
-                ordering = auto_ordering
-            if auto_ordering is not ordering:
-                warnings.warn("Auto identified ordering of NBTensor does not match given ordering: {} vs {}".format(auto_ordering, ordering))
+                ordering = self.identify_ordering()
+            else:
+                try: # some RDMs are really sloppy (depends on backend)
+                    auto_ordering=self.identify_ordering()
+                    if auto_ordering is not ordering:
+                        warnings.warn("Auto identified ordering of NBTensor does not match given ordering: {} vs {}".format(auto_ordering, ordering))
+                except Exception as E:
+                    warnings.warn("could not verify odering {}".format(ordering))
             self.ordering = self.Ordering(ordering)
         else:
             if ordering is not None:
