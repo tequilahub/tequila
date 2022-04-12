@@ -434,8 +434,7 @@ class QuantumChemistryBase:
         """
 
         assert hasattr(self, "integral_manager") and self.integral_manager is not None
-        constant_term, one_body_integrals, two_body_integrals = self.integral_manager.get_integrals(
-            ordering="openfermion")
+        constant_term, one_body_integrals, two_body_integrals = self.integral_manager.get_integrals(ordering="openfermion")
 
         if ("n_orbitals" in kwargs):
             n_orbitals = kwargs["n_orbitals"]

@@ -87,69 +87,6 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                    transformation=transformation,
                    parameters=molecule.parameters, *args, **kwargs)
 
-    def xx__initialize_integral_manager(self, *args, **kwargs):
-        if molecule is None:
-            if one_body_integrals is not None and two_body_integrals is not None:
-                if nuclear_repulsion is None:
-                    warnings.warn("PySCF Interface: No constant part (nuclear repulsion)", TequilaWarning)
-                    nuclear_repulsion = 0.0
-                molecule = super().do_make_molecule(nuclear_repulsion=nuclear_repulsion,
-                                                    one_body_integrals=one_body_integrals,
-                                                    two_body_integrals=two_body_integrals, *args, **kwargs)
-            else:
-
-                # determine if the molecular structure was given over a file already
-                # if not, write the file
-                geometry = self.parameters.get_geometry()
-                pyscf_geomstring = ""
-                for atom in geometry:
-                    pyscf_geomstring += "{} {} {} {};".format(atom[0], atom[1][0], atom[1][1], atom[1][2])
-
-                if "point_group" in kwargs:
-                    point_group = kwargs["point_group"]
-                else:
-                    point_group = None
-
-                mol = pyscf.gto.Mole()
-                mol.atom = pyscf_geomstring
-                mol.basis = self.parameters.basis_set
-
-                if point_group is not None:
-                    if point_group.lower() != "c1":
-                        mol.symmetry = True
-                        mol.symmetry_subgroup = point_group
-                    else:
-                        mol.symmetry = False
-                else:
-                    mol.symmetry = True
-
-                mol.build()
-
-                # solve restricted HF
-                mf = pyscf.scf.RHF(mol)
-                mf.kernel()
-                self.irreps = mf.get_irrep_nelec()
-                orbital_energies = mf.mo_energy
-
-                # compute mo integrals
-                mo_coeff = mf.mo_coeff
-                h_ao = mol.intor_symmetric('int1e_kin') + mol.intor_symmetric('int1e_nuc')
-                h = numpy.einsum('pi,pq,qj->ij', mo_coeff, h_ao, mo_coeff)
-                g = pyscf.ao2mo.kernel(mol, mo_coeff)
-                g = pyscf.ao2mo.restore(1, numpy.asarray(g), mo_coeff.shape[1])
-
-                g = NBodyTensor(elems=g, ordering="mulliken")
-
-                self.pyscf_molecule = mol
-                self.point_group = mol.symmetry_subgroup
-
-                molecule = super().do_make_molecule(one_body_integrals=h, two_body_integrals=g,
-                                                    nuclear_repulsion=mol.energy_nuc())
-        if molecule.orbital_energies is None:
-            molecule.orbital_energies = orbital_energies
-
-        return molecule
-
     def compute_fci(self, *args, **kwargs):
         from pyscf import fci
         c, h1, h2 = self.get_integrals(ordering="chem")
