@@ -499,7 +499,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     indices.append(idx)
 
         if "G" in name:
-            for i in reference_orbitals:
+            for i in self.reference_orbitals:
                 for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
                     for b in self.get_pair_orbitals(i=i, j=i, exclude=i):
                         if a.idx <= b.idx:
