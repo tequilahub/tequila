@@ -9,6 +9,7 @@ import warnings
 import os
 import shutil
 
+
 class TequilaMadnessException(TequilaException):
     def __str__(self):
         return "Error in madness backend:" + self.message

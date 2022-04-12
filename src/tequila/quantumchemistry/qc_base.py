@@ -69,7 +69,8 @@ class QuantumChemistryBase:
             self.integral_manager = kwargs["integral_manager"]
         else:
             self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
-                                                                     reference_orbitals=reference_orbitals, orbitals=orbitals, *args,
+                                                                     reference_orbitals=reference_orbitals,
+                                                                     orbitals=orbitals, *args,
                                                                      **kwargs)
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
@@ -118,7 +119,6 @@ class QuantumChemistryBase:
                                                                                          list(encodings.keys())))
 
         return transformation
-
 
     @classmethod
     def from_openfermion(cls, molecule: openfermion.MolecularData,
@@ -380,7 +380,7 @@ class QuantumChemistryBase:
 
         if not isinstance(two_body_integrals, NBodyTensor):
             # assuming two_body_integrals are given in openfermion ordering
-            ordering = None # will be auto-detected
+            ordering = None  # will be auto-detected
             if "ordering" in kwargs:
                 ordering = kwargs["ordering"]
                 kwargs.pop("ordering")  # let's not confuse the IntegralManager
@@ -426,7 +426,7 @@ class QuantumChemistryBase:
 
         assert hasattr(self, "integral_manager") and self.integral_manager is not None
         constant_term, one_body_integrals, two_body_integrals = self.integral_manager.get_integrals(ordering="of")
-        two_body_integrals=two_body_integrals.reorder(to="of")
+        two_body_integrals = two_body_integrals.reorder(to="of")
 
         if ("n_orbitals" in kwargs):
             n_orbitals = kwargs["n_orbitals"]
@@ -490,7 +490,8 @@ class QuantumChemistryBase:
 
         # warnings for backward comp
         if "active_indices" in kwargs:
-            warnings.warn("active space can't be changed in molecule. Will ignore active_orbitals passed to make_hamiltonian")
+            warnings.warn(
+                "active space can't be changed in molecule. Will ignore active_orbitals passed to make_hamiltonian")
 
         fop = self.molecule.get_molecular_hamiltonian()
         fop = openfermion.transforms.get_fermion_operator(fop)

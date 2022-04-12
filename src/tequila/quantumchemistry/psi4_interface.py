@@ -20,6 +20,7 @@ from dataclasses import dataclass
 class TequilaPsi4Exception(TequilaException):
     pass
 
+
 class OpenVQEEPySCFException(TequilaException):
     pass
 
@@ -77,7 +78,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
             @property
             def psi4_representable(self):
-                standard_ref = [self.reference_orbitals[0]==0] + [self.reference_orbitals[i]==self.reference_orbitals[i+1]-1 for i in range(len(self.reference_orbitals)-1)]
+                standard_ref = [self.reference_orbitals[0] == 0] + [
+                    self.reference_orbitals[i] == self.reference_orbitals[i + 1] - 1 for i in
+                    range(len(self.reference_orbitals) - 1)]
                 return self.frozen_docc is not None and self.frozen_uocc is not None and all(standard_ref)
 
         # transform irrep notation to absolute ints
@@ -570,7 +573,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             options['frozen_uocc'] = self.active_space.frozen_uocc
         if not ignore_active_space and not self.active_space.psi4_representable:
             warnings.warn("Warning: Active space is not Psi4 representable", TequilaWarning)
-        return self._run_psi4(method=method, options=options, ignore_active_space=ignore_active_space, *args, **kwargs)[0]
+        return self._run_psi4(method=method, options=options, ignore_active_space=ignore_active_space, *args, **kwargs)[
+            0]
 
     def __str__(self):
         result = super().__str__()
