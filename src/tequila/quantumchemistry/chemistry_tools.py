@@ -13,7 +13,6 @@ try:
 except ImportError as E:
     raise TequilaException("{}\nplease update openfermion to version 1.3 or higher".format(str(E)))
 
-
 @dataclass
 class ActiveSpaceData:
     """
@@ -770,6 +769,9 @@ class OrbitalData:
 
     def __str__(self):
         return "Orbital {}".format(str(self.__dict__))
+
+
+        return self
 
 
 class IntegralManager:

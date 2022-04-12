@@ -119,6 +119,7 @@ class QuantumChemistryBase:
 
         return transformation
 
+
     @classmethod
     def from_openfermion(cls, molecule: openfermion.MolecularData,
                          transformation: typing.Union[str, typing.Callable] = None,
