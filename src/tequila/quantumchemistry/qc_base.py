@@ -1159,19 +1159,19 @@ class QuantumChemistryBase:
                 return molx.compute_energy(method=method)
 
     def compute_fock_matrix(self):
-        c,h,g = self.get_integrals()
+        c, h, g = self.get_integrals()
         g = g.reorder(to="phys")
 
         # fock matrix is:
         # Fkl = hkl + 2.0 <k|J|l> - <k|K|l> = hkl + 2.0* <ki|g|li> - <ki|g|il>
-
         F = numpy.zeros(shape=h.shape)
         for k in range(F.shape[0]):
             for l in range(F.shape[1]):
+                tmp = 0.0
                 for ii in self.reference_orbitals:
-                    i=ii.idx
-                    F[k,l] += h[k,l] + 2.0*g.elems[k,i,l,i] - g.elems[k,i,i,l]
-
+                    i = ii.idx
+                    tmp += h[k, l] + 2.0 * g.elems[k, i, l, i] - g.elems[k, i, i, l]
+                F[k, l] = tmp
         return F
 
     def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
@@ -1230,7 +1230,7 @@ class QuantumChemistryBase:
                 return len(self.omegas)
 
         self.is_closed_shell(verify=True)
-        c,h,g = self.get_integrals()
+        c, h, g = self.get_integrals()
         g.reorder(to="openfermion")
         g = g.elems
         fij = self.compute_fock_matrix()
@@ -1281,7 +1281,7 @@ class QuantumChemistryBase:
         if fock_matrix is None:
             fock_matrix = self.compute_fock_matrix()
 
-        is_diagonal = numpy.isclose(numpy.linalg.norm(fock_matrix-numpy.diag(fock_matrix)), 0.0, atol=1.e-4)
+        is_diagonal = numpy.isclose(numpy.linalg.norm(fock_matrix - numpy.diag(numpy.diag(fock_matrix))), 0.0, atol=1.e-4)
 
         if not is_diagonal:
             canonical = False
@@ -1290,13 +1290,14 @@ class QuantumChemistryBase:
 
         if refo[0].idx != 0:
             canonical = False
-        for i in range(len(refo)-1):
-            if refo[i]+1!=refo[i+1]:
+        for i in range(len(refo) - 1):
+            if refo[i] + 1 != refo[i + 1]:
                 canonical = False
 
         if verify and not canonical:
+            data={"reference_orbitals":refo, "fock_matrix":fock_matrix}
             raise TequilaException(
-                "orbitals are not canonical or can not be verified as such -> implemented method only works for standard orbitals (preferably from psi4)")
+                "orbitals are not canonical or can not be verified as such -> implemented method only works for standard orbitals (preferably from psi4)\n{}".format(data))
         return canonical
 
     @property

@@ -826,7 +826,7 @@ class IntegralManager:
             orbitals = [OrbitalData(idx_total=i, idx=i) for i in range(one_body_integrals.shape[0])]
 
         self._orbitals = orbitals
-        self._active_space = active_space
+        self.active_space = active_space
 
     def get_orthonormalized_orbital_coefficients(self):
         """
