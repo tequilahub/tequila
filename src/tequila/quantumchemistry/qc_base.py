@@ -523,7 +523,7 @@ class QuantumChemistryBase:
             for q in range(n_orbitals):
                 h[p, q] += + tbt.elems[p, p, q, q]
                 if p != q:
-                    g[p, q] += 2 * tbt[p, q, q, p] - tbt.elems[p, q, p, q]
+                    g[p, q] += 2 * tbt.elems[p, q, q, p] - tbt.elems[p, q, p, q]
 
         H = c
         for p in range(n_orbitals):
@@ -1158,6 +1158,22 @@ class QuantumChemistryBase:
                 molx = QuantumChemistryPySCF.from_tequila(self)
                 return molx.compute_energy(method=method)
 
+    def compute_fock_matrix(self):
+        c,h,g = self.get_integrals()
+        g = g.reorder(to="phys")
+
+        # fock matrix is:
+        # Fkl = hkl + 2.0 <k|J|l> - <k|K|l> = hkl + 2.0* <ki|g|li> - <ki|g|il>
+
+        F = numpy.zeros(shape=h.shape)
+        for k in range(F.shape[0]):
+            for l in range(F.shape[1]):
+                for ii in self.reference_orbitals:
+                    i=ii.idx
+                    F[k,l] += h[k,l] + 2.0*g.elems[k,i,l,i] - g.elems[k,i,i,l]
+
+        return F
+
     def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
         """
 
@@ -1176,9 +1192,12 @@ class QuantumChemistryBase:
 
         """
         g = self.molecule.two_body_integrals
-        fi = self.molecule.orbital_energies
+        fi = self.compute_fock_matrix()
+        is_diagonal = numpy.isclose(numpy.linalg.norm(fi - numpy.diag(fi)),0.0,atol=1.e-4)
+        assert is_diagonal
+        fi = numpy.diag(fi)
+
         # if orbital energies or fock matrix is not set or if fock matrix is not diagonal then orbitals are not canonical
-        self.is_canonical(verify=True)
         self.is_closed_shell(verify=True)
         nocc = self.molecule.n_electrons // 2  # this is never the active space
         ei = fi[:nocc]
@@ -1213,10 +1232,13 @@ class QuantumChemistryBase:
             def __len__(self):
                 return len(self.omegas)
 
-        self.is_canonical(verify=True)
         self.is_closed_shell(verify=True)
-        g = self.molecule.two_body_integrals
-        fij = self.molecule.orbital_energies
+        c,h,g = self.get_integrals()
+        g.reorder(to="openfermion")
+        g = g.elems
+        fij = self.compute_fock_matrix()
+        self.is_canonical(verify=True, fock_matrix=fij)
+        fij = numpy.diag(fij)
 
         nocc = self.n_electrons // 2
         nvirt = self.n_orbitals - nocc
@@ -1257,11 +1279,23 @@ class QuantumChemistryBase:
             raise TequilaException("not a closed shell molecule: having {} electrons".format(self.n_electrons))
         return cs
 
-    def is_canonical(self, verify=False):
+    def is_canonical(self, verify=False, fock_matrix=None):
         canonical = True
+        if fock_matrix is None:
+            fock_matrix = self.compute_fock_matrix()
 
-        if self.molecule.orbital_energies is None:
+        is_diagonal = numpy.isclose(numpy.linalg.norm(F-numpy.diag(F)), 0.0, atol=1.e-4)
+
+        if not is_diagonal:
             canonical = False
+
+        refo = self.reference_orbitals
+
+        if refo[0].idx != 0:
+            canonical = False
+        for i in range(len(refo)-1):
+            if refo[i]+1!=refo[i+1]:
+                canonical = False
 
         if verify and not canonical:
             raise TequilaException(

@@ -1027,4 +1027,12 @@ class IntegralManager:
         return len(self.active_orbitals) == len(self.orbitals)
 
     def __str__(self):
-        return "IntegralManager"
+        result = "\nIntegralManager:\n"
+        result+= "ActiveSpace:\n"
+        result+= str(self.active_space)
+        result+= "Orbitals:\n"
+        for x in self.orbitals:
+            result += str(x) + "\n"
+        return result
+
+        return result
