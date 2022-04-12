@@ -59,16 +59,6 @@ class QuantumChemistryBase:
         kwargs
         """
 
-        if orbitals is not None:
-            self._orbitals = []
-            for x in orbitals:
-                if isinstance(x, OrbitalData):
-                    self.orbitals.append(x)
-                else:
-                    self.orbitals.append(OrbitalData(**x))
-        else:
-            self._orbitals = orbitals
-
         self.parameters = parameters
         if reference_orbitals is None:
             reference_orbitals = [i for i in range(parameters.n_electrons // 2)]
@@ -79,7 +69,7 @@ class QuantumChemistryBase:
             self.integral_manager = kwargs["integral_manager"]
         else:
             self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
-                                                                     reference_orbitals=reference_orbitals, *args,
+                                                                     reference_orbitals=reference_orbitals, orbitals=orbitals, *args,
                                                                      **kwargs)
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)

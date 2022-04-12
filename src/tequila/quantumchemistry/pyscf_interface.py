@@ -17,7 +17,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                  transformation: typing.Union[str, typing.Callable] = None,
                  *args, **kwargs):
 
-        if parameters.basis_set is not None:
+        if parameters.basis_set not in [None, "custom", "mra", "mra-pno"]:
 
             # either compute integrals form basis_set or give them
             # can't do both
@@ -77,7 +77,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
     @classmethod
     def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
-        c, h1, h2 = molecule.get_integrals(ordering="openfermion")
+        c, h1, h2 = molecule.get_integrals()
         if transformation is None:
             transformation = molecule.transformation
         return cls(nuclear_repulsion=c,
