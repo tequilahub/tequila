@@ -1224,7 +1224,7 @@ class QuantumChemistryBase:
         -------
 
         """
-        c,h,c = self.get_integrals()
+        c,h,g = self.get_integrals()
         fi = self.compute_fock_matrix()
         self.is_canonical(verify=True, fock_matrix=fi)
         fi = numpy.diag(fi)
