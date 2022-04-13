@@ -436,7 +436,41 @@ def test_orbital_optimization():
 
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
+def test_orbital_transformation():
+    mol0 = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 0.75", basis_set="STO-3G")
+    mol0.print_basis_info()
+    mol1 = mol0.orthonormalize_basis_orbitals()
+
+    fci = mol0.compute_energy("fci")
+    assert numpy.isclose(mol1.compute_energy("fci"), fci, atol=1.e-4)
+
+    U = tq.gates.X([2]) + tq.gates.Ry(angle="a", target=4) + tq.gates.CNOT(4, 2) + tq.gates.X([0, 1])
+    U += tq.gates.CNOT(2, 3)
+    U += tq.gates.CNOT(4, 5)
+    E0 = tq.ExpectationValue(H=mol0.make_hamiltonian(), U=U)
+
+    hf = tq.simulate(E0, variables={"a": 0.0})
+
+    guess = numpy.eye(mol0.n_orbitals)
+    guess[1] = [0.001, 1.0, 1.0, 0.0, 0.0, 1.0]
+    guess[2] = [0.001, 1.0, 1.0, 0.0, 0.0, -1.0]
+    guess[5] = [0.000, 1.0, -1.0, 0.0, 0.0, 0.0]
+    opt = tq.chemistry.optimize_orbitals(circuit=U, molecule=mol1, initial_guess=guess, silent=True)
+    print(opt.mo_coeff)
+
+    mol2 = mol1.transform_orbitals(opt.mo_coeff)
+    assert numpy.isclose(mol2.compute_energy("fci"), fci, atol=1.e-4)
+    E2 = tq.ExpectationValue(H=mol2.make_hamiltonian(), U=U)
+    hf2 = tq.simulate(E2, variables={"a": 0.0})
+    assert numpy.isclose(hf2, hf, atol=1.e-4)
+
+    mol3 = opt.molecule
+    assert numpy.isclose(mol3.compute_energy("fci"), fci, atol=1.e-4)
+    E3 = tq.ExpectationValue(H=mol3.make_hamiltonian(), U=U)
+    hf3 = tq.simulate(E3, variables={"a": 0.0})
+    assert numpy.isclose(hf3, hf, atol=1.e-4)
+
+
 def test_crosscheck_mp2():
     # Be has issues with degeneracies and ordering (t1-t2 is not necessarily 0)
     mol1 = tq.Molecule(geometry="he 0.0 0.0 0.0", basis_set="6-31G", backend="psi4")
