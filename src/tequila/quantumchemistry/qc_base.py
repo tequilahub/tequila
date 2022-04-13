@@ -1232,7 +1232,7 @@ class QuantumChemistryBase:
         nocc = len(self.reference_orbitals)
         ei = fi[:nocc]
         ai = fi[nocc:]
-        abgij = g[nocc:, nocc:, :nocc, :nocc]
+        abgij = g.elems[nocc:, nocc:, :nocc, :nocc]
         amplitudes = abgij * 1.0 / (
                 ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
 
