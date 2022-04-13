@@ -239,7 +239,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         # (psi4 won't take over active space information otherwise)
         self.compute_energy(method="hf", recompute=True, *args, **kwargs)
         self.ref_wfn = self.logs["hf"].wfn
-        self.molecule = self.make_molecule()
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
@@ -313,9 +312,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # get integrals in atomic basis
         S = numpy.asarray(mints.ao_overlap())
-        h = wfn.H()
+        h = numpy.asarray(wfn.H())
         g = numpy.asarray(mints.ao_eri())
-        c = wfn.variables()['NUCLEAR REPULSION ENERGY']
+        c = numpy.float(wfn.variables()['NUCLEAR REPULSION ENERGY'])
 
         g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
 

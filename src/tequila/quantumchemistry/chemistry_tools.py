@@ -772,11 +772,7 @@ class OrbitalData:
             self.occ = 2.0  # mark as reference
 
     def __str__(self):
-        return "Orbital {}".format(str(self.__dict__))
-
-
-        return self
-
+        return "{"+"{}".format("".join(["{}:{}, ".format(k,v) for k,v in self.__dict__.items() if v is not None])).rstrip().rstrip(",")+"}"
 
 class IntegralManager:
     """
@@ -928,6 +924,9 @@ class IntegralManager:
     def orbital_coefficients(self, other):
         self.verify_orbital_coefficients(orbital_coefficients=other)
         self._orbital_coefficients = other
+        for i,x in enumerate(self._orbitals):
+            y = OrbitalData(idx=x.idx, idx_total=x.idx_total)
+            self._orbitals[i] = y
 
     def transform_orbitals(self, U):
         """
@@ -941,8 +940,9 @@ class IntegralManager:
         updates the structure with new orbitals: c = cU
         """
         c = self.orbital_coefficients
-        c = numpy.einsum("ix -> xj -> ij", c, U, optimize="greedy")
+        c = numpy.einsum("ix, xj -> ij", c, U, optimize="greedy")
         self.orbital_coefficients = c
+
 
     def get_integrals(self, orbital_coefficients=None, ordering="openfermion", ignore_active_space=False, *args, **kwargs):
         """
@@ -1039,4 +1039,14 @@ class IntegralManager:
             result += str(x) + "\n"
         return result
 
-        return result
+    def print_basis_info(self, *args, **kwargs) -> None:
+        print("{:15} : {}".format("basis_type", self._basis_type), *args, **kwargs)
+        print("{:15} : {}".format("basis_name", self._basis_name), *args, **kwargs)
+        print("{:15} : {}".format("orthogonal", self.basis_is_orthogonal()), *args, **kwargs)
+        print("{:15} : {}".format("functions", self.one_body_integrals.shape[0]), *args, **kwargs)
+        print("{:15} : {}".format("reference", [x.idx_total for x in self.reference_orbitals]), *args, **kwargs)
+
+        print("Current Orbitals", *args, **kwargs)
+        for i,x in enumerate(self.orbitals):
+            print(x, *args, **kwargs)
+            print("coefficients: ", self.orbital_coefficients[:,i], *args, **kwargs)
