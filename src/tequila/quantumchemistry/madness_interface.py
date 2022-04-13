@@ -1,14 +1,13 @@
 from tequila.quantumchemistry.qc_base import QuantumChemistryBase, TequilaException, TequilaWarning, \
     QCircuit, gates
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
-from tequila import ExpectationValue, PauliString, QubitHamiltonian, simulate
+from tequila import ExpectationValue
+from .chemistry_tools import OrbitalData
 import typing
 import numpy
 import warnings
 import os
 import shutil
-
-from dataclasses import dataclass
 
 
 class TequilaMadnessException(TequilaException):
@@ -134,15 +133,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         assert len(g.shape) == 4
         assert len(h.shape) == 2
 
-        # openfermion conventions
         g = NBodyTensor(elems=g, ordering='mulliken')
-        g.reorder(to='openfermion')
-        g = g.elems
-        # g = numpy.einsum("psqr", g, optimize='optimize')
 
         orbitals = []
         if pairinfo is not None:
-            orbitals = [self.OrbitalData(idx_total=i, idx=i, pair=p, occ=occinfo[i]) for i, p in
+            orbitals = [OrbitalData(idx_total=i, idx=i, pair=p, occ=occinfo[i]) for i, p in
                         enumerate(pairinfo)]
             reference_orbitals = [x for x in orbitals if x.occ == 2.0]
             if active_orbitals == "auto":
@@ -178,7 +173,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         # print warning if read data does not match expectations
         if n_pno is not None:
-            nrefs = len(self.get_reference_orbitals())
+            nrefs = len(self.reference_orbitals)
             if n_pno + nrefs + n_virt != self.n_orbitals:
                 warnings.warn(
                     "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(
@@ -242,24 +237,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return h, g
 
-    def get_pair_orbitals(self, i: QuantumChemistryBase.OrbitalData, j: QuantumChemistryBase.OrbitalData,
-                          exclude: typing.List[QuantumChemistryBase.OrbitalData] = None):
+    def get_pair_orbitals(self, i: OrbitalData, j: OrbitalData,
+                          exclude: typing.List[OrbitalData] = None):
         if isinstance(i, int):
             i = self.orbitals[i]
         if isinstance(j, int):
             j = self.orbitals[j]
-        if exclude is None or isinstance(exclude, QuantumChemistryBase.OrbitalData):
+        if exclude is None or isinstance(exclude, OrbitalData):
             exclude = [exclude]
-
         return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pair and x not in exclude]
-
-    def get_reference_orbital(self, i):
-        return [x for x in self.orbitals if (i, i) == x.pair and x.occ == 2.0]
-
-    def get_reference_orbitals(self):
-        active_ref_idx = self.reference_orbitals
-        active_orbitals = [x for x in self.orbitals if x.idx is not None]
-        return [active_orbitals[i] for i in active_ref_idx]
 
     def get_virtual_orbitals(self):
         return [x for x in self.orbitals if len(x.pair) == 1 and x.pair[0] < 0]
@@ -462,7 +448,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
                                              direct_compiling=False):
         if pairs is None:
-            pairs = [x for x in self.get_reference_orbitals()]  # [i for i in range(self.n_electrons // 2)]
+            pairs = [x for x in self.reference_orbitals]
         U = QCircuit()
         if direct_compiling:
             if not include_reference:
@@ -506,14 +492,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         indices = []
 
         # HF-X -- PNO-XX indices
-        for i in self.get_reference_orbitals():
+        for i in self.reference_orbitals:
             for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
                 idx = self.format_excitation_indices([(i.idx, a.idx)])
                 if idx not in exclude and idx not in indices:
                     indices.append(idx)
 
         if "G" in name:
-            for i in self.get_reference_orbitals():
+            for i in self.reference_orbitals:
                 for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
                     for b in self.get_pair_orbitals(i=i, j=i, exclude=i):
                         if a.idx <= b.idx:
@@ -529,15 +515,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         virtuals = [i for i in self.orbitals if len(i.pair) == 2 and i.occ != 2.0]
         virtuals += self.get_virtual_orbitals()  # this is usually empty
         # HF-X -- PNO-XY/PNO-YY indices
-        for i in self.get_reference_orbitals():
+        for i in self.reference_orbitals:
             for a in virtuals:
                 idx = self.format_excitation_indices([(i.idx, a.idx)])
                 if idx not in exclude and idx not in indices:
                     indices.append(idx)
         # HF-HF and PNO-PNO indices
         if "G" in name:
-            for i in self.get_reference_orbitals():
-                for j in self.get_reference_orbitals():
+            for i in self.reference_orbitals:
+                for j in self.reference_orbitals:
                     if i.idx <= j.idx:
                         continue
                     idx = self.format_excitation_indices([(i.idx, j.idx)])
@@ -555,8 +541,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def make_pno_upccgsd_ansatz(self, generalized=False, include_offdiagonals=False,
                                 **kwargs):
         indices = []
-        refs = self.get_reference_orbitals()
-        for i in self.get_reference_orbitals():
+        refs = self.reference_orbitals
+        for i in self.reference_orbitals:
             for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
                 indices.append((i.idx, a.idx))
             if generalized:
@@ -567,8 +553,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         indices.append((i.idx, a.idx))
 
         if include_offdiagonals:
-            for i in self.get_reference_orbitals():
-                for j in self.get_reference_orbitals():
+            for i in self.reference_orbitals:
+                for j in self.reference_orbitals:
                     pairs_ij = self.get_pair_orbitals(i=i, j=j, exclude=[i, j])
                     if i.idx <= j.idx:
                         continue

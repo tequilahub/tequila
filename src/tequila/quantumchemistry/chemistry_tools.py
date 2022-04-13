@@ -1,4 +1,6 @@
 import os
+import typing
+import warnings
 from dataclasses import dataclass
 
 import numpy
@@ -6,6 +8,10 @@ import numpy
 from tequila import BitString, QCircuit, TequilaException
 from tequila.circuit import gates
 
+try:
+    from openfermion.ops.representations import get_active_space_integrals  # needs openfermion 1.3
+except ImportError as E:
+    raise TequilaException("{}\nplease update openfermion to version 1.3 or higher".format(str(E)))
 
 @dataclass
 class ActiveSpaceData:
@@ -13,8 +19,8 @@ class ActiveSpaceData:
     Small dataclass to keep the overview in active spaces
     Class is used internally
     """
-    active_orbitals: list  # active orbitals (spatial, c1)
-    reference_orbitals: list  # reference orbitals (spatial, c1)
+    active_orbitals: list = None # active orbitals (spatial, c1)
+    reference_orbitals: list = None  # reference orbitals (spatial, c1)
 
     def __str__(self):
         result = "Active Space Data:\n"
@@ -468,6 +474,80 @@ class NBodyTensor:
         def is_of(self):
             return self._scheme == "of"
 
+        def __str__(self):
+            return self._scheme
+
+    def identify_ordering(self, trials=25):
+        if len(self.shape) != 4:
+            return None
+        chem=False
+        phys=False
+        of=False
+        if self._verify_ordering_mulliken(trials=trials):
+            chem=self.Ordering(scheme="mulliken")
+        if self._verify_ordering_dirac(trials=trials):
+            phys=self.Ordering(scheme="dirac")
+        if self._verify_ordering_of(trials=trials):
+            of=self.Ordering(scheme="openfermion")
+
+        uniqueness = (chem,phys,of)
+        if not uniqueness.count(False) == 2 and trials<100:
+            return self.identify_ordering(trials=trials*2)
+        if chem: return self.Ordering(scheme="chem")
+        elif phys: return self.Ordering(scheme="phys")
+        elif of: return self.Ordering(scheme="openfermion")
+        else:
+            raise Exception("NBTensor ordering could not be identified")
+
+    def _verify_ordering_dirac(self, trials=100):
+        if len(self.shape) != 4:
+            return False
+        # dirac ordering: ijkl = <ij|kl> i.e 1212
+        # check for two_body symetries: <ij|kl> = <kj|il> , <il|kj>
+        elems = self.elems
+        n = self.shape[0]
+        for _ in range(trials):
+            idx = numpy.random.randint(0,n,4)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[1],idx[0],idx[3]], atol=1.e-4)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[3],idx[2],idx[1]], atol=1.e-4)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[3],idx[0],idx[1]], atol=1.e-4)
+            if not (test1 and test2 and test3):
+                return False
+
+        return True
+
+    def _verify_ordering_mulliken(self, trials=100):
+        if len(self.shape) != 4:
+            return False
+        # mulliken ordering: ijkl = (ij|kl) i.e 1122
+        elems = self.elems
+        n = self.shape[0]
+        for _ in range(trials):
+            idx = numpy.random.randint(0,n,4)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[2],idx[3]], atol=1.e-4)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[1],idx[3],idx[2]], atol=1.e-4)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[3],idx[2]], atol=1.e-4)
+            if not (test1 and test2 and test3):
+                return False
+
+        return True
+
+    def _verify_ordering_of(self, trials=100):
+        if len(self.shape) != 4:
+            return False
+        # openfermion ordering: ijkl = [ij|kl] i.e 1221
+        elems = self.elems
+        n = self.shape[0]
+        for _ in range(trials):
+            idx = numpy.random.randint(0,n,4)
+            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[1],idx[2],idx[0]], atol=1.e-4)
+            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[2],idx[1],idx[3]], atol=1.e-4)
+            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[2],idx[1],idx[0]], atol=1.e-4)
+            if not (test1 and test2 and test3):
+                return False
+
+        return True
+
     def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, ordering: str = None,
                  size_full: int = None):
         """
@@ -509,11 +589,24 @@ class NBodyTensor:
             self._size_full = size_full
         # 2-body tensors (<=> order 4) currently allow reordering
         if self.order == 4:
+            if ordering is None:
+                ordering = self.identify_ordering()
+            else:
+                try: # some RDMs are really sloppy (depends on backend)
+                    auto_ordering=self.identify_ordering()
+                    if auto_ordering is not ordering:
+                        warnings.warn("Auto identified ordering of NBTensor does not match given ordering: {} vs {}".format(auto_ordering, ordering))
+                except Exception as E:
+                    warnings.warn("could not verify odering {}".format(ordering))
             self.ordering = self.Ordering(ordering)
         else:
             if ordering is not None:
                 raise Exception("Ordering only implemented for tensors of order 4 / 2-body tensors.")
             self.ordering = None
+
+    @property
+    def shape(self, *args, **kwargs):
+        return self.elems.shape
 
     def sub_lists(self, idx_lists: list = None) -> numpy.ndarray:
         """
@@ -635,9 +728,10 @@ class NBodyTensor:
             -------
         """
         if self.order != 4:
-            raise Exception('Reordering currently only implemented for two-body tensors.')
+            warnings.warn('Reordering currently only implemented for two-body tensors.')
+            return self
 
-        to = self.Ordering(to)
+        to = self.Ordering(scheme=to)
 
         if self.ordering == to:
             return self
@@ -657,6 +751,30 @@ class NBodyTensor:
             elif to.is_of():
                 self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
 
+        self.ordering=to
+        return self
+
+
+@dataclass
+class OrbitalData:
+    irrep: str = None  # irrep of symmetry group (if assigned)
+    idx_irrep: int = None  # index within the irrep
+    idx_total: int = None  # index within the total set of orbitals
+    idx: int = None  # index within the active space
+    energy: float = None  # energy assigned to orbital
+    occ: float = None  # occupation number assigned to orbital
+    pair: tuple = None  # potential electron pair that the orbital is assigned to
+
+    def __post_init__(self):
+        # backward compatibility
+        if self.pair is not None and len(self.pair) == 1:
+            self.pair = (self.pair[0], self.pair[0])
+            self.occ = 2.0  # mark as reference
+
+    def __str__(self):
+        return "Orbital {}".format(str(self.__dict__))
+
+
         return self
 
 
@@ -672,29 +790,47 @@ class IntegralManager:
     _constant_term: numpy.float = None
     _basis_type: str = None
     _basis_name: str = None
+    _orbital_coefficients: numpy.ndarray = None
+    _active_space: ActiveSpaceData = None
+    _orbitals: typing.List[OrbitalData] = None
 
-    def __init__(self, overlap_integrals, one_body_integrals, two_body_integrals, basis_type="custom",
+    def __init__(self, one_body_integrals, two_body_integrals, basis_type="custom",
                  basis_name="unknown",
-                 constant_term=0.0):
-        self._overlap_integrals = overlap_integrals
+                 constant_term=0.0, orbital_coefficients=None, active_space=None, overlap_integrals=None, orbitals=None, *args, **kwargs):
         self._one_body_integrals = one_body_integrals
         self._two_body_integrals = two_body_integrals
         self._constant_term = constant_term
         self._basis_type = basis_type
         self._basis_name = basis_name
+
         assert len(self._one_body_integrals.shape) == 2
-        assert len(self._overlap_integrals.shape) == 2
         assert len(self._two_body_integrals.shape) == 4
         try:
-            assert two_body_integrals.ordering == "chem"
+            two_body_integrals = two_body_integrals.reorder(to="chem")
         except Exception as E:
             raise TequilaException(
-                "two_body_integrals given in wrong format. Needs to be a tq.chemistry.NBodyTensor in chem ordering.\n{}".format(
-                    str(E)))
-        assert self._overlap_integrals.shape == self._one_body_integrals.shape
+                "{}\ntwo_body_integrals given in wrong format. Needs to be a tq.chemistry.NBodyTensor in chem ordering.\n{} with ordering={}".format(
+                    str(E), str(type(two_body_integrals)), str(two_body_integrals.ordering)))
+
         for i in range(4):
             assert self._one_body_integrals.shape[0] == self._two_body_integrals.elems.shape[i]
         assert self._one_body_integrals.shape[0] == self._one_body_integrals.shape[1]
+
+        if overlap_integrals is None:
+            overlap_integrals = numpy.eye(one_body_integrals.shape[0])
+        self._overlap_integrals = overlap_integrals
+        assert self._overlap_integrals.shape == self._one_body_integrals.shape
+
+        if orbital_coefficients is None:
+            # default are symmetrically orthogonalized orbitals in the given basis
+            orbital_coefficients = self.get_orthonormalized_orbital_coefficients()
+        self._orbital_coefficients = orbital_coefficients
+
+        if orbitals is None:
+            orbitals = [OrbitalData(idx_total=i, idx=i) for i in range(one_body_integrals.shape[0])]
+
+        self._orbitals = orbitals
+        self.active_space = active_space
 
     def get_orthonormalized_orbital_coefficients(self):
         """
@@ -714,38 +850,158 @@ class IntegralManager:
         return C
 
     @property
+    def active_orbitals(self):
+        return [self._orbitals[i] for i in self._active_space.active_orbitals]
+
+    @property
+    def orbitals(self):
+        return self._orbitals
+
+    @property
+    def active_space(self):
+        return self._active_space
+
+    @active_space.setter
+    def active_space(self, other):
+        self._active_space = other
+        for x in self._orbitals:
+            x.idx = None
+        for ii,i in enumerate(other.active_orbitals):
+            self._orbitals[i].idx = ii
+
+    @property
+    def reference_orbitals(self):
+        return [self._orbitals[i] for i in self.active_space.reference_orbitals]
+
+    @property
+    def active_reference_orbitals(self):
+        return [self._orbitals[i] for i in self.active_space.active_orbitals if i in self.active_space.reference_orbitals]
+
+    @property
     def overlap_integrals(self):
+        """
+        Returns
+        -------
+        Overlap integrals in given basis (using basis functions, not molecular orbitals. No active space considered)
+        """
         return self._overlap_integrals
 
     @property
     def one_body_integrals(self):
+        """
+        Returns
+        -------
+        one_body integrals in given basis (using basis functions, not molecular orbitals. No active space considered)
+        """
         return self._one_body_integrals
 
     @property
     def two_body_integrals(self):
-        return self._two_body_integrals.elems
+        """
+        Returns
+        -------
+        two-body orbitals in given basis (using basis functions, not molecular orbitals. No active space considered)
+        ordering is "chem" i.e. Mulliken i.e. integrals_{abcd} = <ac|g|bd>
+        """
+        return self._two_body_integrals
 
     @property
     def constant_term(self):
+        """
+        Returns
+        -------
+        return constant term (usually nuclear repulsion). No active space considered
+        """
         return self._constant_term
 
-    def get_transformed_one_body_integrals(self, orbital_coefficients, verify=True):
-        if verify: assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
+    @property
+    def orbital_coefficients(self):
+        """
+        second index is the orbital index, first the basis index
+        Returns
+        -------
+        orbital coefficient matrix C_{basis,orbital}
+        """
+        return self._orbital_coefficients
+
+    @orbital_coefficients.setter
+    def orbital_coefficients(self, other):
+        self.verify_orbital_coefficients(orbital_coefficients=other)
+        self._orbital_coefficients = other
+
+    def transform_orbitals(self, U):
+        """
+        Transform orbitals
+        Parameters
+        ----------
+        U: second index is new orbital indes, first is old orbital index (summed over)
+
+        Returns
+        -------
+        updates the structure with new orbitals: c = cU
+        """
+        c = self.orbital_coefficients
+        c = numpy.einsum("ix -> xj -> ij", c, U, optimize="greedy")
+        self.orbital_coefficients = c
+
+    def get_integrals(self, orbital_coefficients=None, ordering="openfermion", ignore_active_space=False, *args, **kwargs):
+        """
+        Get all molecular integrals in given orbital basis (determined by orbital_coefficients in self or the ones passed here)
+        active space is considered if not explicitly ignored
+        Parameters
+        ----------
+        orbital_coefficients: orbital coefficients in the given basis (first index is basis, second index is orbitals). Need to go over full basis (no active space)
+        ordering: ordering of the two-body integrals (default is openfermion)
+        ignore_active_space: ignore active space and give back full integrals
+
+        Returns
+        -------
+
+        """
+        if orbital_coefficients is None:
+            orbital_coefficients = self.orbital_coefficients
+
+        c = self.constant_term
+        h = self._get_transformed_one_body_integrals(orbital_coefficients=orbital_coefficients)
+        g = self._get_transformed_two_body_integrals(orbital_coefficients=orbital_coefficients, ordering=ordering)
+        if not ignore_active_space and self._active_space is not None:
+
+            g = g.reorder(to="openfermion").elems
+
+            active_integrals = get_active_space_integrals(one_body_integrals=h, two_body_integrals=g,
+                                                          occupied_indices=self._active_space.frozen_reference_orbitals,
+                                                          active_indices=self._active_space.active_orbitals)
+            c = active_integrals[0] + c
+            h = active_integrals[1]
+            g = NBodyTensor(elems=active_integrals[2], ordering="openfermion")
+        g.reorder(to=ordering)
+        return c, h, g
+
+    def _get_transformed_one_body_integrals(self, orbital_coefficients=None, verify=True):
+        if orbital_coefficients is None:
+            orbital_coefficients = self.orbital_coefficients
+        elif verify:
+            assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
         h = self.one_body_integrals
         h = numpy.einsum("ix, xj -> ij", h, orbital_coefficients, optimize='greedy')
         h = numpy.einsum("xj, xi -> ij", h, orbital_coefficients, optimize='greedy')
+
         return h
 
-    def get_transformed_two_body_integrals(self, orbital_coefficients, ordering="openfermion", verify=True):
+    def _get_transformed_two_body_integrals(self, orbital_coefficients=None, ordering="openfermion", verify=True):
+        if orbital_coefficients is None:
+            orbital_coefficients = self.orbital_coefficients
+        elif verify:
+            assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
+
         g = self.two_body_integrals
+        g = g.reorder("chem").elems
         g = numpy.einsum("ijkx, xl -> ijkl", g, orbital_coefficients, optimize='greedy')
         g = numpy.einsum("ijxl, xk -> ijkl", g, orbital_coefficients, optimize='greedy')
         g = numpy.einsum("ixkl, xj -> ijkl", g, orbital_coefficients, optimize='greedy')
         g = numpy.einsum("xjkl, xi -> ijkl", g, orbital_coefficients, optimize='greedy')
-
         g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
-        # Order tensor. default: meet openfermion conventions
-        g.reorder(to=ordering)
+        g = g.reorder(to=ordering)
 
         return g
 
@@ -770,3 +1026,17 @@ class IntegralManager:
     def basis_is_orthogonal(self, tolerance=1.e-5):
         S = self.overlap_integrals
         return numpy.linalg.norm(S - numpy.eye(S.shape[0])) < tolerance
+
+    def active_space_is_trivial(self):
+        return len(self.active_orbitals) == len(self.orbitals)
+
+    def __str__(self):
+        result = "\nIntegralManager:\n"
+        result+= "ActiveSpace:\n"
+        result+= str(self.active_space)
+        result+= "Orbitals:\n"
+        for x in self.orbitals:
+            result += str(x) + "\n"
+        return result
+
+        return result
