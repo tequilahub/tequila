@@ -433,7 +433,8 @@ def test_orbital_optimization():
     result = tq.minimize(E, print_level=2)
     print(result.energy)
     assert numpy.isclose(-7.79860454, result.energy, atol=1.e-3)
-
+    
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 def test_orbital_transformation():
     mol0 = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 0.75", basis_set="STO-3G")
