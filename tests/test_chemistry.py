@@ -434,7 +434,6 @@ def test_orbital_optimization():
     print(result.energy)
     assert numpy.isclose(-7.79860454, result.energy, atol=1.e-3)
 
-
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 def test_orbital_transformation():
     mol0 = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 0.75", basis_set="STO-3G")
@@ -470,7 +469,8 @@ def test_orbital_transformation():
     hf3 = tq.simulate(E3, variables={"a": 0.0})
     assert numpy.isclose(hf3, hf, atol=1.e-4)
 
-
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 def test_crosscheck_mp2():
     # Be has issues with degeneracies and ordering (t1-t2 is not necessarily 0)
     mol1 = tq.Molecule(geometry="he 0.0 0.0 0.0", basis_set="6-31G", backend="psi4")
