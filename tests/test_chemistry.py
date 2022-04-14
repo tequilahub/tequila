@@ -476,12 +476,10 @@ def test_crosscheck_mp2():
     # Be has issues with degeneracies and ordering (t1-t2 is not necessarily 0)
     mol1 = tq.Molecule(geometry="he 0.0 0.0 0.0", basis_set="6-31G", backend="psi4")
     mol2 = tq.Molecule(geometry="he 0.0 0.0 0.0", basis_set="6-31G", backend="pyscf")
-    t2_1 = mol1.compute_mp2_amplitudes().tIjAb
-    t2_2 = mol2.compute_mp2_amplitudes().tIjAb
-    e1 = mol1.molecule.mp2_energy
-    e2 = mol2.molecule.mp2_energy
+    t2_1, e1 = mol1.compute_mp2_amplitudes(return_energy=True)
+    t2_2, e2 = mol2.compute_mp2_amplitudes(return_energy=True)
     assert numpy.isclose(e1, e2, atol=1.e-4)
-    assert numpy.isclose(numpy.linalg.norm(t2_1 - t2_2), 0.0, atol=1.e-4)
+    assert numpy.isclose(numpy.linalg.norm(t2_1.tIjAb - t2_2.tIjAb), 0.0, atol=1.e-4)
 
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
@@ -508,10 +506,8 @@ def test_crosscheck_cis_mp2_large():
     r_2 = mol2.compute_cis_amplitudes()
     for i in range(len(r_1.omegas)):
         assert numpy.isclose(r_1.omegas[i], r_2.omegas[i], atol=1.e-4)
-    mol1.compute_mp2_amplitudes()
-    e_1 = mol1.molecule.mp2_energy
-    mol2.compute_mp2_amplitudes()
-    e_2 = mol2.molecule.mp2_energy
+    x, e_1 = mol1.compute_mp2_amplitudes(return_energy=True)
+    x, e_2 = mol2.compute_mp2_amplitudes(return_energy=True)
     assert e_1 is not None
     assert e_2 is not None
     assert numpy.isclose(mol1.molecule.mp2_energy, mol2.molecule.mp2_energy, atol=1.e-4)
