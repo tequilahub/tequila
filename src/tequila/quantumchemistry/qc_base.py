@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from tequila import TequilaException, BitString, TequilaWarning
 from tequila.hamiltonian import QubitHamiltonian
@@ -74,11 +75,6 @@ class QuantumChemistryBase:
                                                                      **kwargs)
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
-        self.molecule = self.make_molecule(*args, **kwargs)
-
-        assert (parameters.basis_set.lower() == self.molecule.basis.lower())
-        assert (parameters.multiplicity == self.molecule.multiplicity)
-        assert (parameters.charge == self.molecule.charge)
 
         self._rdm1 = None
         self._rdm2 = None
@@ -342,18 +338,18 @@ class QuantumChemistryBase:
         molecule = MolecularData(**self.parameters.molecular_data_param)
 
         do_compute = True
-        try:
-            import os
-            if os.path.exists(self.parameters.filename):
-                molecule.load()
-                do_compute = False
-        except OSError:
-            do_compute = True
+        # try:
+        #     import os
+        #     if os.path.exists(self.parameters.filename):
+        #         molecule.load()
+        #         do_compute = False
+        # except OSError:
+        #     do_compute = True
 
         if do_compute:
             molecule = self.do_make_molecule(*args, **kwargs)
 
-        molecule.save()
+        #molecule.save()
         return molecule
 
     def initialize_integral_manager(self, *args, **kwargs):
@@ -368,7 +364,6 @@ class QuantumChemistryBase:
 
         Method sets:
         - result of self.get_integrals()
-        - openfermion molecule in self.molecule
         """
 
         assert ("one_body_integrals" in kwargs)
@@ -417,6 +412,43 @@ class QuantumChemistryBase:
                                   constant_term=constant_part, *args, **kwargs)
 
         return manager
+
+    def transform_orbitals(self, orbital_coefficients, *args, **kwargs):
+        """
+        Parameters
+        ----------
+        orbital_coefficients: second index is new orbital indes, first is old orbital index (summed over)
+        args
+        kwargs
+
+        Returns
+        -------
+        New molecule with transformed orbitals
+        """
+
+        # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
+        integral_manager = copy.deepcopy(self.integral_manager)
+        integral_manager.transform_orbitals(U=orbital_coefficients)
+        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
+        return result
+
+    def orthonormalize_basis_orbitals(self):
+        """
+        Returns
+        -------
+        New molecule in the native (orthonormalized) basis given
+        e.g. for standard basis sets the orbitals are orthonormalized Gaussian Basis Functions
+        """
+        if self.integral_manager.active_space_is_trivial():
+            warnings.warn("orthonormalize_basis_orbitals: active space is set and might lead to inconsistent behaviour", TequilaWarning)
+
+        # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
+        integral_manager = copy.deepcopy(self.integral_manager)
+        c = integral_manager.get_orthonormalized_orbital_coefficients()
+        integral_manager.orbital_coefficients=c
+        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
+        return result
+
 
     def do_make_molecule(self, *args, **kwargs):
         """
@@ -493,7 +525,8 @@ class QuantumChemistryBase:
             warnings.warn(
                 "active space can't be changed in molecule. Will ignore active_orbitals passed to make_hamiltonian")
 
-        fop = self.molecule.get_molecular_hamiltonian()
+        of_molecule = self.make_molecule()
+        fop = of_molecule.get_molecular_hamiltonian()
         fop = openfermion.transforms.get_fermion_operator(fop)
         try:
             qop = self.transformation(fop)
@@ -541,7 +574,7 @@ class QuantumChemistryBase:
         Create a MolecularHamiltonian as openfermion Class
         (used internally here, not used in tequila)
         """
-        return self.molecule.get_molecular_hamiltonian(occupied_indices=occupied_indices, active_indices=active_indices)
+        return self.make_molecule().get_molecular_hamiltonian(occupied_indices=occupied_indices, active_indices=active_indices)
 
     def get_integrals(self, *args, **kwargs):
         """
@@ -1174,7 +1207,7 @@ class QuantumChemistryBase:
                 F[k, l] = tmp
         return F
 
-    def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
+    def compute_mp2_amplitudes(self, hf_energy=None, return_energy=False) -> ClosedShellAmplitudes:
         """
 
         Compute closed-shell mp2 amplitudes (canonical amplitudes only)
@@ -1191,25 +1224,25 @@ class QuantumChemistryBase:
         -------
 
         """
-        g = self.molecule.two_body_integrals
+        c,h,g = self.get_integrals()
         fi = self.compute_fock_matrix()
         self.is_canonical(verify=True, fock_matrix=fi)
         fi = numpy.diag(fi)
         self.is_closed_shell(verify=True)
-        nocc = self.molecule.n_electrons // 2  # this is never the active space
+        nocc = len(self.reference_orbitals)
         ei = fi[:nocc]
         ai = fi[nocc:]
-        abgij = g[nocc:, nocc:, :nocc, :nocc]
+        abgij = g.elems[nocc:, nocc:, :nocc, :nocc]
         amplitudes = abgij * 1.0 / (
                 ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
-        E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
-                                                                                optimize='greedy')
 
-        hf_energy = self.molecule.hf_energy
-        if hf_energy is None:
-            hf_energy = self.compute_energy("hf")
-        self.molecule.mp2_energy = E + hf_energy
-        return ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='greedy'))
+        result = ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='greedy'))
+
+        if return_energy:
+            E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,optimize='greedy')
+            return result, E
+        else:
+            return result
 
     def compute_cis_amplitudes(self):
         """
@@ -1668,6 +1701,10 @@ class QuantumChemistryBase:
                                                    n_ri=n_ri, external_info=external_info, **kwargs)
         return correction.compute()
 
+
+    def print_basis_info(self):
+        return self.integral_manager.print_basis_info()
+
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
         result += "Qubit Encoding\n"
@@ -1681,5 +1718,6 @@ class QuantumChemistryBase:
 
         result += "\nBasis\n"
         result += str(self.integral_manager)
+        result += "\nmore information with: self.print_basis_info()"
 
         return result
