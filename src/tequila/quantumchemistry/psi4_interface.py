@@ -516,8 +516,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         return numpy.extract(condition=c, arr=arr).reshape(final_shape)
 
-    def compute_mp2_amplitudes(self, active_orbitals=None) -> ClosedShellAmplitudes:
-        return self._extract_active_space(super().compute_mp2_amplitudes())
+    def compute_mp2_amplitudes(self, active_orbitals=None, *args, **kwargs) -> ClosedShellAmplitudes:
+        return self._extract_active_space(super().compute_mp2_amplitudes(*args, **kwargs))
 
     def compute_amplitudes(self, method: str,
                            options: dict = None,
