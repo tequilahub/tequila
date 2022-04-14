@@ -510,4 +510,4 @@ def test_crosscheck_cis_mp2_large():
     x, e_2 = mol2.compute_mp2_amplitudes(return_energy=True)
     assert e_1 is not None
     assert e_2 is not None
-    assert numpy.isclose(mol1.molecule.mp2_energy, mol2.molecule.mp2_energy, atol=1.e-4)
+    assert numpy.isclose(e_1, e_2, atol=1.e-4)
