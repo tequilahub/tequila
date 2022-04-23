@@ -533,7 +533,7 @@ class QCircuit():
         # currently its recreated in the init function
         return QCircuit(gates=new_gates)
 
-    def add_controls(self, control, inpl: typing.Optional[bool] = True) \
+    def add_controls(self, control, inpl: typing.Optional[bool] = False) \
             -> typing.Optional[QCircuit]:
         """Depending on the truth value of inpl:
             - return controlled version of self with control as the control qubits if inpl;
@@ -543,6 +543,7 @@ class QCircuit():
         """
         if inpl:
             self._inpl_control_circ(control)
+            return self
         else:
             # return self._return_control_circ(control)
             circ = copy.deepcopy(self)

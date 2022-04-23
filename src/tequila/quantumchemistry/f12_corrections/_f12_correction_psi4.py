@@ -1,7 +1,7 @@
 import tequila as tq
 from tequila import TequilaException, TequilaWarning
 
-from tequila.quantumchemistry.qc_base import NBodyTensor
+from tequila.quantumchemistry import NBodyTensor
 from tequila.quantumchemistry.f12_corrections._f12_correction_base import ExplicitCorrelationCorrection
 
 import numpy

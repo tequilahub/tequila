@@ -1,657 +1,78 @@
-import os
+import copy
 from dataclasses import dataclass
 from tequila import TequilaException, BitString, TequilaWarning
 from tequila.hamiltonian import QubitHamiltonian
-from tequila.wavefunction import QubitWaveFunction
-from tequila.hamiltonian.paulis import Sp, Sm, Qp, Qm
 
-from tequila.circuit import QCircuit, gates, _gates_impl
+from tequila.hamiltonian.paulis import Sp, Sm
+
+from tequila.circuit import QCircuit, gates
 from tequila.objective.objective import Variable, Variables, ExpectationValue
 
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
-
-from tequila.objective import assign_variable
+from .chemistry_tools import ActiveSpaceData, FermionicGateImpl, prepare_product_state, ClosedShellAmplitudes, \
+    Amplitudes, ParametersQC, NBodyTensor, IntegralManager, OrbitalData
 
 from .encodings import known_encodings
 
-import typing, numpy, numbers, copy
+import typing, numpy, numbers
 from itertools import product
 
 # if you are experiencing import errors you need to update openfermion
 # required is version >= 1.0
 # otherwise replace with from openfermion.hamiltonians import MolecularData
 import openfermion
-from openfermion.chem import MolecularData
 
+try:
+    from openfermion.chem import MolecularData
+except:
+    try:
+        from openfermion.hamiltonians import MolecularData
+    except Exception as E:
+        raise Exception("{}\nIssue with Tequila Chemistry: Please update openfermion".format(str(E)))
 import warnings
 
 
-@dataclass
-class ActiveSpaceData:
-    active_orbitals: list  # active orbitals (spatial, c1)
-    reference_orbitals: list  # reference orbitals (spatial, c1)
-
-    def __str__(self):
-        result = "Active Space Data:\n"
-        result += "{key:15} : {value:15} \n".format(key="active_orbitals", value=str(self.active_orbitals))
-        result += "{key:15} : {value:15} \n".format(key="reference_orbitals",
-                                                    value=str(self.reference_orbitals))
-        result += "{key:15} : {value:15} \n".format(key="frozen_docc", value=str(self.frozen_docc))
-        result += "{key:15} : {value:15} \n".format(key="frozen_uocc", value=str(self.frozen_uocc))
-        return result
-
-    @property
-    def frozen_reference_orbitals(self):
-        return [i for i in self.reference_orbitals if i not in self.active_orbitals]
-
-    @property
-    def active_reference_orbitals(self):
-        return [i for i in self.reference_orbitals if i in self.active_orbitals]
-
-
-class FermionicGateImpl(gates.QubitExcitationImpl):
-    # keep the overview in circuits
-    def __init__(self, generator, p0, transformation, *args, **kwargs):
-        super().__init__(generator=generator, target=generator.qubits, p0=p0, *args, **kwargs)
-        self._name = "FermionicExcitation"
-        self.transformation = transformation
-
-    def compile(self, *args, **kwargs):
-        return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
-
-
-def prepare_product_state(state: BitString) -> QCircuit:
-    """Small convenience function
-
-    Parameters
-    ----------
-    state :
-        product state encoded into a bitstring
-    state: BitString :
-
-
-    Returns
-    -------
-    type
-        unitary circuit which prepares the product state
-
-    """
-    result = QCircuit()
-    for i, v in enumerate(state.array):
-        if v == 1:
-            result += gates.X(target=i)
-    return result
-
-
-@dataclass
-class ParametersQC:
-    """Specialization of ParametersHamiltonian"""
-    basis_set: str = None  # Quantum chemistry basis set
-    geometry: str = None  # geometry of the underlying molecule (units: Angstrom!),
-    # this can be a filename leading to an .xyz file or the geometry given as a string
-    description: str = ""
-    multiplicity: int = 1
-    charge: int = 0
-    name: str = None
-
-    @property
-    def n_electrons(self, *args, **kwargs):
-        return self.get_nuc_charge() - self.charge
-
-    def get_nuc_charge(self):
-        return sum(self.get_atom_number(name=atom) for atom in self.get_atoms())
-
-    def get_atom_number(self, name):
-        atom_numbers = {"h": 1, "he": 2, "li": 3, "be": 4, "b": 5, "c": 6, "n": 7, "o": 8, "f": 9, "ne": 10, "na": 11,
-                        "mg": 12, "al": 13, "si": 14, "ph": 15, "s": 16, "cl": 17, "ar": 18}
-        if name.lower() in atom_numbers:
-            return atom_numbers[name.lower()]
-        try:
-            import periodictable as pt
-            atom = name.lower()
-            atom[0] = atom[0].upper()
-            element = pt.elements.symbol(atom)
-            return element.number()
-        except:
-            raise TequilaException(
-                "can not assign atomic number to element {}\npip install periodictable will fix it".format(atom))
-
-    def get_atoms(self):
-        return [x[0] for x in self.get_geometry()]
-
-    def __post_init__(self, *args, **kwargs):
-
-        if self.name is None and self.geometry is None:
-            raise TequilaException(
-                "no geometry or name given to molecule\nprovide geometry=filename.xyz or geometry=`h 0.0 0.0 0.0\\n...`\nor name=whatever with file whatever.xyz being present")
-        # auto naming
-        if self.name is None:
-            if ".xyz" in self.geometry:
-                self.name = self.geometry.split(".xyz")[0]
-                if self.description is None:
-                    coord, description = self.read_xyz_from_file()
-                    self.description = description
-            else:
-                atoms = self.get_atoms()
-                atom_names = sorted(list(set(atoms)), key=lambda x: self.get_atom_number(x), reverse=True)
-                if self.name is None:
-                    drop_ones = lambda x: "" if x == 1 else x
-                    self.name = "".join(["{}{}".format(x, drop_ones(atoms.count(x))) for x in atom_names])
-        self.name = self.name.lower()
-
-        if self.geometry is None:
-            self.geometry = self.name + ".xyz"
-
-        if ".xyz" in self.geometry and not os.path.isfile(self.geometry):
-            raise TequilaException("could not find file for molecular coordinates {}".format(self.geometry))
-
-    @property
-    def filename(self):
-        """ """
-        return "{}_{}".format(self.name, self.basis_set)
-
-    @property
-    def molecular_data_param(self) -> dict:
-        """:return: Give back all parameters for the MolecularData format from openfermion as dictionary"""
-        return {'basis': self.basis_set, 'geometry': self.get_geometry(), 'description': self.description,
-                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.filename
-                }
-
-    @staticmethod
-    def format_element_name(string):
-        """OpenFermion uses case sensitive hash tables for chemical elements
-        I.e. you need to name Lithium: 'Li' and 'li' or 'LI' will not work
-        this convenience function does the naming
-        :return: first letter converted to upper rest to lower
-
-        Parameters
-        ----------
-        string :
-
-
-        Returns
-        -------
-
-        """
-        assert (len(string) > 0)
-        assert (isinstance(string, str))
-        fstring = string[0].upper() + string[1:].lower()
-        return fstring
-
-    @staticmethod
-    def convert_to_list(geometry):
-        """Convert a molecular structure given as a string into a list suitable for openfermion
-
-        Parameters
-        ----------
-        geometry :
-            a string specifying a mol. structure. E.g. geometry="h 0.0 0.0 0.0\n h 0.0 0.0 1.0"
-
-        Returns
-        -------
-        type
-            A list with the correct format for openfermion E.g return [ ['h',[0.0,0.0,0.0], [..]]
-
-        """
-        result = []
-        # Remove blank lines
-        lines = [l for l in geometry.split("\n") if l]
-
-        for line in lines:
-            words = line.split()
-
-            # Pad coordinates
-            if len(words) < 4:
-                words += [0.0] * (4 - len(words))
-
-            try:
-                tmp = (ParametersQC.format_element_name(words[0]),
-                       (float(words[1]), float(words[2]), float(words[3])))
-                result.append(tmp)
-            except ValueError:
-                print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
-        return result
-
-    def get_geometry_string(self) -> str:
-        """returns the geometry as a string
-        :return: geometry string
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
-        if self.geometry.split('.')[-1] == 'xyz':
-            geomstring, comment = self.read_xyz_from_file(self.geometry)
-            if comment is not None:
-                self.description = comment
-            return geomstring
-        else:
-            return self.geometry
-
-    def get_geometry(self):
-        """Returns the geometry
-        If a xyz filename was given the file is read out
-        otherwise it is assumed that the geometry was given as string
-        which is then reformatted as a list usable as input for openfermion
-        :return: geometry as list
-        e.g. [(h,(0.0,0.0,0.35)),(h,(0.0,0.0,-0.35))]
-        Units: Angstrom!
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
-        if self.geometry.split('.')[-1] == 'xyz':
-            geomstring, comment = self.read_xyz_from_file(self.geometry)
-            if self.description == '':
-                self.description = comment
-            return self.convert_to_list(geomstring)
-        elif self.geometry is not None:
-            return self.convert_to_list(self.geometry)
-        else:
-            raise Exception("Parameters.qc.geometry is None")
-
-    @staticmethod
-    def read_xyz_from_file(filename):
-        """Read XYZ filetype for molecular structures
-        https://en.wikipedia.org/wiki/XYZ_file_format
-        Units: Angstrom!
-
-        Parameters
-        ----------
-        filename :
-            return:
-
-        Returns
-        -------
-
-        """
-        with open(filename, 'r') as file:
-            content = file.readlines()
-            natoms = int(content[0])
-            comment = str(content[1]).strip('\n')
-            coord = ''
-            for i in range(natoms):
-                coord += content[2 + i]
-            return coord, comment
-
-
-@dataclass
-class ClosedShellAmplitudes:
-    """ """
-    tIjAb: numpy.ndarray = None
-    tIA: numpy.ndarray = None
-
-    def make_parameter_dictionary(self, threshold=1.e-8):
-        """
-
-        Parameters
-        ----------
-        threshold :
-             (Default value = 1.e-8)
-
-        Returns
-        -------
-
-        """
-        variables = {}
-        if self.tIjAb is not None:
-            nvirt = self.tIjAb.shape[2]
-            nocc = self.tIjAb.shape[0]
-            assert (self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt)
-            for (I, J, A, B), value in numpy.ndenumerate(self.tIjAb):
-                if not numpy.isclose(value, 0.0, atol=threshold):
-                    variables[(nocc + A, I, nocc + B, J)] = value
-        if self.tIA is not None:
-            nocc = self.tIA.shape[0]
-            for (I, A), value, in numpy.ndenumerate(self.tIA):
-                if not numpy.isclose(value, 0.0, atol=threshold):
-                    variables[(A + nocc, I)] = value
-        return dict(sorted(variables.items(), key=lambda x: numpy.abs(x[1]), reverse=True))
-
-
-@dataclass
-class Amplitudes:
-    """Coupled-Cluster Amplitudes
-    We adopt the Psi4 notation for consistency
-    I,A for alpha
-    i,a for beta
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
-    """
-
-    @classmethod
-    def from_closed_shell(cls, cs: ClosedShellAmplitudes):
-        """
-        Initialize from closed-shell Amplitude structure
-
-        Parameters
-        ----------
-        cs: ClosedShellAmplitudes :
-
-
-        Returns
-        -------
-
-        """
-        tijab = cs.tIjAb - numpy.einsum("ijab -> ijba", cs.tIjAb, optimize='greedy')
-        return cls(tIjAb=cs.tIjAb, tIA=cs.tIA, tiJaB=cs.tIjAb, tia=cs.tIA, tijab=tijab, tIJAB=tijab)
-
-    tIjAb: numpy.ndarray = None
-    tIA: numpy.ndarray = None
-    tiJaB: numpy.ndarray = None
-    tijab: numpy.ndarray = None
-    tIJAB: numpy.ndarray = None
-    tia: numpy.ndarray = None
-
-    def make_parameter_dictionary(self, threshold=1.e-8):
-        """
-
-        Parameters
-        ----------
-        threshold :
-             (Default value = 1.e-8)
-             Neglect amplitudes below the threshold
-
-        Returns
-        -------
-        Dictionary of tequila variables (hash is in the style of (a,i,b,j))
-
-        """
-        variables = {}
-        if self.tIjAb is not None:
-            nvirt = self.tIjAb.shape[2]
-            nocc = self.tIjAb.shape[0]
-            assert (self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt)
-
-            for (I, j, A, b), value in numpy.ndenumerate(self.tIjAb):
-                if not numpy.isclose(value, 0.0, atol=threshold):
-                    variables[(2 * (nocc + A), 2 * I, 2 * (nocc + b) + 1, j + 1)] = value
-            for (i, J, a, B), value in numpy.ndenumerate(self.tiJaB):
-                if not numpy.isclose(value, 0.0, atol=threshold):
-                    variables[(2 * (nocc + a) + 1, 2 * i + 1, 2 * (nocc + B), J)] = value
-            for (i, j, a, b), value in numpy.ndenumerate(self.tijab):
-                if not numpy.isclose(value, 0.0, atol=threshold):
-                    variables[(2 * (nocc + a) + 1, 2 * i + 1, 2 * (nocc + b) + 1, j + 1)] = value
-            for (I, J, A, B), value in numpy.ndenumerate(self.tijab):
-                if not numpy.isclose(value, 0.0, atol=threshold):
-                    variables[(2 * (nocc + A), 2 * I, 2 * (nocc + B), J)] = value
-
-        if self.tIA is not None:
-            nocc = self.tIjAb.shape[0]
-            assert (self.tia.shape[0] == nocc)
-            for (I, A), value, in numpy.ndenumerate(self.tIA):
-                if not numpy.isclose(value, 0.0, atol=threshold):
-                    variables[(2 * (A + nocc), 2 * I)] = value
-            for (i, a), value, in numpy.ndenumerate(self.tIA):
-                if not numpy.isclose(value, 0.0, atol=threshold):
-                    variables[(2 * (a + nocc) + 1, 2 * i + 1)] = value
-
-        return variables
-
-
-class NBodyTensor:
-    """ Convenience class for handling N-body tensors """
-
-    class Ordering:
-        def __init__(self, scheme):
-            if hasattr(scheme, "_scheme"):
-                scheme = scheme._scheme
-            elif hasattr(scheme, "scheme"):
-                scheme = scheme.scheme
-            self._scheme = self.assign_scheme(scheme)
-
-        def assign_scheme(self, scheme):
-            if scheme is None:
-                return "chem"
-            else:
-                scheme = str(scheme)
-
-            if scheme.lower() in ["mulliken", "chem", "c", "1122"]:
-                return "chem"
-            elif scheme.lower() in ["dirac", "phys", "p", "1212"]:
-                return "phys"
-            elif scheme.lower() in ["openfermion", "of", "o", "1221"]:
-                return "of"
-            else:
-                raise TequilaException(
-                    "Unknown two-body tensor scheme {}. Supported are dirac, mulliken, and openfermion".format(scheme))
-
-        def is_phys(self):
-            return self._scheme == "phys"
-
-        def is_chem(self):
-            return self._scheme == "chem"
-
-        def is_of(self):
-            return self._scheme == "of"
-
-    def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, ordering: str = None,
-                 size_full: int = None):
-        """
-        Parameters
-        ----------
-        elems: Tensor data as numpy array
-        active_indices: List of active indices in total ordering
-        ordering: Ordering scheme for two body tensors
-        "dirac" or "phys": <12|g|12>
-            .. math::
-                g_{pqrs} = \\int d1 d2 p(1)q(2) g(1,2) r(1)s(2)
-        "mulliken" or "chem": (11|g|22)
-            .. math::
-                g_{pqrs} = \\int d1 d2 p(1)r(2) g(1,2) q(1)s(2)
-        "openfermion":
-            .. math:: [12|g|21]
-                g_{gqprs} = \\int d1 d2 p(1)q(2) g(1,2) s(1)r(2)
-
-        size_full
-        """
-
-        # Set elements
-        self.elems = elems
-        # Active indices only as list of indices (e.g. spatial orbital indices), not as a dictionary of irreducible
-        # representations
-        if active_indices is not None:
-            self.active_indices = active_indices
-        self._passive_indices = None
-        self._full_indices = None
-        self._indices_set: bool = False
-
-        # Determine order of tensor
-        # Assume, that tensor is entered in desired shape, not as flat array.
-        self.order = len(self.elems.shape)
-        # Can use size_full < self.elems.shape[0] -> 'full' space is to be considered a subspace as well
-        if size_full is None:
-            self._size_full = self.elems.shape[0]
-        else:
-            self._size_full = size_full
-        # 2-body tensors (<=> order 4) currently allow reordering
-        if self.order == 4:
-            self.ordering = self.Ordering(ordering)
-        else:
-            if ordering is not None:
-                raise Exception("Ordering only implemented for tensors of order 4 / 2-body tensors.")
-            self.ordering = None
-
-    def sub_lists(self, idx_lists: list = None) -> numpy.ndarray:
-        """
-        Get subspace of tensor by a set of index lists
-        according to hPQ.sub_lists(idx_lists=[p, q]) = [hPQ for P in p and Q in q]
-
-        This essentially is an implementation of a non-contiguous slicing using numpy.take
-
-        Parameters
-        ----------
-            idx_lists :
-                List of lists, each defining the desired subspace per axis
-                Size needs to match order of tensor, and lists successively correspond to axis=0,1,2,...,N
-
-        Returns
-        -------
-            out :
-                Sliced tensor as numpy.ndarray
-        """
-        # Check if index list has correct size
-        if len(idx_lists) != self.order:
-            raise Exception("Need to pass an index list for each dimension!" +
-                            " Length of idx_lists needs to match order of tensor.")
-
-        # Perform slicing via numpy.take
-        out = self.elems
-        for ax in range(self.order):
-            if idx_lists[ax] is not None:  # None means, we want the full space in this direction
-                out = numpy.take(out, idx_lists[ax], axis=ax)
-
-        return out
-
-    def set_index_lists(self):
-        """ Set passive and full index lists based on class inputs """
-        tmp_size = self._size_full
-        if self._size_full is None:
-            tmp_size = self.elems.shape[0]
-
-        self._passive_indices = [i for i in range(tmp_size)
-                                 if i not in self.active_indices]
-        self._full_indices = [i for i in range(tmp_size)]
-
-    def sub_str(self, name: str) -> numpy.ndarray:
-        """
-        Get subspace of tensor by a string
-        Currently is able to resolve an active space, named 'a', full space 'f', and the complement 'p' = 'f' - 'a'.
-        Full space in this context may also be smaller than actual tensor dimension.
-
-        The specification of active space in this context only allows to pick a set from a list of orbitals, and
-        is not able to resolve an active space from irreducible representations.
-
-        Example for one-body tensor:
-        hPQ.sub_lists(name='ap') = [hPQ for P in active_indices and Q in _passive_indices]
-
-        Parameters
-        ----------
-            name :
-                String specifying the desired subspace, elements need to be a (active), f (full), p (full - active)
-
-        Returns
-        -------
-            out :
-                Sliced tensor as numpy.ndarray
-        """
-        if not self._indices_set:
-            self.set_index_lists()
-            self._indices_set = True
-
-        if name is None:
-            raise Exception("No name specified.")
-        if len(name) != self.order:
-            raise Exception("Name does not match order of the tensor.")
-        if self.active_indices is None:
-            raise Exception("Need to set an active space in order to call this function.")
-
-        idx_lists = []
-        # Parse name as string of space indices
-        for char in name:
-            if char.lower() == 'a':
-                idx_lists.append(self.active_indices)
-            elif char.lower() == 'p':
-                idx_lists.append(self._passive_indices)
-            elif char.lower() == 'f':
-                if self._size_full is None:
-                    idx_lists.append(None)
-                else:
-                    idx_lists.append(self._full_indices)
-            else:
-                raise Exception("Need to specify a valid letter (a,p,f).")
-
-        out = self.sub_lists(idx_lists)
-
-        return out
-
-    def reorder(self, to: str = 'of'):
-        """
-        Function to reorder tensors according to some convention.
-
-        Parameters
-        ----------
-        to :
-            Ordering scheme of choice.
-            'openfermion', 'of' (default) :
-                openfermion - ordering, corresponds to integrals of the type
-                h^pq_rs = int p(1)* q(2)* O(1,2) r(2) s(1) (O(1,2)
-                with operators a^pq_rs = a^p a^q a_r a_s (a^p == a^dagger_p)
-                currently needed for dependencies on openfermion-library
-            'chem', 'c' :
-                quantum chemistry ordering, collect particle terms,
-                more convenient for real-space methods
-                h^pq_rs = int p(1) q(1) O(1,2) r(2) s(2)
-                This is output by psi4
-            'phys', 'p' :
-                typical physics ordering, integrals of type
-                h^pq_rs = int p(1)* q(2)* O(1,2) r(1) s(2)
-                with operators a^pq_rs = a^p a^q a_s a_r
-
-            Returns
-            -------
-        """
-        if self.order != 4:
-            raise Exception('Reordering currently only implemented for two-body tensors.')
-
-        to = self.Ordering(to)
-
-        if self.ordering == to:
-            return self
-        elif self.ordering.is_chem():
-            if to.is_of():
-                self.elems = numpy.einsum("psqr -> pqrs", self.elems, optimize='greedy')
-            elif to.is_phys():
-                self.elems = numpy.einsum("prqs -> pqrs", self.elems, optimize='greedy')
-        elif self.ordering.is_of():
-            if to.is_chem():
-                self.elems = numpy.einsum("pqrs -> psqr", self.elems, optimize='greedy')
-            elif to.is_phys():
-                self.elems = numpy.einsum("pqrs -> pqsr", self.elems, optimize='greedy')
-        elif self.ordering.is_phys():
-            if to.is_chem():
-                self.elems = numpy.einsum("pqrs -> prqs", self.elems, optimize='greedy')
-            elif to.is_of():
-                self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
-
-        return self
-
-
 class QuantumChemistryBase:
+    """
+    Base Class for tequila chemistry functionality
+    This is what is initialized with tq.Molecule(...)
+    We try to define all main methods here and only implemented specializations in the derived classes
+    Derived classes interface specific backends (e.g. Psi4, PySCF and Madness). See PACKAGE_interface.py for more
+    """
 
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
+                 reference_orbitals: list = None,
+                 orbitals: list = None,
                  *args,
                  **kwargs):
+        """
+        Parameters
+        ----------
+        parameters: the quantum chemistry parameters handed over as instance of the ParametersQC class (see there for content)
+        transformation: the fermion to qubit transformation (default is JordanWigner). See encodings.py for supported encodings or to extend
+        active_orbitals: list of active orbitals (others will be frozen, if we have N-electrons then the first N//2 orbitals will be considered occpied when creating the active space)
+        reference_orbitals: give list of orbitals that shall be considered occupied when creating a possible active space (default is the first N//2). The indices are expected to be total indices (including possible frozen orbitals in the counting)
+        orbitals: information about the orbitals (should be in OrbitalData format, can be a dictionary)
+        args
+        kwargs
+        """
 
         self.parameters = parameters
+        if reference_orbitals is None:
+            reference_orbitals = [i for i in range(parameters.n_electrons // 2)]
+        self._reference_orbitals = reference_orbitals
 
-        if "molecule" in kwargs:
-            self.molecule = kwargs["molecule"]
+        # initialize integral manager
+        if "integral_manager" in kwargs:
+            self.integral_manager = kwargs["integral_manager"]
         else:
-            self.molecule = self.make_molecule(*args, **kwargs)
-
-        assert (parameters.basis_set.lower() == self.molecule.basis.lower())
-        assert (parameters.multiplicity == self.molecule.multiplicity)
-        assert (parameters.charge == self.molecule.charge)
-
-        self.active_space = None
-        if active_orbitals is not None:
-            self.active_space = self._make_active_space_data(active_orbitals=active_orbitals)
+            self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
+                                                                     reference_orbitals=reference_orbitals,
+                                                                     orbitals=orbitals, *args,
+                                                                     **kwargs)
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
@@ -659,6 +80,18 @@ class QuantumChemistryBase:
         self._rdm2 = None
 
     def _initialize_transformation(self, transformation=None, *args, **kwargs):
+        """
+        Helper Function to initialize the Fermion-to-Qubit Transformation
+        Parameters
+        ----------
+        transformation: name of the transformation (passed down from __init__
+        args
+        kwargs
+
+        Returns
+        -------
+
+        """
 
         if transformation is None:
             transformation = "JordanWigner"
@@ -682,38 +115,6 @@ class QuantumChemistryBase:
                                                                                          list(encodings.keys())))
 
         return transformation
-
-    def _make_active_space_data(self, active_orbitals, reference=None):
-        """
-        Small helper function
-        Internal use only
-        Parameters
-        ----------
-        active_orbitals: dictionary :
-            list: Give a list of spatial orbital indices
-            i.e. occ = [0,1,3] means that spatial orbital 0, 1 and 3 are used
-        reference: (Default value=None)
-            List of orbitals which form the reference
-            Can be given in the same format as active_orbitals
-            If given as None then the first N_electron/2 orbitals are taken
-            for closed-shell systems.
-
-        Returns
-        -------
-        Dataclass with active indices and reference indices (in spatial notation)
-
-        """
-
-        if active_orbitals is None:
-            return None
-
-        if reference is None:
-            # auto assignment only for closed-shell
-            assert (self.n_electrons % 2 == 0)
-            reference = sorted([i for i in range(self.n_electrons // 2)])
-
-        return ActiveSpaceData(active_orbitals=sorted(active_orbitals),
-                               reference_orbitals=sorted(reference))
 
     @classmethod
     def from_openfermion(cls, molecule: openfermion.MolecularData,
@@ -858,6 +259,22 @@ class QuantumChemistryBase:
 
     def make_hardcore_boson_excitation_gate(self, indices, angle, control=None, assume_real=True,
                                             compile_options="optimize"):
+        """
+        Make excitation generator in the hardcore-boson approximation (all electrons are forced to spin-pairs)
+        use only in combination with make_hardcore_boson_hamiltonian()
+
+        Parameters
+        ----------
+        indices
+        angle
+        control
+        assume_real
+        compile_options
+
+        Returns
+        -------
+
+        """
         target = []
         for pair in indices:
             assert len(pair) == 2
@@ -897,7 +314,8 @@ class QuantumChemistryBase:
 
         return QCircuit.wrap_gate(
             FermionicGateImpl(angle=angle, generator=generator, p0=p0,
-                              transformation=type(self.transformation).__name__.lower(), assume_real=assume_real,
+                              transformation=type(self.transformation).__name__.lower(), indices=indices,
+                              assume_real=assume_real,
                               control=control, **kwargs))
 
     def make_molecule(self, *args, **kwargs) -> MolecularData:
@@ -918,53 +336,129 @@ class QuantumChemistryBase:
 
         """
         molecule = MolecularData(**self.parameters.molecular_data_param)
-        # try to load
 
         do_compute = True
-        try:
-            import os
-            if os.path.exists(self.parameters.filename):
-                molecule.load()
-                do_compute = False
-        except OSError:
-            do_compute = True
+        # try:
+        #     import os
+        #     if os.path.exists(self.parameters.filename):
+        #         molecule.load()
+        #         do_compute = False
+        # except OSError:
+        #     do_compute = True
 
         if do_compute:
             molecule = self.do_make_molecule(*args, **kwargs)
 
-        molecule.save()
+        #molecule.save()
         return molecule
 
-    def do_make_molecule(self, *args, **kwargs):
+    def initialize_integral_manager(self, *args, **kwargs):
+        """
+        Called by self.__init__() with args and kwargs passed through
+        Override this in derived class such that it returns an intitialized instance of the integral manager
+
+        In the BaseClass it is required to pass the following with kwargs on init:
+        - one_body_integrals as matrix
+        - two_body_integrals as NBTensor of numpy.ndarray (four indices, openfermion ordering)
+        - nuclear_repulsion (constant part of hamiltonian - optional)
+
+        Method sets:
+        - result of self.get_integrals()
         """
 
+        assert ("one_body_integrals" in kwargs)
+        assert ("two_body_integrals" in kwargs)
+        one_body_integrals = kwargs["one_body_integrals"]
+        kwargs.pop("one_body_integrals")
+        two_body_integrals = kwargs["two_body_integrals"]
+        kwargs.pop("two_body_integrals")
+
+        if not isinstance(two_body_integrals, NBodyTensor):
+            # assuming two_body_integrals are given in openfermion ordering
+            ordering = None  # will be auto-detected
+            if "ordering" in kwargs:
+                ordering = kwargs["ordering"]
+                kwargs.pop("ordering")  # let's not confuse the IntegralManager
+            two_body_integrals = NBodyTensor(two_body_integrals, ordering=ordering)
+
+        two_body_integrals = two_body_integrals.reorder(to="chem")
+
+        constant_part = 0.0
+        if "constant_term" in kwargs:
+            constant_part += kwargs["constant_term"]
+            kwargs.pop("constant_term")
+        if "nuclear_repulsion" in kwargs:
+            constant_part += kwargs["nuclear_repulsion"]
+            kwargs.pop("nuclear_repulsion")
+
+        if "active_space" not in kwargs:
+
+            active_orbitals = [i for i in range(one_body_integrals.shape[0])]
+            if "active_orbitals" in kwargs and kwargs["active_orbitals"] is not None:
+                active_orbitals = kwargs["active_orbitals"]
+
+            reference_orbitals = [i for i in range(self.parameters.n_electrons // 2)]
+            if "reference_orbitals" in kwargs and kwargs["reference_orbitals"] is not None:
+                reference_orbitals = kwargs["reference_orbitals"]
+
+            active_space = ActiveSpaceData(active_orbitals=sorted(active_orbitals),
+                                           reference_orbitals=sorted(reference_orbitals))
+            kwargs["active_space"] = active_space
+
+        if "basis_name" not in kwargs:
+            kwargs["basis_name"] = self.parameters.basis_set
+
+        manager = IntegralManager(one_body_integrals=one_body_integrals, two_body_integrals=two_body_integrals,
+                                  constant_term=constant_part, *args, **kwargs)
+
+        return manager
+
+    def transform_orbitals(self, orbital_coefficients, *args, **kwargs):
+        """
         Parameters
         ----------
+        orbital_coefficients: second index is new orbital indes, first is old orbital index (summed over)
         args
         kwargs
 
         Returns
         -------
-
+        New molecule with transformed orbitals
         """
-        # integrals need to be passed in base class
-        assert ("one_body_integrals" in kwargs)
-        assert ("two_body_integrals" in kwargs)
-        one_body_integrals = kwargs["one_body_integrals"]
-        two_body_integrals = kwargs["two_body_integrals"]
 
-        # tequila assumes "openfermion" ordering, integrals can however be passed
-        # down in other orderings, but it needs to be indicated by keyword
-        if "ordering" in kwargs:
-            two_body_integrals = NBodyTensor(two_body_integrals, ordering=kwargs["ordering"])
-            two_body_integrals.reorder(to="openfermion")
-            two_body_integrals = two_body_integrals.elems
+        # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
+        integral_manager = copy.deepcopy(self.integral_manager)
+        integral_manager.transform_orbitals(U=orbital_coefficients)
+        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
+        return result
 
-        if "nuclear_repulsion" in kwargs:
-            nuclear_repulsion = kwargs["nuclear_repulsion"]
-        else:
-            nuclear_repulsion = 0.0
-            warnings.warn("No nuclear_repulsion given for custom molecule, setting to zero", category=TequilaWarning)
+    def orthonormalize_basis_orbitals(self):
+        """
+        Returns
+        -------
+        New molecule in the native (orthonormalized) basis given
+        e.g. for standard basis sets the orbitals are orthonormalized Gaussian Basis Functions
+        """
+        if self.integral_manager.active_space_is_trivial():
+            warnings.warn("orthonormalize_basis_orbitals: active space is set and might lead to inconsistent behaviour", TequilaWarning)
+
+        # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
+        integral_manager = copy.deepcopy(self.integral_manager)
+        c = integral_manager.get_orthonormalized_orbital_coefficients()
+        integral_manager.orbital_coefficients=c
+        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
+        return result
+
+
+    def do_make_molecule(self, *args, **kwargs):
+        """
+        Called by self.make_molecule with args and kwargs passed through
+        Override this in derived class if needed
+        """
+
+        assert hasattr(self, "integral_manager") and self.integral_manager is not None
+        constant_term, one_body_integrals, two_body_integrals = self.integral_manager.get_integrals(ordering="of")
+        two_body_integrals = two_body_integrals.reorder(to="of")
 
         if ("n_orbitals" in kwargs):
             n_orbitals = kwargs["n_orbitals"]
@@ -976,8 +470,8 @@ class QuantumChemistryBase:
         molecule = MolecularData(**self.parameters.molecular_data_param)
 
         molecule.one_body_integrals = one_body_integrals
-        molecule.two_body_integrals = two_body_integrals
-        molecule.nuclear_repulsion = nuclear_repulsion
+        molecule.two_body_integrals = two_body_integrals.elems
+        molecule.nuclear_repulsion = constant_term
         molecule.n_orbitals = n_orbitals
         if "n_electrons" in kwargs:
             molecule.n_electrons = kwargs["n_electrons"]
@@ -985,30 +479,55 @@ class QuantumChemistryBase:
         return molecule
 
     @property
+    def orbitals(self):
+        return self.integral_manager.active_orbitals
+
+    @property
+    def reference_orbitals(self):
+        return self.integral_manager.active_reference_orbitals
+
+    @property
     def n_orbitals(self) -> int:
-        """ """
-        if self.active_space is None:
-            return self.molecule.n_orbitals
-        else:
-            return len(self.active_space.active_orbitals)
+        """
+        Returns
+        -------
+        The number of active orbitals in this Molecule
+        """
+        return len(self.integral_manager.active_orbitals)
+
+    @property
+    def active_space(self):
+        return self.integral_manager.active_space
 
     @property
     def n_electrons(self) -> int:
-        """ """
-        if self.active_space is None:
-            return self.molecule.n_electrons
-        else:
-            return 2 * len(self.active_space.active_reference_orbitals)
+        """
+        Returns
+        -------
+        The number of active electrons in this molecule
+        """
+        return 2 * len(self.integral_manager.active_reference_orbitals)
 
-    def make_hamiltonian(self, occupied_indices=None, active_indices=None, threshold=1.e-8) -> QubitHamiltonian:
-        """ """
-        if occupied_indices is None and self.active_space is not None:
-            occupied_indices = self.active_space.frozen_reference_orbitals
-        if active_indices is None and self.active_space is not None:
-            active_indices = self.active_space.active_orbitals
+    def make_hamiltonian(self, *args, **kwargs) -> QubitHamiltonian:
+        """
+        Parameters
+        ----------
+        occupied_indices: will be auto-assigned according to specified active space. Can be overridden by passing specific lists (same as in open fermion)
+        active_indices: will be auto-assigned according to specified active space. Can be overridden by passing specific lists (same as in open fermion)
 
-        fop = openfermion.transforms.get_fermion_operator(
-            self.molecule.get_molecular_hamiltonian(occupied_indices, active_indices))
+        Returns
+        -------
+        Qubit Hamiltonian in the Fermion-to-Qubit transformation defined in self.parameters
+        """
+
+        # warnings for backward comp
+        if "active_indices" in kwargs:
+            warnings.warn(
+                "active space can't be changed in molecule. Will ignore active_orbitals passed to make_hamiltonian")
+
+        of_molecule = self.make_molecule()
+        fop = of_molecule.get_molecular_hamiltonian()
+        fop = openfermion.transforms.get_fermion_operator(fop)
         try:
             qop = self.transformation(fop)
         except TypeError:
@@ -1017,6 +536,12 @@ class QuantumChemistryBase:
         return qop
 
     def make_hardcore_boson_hamiltonian(self):
+        """
+        Returns
+        -------
+        Hamiltonian in Hardcore-Boson approximation (electrons are forced into spin-pairs)
+        Indepdent of Fermion-to-Qubit mapping
+        """
         if not self.transformation.up_then_down:
             warnings.warn(
                 "Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency",
@@ -1029,9 +554,9 @@ class QuantumChemistryBase:
         for p in range(n_orbitals):
             h[p, p] += 2 * obt[p, p]
             for q in range(n_orbitals):
-                h[p, q] += + tbt[p, p, q, q]
+                h[p, q] += + tbt.elems[p, p, q, q]
                 if p != q:
-                    g[p, q] += 2 * tbt[p, q, q, p] - tbt[p, q, p, q]
+                    g[p, q] += 2 * tbt.elems[p, q, q, p] - tbt.elems[p, q, p, q]
 
         H = c
         for p in range(n_orbitals):
@@ -1042,44 +567,41 @@ class QuantumChemistryBase:
 
         return H
 
-    def make_molecular_hamiltonian(self):
-        if self.active_space:
-            return self.molecule.get_molecular_hamiltonian(occupied_indices=self.active_space.frozen_reference_orbitals,
-                                                           active_indices=self.active_space.active_orbitals)
-        else:
-            return self.molecule.get_molecular_hamiltonian()
-
-    def get_integrals(self, two_body_ordering="openfermion"):
+    def make_molecular_hamiltonian(self, occupied_indices=None, active_indices=None):
         """
         Returns
+        -------
+        Create a MolecularHamiltonian as openfermion Class
+        (used internally here, not used in tequila)
+        """
+        return self.make_molecule().get_molecular_hamiltonian(occupied_indices=occupied_indices, active_indices=active_indices)
+
+    def get_integrals(self, *args, **kwargs):
+        """
+        Returns
+
+        options for kwargs: "ordering = ["openfermion", "chem", "phys"], ignore_active_space = [True, False]"
         -------
         Tuple with:
         constant part (nuclear_repulsion + possible integrated parts from active-spaces)
         one_body_integrals
         two_body_integrals
-
         """
-        if self.active_space is not None and len(self.active_space.frozen_reference_orbitals) > 0:
-            c, h1, h2 = self.molecule.get_active_space_integrals(active_indices=self.active_space.active_orbitals,
-                                                                 occupied_indices=self.active_space.frozen_reference_orbitals)
-        else:
-            c = 0.0
-            h1 = self.molecule.one_body_integrals
-            h2 = self.molecule.two_body_integrals
-        c += self.molecule.nuclear_repulsion
-        h2 = NBodyTensor(h2, ordering="openfermion")
-        h2 = h2.reorder(to=two_body_ordering).elems
 
-        return c, h1, h2
+        # backward compatibility
+        if "two_body_ordering" in kwargs:
+            kwargs["ordering"] = kwargs["two_body_ordering"]
+
+        return self.integral_manager.get_integrals(*args, **kwargs)
 
     def compute_one_body_integrals(self):
         """ convenience function """
         c, h1, h2 = self.get_integrals()
         return h1
 
-    def compute_two_body_integrals(self, two_body_ordering="openfermion"):
+    def compute_two_body_integrals(self, ordering="openfermion"):
         """ """
-        c, h1, h2 = self.get_integrals(two_body_ordering=two_body_ordering)
+        c, h1, h2 = self.get_integrals(ordering=ordering)
         return h2
 
     def compute_constant_part(self):
@@ -1090,18 +612,28 @@ class QuantumChemistryBase:
         """ """
         raise Exception("BaseClass Method")
 
+    def _reference_state(self):
+        """
+        used internally
+        gives back reference state occupation vector (in second quantization or JW notation)
+        transformation to current encoding is done in def prepare_reference
+        """
+        assert self.n_electrons % 2 == 0
+        state = [0] * (self.n_orbitals * 2)
+        for i in self.reference_orbitals:
+            state[2 * i.idx] = 1
+            state[2 * i.idx + 1] = 1
+        return state
+
     def prepare_reference(self, state=None, *args, **kwargs):
         """
-
         Returns
         -------
         A tequila circuit object which prepares the reference of this molecule in the chosen transformation
         """
         if state is None:
-            assert self.n_electrons % 2 == 0
-            state = [0] * (self.n_orbitals * 2)
-            for i in range(self.n_electrons):
-                state[i] = 1
+            state = self._reference_state()
+
         reference_state = BitString.from_array(self.transformation.map_state(state=state))
         U = prepare_product_state(reference_state)
         # prevent trace out in direct wfn simulation
@@ -1109,8 +641,13 @@ class QuantumChemistryBase:
         return U
 
     def prepare_hardcore_boson_reference(self):
-        # HF state in the HCB representation (paired electrons)
-        U = gates.X(target=[i for i in range(self.n_electrons // 2)])
+        """
+        Prepare reference state in the Hardcore-Boson approximation (eqch qubit represents two spin-paired electrons)
+        Returns
+        -------
+        tq.QCircuit that prepares the HCB reference
+        """
+        U = gates.X(target=[i.idx for i in self.reference_orbitals])
         U.n_qubits = self.n_orbitals
         return U
 
@@ -1226,7 +763,7 @@ class QuantumChemistryBase:
     def make_upccgsd_indices(self, key, reference_orbitals=None, *args, **kwargs):
 
         if reference_orbitals is None:
-            reference_orbitals = [i for i in range(self.n_electrons // 2)]
+            reference_orbitals = [x.idx for x in self.reference_orbitals]
         indices = []
         # add doubles in hcb encoding
         if hasattr(key, "lower") and key.lower() == "ladder":
@@ -1240,7 +777,6 @@ class QuantumChemistryBase:
             indices = [[(n, m)] for n in range(self.n_orbitals) for m in range(self.n_orbitals) if n < m]
         else:
             raise TequilaException("Unknown recipe: {}".format(key))
-
         indices = [self.format_excitation_indices(idx) for idx in indices]
 
         return indices
@@ -1376,7 +912,8 @@ class QuantumChemistryBase:
             if include_reference:
                 U = self.prepare_hardcore_boson_reference()
             if D:
-                U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0), *args, **kwargs)
+                U += self.make_hardcore_boson_upccgd_layer(indices=indices, assume_real=assume_real, label=(label, 0),
+                                                           *args, **kwargs)
 
             if "HCB" not in name and (include_reference or D):
                 U = self.hcb_to_me(U=U)
@@ -1467,11 +1004,12 @@ class QuantumChemistryBase:
         return U
 
     def make_uccsd_ansatz(self, trotter_steps: int = 1,
-                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = "mp2",
+                          initial_amplitudes: typing.Union[str, Amplitudes, ClosedShellAmplitudes] = None,
                           include_reference_ansatz=True,
                           parametrized=True,
                           threshold=1.e-8,
                           add_singles=None,
+                          screening=True,
                           *args, **kwargs) -> QCircuit:
         """
 
@@ -1537,16 +1075,20 @@ class QuantumChemistryBase:
             amplitudes = ClosedShellAmplitudes(
                 tIjAb=numpy.zeros(shape=[nocc, nocc, nvirt, nvirt]),
                 tIA=tia)
+            screening = False
 
         closed_shell = isinstance(amplitudes, ClosedShellAmplitudes)
         indices = {}
 
+        if not screening:
+            threshold = 0.0
+
         if not isinstance(amplitudes, dict):
-            amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold)
+            amplitudes = amplitudes.make_parameter_dictionary(threshold=threshold, screening=screening)
             amplitudes = dict(sorted(amplitudes.items(), key=lambda x: numpy.fabs(x[1]), reverse=True))
         for key, t in amplitudes.items():
             assert (len(key) % 2 == 0)
-            if not numpy.isclose(t, 0.0, atol=threshold):
+            if not numpy.isclose(t, 0.0, atol=threshold) or not screening:
                 if closed_shell:
 
                     if len(key) == 2 and add_singles:
@@ -1649,10 +1191,26 @@ class QuantumChemistryBase:
                 molx = QuantumChemistryPySCF.from_tequila(self)
                 return molx.compute_energy(method=method)
 
-    def compute_mp2_amplitudes(self) -> ClosedShellAmplitudes:
+    def compute_fock_matrix(self):
+        c, h, g = self.get_integrals()
+        g = g.reorder(to="phys")
+
+        # fock matrix is:
+        # Fkl = hkl + 2.0 <k|J|l> - <k|K|l> = hkl + 2.0* <ki|g|li> - <ki|g|il>
+        F = numpy.zeros(shape=h.shape)
+        for k in range(F.shape[0]):
+            for l in range(F.shape[1]):
+                tmp = h[k,l]
+                for ii in self.reference_orbitals:
+                    i = ii.idx
+                    tmp += (2.0*g.elems[k, i, l, i] - g.elems[k, i, i, l])
+                F[k, l] = tmp
+        return F
+
+    def compute_mp2_amplitudes(self, hf_energy=None, return_energy=False) -> ClosedShellAmplitudes:
         """
 
-        Compute closed-shell mp2 amplitudes
+        Compute closed-shell mp2 amplitudes (canonical amplitudes only)
 
         .. math::
             t(a,i,b,j) = 0.25 * g(a,i,b,j)/(e(i) + e(j) -a(i) - b(j) )
@@ -1666,23 +1224,30 @@ class QuantumChemistryBase:
         -------
 
         """
-        g = self.molecule.two_body_integrals
-        fij = self.molecule.orbital_energies
-        nocc = self.molecule.n_electrons // 2  # this is never the active space
-        ei = fij[:nocc]
-        ai = fij[nocc:]
-        abgij = g[nocc:, nocc:, :nocc, :nocc]
+        c,h,g = self.get_integrals()
+        fi = self.compute_fock_matrix()
+        self.is_canonical(verify=True, fock_matrix=fi)
+        fi = numpy.diag(fi)
+        self.is_closed_shell(verify=True)
+        nocc = len(self.reference_orbitals)
+        ei = fi[:nocc]
+        ai = fi[nocc:]
+        abgij = g.elems[nocc:, nocc:, :nocc, :nocc]
         amplitudes = abgij * 1.0 / (
                 ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
-        E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,
-                                                                                optimize='greedy')
 
-        self.molecule.mp2_energy = E + self.molecule.hf_energy
-        return ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='greedy'))
+        result = ClosedShellAmplitudes(tIjAb=numpy.einsum('abij -> ijab', amplitudes, optimize='greedy'))
+
+        if return_energy:
+            E = 2.0 * numpy.einsum('abij,abij->', amplitudes, abgij) - numpy.einsum('abji,abij', amplitudes, abgij,optimize='greedy')
+            return result, E
+        else:
+            return result
 
     def compute_cis_amplitudes(self):
         """
         Compute the CIS amplitudes of the molecule
+        Warning: Not field tested!
         """
 
         @dataclass
@@ -1697,10 +1262,15 @@ class QuantumChemistryBase:
             def __len__(self):
                 return len(self.omegas)
 
-        g = self.molecule.two_body_integrals
-        fij = self.molecule.orbital_energies
+        self.is_closed_shell(verify=True)
+        c, h, g = self.get_integrals()
+        g.reorder(to="openfermion")
+        g = g.elems
+        fij = self.compute_fock_matrix()
+        self.is_canonical(verify=True, fock_matrix=fij)
+        fij = numpy.diag(fij)
 
-        nocc = self.n_alpha_electrons
+        nocc = self.n_electrons // 2
         nvirt = self.n_orbitals - nocc
 
         pairs = []
@@ -1732,6 +1302,36 @@ class QuantumChemistryBase:
             amplitudes.append(ClosedShellAmplitudes(tIA=t))
 
         return ResultCIS(omegas=list(omega), amplitudes=amplitudes)
+
+    def is_closed_shell(self, verify=False):
+        cs = self.n_electrons % 2 == 0
+        if verify and not cs:
+            raise TequilaException("not a closed shell molecule: having {} electrons".format(self.n_electrons))
+        return cs
+
+    def is_canonical(self, verify=False, fock_matrix=None):
+        canonical = True
+        if fock_matrix is None:
+            fock_matrix = self.compute_fock_matrix()
+
+        is_diagonal = numpy.isclose(numpy.linalg.norm(fock_matrix - numpy.diag(numpy.diag(fock_matrix))), 0.0, atol=1.e-4)
+
+        if not is_diagonal:
+            canonical = False
+
+        refo = self.reference_orbitals
+
+        if refo[0].idx != 0:
+            canonical = False
+        for i in range(len(refo) - 1):
+            if refo[i].idx_total + 1 != refo[i + 1].idx_total:
+                canonical = False
+
+        if verify and not canonical:
+            data={"reference_orbitals":refo, "fock_matrix":fock_matrix}
+            raise TequilaException(
+                "orbitals are not canonical or can not be verified as such -> implemented method only works for standard orbitals (preferably from psi4)\n{}".format(data))
+        return canonical
 
     @property
     def rdm1(self):
@@ -2101,6 +1701,10 @@ class QuantumChemistryBase:
                                                    n_ri=n_ri, external_info=external_info, **kwargs)
         return correction.compute()
 
+
+    def print_basis_info(self):
+        return self.integral_manager.print_basis_info()
+
     def __str__(self) -> str:
         result = str(type(self)) + "\n"
         result += "Qubit Encoding\n"
@@ -2108,5 +1712,12 @@ class QuantumChemistryBase:
         result += "Parameters\n"
         for k, v in self.parameters.__dict__.items():
             result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
-        result += "\n"
+
+        result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals ** 2))
+        result += "{key:15} : {value:15} \n".format(key="reference state", value=str(self._reference_state()))
+
+        result += "\nBasis\n"
+        result += str(self.integral_manager)
+        result += "\nmore information with: self.print_basis_info()"
+
         return result

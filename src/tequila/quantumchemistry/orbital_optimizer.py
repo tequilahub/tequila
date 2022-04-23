@@ -121,18 +121,8 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
     else:
         mc.kernel()
     # make new molecule
-    h1 = wrapper.one_body_integrals
-    h2 = wrapper.two_body_integrals
-    h2 = wrapper.reorder(h2, "mulliken", "openfermion")
 
-    transformed_molecule = QuantumChemistryBase(nuclear_repulsion=c,
-                                                one_body_integrals=h1,
-                                                two_body_integrals=h2,
-                                                n_electrons=pyscf_molecule.n_electrons,
-                                                transformation=pyscf_molecule.transformation,
-                                                parameters=pyscf_molecule.parameters)
-    
-    transformed_molecule = QuantumChemistryPySCF.from_tequila(molecule=transformed_molecule, transformation=pyscf_molecule.transformation)
+    transformed_molecule = molecule.transform_orbitals(orbital_coefficients=mc.mo_coeff)
     result.molecule=transformed_molecule
     result.old_molecule=molecule
     result.mo_coeff=mc.mo_coeff
