@@ -964,3 +964,34 @@ class Moment(QCircuit):
         """
         raise TequilaException(
             'this method should never be called from Moment. Call from the QCircuit class itself instead.')
+
+
+
+def assign_ctrl(U0: QCircuit = None, U1: QCircuit = None)->int:
+    '''
+    Function that checks which are the active qubits of two circuits and 
+    provides a control qubit that is not among them.
+
+    Parameters
+    ----------
+    U0 : QCircuit, corresponding to the first state.
+        
+    U1 : QCircuit, corresponding to the second state.
+
+    Returns
+    -------
+    control_qubit : int
+        
+    '''
+    
+    active_qubits = list(set(U0.qubits+U1.qubits))
+    # default
+    control_qubit = max(active_qubits) + 1
+    # see if we can use another one
+    for n in range(max(active_qubits)+1):
+        if n not in active_qubits:
+            control_qubit = n
+            break
+    assert control_qubit not in active_qubits
+    
+    return control_qubit
