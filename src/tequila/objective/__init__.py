@@ -3,5 +3,3 @@ from tequila.objective.objective import Objective,\
     format_variable_dictionary
 
 from tequila.objective.qtensor import QTensor, VectorObjective, vectorize
-
-from tequila.objective.braket import braket, make_overlap, make_transition
