@@ -1,10 +1,19 @@
-from tequila.circuit.circuit import QCircuit, assign_ctrl
+from tequila.circuit.circuit import QCircuit, find_unused_qubit
 from tequila.circuit.gates import H, X, Y, PauliGate
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 from tequila.objective.objective import ExpectationValue
+from tequila.hamiltonian import paulis
 
 import numpy as np
 import copy
+
+def braket(ket, bra = None, operator = None):
+    '''
+    
+    '''
+
+    return
+
 
 def make_overlap(U0:QCircuit = None, U1:QCircuit = None)->ExpectationValue:
     '''
@@ -28,7 +37,7 @@ def make_overlap(U0:QCircuit = None, U1:QCircuit = None)->ExpectationValue:
     #print(U_a)
     #print(U_b)
     
-    ctrl = assign_ctrl(U0=U_a, U1=U_b)
+    ctrl = find_unused_qubit(U0=U_a, U1=U_b)
     
     #print('Control qubit:',ctrl)
     
@@ -41,8 +50,8 @@ def make_overlap(U0:QCircuit = None, U1:QCircuit = None)->ExpectationValue:
     circuit += X(target=ctrl)
     circuit += U_b
     
-    x = X(ctrl)
-    y = Y(ctrl)
+    x = paulis.X(ctrl)
+    y = paulis.Y(ctrl)
     Ex = ExpectationValue(H=x, U=circuit)
     Ey = ExpectationValue(H=y, U=circuit)
     

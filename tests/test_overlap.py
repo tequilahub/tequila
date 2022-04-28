@@ -1,7 +1,7 @@
 import tequila as tq
 import numpy as np
 from tequila.circuit.gates import PauliGate
-from tequila.overlap.overlap import make_overlap, make_transition
+from tequila.objective.braket import make_overlap, make_transition
 
 
 

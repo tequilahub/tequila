@@ -968,10 +968,11 @@ class Moment(QCircuit):
 
 
 
-def assign_ctrl(U0: QCircuit = None, U1: QCircuit = None)->int:
+def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None)->int:
     '''
     Function that checks which are the active qubits of two circuits and 
-    provides a control qubit that is not among them.
+    provides an unused qubit that is not among them. If all qubits are used
+    it adds a new one.
 
     Parameters
     ----------
@@ -987,12 +988,12 @@ def assign_ctrl(U0: QCircuit = None, U1: QCircuit = None)->int:
     
     active_qubits = list(set(U0.qubits+U1.qubits))
     # default
-    control_qubit = max(active_qubits) + 1
+    free_qubit = max(active_qubits) + 1
     # see if we can use another one
     for n in range(max(active_qubits)+1):
         if n not in active_qubits:
-            control_qubit = n
+            free_qubit = n
             break
-    assert control_qubit not in active_qubits
+    assert free_qubit not in active_qubits
     
-    return control_qubit
+    return free_qubit

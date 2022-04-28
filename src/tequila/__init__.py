@@ -4,7 +4,7 @@ from tequila.hamiltonian import paulis, QubitHamiltonian, PauliString
 from tequila.objective import Objective, VectorObjective,\
     ExpectationValue, Variable, assign_variable, format_variable_dictionary,\
     vectorize
-from tequila.objective import QTensor
+from tequila.objective import QTensor, braket, make_transition, make_overlap
 
 from tequila.optimizers import INSTALLED_OPTIMIZERS, show_available_optimizers
 from tequila.optimizers import minimize, minimize_scipy, minimize_gd, optimizer_scipy
