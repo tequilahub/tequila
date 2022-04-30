@@ -61,8 +61,12 @@ class QuantumChemistryBase:
         """
 
         self.parameters = parameters
+        n_electrons = parameters.n_electrons
+        if "n_electrons" in kwargs:
+            n_electrons = kwargs["n_electrons"]
+
         if reference_orbitals is None:
-            reference_orbitals = [i for i in range(parameters.n_electrons // 2)]
+            reference_orbitals = [i for i in range(n_electrons // 2)]
         self._reference_orbitals = reference_orbitals
 
         # initialize integral manager
@@ -366,6 +370,10 @@ class QuantumChemistryBase:
         - result of self.get_integrals()
         """
 
+        n_electrons = self.parameters.n_electrons
+        if "n_electrons" in kwargs:
+            n_electrons = kwargs["n_electrons"]
+
         assert ("one_body_integrals" in kwargs)
         assert ("two_body_integrals" in kwargs)
         one_body_integrals = kwargs["one_body_integrals"]
@@ -397,7 +405,7 @@ class QuantumChemistryBase:
             if "active_orbitals" in kwargs and kwargs["active_orbitals"] is not None:
                 active_orbitals = kwargs["active_orbitals"]
 
-            reference_orbitals = [i for i in range(self.parameters.n_electrons // 2)]
+            reference_orbitals = [i for i in range(n_electrons // 2)]
             if "reference_orbitals" in kwargs and kwargs["reference_orbitals"] is not None:
                 reference_orbitals = kwargs["reference_orbitals"]
 
