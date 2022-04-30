@@ -439,7 +439,7 @@ class QuantumChemistryBase:
         New molecule in the native (orthonormalized) basis given
         e.g. for standard basis sets the orbitals are orthonormalized Gaussian Basis Functions
         """
-        if self.integral_manager.active_space_is_trivial():
+        if not self.integral_manager.active_space_is_trivial():
             warnings.warn("orthonormalize_basis_orbitals: active space is set and might lead to inconsistent behaviour", TequilaWarning)
 
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
@@ -1713,7 +1713,7 @@ class QuantumChemistryBase:
         for k, v in self.parameters.__dict__.items():
             result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
 
-        result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals ** 2))
+        result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals * 2))
         result += "{key:15} : {value:15} \n".format(key="reference state", value=str(self._reference_state()))
 
         result += "\nBasis\n"
