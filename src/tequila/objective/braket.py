@@ -6,15 +6,41 @@ from tequila.hamiltonian import paulis
 
 import numpy as np
 
-def braket(ket, bra = None, operator = None):
-    '''
-    
-    '''
+def braket(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = None) -> ExpectationValue:
+    """Functions that allows to calculate different quantities 
+       depending on the passed parameters:
+       1) If only ket is passed, returns the overlap with itself (1).
+       2) If ket and bra are passed, returns the overlap between the two states.
+       3) If ket and operator are passed, returns the expectation value of the operator fot the given state.
+       4) If ket, bra and operator are passed, returns the transition element of the operator.
 
-    return
+    Args:
+        ket (QCircuit): QCircuit corresponding to a state. 
+        bra (QCircuit, optional): QCircuit corresponding to a second state.
+                                  Defaults to None.
+        operator (QubitHamiltonian, optional): Operator of which we want to 
+                                               calculate the transition element. 
+                                               Defaults to None.
 
+    Returns:
+        ExpectationValue: 1, overlap, expectation value or transition element 
+                          depending on the inputs.
+    """
 
-def make_overlap(U0:QCircuit = None, U1:QCircuit = None)->ExpectationValue:
+    if bra is None:
+        bra = ket
+
+    if id(ket) == id(bra):
+        if operator is None:
+            return 1.0
+        return ExpectationValue(H=operator, U=ket)
+    else:
+        if operator is None:
+            return make_overlap(U0 = ket, U1 = bra)
+        
+        return make_transition(U0 = ket, U1 = bra, H = operator)
+
+def make_overlap(U0:QCircuit = None, U1:QCircuit = None) -> ExpectationValue:
     '''
     Function that calculates the overlap between two quantum states.
 
@@ -32,7 +58,7 @@ def make_overlap(U0:QCircuit = None, U1:QCircuit = None)->ExpectationValue:
     
     ctrl = find_unused_qubit(U0=U0, U1=U1)
     
-    print('Control qubit:',ctrl)
+    #print('Control qubit:',ctrl)
     
     U_a = U0.add_controls([ctrl]) #this add the control by modifying the previous circuit
     U_b = U1.add_controls([ctrl]) #NonType object
