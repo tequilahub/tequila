@@ -3,69 +3,7 @@ import tequila as tq
 import numpy as np
 from tequila.circuit.gates import PauliGate
 from tequila.objective.braket import make_overlap, make_transition
-
-def rand_circs_dict(rotation_gates: list, n_qubits: int, n_circs: int=2) -> dict:
-    """Functions that creates a given number of random circuits and
-       stores them into a dictionary. Keys are integers.
-
-    Args:
-        rotation_gates (list): List of possible rotations (rx, ry, rz) in str form
-        n_qubits (int): Dimension of the quantum register of the circuit
-
-    Returns:
-        dict: Dictionary containing random quantum circuits
-    """
-    U = {}
-    for j in range(n_circs):
-        n_rotations = np.random.randint(n_qubits, high=n_qubits*3)
-        gates_list = [np.random.choice(rotation_gates) for i in range(n_rotations)]
-        
-        angles = 2*np.pi * np.random.rand(n_rotations)
-        
-        circ = tq.QCircuit()
-        for i, angle in enumerate(angles):
-            qb = i%n_qubits+1
-            
-            if gates_list[i]=='rx':
-                circ += tq.gates.Rx(angle=angle, target=qb)
-            
-            elif gates_list[i]=='ry':
-                circ += tq.gates.Ry(angle=angle, target=qb)
-                
-            elif gates_list[i]=='rz':
-                circ += tq.gates.Rz(angle=angle, target=qb)
-        U[j] = circ
-    return U
-
-def random_hamiltonian(n_qubits: int , paulis: list, n_ps: int) -> tq.QubitHamiltonian:
-    """Function that creates a random Hamiltonian, given the list
-       of Pauli ops. to use and the number of Pauli string.
-
-    Args:
-        n_qubits (int): Dimension of the quantum register of the circuit
-        paulis (list): List of possible Pauli operators (X, Y, Z) in str form
-        n_ps (int): Number of Pauli strings composing the Hamiltonian
-
-    Returns:
-        tq.QubitHamiltonian: Random Hamiltonian
-    """
-    ham = ''
-    for ps in range(n_ps):
-        #"1.0*Y(0)X(1)+0.5*Y(1)Z(0)"
-        coeff = '{}*'.format(round(np.random.sample(),2))
-        pauli_str = ''
-        for qb in range(n_qubits):
-            pauli_str += '{}({})'.format(np.random.choice(paulis), qb)
-        
-        if ps < n_ps-1:
-            pauli_str += '+'
-                
-        ham += coeff+pauli_str
-    
-    #print(ham)
-    
-    H = tq.QubitHamiltonian(ham)
-    return H
+from tequila.tools.random_generators import make_random_circuit, make_random_hamiltonian
 
 def test_simple_overlap():
     '''
@@ -121,11 +59,9 @@ def test_random_overlap():
     # make random circuits
     
     #np.random.seed(111)
-    rotation_gates = ['rx', 'ry', 'rz']
     n_qubits = np.random.randint(1, high=5)
-    
-    U = rand_circs_dict(rotation_gates, n_qubits)
-    
+    U = {k:tq.make_random_circuit(n_qubits) for k in range(2)}
+
     objective_real, objective_im = make_overlap(U[0],U[1])
     
     Ex = tq.simulate(objective_real)
@@ -215,13 +151,11 @@ def test_random_transition():
 
     '''
     
-    rotation_gates = ['rx', 'ry', 'rz']
-    
     #np.random.seed(111)
     n_qubits = np.random.randint(1, high=5)
     #print(n_qubits)
     
-    U = rand_circs_dict(rotation_gates, n_qubits)
+    U = {k:tq.make_random_circuit(n_qubits) for k in range(2)}
     
     #print(U[0])
     #print(U[1])
@@ -230,7 +164,7 @@ def test_random_transition():
     paulis = ['X','Y','Z']
     n_ps = np.random.randint(1, high=2*n_qubits+1)
     
-    H = random_hamiltonian(n_qubits, paulis, n_ps)
+    H = make_random_hamiltonian(n_qubits, paulis=paulis, n_ps=n_ps)
     
     trans_real, trans_im = make_transition(U0=U[0], U1=U[1], H=H)
     
@@ -277,10 +211,9 @@ def test_braket():
     # make random circuits
     
     #np.random.seed(111)
-    rotation_gates = ['rx', 'ry', 'rz']
     n_qubits = np.random.randint(1, high=5)
     
-    U = rand_circs_dict(rotation_gates, n_qubits)
+    U = {k:tq.make_random_circuit(n_qubits) for k in range(2)}
     
     ######## Testing self overlap #########
     self_overlap = tq.braket(ket=U[0])
@@ -291,7 +224,7 @@ def test_braket():
     paulis = ['X','Y','Z']
     n_ps = np.random.randint(1, high=2*n_qubits+1)
     
-    H = random_hamiltonian(n_qubits, paulis, n_ps)
+    H = make_random_hamiltonian(n_qubits, paulis=paulis, n_ps=n_ps)
 
     exp_value_tmp = tq.ExpectationValue(H=H, U=U[0])
     br_exp_value_tmp = tq.braket(ket=U[0], operator=H)

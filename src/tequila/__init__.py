@@ -23,6 +23,9 @@ from tequila.quantumchemistry import Molecule, MoleculeFromOpenFermion
 from tequila.circuit.gradient import grad
 from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
 
+# import tools
+from tequila.tools.random_generators import make_random_circuit, make_random_hamiltonian
+
 # get rid of the jax GPU/CPU warnings
 import warnings
 
