@@ -5,7 +5,7 @@ from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 
 def make_random_circuit(n_qubits: int, rotation_gates: list=['rx', 'ry', 'rz'], n_rotations: int=None,
                         enable_controls: bool=None) -> QCircuit:
-    """Functions that creates a circuit with random rotations or random control rotations.
+    """Function that creates a circuit with random rotations or random control rotations.
 
     Args:
         n_qubits (int): Dimension of the quantum register of the circuit
@@ -26,7 +26,7 @@ def make_random_circuit(n_qubits: int, rotation_gates: list=['rx', 'ry', 'rz'], 
     
     circ = QCircuit()
     for i, angle in enumerate(angles):
-        target = i%n_qubits+1
+        target = i%n_qubits
         if enable_controls:
             controls = [i for i in circ.qubits if i != target]
             control = np.random.choice(controls + [None])
@@ -46,7 +46,7 @@ def make_random_circuit(n_qubits: int, rotation_gates: list=['rx', 'ry', 'rz'], 
 
 def make_random_hamiltonian(n_qubits: int , paulis: list=['X','Y','Z'], n_ps: int = None) -> QubitHamiltonian:
     """Function that creates a random Hamiltonian, given the list
-       of Pauli ops. to use and the number of Pauli string.
+       of Pauli ops. to use and the number of Pauli strings.
 
     Args:
         n_qubits (int): Dimension of the quantum register of the circuit
