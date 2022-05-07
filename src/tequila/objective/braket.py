@@ -32,7 +32,7 @@ def braket(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = Non
 
     if id(ket) == id(bra):
         if operator is None:
-            return 1.0
+            return make_overlap(U0 = ket, U1 = bra)
         return ExpectationValue(H=operator, U=ket)
     else:
         if operator is None:
