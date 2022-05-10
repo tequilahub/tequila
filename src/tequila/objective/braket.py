@@ -1,7 +1,7 @@
 from tequila.circuit.circuit import QCircuit, find_unused_qubit
 from tequila.circuit.gates import H, X, Y, PauliGate
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
-from tequila.objective.objective import ExpectationValue
+from tequila.objective.objective import ExpectationValue, Objective
 from tequila.hamiltonian import paulis
 
 import numpy as np
@@ -32,7 +32,7 @@ def braket(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = Non
 
     if id(ket) == id(bra):
         if operator is None:
-            return make_overlap(U0 = ket, U1 = bra)
+            return Objective()+1.0 
         return ExpectationValue(H=operator, U=ket)
     else:
         if operator is None:

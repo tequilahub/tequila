@@ -217,7 +217,8 @@ def test_braket():
     
     ######## Testing self overlap #########
     self_overlap = tq.braket(ket=U[0])
-    assert np.isclose(self_overlap, 1, atol=1.e-4)
+
+    assert np.isclose(self_overlap(), 1, atol=1.e-4)
 
     ######## Testing expectation value #########
     # make random hamiltonian
