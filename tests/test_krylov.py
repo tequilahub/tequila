@@ -6,7 +6,7 @@ from tequila.tools.random_generators import make_random_circuit
 import itertools as it
 import numpy as np
 
-def simple_krylov(n_krylov_states: int=2):
+def test_simple_krylov(n_krylov_states: int=2):
     """Function that applies the Krylov method to an Hamiltonian 
        defined from the Krylov states.
 
