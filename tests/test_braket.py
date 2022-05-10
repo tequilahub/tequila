@@ -216,9 +216,10 @@ def test_braket():
     U = {k:tq.make_random_circuit(n_qubits) for k in range(2)}
     
     ######## Testing self overlap #########
-    self_overlap = tq.braket(ket=U[0])
+    self_overlap_real, self_overlap_im = tq.braket(ket=U[0])
 
-    assert np.isclose(self_overlap(), 1, atol=1.e-4)
+    assert np.isclose(self_overlap_real(), 1, atol=1.e-4)
+    assert np.isclose(self_overlap_im(), 0, atol=1.e-4)
 
     ######## Testing expectation value #########
     # make random hamiltonian
