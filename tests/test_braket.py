@@ -229,8 +229,9 @@ def test_braket():
     H = make_random_hamiltonian(n_qubits, paulis=paulis, n_ps=n_ps)
 
     exp_value_tmp = tq.ExpectationValue(H=H, U=U[0])
-    br_exp_value_tmp = tq.braket(ket=U[0], operator=H)
-
+    br_exp_value_real, br_exp_value_im = tq.braket(ket=U[0], operator=H)
+    br_exp_value_tmp = br_exp_value_real + 1.0j*br_exp_value_im
+    
     exp_value= tq.simulate(exp_value_tmp)
     br_exp_value = tq.simulate(br_exp_value_tmp)
     
