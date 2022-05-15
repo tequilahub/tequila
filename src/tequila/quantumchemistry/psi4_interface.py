@@ -88,7 +88,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         ref_idx = reference
         if isinstance(active_orbitals, dict):
             active_idx = []
-            frozen_uocc = {}
             for key, value in active_orbitals.items():
                 active_idx += [self.orbitals_by_irrep[key.upper()][i].idx_total for i in value]
         elif active_orbitals is None:
@@ -100,6 +99,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             for key, value in reference.items():
                 orbitals = [self.orbitals_by_irrep[key.upper()][i] for i in value]
                 ref_idx += [x.idx_total for x in orbitals]
+                ref_idx = sorted(ref_idx)
         elif reference is None:
             assert (self.n_electrons % 2 == 0)
             ref_idx = standard_ref
@@ -572,7 +572,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                     "There are known issues with some psi4 methods and frozen virtual orbitals. Proceed with fingers crossed for {}.".format(
                         method))
             options['frozen_uocc'] = self.active_space.frozen_uocc
-        if not ignore_active_space and not self.active_space.psi4_representable:
+        if not ignore_active_space and not self.active_space.psi4_representable and not self.integral_manager.active_space_is_trivial():
             warnings.warn("Warning: Active space is not Psi4 representable", TequilaWarning)
         return self._run_psi4(method=method, options=options, ignore_active_space=ignore_active_space, *args, **kwargs)[
             0]
