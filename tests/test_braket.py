@@ -32,7 +32,6 @@ def test_simple_overlap():
     # we want the overlap of the wavefunctions
     # # to test we can compute it manually
     wfn0 = tq.simulate(U0)
-    
     wfn1 = tq.simulate(U1)
    
     test = wfn0.inner(wfn1)
@@ -240,7 +239,7 @@ def test_braket():
 
     ######## Testing overlap #########
     
-    objective_real, objective_im = make_overlap(U[0],U[1])
+    objective_real, objective_im = make_overlap(U[1], U[0])
     
     Ex = tq.simulate(objective_real)
     Ey= tq.simulate(objective_im)
@@ -258,7 +257,7 @@ def test_braket():
 
     ######## Testing transition element #########
     
-    trans_real, trans_im = make_transition(U0=U[0], U1=U[1], H=H)
+    trans_real, trans_im = make_transition(U0=U[1], U1=U[0], H=H)
     
     tmp_real = tq.simulate(trans_real)
     tmp_im = tq.simulate(trans_im)

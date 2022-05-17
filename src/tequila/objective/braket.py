@@ -36,9 +36,9 @@ def braket(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = Non
         return ExpectationValue(H=operator, U=ket) , Objective()
     else:
         if operator is None:
-            return make_overlap(U0 = ket, U1 = bra)
+            return make_overlap(U0 = bra, U1 = ket)
         
-        return make_transition(U0 = ket, U1 = bra, H = operator)
+        return make_transition(U0 = bra, U1 = ket, H = operator)
 
 def make_overlap(U0:QCircuit = None, U1:QCircuit = None) -> ExpectationValue:
     '''
@@ -46,9 +46,9 @@ def make_overlap(U0:QCircuit = None, U1:QCircuit = None) -> ExpectationValue:
 
     Parameters
     ----------
-    U0 : QCircuit tequila object, corresponding to the first state.
+    U0 : QCircuit tequila object, corresponding to the first state (will be the bra).
          
-    U1 : QCircuit tequila object, corresponding to the second state.
+    U1 : QCircuit tequila object, corresponding to the second state (will be the ket).
 
     Returns
     -------
@@ -84,9 +84,9 @@ def make_transition(U0:QCircuit = None, U1:QCircuit = None, H: QubitHamiltonian 
 
     Parameters
     ----------
-    U0 : QCircuit tequila object, corresponding to the first state.
+    U0 : QCircuit tequila object, corresponding to the first state (will be the bra).
          
-    U1 : QCircuit tequila object, corresponding to the second state.
+    U1 : QCircuit tequila object, corresponding to the second state (will be the ket).
     
     H : QubitHamiltonian tequila object
         
