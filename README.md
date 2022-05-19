@@ -268,7 +268,8 @@ Quantum computational study of chloride ion attack on chloromethane for chemical
 
 A, Meijer- van de Griend, J. K. Nurminen  
 QuantMark: A Benchmarking API for VQE Algorithms  
-[DOI:10.1109/TQE.2022.3159327](https://doi.org/10.1109/TQE.2022.3159327)
+[DOI:10.1109/TQE.2022.3159327](https://doi.org/10.1109/TQE.2022.3159327)  
+[QuantMark Codebase](https://github.com/QuantMarkFramework/LibMark/)
 
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
