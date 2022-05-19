@@ -195,7 +195,7 @@ print("FCI : {:+2.8}f".format(fci))
 
 Do you want to create your own methods? Check out the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials)!
 
-# Research projects using Tequila
+# Some Research projects using Tequila
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
 A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.  
 Chemical Science, 2021, [doi.org/10.1039/D0SC06627C](https://doi.org/10.1039/D0SC06627C).  
@@ -256,6 +256,10 @@ Regularization of Quantum Chemistryon Quantum Computers by means of Explicit Cor
 T.-H. Kyaw, T. Menke, S. Sim, A. Anand, N. P. D. Sawaya, W. D. Oliver, G. G. Guerreschi, A. Aspuru-Guzik  
 Quantum computer-aided design: digital quantum simulation of quantum processors  
 [arxiv:2006.03070](https://arxiv.org/abs/2006.03070)  
+
+Z. P. Bansingh, T.-C. Yen, P. D. Johnson, A. F. Izmaylov  
+Fidelity overhead for non-local measurements in variational quantum algorithms  
+[arxiv:2205.07113](https://arxiv.org/abs/2205.07113)  
 
 
 H. Lim, H.-N. Jeon, J.-K. Rhee, B. Oh, K. T. No  
