@@ -264,7 +264,11 @@ Fidelity overhead for non-local measurements in variational quantum algorithms
 
 H. Lim, H.-N. Jeon, J.-K. Rhee, B. Oh, K. T. No  
 Quantum computational study of chloride ion attack on chloromethane for chemical accuracy and quantum noise effects with UCCSD and k-UpCCGSD ansatzes  
-[arxiv:2112.15314](https://arxiv.org/abs/2112.15314)
+[arxiv:2112.15314](https://arxiv.org/abs/2112.15314)  
+
+A, Meijer- van de Griend, J. K. Nurminen  
+QuantMark: A Benchmarking API for VQE Algorithms  
+[DOI:10.1109/TQE.2022.3159327](https://doi.org/10.1109/TQE.2022.3159327)
 
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
