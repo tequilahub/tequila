@@ -65,6 +65,7 @@ def make_overlap(U0:QCircuit = None, U1:QCircuit = None) -> ExpectationValue:
     
     #bulding the circuit for the overlap evaluation
     circuit = H(target=ctrl)
+    circuit += X(target=ctrl)
     circuit += U_a
     circuit += X(target=ctrl)
     circuit += U_b
