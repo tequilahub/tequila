@@ -1,6 +1,5 @@
-import scipy
 import tequila as tq
-from tequila import braket
+from tequila.apps.krylov.krylov import krylov_method
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 from tequila.tools.random_generators import make_random_circuit
 import itertools as it
@@ -16,11 +15,10 @@ def test_simple_krylov(n_krylov_states: int=2):
 
     np.random.seed(111)
     #we create states randomly, in this way it is very unlikely they will be orthogonal
-    krylov_circs = [make_random_circuit(2, enable_controls=True) for i in range(2)] 
+    krylov_circs = [make_random_circuit(2, enable_controls=True) for i in range(n_krylov_states)] 
 
     # creating the wavefunctions from the circuits
     krylov_states = [tq.simulate(circ) for circ in krylov_circs]
-    
     krylov_states_couples = list(it.product(krylov_states, repeat=2)) # list of all possible couples of Krylov states
 
     # creating an hamiltonian from the obtained wavefunctions
@@ -28,72 +26,15 @@ def test_simple_krylov(n_krylov_states: int=2):
     H = QubitHamiltonian()
     for i, j in krylov_states_couples:
         H -= tq.paulis.KetBra(ket = i, bra = j)
-
-    #print(H)
-
-    #print(H.is_hermitian())
-
-    ham_eval_matrix = make_H_eval_matrix(krylov_circs, H)
-    #print(ham_eval_matrix)
-    overlap_matrix = make_overlap_matrix(krylov_circs)
-
-    kry_eigenvalues, kry_eigenvectors = scipy.linalg.eigh(ham_eval_matrix, overlap_matrix)
-    #print('Overlap matrix:\n',overlap_matrix,'\n')
     
+    #applying Krylov method
+    kry_ground_energy, kry_coefficients = krylov_method(krylov_circs, H)
+    
+    #exact diagonalization
     eigenvalues, eigenvectors = np.linalg.eig(H.to_matrix())
 
-    #print('Ground State Krylov',kry_eigenvalues[0])
-    #print('Ground State:', eigenvalues[0])
-    assert np.isclose(kry_eigenvalues[0],eigenvalues[0], atol=1e-4)
+    #print('Ground State Energy Krylov',kry_eigenvalues[0])
+    #print('Ground State Energy:', eigenvalues[0])
+    assert np.isclose(kry_ground_energy, eigenvalues[0], atol=1e-4)
 
     return
-
-def make_overlap_matrix(circs:list)->np.array:
-    """Function that builds a matrix of the overlap between 
-       the given states.
-
-    Args:
-        
-        circs (list): List of QCircuit()
-
-    Returns:
-        np.array: _description_
-    """
-    n_states = len(circs)
-    circs_couples = list(it.product(circs, repeat=2)) # list of all possible couples of circuits
-
-    overlap_matrix = []
-    for i,j in circs_couples:
-        overlap_real, overlap_im = braket(ket=i, bra=j)
-        overlap = tq.simulate(overlap_real)+ 1j*tq.simulate(overlap_im)
-        overlap_matrix.append(overlap )
-        
-    overlap_matrix = np.reshape(np.array(overlap_matrix), (n_states,n_states))
-    return overlap_matrix
-
-def make_H_eval_matrix(circs: list, H: QubitHamiltonian)->np.array:
-    """Function that builds a matrix of the transition elements between 
-    the given states and the Hamiltonian operator. 
-
-
-    Args:
-        
-        circs (list): List of QCircuit()
-        H (QubitHamiltonian): Hamiltonian operator
-
-    Returns:
-        np.array: _description_
-    """
-
-    n_states = len(circs)
-    circs_couples = list(it.product(circs, repeat=2)) # list of all possible couples of circuits
-
-    ham_expval_matrix = []
-    for i,j in circs_couples:
-        # if id(i) == id(j):
-        #     ham_expval_matrix.append(tq.simulate(braket(ket=i, bra=j, operator=H)))
-        # else:
-        tmp_real, tmp_im = braket(ket=i, bra=j, operator=H)
-        ham_expval_matrix.append(tq.simulate(tmp_real)+ 1j*tq.simulate(tmp_im) )
-    ham_expval_matrix = np.reshape(np.array(ham_expval_matrix), (n_states,n_states))
-    return ham_expval_matrix
