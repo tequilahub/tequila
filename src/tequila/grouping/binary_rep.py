@@ -1,9 +1,11 @@
 from tequila import TequilaException
 from tequila.hamiltonian import QubitHamiltonian, PauliString
 from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first, sorted_insertion_grouping
+from tequila.grouping.overlapping_methods import OverlappingGroups
 import numpy as np
 import tequila as tq
 import numbers
+from copy import deepcopy
 
 class BinaryHamiltonian:
     def __init__(self, binary_terms):
@@ -230,7 +232,7 @@ class BinaryHamiltonian:
         gram = np.block([[np.zeros((n,n)), np.eye(n)], [np.eye(n), np.zeros((n,n))]])
         return matrix @ gram @ matrix.T % 2
 
-    def commuting_groups(self, method='rlf', condition=None):
+    def commuting_groups(self, method='rlf', condition=None, overlap_help=None):
         """
         Return the partitioning of the hamiltonian into commuting groups.
         List of BinaryHamiltonian's
@@ -242,7 +244,7 @@ class BinaryHamiltonian:
             """
             if (method == 'lf' or method == 'rlf'): 
                 mc = 'mcc' 
-            elif (method == 'si'):
+            elif (method == 'si' or method == 'osi'):
                 mc = 'greedy'
             else:
                 raise TequilaException(f"There is no algorithm {method}")
@@ -260,6 +262,10 @@ class BinaryHamiltonian:
         elif method_class(method) == 'greedy':
             if condition == None: condition = 'fc'
             if method == 'si': groups = sorted_insertion_grouping(terms, condition)
+            if method == 'osi':
+                if overlap_help == None: raise TequilaException(f"Overlapping SI grouping requires a dictionary of covariances.")
+                o_groups = OverlappingGroups.init_from_binary_terms(terms, condition)
+                groups, suggested_sample_size = o_groups.optimal_overlapping_groups(overlap_help)
             return [BinaryHamiltonian(group) for group in groups]
 
 class BinaryPauliString:
@@ -272,6 +278,20 @@ class BinaryPauliString:
         self.n_qubit = len(binary_vector) // 2
         self.is_binary()
         self.is_coeff()
+
+    def __eq__(self, other):
+        '''
+        Check if two BinaryPauliStrings are equivalent. 
+        The size of small is chosen arbitrarily. 
+        '''
+        small = 1e-10
+        return all(self.binary == other.binary) and (np.abs(self.coeff - other.coeff) <= small)
+
+    def binary_tuple(self):
+        '''
+        Return binary vector as a tuple. Useful for cov_dict (see overlapping_methods).
+        '''
+        return tuple(self.binary)
 
     def is_binary(self):
         if not isinstance(self.binary, np.ndarray):
@@ -403,3 +423,12 @@ class BinaryPauliString:
 
     def get_n_qubit(self):
         return self.n_qubit
+
+    def term_w_coeff(self, new_coeff):
+        '''
+        Return BinaryPauliString with a new coefficient.
+        '''
+        new_term = deepcopy(self)
+        new_term.set_coeff(new_coeff)
+        return new_term
+

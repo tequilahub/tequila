@@ -1,6 +1,7 @@
 import tequila as tq
-from tequila.hamiltonian import QubitHamiltonian, PauliString, paulis
+from tequila.hamiltonian import QubitHamiltonian, PauliString, paulis 
 from tequila.grouping.binary_rep import BinaryPauliString, BinaryHamiltonian
+from tequila.grouping.overlapping_methods import OverlappingGroups, OverlappingHelp
 from collections import namedtuple
 import numpy as np
 
@@ -56,6 +57,20 @@ def test_binary_pauli():
     yy = BinaryPauliString([1, 1, 1, 1], 2.1 + 2j)
     assert (xx.commute(yy))
 
+
+def test_binary_pauli_equality():
+    '''
+    Testing __eq__ implemented in binary form of the pauli strings.
+    '''
+    x1 = BinaryPauliString([1, 0], 1.)
+    x1_other_same_coeff = BinaryPauliString(np.array([1, 0]), 1.)
+    x1_other_diff_coeff = BinaryPauliString(np.array([1, 0]), 1. + 1e-9)
+    assert x1 == x1_other_same_coeff
+    assert x1 != x1_other_diff_coeff
+
+    y1 = BinaryPauliString([1, 1], 1)
+    assert x1 != y1
+    assert y1 == y1
 
 def test_binary_hamiltonian_initialization():
     '''
@@ -167,6 +182,80 @@ def test_sorted_insertion():
     commuting_parts = H.commuting_groups(method='si', condition='fc')
     for part in commuting_parts:
         assert part.is_commuting()
+
+def prep_o_groups():
+    H, _, _, _ = prepare_test_hamiltonian()
+    H = H + paulis.X(0) + paulis.Y(0) + 1.05 * paulis.Z(0) * paulis.Z(1) * paulis.Z(2)
+    terms = (BinaryHamiltonian.init_from_qubit_hamiltonian(H)).binary_terms
+    return OverlappingGroups.init_from_binary_terms(terms)
+
+def test_term_exists_in():
+    '''
+    Verifies if term_exists_in correctly locates the different positions of Pauli terms.
+    '''
+    o_groups = prep_o_groups() 
+    for term_idx, term in enumerate(o_groups.o_terms):
+        for pos in o_groups.term_exists_in[term_idx]:
+            assert term in o_groups.o_groups[pos]
+
+def test_variable_coeff_num():
+    '''
+    Verifies if the number of variable coefficients are correct.
+    '''
+    o_groups = prep_o_groups() 
+    Ncoeff_num = np.sum(o_groups.wo_fixed.Ncoeff_grp)
+    Ncoeff_num_2 = 0
+    for list_of_term_pos in o_groups.wo_fixed.term_exists_in:
+        Ncoeff_num_2 += len(list_of_term_pos)
+    assert Ncoeff_num == Ncoeff_num_2
+
+def test_fixed_coeff_num():
+    '''
+    Verifies if the correct number of variables are fixed.
+    '''
+    o_groups = prep_o_groups() 
+    Ncoeff_num = np.sum(o_groups.wo_fixed.Ncoeff_grp)
+    Ncoeff_w_fixed = 0
+    for list_of_term_pos in o_groups.term_exists_in:
+        Ncoeff_w_fixed += len(list_of_term_pos)
+    assert Ncoeff_num + len(o_groups.o_terms) == Ncoeff_w_fixed
+
+def test_overlapping_sorted_insertion():
+    '''
+    Testing whether overlapping sorted insertion works.
+    '''
+    def prepare_cov_dict(H):
+        eigenValues, eigenVectors = np.linalg.eigh(H.to_matrix())
+        wfn0 = tq.QubitWaveFunction(eigenVectors[:,0])
+        terms = BinaryHamiltonian.init_from_qubit_hamiltonian(H).binary_terms
+        cov_dict = {}
+        for term1 in terms:
+            for term2 in terms:
+                pw1 = BinaryPauliString(term1.get_binary(), 1.0)
+                pw2 = BinaryPauliString(term2.get_binary(), 1.0)
+                op1 = QubitHamiltonian.from_paulistrings(pw1.to_pauli_strings())
+                op2 = QubitHamiltonian.from_paulistrings(pw2.to_pauli_strings())
+                prod_op = op1 * op2
+                cov_dict[(term1.binary_tuple(), term2.binary_tuple())] = wfn0.inner(prod_op(wfn0)) - wfn0.inner(op1(wfn0)) * wfn0.inner(op2(wfn0))
+        return cov_dict
+
+    H, _, _, _ = prepare_test_hamiltonian()
+    H = H + paulis.X(0) + paulis.Y(0) + 1.05 * paulis.Z(0) * paulis.Z(1) * paulis.Z(2)
+    overlap_help = OverlappingHelp(prepare_cov_dict(H))
+    Hbin = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+    commuting_parts = Hbin.commuting_groups(method='osi', condition='qwc', overlap_help=overlap_help)
+    H_tmp = QubitHamiltonian.zero()
+    for part in commuting_parts:
+        assert part.is_qubit_wise_commuting()
+        H_tmp += part.to_qubit_hamiltonian()
+    assert equal_qubit_hamiltonian(H_tmp, H)
+
+    commuting_parts = Hbin.commuting_groups(method='osi', condition='fc', overlap_help=overlap_help)
+    H_tmp = QubitHamiltonian.zero()
+    for part in commuting_parts:
+        assert part.is_commuting()
+        H_tmp += part.to_qubit_hamiltonian()
+    assert equal_qubit_hamiltonian(H_tmp, H)
 
 def test_qubit_wise_commuting():
     '''
