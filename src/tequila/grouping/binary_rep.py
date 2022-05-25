@@ -1,6 +1,6 @@
 from tequila import TequilaException
 from tequila.hamiltonian import QubitHamiltonian, PauliString
-from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first
+from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first, sorted_insertion_grouping
 import numpy as np
 import tequila as tq
 import numbers
@@ -230,23 +230,37 @@ class BinaryHamiltonian:
         gram = np.block([[np.zeros((n,n)), np.eye(n)], [np.eye(n), np.zeros((n,n))]])
         return matrix @ gram @ matrix.T % 2
 
-    def commuting_groups(self, method='rlf'):
+    def commuting_groups(self, method='rlf', condition=None):
         """
         Return the partitioning of the hamiltonian into commuting groups.
         List of BinaryHamiltonian's
         """
+        def method_class(method):
+            """
+            Return the class that the method belongs to: One from Minimum clique cover (mcc)
+            and Greedy grouping algorithms. 
+            """
+            if (method == 'lf' or method == 'rlf'): 
+                mc = 'mcc' 
+            elif (method == 'si'):
+                mc = 'greedy'
+            else:
+                raise TequilaException(f"There is no algorithm {method}")
+            return mc
         terms = self.binary_terms
         n = self.n_term
-        cg = self.anti_commutativity_matrix()
 
-        if method == 'lf':
-            colors = largest_first(terms, n, cg)
-        elif method == 'rlf':
-            colors = recursive_largest_first(terms, n, cg)
-        else:
-            raise TequilaException(f"There is no algorithm {method}")
-        return [BinaryHamiltonian(value) for key, value in colors.items()]
-
+        if method_class(method) == 'mcc':
+            cg = self.anti_commutativity_matrix()
+            if method == 'lf':
+                colors = largest_first(terms, n, cg)
+            elif method == 'rlf':
+                colors = recursive_largest_first(terms, n, cg)
+            return [BinaryHamiltonian(value) for key, value in colors.items()]
+        elif method_class(method) == 'greedy':
+            if condition == None: condition = 'fc'
+            if method == 'si': groups = sorted_insertion_grouping(terms, condition)
+            return [BinaryHamiltonian(group) for group in groups]
 
 class BinaryPauliString:
     def __init__(self, binary_vector=np.array([0, 0]), coeff=1.0):
@@ -273,6 +287,24 @@ class BinaryPauliString:
         if not isinstance(self.coeff, numbers.Number):
             raise TequilaException('Unknown coefficients. Got ' +
                                    str(self.coeff))
+
+    def qubit_wise_commute(self, other):
+        '''
+        Determine whether the corresponding pauli-strings of 
+        the two binary vectors are qubit-wise commuting. 
+        '''
+        qubit_term = {} #Dictionary of qubit terms in self.
+        for qub in range(self.n_qubit):
+            cur_qub_term = (self.binary[qub], self.binary[qub + self.n_qubit]) 
+            if cur_qub_term != (0, 0):
+                qubit_term[qub] = cur_qub_term
+
+        for qub in range(other.n_qubit):
+            cur_qub_term = (other.binary[qub], other.binary[qub + self.n_qubit]) 
+            if cur_qub_term != (0, 0):
+                if qub in qubit_term:
+                    if qubit_term[qub] != cur_qub_term: return False
+        return True
 
     def commute(self, other):
         '''

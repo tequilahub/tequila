@@ -152,6 +152,21 @@ def test_commuting_groups():
     for part in commuting_parts:
         assert part.is_commuting()
 
+def test_sorted_insertion():
+    '''
+    Testing whether sorted insertion works.
+    '''
+    H, _, _, _ = prepare_test_hamiltonian()
+    H = H + paulis.X(0) + paulis.Y(0) + 1.05 * paulis.Z(0) * paulis.Z(1) * paulis.Z(2)
+    H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+
+    commuting_parts = H.commuting_groups(method='si', condition='qwc')
+    for part in commuting_parts:
+        assert part.is_qubit_wise_commuting()
+
+    commuting_parts = H.commuting_groups(method='si', condition='fc')
+    for part in commuting_parts:
+        assert part.is_commuting()
 
 def test_qubit_wise_commuting():
     '''
