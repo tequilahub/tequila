@@ -27,8 +27,11 @@ def test_simple_krylov(n_krylov_states: int=2):
     for i, j in krylov_states_couples:
         H -= tq.paulis.KetBra(ket = i, bra = j)
     
-    #applying Krylov method
-    kry_ground_energy, kry_coefficients = krylov_method(krylov_circs, H)
+    # applying Krylov method
+    kry_energies, kry_coefficients_matrix = krylov_method(krylov_circs, H)
+
+    kry_ground_energy = kry_energies[0]
+    kry_ground_coefficients = kry_coefficients_matrix[0]
     
     #exact diagonalization
     eigenvalues, eigenvectors = np.linalg.eig(H.to_matrix())
