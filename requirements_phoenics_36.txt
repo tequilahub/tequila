@@ -5,7 +5,7 @@ watchdog >=0.9
 wheel>=0.33
 
 edward ==1.3.5
-tensorflow ==1.15.2
+tensorflow ==2.7.2
 
 phoenics
 
