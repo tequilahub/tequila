@@ -21,7 +21,7 @@ def krylov_method(krylov_circs:list, H:QubitHamiltonian, variables:dict=None, as
         Default to False.
 
     Returns:
-        tuple(float, np.ndarray): ground state energy, krylov coefficients
+        tuple(np.ndarray, np.ndarray): array of energies, array of krylov coefficients corresponding to the energies
     """
     
     n_krylov_states = len(krylov_circs)
