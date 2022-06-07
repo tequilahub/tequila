@@ -61,8 +61,12 @@ class QuantumChemistryBase:
         """
 
         self.parameters = parameters
+        n_electrons = parameters.n_electrons
+        if "n_electrons" in kwargs:
+            n_electrons = kwargs["n_electrons"]
+
         if reference_orbitals is None:
-            reference_orbitals = [i for i in range(parameters.n_electrons // 2)]
+            reference_orbitals = [i for i in range(n_electrons // 2)]
         self._reference_orbitals = reference_orbitals
 
         # initialize integral manager
@@ -366,6 +370,10 @@ class QuantumChemistryBase:
         - result of self.get_integrals()
         """
 
+        n_electrons = self.parameters.n_electrons
+        if "n_electrons" in kwargs:
+            n_electrons = kwargs["n_electrons"]
+
         assert ("one_body_integrals" in kwargs)
         assert ("two_body_integrals" in kwargs)
         one_body_integrals = kwargs["one_body_integrals"]
@@ -397,7 +405,7 @@ class QuantumChemistryBase:
             if "active_orbitals" in kwargs and kwargs["active_orbitals"] is not None:
                 active_orbitals = kwargs["active_orbitals"]
 
-            reference_orbitals = [i for i in range(self.parameters.n_electrons // 2)]
+            reference_orbitals = [i for i in range(n_electrons // 2)]
             if "reference_orbitals" in kwargs and kwargs["reference_orbitals"] is not None:
                 reference_orbitals = kwargs["reference_orbitals"]
 
@@ -439,7 +447,7 @@ class QuantumChemistryBase:
         New molecule in the native (orthonormalized) basis given
         e.g. for standard basis sets the orbitals are orthonormalized Gaussian Basis Functions
         """
-        if self.integral_manager.active_space_is_trivial():
+        if not self.integral_manager.active_space_is_trivial():
             warnings.warn("orthonormalize_basis_orbitals: active space is set and might lead to inconsistent behaviour", TequilaWarning)
 
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
@@ -1713,7 +1721,7 @@ class QuantumChemistryBase:
         for k, v in self.parameters.__dict__.items():
             result += "{key:15} : {value:15} \n".format(key=str(k), value=str(v))
 
-        result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals ** 2))
+        result += "{key:15} : {value:15} \n".format(key="n_qubits", value=str(self.n_orbitals * 2))
         result += "{key:15} : {value:15} \n".format(key="reference state", value=str(self._reference_state()))
 
         result += "\nBasis\n"
