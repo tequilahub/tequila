@@ -4,9 +4,10 @@
 
 Tequila is an Extensible Quantum Information and Learning Architecture where the main goal is to simplify and accelerate implementation of new ideas for quantum algorithms.
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
-Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.
+Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.  
 
-Get an overview through different slides and recordings of talks on different level of detail: See [here](https://kottmanj.github.io/talks_and_material/).  
+Check out this small overview to get a glimpse on [what tequila is,](https://kottmanj.github.io/tequila-in-a-nutshell/#/)  
+or, get an overview through different slides and recordings of talks on different level of detail: See [here](https://kottmanj.github.io/talks_and_material/).  
 
 Get started with our [BasicUsage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb) Tutorial or find more in the [Tutorial collection](https://github.com/aspuru-guzik-group/tequila-tutorials)  
 
