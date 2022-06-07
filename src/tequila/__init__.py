@@ -5,6 +5,7 @@ from tequila.objective import Objective, VectorObjective,\
     ExpectationValue, Variable, assign_variable, format_variable_dictionary,\
     vectorize
 from tequila.objective import QTensor
+from tequila.objective.braket import braket, make_transition, make_overlap
 
 from tequila.optimizers import INSTALLED_OPTIMIZERS, show_available_optimizers
 from tequila.optimizers import minimize, minimize_scipy, minimize_gd, optimizer_scipy
@@ -21,6 +22,9 @@ from tequila.quantumchemistry import Molecule, MoleculeFromOpenFermion
 # make sure to use the jax/autograd numpy for objectives
 from tequila.circuit.gradient import grad
 from tequila.autograd_imports import numpy, jax, __AUTOGRAD__BACKEND__
+
+# import tools
+from tequila.tools.random_generators import make_random_circuit, make_random_hamiltonian
 
 # get rid of the jax GPU/CPU warnings
 import warnings
