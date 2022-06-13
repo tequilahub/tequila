@@ -232,18 +232,32 @@ class BinaryHamiltonian:
         gram = np.block([[np.zeros((n,n)), np.eye(n)], [np.eye(n), np.zeros((n,n))]])
         return matrix @ gram @ matrix.T % 2
 
-    def commuting_groups(self, method='rlf', condition=None, overlap_help=None):
+    def commuting_groups(self, method='rlf', condition="fc", overlap_aux=None):
         """
+        Notes
+        ----------
         Return the partitioning of the hamiltonian into commuting groups.
+
+        Parameters
+        ----------
+        method: str: The method used to group the commutative terms together. In the case of overlapping methods,
+        the coefficient for a given Pauli product term is split into several fragments optimally.
+        condition: str: Commutativitiy condition. Either fully commuting (fc) or qubit-wise commuting (qwc).
+        overlap_aux: class OverlappingAuxiliary: class contains the dictionary of covariances and the number of 
+        iterations in the overlapping method.
+
+        Returns
+        ----------
         List of BinaryHamiltonian's
         """
-        def method_class(method):
+        def method_class(method, condition):
             """
             Return the class that the method belongs to: One from Minimum clique cover (mcc)
             and Greedy grouping algorithms. 
             """
             if (method == 'lf' or method == 'rlf'): 
                 mc = 'mcc' 
+                if condition != "fc": raise TequilaException(f"lf and rlf can only return fully commuting fragments.")
             elif (method == 'si' or method == 'osi'):
                 mc = 'greedy'
             else:
@@ -252,20 +266,19 @@ class BinaryHamiltonian:
         terms = self.binary_terms
         n = self.n_term
 
-        if method_class(method) == 'mcc':
+        if method_class(method, condition) == 'mcc':
             cg = self.anti_commutativity_matrix()
             if method == 'lf':
                 colors = largest_first(terms, n, cg)
             elif method == 'rlf':
                 colors = recursive_largest_first(terms, n, cg)
             return [BinaryHamiltonian(value) for key, value in colors.items()]
-        elif method_class(method) == 'greedy':
-            if condition == None: condition = 'fc'
+        elif method_class(method, condition) == 'greedy':
             if method == 'si': groups = sorted_insertion_grouping(terms, condition)
             if method == 'osi':
-                if overlap_help == None: raise TequilaException(f"Overlapping SI grouping requires a dictionary of covariances.")
+                if overlap_aux == None: raise TequilaException(f"Overlapping SI grouping requires a dictionary of covariances.")
                 o_groups = OverlappingGroups.init_from_binary_terms(terms, condition)
-                groups, suggested_sample_size = o_groups.optimal_overlapping_groups(overlap_help)
+                groups, suggested_sample_size = o_groups.optimal_overlapping_groups(overlap_aux)
             return [BinaryHamiltonian(group) for group in groups]
 
 class BinaryPauliString:

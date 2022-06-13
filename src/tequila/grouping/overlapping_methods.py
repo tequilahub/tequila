@@ -2,7 +2,7 @@ import numpy as np
 from tequila.grouping.binary_utils import sorted_insertion_grouping, term_commutes_with_group
 from copy import deepcopy
 
-class OverlappingHelp:
+class OverlappingAuxiliary:
     '''
     Class required for passing cov_dict and number of iterations to
     OverlappingGroups. Eventually, this may also be used for building cov_dict from
@@ -12,17 +12,26 @@ class OverlappingHelp:
         self.cov_dict = cov_dict
         self.n_iter = n_iter
 
-class OverlappingGroups_wo_fixed:
+class OverlappingGroupsWoFixed:
     '''
-    Class required for mapping OverlappingGroups onto a vector of overlapping coefficients.
-    Same as OverlappingGroups, but Pauli products corresponding to fixed coefficients are removed.
+    In the overlapping grouping methods, the same Pauli string term can be grouped into 
+    multiple different fragments. However, for this procedure to reduce the total number of 
+    required measurements, the coefficients in different fragments have to be optimized with 
+    the constraint that the sum of the fragments equal the original operator.
+    This Class is required for this optimization process. The overlapping grouping methods
+    starts from some nonoverlapping groups N_alpha; Pauli strings are then added to several
+    compatible fragments with coefficients c_alpha. Because the nonoverlapping groups sum to 
+    the original operator, the sum of coefficients c_alpha for a given Pauli string has to be
+    zero. This is ensured by fixing one of these c_alpha's as -(sum over the rest of c_alpha).
+    See Eq. (14) of arXiv: 2201.01471 (2022).
     '''
     def __init__(self, o_groups, o_terms, term_exists_in):
         def exclude_fixed_coeffs(o_groups, o_terms, term_exists_in):
             '''
             Remove fixed coefficients from o_groups and term_exists_in.
             These fixed coefficients are determined from other Pauli coefficients in order that
-            the condition sum_alpha c^{alpha} = 0 is satisfied.
+            the condition sum_alpha c_alpha = 0 is satisfied [see comment for OverlappingGroupsWoFixed
+            and Eq. (14) of arXiv: 2201.01471 (2022)].
             '''
             fixed_grp = []
             o_groups_wo_fixed = deepcopy(o_groups)
@@ -31,9 +40,9 @@ class OverlappingGroups_wo_fixed:
                 fixed_grp.append(term_exists_in[term_idx][-1])
                 o_groups_wo_fixed[fixed_grp[term_idx]].remove(term)
                 term_exists_in_wo_fixed[term_idx].remove(fixed_grp[term_idx])
-            Ncoeff_grp = np.array([len(lst) for lst in o_groups_wo_fixed])
-            init_idx = [sum(Ncoeff_grp[:i]) for i in range(len(o_groups_wo_fixed))]
-            return fixed_grp, o_groups_wo_fixed, term_exists_in_wo_fixed, Ncoeff_grp, init_idx
+            n_coeff_grp = np.array([len(lst) for lst in o_groups_wo_fixed])
+            init_idx = [sum(n_coeff_grp[:i]) for i in range(len(o_groups_wo_fixed))]
+            return fixed_grp, o_groups_wo_fixed, term_exists_in_wo_fixed, n_coeff_grp, init_idx
 
         def get_term_idxs(o_terms, o_groups_wo_fixed, term_exists_in_wo_fixed, init_idx):
             '''
@@ -48,14 +57,15 @@ class OverlappingGroups_wo_fixed:
                 term_idxs[term.binary_tuple()] = cur_idxs
             return term_idxs
 
-        self.fixed_grp, self.o_groups, self.term_exists_in, self.Ncoeff_grp, self.init_idx \
+        self.fixed_grp, self.o_groups, self.term_exists_in, self.n_coeff_grp, self.init_idx \
                                                             = exclude_fixed_coeffs(o_groups, o_terms, term_exists_in)
         self.term_idxs = get_term_idxs(o_terms, self.o_groups, self.term_exists_in, self.init_idx)
         return None
 
 def get_cov(term1, term2, cov_dict):
     '''
-    Return the covariance between Pauli string term 1 and 2 from a dictionary.
+    Return the covariance between Pauli string term 1 and 2 from a dictionary
+    under the assumption that Pauli strings term1 and term2 commute.
     '''
     if (term1.binary_tuple(), term2.binary_tuple()) in cov_dict:
         return cov_dict[(term1.binary_tuple(), term2.binary_tuple())]
@@ -88,7 +98,9 @@ class OverlappingGroups:
     '''
     Class required for performing overlapping grouping techniques:
     coefficient splitting (implemented), ghost paulis (todo), and iterative 
-    measurement allocation (todo).
+    measurement allocation (todo). Unlike nonoverlapping grouping methods, in the overlapping methods, 
+    the same Pauli string term can appear in multiple compatible groups. The optimization of the associated
+    Pauli string coefficients is performed using the estimated covariances from cov_dict. 
     '''
     def __init__(self, no_groups, o_terms, term_exists_in):
         self.no_groups = no_groups #Non-overlapping groups: required as a starting point.
@@ -98,7 +110,7 @@ class OverlappingGroups:
         for idx, term in enumerate(o_terms):
             for grup_idx in term_exists_in[idx]:
                 self.o_groups[grup_idx].append(term)
-        self.wo_fixed = OverlappingGroups_wo_fixed(self.o_groups, self.o_terms, self.term_exists_in)
+        self.wo_fixed = OverlappingGroupsWoFixed(self.o_groups, self.o_terms, self.term_exists_in)
         return None
 
     @classmethod
@@ -132,7 +144,7 @@ class OverlappingGroups:
             '''
             Build the matrix row corresponding to Pauli term. 
             '''
-            mat_single = np.zeros(np.sum(self.wo_fixed.Ncoeff_grp))
+            mat_single = np.zeros(np.sum(self.wo_fixed.n_coeff_grp))
             for term2_idx, term2 in enumerate(self.o_groups[group_index]):
                 term2_idx_dict = self.wo_fixed.term_idxs[term2.binary_tuple()]
                 cov = np.real_if_close(get_cov(term, term2, cov_dict))
@@ -149,7 +161,7 @@ class OverlappingGroups:
             '''
             return np.real_if_close(cov_term_w_group(term, self.no_groups[group_index], cov_dict) / sample_size[group_index])
 
-        mat_size = np.sum(self.wo_fixed.Ncoeff_grp)
+        mat_size = np.sum(self.wo_fixed.n_coeff_grp)
         matrix = np.zeros((mat_size, mat_size))
         b = np.zeros((1, mat_size))
         row_idx = 0
@@ -191,13 +203,13 @@ class OverlappingGroups:
             add_coeff_times_term(fixed_grp_coefficient, term, fixed_idx)
         return final_overlapping_groups
 
-    def optimal_overlapping_groups(self, overlap_help):
+    def optimal_overlapping_groups(self, overlap_aux):
         '''
         Find a set of overlapping groups with optimized coefficients.
         '''
         cur_groups = self.no_groups
-        for i in range(overlap_help.n_iter):
-            cur_sample_size = get_opt_sample_size(cur_groups, overlap_help.cov_dict)
-            coeff = self.optimize_pauli_coefficients(overlap_help.cov_dict, cur_sample_size)
+        for i in range(overlap_aux.n_iter):
+            cur_sample_size = get_opt_sample_size(cur_groups, overlap_aux.cov_dict)
+            coeff = self.optimize_pauli_coefficients(overlap_aux.cov_dict, cur_sample_size)
             cur_groups = self.overlapping_groups_from_coeff(coeff)
         return cur_groups, cur_sample_size
