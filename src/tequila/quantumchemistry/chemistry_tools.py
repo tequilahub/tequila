@@ -163,7 +163,7 @@ class ParametersQC:
                 if self.name is None:
                     drop_ones = lambda x: "" if x == 1 else x
                     self.name = "".join(["{}{}".format(x, drop_ones(atoms.count(x))) for x in atom_names])
-        self.name = self.name.lower()
+            self.name = self.name.lower()
 
         if self.geometry is None:
             self.geometry = self.name + ".xyz"
