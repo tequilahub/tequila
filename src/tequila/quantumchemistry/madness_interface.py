@@ -243,6 +243,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             i = self.orbitals[i]
         if isinstance(j, int):
             j = self.orbitals[j]
+        if isinstance(exclude, int):
+            exclude = [self.orbitals[exclude]]
         if exclude is None or isinstance(exclude, OrbitalData):
             exclude = [exclude]
         return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pair and x not in exclude]
