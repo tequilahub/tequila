@@ -17,7 +17,7 @@ from tequila.wavefunction import QubitWaveFunction
 from tequila.circuit.qasm import export_open_qasm, import_open_qasm, import_open_qasm_from_file
 from tequila.circuit.pyzx import convert_to_pyzx, convert_from_pyzx
 import tequila.quantumchemistry as chemistry # shortcut
-from tequila.quantumchemistry import Molecule, MoleculeFromOpenFermion
+from tequila.quantumchemistry import Molecule, MoleculeFromOpenFermion, MoleculeFromTequila
 
 # make sure to use the jax/autograd numpy for objectives
 from tequila.circuit.gradient import grad

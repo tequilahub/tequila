@@ -71,8 +71,11 @@ class QuantumChemistryBase:
             reference_orbitals = [i for i in range(n_electrons // 2)]
         self._reference_orbitals = reference_orbitals
         
-        # determine frozen core
-        if self.parameters.frozen_core:
+        # determine frozen core automatically if set
+        # only if molecule is computed from scratch and not passed down from above
+        overriding_freeze_instruction = n_electrons != parameters.n_electrons
+        overriding_freeze_instruction = overriding_freeze_instruction or frozen_orbitals is not None
+        if not overriding_freeze_instruction and self.parameters.frozen_core:
             n_core_electrons = self.parameters.get_number_of_core_electrons()
             if frozen_orbitals is None:
                 frozen_orbitals = [i for i in range(n_core_electrons//2)]

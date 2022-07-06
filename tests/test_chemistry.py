@@ -404,14 +404,10 @@ def test_hcb(trafo):
 @pytest.mark.parametrize("basis_set", ["sto-3g"])
 def test_pyscf_methods(method, geometry, basis_set):
     mol = tq.Molecule(geometry=geometry, basis_set=basis_set, backend="psi4")
+
     e1 = mol.compute_energy(method=method)
-    c, h1, h2 = mol.get_integrals()
-    mol = tq.Molecule(geometry=geometry,
-                      basis_set=basis_set,
-                      nuclear_repulsion=c,
-                      one_body_integrals=h1,
-                      two_body_integrals=h2,
-                      backend="pyscf")
+    mol = tq.MoleculeFromTequila(mol=mol, backend="pyscf")
+
     e2 = mol.compute_energy(method)
     assert numpy.isclose(e1, e2, atol=1.e-4)
 
@@ -433,6 +429,7 @@ def test_orbital_optimization():
     result = tq.minimize(E, print_level=2)
     print(result.energy)
     assert numpy.isclose(-7.79860454, result.energy, atol=1.e-3)
+
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
@@ -469,6 +466,7 @@ def test_orbital_transformation():
     E3 = tq.ExpectationValue(H=mol3.make_hamiltonian(), U=U)
     hf3 = tq.simulate(E3, variables={"a": 0.0})
     assert numpy.isclose(hf3, hf, atol=1.e-4)
+
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
@@ -515,23 +513,23 @@ def test_crosscheck_cis_mp2_large():
 
 @pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
 def test_spa_ansatz_be():
-    edges = [(0,),(1,2,3,4)]
+    edges = [(0,), (1, 2, 3, 4)]
     # doing without frozen-core to test explicitly if single-orbital pairs work
     mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g", transformation="BravyiKitaev", frozen_core=False)
     H = mol.make_hamiltonian()
     U = mol.make_ansatz(name="SPA", edges=edges)
     E = tq.ExpectationValue(H=H, U=U)
     result = tq.minimize(E, silent=True)
-    energy=result.energy
-    
+    energy = result.energy
+
     mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g", frozen_core=False)
     H = mol.make_hamiltonian()
     U0 = mol.make_ansatz(name="SPA", edges=edges)
     U1 = mol.make_ansatz(name="SPA", ladder=False, edges=edges)
     U2 = mol.make_ansatz(name="SPA", optimize=False, edges=edges)
     U3 = mol.make_ansatz(name="SPA", optimize=False, ladder=False, edges=edges)
-    
-    for U in [U0,U1,U2,U3]:
+
+    for U in [U0, U1, U2, U3]:
         E = tq.ExpectationValue(H=H, U=U)
         result = tq.minimize(E, silent=True)
         assert numpy.isclose(energy, result.energy)
