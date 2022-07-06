@@ -806,11 +806,22 @@ class QuantumChemistryBase:
         return UD
     
     def make_spa_ansatz(self, edges, hcb=False,  use_units_of_pi=False, label=None, optimize=None, ladder=True):
-        
+        """
+        Separable Pair Ansatz (SPA) for general molecules
+        see arxiv: 
+        edges: a list of tuples that contain the orbital indices for the specific pairs
+               one example: edges=[(0,), (1,2,3), (4,5)] are three pairs, one with a single orbital [0], one with three orbitals [1,2,3] and one with two orbitals [4,5]
+        hcb: spa ansatz in the hcb (hardcore-boson) space without transforming to current transformation (e.g. JordanWigner), use this for example in combination with the self.make_hardcore_boson_hamiltonian() and see the article above for more info
+        use_units_of_pi: circuit angles in units of pi
+        label: label the variables in the circuit
+        optimize: optimize the circuit construction (see article). Results in shallow circuit from Ry and CNOT gates
+        ladder: if true the excitation pattern will be local. E.g. in the pair from orbitals (1,2,3) we will have the excitations 1->2 and 2->3, if set to false we will have standard coupled-cluster style excitations - in this case this would be 1->2 and 1->3 
+        """
         if edges is None:
             raise TequilaException("SPA ansatz within a standard orbital basis needs edges. Please provide with the keyword edges.\nExample: edges=[(0,1,2),(3,4)] would correspond to two edges created from orbitals (0,1,2) and (3,4), note that orbitals can only be assigned to a single edge")
         
         # sanity check
+        # makeing sure that orbitals are uniquely assigned to edges
         for edge in edges:
             for orbital in edge:
                 for edge2 in edges:
@@ -818,7 +829,9 @@ class QuantumChemistryBase:
                         continue
                     elif orbital in edge2:
                         raise TequilaException("make_spa_ansatz: faulty list of edges, orbitals are overlapping e.g. orbital {} is in edge {} and edge {}".format(orbital, edge, edge2))
-
+        
+        # auto assign if the circuit construction is optimized
+        # depending on the current qubit encoding (if hcb_to_me is implemnented we can optimize)
         if optimize is None:
             try:
                 have_hcb_to_me = self.hcb_to_me() is not None
@@ -831,6 +844,7 @@ class QuantumChemistryBase:
 
         U = QCircuit()
         
+        # construction of the optimized circuit
         if optimize:
             for edge in edges:
                 U += gates.X(2*edge[0])
@@ -854,6 +868,7 @@ class QuantumChemistryBase:
             if not hcb:
                 U += self.hcb_to_me()
         else:
+            # construction of the non-optimized circuit
             U = self.prepare_reference()
             # will only work if the first orbitals in the edges are the reference orbitals
             sane = True
@@ -883,7 +898,10 @@ class QuantumChemistryBase:
         return U
 
     def make_ansatz(self, name: str, *args, **kwargs):
-
+        """
+        Automatically calls the right subroutines to construct ansatze implemented in tequila.chemistry
+        name: namne of the ansatz, examples are: UpCCGSD, UpCCD, SPA, UCCSD, SPA+UpCCD, SPA+GS
+        """
         name = name.lower()
         if name.strip() == "":
             return QCircuit()
@@ -892,12 +910,20 @@ class QuantumChemistryBase:
             U = QCircuit()
             subparts = name.split("+")
             U = self.make_ansatz(name=subparts[0], *args, **kwargs)
+            # making sure the there are is no undesired behaviour in layers after +
+            # reference should not be included since we are not starting from |00...0> anymore
             if "include_reference" in kwargs:
                 kwargs.pop("include_reference")
+            # hcb optimization can also not be used (in almost all cases)
             if "hcb_optimization" in kwargs:
                 kwargs.pop("hcb_optimization")
-            for subpart in subparts[1:]:
-                U += self.make_ansatz(name=subpart, *args, include_reference=False, hcb_optimization=False, **kwargs)
+            # making sure that we have no repeating variable names
+            label = None
+            if "label" in kwargs:
+                label = kwargs["label"]
+                kwargs.pop("label")
+            for i,subpart in enumerate(subparts[1:]):
+                U += self.make_ansatz(name=subpart, *args, label=(label,i), include_reference=False, hcb_optimization=False, **kwargs)
             return U
 
         if name == "uccsd":

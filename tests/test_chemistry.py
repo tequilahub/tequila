@@ -513,7 +513,7 @@ def test_crosscheck_cis_mp2_large():
     assert numpy.isclose(e_1, e_2, atol=1.e-4)
 
 
-@pytest.mark.skipif(condition=not (HAS_PSI4 or HAS_PYSCF), reason="psi4/pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
 def test_spa_ansatz_be():
     edges = [(0,),(1,2,3,4)]
     mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g", transformation="BravyiKitaev")
