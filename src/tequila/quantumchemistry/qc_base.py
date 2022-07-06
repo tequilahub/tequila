@@ -833,8 +833,15 @@ class QuantumChemistryBase:
         if edges is None:
             raise TequilaException("SPA ansatz within a standard orbital basis needs edges. Please provide with the keyword edges.\nExample: edges=[(0,1,2),(3,4)] would correspond to two edges created from orbitals (0,1,2) and (3,4), note that orbitals can only be assigned to a single edge")
         
-        # sanity check
-        # makeing sure that orbitals are uniquely assigned to edges
+        # sanity checks
+        # current SPA implementation needs even number of electrons
+        if self.n_electrons % 2 != 0:
+            raise TequilaException("need even number of electrons for SPA ansatz.\n{} active electrons".format(self.n_electrons))
+        # making sure that enough edges are assigned
+        n_edges = len(edges)
+        if len(edges) != self.n_electrons//2:
+            raise TequilaException("number of edges need to be equal to number of active electrons//2\n{} edges given\n{} active electrons\nfrozen core is {}".format(len(edges), self.n_electrons, frozen_core))
+        # making sure that orbitals are uniquely assigned to edges
         for edge in edges:
             for orbital in edge:
                 for edge2 in edges:

@@ -516,7 +516,8 @@ def test_crosscheck_cis_mp2_large():
 @pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
 def test_spa_ansatz_be():
     edges = [(0,),(1,2,3,4)]
-    mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g", transformation="BravyiKitaev")
+    # doing without frozen-core to test explicitly if single-orbital pairs work
+    mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g", transformation="BravyiKitaev", frozen_core=False)
     H = mol.make_hamiltonian()
     U = mol.make_ansatz(name="SPA", edges=edges)
     E = tq.ExpectationValue(H=H, U=U)
