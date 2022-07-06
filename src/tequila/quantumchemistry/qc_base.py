@@ -840,7 +840,7 @@ class QuantumChemistryBase:
         # making sure that enough edges are assigned
         n_edges = len(edges)
         if len(edges) != self.n_electrons//2:
-            raise TequilaException("number of edges need to be equal to number of active electrons//2\n{} edges given\n{} active electrons\nfrozen core is {}".format(len(edges), self.n_electrons, frozen_core))
+            raise TequilaException("number of edges need to be equal to number of active electrons//2\n{} edges given\n{} active electrons\nfrozen core is {}".format(len(edges), self.n_electrons, self.parameters.frozen_core))
         # making sure that orbitals are uniquely assigned to edges
         for edge in edges:
             for orbital in edge:
