@@ -31,7 +31,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  active_orbitals: list = "auto",
                  executable: str = None,
                  n_pno: int = None,
-                 frozen_core=True,
                  n_virt: int = 0,
                  keep_mad_files=False,
                  *args,
@@ -53,7 +52,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.executable = executable
         self.n_pno = n_pno
         self.n_virt = n_virt
-        self.frozen_core = frozen_core
         self.kwargs = kwargs
 
         # if no n_pno is given, look for MRA data (default)
@@ -201,7 +199,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if self.executable is None:
             return "pno_integrals executable not found\n" \
                    "pass over executable keyword or export MAD_ROOT_DIR to system environment"
-        self.write_madness_input(n_pno=self.n_pno, frozen_core=self.frozen_core, n_virt=self.n_virt, *args, **kwargs)
+        self.write_madness_input(n_pno=self.n_pno, n_virt=self.n_virt, *args, **kwargs)
 
         # prevent reading in old files
         self.cleanup(warn=True, delete_all_files=True)
@@ -572,7 +570,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def write_madness_input(self, n_pno=None, n_virt=0, frozen_core=True, filename="input", maxrank=None,
+    def write_madness_input(self, n_pno=None, n_virt=0, filename="input", maxrank=None,
                             n_orbitals=None, *args, **kwargs):
 
         if n_pno is not None and n_orbitals is not None:
@@ -580,16 +578,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 "n_pno={} and n_orbitals={} given ... please pick one".format(n_pno, n_orbitals))
 
         n_electrons = self.parameters.n_electrons
-        if frozen_core:
+        if self.parameters.frozen_core:
             # only count active electrons (will not compute pnos for frozen pairs)
-            for atom in self.parameters.get_atoms():
-                number = self.parameters.get_atom_number(name=atom)
-                if number > 18:
-                    n_electrons -= 18
-                elif number > 10:
-                    n_electrons -= 10
-                elif number > 2:
-                    n_electrons -= 2
+            n_core_electrons = self.parameters.get_number_of_core_electrons()
+            n_electrons -= n_core_electrons
 
         n_pairs = n_electrons // 2
         if n_orbitals is None:
@@ -610,7 +602,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                        "localize": "boys",
                        "ncf": "( none , 1.0 )"}
         data["pno"] = {"maxrank": maxrank, "f12": "false", "thresh": 1.e-4, "diagonal": True}
-        if not frozen_core:
+        if not self.parameters.frozen_core:
             data["pno"]["freeze"] = 0
         data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "symmetric"}
         data["plot"] = {}

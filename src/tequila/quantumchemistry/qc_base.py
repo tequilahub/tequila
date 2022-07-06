@@ -44,6 +44,7 @@ class QuantumChemistryBase:
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
+                 frozen_orbitals: list = None,
                  reference_orbitals: list = None,
                  orbitals: list = None,
                  *args,
@@ -54,6 +55,7 @@ class QuantumChemistryBase:
         parameters: the quantum chemistry parameters handed over as instance of the ParametersQC class (see there for content)
         transformation: the fermion to qubit transformation (default is JordanWigner). See encodings.py for supported encodings or to extend
         active_orbitals: list of active orbitals (others will be frozen, if we have N-electrons then the first N//2 orbitals will be considered occpied when creating the active space)
+        frozen_orbitals: convenience (will be removed from list of active orbitals)
         reference_orbitals: give list of orbitals that shall be considered occupied when creating a possible active space (default is the first N//2). The indices are expected to be total indices (including possible frozen orbitals in the counting)
         orbitals: information about the orbitals (should be in OrbitalData format, can be a dictionary)
         args
@@ -68,6 +70,14 @@ class QuantumChemistryBase:
         if reference_orbitals is None:
             reference_orbitals = [i for i in range(n_electrons // 2)]
         self._reference_orbitals = reference_orbitals
+        
+        # determine frozen core
+        if self.parameters.frozen_core:
+            n_core_electrons = self.parameters.get_number_of_core_electrons()
+            if frozen_orbitals is None:
+                frozen_orbitals = []
+            frozen_orbitals = list(set(frozen_orbitals+[i for i in range(n_core_electrons//2)]))
+            
 
         # initialize integral manager
         if "integral_manager" in kwargs:
@@ -75,7 +85,7 @@ class QuantumChemistryBase:
         else:
             self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
                                                                      reference_orbitals=reference_orbitals,
-                                                                     orbitals=orbitals, *args,
+                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, *args,
                                                                      **kwargs)
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
@@ -404,6 +414,10 @@ class QuantumChemistryBase:
             active_orbitals = [i for i in range(one_body_integrals.shape[0])]
             if "active_orbitals" in kwargs and kwargs["active_orbitals"] is not None:
                 active_orbitals = kwargs["active_orbitals"]
+            if "frozen_orbitals" in kwargs and kwargs["frozen_orbitals"] is not None:
+                for fo in kwargs["frozen_orbitals"]:
+                    if fo in active_orbitals:
+                        active_orbitals.remove(fo)
 
             reference_orbitals = [i for i in range(n_electrons // 2)]
             if "reference_orbitals" in kwargs and kwargs["reference_orbitals"] is not None:

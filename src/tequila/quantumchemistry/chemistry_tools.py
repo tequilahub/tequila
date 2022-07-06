@@ -119,6 +119,25 @@ class ParametersQC:
     multiplicity: int = 1
     charge: int = 0
     name: str = None
+    frozen_core: bool = True
+    
+    def get_number_of_core_electrons(self):
+        result = 0
+        for atom in self.get_atoms():
+            n=self.get_atom_number(atom)
+            if n>2:
+                result = 2 
+            if n>10:
+                result = 8
+            if n>18:
+                result = 18
+            if n>36:
+                result = 36
+            if n>45:
+                result = 54
+            if n>86:
+                result = 86
+        return result
 
     @property
     def n_electrons(self, *args, **kwargs):
