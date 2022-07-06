@@ -804,6 +804,83 @@ class QuantumChemistryBase:
                                                            assume_real=assume_real)
 
         return UD
+    
+    def make_spa_ansatz(self, edges, hcb=False,  use_units_of_pi=False, label=None, optimize=None, ladder=True):
+        
+        if edges is None:
+            raise TequilaException("SPA ansatz within a standard orbital basis needs edges. Please provide with the keyword edges.\nExample: edges=[(0,1,2),(3,4)] would correspond to two edges created from orbitals (0,1,2) and (3,4), note that orbitals can only be assigned to a single edge")
+        
+        # sanity check
+        for edge in edges:
+            for orbital in edge:
+                for edge2 in edges:
+                    if edge2==edge:
+                        continue
+                    elif orbital in edge2:
+                        raise TequilaException("make_spa_ansatz: faulty list of edges, orbitals are overlapping e.g. orbital {} is in edge {} and edge {}".format(orbital, edge, edge2))
+
+        if optimize is None:
+            try:
+                have_hcb_to_me = self.hcb_to_me() is not None
+            except:
+                have_hcb_to_me = False
+            if have_hcb_to_me: 
+                optimize=True
+            else:
+                optimize=False
+
+        U = QCircuit()
+        
+        if optimize:
+            for edge in edges:
+                U += gates.X(2*edge[0])
+                previous = edge[0]
+                if len(edge)==1:
+                    continue
+                for orbital in edge[1:]:
+                    c=previous
+                    if not ladder:
+                        c=edge[0]
+                    angle=Variable(name=((c, orbital), "D" ,label))
+                    if use_units_of_pi:
+                        angle=angle*numpy.pi
+                    if previous == edge[0]:
+                        U += gates.Ry(angle=angle, target=2*orbital, control=None)
+                    else:
+                        U += gates.Ry(angle=angle, target=2*orbital, control=2*c)
+                    U += gates.CNOT(2*orbital,2*c)
+                    previous = orbital
+
+            if not hcb:
+                U += self.hcb_to_me()
+        else:
+            U = self.prepare_reference()
+            # will only work if the first orbitals in the edges are the reference orbitals
+            sane = True
+            reference_orbitals = self.reference_orbitals
+            for edge in edges:
+                if self.orbitals[edge[0]] not in reference_orbitals:
+                    sane=False
+                if len(edge)>1:
+                    for orbital in edge[1:]:
+                        if self.orbitals[orbital] in reference_orbitals:
+                            sane=False
+            if not sane:
+                raise TequilaException("Non-Optimized SPA (e.g. with encodings that are not JW) will only work if the first orbitals of all SPA edges are occupied reference orbitals and all others are not. You gave edges={} and reference_orbitals are {}".format(edges, reference_orbitals))
+
+            for edge in edges:
+                previous = edge[0]
+                if len(edge)>1:
+                    for orbital in edge[1:]:
+                        c = previous
+                        if not ladder:
+                            c = edge[0]
+                        angle = Variable(name=((c,orbital), "D" ,label))
+                        if use_units_of_pi:
+                            angle=angle*numpy.pi
+                        U += self.make_excitation_gate(indices=[(2*c,2*orbital),(2*c+1,2*orbital+1)], angle=angle)
+                        previous = orbital
+        return U
 
     def make_ansatz(self, name: str, *args, **kwargs):
 
@@ -825,6 +902,13 @@ class QuantumChemistryBase:
 
         if name == "uccsd":
             return self.make_uccsd_ansatz(*args, **kwargs)
+        elif "spa" in name.lower():
+            if "hcb" not in kwargs:
+                hcb = False
+                if "hcb" in name.lower():
+                    hcb = True
+                kwargs["hcb"]=hcb
+            return self.make_spa_ansatz(*args, **kwargs)
         elif "d" in name or "s" in name:
             return self.make_upccgsd_ansatz(name=name, *args, **kwargs)
         else:

@@ -328,7 +328,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         """
         name = "SPA-UpCCD"
-        if hcb:
+        if hcb and "HCB" not in name.upper():
             name = "HCB-" + name
         return self.make_upccgsd_ansatz(name=name, label=label)
 

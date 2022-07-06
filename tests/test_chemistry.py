@@ -511,3 +511,26 @@ def test_crosscheck_cis_mp2_large():
     assert e_1 is not None
     assert e_2 is not None
     assert numpy.isclose(e_1, e_2, atol=1.e-4)
+
+
+@pytest.mark.skipif(condition=not (HAS_PSI4 or HAS_PYSCF), reason="psi4/pyscf not found")
+def test_spa_ansatz_be():
+    edges = [(0,),(1,2,3,4)]
+    mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g", transformation="BravyiKitaev")
+    H = mol.make_hamiltonian()
+    U = mol.make_ansatz(name="SPA", edges=edges)
+    E = tq.ExpectationValue(H=H, U=U)
+    result = tq.minimize(E, silent=True)
+    energy=result.energy
+    
+    mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g")
+    H = mol.make_hamiltonian()
+    U0 = mol.make_ansatz(name="SPA", edges=edges)
+    U1 = mol.make_ansatz(name="SPA", ladder=False, edges=edges)
+    U2 = mol.make_ansatz(name="SPA", optimize=False, edges=edges)
+    U3 = mol.make_ansatz(name="SPA", optimize=False, ladder=False, edges=edges)
+    
+    for U in [U0,U1,U2,U3]:
+        E = tq.ExpectationValue(H=H, U=U)
+        result = tq.minimize(E, silent=True)
+        assert numpy.isclose(energy, result.energy)
