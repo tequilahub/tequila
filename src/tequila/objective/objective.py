@@ -628,8 +628,12 @@ class TequilaVariableException(TequilaException):
     def __str__(self):
         return "Error in tequila variable:" + self.message
 
+def Variable(*args, **kwargs):
+    # make sure to give it back as an objective
+    variable=VariableImpl(*args, **kwargs)
+    return Objective(args=[variable])
 
-class Variable:
+class VariableImpl:
     """
     Hashable class representing generalized variables.
 

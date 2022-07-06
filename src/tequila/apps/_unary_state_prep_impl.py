@@ -13,11 +13,11 @@ Needs complete re-implementation at some point
 
 from tequila.circuit import QCircuit
 from tequila.circuit.gates import CNOT, Ry, X
-from tequila.objective.objective import Variable
+from tequila.objective.objective import Variable, VariableImpl
 import sympy
 
 
-class SympyVariable(Variable):
+class SympyVariable(VariableImpl):
     """
     Still need this structure for the dagger operation
     """
