@@ -145,6 +145,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals=None,
                  reference_orbitals=None,
+                 frozen_orbitals=None,
                  *args,
                  **kwargs):
         """
@@ -187,7 +188,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # psi4 active space will be formed later
         super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None,
-                         reference_orbitals=reference_orbitals,
+                         reference_orbitals=reference_orbitals,frozen_orbitals=[],
                          *args, **kwargs)
 
         oenergies = []
@@ -212,26 +213,36 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if active_orbitals is None:
             active_orbitals = [i for i in range(self.n_orbitals)]
 
-        if not hasattr(active_orbitals, "keys"):
+        if frozen_orbitals is None and self.parameters.frozen_core:
+            frozen_orbitals = [i for i in range(self.parameters.get_number_of_core_electrons()//2)]
+
+        def list_to_irrep_dict(orbital_list):
             # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
             active_dict = {}
-            for x in active_orbitals:
+            if orbital_list is None:
+                return active_dict
+            for x in orbital_list:
                 orbital = self.orbitals[x]
                 if orbital.irrep not in active_dict:
                     active_dict[orbital.irrep] = [orbital.idx_irrep]
                 else:
                     active_dict[orbital.irrep] += [orbital.idx_irrep]
-            active_orbitals = active_dict
+            return active_dict
+
+        if not hasattr(active_orbitals, "keys"):
+            active_orbitals = list_to_irrep_dict(active_orbitals)
+            
         if not hasattr(reference_orbitals, "keys"):
-            # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
-            reference_dict = {}
-            for x in reference_orbitals:
-                orbital = self.orbitals[x]
-                if orbital.irrep not in reference_dict:
-                    reference_dict[orbital.irrep] = [orbital.idx_irrep]
-                else:
-                    reference_dict[orbital.irrep] += [orbital.idx_irrep]
-            reference_orbitals = reference_dict
+            reference_orbitals = list_to_irrep_dict(reference_orbitals)
+
+        if not hasattr(frozen_orbitals, "keys"):
+            frozen_orbitals = list_to_irrep_dict(frozen_orbitals)
+        
+        # remove frozen-orbitals from active orbitals
+        for k,v in frozen_orbitals.items():
+            for x in v:
+                if k in active_orbitals and x in active_orbitals[k]:
+                    active_orbitals[k].remove(x)
 
         self.integral_manager.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals,
                                                                                reference=reference_orbitals)

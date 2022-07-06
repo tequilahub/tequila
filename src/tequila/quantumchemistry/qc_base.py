@@ -75,8 +75,7 @@ class QuantumChemistryBase:
         if self.parameters.frozen_core:
             n_core_electrons = self.parameters.get_number_of_core_electrons()
             if frozen_orbitals is None:
-                frozen_orbitals = []
-            frozen_orbitals = list(set(frozen_orbitals+[i for i in range(n_core_electrons//2)]))
+                frozen_orbitals = [i for i in range(n_core_electrons//2)]
             
 
         # initialize integral manager
