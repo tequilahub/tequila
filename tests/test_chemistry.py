@@ -524,7 +524,7 @@ def test_spa_ansatz_be():
     result = tq.minimize(E, silent=True)
     energy=result.energy
     
-    mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g")
+    mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g", frozen_core=False)
     H = mol.make_hamiltonian()
     U0 = mol.make_ansatz(name="SPA", edges=edges)
     U1 = mol.make_ansatz(name="SPA", ladder=False, edges=edges)
