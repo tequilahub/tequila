@@ -33,12 +33,12 @@ In a conda environment this can be installed with
 ```bash
 conda install psi4 -c psi4
 ```
-Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/Chemistry.ipynb) that illustrates the usage.
+Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
 
 - [Madness](https://github.com/kottmanj/madness)
 Currently you need to compile from a separate [fork](https://github.com/kottmanj/madness).
 See the github page of this fork for installation instruction.
-Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage.
+Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage.
 
 - [PySCF](https://github.com/pyscf/pyscf)  
 Works similar as Psi4. Classical methods are also integrated in the madness interface allowing to use them in a basis-set-free representation.
@@ -100,7 +100,7 @@ Of course you can also use one of the other backends (see above).
 We have a collection of [*tutorials*](https://github.com/tequilahub/tequila-tutorials) covering basic usage of tequila as well as cutting edge research content:
 - Tutorial on [Basic Usage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb)  
 - Chemistry tutorial with psi4: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb)
-- Chemistry tutorial with madness: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/chemistry/blob/main/MadnessInterface.ipynb)
+- Chemistry tutorial with madness: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)
 - check the list of research projects below for links to specific examples.  
 - all tutorials: [github/tequilahub/tequila-tutorials](https://github.com/tequilahub/tequila-tutorials).  
 
