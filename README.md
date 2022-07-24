@@ -99,7 +99,7 @@ Of course you can also use one of the other backends (see above).
 # Getting Started
 We have a collection of [*tutorials*](https://github.com/tequilahub/tequila-tutorials) covering basic usage of tequila as well as cutting edge research content:
 - Tutorial on [Basic Usage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb)  
-- Chemistry tutorial with psi4: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/chemistry/blob/main/ChemistryModule.ipynb)
+- Chemistry tutorial with psi4: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb)
 - Chemistry tutorial with madness: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/chemistry/blob/main/MadnessInterface.ipynb)
 - check the list of research projects below for links to specific examples.  
 - all tutorials: [github/tequilahub/tequila-tutorials](https://github.com/tequilahub/tequila-tutorials).  
@@ -129,7 +129,7 @@ result.history.plot("gradients")
 
 ## Chemistry Hello World (Madness backend)
 install backend by following instructions given [here](https://github.com/kottmanj/madness)  
-more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)  
+more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)  
 ```python
 import tequila as tq
 
@@ -167,7 +167,7 @@ pip install pyscf
 # and/or
 conda install psi4 -c psi4 
 ```
-more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/Chemistry.ipynb)
+more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb)
 ```python
 # define a molecule within an active space
 active = {"a1": [1], "b1":[0]}
@@ -208,8 +208,8 @@ J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.
 Reducing Qubit Requirements while Maintaining Numerical Precision for the Variational Quantum Eigensolver: A Basis-Set-Free Approach.  
 J.Phys.Chem.Lett., 2021, [doi.org/10.1021/acs.jpclett.0c03410](https://doi.org/10.1021/acs.jpclett.0c03410).  
 [arxiv:2008.02819](https://arxiv.org/abs/2008.02819)  
-[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/chemistry/blob/main/BasisSetFreeVQEExample.ipynb)  
-[tutorial on the madness interface](https://github.com/aspuru-guzik-group/tequila-tutorials/chemistry/blob/main/MadnessInterface.ipynb)  
+[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/chemistry/BasisSetFreeVQEExample.ipynb)  
+[tutorial on the madness interface](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)  
 
 A. Cervera-Lierta, J.S. Kottmann, A. Aspuru-Guzik.  
 The Meta-Variational Quantum Eigensolver.  
@@ -229,7 +229,7 @@ Natural Evolutionary Strategies for Variational Quantum Computation.
 J. S. Kottmann, A. Aspuru-Guzik,  
 Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a Separable Pair Approximation,  
 [arxiv:2105.03836](https://arxiv.org/abs/2105.03836)  
-[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/chemistry/blob/main/SeparablePairAnsatz.ipynb)   
+[example code](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/SeparablePairAnsatz.ipynb)   
  
 K. Choudhary,  
 Quantum Computation for Predicting Electron and Phonon Properties of Solids  
@@ -239,12 +239,12 @@ Quantum Computation for Predicting Electron and Phonon Properties of Solids
 P. Schleich, J.S. Kottmann, A. Aspuru-Guzik,  
 Improving the Accuracy of the Variational Quantum Eigensolver for Molecular Systems by the Explicitly-Correlated Perturbative [2]-R12-Correction  
 [arxiv:2110.06812](https://arxiv.org/abs/2110.06812)  
-[tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/chemistry/blob/main/F12Correction.ipynb)  
+[tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/F12Correction.ipynb)  
 
 M. Weber, A. Anand, A. Cervera-Lierta, J. S. Kottmann, T.-H. Kyaw, B. Li, A. Aspuru-Guzik, C. Zhang and Z. Zhao,  
 Toward Reliability in the NISQ Era: Robust Interval Guarantee for Quantum Measurements on Approximate States  
 [arxiv:2110.09793](https://arxiv.org/abs/2110.09793)  
-[tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/research/blob/main/RobustnessIntervals.ipynb)  
+[tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/research/RobustnessIntervals.ipynb)  
   
 M. S. Rudolph, S. Sim, A. Raza, M. Stechly, J. R. McClean, E. R. Anschuetz, L. Serrano, A. Perdomo-Ortiz  
 ORQVIZ: Visualizing High-Dimensional Landscapes in Variational Quantum Algorithms  
