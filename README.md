@@ -209,7 +209,7 @@ Reducing Qubit Requirements while Maintaining Numerical Precision for the Variat
 J.Phys.Chem.Lett., 2021, [doi.org/10.1021/acs.jpclett.0c03410](https://doi.org/10.1021/acs.jpclett.0c03410).  
 [arxiv:2008.02819](https://arxiv.org/abs/2008.02819)  
 [example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryBasisSetFreeVQE.ipynb)  
-[tutorial on the madness interface](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)  
+[tutorial on the madness interface](https://github.com/aspuru-guzik-group/tequila-tutorials/chemistry/blob/main/ChemistryMadnessInterface.ipynb)  
 
 A. Cervera-Lierta, J.S. Kottmann, A. Aspuru-Guzik.  
 The Meta-Variational Quantum Eigensolver.  
