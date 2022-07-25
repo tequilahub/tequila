@@ -194,7 +194,7 @@ print("CISD: {:+2.8}f".format(cisd))
 print("FCI : {:+2.8}f".format(fci))
 ```
 
-Do you want to create your own methods? Check out the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials)!
+Do you want to create your own methods? Check out the [tutorials](https://github.com/tequilahub/tequila-tutorials)!
 
 # Some Research projects using Tequila
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
