@@ -274,6 +274,7 @@ QuantMark: A Benchmarking API for VQE Algorithms
 
 A. Anand, J.S. Kottmann, A. Aspuru-Guzik  
 Quantum compression with classically simulatable circuits  
+[code](https://github.com/AbhinavUofT/GA_for_encoder)  
 [arxiv:2207.02961](https://arxiv.org/abs/2207.02961)  
 
 J.S. Kottmann  
