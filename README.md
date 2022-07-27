@@ -274,7 +274,7 @@ QuantMark: A Benchmarking API for VQE Algorithms
 
 J.S. Kottmann  
 Molecular Circuit Design: A Graph-Based Approach  
-[arxiv:2207.12421](https://arxiv.org/abs/2207.12421)
+[arxiv:2207.12421](https://arxiv.org/abs/2207.12421)  
 [example code](https://github.com/tequilahub/tequila-tutorials/blob/main/chemistry/GraphBasedCircuitDesign.ipynb)  
 
 
