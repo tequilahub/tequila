@@ -272,6 +272,10 @@ QuantMark: A Benchmarking API for VQE Algorithms
 [DOI:10.1109/TQE.2022.3159327](https://doi.org/10.1109/TQE.2022.3159327)  
 [QuantMark Codebase](https://github.com/QuantMarkFramework/LibMark/)  
 
+A. Anand, J.S. Kottmann, A. Aspuru-Guzik  
+Quantum compression with classically simulatable circuits  
+[arxiv:2207.02961](https://arxiv.org/abs/2207.02961)  
+
 J.S. Kottmann  
 Molecular Circuit Design: A Graph-Based Approach  
 [arxiv:2207.12421](https://arxiv.org/abs/2207.12421)  
