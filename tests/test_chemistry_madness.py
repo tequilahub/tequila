@@ -7,8 +7,10 @@ from tequila.quantumchemistry import INSTALLED_QCHEMISTRY_BACKENDS
 
 has_pyscf = "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS
 
+executable = tq.quantumchemistry.madness_interface.QuantumChemistryMadness.find_executable()
 root = os.environ.get("MAD_ROOT_DIR")
-executable = tq.quantumchemistry.madness_interface.QuantumChemistryMadness.find_executable(root)
+if executable is None:
+    executable = tq.quantumchemistry.madness_interface.QuantumChemistryMadness.find_executable(root)
 print("root = ", root)
 print("executable = ", executable)
 
