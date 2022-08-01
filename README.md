@@ -35,12 +35,13 @@ conda install psi4 -c psi4
 ```
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
 
-- [Madness](https://github.com/kottmanj/madness)
-In a conda environment this can be installed with
+- [Madness](https://github.com/kottmanj/madness)  
+In a conda environment this can be installed with  
 ```bash
 conda install madtequila -c kottmann
-```
-Alternatively it can be compield from a separate [fork](https://github.com/kottmanj/madness) of madness.  
+```  
+This installs a modified version of madness ready to use with tequila.  
+Alternatively it can be compield from the [fork](https://github.com/kottmanj/madness).  
 See the github page of this fork for installation instruction.  
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage.
 
@@ -132,7 +133,7 @@ result.history.plot("gradients")
 ```
 
 ## Chemistry Hello World (Madness backend)
-install backend by following instructions given [here](https://github.com/kottmanj/madness)  
+see above for installation of backend.    
 more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)  
 ```python
 import tequila as tq
