@@ -9,6 +9,7 @@ import warnings
 import os
 import shutil
 
+
 # Examples how to initialize the madness backend
 # tq.Molecule(geometry="...") will initialize a molecule with n_qubits=n_electrons (n_electrons//2 HF orbitals + n_electrons//2 PNOs)
 # tq.Molecule(geometry="...", n_pno="read") will read in files (name is auto-generated from geometry)
@@ -79,9 +80,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         # try to read in data in the following cases
         # - no executable found
         # - executable found but read in explicitly demanded through n_pno="read"
-        if (n_pno is None and executable is None) or (hasattr(n_pno,"lower") and n_pno.lower()=="read") :
+        if (n_pno is None and executable is None) or (hasattr(n_pno, "lower") and n_pno.lower() == "read"):
             h, g = self.read_tensors(name=name, datadir=datadir)
-            n_pno=None
+            n_pno = None
         else:
             h = "failed"
             g = "failed"
@@ -105,7 +106,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             status += "found {}_htensor.npy={}\n".format(name, "failed" not in h)
             status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
             status += "h_tensor report:\n"
-            status += str(h) 
+            status += str(h)
             status += "g_tensor report:\n"
             status += str(g)
             if "failed" in h or "failed" in g:
@@ -195,7 +196,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 warnings.warn(
                     "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(
                         self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
-        
+
         # delete *.bin files and pnoinfo.txt form madness calculation
         if not keep_mad_files:
             self.cleanup(warn=False, delete_all_files=False)
@@ -241,11 +242,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         """
         Try to read files "name_htensor.npy" and "name_gtensor.npy"
         """
-        
-        path=name
+
+        path = name
         if datadir is not None:
-            path="{}/{}".format(datadir,name)
-        
+            path = "{}/{}".format(datadir, name)
+
         try:
             h = numpy.load("{}_htensor.{}".format(path, filetype))
         except:
@@ -662,9 +663,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 if not os.path.exists(datadir):
                     os.makedirs(datadir)
             except Exception as E:
-                warnings.warn("tried to create datadir={} and caught\n{}".format(datadir,str(E)), TequilaWarning)
-            
-            path = "{}/{}".format(datadir,name)
+                warnings.warn("tried to create datadir={} and caught\n{}".format(datadir, str(E)), TequilaWarning)
+
+            path = "{}/{}".format(datadir, name)
         try:
             g_data = numpy.fromfile("molecule_gtensor.bin".format())
             sd = int(numpy.power(g_data.size, 0.25))
@@ -720,9 +721,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         return correction.compute()
 
     def __str__(self):
-        path=self.parameters.name
+        path = self.parameters.name
         if hasattr(self, "datadir") and datadir is not None:
-            path="{}/{}".format(self.dartadir, path)
+            path = "{}/{}".format(self.dartadir, path)
         info = super().__str__()
         info += "\n"
         info += "{:15} : {}\n".format("executable", self.executable)
