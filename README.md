@@ -28,14 +28,14 @@ For best performance it is recommended to have `qulacs` installed.
 
 # QuantumChemistry:
 Currently supported
-- [Psi4](https://github.com/psi4/psi4).
+## [Psi4](https://github.com/psi4/psi4).
 In a conda environment this can be installed with
 ```bash
 conda install psi4 -c psi4
 ```
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
 
-- [Madness](https://github.com/kottmanj/madness)  
+## [Madness](https://github.com/kottmanj/madness)  
 In a conda environment this can be installed with  
 ```bash
 conda install madtequila -c kottmann
@@ -45,7 +45,11 @@ Alternatively it can be compield from the [fork](https://github.com/kottmanj/mad
 See the github page of this fork for installation instruction.  
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage.
 
-- [PySCF](https://github.com/pyscf/pyscf)  
+## [PySCF](https://github.com/pyscf/pyscf)  
+Install with
+```bash
+pip install pyscf
+```  
 Works similar as Psi4. Classical methods are also integrated in the madness interface allowing to use them in a basis-set-free representation.
 
 # Install from source
