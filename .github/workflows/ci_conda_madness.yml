@@ -1,0 +1,53 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Test-Madness with special conda installer
+
+on:
+  push:
+    branches: [ master, devel ]
+  pull_request:
+    branches: [ master, devel ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install and test madness interface with conda
+      run: |
+        ver=$(python -c"import sys; print(sys.version_info.minor)")
+        fullver=$(echo "3.$ver")
+        wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+        export CONDABASE=$HOME/miniconda
+        bash miniconda.sh -b -p $CONDABASE
+        export PATH=$CONDABASE:$PATH
+        export PATH="$CONDABASE/bin:$PATH"
+        conda update -q conda
+        conda create -n madtest python=$fullver
+        conda init bash
+        bash
+        source $HOME/.bashrc
+        source $CONDABASE/bin/activate
+        conda activate madtest
+        conda install madtequila -c kottmann
+
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
+        python -m pip install -e .
+        python -m pip install pytest
+        cd tests
+        python test_chemistry_madness.py
+        pytest test_chemistry_madness.py
+        cd ../
+
