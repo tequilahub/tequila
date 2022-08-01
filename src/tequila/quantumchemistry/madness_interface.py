@@ -9,6 +9,16 @@ import warnings
 import os
 import shutil
 
+# Examples how to initialize the madness backend
+# tq.Molecule(geometry="...") will initialize a molecule with n_qubits=n_electrons (n_electrons//2 HF orbitals + n_electrons//2 PNOs)
+# tq.Molecule(geometry="...", n_pno="read") will read in files (name is auto-generated from geometry)
+# tq.Molecule(geometry="...", name="X", n_pno="read") will read in files X_htensor.npy, X_gtensor.npy, X_pnoinfo.txt
+# tq.Molecule(geometry="...", name="X", datadir="asd/Y/", n_pno="read") reads in files from directory asd/Y/
+# control madness input sections with dictionaries
+# tq.Molecule(geometry="...", pno={"maxrank":10, "freeze":0}, dft={"k":9, "L":25.0})
+# compute more orbitals
+# tq.Molecule(geometry="...", n_pno=10) # computes 10 PNOs additional to the occupied HF orbitals
+
 
 class TequilaMadnessException(TequilaException):
     def __str__(self):
@@ -33,8 +43,17 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  n_pno: int = None,
                  n_virt: int = 0,
                  keep_mad_files=False,
+                 datadir=None,
                  *args,
                  **kwargs):
+
+        # easier read in of external files
+        # instead of name=/asd/dsa/he
+        # name=he and dataidr=asd/dsa
+        if datadir is None:
+            datadir = ""
+
+        self.datadir = datadir
 
         # see if MAD_ROOT_DIR is defined
         self.madness_root_dir = os.environ.get("MAD_ROOT_DIR")
@@ -57,22 +76,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         # if no n_pno is given, look for MRA data (default)
         name = parameters.name
 
-        if n_pno is None:
-            h, g = self.read_tensors(name=name)
-
-            if h == "failed" or g == "failed":
-                warnings.warn(
-                    "Could not find data for {}. Looking for binary files from potential madness calculation".format(
-                        name), TequilaWarning)
-                # try if madness was run manually without conversion before
-                h, g = self.convert_madness_output_from_bin_to_npy(name=name)
+        # try to read in data in the following cases
+        # - no executable found
+        # - executable found but read in explicitly demanded through n_pno="read"
+        if (n_pno is None and executable is None) or (hasattr(n_pno,"lower") and n_pno.lower()=="read") :
+            h, g = self.read_tensors(name=name, datadir=datadir)
+            n_pno=None
         else:
             h = "failed"
             g = "failed"
 
-        if h == "failed" or g == "failed":
-            status = "found {}_htensor.npy={}\n".format(name, h != "failed")
-            status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
+        if "failed" in h or "failed" in g:
+            status = "found {}_htensor.npy={}\n".format(name, "failed" not in h)
+            status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
             try:
                 # try to run madness
                 self.parameters = parameters
@@ -80,15 +96,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 madness_status = self.run_madness(*args, **kwargs)
                 if int(madness_status) != 0:
                     warnings.warn("MADNESS did not terminate as expected! status = {}".format(status), TequilaWarning)
-                status += str(madness_status)
+                status += str(madness_status) + "\n"
             except Exception as E:
                 status += "madness_run={}\n".format(str(E))
 
             # will read the binary files, convert them and save them with the right name
-            h, g = self.convert_madness_output_from_bin_to_npy(name=name)
-            status += "found {}_htensor.npy={}\n".format(name, h != "failed")
-            status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
-            if h == "failed" or g == "failed":
+            h, g = self.convert_madness_output_from_bin_to_npy(name=name, datadir=datadir)
+            status += "found {}_htensor.npy={}\n".format(name, "failed" not in h)
+            status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
+            status += "h_tensor report:\n"
+            status += str(h) 
+            status += "g_tensor report:\n"
+            status += str(g)
+            if "failed" in h or "failed" in g:
                 raise TequilaMadnessException("Could not initialize the madness interface\n"
                                               "Status report is\n"
                                               "{status}\n"
@@ -97,7 +117,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                                               "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
                                               "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness\n".format(
                     name=name, status=status))
-
         # get additional information from madness file
         nuclear_repulsion = 0.0
         pairinfo = None
@@ -176,7 +195,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 warnings.warn(
                     "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(
                         self.n_orbitals - nrefs, n_pno, n_virt), TequilaWarning)
-
+        
         # delete *.bin files and pnoinfo.txt form madness calculation
         if not keep_mad_files:
             self.cleanup(warn=False, delete_all_files=False)
@@ -218,18 +237,22 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return madout
 
-    def read_tensors(self, name="molecule", filetype="npy"):
+    def read_tensors(self, name="molecule", filetype="npy", datadir=None):
         """
         Try to read files "name_htensor.npy" and "name_gtensor.npy"
         """
-
+        
+        path=name
+        if datadir is not None:
+            path="{}/{}".format(datadir,name)
+        
         try:
-            h = numpy.load("{}_htensor.{}".format(name, filetype))
+            h = numpy.load("{}_htensor.{}".format(path, filetype))
         except:
             h = "failed"
 
         try:
-            g = numpy.load("{}_gtensor.{}".format(name, filetype))
+            g = numpy.load("{}_gtensor.{}".format(path, filetype))
         except:
             g = "failed"
 
@@ -630,16 +653,27 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return data
 
-    def convert_madness_output_from_bin_to_npy(self, name):
+    def convert_madness_output_from_bin_to_npy(self, name, datadir=None):
+        path = name
+        if datadir is not None:
+            # if the datadir does not exist then tequila will crash
+            try:
+                import os
+                if not os.path.exists(datadir):
+                    os.makedirs(datadir)
+            except Exception as E:
+                warnings.warn("tried to create datadir={} and caught\n{}".format(datadir,str(E)), TequilaWarning)
+            
+            path = "{}/{}".format(datadir,name)
         try:
             g_data = numpy.fromfile("molecule_gtensor.bin".format())
             sd = int(numpy.power(g_data.size, 0.25))
             assert (sd ** 4 == g_data.size)
             sds = [sd] * 4
             g = g_data.reshape(sds)
-            numpy.save("{}_gtensor.npy".format(name), arr=g)
-        except:
-            g = "failed"
+            numpy.save("{}_gtensor.npy".format(path), arr=g)
+        except Exception as E:
+            g = "failed\n{}\n".format(str(E))
 
         try:
             h_data = numpy.fromfile("molecule_htensor.bin")
@@ -647,10 +681,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             assert (sd ** 2 == h_data.size)
             sds = [sd] * 2
             h = h_data.reshape(sds)
-            numpy.save("{}_htensor.npy".format(name), arr=h)
-        except:
-            h = "failed"
-
+            numpy.save("{}_htensor.npy".format(path), arr=h)
+        except Exception as E:
+            h = "failed\n{}\n".format(str(E))
         return h, g
 
     def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, n_ri: int = None,
@@ -687,11 +720,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         return correction.compute()
 
     def __str__(self):
+        path=self.parameters.name
+        if hasattr(self, "datadir") and datadir is not None:
+            path="{}/{}".format(self.dartadir, path)
         info = super().__str__()
         info += "\n"
         info += "{:15} : {}\n".format("executable", self.executable)
-        info += "{:15} : {}\n".format("htensor", "{}_htensor.npy".format(self.parameters.name))
-        info += "{:15} : {}\n".format("gtensor", "{}_gtensor.npy".format(self.parameters.name))
+        info += "{:15} : {}\n".format("htensor", "{}_htensor.npy".format(path))
+        info += "{:15} : {}\n".format("gtensor", "{}_gtensor.npy".format(path))
 
         return info
 

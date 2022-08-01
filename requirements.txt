@@ -8,7 +8,7 @@ jaxlib
 setuptools
 pytest
 openfermion ~= 1.0 # can not be smaller than 1.0 
-cmake # needed by qulacs, can be removed otherwise
+#cmake # needed by qulacs, can be removed otherwise, now in qulacs requirements
 qulacs # default simulator (best integration), remove if the installation gives you trouble and just install one of the other supported backend
 
 #optional quantum backends
