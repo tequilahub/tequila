@@ -48,12 +48,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  *args,
                  **kwargs):
 
-        # easier read in of external files
-        # instead of name=/asd/dsa/he
-        # name=he and dataidr=asd/dsa
-        if datadir is None:
-            datadir = ""
-
         self.datadir = datadir
 
         # see if MAD_ROOT_DIR is defined
@@ -723,7 +717,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def __str__(self):
         path = self.parameters.name
         if hasattr(self, "datadir") and self.datadir is not None:
-            path = "{}/{}".format(self.dartadir, path)
+            path = "{}/{}".format(self.datadir, path)
         info = super().__str__()
         info += "\n"
         info += "{:15} : {}\n".format("executable", self.executable)
