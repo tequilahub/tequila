@@ -1,7 +1,7 @@
 from __future__ import annotations
 from tequila.circuit._gates_impl import QGateImpl, assign_variable, list_assignment
-from tequila import TequilaException, TequilaWarning
-from tequila import BitNumbering
+from tequila.utils.exceptions import TequilaException, TequilaWarning
+from tequila.utils.bitstrings import BitNumbering
 import typing
 import copy
 from collections import defaultdict
@@ -533,7 +533,7 @@ class QCircuit():
         # currently its recreated in the init function
         return QCircuit(gates=new_gates)
 
-    def add_controls(self, control, inpl: typing.Optional[bool] = True) \
+    def add_controls(self, control, inpl: typing.Optional[bool] = False) \
             -> typing.Optional[QCircuit]:
         """Depending on the truth value of inpl:
             - return controlled version of self with control as the control qubits if inpl;
@@ -543,6 +543,7 @@ class QCircuit():
         """
         if inpl:
             self._inpl_control_circ(control)
+            return self
         else:
             # return self._return_control_circ(control)
             circ = copy.deepcopy(self)
@@ -964,3 +965,35 @@ class Moment(QCircuit):
         """
         raise TequilaException(
             'this method should never be called from Moment. Call from the QCircuit class itself instead.')
+
+
+
+def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None)->int:
+    '''
+    Function that checks which are the active qubits of two circuits and 
+    provides an unused qubit that is not among them. If all qubits are used
+    it adds a new one.
+
+    Parameters
+    ----------
+    U0 : QCircuit, corresponding to the first state.
+        
+    U1 : QCircuit, corresponding to the second state.
+
+    Returns
+    -------
+    control_qubit : int
+        
+    '''
+    
+    active_qubits = list(set(U0.qubits+U1.qubits))
+    # default
+    free_qubit = max(active_qubits) + 1
+    # see if we can use another one
+    for n in range(max(active_qubits)+1):
+        if n not in active_qubits:
+            free_qubit = n
+            break
+    assert free_qubit not in active_qubits
+    
+    return free_qubit

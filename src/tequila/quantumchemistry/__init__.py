@@ -1,5 +1,6 @@
 import typing
-from .qc_base import ParametersQC, QuantumChemistryBase, NBodyTensor
+from .qc_base import QuantumChemistryBase
+from .chemistry_tools import ParametersQC, NBodyTensor
 from .madness_interface import QuantumChemistryMadness
 
 SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness", "pyscf"]
@@ -69,7 +70,11 @@ def Molecule(geometry: str = None,
         if k in ParametersQC.__dict__.keys():
             keyvals[k] = v
 
-    parameters = ParametersQC(name=name, geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
+    if "parameters" in kwargs:
+        parameters = kwargs["parameters"]
+        kwargs.pop("parameters")
+    else:
+        parameters = ParametersQC(name=name, geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
 
     integrals_provided = all([key in kwargs for key in ["one_body_integrals", "two_body_integrals"]])
     if integrals_provided and backend is None:
@@ -109,6 +114,21 @@ def Molecule(geometry: str = None,
 
     return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation,
                                                           guess_wfn=guess_wfn, *args, **kwargs)
+
+
+def MoleculeFromTequila(mol, transformation=None, backend=None, *args, **kwargs):
+    c, h, g = mol.get_integrals()
+    parameters = mol.parameters
+    if backend is None:
+        if "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
+            backend = "pyscf"
+        else:
+            backend = "base"
+    if transformation is None:
+        transformation = mol.transformation
+    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation,
+                                                          n_electrons=mol.n_electrons, one_body_integrals=h,
+                                                          two_body_integrals=g, nuclear_repulsion=c, *args, **kwargs)
 
 
 def MoleculeFromOpenFermion(molecule,

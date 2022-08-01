@@ -310,7 +310,7 @@ def Z(target: typing.Union[list, int], control: typing.Union[list, int] = None, 
                                   generator=generator, *args, **kwargs)
 
 
-def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None, *args, **kwargs):
+def ExpPauli(paulistring: typing.Union[PauliString, str, dict], angle, control: typing.Union[list, int] = None, *args, **kwargs):
     """Exponentiated Pauligate:
     
     ExpPauli(PauliString, angle) = exp(-i* angle/2* PauliString)
@@ -342,14 +342,7 @@ def ExpPauli(paulistring: typing.Union[PauliString, str], angle, control: typing
 
     """
 
-    if isinstance(paulistring, str):
-        ps = PauliString.from_string(string=paulistring)
-    elif isinstance(paulistring, list):
-        ps = PauliString.from_openfermion(key=paulistring)
-    elif isinstance(paulistring, dict):
-        ps = PauliString(data=paulistring)
-    else:
-        ps = paulistring
+    ps = _convert_Paulistring(paulistring)
 
     # Failsave: If the paulistring contains just one pauli matrix
     # it is better to initialize a rotational gate due to strange conventions in some simulators
@@ -1032,9 +1025,7 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         # Alternative representation in arxiv:2104.05695 (not implemented -> could be added and controlled with optional compile keywords)
         if self.compile_options == "optimize" and len(self.target) == 2 and exponential_pauli:
             p,q = self.target
-            U0 = X(target=p)
-            U0 += X(target=p, control=q)
-            U0 += X(target=p)
+            U0 = X(target=p, control=q)
             U1 = Ry(angle=self.parameter, target=q, control=p)
             return U0 + U1 + U0
         elif self.compile_options == "optimize" and len(self.target) == 4 and exponential_pauli:
@@ -1078,3 +1069,75 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
 
         return [(2.0 * r, Up1 +  Up2), (-2.0 * r, Um1 + Um2)]
 
+def _convert_Paulistring(paulistring: typing.Union[PauliString, str, dict]) -> PauliString:
+    '''
+    Function that given a paulistring as PauliString structure or 
+    as string or dict or list, returns the corresponding PauliString 
+    structure.
+
+
+    Parameters
+    ----------
+    paulistring : typing.Union[PauliString , str, dict] 
+    given as PauliString structure or as string or dict or list
+    if given as string: Format should be like X(0)Y(3)Z(2)
+    if given as list: Format should be like [(0,'X'),(3,'Y'),(2,'Z')]
+    if given as dict: Format should be like { 0:'X', 3:'Y', 2:'Z' }
+
+    Returns
+    -------
+    ps : PauliString
+    '''
+    
+    if isinstance(paulistring, str):
+        ps = PauliString.from_string(string=paulistring)
+    elif isinstance(paulistring, list):
+        ps = PauliString.from_openfermion(key=paulistring)
+    elif isinstance(paulistring, dict):
+        ps = PauliString(data=paulistring)
+    else:
+        ps = paulistring
+    
+    return ps
+
+def PauliGate(paulistring: typing.Union[PauliString, str, dict], control: typing.Union[list, int] = None, *args, **kwargs) -> QCircuit:
+    '''
+    Functions that converts a Pauli string into the corresponding quantum 
+    circuit.
+    
+    Parameters
+    ----------
+    paulistring : typing.Union[PauliString , str, dict] 
+    given as PauliString structure or as string or dict or list
+    if given as string: Format should be like X(0)Y(3)Z(2)
+    if given as list: Format should be like [(0,'X'),(3,'Y'),(2,'Z')]
+    if given as dict: Format should be like { 0:'X', 3:'Y', 2:'Z' }
+        
+    control: typing.Union[list, int] : (Default value = None)
+            control qubits
+
+    Raises
+    ------
+    Exception: Not a Pauli Operator.
+
+    Returns
+    -------
+    U : QCircuit object corresponding to the Pauli string.
+
+    '''
+    
+    ps = _convert_Paulistring(paulistring)
+
+    U = QCircuit()
+
+    for k,v in ps.items():
+        if v.lower() == "x":
+            U += X(target=k, control=control, *args, **kwargs)
+        elif v.lower() == "y":
+            U += Y(target=k, control=control, *args, **kwargs)
+        elif v.lower() == "z":
+            U += Z(target=k, control=control, *args, **kwargs)
+        else:
+            raise Exception("{}???".format(v))
+
+    return U

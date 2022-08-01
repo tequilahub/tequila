@@ -1,11 +1,9 @@
-from tequila.optimizers.optimizer_base import OptimizerHistory, Optimizer, TequilaOptimizerException
+from tequila.optimizers.optimizer_base import OptimizerHistory, Optimizer, TequilaOptimizerException, OptimizerResults
 from tequila.optimizers.optimizer_scipy import OptimizerSciPy
 from tequila.optimizers.optimizer_gd import OptimizerGD
 from tequila.optimizers.optimizer_scipy import minimize as minimize_scipy
 from tequila.optimizers.optimizer_gd import minimize as minimize_gd
-from tequila.objective.objective import assign_variable
-from tequila.utils.exceptions import TequilaException
-
+from tequila.simulators.simulator_api import simulate
 from dataclasses import dataclass
 
 import typing, numbers, numpy
@@ -79,11 +77,12 @@ def show_available_optimizers(module=None):
         print("Supported optimizer modules: ", SUPPORTED_OPTIMIZERS)
         print("Installed optimizer modules: ", list(INSTALLED_OPTIMIZERS.keys()))
 
+
 def minimize(objective,
              method: str = "bfgs",
-             variables: list=None,
-             initial_values: typing.Union[dict,numbers.Number, typing.Callable]=0.0,
-             maxiter: int=None,
+             variables: list = None,
+             initial_values: typing.Union[dict, numbers.Number, typing.Callable] = 0.0,
+             maxiter: int = None,
              *args,
              **kwargs):
     """
@@ -128,15 +127,21 @@ def minimize(objective,
     -------
 
     """
+
+    ovtmp=objective.extract_variables()
+    fast_return=False
+    if ovtmp is None or len(ovtmp) == 0:
+        return OptimizerResults(energy=numpy.float(simulate(objective, *args, **kwargs)), variables={}, history=OptimizerHistory())
+
     for k, v in INSTALLED_OPTIMIZERS.items():
         if method.lower() in v.methods or method.upper() in v.methods:
             return v.minimize(
-                              objective=objective,
-                              method=method,
-                              variables=variables,
-                              initial_values=initial_values,
-                              maxiter=maxiter,
-                              *args, **kwargs)
+                objective=objective,
+                method=method,
+                variables=variables,
+                initial_values=initial_values,
+                maxiter=maxiter,
+                *args, **kwargs)
 
     raise TequilaOptimizerException(
         "Could not find optimization method {} in tequila optimizers. You might miss dependencies")

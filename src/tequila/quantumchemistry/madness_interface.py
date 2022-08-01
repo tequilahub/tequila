@@ -1,13 +1,24 @@
-from tequila.quantumchemistry.qc_base import ParametersQC, QuantumChemistryBase, TequilaException, TequilaWarning, \
-    QCircuit, gates, NBodyTensor
-from tequila import ExpectationValue, PauliString, QubitHamiltonian, simulate
+from tequila.quantumchemistry.qc_base import QuantumChemistryBase, TequilaException, TequilaWarning, \
+    QCircuit, gates
+from tequila.quantumchemistry import ParametersQC, NBodyTensor
+from tequila import ExpectationValue
+from .chemistry_tools import OrbitalData
 import typing
 import numpy
 import warnings
 import os
 import shutil
 
-from dataclasses import dataclass
+
+# Examples how to initialize the madness backend
+# tq.Molecule(geometry="...") will initialize a molecule with n_qubits=n_electrons (n_electrons//2 HF orbitals + n_electrons//2 PNOs)
+# tq.Molecule(geometry="...", n_pno="read") will read in files (name is auto-generated from geometry)
+# tq.Molecule(geometry="...", name="X", n_pno="read") will read in files X_htensor.npy, X_gtensor.npy, X_pnoinfo.txt
+# tq.Molecule(geometry="...", name="X", datadir="asd/Y/", n_pno="read") reads in files from directory asd/Y/
+# control madness input sections with dictionaries
+# tq.Molecule(geometry="...", pno={"maxrank":10, "freeze":0}, dft={"k":9, "L":25.0})
+# compute more orbitals
+# tq.Molecule(geometry="...", n_pno=10) # computes 10 PNOs additional to the occupied HF orbitals
 
 
 class TequilaMadnessException(TequilaException):
@@ -16,27 +27,6 @@ class TequilaMadnessException(TequilaException):
 
 
 class QuantumChemistryMadness(QuantumChemistryBase):
-    @dataclass
-    class OrbitalData:
-        idx: int = None  # active index
-        idx_total: int = None  # total index
-        pno_pair: tuple = None  # pno origin if tuple of len 2, otherwise occupied or virtual orbital
-        occ: float = None  # original MP2 occupation number, or orbital energies
-
-        def __str__(self):
-            if len(self.pno_pair) == 2:
-                return "orbital {}, pno from pair {}, MP2 occ {} ".format(self.idx_total, self.pno_pair, self.occ)
-            elif self.pno_pair[0] < 0:
-                return "orbital {}, virtual orbital {}, energy {} ".format(self.idx_total, self.pno_pair, self.occ)
-            else:
-                return "orbital {}, occupied reference orbital {}, energy {} ".format(self.idx_total, self.pno_pair,
-                                                                                      self.occ)
-
-        def __repr__(self):
-            return self.__str__()
-
-        def __hash__(self):
-            return hash((self.idx, self.idx_total, self.pno_pair, self.occ))
 
     @staticmethod
     def find_executable(madness_root_dir=None):
@@ -52,11 +42,13 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  active_orbitals: list = "auto",
                  executable: str = None,
                  n_pno: int = None,
-                 frozen_core=True,
                  n_virt: int = 0,
                  keep_mad_files=False,
+                 datadir=None,
                  *args,
                  **kwargs):
+
+        self.datadir = datadir
 
         # see if MAD_ROOT_DIR is defined
         self.madness_root_dir = os.environ.get("MAD_ROOT_DIR")
@@ -74,28 +66,24 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         self.executable = executable
         self.n_pno = n_pno
         self.n_virt = n_virt
-        self.frozen_core = frozen_core
         self.kwargs = kwargs
 
         # if no n_pno is given, look for MRA data (default)
         name = parameters.name
 
-        if n_pno is None:
-            h, g = self.read_tensors(name=name)
-
-            if h == "failed" or g == "failed":
-                warnings.warn(
-                    "Could not find data for {}. Looking for binary files from potential madness calculation".format(
-                        name), TequilaWarning)
-                # try if madness was run manually without conversion before
-                h, g = self.convert_madness_output_from_bin_to_npy(name=name)
+        # try to read in data in the following cases
+        # - no executable found
+        # - executable found but read in explicitly demanded through n_pno="read"
+        if (n_pno is None and executable is None) or (hasattr(n_pno, "lower") and n_pno.lower() == "read"):
+            h, g = self.read_tensors(name=name, datadir=datadir)
+            n_pno = None
         else:
             h = "failed"
             g = "failed"
 
-        if h == "failed" or g == "failed":
-            status = "found {}_htensor.npy={}\n".format(name, h != "failed")
-            status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
+        if "failed" in h or "failed" in g:
+            status = "found {}_htensor.npy={}\n".format(name, "failed" not in h)
+            status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
             try:
                 # try to run madness
                 self.parameters = parameters
@@ -103,15 +91,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 madness_status = self.run_madness(*args, **kwargs)
                 if int(madness_status) != 0:
                     warnings.warn("MADNESS did not terminate as expected! status = {}".format(status), TequilaWarning)
-                status += str(madness_status)
+                status += str(madness_status) + "\n"
             except Exception as E:
                 status += "madness_run={}\n".format(str(E))
 
             # will read the binary files, convert them and save them with the right name
-            h, g = self.convert_madness_output_from_bin_to_npy(name=name)
-            status += "found {}_htensor.npy={}\n".format(name, h != "failed")
-            status += "found {}_gtensor.npy={}\n".format(name, h != "failed")
-            if h == "failed" or g == "failed":
+            h, g = self.convert_madness_output_from_bin_to_npy(name=name, datadir=datadir)
+            status += "found {}_htensor.npy={}\n".format(name, "failed" not in h)
+            status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
+            status += "h_tensor report:\n"
+            status += str(h)
+            status += "g_tensor report:\n"
+            status += str(g)
+            if "failed" in h or "failed" in g:
                 raise TequilaMadnessException("Could not initialize the madness interface\n"
                                               "Status report is\n"
                                               "{status}\n"
@@ -120,7 +112,6 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                                               "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
                                               "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness\n".format(
                     name=name, status=status))
-
         # get additional information from madness file
         nuclear_repulsion = 0.0
         pairinfo = None
@@ -154,30 +145,32 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         assert len(g.shape) == 4
         assert len(h.shape) == 2
 
-        # openfermion conventions
         g = NBodyTensor(elems=g, ordering='mulliken')
-        g.reorder(to='openfermion')
-        g = g.elems
-        # g = numpy.einsum("psqr", g, optimize='optimize')
 
         orbitals = []
         if pairinfo is not None:
-            orbitals = [self.OrbitalData(idx_total=i, idx=i, pno_pair=p, occ=occinfo[i]) for i, p in
+            orbitals = [OrbitalData(idx_total=i, idx=i, pair=p, occ=occinfo[i]) for i, p in
                         enumerate(pairinfo)]
+            reference_orbitals = [x for x in orbitals if x.occ == 2.0]
             if active_orbitals == "auto":
-                reference_orbitals = [x for x in orbitals if len(x.pno_pair) == 1]
                 not_active = [i for i in reference_orbitals if
-                              sum([1 for x in orbitals if i.idx_total in x.pno_pair]) < 2]
+                              sum([1 for x in orbitals if i.idx_total in x.pair]) < 2]
                 active_orbitals = [x.idx_total for x in orbitals if x not in not_active]
 
             if active_orbitals is not None:
-                orbitals = [x for x in orbitals if x.idx_total in active_orbitals]
-                for i, x in enumerate(orbitals):
-                    orbitals[i].idx = i
+                i = 0
+                for x in orbitals:
+                    if x.idx_total in active_orbitals:
+                        orbitals[x.idx_total].idx = i
+                        i += 1
+                    else:
+                        orbitals[x.idx_total].idx = None
         else:
-            raise TequilaMadnessException("No pairinfo given")
-        self.orbitals = tuple(orbitals)
+            raise TequilaMadnessException("No pairinfo given: madness interface needs a file moleculename_pnoinfo.txt")
 
+        # convert to indices only
+        # active space data will be set in baseclass constructor
+        reference_orbitals = [x.idx_total for x in reference_orbitals]
         super().__init__(parameters=parameters,
                          transformation=transformation,
                          active_orbitals=active_orbitals,
@@ -185,12 +178,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                          two_body_integrals=g,
                          nuclear_repulsion=nuclear_repulsion,
                          n_orbitals=n_orbitals,
+                         orbitals=orbitals,
+                         reference_orbitals=reference_orbitals,
                          *args,
                          **kwargs)
 
         # print warning if read data does not match expectations
         if n_pno is not None:
-            nrefs = len(self.get_reference_orbitals())
+            nrefs = len(self.reference_orbitals)
             if n_pno + nrefs + n_virt != self.n_orbitals:
                 warnings.warn(
                     "read in data has {} pnos/virtuals, but n_pno and n_virt where set to {} and {}".format(
@@ -218,7 +213,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if self.executable is None:
             return "pno_integrals executable not found\n" \
                    "pass over executable keyword or export MAD_ROOT_DIR to system environment"
-        self.write_madness_input(n_pno=self.n_pno, frozen_core=self.frozen_core, n_virt=self.n_virt, *args, **kwargs)
+        self.write_madness_input(n_pno=self.n_pno, n_virt=self.n_virt, *args, **kwargs)
 
         # prevent reading in old files
         self.cleanup(warn=True, delete_all_files=True)
@@ -237,38 +232,41 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return madout
 
-    def read_tensors(self, name="molecule", filetype="npy"):
+    def read_tensors(self, name="molecule", filetype="npy", datadir=None):
         """
         Try to read files "name_htensor.npy" and "name_gtensor.npy"
         """
 
+        path = name
+        if datadir is not None:
+            path = "{}/{}".format(datadir, name)
+
         try:
-            h = numpy.load("{}_htensor.{}".format(name, filetype))
+            h = numpy.load("{}_htensor.{}".format(path, filetype))
         except:
             h = "failed"
 
         try:
-            g = numpy.load("{}_gtensor.{}".format(name, filetype))
+            g = numpy.load("{}_gtensor.{}".format(path, filetype))
         except:
             g = "failed"
 
         return h, g
 
-    def get_pno_indices(self, i: OrbitalData, j: OrbitalData):
+    def get_pair_orbitals(self, i: OrbitalData, j: OrbitalData,
+                          exclude: typing.List[OrbitalData] = None):
         if isinstance(i, int):
             i = self.orbitals[i]
         if isinstance(j, int):
             j = self.orbitals[j]
-        return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pno_pair]
-
-    def get_reference_orbital(self, i):
-        return [x for x in self.orbitals if (i) == x.pno_pair]
-
-    def get_reference_orbitals(self):
-        return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] >= 0]
+        if isinstance(exclude, int):
+            exclude = [self.orbitals[exclude]]
+        if exclude is None or isinstance(exclude, OrbitalData):
+            exclude = [exclude]
+        return [x for x in self.orbitals if (i.idx_total, j.idx_total) == x.pair and x not in exclude]
 
     def get_virtual_orbitals(self):
-        return [x for x in self.orbitals if len(x.pno_pair) == 1 and x.pno_pair[0] < 0]
+        return [x for x in self.orbitals if len(x.pair) == 1 and x.pair[0] < 0]
 
     def compute_energy(self, method, *args, **kwargs):
         """
@@ -314,7 +312,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         ordered_qubits = []
         pairs = [i for i in range(self.n_electrons // 2)]
         for i in pairs:
-            pnos = [i] + [a.idx for a in self.get_pno_indices(i=i, j=i)]
+            pnos = [i] + [a.idx for a in self.get_pair_orbitals(i=i, j=i, exclude=i)]
             if hcb:
                 up = [i for i in pnos]
                 ordered_qubits += up
@@ -346,7 +344,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         """
         name = "SPA-UpCCD"
-        if hcb:
+        if hcb and "HCB" not in name.upper():
             name = "HCB-" + name
         return self.make_upccgsd_ansatz(name=name, label=label)
 
@@ -468,7 +466,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
     def make_hardcore_boson_pno_upccd_ansatz(self, pairs=None, label=None, include_reference=True,
                                              direct_compiling=False):
         if pairs is None:
-            pairs = [x for x in self.get_reference_orbitals()]  # [i for i in range(self.n_electrons // 2)]
+            pairs = [x for x in self.reference_orbitals]
         U = QCircuit()
         if direct_compiling:
             if not include_reference:
@@ -476,7 +474,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             for x in pairs:
                 U += gates.X(x.idx)
                 c = [None, x.idx]
-                for a in self.get_pno_indices(i=x, j=x):
+                for a in self.get_pair_orbitals(i=x, j=x):
+                    if a == x:
+                        continue
                     idx = self.format_excitation_indices([(x.idx, a.idx)])
                     U += gates.Ry(angle=(idx, "D", label), target=a.idx, control=c[0])
                     U += gates.X(target=c[1], control=a.idx)
@@ -488,7 +488,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             for x in pairs:
                 if include_reference:
                     U += gates.X(x.idx)
-                for a in self.get_pno_indices(i=x, j=x):
+                for a in self.get_pair_orbitals(i=x, j=x):
+                    if x == a:
+                        continue
                     idx = self.format_excitation_indices([(x.idx, a.idx)])
                     U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
         return U
@@ -508,17 +510,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         indices = []
 
         # HF-X -- PNO-XX indices
-        for i in self.get_reference_orbitals():
-            for a in self.get_pno_indices(i=i, j=i):
+        for i in self.reference_orbitals:
+            for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
                 idx = self.format_excitation_indices([(i.idx, a.idx)])
                 if idx not in exclude and idx not in indices:
                     indices.append(idx)
+
         if "G" in name:
-            for i in self.get_reference_orbitals():
-                for a in self.get_pno_indices(i=i, j=i):
-                    for b in self.get_pno_indices(i=i, j=i):
+            for i in self.reference_orbitals:
+                for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
+                    for b in self.get_pair_orbitals(i=i, j=i, exclude=i):
                         if a.idx <= b.idx:
                             continue
+
                         idx = self.format_excitation_indices([(a.idx, b.idx)])
                         if idx not in exclude and idx not in indices:
                             indices.append(idx)
@@ -526,18 +530,18 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if "PNO" in name or "SPA" in name:
             return indices
 
-        virtuals = [i for i in self.orbitals if len(i.pno_pair) == 2]
+        virtuals = [i for i in self.orbitals if len(i.pair) == 2 and i.occ != 2.0]
         virtuals += self.get_virtual_orbitals()  # this is usually empty
         # HF-X -- PNO-XY/PNO-YY indices
-        for i in self.get_reference_orbitals():
+        for i in self.reference_orbitals:
             for a in virtuals:
                 idx = self.format_excitation_indices([(i.idx, a.idx)])
                 if idx not in exclude and idx not in indices:
                     indices.append(idx)
         # HF-HF and PNO-PNO indices
         if "G" in name:
-            for i in self.get_reference_orbitals():
-                for j in self.get_reference_orbitals():
+            for i in self.reference_orbitals:
+                for j in self.reference_orbitals:
                     if i.idx <= j.idx:
                         continue
                     idx = self.format_excitation_indices([(i.idx, j.idx)])
@@ -550,41 +554,41 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     idx = self.format_excitation_indices([(a.idx, b.idx)])
                     if idx not in exclude and idx not in indices:
                         indices.append(idx)
-
         return indices
 
     def make_pno_upccgsd_ansatz(self, generalized=False, include_offdiagonals=False,
                                 **kwargs):
         indices = []
-        refs = self.get_reference_orbitals()
-        for i in self.get_reference_orbitals():
-            for a in self.get_pno_indices(i=i, j=i):
+        refs = self.reference_orbitals
+        for i in self.reference_orbitals:
+            for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
                 indices.append((i.idx, a.idx))
             if generalized:
-                for a in self.get_pno_indices(i, i):
-                    for b in self.get_pno_indices(i, i):
+                for a in self.get_pair_orbitals(i=i, j=i, exclude=i):
+                    for b in self.get_pair_orbitals(i=i, j=i, exclude=i):
                         if b.idx_total <= a.idx_total:
                             continue
                         indices.append((i.idx, a.idx))
 
         if include_offdiagonals:
-            for i in self.get_reference_orbitals():
-                for j in self.get_reference_orbitals():
+            for i in self.reference_orbitals:
+                for j in self.reference_orbitals:
+                    pairs_ij = self.get_pair_orbitals(i=i, j=j, exclude=[i, j])
                     if i.idx <= j.idx:
                         continue
-                    for a in self.get_pno_indices(i, j):
+                    for a in pairs_ij:
                         indices.append((j.idx, a.idx))
 
                     if generalized:
-                        for a in self.get_pno_indices(i, j):
-                            for b in self.get_pno_indices(i, j):
+                        for a in pairs_ij:
+                            for b in pairs_ij:
                                 if a.idx <= b.idx:
                                     continue
                                 indices.append((a.idx, b.idx))
 
         return self.make_upccgsd_ansatz(indices=indices, **kwargs)
 
-    def write_madness_input(self, n_pno=None, n_virt=0, frozen_core=True, filename="input", maxrank=None,
+    def write_madness_input(self, n_pno=None, n_virt=0, filename="input", maxrank=None,
                             n_orbitals=None, *args, **kwargs):
 
         if n_pno is not None and n_orbitals is not None:
@@ -592,16 +596,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 "n_pno={} and n_orbitals={} given ... please pick one".format(n_pno, n_orbitals))
 
         n_electrons = self.parameters.n_electrons
-        if frozen_core:
+        if self.parameters.frozen_core:
             # only count active electrons (will not compute pnos for frozen pairs)
-            for atom in self.parameters.get_atoms():
-                number = self.parameters.get_atom_number(name=atom)
-                if number > 18:
-                    n_electrons -= 18
-                elif number > 10:
-                    n_electrons -= 10
-                elif number > 2:
-                    n_electrons -= 2
+            n_core_electrons = self.parameters.get_number_of_core_electrons()
+            n_electrons -= n_core_electrons
 
         n_pairs = n_electrons // 2
         if n_orbitals is None:
@@ -622,7 +620,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                        "localize": "boys",
                        "ncf": "( none , 1.0 )"}
         data["pno"] = {"maxrank": maxrank, "f12": "false", "thresh": 1.e-4, "diagonal": True}
-        if not frozen_core:
+        if not self.parameters.frozen_core:
             data["pno"]["freeze"] = 0
         data["pnoint"] = {"n_pno": n_pno, "n_virt": n_virt, "orthog": "symmetric"}
         data["plot"] = {}
@@ -650,16 +648,27 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         return data
 
-    def convert_madness_output_from_bin_to_npy(self, name):
+    def convert_madness_output_from_bin_to_npy(self, name, datadir=None):
+        path = name
+        if datadir is not None:
+            # if the datadir does not exist then tequila will crash
+            try:
+                import os
+                if not os.path.exists(datadir):
+                    os.makedirs(datadir)
+            except Exception as E:
+                warnings.warn("tried to create datadir={} and caught\n{}".format(datadir, str(E)), TequilaWarning)
+
+            path = "{}/{}".format(datadir, name)
         try:
             g_data = numpy.fromfile("molecule_gtensor.bin".format())
             sd = int(numpy.power(g_data.size, 0.25))
             assert (sd ** 4 == g_data.size)
             sds = [sd] * 4
             g = g_data.reshape(sds)
-            numpy.save("{}_gtensor.npy".format(name), arr=g)
-        except:
-            g = "failed"
+            numpy.save("{}_gtensor.npy".format(path), arr=g)
+        except Exception as E:
+            g = "failed\n{}\n".format(str(E))
 
         try:
             h_data = numpy.fromfile("molecule_htensor.bin")
@@ -667,10 +676,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             assert (sd ** 2 == h_data.size)
             sds = [sd] * 2
             h = h_data.reshape(sds)
-            numpy.save("{}_htensor.npy".format(name), arr=h)
-        except:
-            h = "failed"
-
+            numpy.save("{}_htensor.npy".format(path), arr=h)
+        except Exception as E:
+            h = "failed\n{}\n".format(str(E))
         return h, g
 
     def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, n_ri: int = None,
@@ -707,14 +715,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         return correction.compute()
 
     def __str__(self):
+        path = self.parameters.name
+        if hasattr(self, "datadir") and self.datadir is not None:
+            path = "{}/{}".format(self.datadir, path)
         info = super().__str__()
-        info += "{key:15} :\n".format(key="MRA Orbitals")
-        for orb in self.orbitals:
-            info += "{}\n".format(orb)
         info += "\n"
         info += "{:15} : {}\n".format("executable", self.executable)
-        info += "{:15} : {}\n".format("htensor", "{}_htensor.npy".format(self.parameters.name))
-        info += "{:15} : {}\n".format("gtensor", "{}_gtensor.npy".format(self.parameters.name))
+        info += "{:15} : {}\n".format("htensor", "{}_htensor.npy".format(path))
+        info += "{:15} : {}\n".format("gtensor", "{}_gtensor.npy".format(path))
 
         return info
 
