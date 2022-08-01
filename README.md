@@ -36,8 +36,12 @@ conda install psi4 -c psi4
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
 
 - [Madness](https://github.com/kottmanj/madness)
-Currently you need to compile from a separate [fork](https://github.com/kottmanj/madness).
-See the github page of this fork for installation instruction.
+In a conda environment this can be installed with
+```bash
+conda install madtequila -c kottmann
+```
+Alternatively it can be compield from a separate [fork](https://github.com/kottmanj/madness) of madness.  
+See the github page of this fork for installation instruction.  
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage.
 
 - [PySCF](https://github.com/pyscf/pyscf)  
