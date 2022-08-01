@@ -722,7 +722,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
     def __str__(self):
         path = self.parameters.name
-        if hasattr(self, "datadir") and datadir is not None:
+        if hasattr(self, "datadir") and self.datadir is not None:
             path = "{}/{}".format(self.dartadir, path)
         info = super().__str__()
         info += "\n"
