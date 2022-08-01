@@ -136,8 +136,12 @@ result.history.plot("angles")
 result.history.plot("gradients")
 ```
 
-## Chemistry Hello World (Madness backend)
-see above for installation of backend.    
+## Chemistry Hello World (Madness backend)  
+Install backend as
+```bash
+conda install madtequila -c kottmann
+```  
+or see above for more.    
 more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)  
 ```python
 import tequila as tq
