@@ -53,6 +53,14 @@ def test_madness_full_he():
     result = tq.minimize(method="bfgs", objective=E, initial_values=0.0, silent=True)
     assert (numpy.isclose(-2.87761809, result.energy, atol=1.e-5))
 
+@pytest.mark.skipif(executable is None, reason="madness was not found")
+def test_madness_data_io():
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", name="asd")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", n_pno="read")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", n_pno="read")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", name="asd", n_pno="read")
 
 @pytest.mark.skipif(executable is None, reason="madness was not found")
 def test_madness_full_li_plus():
