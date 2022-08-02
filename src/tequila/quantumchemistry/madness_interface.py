@@ -96,13 +96,16 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 status += "madness_run={}\n".format(str(E))
 
             # will read the binary files, convert them and save them with the right name
-            h, g = self.convert_madness_output_from_bin_to_npy(name=name, datadir=datadir)
+            h, g, pinfo= self.convert_madness_output_from_bin_to_npy(name=name, datadir=datadir)
             status += "found {}_htensor.npy={}\n".format(name, "failed" not in h)
             status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
+            status += "found {}_pnoinfo.txt={}\n".format(name, "failed" not in pinfo)
             status += "h_tensor report:\n"
             status += str(h)
             status += "g_tensor report:\n"
             status += str(g)
+            status += "pnoinfo report:\n"
+            status += str(pinfo)
             if "failed" in h or "failed" in g:
                 raise TequilaMadnessException("Could not initialize the madness interface\n"
                                               "Status report is\n"
@@ -116,7 +119,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         nuclear_repulsion = 0.0
         pairinfo = None
         occinfo = None
-        for name in [parameters.name + "_pnoinfo.txt"]:
+        path = parameters.name
+        if datadir is not None:
+            path = "{}/{}".format(datadir, path)
+        for name in [path + "_pnoinfo.txt", parameters.name + "_pnoinfo.txt", "pnoinfo.txt"]:
             try:
                 with open(name, "r") as f:
                     for line in f.readlines():
@@ -128,9 +134,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         elif "occinfo" in line:
                             occinfo = line.split("=")[1].split(",")
                             occinfo = [float(x) for x in occinfo]
-                if name == "pnoinfo.txt":
-                    with open("pnoinfo.txt", "r") as f1, open(parameters.name + "_pnoinfo.txt", "w") as f2:
-                        f2.write(f1.read().strip())
+
                 if pairinfo is not None:
                     break
             except:
@@ -679,7 +683,27 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             numpy.save("{}_htensor.npy".format(path), arr=h)
         except Exception as E:
             h = "failed\n{}\n".format(str(E))
-        return h, g
+
+        try:
+            with open("{}_pnoinfo.txt".format(name), "r") as f1:
+                pnoinfo = f1.read().strip()
+        except Exception as E:
+            pnoinfo = "failed\n{}\n".format(str(E))
+
+        if datadir is not None:
+            try:
+                with open("{}_pnoinfo.txt".format(name), "r") as f1, open("{}_pnoinfo.txt".format(path), "w") as f2:
+                    f2.write(f1.read().strip())
+            except Exception as E:
+                pnoinfo = "failed\n{}\n".format(str(E))
+            try:
+                with open("{}_pno_integrals.out".format(name), "r") as f1, open("{}_pno_integrals.out".format(path),
+                                                                                "w") as f2:
+                    f2.write(f1.read().strip())
+            except Exception as E:
+                pass
+
+        return h, g, pnoinfo
 
     def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, n_ri: int = None,
                                     f12_filename: str = "molecule_f12tensor.bin", **kwargs) -> float:
