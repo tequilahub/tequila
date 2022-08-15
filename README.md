@@ -41,8 +41,7 @@ In a conda environment this can be installed with
 conda install madtequila -c kottmann
 ```  
 This installs a modified version of madness ready to use with tequila.  
-Alternatively it can be compield from the [fork](https://github.com/kottmanj/madness).  
-See the github page of this fork for installation instruction.  
+Alternatively it can be compiled from the sources provided in this [fork](https://github.com/kottmanj/madness) (follow readme instructions there).  
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage.
 
 ## [PySCF](https://github.com/pyscf/pyscf)  
