@@ -1,7 +1,7 @@
 from tequila import TequilaException
 from tequila.hamiltonian import QubitHamiltonian, PauliString
 from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first, sorted_insertion_grouping
-from tequila.grouping.overlapping_methods import OverlappingGroups
+from tequila.grouping.overlapping_methods import OverlappingGroups, OverlappingAuxiliary
 import numpy as np
 import tequila as tq
 import numbers
@@ -232,7 +232,7 @@ class BinaryHamiltonian:
         gram = np.block([[np.zeros((n,n)), np.eye(n)], [np.eye(n), np.zeros((n,n))]])
         return matrix @ gram @ matrix.T % 2
 
-    def commuting_groups(self, method='rlf', condition="fc", overlap_aux=None):
+    def commuting_groups(self, **kwargs):
         """
         Notes
         ----------
@@ -250,6 +250,24 @@ class BinaryHamiltonian:
         ----------
         List of BinaryHamiltonian's
         """
+        def process_options(options):
+            method = 'rlf'
+            condition = 'fc'
+            overlap_aux = None
+            if options is not None:
+                if "method" in options: method=options["method"]
+                if "condition" in options: condition=options["condition"]
+
+                # If cov_dict is given in options, use the user-defined covariance dictionary.
+                if "cov_dict" in options and "n_iter" in options: 
+                    overlap_aux = OverlappingAuxiliary(options["cov_dict"], options["n_iter"])
+                elif "cov_dict" in options:
+                    overlap_aux = OverlappingAuxiliary(options["cov_dict"])
+
+                # If cov_dict is not given in options, use the default HF covariances (todo).
+                if not ("cov_dict" in options): overlap_aux = None
+            return method, condition, overlap_aux
+    
         def method_class(method, condition):
             """
             Return the class that the method belongs to: One from Minimum clique cover (mcc)
@@ -266,6 +284,12 @@ class BinaryHamiltonian:
         terms = self.binary_terms
         n = self.n_term
 
+        if "options" in kwargs: 
+            options = kwargs["options"]
+        else:
+            options = None
+
+        method, condition, overlap_aux = process_options(options)
         if method_class(method, condition) == 'mcc':
             cg = self.anti_commutativity_matrix()
             if method == 'lf':

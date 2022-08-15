@@ -5,7 +5,7 @@ import numpy.linalg as npl
 import copy
 
 
-def compile_commuting_parts(H, method="zb", *args, **kwargs):
+def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
     """
     Compile the commuting parts of a QubitHamiltonian
     Into a list of All-Z Hamiltonians and corresponding unitary rotations
@@ -17,23 +17,23 @@ def compile_commuting_parts(H, method="zb", *args, **kwargs):
     -------
         A list of tuples containing all-Z Hamiltonian and corresponding Rotations
     """
-    if method is None or method.lower() == "zb":
+    if unitary_circuit is None or unitary_circuit.lower() == "improved":
         # @ Zack
         return _compile_commuting_parts_zb(H, *args, **kwargs)
     else:
         # original implementation of Thomson (T.C. Yen)
         binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-        commuting_parts = binary_H.commuting_groups()
+        commuting_parts = binary_H.commuting_groups(*args, **kwargs)
         return [cH.get_qubit_wise() for cH in commuting_parts]
 
 
-def _compile_commuting_parts_zb(H):
+def _compile_commuting_parts_zb(H, *args, **kwargs):
     # @ Zack add main function here and rest in this file
     # should return list of commuting Hamiltonians in Z-Form and Circuits
     # i.e. result = [(H,U), (H,U), ...]
 
     binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-    commuting_parts = binary_H.commuting_groups()
+    commuting_parts = binary_H.commuting_groups(*args, **kwargs)
     circuits = []
     qubit_wise_commuting = []
     for i in range(len(commuting_parts)):

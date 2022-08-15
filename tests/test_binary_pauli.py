@@ -175,11 +175,13 @@ def test_sorted_insertion():
     H = H + paulis.X(0) + paulis.Y(0) + 1.05 * paulis.Z(0) * paulis.Z(1) * paulis.Z(2)
     H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
 
-    commuting_parts = H.commuting_groups(method='si', condition='qwc')
+    options = {"method":"si", "condition": "qwc"}
+    commuting_parts = H.commuting_groups(options=options)
     for part in commuting_parts:
         assert part.is_qubit_wise_commuting()
 
-    commuting_parts = H.commuting_groups(method='si', condition='fc')
+    options["condition"] = "fc"
+    commuting_parts = H.commuting_groups(options=options)
     for part in commuting_parts:
         assert part.is_commuting()
 
@@ -241,16 +243,17 @@ def test_overlapping_sorted_insertion():
 
     H, _, _, _ = prepare_test_hamiltonian()
     H = H + paulis.X(0) + paulis.Y(0) + 1.05 * paulis.Z(0) * paulis.Z(1) * paulis.Z(2)
-    overlap_aux = OverlappingAuxiliary(prepare_cov_dict(H))
     Hbin = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-    commuting_parts = Hbin.commuting_groups(method='osi', condition='qwc', overlap_aux=overlap_aux)
+    options = {"method":"osi", "condition": "qwc", "cov_dict":prepare_cov_dict(H)}
+    commuting_parts = Hbin.commuting_groups(options=options)
     H_tmp = QubitHamiltonian.zero()
     for part in commuting_parts:
         assert part.is_qubit_wise_commuting()
         H_tmp += part.to_qubit_hamiltonian()
     assert equal_qubit_hamiltonian(H_tmp, H)
 
-    commuting_parts = Hbin.commuting_groups(method='osi', condition='fc', overlap_aux=overlap_aux)
+    options["condition"] = "fc"
+    commuting_parts = Hbin.commuting_groups(options=options)
     H_tmp = QubitHamiltonian.zero()
     for part in commuting_parts:
         assert part.is_commuting()
@@ -291,12 +294,16 @@ def test_get_qubit_wise():
     e_ori = tq.ExpectationValue(H=H.to_qubit_hamiltonian(), U=U)
     e_qwc = tq.ExpectationValue(H=qwc, U=U + qwc_U)
     e_integrated = tq.ExpectationValue(H=H.to_qubit_hamiltonian(), U=U, optimize_measurements=True)
+    options = {"method":"si", "condition": "fc"}
+    e_integrated_si = tq.ExpectationValue(H=H.to_qubit_hamiltonian(), U=U, optimize_measurements=options)
     result_ori = tq.simulate(e_ori, variables)
     result_qwc = tq.simulate(e_qwc, variables)
-    result_integrated = tq.simulate(e_qwc, variables)
+    result_integrated = tq.simulate(e_integrated, variables)
+    result_integrated_si = tq.simulate(e_integrated_si, variables)
 
     assert np.isclose(result_ori, result_qwc)
     assert np.isclose(result_ori, result_integrated)
+    assert np.isclose(result_ori, result_integrated_si)
 
     # Checking the optimized expectation values are the same
     initial_values = {k: np.random.uniform(0.0, 6.0, 1) for k in e_ori.extract_variables()}

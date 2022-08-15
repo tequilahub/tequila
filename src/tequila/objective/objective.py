@@ -618,12 +618,18 @@ class Objective:
         else:
             return True
 
-def ExpectationValue(U, H, optimize_measurements: bool = False, *args, **kwargs) -> Objective:
+def ExpectationValue(U, H, optimize_measurements = False, *args, **kwargs) -> Objective:
     """
     Initialize an Objective which is just a single expectationvalue
     """
     if optimize_measurements:
-        commuting_parts = compile_commuting_parts(H=H)
+        if optimize_measurements is True:
+            # If optimize_measurements = True, then there are no further options
+            # provided. Therefore, we will use the default values.
+            options = None
+        else:
+            options = optimize_measurements
+        commuting_parts = compile_commuting_parts(H=H, options=options)
         result = 0.0
         for HandU in commuting_parts:
             qwc, Um = HandU
