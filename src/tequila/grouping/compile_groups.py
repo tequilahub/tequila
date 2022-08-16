@@ -19,13 +19,13 @@ def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
     """
     if unitary_circuit is None or unitary_circuit.lower() == "improved":
         # @ Zack
-        return _compile_commuting_parts_zb(H, *args, **kwargs)
+        result, suggested_samples = _compile_commuting_parts_zb(H, *args, **kwargs)
     else:
         # original implementation of Thomson (T.C. Yen)
         binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-        commuting_parts = binary_H.commuting_groups(*args, **kwargs)
-        return [cH.get_qubit_wise() for cH in commuting_parts]
-
+        commuting_parts, suggested_samples = binary_H.commuting_groups(*args, **kwargs)
+        result = [cH.get_qubit_wise() for cH in commuting_parts]
+    return result, suggested_samples
 
 def _compile_commuting_parts_zb(H, *args, **kwargs):
     # @ Zack add main function here and rest in this file
@@ -33,7 +33,7 @@ def _compile_commuting_parts_zb(H, *args, **kwargs):
     # i.e. result = [(H,U), (H,U), ...]
 
     binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-    commuting_parts = binary_H.commuting_groups(*args, **kwargs)
+    commuting_parts, suggested_samples = binary_H.commuting_groups(*args, **kwargs)
     circuits = []
     qubit_wise_commuting = []
     for i in range(len(commuting_parts)):
@@ -49,7 +49,7 @@ def _compile_commuting_parts_zb(H, *args, **kwargs):
     for i in range(len(commuting_parts)):
         rotations.append(tuple((qubit_wise_commuting[i], circuits[i])))
 
-    return (rotations)
+    return rotations, suggested_samples
 
 
 def Tableau_algorithm(circuits):

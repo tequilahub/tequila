@@ -1,7 +1,7 @@
 from tequila import TequilaException
 from tequila.hamiltonian import QubitHamiltonian, PauliString
 from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first, sorted_insertion_grouping
-from tequila.grouping.overlapping_methods import OverlappingGroups, OverlappingAuxiliary
+from tequila.grouping.overlapping_methods import OverlappingGroups, OverlappingAuxiliary, get_opt_sample_size
 import numpy as np
 import tequila as tq
 import numbers
@@ -251,22 +251,25 @@ class BinaryHamiltonian:
         List of BinaryHamiltonian's
         """
         def process_options(options):
-            method = 'rlf'
-            condition = 'fc'
-            overlap_aux = None
+            method = 'rlf' # Method used for Hamiltonian partitioning.
+            condition = 'fc' # Commutativitiy condition within a group; either fully commuting (fc) or qubit-wise commuting (qwc).
+            sample_suggestion = False # Whether to return suggested ratio of samples between groups.
+            overlap_aux = None # Help variable for overlapping methods.
             if options is not None:
                 if "method" in options: method=options["method"]
                 if "condition" in options: condition=options["condition"]
 
                 # If cov_dict is given in options, use the user-defined covariance dictionary.
-                if "cov_dict" in options and "n_iter" in options: 
-                    overlap_aux = OverlappingAuxiliary(options["cov_dict"], options["n_iter"])
-                elif "cov_dict" in options:
-                    overlap_aux = OverlappingAuxiliary(options["cov_dict"])
-
-                # If cov_dict is not given in options, use the default HF covariances (todo).
-                if not ("cov_dict" in options): overlap_aux = None
-            return method, condition, overlap_aux
+                if "cov_dict" in options: 
+                    sample_suggestion = True #Suggested sample size can be given whenever covariances are present.
+                    if "n_iter" in options:
+                        overlap_aux = OverlappingAuxiliary(options["cov_dict"], options["n_iter"])
+                    else:
+                        overlap_aux = OverlappingAuxiliary(options["cov_dict"])
+                else:
+                    # (TODO) Compute default HF covariances if cov_dict is not given.
+                    overlap_aux = None
+            return method, condition, overlap_aux, sample_suggestion
     
         def method_class(method, condition):
             """
@@ -281,6 +284,7 @@ class BinaryHamiltonian:
             else:
                 raise TequilaException(f"There is no algorithm {method}")
             return mc
+
         terms = self.binary_terms
         n = self.n_term
 
@@ -289,21 +293,28 @@ class BinaryHamiltonian:
         else:
             options = None
 
-        method, condition, overlap_aux = process_options(options)
+        method, condition, overlap_aux, sample_suggestion = process_options(options)
         if method_class(method, condition) == 'mcc':
             cg = self.anti_commutativity_matrix()
             if method == 'lf':
                 colors = largest_first(terms, n, cg)
             elif method == 'rlf':
                 colors = recursive_largest_first(terms, n, cg)
-            return [BinaryHamiltonian(value) for key, value in colors.items()]
+            groups = [value for key, value in colors.items()]
+            result = [BinaryHamiltonian(value) for key, value in colors.items()]
         elif method_class(method, condition) == 'greedy':
             if method == 'si': groups = sorted_insertion_grouping(terms, condition)
             if method == 'osi':
                 if overlap_aux == None: raise TequilaException(f"Overlapping SI grouping requires a dictionary of covariances.")
                 o_groups = OverlappingGroups.init_from_binary_terms(terms, condition)
-                groups, suggested_sample_size = o_groups.optimal_overlapping_groups(overlap_aux)
-            return [BinaryHamiltonian(group) for group in groups]
+                groups = o_groups.optimal_overlapping_groups(overlap_aux)
+            result = [BinaryHamiltonian(group) for group in groups]
+        
+        if sample_suggestion:
+            suggested_sample_size = get_opt_sample_size(groups, options["cov_dict"])
+        else:
+            suggested_sample_size = [None] * len(groups)
+        return result, suggested_sample_size
 
 class BinaryPauliString:
     def __init__(self, binary_vector=np.array([0, 0]), coeff=1.0):

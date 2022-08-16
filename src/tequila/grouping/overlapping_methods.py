@@ -212,4 +212,4 @@ class OverlappingGroups:
             cur_sample_size = get_opt_sample_size(cur_groups, overlap_aux.cov_dict)
             coeff = self.optimize_pauli_coefficients(overlap_aux.cov_dict, cur_sample_size)
             cur_groups = self.overlapping_groups_from_coeff(coeff)
-        return cur_groups, cur_sample_size
+        return cur_groups

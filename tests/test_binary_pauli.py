@@ -162,10 +162,25 @@ def test_commuting_groups():
     H = H + paulis.X(0) + paulis.Y(0)
     H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
 
-    commuting_parts = H.commuting_groups()
+    commuting_parts, suggested_sample_size = H.commuting_groups()
 
     for part in commuting_parts:
         assert part.is_commuting()
+
+def prepare_cov_dict(H):
+    eigenValues, eigenVectors = np.linalg.eigh(H.to_matrix())
+    wfn0 = tq.QubitWaveFunction(eigenVectors[:,0])
+    terms = BinaryHamiltonian.init_from_qubit_hamiltonian(H).binary_terms
+    cov_dict = {}
+    for term1 in terms:
+        for term2 in terms:
+            pw1 = BinaryPauliString(term1.get_binary(), 1.0)
+            pw2 = BinaryPauliString(term2.get_binary(), 1.0)
+            op1 = QubitHamiltonian.from_paulistrings(pw1.to_pauli_strings())
+            op2 = QubitHamiltonian.from_paulistrings(pw2.to_pauli_strings())
+            prod_op = op1 * op2
+            cov_dict[(term1.binary_tuple(), term2.binary_tuple())] = wfn0.inner(prod_op(wfn0)) - wfn0.inner(op1(wfn0)) * wfn0.inner(op2(wfn0))
+    return cov_dict
 
 def test_sorted_insertion():
     '''
@@ -173,17 +188,19 @@ def test_sorted_insertion():
     '''
     H, _, _, _ = prepare_test_hamiltonian()
     H = H + paulis.X(0) + paulis.Y(0) + 1.05 * paulis.Z(0) * paulis.Z(1) * paulis.Z(2)
-    H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+    Hbin = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
 
-    options = {"method":"si", "condition": "qwc"}
-    commuting_parts = H.commuting_groups(options=options)
+    options = {"method":"si", "condition": "qwc", "cov_dict":prepare_cov_dict(H)}
+    commuting_parts, suggested_sample_size = Hbin.commuting_groups(options=options)
     for part in commuting_parts:
         assert part.is_qubit_wise_commuting()
+    assert np.isclose(np.sum(suggested_sample_size), 1)
 
     options["condition"] = "fc"
-    commuting_parts = H.commuting_groups(options=options)
+    commuting_parts, suggested_sample_size = Hbin.commuting_groups(options=options)
     for part in commuting_parts:
         assert part.is_commuting()
+    assert np.isclose(np.sum(suggested_sample_size), 1)
 
 def prep_o_groups():
     H, _, _, _ = prepare_test_hamiltonian()
@@ -226,39 +243,37 @@ def test_overlapping_sorted_insertion():
     '''
     Testing whether overlapping sorted insertion works.
     '''
-    def prepare_cov_dict(H):
-        eigenValues, eigenVectors = np.linalg.eigh(H.to_matrix())
-        wfn0 = tq.QubitWaveFunction(eigenVectors[:,0])
-        terms = BinaryHamiltonian.init_from_qubit_hamiltonian(H).binary_terms
-        cov_dict = {}
-        for term1 in terms:
-            for term2 in terms:
-                pw1 = BinaryPauliString(term1.get_binary(), 1.0)
-                pw2 = BinaryPauliString(term2.get_binary(), 1.0)
-                op1 = QubitHamiltonian.from_paulistrings(pw1.to_pauli_strings())
-                op2 = QubitHamiltonian.from_paulistrings(pw2.to_pauli_strings())
-                prod_op = op1 * op2
-                cov_dict[(term1.binary_tuple(), term2.binary_tuple())] = wfn0.inner(prod_op(wfn0)) - wfn0.inner(op1(wfn0)) * wfn0.inner(op2(wfn0))
-        return cov_dict
-
     H, _, _, _ = prepare_test_hamiltonian()
     H = H + paulis.X(0) + paulis.Y(0) + 1.05 * paulis.Z(0) * paulis.Z(1) * paulis.Z(2)
     Hbin = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
     options = {"method":"osi", "condition": "qwc", "cov_dict":prepare_cov_dict(H)}
-    commuting_parts = Hbin.commuting_groups(options=options)
+    commuting_parts, suggested_sample_size = Hbin.commuting_groups(options=options)
     H_tmp = QubitHamiltonian.zero()
     for part in commuting_parts:
         assert part.is_qubit_wise_commuting()
         H_tmp += part.to_qubit_hamiltonian()
+    assert np.isclose(np.sum(suggested_sample_size), 1)
     assert equal_qubit_hamiltonian(H_tmp, H)
 
     options["condition"] = "fc"
-    commuting_parts = Hbin.commuting_groups(options=options)
+    commuting_parts, suggested_sample_size = Hbin.commuting_groups(options=options)
     H_tmp = QubitHamiltonian.zero()
     for part in commuting_parts:
         assert part.is_commuting()
         H_tmp += part.to_qubit_hamiltonian()
+    assert np.isclose(np.sum(suggested_sample_size), 1)
     assert equal_qubit_hamiltonian(H_tmp, H)
+
+    U = tq.gates.ExpPauli(angle="a", paulistring=tq.PauliString.from_string('X(0)Y(1)'))
+    variables = {"a": np.random.rand(1) * 2 * np.pi}
+    e_ori = tq.ExpectationValue(H=Hbin.to_qubit_hamiltonian(), U=U)
+    e_integrated_osi = tq.ExpectationValue(H=Hbin.to_qubit_hamiltonian(), U=U, optimize_measurements=options)
+    result_ori = tq.simulate(e_ori, variables)
+    compiled = tq.compile(e_integrated_osi)
+    evaluated = compiled(variables)
+    assert np.isclose(result_ori, evaluated)
+
+test_overlapping_sorted_insertion()
 
 def test_qubit_wise_commuting():
     '''
