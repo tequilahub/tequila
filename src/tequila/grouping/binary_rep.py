@@ -237,7 +237,7 @@ class BinaryHamiltonian:
         gram = np.block([[np.zeros((n,n)), np.eye(n)], [np.eye(n), np.zeros((n,n))]])
         return matrix @ gram @ matrix.T % 2
 
-    def commuting_groups(self, **kwargs):
+    def commuting_groups(self, options=None):
         """
         Notes
         ----------
@@ -245,11 +245,15 @@ class BinaryHamiltonian:
 
         Parameters
         ----------
-        method: str: The method used to group the commutative terms together. In the case of overlapping methods,
-        the coefficient for a given Pauli product term is split into several fragments optimally.
-        condition: str: Commutativitiy condition. Either fully commuting (fc) or qubit-wise commuting (qwc).
-        overlap_aux: class OverlappingAuxiliary: class contains the dictionary of covariances and the number of 
-        iterations in the overlapping method.
+        options: dictionary: Dictionary containing user-defined parameters:
+            key: method, val: 'lf' (largest first), 'rlf' (recursive largest first), 'si' (sorted insertion)
+                              'osi' [overlapping sorted insertion, i.e., ICS arXiv: 2201.01471 (2022)]
+            key: condition, val: 'fc' (fully commuting Pauli products are measured together)
+                                 'qwc' (qubit-wise commuting Pauli products are measured together)
+            key: cov_dict, val: Dictionary containing {(binary_tuple of pw1, binary_tuple of pw2) : Cov (pw1, pw2)}. 
+                                Only covariances for [pw1,pw2]=0 are necessary. This dictionary is necessary for osi.
+                                For other methods, if cov_dict is given, the optimal allocation of samples will be returned.
+            key: n_iter, val: integer number of iterations in osi.
 
         Returns
         ----------
@@ -272,7 +276,7 @@ class BinaryHamiltonian:
                     else:
                         overlap_aux = OverlappingAuxiliary(options["cov_dict"])
                 else:
-                    # (TODO) Compute default HF covariances if cov_dict is not given.
+                    # (TODO) Compute default HF/CISD covariances if cov_dict is not given.
                     overlap_aux = None
             return method, condition, overlap_aux, sample_suggestion
     
@@ -283,20 +287,15 @@ class BinaryHamiltonian:
             """
             if (method == 'lf' or method == 'rlf'): 
                 mc = 'mcc' 
-                if condition != "fc": raise TequilaException(f"lf and rlf can only return fully commuting fragments.")
+                if condition != "fc": raise TequilaException(f"Combination of options={{method:{method},condition:{condition}}} is not valid. E.g., lf and rlf can only return fully commuting fragments, i.e., condition=fc is necessary.")
             elif (method == 'si' or method == 'osi'):
                 mc = 'greedy'
             else:
-                raise TequilaException(f"There is no algorithm {method}")
+                raise TequilaException(f"There is not options={{method:{method}}}")
             return mc
 
         terms = self.binary_terms
         n = self.n_term
-
-        if "options" in kwargs: 
-            options = kwargs["options"]
-        else:
-            options = None
 
         method, condition, overlap_aux, sample_suggestion = process_options(options)
         if method_class(method, condition) == 'mcc':
@@ -310,7 +309,7 @@ class BinaryHamiltonian:
         elif method_class(method, condition) == 'greedy':
             if method == 'si': groups = sorted_insertion_grouping(terms, condition)
             if method == 'osi':
-                if overlap_aux == None: raise TequilaException(f"Overlapping SI grouping requires a dictionary of covariances.")
+                if overlap_aux == None: raise TequilaException("Overlapping SI grouping requires a dictionary of covariances, call with options={cov_dict:X}, where X is the dictionary.")
                 o_groups = OverlappingGroups.init_from_binary_terms(terms, condition)
                 groups = o_groups.optimal_overlapping_groups(overlap_aux)
             result = [BinaryHamiltonian(group) for group in groups]
