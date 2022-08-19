@@ -120,14 +120,17 @@ class OverlappingGroups:
         by using the overlapping version of the sorted insertion algorithm.
         '''
         nonoverlapping_groups = sorted_insertion_grouping(terms, condition=condition)
+        newly_added = [[] for i in range(len(nonoverlapping_groups))]
         sorted_terms = sorted(terms, key=lambda x: np.abs(x.coeff), reverse=True)
         overlapping_terms = []
         term_exists_in = [] #List of group indices where overlapping terms are present.
         for term in sorted_terms:
             grup_idxs = []
             for idx, group in enumerate(nonoverlapping_groups):
-                commute = term_commutes_with_group(term, group, condition)
-                if commute: grup_idxs.append(idx)
+                commute = term_commutes_with_group(term, group, condition) and term_commutes_with_group(term, newly_added[idx], condition)
+                if commute:
+                    grup_idxs.append(idx)
+                    newly_added[idx].append(term)
             if len(grup_idxs) > 1:
                 overlapping_terms.append(term.term_w_coeff(0.0))
                 term_exists_in.append(grup_idxs)

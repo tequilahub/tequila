@@ -19,7 +19,12 @@ class BinaryHamiltonian:
         self.n_term = len(self.binary_terms)
 
     @classmethod
-    def init_from_qubit_hamiltonian(cls, hamiltonian: QubitHamiltonian, n_qubits=None):
+    def init_from_qubit_hamiltonian(cls, hamiltonian: QubitHamiltonian, n_qubits=None, ignore_const=False):
+        if ignore_const: #Ignore constant term.
+            Hof = hamiltonian.to_openfermion()
+            if () in Hof.terms:
+                del Hof.terms[()]
+                hamiltonian = QubitHamiltonian.from_openfermion(Hof)
         if n_qubits is None:
             n_qubits = hamiltonian.n_qubits
         binary_terms = [
