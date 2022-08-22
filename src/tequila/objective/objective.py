@@ -613,7 +613,7 @@ class Objective:
         """
         types = [type(E) for E in self.get_expectationvalues()]
         types = list(set(types))
-        if ExpectationValueImpl in types and len(types)==1:
+        if len(types)==0 or (ExpectationValueImpl in types and len(types)==1):
             return False
         else:
             return True
