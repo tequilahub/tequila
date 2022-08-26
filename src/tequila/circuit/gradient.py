@@ -42,6 +42,14 @@ def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None,
     if variable not in objective.extract_variables():
         return Objective()
 
+    # objective translation
+    # if the objective was already translated to a backend
+    # we need to reverse that here
+    if objective.is_translated():
+        raise TequilaException("\n\ngradient of:{}\ncan not form gradient that was already compiled to a quantum backend\ntq.grad neds to be applied to the abstract - non compiled objective\nE.g. for the (compiled) objective E1 \n\tE1 = tq.compile(E0)\ninstead of doing\n\tdE = tq.grad(E1)\ndo\n\tdE = tq.grad(E0)\nand compile dE afterwards (if wanted) with\n\tdE = tq.compile(dE)\n".format(str(objective)))
+     
+
+    # circuit compilation
     if no_compile:
         compiled = objective
     else:

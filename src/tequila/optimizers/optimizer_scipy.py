@@ -130,7 +130,6 @@ class OptimizerSciPy(Optimizer):
         ScipyReturnType:
             the results of optimization.
         """
-
         objective = objective.contract()
         infostring = "{:15} : {}\n".format("Method", self.method)
         infostring += "{:15} : {} expectationvalues\n".format("Objective", objective.count_expectationvalues())
@@ -196,7 +195,7 @@ class OptimizerSciPy(Optimizer):
                 infostring += "{:15} : scipy numerical {}\n".format("gradient", dE)
                 infostring += "{:15} : scipy numerical {}\n".format("hessian", ddE)
 
-        if isinstance(gradient,dict):
+        if isinstance(gradient,dict) and "method" in gradient:
             if gradient['method'] == 'qng':
                 func = gradient['function']
                 compile_gradient = False
@@ -397,7 +396,6 @@ def minimize(objective: Objective,
     SciPyReturnType:
         the results of optimization
     """
-
     if isinstance(gradient, dict) or hasattr(gradient, "items"):
         if all([isinstance(x, Objective) for x in gradient.values()]):
             gradient = format_variable_dictionary(gradient)
