@@ -151,7 +151,7 @@ class Adapt:
         if len(initial_objective.extract_variables())>0:
             active_variables = [k for k in variables if k not in static_variables]
             if len(active_variables)>0:
-                self.parameters.optimizer_args:
+                if not self.parameters.silent:
                     print("initial optimization")
                 result = minimize(objective=initial_objective,
                                   variables=active_variables,
@@ -173,11 +173,11 @@ class Adapt:
             grad_norm = numpy.linalg.norm(grad_values)
 
             if grad_norm < self.parameters.gradient_convergence:
-                self.parameters.optimizer_args:
+                if not self.parameters.silent:
                     print("pool gradient norm is {:+2.8f}, convergence criterion met".format(grad_norm))
                 break
             if numpy.abs(max_grad) < self.parameters.max_gradient_convergence:
-                self.parameters.optimizer_args:
+                if not self.parameters.silent:
                     print("max pool gradient is {:+2.8f}, convergence criterion |max(grad)|<{} met".format(max_grad, self.parameters.max_gradient_convergence))
                 break
 
@@ -189,7 +189,7 @@ class Adapt:
 
             if len(degeneracies) > 0:
                 batch_size += len(degeneracies)
-                self.parameters.optimizer_args:
+                if not self.parameters.silent:
                     print("detected degeneracies: increasing batch size temporarily from {} to {}".format(self.parameters.batch_size, batch_size))
 
             count = 0
@@ -214,7 +214,7 @@ class Adapt:
             energy = result.energy
             variables = result.variables
             
-            self.parameters.optimizer_args:
+            if not self.parameters.silent:
                 print("-------------------------------------")
                 print("Finished iteration {}".format(iter))
                 print("current energy : {:+2.8f}".format(energy))
@@ -231,12 +231,12 @@ class Adapt:
             histories.append(result.history)
 
             if self.parameters.energy_convergence is not None and numpy.abs(diff) < self.parameters.energy_convergence:
-                self.parameters.optimizer_args:
+                if not self.parameters.silent:
                     print("energy difference is {:+2.8f}, convergence criterion met".format(diff))
                 break
 
             if iter == self.parameters.maxiter - 1:
-                self.parameters.optimizer_args:
+                if not self.parameters.silent:
                     print("reached maximum number of iterations")
                 break
 
@@ -273,7 +273,7 @@ class Adapt:
         if mp_pool is None:
             dEs = [self.do_screening(arg) for arg in args]
         else:
-            self.parameters.optimizer_args:
+            if not self.parameters.silent:
                 print("screen with {} workers".format(mp_pool._processes))
             dEs = mp_pool.map(self.do_screening, args)
         dEs = dict(sorted(dEs, reverse=True, key=lambda x: numpy.fabs(x[1])))
