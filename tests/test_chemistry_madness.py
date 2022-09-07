@@ -37,6 +37,12 @@ def test_madness_he_data():
     print(result.energy)
     assert (numpy.isclose(-2.87761809, result.energy, atol=1.e-5))
 
+@pytest.mark.skipif(executable is None, reason="madness was not found")
+def test_madness_frozen_core():
+    molecule = tq.Molecule(geometry="Li 0.0 0.0 0.0\nLi 0.0 0.0 1.6")
+    assert molecule.n_orbitals == 2
+    assert molecule.parameters.get_number_of_core_electrons() == 4
+
 
 @pytest.mark.skipif(executable is None, reason="madness was not found")
 def test_madness_full_he():
