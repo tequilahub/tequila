@@ -142,10 +142,14 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         if pairinfo is None:
             raise TequilaMadnessException("Pairinfo from madness calculation not found\nPlease provide pnoinfo.txt")
-
-        n_orbitals = h.shape[0]
-        assert h.shape[1] == n_orbitals
-        assert sum(g.shape) == 4 * n_orbitals
+        
+        n_orbitals_total = h.shape[0]
+        if "n_orbitals" in kwargs:
+            # this would be the active orbitals
+            kwargs.pop("n_orbitals")
+            
+        assert h.shape[1] == n_orbitals_total
+        assert sum(g.shape) == 4 * n_orbitals_total
         assert len(g.shape) == 4
         assert len(h.shape) == 2
 
@@ -181,7 +185,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                          one_body_integrals=h,
                          two_body_integrals=g,
                          nuclear_repulsion=nuclear_repulsion,
-                         n_orbitals=n_orbitals,
+                         n_orbitals=n_orbitals_total,
                          orbitals=orbitals,
                          reference_orbitals=reference_orbitals,
                          *args,
@@ -608,7 +612,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         n_pairs = n_electrons // 2
         if n_orbitals is None:
             n_orbitals = n_electrons  # minimal correlated (each active pair will have one virtual)
-
+        
         if n_pno is None:
             n_pno = n_orbitals - n_pairs
 
