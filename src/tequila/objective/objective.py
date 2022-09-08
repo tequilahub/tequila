@@ -593,7 +593,7 @@ class Objective:
             return float(result[0])
         else:
             return result
-
+    
     def contract(self):
         """
         Exists only to be convient in optimizers, which all contract over VectrObjectives.
@@ -606,7 +606,17 @@ class Objective:
 
     def __len__(self):
         return 1
-
+    
+    def is_translated(self):
+        """
+        check if the objective was already translated to a quantum backend
+        """
+        types = [type(E) for E in self.get_expectationvalues()]
+        types = list(set(types))
+        if len(types)==0 or (ExpectationValueImpl in types and len(types)==1):
+            return False
+        else:
+            return True
 
 def ExpectationValue(U, H, optimize_measurements: bool = False, *args, **kwargs) -> Objective:
     """
@@ -899,6 +909,7 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
 
     Raises
     ------
+    
     TequilaVariableException
 
 

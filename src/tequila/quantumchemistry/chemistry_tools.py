@@ -126,17 +126,17 @@ class ParametersQC:
         for atom in self.get_atoms():
             n=self.get_atom_number(atom)
             if n>2:
-                result = 2 
+                result += 2 
             if n>10:
-                result = 8
+                result += 8
             if n>18:
-                result = 18
+                result += 18
             if n>36:
-                result = 36
+                result += 36
             if n>45:
-                result = 54
+                result += 54
             if n>86:
-                result = 86
+                result += 86
         return result
 
     @property
@@ -153,10 +153,11 @@ class ParametersQC:
             return atom_numbers[name.lower()]
         try:
             import periodictable as pt
-            atom = name.lower()
+            atom = list(name.lower())
             atom[0] = atom[0].upper()
+            atom = ''.join(atom)
             element = pt.elements.symbol(atom)
-            return element.number()
+            return element.number
         except:
             raise TequilaException(
                 "can not assign atomic number to element {}\npip install periodictable will fix it".format(atom))

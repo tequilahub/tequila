@@ -497,7 +497,7 @@ class Optimizer:
             dO = {k: grad(objective=objective, variable=k, *args, **kwargs) for k in variables}
             compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
 
-        elif isinstance(gradient, dict):
+        elif isinstance(gradient, dict) or hasattr(gradient, "items"):
             if all([isinstance(x, Objective) for x in gradient.values()]):
                 dO = gradient
                 compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}

@@ -19,6 +19,7 @@ class AdaptParameters:
     gradient_convergence: float = 1.e-2
     max_gradient_convergence: float = 0.0
     degeneracy_threshold: float = 1.e-4
+    silent: bool = False
 
     def __str__(self):
         info = ""
@@ -103,6 +104,11 @@ class Adapt:
         return self.objective_factory(U=U, variables=variables, *args, **{**self.parameters.compile_args, **kwargs})
 
     def __init__(self, operator_pool, H=None,objective_factory=None, *args, **kwargs):
+        """
+        For the Default Adaptive Solver kwargs can contain Upre and Upost as described in: 
+        See out online tutorial for more information: https://github.com/tequilahub/tequila-tutorials
+        Better code-documentation will be there at some point ....
+        """
         self.operator_pool = operator_pool
         if objective_factory is None:
             self.objective_factory = ObjectiveFactoryBase(H, *args, **kwargs)
@@ -111,12 +117,14 @@ class Adapt:
 
         filtered = {k: v for k, v in kwargs.items() if k in self.parameters.__dict__}
         self.parameters = AdaptParameters(*args, **filtered)
-
+        if self.parameters.silent and not self.parameters.optimizer_args is None and "silent" not in self.parameters.optimizer_args:
+            self.parameters.optimizer_args["silent"] = True
 
     def __call__(self, static_variables = None, mp_pool=None, label=None, variables=None, *args, **kwargs):
-
-        print("Starting Adaptive Solver")
-        print(self)
+        
+        if not self.parameters.silent:
+            print("Starting Adaptive Solver")
+            print(self)
 
         # count resources
         screening_cycles = 0
@@ -143,7 +151,8 @@ class Adapt:
         if len(initial_objective.extract_variables())>0:
             active_variables = [k for k in variables if k not in static_variables]
             if len(active_variables)>0:
-                print("initial optimization")
+                if not self.parameters.silent:
+                    print("initial optimization")
                 result = minimize(objective=initial_objective,
                                   variables=active_variables,
                                   initial_values=variables,
@@ -164,10 +173,12 @@ class Adapt:
             grad_norm = numpy.linalg.norm(grad_values)
 
             if grad_norm < self.parameters.gradient_convergence:
-                print("pool gradient norm is {:+2.8f}, convergence criterion met".format(grad_norm))
+                if not self.parameters.silent:
+                    print("pool gradient norm is {:+2.8f}, convergence criterion met".format(grad_norm))
                 break
             if numpy.abs(max_grad) < self.parameters.max_gradient_convergence:
-                print("max pool gradient is {:+2.8f}, convergence criterion |max(grad)|<{} met".format(max_grad, self.parameters.max_gradient_convergence))
+                if not self.parameters.silent:
+                    print("max pool gradient is {:+2.8f}, convergence criterion |max(grad)|<{} met".format(max_grad, self.parameters.max_gradient_convergence))
                 break
 
             batch_size = self.parameters.batch_size
@@ -178,7 +189,8 @@ class Adapt:
 
             if len(degeneracies) > 0:
                 batch_size += len(degeneracies)
-                print("detected degeneracies: increasing batch size temporarily from {} to {}".format(self.parameters.batch_size, batch_size))
+                if not self.parameters.silent:
+                    print("detected degeneracies: increasing batch size temporarily from {} to {}".format(self.parameters.batch_size, batch_size))
 
             count = 0
 
@@ -201,14 +213,15 @@ class Adapt:
             diff = energy - result.energy
             energy = result.energy
             variables = result.variables
-
-            print("-------------------------------------")
-            print("Finished iteration {}".format(iter))
-            print("current energy : {:+2.8f}".format(energy))
-            print("difference     : {:+2.8f}".format(diff))
-            print("grad_norm      : {:+2.8f}".format(grad_norm))
-            print("max_grad       : {:+2.8f}".format(max_grad))
-            print("circuit size   : {}".format(len(U.gates)))
+            
+            if not self.parameters.silent:
+                print("-------------------------------------")
+                print("Finished iteration {}".format(iter))
+                print("current energy : {:+2.8f}".format(energy))
+                print("difference     : {:+2.8f}".format(diff))
+                print("grad_norm      : {:+2.8f}".format(grad_norm))
+                print("max_grad       : {:+2.8f}".format(max_grad))
+                print("circuit size   : {}".format(len(U.gates)))
 
             screening_cycles += 1
             mini_iter=len(result.history.extract_energies())
@@ -218,11 +231,13 @@ class Adapt:
             histories.append(result.history)
 
             if self.parameters.energy_convergence is not None and numpy.abs(diff) < self.parameters.energy_convergence:
-                print("energy difference is {:+2.8f}, convergence criterion met".format(diff))
+                if not self.parameters.silent:
+                    print("energy difference is {:+2.8f}, convergence criterion met".format(diff))
                 break
 
             if iter == self.parameters.maxiter - 1:
-                print("reached maximum number of iterations")
+                if not self.parameters.silent:
+                    print("reached maximum number of iterations")
                 break
 
         @dataclasses.dataclass
@@ -258,7 +273,8 @@ class Adapt:
         if mp_pool is None:
             dEs = [self.do_screening(arg) for arg in args]
         else:
-            print("screen with {} workers".format(mp_pool._processes))
+            if not self.parameters.silent:
+                print("screen with {} workers".format(mp_pool._processes))
             dEs = mp_pool.map(self.do_screening, args)
         dEs = dict(sorted(dEs, reverse=True, key=lambda x: numpy.fabs(x[1])))
         return dEs
