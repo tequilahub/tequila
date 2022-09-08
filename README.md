@@ -4,9 +4,10 @@
 
 Tequila is an Extensible Quantum Information and Learning Architecture where the main goal is to simplify and accelerate implementation of new ideas for quantum algorithms.
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
-Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.
+Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.  
 
-Get an overview through different slides and recordings of talks on different level of detail: See [here](https://kottmanj.github.io/talks_and_material/).  
+Check out this small overview to get a glimpse on [what tequila is,](https://kottmanj.github.io/tequila-in-a-nutshell/#/)  
+or, get an overview through different slides and recordings of talks on different level of detail: See [here](https://kottmanj.github.io/talks_and_material/).  
 
 Get started with our [BasicUsage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb) Tutorial or find more in the [Tutorial collection](https://github.com/aspuru-guzik-group/tequila-tutorials)  
 
@@ -27,19 +28,27 @@ For best performance it is recommended to have `qulacs` installed.
 
 # QuantumChemistry:
 Currently supported
-- [Psi4](https://github.com/psi4/psi4).
+## [Psi4](https://github.com/psi4/psi4).
 In a conda environment this can be installed with
 ```bash
 conda install psi4 -c psi4
 ```
-Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/Chemistry.ipynb) that illustrates the usage.
+Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
 
-- [Madness](https://github.com/kottmanj/madness)
-Currently you need to compile from a separate [fork](https://github.com/kottmanj/madness).
-See the github page of this fork for installation instruction.
-Here is a small [tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb) that illustrates the usage.
+## [Madness](https://github.com/kottmanj/madness)  
+In a conda environment this can be installed with  
+```bash
+conda install madtequila -c kottmann
+```  
+This installs a modified version of madness ready to use with tequila.  
+Alternatively it can be compiled from the sources provided in this [fork](https://github.com/kottmanj/madness) (follow readme instructions there).  
+Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage.
 
-- [PySCF](https://github.com/pyscf/pyscf)  
+## [PySCF](https://github.com/pyscf/pyscf)  
+Install with
+```bash
+pip install pyscf
+```  
 Works similar as Psi4. Classical methods are also integrated in the madness interface allowing to use them in a basis-set-free representation.
 
 # Install from source
@@ -98,8 +107,8 @@ Of course you can also use one of the other backends (see above).
 # Getting Started
 We have a collection of [*tutorials*](https://github.com/tequilahub/tequila-tutorials) covering basic usage of tequila as well as cutting edge research content:
 - Tutorial on [Basic Usage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb)  
-- Chemistry tutorial with psi4: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/Chemistry.ipynb)
-- Chemistry tutorial with madness: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)
+- Chemistry tutorial with psi4: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb)
+- Chemistry tutorial with madness: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)
 - check the list of research projects below for links to specific examples.  
 - all tutorials: [github/tequilahub/tequila-tutorials](https://github.com/tequilahub/tequila-tutorials).  
 
@@ -126,9 +135,13 @@ result.history.plot("angles")
 result.history.plot("gradients")
 ```
 
-## Chemistry Hello World (Madness backend)
-install backend by following instructions given [here](https://github.com/kottmanj/madness)  
-more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)  
+## Chemistry Hello World (Madness backend)  
+Install backend as
+```bash
+conda install madtequila -c kottmann
+```  
+or see above for more.    
+more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)  
 ```python
 import tequila as tq
 
@@ -166,7 +179,7 @@ pip install pyscf
 # and/or
 conda install psi4 -c psi4 
 ```
-more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/Chemistry.ipynb)
+more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb)
 ```python
 # define a molecule within an active space
 active = {"a1": [1], "b1":[0]}
@@ -193,9 +206,9 @@ print("CISD: {:+2.8}f".format(cisd))
 print("FCI : {:+2.8}f".format(fci))
 ```
 
-Do you want to create your own methods? Check out the [tutorials](https://github.com/aspuru-guzik-group/tequila/tree/master/tutorials)!
+Do you want to create your own methods? Check out the [tutorials](https://github.com/tequilahub/tequila-tutorials)!
 
-# Research projects using Tequila
+# Some Research projects using Tequila
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
 A Feasible Approach for Automatically Differentiable Unitary Coupled-Cluster on Quantum Computers.  
 Chemical Science, 2021, [doi.org/10.1039/D0SC06627C](https://doi.org/10.1039/D0SC06627C).  
@@ -207,8 +220,8 @@ J.S. Kottmann, P. Schleich, T. Tamayo-Mendoza, A. Aspuru-Guzik.
 Reducing Qubit Requirements while Maintaining Numerical Precision for the Variational Quantum Eigensolver: A Basis-Set-Free Approach.  
 J.Phys.Chem.Lett., 2021, [doi.org/10.1021/acs.jpclett.0c03410](https://doi.org/10.1021/acs.jpclett.0c03410).  
 [arxiv:2008.02819](https://arxiv.org/abs/2008.02819)  
-[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryBasisSetFreeVQE.ipynb)  
-[tutorial on the madness interface](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryMadnessInterface.ipynb)  
+[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/chemistry/BasisSetFreeVQEExample.ipynb)  
+[tutorial on the madness interface](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)  
 
 A. Cervera-Lierta, J.S. Kottmann, A. Aspuru-Guzik.  
 The Meta-Variational Quantum Eigensolver.  
@@ -228,7 +241,7 @@ Natural Evolutionary Strategies for Variational Quantum Computation.
 J. S. Kottmann, A. Aspuru-Guzik,  
 Optimized Low-Depth Quantum Circuits for Molecular Electronic Structure using a Separable Pair Approximation,  
 [arxiv:2105.03836](https://arxiv.org/abs/2105.03836)  
-[example code](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistrySeparablePairAnsatz.ipynb)   
+[example code](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/SeparablePairAnsatz.ipynb)   
  
 K. Choudhary,  
 Quantum Computation for Predicting Electron and Phonon Properties of Solids  
@@ -238,12 +251,12 @@ Quantum Computation for Predicting Electron and Phonon Properties of Solids
 P. Schleich, J.S. Kottmann, A. Aspuru-Guzik,  
 Improving the Accuracy of the Variational Quantum Eigensolver for Molecular Systems by the Explicitly-Correlated Perturbative [2]-R12-Correction  
 [arxiv:2110.06812](https://arxiv.org/abs/2110.06812)  
-[tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/ChemistryF12Correction.ipynb)  
+[tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/F12Correction.ipynb)  
 
 M. Weber, A. Anand, A. Cervera-Lierta, J. S. Kottmann, T.-H. Kyaw, B. Li, A. Aspuru-Guzik, C. Zhang and Z. Zhao,  
 Toward Reliability in the NISQ Era: Robust Interval Guarantee for Quantum Measurements on Approximate States  
 [arxiv:2110.09793](https://arxiv.org/abs/2110.09793)  
-[tutorial](https://github.com/aspuru-guzik-group/tequila-tutorials/blob/main/robustness_tutorial.ipynb)  
+[tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/research/RobustnessIntervals.ipynb)  
   
 M. S. Rudolph, S. Sim, A. Raza, M. Stechly, J. R. McClean, E. R. Anschuetz, L. Serrano, A. Perdomo-Ortiz  
 ORQVIZ: Visualizing High-Dimensional Landscapes in Variational Quantum Algorithms  
@@ -257,11 +270,34 @@ T.-H. Kyaw, T. Menke, S. Sim, A. Anand, N. P. D. Sawaya, W. D. Oliver, G. G. Gue
 Quantum computer-aided design: digital quantum simulation of quantum processors  
 [arxiv:2006.03070](https://arxiv.org/abs/2006.03070)  
 
+Z. P. Bansingh, T.-C. Yen, P. D. Johnson, A. F. Izmaylov  
+Fidelity overhead for non-local measurements in variational quantum algorithms  
+[arxiv:2205.07113](https://arxiv.org/abs/2205.07113)  
+
 
 H. Lim, H.-N. Jeon, J.-K. Rhee, B. Oh, K. T. No  
 Quantum computational study of chloride ion attack on chloromethane for chemical accuracy and quantum noise effects with UCCSD and k-UpCCGSD ansatzes  
-[arxiv:2112.15314](https://arxiv.org/abs/2112.15314)
+[arxiv:2112.15314](https://arxiv.org/abs/2112.15314)  
 
+A, Meijer- van de Griend, J. K. Nurminen  
+QuantMark: A Benchmarking API for VQE Algorithms  
+[DOI:10.1109/TQE.2022.3159327](https://doi.org/10.1109/TQE.2022.3159327)  
+[QuantMark Codebase](https://github.com/QuantMarkFramework/LibMark/)  
+
+A. Anand, J.S. Kottmann, A. Aspuru-Guzik  
+Quantum compression with classically simulatable circuits  
+[code](https://github.com/AbhinavUofT/GA_for_encoder)  
+[arxiv:2207.02961](https://arxiv.org/abs/2207.02961)  
+
+J.S. Kottmann  
+Molecular Circuit Design: A Graph-Based Approach  
+[arxiv:2207.12421](https://arxiv.org/abs/2207.12421)  
+[example code](https://github.com/tequilahub/tequila-tutorials/blob/main/chemistry/GraphBasedCircuitDesign.ipynb)  
+
+T.-H. Kyaw, M. B. Soley, B. Allen, P. Bergold, C. Sun, V. S. Batista, A. Aspuru-Guzik  
+Variational quantum iterative power algorithms for global optimization  
+[arxiv:2208.10470](https://arxiv.org/abs/2208.10470)  
+[code](https://github.com/aspuru-guzik-group/qipa)    
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
