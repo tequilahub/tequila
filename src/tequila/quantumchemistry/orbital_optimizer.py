@@ -1,9 +1,10 @@
 import numpy
 import typing
 import copy
+import warnings
 from dataclasses import dataclass, field
 
-from tequila import QCircuit, ExpectationValue, minimize
+from tequila import QCircuit, ExpectationValue, minimize, TequilaWarning
 from . import QuantumChemistryBase, ParametersQC, NBodyTensor
 
 """
@@ -206,7 +207,12 @@ class PySCFVQEWrapper:
         if restrict_to_hcb:
             # todo: adapt compute_rdms function to operate in HCB encoding -> faster and less measurements
             U = molecule.hcb_to_me(U=U)
-
+            warnings.warn("optimize_orbitals: restrict_to_hcb=True, will use HCB for VQE but will map back to JW for the RDMs -> not fully optimized, see lines in code below this warning for potential speedup :-)", TequilaWarning)
+            # should look like this:
+            #rdm1 = .... compute rdm1 from hcb wavefunction
+            #rdm2 = .... compute rdm2 from hcb wavefunction
+            # then wrap the line below to an else statement
+            
         rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True,
                                            get_rdm2=True)
         rdm2 = self.reorder(rdm2, 'dirac', 'mulliken')
