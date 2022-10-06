@@ -1065,7 +1065,7 @@ class QuantumChemistryBase:
                                                **kwargs)
 
         for k in range(1, order):
-            U += self.make_upccgsd_layer(include_singles="S" in name, indices=indices, label=(label, k),
+            U += self.make_upccgsd_layer(include_singles=S, include_doubles=D, indices=indices, label=(label, k),
                                          spin_adapt_singles=spin_adapt_singles, neglect_z=neglect_z)
 
         return U
