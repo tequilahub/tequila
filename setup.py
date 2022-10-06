@@ -29,13 +29,21 @@ additional = []
 
 requirements = read_requirements('requirements.txt')
 
+try:
+with open("README.md", "r") as f:
+    long_description=f.read()
+except:
+    long_description=""
+
 setup(
     name='tequila-basic',
     version=info["__version__"],
     author=info["__author__"],
-    url="https://github.com/aspuru-guzik-group/tequila",
-    description="Tequila is an abstract library for the development and prototyping of quantum algorithms.\nSee github for more information",
+    url="https://github.com/tequilahub/tequila",
+    description="A High-Level Abstraction Framework for Quantum Algorithms",
     author_email='jakob.kottmann@gmail.com',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     install_requires=requirements + additional,
     extras_require={
         ':python_version < "3.7"': extras_3_6,
