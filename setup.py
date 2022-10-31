@@ -30,8 +30,8 @@ additional = []
 requirements = read_requirements('requirements.txt')
 
 try:
-with open("README.md", "r") as f:
-    long_description=f.read()
+    with open("README.md", "r") as f:
+        long_description=f.read()
 except:
     long_description=""
 

@@ -11,16 +11,25 @@ from itertools import combinations
 @dataclasses.dataclass
 class AdaptParameters:
 
-    optimizer_args: dict = dataclasses.field(default_factory=lambda : {"method":"bfgs"})
+    optimizer_args: dict = dataclasses.field(default_factory=lambda : {"method":"bfgs", "silent":True, "method_options":{"gtol":1.e-5}})
     compile_args: dict = dataclasses.field(default_factory=lambda : {})
     maxiter:int = 100
     batch_size = 1
     energy_convergence: float = None
-    gradient_convergence: float = 1.e-2
-    max_gradient_convergence: float = 0.0
-    degeneracy_threshold: float = 1.e-4
+    gradient_convergence: float = 1.e-3
+    max_gradient_convergence: float = 5.e-4
+    degeneracy_threshold: float = 5.e-4
     silent: bool = False
-
+    
+    def __post__init__(self):
+        # avoid stacking of same operator-types in a row
+        if "method_options" in self.optimizer_args:
+            if "gtol" in self.optimizer_args["method_options"]:
+                gtol=self.optimizer_args["method_options"]["gtol"] 
+                if gtol > self.max_gradient_convergence:
+                    warnings.warn("you specified screening threshold max_gradient_convergence={} but optimizer theshold gtol={}. This will lead to accumulation of the same operator, will set max_gradient_convergence={}".format(self.max_gradient_convergence, gtol, gtol*2),TequilaWarning)
+                    self.max_gradient_convergence = gtol*2.0
+                
     def __str__(self):
         info = ""
         for k,v in self.__dict__.items():
@@ -103,7 +112,7 @@ class Adapt:
     def make_objective(self, U, variables=None, *args, **kwargs):
         return self.objective_factory(U=U, variables=variables, *args, **{**self.parameters.compile_args, **kwargs})
 
-    def __init__(self, operator_pool, H=None,objective_factory=None, *args, **kwargs):
+    def __init__(self, operator_pool, H=None, objective_factory=None, *args, **kwargs):
         """
         For the Default Adaptive Solver kwargs can contain Upre and Upost as described in: 
         See out online tutorial for more information: https://github.com/tequilahub/tequila-tutorials
@@ -153,10 +162,11 @@ class Adapt:
             if len(active_variables)>0:
                 if not self.parameters.silent:
                     print("initial optimization")
+                margs = {"initial_values":variables}
+                margs = {**margs,**self.parameters.compile_args,**self.parameters.optimizer_args}
                 result = minimize(objective=initial_objective,
                                   variables=active_variables,
-                                  initial_values=variables,
-                                   **self.parameters.compile_args, **self.parameters.optimizer_args)
+                                  **margs)
 
                 variables = result.variables
 
@@ -193,10 +203,12 @@ class Adapt:
                     print("detected degeneracies: increasing batch size temporarily from {} to {}".format(self.parameters.batch_size, batch_size))
 
             count = 0
-
+           
+            op_names=[]
             for k,v in gradients.items():
                 Ux = self.operator_pool.make_unitary(k, label=current_label)
                 U += Ux
+                op_names.append(Ux.extract_variables())
                 count += 1
                 if count >= batch_size:
                     break
@@ -205,11 +217,13 @@ class Adapt:
             active_variables = [k for k in variables if k not in static_variables]
 
             objective = self.make_objective(U, variables=variables)
+            margs = {"initial_values":variables}
+            margs = {**margs,**self.parameters.compile_args,**self.parameters.optimizer_args}
             result = minimize(objective=objective,
-                                 variables=active_variables,
-                                 initial_values=variables,
-                                 **self.parameters.compile_args, **self.parameters.optimizer_args)
-
+                              variables=active_variables,
+                              **margs)
+            
+            niter = len(result.history.energies)
             diff = energy - result.energy
             energy = result.energy
             variables = result.variables
@@ -217,11 +231,14 @@ class Adapt:
             if not self.parameters.silent:
                 print("-------------------------------------")
                 print("Finished iteration {}".format(iter))
+                print("added ", op_names)
                 print("current energy : {:+2.8f}".format(energy))
                 print("difference     : {:+2.8f}".format(diff))
                 print("grad_norm      : {:+2.8f}".format(grad_norm))
                 print("max_grad       : {:+2.8f}".format(max_grad))
-                print("circuit size   : {}".format(len(U.gates)))
+                print("ops in circuis : {}".format(len(U.gates)))
+                print("optimizer      : {}".format(self.parameters.optimizer_args["method"]))
+                print("opt-iterations : {}".format(niter))
 
             screening_cycles += 1
             mini_iter=len(result.history.extract_energies())
@@ -437,4 +454,28 @@ class ObjectiveFactorySequentialExcitedState(ObjectiveFactoryBase):
             S2 = ExpectationValue(H=Qp, U=circuit+Ux.dagger())
             objective += numpy.abs(self.factors[i])*S2
         return objective
+
+def run_molecular_adapt(molecule, operator_pool: str = None, Upre=None , Upost=None, *args, **kwargs):
+
+    if operator_pool is None:
+        operator_pool = "UCCGSD"
+
+    # auto-detect if we have an molecular pool
+    # initialized by keyword
+    # e.g. U(p)CC(G)(S)(D)
+    ucc_signals=["u", "cc", "s", "d", "g"]
+    if hasattr(operator_pool, "lower"):
+        if any([s in operator_pool.lower() for s in ucc_signals]):
+            operator_pool = MolecularPool(molecule=molecule, indices=operator_pool)            
+    
+    if Upre is None:
+        Upre = molecule.prepare_reference()
+
+    H = molecule.make_hamiltonian()
+    solver = Adapt(operator_pool=operator_pool, H=H, Upre=Upre, Upost=Upost, *args, **kwargs)
+    
+    result = solver()
+
+    return result
+
 
