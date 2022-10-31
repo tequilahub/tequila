@@ -1859,6 +1859,6 @@ class QuantumChemistryBase:
 
         result += "\nBasis\n"
         result += str(self.integral_manager)
-        result += "\nmore information with: self.print_basis_info()"
+        result += "\nmore information with: self.print_basis_info()\n"
 
         return result
