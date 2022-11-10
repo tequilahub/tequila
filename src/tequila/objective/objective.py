@@ -74,7 +74,7 @@ class ExpectationValueImpl:
         if self.U is not None:
             self.U.replace_variables(replacement)
 
-    def __init__(self, U=None, H=None, contraction=None, shape=None, *args, **kwargs):
+    def __init__(self, U=None, H=None, contraction=None, shape=None, samples=None, *args, **kwargs):
         """
 
         Parameters
@@ -95,6 +95,7 @@ class ExpectationValueImpl:
             self._hamiltonian = tuple(H)
         self._contraction = contraction
         self._shape = shape
+        self.samples = samples
 
     def map_qubits(self, qubit_map: dict):
         """
@@ -281,11 +282,11 @@ class Objective:
         return not all([hasattr(arg, "name") for arg in self.args])
 
     @classmethod
-    def ExpectationValue(cls, U=None, H=None, *args, **kwargs):
+    def ExpectationValue(cls, U=None, H=None, samples=None, *args, **kwargs):
         """
         Initialize a wrapped expectationvalue directly as Objective
         """
-        E = ExpectationValueImpl(H=H, U=U, *args, **kwargs)
+        E = ExpectationValueImpl(H=H, U=U, samples=samples, *args, **kwargs)
         return Objective(args=[E])
 
     @property
@@ -618,16 +619,22 @@ class Objective:
         else:
             return True
 
-def ExpectationValue(U, H, optimize_measurements: bool = False, *args, **kwargs) -> Objective:
+def ExpectationValue(U, H, optimize_measurements = False, *args, **kwargs) -> Objective:
     """
     Initialize an Objective which is just a single expectationvalue
     """
     if optimize_measurements:
-        commuting_parts = compile_commuting_parts(H=H)
+        if optimize_measurements is True:
+            # If optimize_measurements = True, then there are no further options
+            # provided. Therefore, we will use the default values.
+            options = None
+        else:
+            options = optimize_measurements
+        commuting_parts, suggested_samples = compile_commuting_parts(H=H, options=options)
         result = 0.0
-        for HandU in commuting_parts:
+        for i, HandU in enumerate(commuting_parts):
             qwc, Um = HandU
-            Etmp = ExpectationValue(H=qwc, U=U + Um, optimize_measurements=False)
+            Etmp = ExpectationValue(H=qwc, U=U + Um, optimize_measurements=False, samples=suggested_samples[i])
             result += Etmp
         return result
     else:

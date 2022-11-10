@@ -1,9 +1,11 @@
 from tequila import TequilaException
 from tequila.hamiltonian import QubitHamiltonian, PauliString
-from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first
+from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_symplectic_inner_product, binary_solve, binary_phase, gen_single_qubit_term, largest_first, recursive_largest_first, sorted_insertion_grouping
+from tequila.grouping.overlapping_methods import OverlappingGroups, OverlappingAuxiliary, get_opt_sample_size
 import numpy as np
 import tequila as tq
 import numbers
+from copy import deepcopy
 
 class BinaryHamiltonian:
     def __init__(self, binary_terms):
@@ -17,7 +19,12 @@ class BinaryHamiltonian:
         self.n_term = len(self.binary_terms)
 
     @classmethod
-    def init_from_qubit_hamiltonian(cls, hamiltonian: QubitHamiltonian, n_qubits=None):
+    def init_from_qubit_hamiltonian(cls, hamiltonian: QubitHamiltonian, n_qubits=None, ignore_const=False):
+        if ignore_const: #Ignore constant term.
+            Hof = hamiltonian.to_openfermion()
+            if () in Hof.terms:
+                del Hof.terms[()]
+                hamiltonian = QubitHamiltonian.from_openfermion(Hof)
         if n_qubits is None:
             n_qubits = hamiltonian.n_qubits
         binary_terms = [
@@ -230,23 +237,88 @@ class BinaryHamiltonian:
         gram = np.block([[np.zeros((n,n)), np.eye(n)], [np.eye(n), np.zeros((n,n))]])
         return matrix @ gram @ matrix.T % 2
 
-    def commuting_groups(self, method='rlf'):
+    def commuting_groups(self, options=None):
         """
+        Notes
+        ----------
         Return the partitioning of the hamiltonian into commuting groups.
+
+        Parameters
+        ----------
+        options: dictionary: Dictionary containing user-defined parameters:
+            key: method, val: 'lf' (largest first), 'rlf' (recursive largest first), 'si' (sorted insertion)
+                              'osi' [overlapping sorted insertion, i.e., ICS arXiv: 2201.01471 (2022)]
+            key: condition, val: 'fc' (fully commuting Pauli products are measured together)
+                                 'qwc' (qubit-wise commuting Pauli products are measured together)
+            key: cov_dict, val: Dictionary containing {(binary_tuple of pw1, binary_tuple of pw2) : Cov (pw1, pw2)}. 
+                                Only covariances for [pw1,pw2]=0 are necessary. This dictionary is necessary for osi.
+                                For other methods, if cov_dict is given, the optimal allocation of samples will be returned.
+            key: n_iter, val: integer number of iterations in osi.
+
+        Returns
+        ----------
         List of BinaryHamiltonian's
         """
+        def process_options(options):
+            method = 'rlf' # Method used for Hamiltonian partitioning.
+            condition = 'fc' # Commutativitiy condition within a group; either fully commuting (fc) or qubit-wise commuting (qwc).
+            sample_suggestion = False # Whether to return suggested ratio of samples between groups.
+            overlap_aux = None # Help variable for overlapping methods.
+            if options is not None:
+                if "method" in options: method=options["method"]
+                if "condition" in options: condition=options["condition"]
+
+                # If cov_dict is given in options, use the user-defined covariance dictionary.
+                if "cov_dict" in options: 
+                    sample_suggestion = True #Suggested sample size can be given whenever covariances are present.
+                    if "n_iter" in options:
+                        overlap_aux = OverlappingAuxiliary(options["cov_dict"], options["n_iter"])
+                    else:
+                        overlap_aux = OverlappingAuxiliary(options["cov_dict"])
+                else:
+                    # (TODO) Compute default HF/CISD covariances if cov_dict is not given.
+                    overlap_aux = None
+            return method, condition, overlap_aux, sample_suggestion
+    
+        def method_class(method, condition):
+            """
+            Return the class that the method belongs to: One from Minimum clique cover (mcc)
+            and Greedy grouping algorithms. 
+            """
+            if (method == 'lf' or method == 'rlf'): 
+                mc = 'mcc' 
+                if condition != "fc": raise TequilaException(f"Combination of options={{method:{method},condition:{condition}}} is not valid. E.g., lf and rlf can only return fully commuting fragments, i.e., condition=fc is necessary.")
+            elif (method == 'si' or method == 'osi'):
+                mc = 'greedy'
+            else:
+                raise TequilaException(f"There is not options={{method:{method}}}")
+            return mc
+
         terms = self.binary_terms
         n = self.n_term
-        cg = self.anti_commutativity_matrix()
 
-        if method == 'lf':
-            colors = largest_first(terms, n, cg)
-        elif method == 'rlf':
-            colors = recursive_largest_first(terms, n, cg)
+        method, condition, overlap_aux, sample_suggestion = process_options(options)
+        if method_class(method, condition) == 'mcc':
+            cg = self.anti_commutativity_matrix()
+            if method == 'lf':
+                colors = largest_first(terms, n, cg)
+            elif method == 'rlf':
+                colors = recursive_largest_first(terms, n, cg)
+            groups = [value for key, value in colors.items()]
+            result = [BinaryHamiltonian(value) for key, value in colors.items()]
+        elif method_class(method, condition) == 'greedy':
+            if method == 'si': groups = sorted_insertion_grouping(terms, condition)
+            if method == 'osi':
+                if overlap_aux == None: raise TequilaException("Overlapping SI grouping requires a dictionary of covariances, call with options={cov_dict:X}, where X is the dictionary.")
+                o_groups = OverlappingGroups.init_from_binary_terms(terms, condition)
+                groups = o_groups.optimal_overlapping_groups(overlap_aux)
+            result = [BinaryHamiltonian(group) for group in groups]
+        
+        if sample_suggestion:
+            suggested_sample_size = get_opt_sample_size(groups, options["cov_dict"])
         else:
-            raise TequilaException(f"There is no algorithm {method}")
-        return [BinaryHamiltonian(value) for key, value in colors.items()]
-
+            suggested_sample_size = [None] * len(groups)
+        return result, suggested_sample_size
 
 class BinaryPauliString:
     def __init__(self, binary_vector=np.array([0, 0]), coeff=1.0):
@@ -258,6 +330,20 @@ class BinaryPauliString:
         self.n_qubit = len(binary_vector) // 2
         self.is_binary()
         self.is_coeff()
+
+    def __eq__(self, other):
+        '''
+        Check if two BinaryPauliStrings are equivalent. 
+        The size of small is chosen arbitrarily. 
+        '''
+        small = 1e-10
+        return all(self.binary == other.binary) and (np.abs(self.coeff - other.coeff) <= small)
+
+    def binary_tuple(self):
+        '''
+        Return binary vector as a tuple. Useful for cov_dict (see overlapping_methods).
+        '''
+        return tuple(self.binary)
 
     def is_binary(self):
         if not isinstance(self.binary, np.ndarray):
@@ -273,6 +359,24 @@ class BinaryPauliString:
         if not isinstance(self.coeff, numbers.Number):
             raise TequilaException('Unknown coefficients. Got ' +
                                    str(self.coeff))
+
+    def qubit_wise_commute(self, other):
+        '''
+        Determine whether the corresponding pauli-strings of 
+        the two binary vectors are qubit-wise commuting. 
+        '''
+        qubit_term = {} #Dictionary of qubit terms in self.
+        for qub in range(self.n_qubit):
+            cur_qub_term = (self.binary[qub], self.binary[qub + self.n_qubit]) 
+            if cur_qub_term != (0, 0):
+                qubit_term[qub] = cur_qub_term
+
+        for qub in range(other.n_qubit):
+            cur_qub_term = (other.binary[qub], other.binary[qub + self.n_qubit]) 
+            if cur_qub_term != (0, 0):
+                if qub in qubit_term:
+                    if qubit_term[qub] != cur_qub_term: return False
+        return True
 
     def commute(self, other):
         '''
@@ -371,3 +475,12 @@ class BinaryPauliString:
 
     def get_n_qubit(self):
         return self.n_qubit
+
+    def term_w_coeff(self, new_coeff):
+        '''
+        Return BinaryPauliString with a new coefficient.
+        '''
+        new_term = deepcopy(self)
+        new_term.set_coeff(new_coeff)
+        return new_term
+
