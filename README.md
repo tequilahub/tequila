@@ -297,7 +297,11 @@ Molecular Circuit Design: A Graph-Based Approach
 T.-H. Kyaw, M. B. Soley, B. Allen, P. Bergold, C. Sun, V. S. Batista, A. Aspuru-Guzik  
 Variational quantum iterative power algorithms for global optimization  
 [arxiv:2208.10470](https://arxiv.org/abs/2208.10470)  
-[code](https://github.com/aspuru-guzik-group/qipa)    
+[code](https://github.com/aspuru-guzik-group/qipa)  
+
+R.A. Lang, A. Ganeshram, A. Izmaylov  
+Growth reduction of similarity transformed electronic Hamiltonians in qubit space  
+[arxiv:2210.03875](https://arxiv.org/abs/2210.03875)  
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
