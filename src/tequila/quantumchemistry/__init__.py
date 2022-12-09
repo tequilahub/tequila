@@ -94,7 +94,7 @@ def Molecule(geometry: str = None,
             orbital_type = "pno"
         else:
             if orbital_type is not None and orbital_type.lower() not in ["hf", "native"]:
-                warnings.warn("only hf and native supported as orbital_type with basis-set. Setting to hf - You gave={}".format(orbital_type), TequilaWarnings)
+                warnings.warn("only hf and native supported as orbital_type with basis-set. Setting to hf - You gave={}".format(orbital_type), TequilaWarning)
                 orbital_type = "hf"
             if orbital_type is None:
                 orbital_type = "hf"
