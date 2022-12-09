@@ -804,9 +804,9 @@ class IntegralManager:
     _one_body_integrals: numpy.ndarray = None
     _two_body_integrals: NBodyTensor = None
     _constant_term: numpy.float = None
-    _basis_type: str = None
-    _basis_name: str = None
-    _orbital_type: str = None # e.g. "HF", "PNO", "native"
+    _basis_type: str = "unknown"
+    _basis_name: str = "unknown"
+    _orbital_type: str = "unknown" # e.g. "HF", "PNO", "native"
     _orbital_coefficients: numpy.ndarray = None
     _active_space: ActiveSpaceData = None
     _orbitals: typing.List[OrbitalData] = None

@@ -72,6 +72,9 @@ class QuantumChemistryBase:
             reference_orbitals = [i for i in range(n_electrons // 2)]
         self._reference_orbitals = reference_orbitals
         
+        if orbital_type is None:
+            orbital_type = "unknown"
+
         # no frozen core with native orbitals (i.e. atomics)
         overriding_freeze_instruction = orbital_type is not None and orbital_type.lower() == "native"
         # determine frozen core automatically if set
