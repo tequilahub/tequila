@@ -806,18 +806,20 @@ class IntegralManager:
     _constant_term: numpy.float = None
     _basis_type: str = None
     _basis_name: str = None
+    _orbital_type: str = None # e.g. "HF", "PNO", "native"
     _orbital_coefficients: numpy.ndarray = None
     _active_space: ActiveSpaceData = None
     _orbitals: typing.List[OrbitalData] = None
 
     def __init__(self, one_body_integrals, two_body_integrals, basis_type="custom",
-                 basis_name="unknown",
+                 basis_name="unknown", orbital_type="unknown",
                  constant_term=0.0, orbital_coefficients=None, active_space=None, overlap_integrals=None, orbitals=None, *args, **kwargs):
         self._one_body_integrals = one_body_integrals
         self._two_body_integrals = two_body_integrals
         self._constant_term = constant_term
         self._basis_type = basis_type
         self._basis_name = basis_name
+        self._orbital_type = orbital_type
 
         assert len(self._one_body_integrals.shape) == 2
         assert len(self._two_body_integrals.shape) == 4
@@ -847,7 +849,7 @@ class IntegralManager:
 
         self._orbitals = orbitals
         self.active_space = active_space
-
+    
     def get_orthonormalized_orbital_coefficients(self):
         """
         Computes orbitals in this basis that are orthonormal (through loewdin orthonormalization)
@@ -947,6 +949,14 @@ class IntegralManager:
         for i,x in enumerate(self._orbitals):
             y = OrbitalData(idx=x.idx, idx_total=x.idx_total)
             self._orbitals[i] = y
+    
+    def transform_to_native_orbitals(self):
+        """
+        Transform orbitals to orthonormal functions closest to the native basis
+        """
+        c = self.get_orthonormalized_orbital_coefficients()
+        self.orbital_coefficients=c
+        self._orbital_type="orthonormalized-{}-basis".format(self._orbital_type)
 
     def transform_orbitals(self, U):
         """
@@ -962,7 +972,7 @@ class IntegralManager:
         c = self.orbital_coefficients
         c = numpy.einsum("ix, xj -> ij", c, U, optimize="greedy")
         self.orbital_coefficients = c
-
+        self._orbital_type += "-transformed"
 
     def get_integrals(self, orbital_coefficients=None, ordering="openfermion", ignore_active_space=False, *args, **kwargs):
         """
@@ -1062,6 +1072,7 @@ class IntegralManager:
     def print_basis_info(self, *args, **kwargs) -> None:
         print("{:15} : {}".format("basis_type", self._basis_type), *args, **kwargs)
         print("{:15} : {}".format("basis_name", self._basis_name), *args, **kwargs)
+        print("{:15} : {}".format("orbital_type", self._orbital_type), *args, **kwargs)
         print("{:15} : {}".format("orthogonal", self.basis_is_orthogonal()), *args, **kwargs)
         print("{:15} : {}".format("functions", self.one_body_integrals.shape[0]), *args, **kwargs)
         print("{:15} : {}".format("reference", [x.idx_total for x in self.reference_orbitals]), *args, **kwargs)

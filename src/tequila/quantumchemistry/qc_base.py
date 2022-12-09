@@ -45,6 +45,7 @@ class QuantumChemistryBase:
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
                  frozen_orbitals: list = None,
+                 orbital_type: str = None,
                  reference_orbitals: list = None,
                  orbitals: list = None,
                  *args,
@@ -71,9 +72,11 @@ class QuantumChemistryBase:
             reference_orbitals = [i for i in range(n_electrons // 2)]
         self._reference_orbitals = reference_orbitals
         
+        # no frozen core with native orbitals (i.e. atomics)
+        overriding_freeze_instruction = orbital_type is not None and orbital_type.lower() == "native"
         # determine frozen core automatically if set
         # only if molecule is computed from scratch and not passed down from above
-        overriding_freeze_instruction = n_electrons != parameters.n_electrons
+        overriding_freeze_instruction = overriding_freeze_instruction or n_electrons != parameters.n_electrons
         overriding_freeze_instruction = overriding_freeze_instruction or frozen_orbitals is not None
         if not overriding_freeze_instruction and self.parameters.frozen_core:
             n_core_electrons = self.parameters.get_number_of_core_electrons()
@@ -87,8 +90,12 @@ class QuantumChemistryBase:
         else:
             self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
                                                                      reference_orbitals=reference_orbitals,
-                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, *args,
+                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, orbital_type=orbital_type, *args,
                                                                      **kwargs)
+        
+        if orbital_type is not None and orbital_type.lower() == "native":
+            self.integral_manager.transform_to_native_orbitals()
+
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
@@ -455,8 +462,12 @@ class QuantumChemistryBase:
         integral_manager.transform_orbitals(U=orbital_coefficients)
         result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
         return result
-
+    
     def orthonormalize_basis_orbitals(self):
+        # backward compatibility
+        return self.use_nativie_orbitals()
+    
+    def use_native_orbitals(self, inplace=False):
         """
         Returns
         -------
@@ -467,11 +478,14 @@ class QuantumChemistryBase:
             warnings.warn("orthonormalize_basis_orbitals: active space is set and might lead to inconsistent behaviour", TequilaWarning)
 
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
-        integral_manager = copy.deepcopy(self.integral_manager)
-        c = integral_manager.get_orthonormalized_orbital_coefficients()
-        integral_manager.orbital_coefficients=c
-        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
-        return result
+        if inplace:
+            self.integral_manager.transform_to_native_orbitals()
+            return self
+        else:
+            integral_manager = copy.deepcopy(self.integral_manager)
+            integral_manager.transform_to_native_orbitals()
+            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, orbital_type="native")
+            return result
 
 
     def do_make_molecule(self, *args, **kwargs):

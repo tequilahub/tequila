@@ -70,6 +70,28 @@ def test_prepare_reference(trafo):
     energy2 = tq.simulate(E)
     assert numpy.isclose(energy, energy2, atol=1.e-4)
 
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4 or pyscf")
+def test_orbital_types():
+    geometry = "H 0.0 0.0 0.0\nH 0.0 0.0 2.0\nH 0.0 0.0 4.0\nH 0.0 0.0 6.0"
+
+    mol1 = tq.Molecule(geometry=geometry, basis_set="sto-3g")
+    mol2 = tq.Molecule(geometry=geometry, basis_set="sto-3g", orbital_type="hf")
+    mol3 = tq.Molecule(geometry=geometry, basis_set="sto-3g", orbital_type="native")
+    
+    energy = mol1.compute_energy("fci")
+    for mol in [mol1, mol2, mol3]:
+        fci = mol.compute_energy("fci")
+        e0 = numpy.linalg.eigvalsh(mol.make_hamiltonian().to_matrix())[0]
+        assert numpy.isclose(fci, energy)
+        assert numpy.isclose(e0, energy)
+    
+    # test initialization
+    geometry = "Be 0.0 0.0 0.0\nH 0.0 0.0 2.0\nH 0.0 0.0 1.5"
+    
+    mol1 = tq.Molecule(geometry=geometry, basis_set="sto-3g")
+    mol2 = tq.Molecule(geometry=geometry, basis_set="sto-3g", orbital_type="hf")
+    mol3 = tq.Molecule(geometry=geometry, basis_set="sto-3g", orbital_type="native")
+
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo_args", [{"transformation": "JordanWigner"}, {"transformation": "BravyiKitaev"},
