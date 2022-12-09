@@ -88,7 +88,6 @@ def Molecule(geometry: str = None,
     if backend is None:
         if basis_set is None or basis_set.lower() in ["madness", "mra", "pno"]:
             backend = "madness"
-            basis_set = "mra"
             if orbital_type is not None and orbital_type.lower() not in ["pno", "mra-pno"]:
                 warnings.warn("only PNOs supported as orbital_type without basis set. Setting to pno - You gave={}".format(orbital_type), TequilaWarning)
             orbital_type = "pno"
