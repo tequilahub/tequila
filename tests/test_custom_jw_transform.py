@@ -207,7 +207,7 @@ def test_custom_jw_multiple_with_map(
     expected *= ((QubitHamiltonian(qubit_operator=openfermion.QubitOperator(
         term=qubit_op5, coefficient=0.5)
     ) + QubitHamiltonian(qubit_operator=openfermion.QubitOperator(
-        term=qubit_op6, coefficient=-0.5j))))
+        term=qubit_op6, coefficient=0.5j))))
 
     assert actual == expected
 
@@ -232,8 +232,8 @@ def test_custom_jw_multiple_short_qubits_list(fermions, qubits, qubit_map):
          "Z2 X3", "Z2 Y3"),
         ("1 2", "5 1", [[2, 3, 4], [1, 2, 3, 4, 5]],
          [[2, 3, 1, 0, 4, 6], [2, 3]],  {"2": 2}, {"5": 3, "1": 3},
-         "Z3 X2", "Z3 Y2", "Z1 Z3 X2", "Z1 Z3 Y2",
-         "Z2 Z3 Z1 Z0 Z4 Z6 X3", "Z2 Z3 Z1 Z0 Z4 Z6 Y3",
+         "Z2 X3", "Z2 Y3", "Z1 Z3 X2", "Z1 Z3 Y2",
+         "Z2 Z1 Z0 Z4 Z6 X3", "Z2 Z1 Z0 Z4 Z6 Y3",
          "Z2 X3", "Z2 Y3"),
     ])
 def test_custom_jw_multiple_addition(
@@ -272,9 +272,9 @@ def test_custom_jw_multiple_addition(
          "Z1 Z2 Z3 Z4 X5", "Z1 Z2 Z3 Z4 Y5", "Z2 Z1 X3", "Z2 Z1 Y3",
          "Z2 X3", "Z2 Y3"),
         ("1 2^", "5 1^", [[2, 3, 4], [1, 2, 3, 4, 5]],
-         [[2, 3, 1, 0, 4, 6], [2, 3]],  {"2": 2}, {"5": 3, "1": 3},
-         "Z3 X2", "Z3 Y2", "Z1 Z3 X2", "Z1 Z3 Y2",
-         "Z2 Z3 Z1 Z0 Z4 Z6 X3", "Z2 Z3 Z1 Z0 Z4 Z6 Y3",
+         [[2, 3, 1, 0, 4, 6], [2, 3]],  {"2^": 2}, {"5": 3, "1^": 3},
+         "Z2 X3", "Z2 Y3", "Z1 Z3 X2", "Z1 Z3 Y2",
+         "Z2 Z1 Z0 Z4 Z6 X3", "Z2 Z1 Z0 Z4 Z6 Y3",
          "Z2 X3", "Z2 Y3"),
     ])
 def test_custom_jw_multiple_addition_dg(
@@ -350,8 +350,6 @@ def test_custom_jw_no_qubits_multiple(fermions, qubit_op1,
     assert actual == expected
 
 
-
-
 @pytest.mark.parametrize("fermions, qubits",
                          [("1 1^", [[0, 1], [2, 3]]),
                           ("2^ 2", [[0, 1, 2], [2, 3, 4]]),
@@ -369,7 +367,7 @@ def test_custom_jw_hermitian_eigen_value(fermions, qubits):
 
 @pytest.mark.parametrize("fermions, qubits",
                          [("1 2^", [[0, 1], [2, 3, 4]]),
-                          ("2 3", [[0, 1, 2], [2, 3, 4, 2]]),
+                          ("2 3", [[0, 1, 2], [2, 3, 4, 1]]),
                           ("1 3^", [[0, 2, 1], [2, 3, 4, 5]])])
 def test_custom_jw_zero_eigen_value(fermions, qubits):
     actual = custom_jw_transform(fermions, qubits).to_matrix()
