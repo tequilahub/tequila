@@ -302,6 +302,11 @@ Variational quantum iterative power algorithms for global optimization
 R.A. Lang, A. Ganeshram, A. Izmaylov  
 Growth reduction of similarity transformed electronic Hamiltonians in qubit space  
 [arxiv:2210.03875](https://arxiv.org/abs/2210.03875)  
+  
+K. Gratsea, C. Sun, P.D. Johnson  
+When to Reject a Ground State Preparation Algorithm  
+[arxiv:2212.09492](https://doi.org/10.48550/arXiv.2212.09492)  
+
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
