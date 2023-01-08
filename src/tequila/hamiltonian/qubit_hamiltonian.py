@@ -1,6 +1,5 @@
 import numbers
 import typing
-import numpy
 
 from tequila.tools import number_to_string
 from tequila.utils import to_float
@@ -21,10 +20,10 @@ get the openfermion object with hamiltonian.hamiltonian
 import numpy as np
 
 pauli_matrices = {
-    'I': numpy.array([[1, 0], [0, 1]], dtype=numpy.complex),
-    'Z': numpy.array([[1, 0], [0, -1]], dtype=numpy.complex),
-    'X': numpy.array([[0, 1], [1, 0]], dtype=numpy.complex),
-    'Y': numpy.array([[0, -1j], [1j, 0]], dtype=numpy.complex)
+    'I': np.array([[1, 0], [0, 1]], dtype=np.complex),
+    'Z': np.array([[1, 0], [0, -1]], dtype=np.complex),
+    'X': np.array([[0, 1], [1, 0]], dtype=np.complex),
+    'Y': np.array([[0, -1j], [1j, 0]], dtype=np.complex)
 }
 
 
@@ -102,7 +101,7 @@ class PauliString:
             states = [(1.0, 0.0)]*len(qubits)
 
         def make_coeff_vec(state_tuple):
-            return numpy.asarray([numpy.abs(state_tuple[0])**2, state_tuple[0].conjugate()*state_tuple[1], state_tuple[1].conjugate()*state_tuple[0] ,numpy.abs(state_tuple[1])**2])
+            return np.asarray([np.abs(state_tuple[0])**2, state_tuple[0].conjugate()*state_tuple[1], state_tuple[1].conjugate()*state_tuple[0] ,np.abs(state_tuple[1])**2])
 
         factor=1.0
         for q, state in zip(qubits, states):
@@ -227,7 +226,7 @@ class PauliString:
                 "PauliString acts on qubit number larger than n_qubits given\n PauliString=" + self.__repr__() + ", n_qubits=" + str(
                     n_qubits))
 
-        binary = numpy.zeros(2 * n_qubits)
+        binary = np.zeros(2 * n_qubits)
         for k, v in self._data.items():
             if v.upper() == "X":
                 binary[k] = 1
@@ -393,6 +392,7 @@ class QubitHamiltonian:
             H = QubitHamiltonian.zero()
             string = string.replace(" ", "")
             string = string.replace("*", "")
+            string = string.replace("e-", "@")
             string = string.replace("+-", "-")
             string = string.replace("-+", "-")
             string = string.replace("-", "+-")
@@ -415,6 +415,8 @@ class QubitHamiltonian:
                 try:
                     if "i" in coeff:
                         coeff = coeff.replace("i", "j")
+                    if "@" in coeff:
+                        coeff = coeff.replace("@", "e-")
                     coeff = complex(coeff)
                 except Exception as E:
                     raise Exception("failed to convert coefficient : {}".format(coeff))
@@ -507,7 +509,7 @@ class QubitHamiltonian:
     def simplify(self, threshold=0.0):
         simplified = {}
         for k, v in self.qubit_operator.terms.items():
-            if not numpy.isclose(v, 0.0, atol=threshold):
+            if not np.isclose(v, 0.0, atol=threshold):
                 simplified[k] = v
         self._qubit_operator.terms = simplified
         return self
@@ -521,7 +523,7 @@ class QubitHamiltonian:
         hermitian = QubitHamiltonian.zero()
         anti_hermitian = QubitHamiltonian.zero()
         for k, v in self.qubit_operator.terms.items():
-            hermitian.qubit_operator.terms[k] = numpy.float(v.real)
+            hermitian.qubit_operator.terms[k] = np.float(v.real)
             anti_hermitian.qubit_operator.terms[k] = 1.j * v.imag
 
         return hermitian.simplify(), anti_hermitian.simplify()
@@ -582,15 +584,15 @@ class QubitHamiltonian:
                 otherwise the function will return the matrix 1 \otimes X(1)
 
 
-        :return: numpy.ndarray(2**N, 2**N) with type numpy.complex
+        :return: np.ndarray(2**N, 2**N) with type np.complex
         """
         qubits = self.qubits
         if ignore_unused_qubits:
             nq = len(qubits)
         else:
             nq = max(qubits)+1
-        I = numpy.eye(2, dtype=numpy.complex)
-        Hm = numpy.zeros((2 ** nq, 2 ** nq), dtype=numpy.complex)
+        I = np.eye(2, dtype=np.complex)
+        Hm = np.zeros((2 ** nq, 2 ** nq), dtype=np.complex)
 
         for key, val in self.items():
             term = [I] * nq
@@ -599,7 +601,7 @@ class QubitHamiltonian:
                 ind = qubits.index(ind)
                 term[ind] = pauli_matrices[op]
 
-            Hm += val * reduce(numpy.kron, term)
+            Hm += val * reduce(np.kron, term)
         return Hm
 
     @property
