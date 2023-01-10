@@ -21,10 +21,10 @@ get the openfermion object with hamiltonian.hamiltonian
 import numpy as np
 
 pauli_matrices = {
-    'I': numpy.array([[1, 0], [0, 1]], dtype=numpy.complex),
-    'Z': numpy.array([[1, 0], [0, -1]], dtype=numpy.complex),
-    'X': numpy.array([[0, 1], [1, 0]], dtype=numpy.complex),
-    'Y': numpy.array([[0, -1j], [1j, 0]], dtype=numpy.complex)
+    'I': numpy.array([[1, 0], [0, 1]], dtype=complex),
+    'Z': numpy.array([[1, 0], [0, -1]], dtype=complex),
+    'X': numpy.array([[0, 1], [1, 0]], dtype=complex),
+    'Y': numpy.array([[0, -1j], [1j, 0]], dtype=complex)
 }
 
 
@@ -582,15 +582,15 @@ class QubitHamiltonian:
                 otherwise the function will return the matrix 1 \otimes X(1)
 
 
-        :return: numpy.ndarray(2**N, 2**N) with type numpy.complex
+        :return: numpy.ndarray(2**N, 2**N) with type complex
         """
         qubits = self.qubits
         if ignore_unused_qubits:
             nq = len(qubits)
         else:
             nq = max(qubits)+1
-        I = numpy.eye(2, dtype=numpy.complex)
-        Hm = numpy.zeros((2 ** nq, 2 ** nq), dtype=numpy.complex)
+        I = numpy.eye(2, dtype=complex)
+        Hm = numpy.zeros((2 ** nq, 2 ** nq), dtype=complex)
 
         for key, val in self.items():
             term = [I] * nq
