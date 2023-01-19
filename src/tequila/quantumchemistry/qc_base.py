@@ -320,7 +320,7 @@ class QuantumChemistryBase:
         """
         i,j = self.format_excitation_indices((i,j))
         angle = ("R",i,j,label)*numpy.pi
-        return make_orbital_rotation_gate(indices=(i,j), angle=angle, *args, **kwargs)
+        return self.make_orbital_rotation_gate(indices=(i,j), angle=angle, *args, **kwargs)
     
     def UC(self,i,j,label=None, *args, **kwargs):
         """
