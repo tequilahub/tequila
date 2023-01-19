@@ -1,3 +1,4 @@
+from tequila.utils import TequilaException
 from tequila.apps.unary_state_prep import UnaryStatePrep
 from tequila.apps import adapt
 from tequila.apps import krylov
