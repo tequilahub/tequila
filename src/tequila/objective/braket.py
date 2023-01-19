@@ -1,3 +1,4 @@
+from tequila.utils import TequilaException
 from tequila.circuit.circuit import QCircuit, find_unused_qubit
 from tequila.circuit.gates import H, X, Y, PauliGate
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
