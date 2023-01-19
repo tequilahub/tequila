@@ -6,13 +6,15 @@ from tequila.hamiltonian import paulis
 
 import numpy as np
 
-def braket(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = None) -> ExpectationValue:
+def BraKet(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = None) -> ExpectationValue:
     """Function that allows to calculate different quantities 
        depending on the passed parameters:
        1) If only ket is passed, returns the overlap with itself (1).
        2) If ket and bra are passed, returns the overlap between the two states.
        3) If ket and operator are passed, returns the expectation value of the operator for the given state.
        4) If ket, bra and operator are passed, returns the transition element of the operator.
+
+       returns an instance of tq.Objective
 
     Args:
         ket (QCircuit): QCircuit corresponding to a state. 
@@ -23,8 +25,7 @@ def braket(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = Non
                                                Defaults to None.
 
     Returns:
-        ExpectationValue: 1, overlap, expectation value or transition element 
-                          depending on the inputs.
+        instance of tq.Objective representing the demanded BraKet
     """
 
     if bra is None:
