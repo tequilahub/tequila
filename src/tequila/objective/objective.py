@@ -8,6 +8,7 @@ from tequila.autograd_imports import numpy as numpy
 
 import collections
 
+# convenience
 
 class ExpectationValueImpl:
     """
