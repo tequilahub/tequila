@@ -514,7 +514,7 @@ class QuantumChemistryBase:
     
     def orthonormalize_basis_orbitals(self):
         # backward compatibility
-        return self.use_nativie_orbitals()
+        return self.use_native_orbitals()
     
     def use_native_orbitals(self, inplace=False):
         """
