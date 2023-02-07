@@ -1,7 +1,6 @@
 import copy
 import scipy
-import tequila as tq
-from tequila import braket
+from tequila import braket, QTensor, simulate
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 
 
@@ -25,8 +24,8 @@ def krylov_method(krylov_circs:list, H:QubitHamiltonian, variables:dict=None, as
     """
     
     n_krylov_states = len(krylov_circs)
-    HM = tq.QTensor(shape=[n_krylov_states,n_krylov_states])
-    SM = tq.QTensor(shape=[n_krylov_states,n_krylov_states])
+    HM = QTensor(shape=[n_krylov_states,n_krylov_states])
+    SM = QTensor(shape=[n_krylov_states,n_krylov_states])
     
     if variables is not None:
         krylov_circs_x = [U.map_variables(variables) for U in krylov_circs] 
@@ -46,8 +45,8 @@ def krylov_method(krylov_circs:list, H:QubitHamiltonian, variables:dict=None, as
             SM[i,j] = s_real + 1j*s_im
             SM[j,i] = s_real - 1j*s_im
 
-    h = tq.simulate(HM, *args, **kwargs) 
-    s = tq.simulate(SM, *args, **kwargs)
+    h = simulate(HM, *args, **kwargs) 
+    s = simulate(SM, *args, **kwargs)
 
     v,vv = scipy.linalg.eigh(h,s)
 

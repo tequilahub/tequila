@@ -455,7 +455,9 @@ class BackendCircuitQiskit(BackendCircuit):
         measurement = self.initialize_circuit()
         measurement.barrier(range(self.n_qubits))
         measurement.measure(tq, tc)
-        result = circuit + measurement
+        result = self.initialize_circuit()
+        result = result.compose(circuit)
+        result = result.compose(measurement)
         return result
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):

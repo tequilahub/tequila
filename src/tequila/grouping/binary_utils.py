@@ -233,6 +233,37 @@ def gen_single_qubit_term(dim, qub, term):
         word[qub + dim] = 1
     return word
 
+def term_commutes_with_group(term, group, condition):
+    '''
+    Returns if term commutes with a group of terms.
+    '''
+    commute = True
+    for group_term in group:
+        if condition == 'fc':
+            commute = term.commute(group_term)
+        elif condition == 'qwc':
+            commute = term.qubit_wise_commute(group_term)
+        else:
+            raise TequilaException(f"There is no commutativity condition {condition}")
+        if not (commute): break
+    return commute
+
+def sorted_insertion_grouping(terms, condition='fc'):
+    '''
+    Obtain a list of commuting Pauli operator groups using the sorted insertion algorithm.
+    '''
+    sorted_terms = sorted(terms, key=lambda x: np.abs(x.coeff), reverse=True)
+    groups = [] #Initialize groups
+    for term in sorted_terms:
+        found_group = False
+        for idx, group in enumerate(groups):
+            commute = term_commutes_with_group(term, group, condition)
+            if commute: # Add term if it commutes with the current group.
+                groups[idx].append(term)
+                found_group = True
+                break 
+        if not found_group: groups.append([term, ]) #Initiate new group that does not commute with any existing.
+    return groups
 
 def largest_first(terms, n, cg):
     """

@@ -1,7 +1,11 @@
 import typing
+import warnings
+
+from tequila import TequilaWarning
 from .qc_base import QuantumChemistryBase
 from .chemistry_tools import ParametersQC, NBodyTensor
 from .madness_interface import QuantumChemistryMadness
+
 
 SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness", "pyscf"]
 INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase, "madness": QuantumChemistryMadness}
@@ -34,6 +38,7 @@ def show_supported_modules():
 def Molecule(geometry: str = None,
              basis_set: str = None,
              transformation: typing.Union[str, typing.Callable] = None,
+             orbital_type: str = None,
              backend: str = None,
              guess_wfn=None,
              name: str = None,
@@ -83,12 +88,23 @@ def Molecule(geometry: str = None,
     if backend is None:
         if basis_set is None or basis_set.lower() in ["madness", "mra", "pno"]:
             backend = "madness"
-        elif "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
-            backend = "psi4"
-        elif "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
-            backend = "pyscf"
+            if orbital_type is not None and orbital_type.lower() not in ["pno", "mra-pno"]:
+                warnings.warn("only PNOs supported as orbital_type without basis set. Setting to pno - You gave={}".format(orbital_type), TequilaWarning)
+            orbital_type = "pno"
         else:
-            raise Exception("No quantum chemistry backends installed on your system")
+            if orbital_type is not None and orbital_type.lower() not in ["hf", "native"]:
+                warnings.warn("only hf and native supported as orbital_type with basis-set. Setting to hf - You gave={}".format(orbital_type), TequilaWarning)
+                orbital_type = "hf"
+            if orbital_type is None:
+                orbital_type = "hf"
+
+            if "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
+                backend = "psi4"
+            elif "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
+                backend = "pyscf"
+            else:
+                raise Exception("No quantum chemistry backends installed on your system")
+    
     elif backend == "base":
         if not integrals_provided:
             raise Exception("No quantum chemistry backends installed on your system\n"
@@ -112,7 +128,7 @@ def Molecule(geometry: str = None,
         basis_set = "custom"
         parameters.basis_set = basis_set
 
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation,
+    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation, orbital_type=orbital_type,
                                                           guess_wfn=guess_wfn, *args, **kwargs)
 
 
