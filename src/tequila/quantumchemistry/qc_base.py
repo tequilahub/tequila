@@ -328,7 +328,7 @@ class QuantumChemistryBase:
         See arXiv:2207.12421 Eq.22 for UC(1,2)
         """
         i,j = self.format_excitation_indices([(i,j)])[0]
-        angle = Variable(name=("R",i,j,label))*numpy.pi
+        angle = Variable(name=("C",i,j,label))*numpy.pi
         if "jordanwigner" in self.transformation.name.lower() and not self.transformation.up_then_down:
             # for JW we can use the optimized form shown in arXiv:2207.12421 Eq.22
             return gates.QubitExcitation(target=[2*i,2*j,2*i+1,2*j+1], angle=angle, *args, **kwargs)
