@@ -30,6 +30,19 @@ def teardown_function(function):
     [os.remove(x) for x in glob.glob("qvm.log")]
     [os.remove(x) for x in glob.glob("*.dat")]
 
+@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4 or pyscf")
+def test_UR_and_UC():
+    mol = tq.Molecule(geometry="h 0.0 0.0 0.0\nH 0.0 0.0 1.5", basis_set="sto-3g")
+    mol = mol.use_native_orbitals()
+    H = mol.make_hamiltonian()
+    U = mol.prepare_reference()
+    U+= mol.UC(0,1)
+    U+= mol.UR(0,1)
+    E = tq.ExpectationValue(H=H, U=U)
+    result = tq.minimize(E)
+    fci = mol.compute_energy("fci")
+    assert numpy.isclose(result.energy,fci)
+
 
 @pytest.mark.parametrize("trafo", list(known_encodings().keys()))
 def test_base(trafo):
