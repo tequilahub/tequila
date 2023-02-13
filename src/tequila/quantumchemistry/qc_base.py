@@ -318,7 +318,7 @@ class QuantumChemistryBase:
         Convenience function for orbital rotation circuit (rotating spatial orbital i and j) with standard naming of variables
         See arXiv:2207.12421 Eq.6 for UR(0,1)
         """
-        i,j = self.format_excitation_indices([(i,j)])
+        i,j = self.format_excitation_indices([(i,j)])[0]
         angle = ("R",i,j,label)*numpy.pi
         return self.make_orbital_rotation_gate(indices=(i,j), angle=angle, *args, **kwargs)
     
@@ -327,7 +327,7 @@ class QuantumChemistryBase:
         Convenience function for orbital correlator circuit (correlating spatial orbital i and j through a spin-paired double excitation) with standard naming of variables
         See arXiv:2207.12421 Eq.22 for UC(1,2)
         """
-        i,j = self.format_excitation_indices([(i,j)])
+        i,j = self.format_excitation_indices([(i,j)])[0]
         angle = ("R",i,j,label)*numpy.pi
         if "jordanwigner" in self.transformation.name.lower() and not self.transformation.up_then_down:
             # for JW we can use the optimized form shown in arXiv:2207.12421 Eq.22
