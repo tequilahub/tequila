@@ -57,18 +57,18 @@ Works similar as Psi4. Classical methods are also integrated in the madness inte
 
 We recommend installing in editable mode with
 ```bash
-git clone https://github.com/aspuru-guzik-group/tequila.git
+git clone https://github.com/tequilahub/tequila.git
 cd tequila
 pip install -e .
 ```
 
 You can install `tequila` directly with pip over:
 ```bash
-pip install git+https://github.com/aspuru-guzik-group/tequila.git
+pip install git+https://github.com/tequilahub/tequila.git
 ```
 Install from devel branch (most recent updates):
 ```bash
-pip install git+https://github.com/aspuru-guzik-group/tequila.git@devel
+pip install git+https://github.com/tequilahub/tequila.git@devel
 ```
 
 Recommended Python version is 3.7.
@@ -97,7 +97,7 @@ pip install qulacs
 
 # Install with Windows
 ```bash
-pip install git+https://github.com/aspuru-guzik-group/tequila.git@windows
+pip install git+https://github.com/tequilahub/tequila.git@windows
 ```
 See also the troubleshooting below if you want to tweak things manually.  
 The command above will not install the qulacs simulator.  
