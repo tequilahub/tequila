@@ -32,6 +32,7 @@ def are_equal_bitwise_check(binary_vec1, binary_vec2):
             return False
     return True
 
+
 def z_expectation(binary_occupations, binary_z_placements):
     """
     Computes the expectation value of a tensor product of Pauli Z operators with
@@ -47,6 +48,7 @@ def z_expectation(binary_occupations, binary_z_placements):
         int: the expectation value 1 or -1.
     """
     return 1 - 2 * (len(np.where(binary_occupations + binary_z_placements == 2)[0]) % 2)
+
 
 def even_x_y_overlap_phase(z_vector, x_vector):
     """
@@ -67,12 +69,14 @@ def even_x_y_overlap_phase(z_vector, x_vector):
     """
     return 1 - 2 * ((len(np.where(x_vector + z_vector == 2)[0]) // 2) % 2)
 
+
 class IterativeQCC:
     """
     Class for performing various computations involved in the iterative QCC method.
     Directly following instantiation, the class method `do_iteration` can be called
     to perform a complete iQCC iteration.
     """
+
     def __init__(self, molecule):
         """
         Arguments:
@@ -84,7 +88,9 @@ class IterativeQCC:
         self.ref_circ = molecule.prepare_reference()
         self.ref_occs = np.zeros(2 * molecule.n_orbitals)
         np.put(self.ref_occs, self.ref_circ.qubits, 1)
-        self.binary_repr = [pauli.binary(n_qubits = self.n_qubits) for pauli in self.hamiltonian.paulistrings]
+        self.binary_repr = [
+            pauli.binary(n_qubits=self.n_qubits) for pauli in self.hamiltonian.paulistrings
+        ]
         self.iteration_energies = []
 
     def __get_x_z_factors(self):
@@ -96,8 +102,8 @@ class IterativeQCC:
 
         x_z_factors = []
         for binary_pauli in self.binary_repr:
-            pauli_xs = binary_pauli.binary[:self.n_qubits]
-            pauli_zs = binary_pauli.binary[self.n_qubits:]
+            pauli_xs = binary_pauli.binary[: self.n_qubits]
+            pauli_zs = binary_pauli.binary[self.n_qubits :]
             coeff = binary_pauli.coeff
             new_pauli_xs = True
             for element in x_z_factors:
@@ -110,8 +116,9 @@ class IterativeQCC:
 
         self.x_z_factors = x_z_factors
 
-
-    def get_pauli_from_x_string(self, x_string, type="min_weight", format="tequila", sampling_index=0):
+    def get_pauli_from_x_string(
+        self, x_string, type="min_weight", format="tequila", sampling_index=0
+    ):
         """
         Given a binary list describing the x-components of a Pauli word in the binary vector representation,
         returns a Pauli word with an odd number of Pauli-Y operations.
@@ -144,7 +151,7 @@ class IterativeQCC:
             raise ValueError(
                 'Optional argument `type` must be "min_weight" (for minimal weight generators), instead got {}'.format(
                     type
-                ),
+                )
             )
 
         pauli_string = ""
@@ -176,7 +183,7 @@ class IterativeQCC:
                     pauli_string += "X({}) ".format(idx)
 
         if format == "tequila":
-            return tq.PauliString.from_string(pauli_string.replace(' ',''))
+            return tq.PauliString.from_string(pauli_string.replace(" ", ""))
         elif format == "openfermion":
             return QubitOperator("".join(c for c in pauli_string if c not in "()"))
         else:
@@ -184,8 +191,7 @@ class IterativeQCC:
                 "Keyword `format` must be `tequila` or `openfermion`, instead got {}".format(format)
             )
 
-
-    def select(self, n_gen = 1, grad_threshold=1e-6):
+    def select(self, n_gen=1, grad_threshold=1e-6):
         """
         Performs the selection of the generators of the QCC unitary based on the gradient
         ranking procedure.
@@ -207,28 +213,39 @@ class IterativeQCC:
         grad_partitions = []
         for x_term, ising_terms in self.x_z_factors:
             if not are_equal_bitwise_check(x_term, np.zeros(self.n_qubits)):
-                grad = abs(sum([coeff * even_x_y_overlap_phase(z_term, x_term) * z_expectation(self.ref_occs, z_term) for z_term, coeff in ising_terms]))
+                grad = abs(
+                    sum(
+                        [
+                            coeff
+                            * even_x_y_overlap_phase(z_term, x_term)
+                            * z_expectation(self.ref_occs, z_term)
+                            for z_term, coeff in ising_terms
+                        ]
+                    )
+                )
                 if grad >= grad_threshold:
                     grad_partitions.append((x_term, grad))
 
         grad_partitions.sort(key=lambda x: x[1], reverse=True)
         self.grad_partitions = grad_partitions
         for x, grad in grad_partitions:
-            print('{} : {}'.format(x, grad))
+            print("{} : {}".format(x, grad))
 
         n_dis = len(grad_partitions)
         generators = []
         for idx in range(n_gen):
             part_to_sample = grad_partitions[idx % n_dis]
             sampling_idx = idx // n_dis
-            generators.append(self.get_pauli_from_x_string(
-                part_to_sample[0], type="min_weight", sampling_index=sampling_idx
-            ))
+            generators.append(
+                self.get_pauli_from_x_string(
+                    part_to_sample[0], type="min_weight", sampling_index=sampling_idx
+                )
+            )
 
-        print('Selected QCC generators:')
+        print("Selected QCC generators:")
         for generator in generators:
             print(generator)
-        self.generators = {'g{}'.format(idx) : generators[idx] for idx in range(len(generators))}
+        self.generators = {"g{}".format(idx): generators[idx] for idx in range(len(generators))}
         return generators
 
     def get_qcc_unitary(self):
@@ -241,34 +258,38 @@ class IterativeQCC:
 
         U_qcc = QCircuit()
         for idx in range(len(self.generators)):
-            U_qcc += tq.gates.ExpPauli(angle="t{}".format(idx), paulistring=self.generators['g{}'.format(idx)])
+            U_qcc += tq.gates.ExpPauli(
+                angle="t{}".format(idx), paulistring=self.generators["g{}".format(idx)]
+            )
         self.qcc_circ = U_qcc
 
         return U_qcc
 
-    def optimize(self, method = 'COBYLA'):
+    def optimize(self, method="COBYLA"):
         """
         Performs the optimization of the QCC parameters.
 
         Returns:
             the optimization result.
         """
-        #add functionality for introducing qubit mean field degrees of freedom
+        # add functionality for introducing qubit mean field degrees of freedom
 
-        qcc_energy = tq.ExpectationValue(H = self.hamiltonian, U = self.ref_circ + self.qcc_circ)
-        #could add a codeblock to solve for optimal qcc energy by linear variational principle
-        #if n_gens is less than ~6?
+        qcc_energy = tq.ExpectationValue(H=self.hamiltonian, U=self.ref_circ + self.qcc_circ)
+        # could add a codeblock to solve for optimal qcc energy by linear variational principle
+        # if n_gens is less than ~6?
         result = tq.minimize(
-            objective=qcc_energy, method=method, initial_values={k: 0.01 for k in qcc_energy.extract_variables()}
+            objective=qcc_energy,
+            method=method,
+            initial_values={k: 0.01 for k in qcc_energy.extract_variables()},
         )
 
-        print('Optimized QCC parameters:\n {}'.format(result.variables))
+        print("Optimized QCC parameters:\n {}".format(result.variables))
         self.angles = result.variables
         self.energy = result.energy
         self.iteration_energies.append(self.energy)
         return result
 
-    def update(self, compression_threshold = 1e-8):
+    def update(self, compression_threshold=1e-8):
         """
         Performs similarity transformation of the Hamiltonian using the optimized QCC unitary.
         Requires attributes `self.generators` and `self.angles` to be defined.
@@ -276,19 +297,22 @@ class IterativeQCC:
         Returns: the similarity transformed Hamiltonian.
         """
 
-        generators_binary = {'g{}'.format(idx) : self.generators['g{}'.format(idx)].binary(n_qubits = self.n_qubits) for idx in range(len(self.generators))}
+        generators_binary = {
+            "g{}".format(idx): self.generators["g{}".format(idx)].binary(n_qubits=self.n_qubits)
+            for idx in range(len(self.generators))
+        }
         for idx in range(len(self.generators) - 1, -1, -1):
-            gen_binary = generators_binary['g{}'.format(idx)]
-            gen_x = gen_binary.binary[:self.n_qubits]
-            gen_z = gen_binary.binary[self.n_qubits:]
-            angle = self.angles['t{}'.format(idx)]
+            gen_binary = generators_binary["g{}".format(idx)]
+            gen_x = gen_binary.binary[: self.n_qubits]
+            gen_z = gen_binary.binary[self.n_qubits :]
+            angle = self.angles["t{}".format(idx)]
             introduced_terms = []
             for h_idx in range(len(self.binary_repr)):
                 h_term = self.binary_repr[h_idx]
-                h_term_x = h_term.binary[:self.n_qubits]
-                h_term_z = h_term.binary[self.n_qubits:]
-                h_coeff =  h_term.coeff
-                if (np.dot(h_term_x, gen_z) + np.dot(h_term_z, gen_x)) % 2 == 1: #non-commutative
+                h_term_x = h_term.binary[: self.n_qubits]
+                h_term_z = h_term.binary[self.n_qubits :]
+                h_coeff = h_term.coeff
+                if (np.dot(h_term_x, gen_z) + np.dot(h_term_z, gen_x)) % 2 == 1:  # non-commutative
                     self.binary_repr[h_idx] = BinaryPauli(h_coeff * np.cos(angle), h_term.binary)
                     phase = binary_phase(gen_binary.binary, h_term.binary, self.n_qubits)
                     product_binary = (gen_binary.binary + h_term.binary) % 2
@@ -296,18 +320,25 @@ class IterativeQCC:
                     introduced_terms.append(BinaryPauli(new_coeff, product_binary))
             self.binary_repr += introduced_terms
 
-        #update self.hamiltonian from self.binary_repr
-        binary_h = BinaryHamiltonian([BinaryPauliString(binary_pauli.binary, binary_pauli.coeff) for binary_pauli in self.binary_repr])
+        # update self.hamiltonian from self.binary_repr
+        binary_h = BinaryHamiltonian(
+            [
+                BinaryPauliString(binary_pauli.binary, binary_pauli.coeff)
+                for binary_pauli in self.binary_repr
+            ]
+        )
         self.hamiltonian = binary_h.to_qubit_hamiltonian()
         self.hamiltonian = self.hamiltonian.simplify(threshold=compression_threshold)
-        #reinstantiating `self.binary_repr` seems redundant here, but it lets us consolidate identical binary strings
-        #without explicitly performing a search over the binary terms earlier:
-        self.binary_repr = [pauli.binary(n_qubits = self.n_qubits) for pauli in self.hamiltonian.paulistrings]
-        print('Number of terms in iQCC Hamiltonian: {}'.format(len(self.hamiltonian)))
+        # reinstantiating `self.binary_repr` seems redundant here, but it lets us consolidate identical binary strings
+        # without explicitly performing a search over the binary terms earlier:
+        self.binary_repr = [
+            pauli.binary(n_qubits=self.n_qubits) for pauli in self.hamiltonian.paulistrings
+        ]
+        print("Number of terms in iQCC Hamiltonian: {}".format(len(self.hamiltonian)))
         return self.hamiltonian
 
     def grad_norm(self):
-        #needs implement
+        # needs implement
         return 1
 
     def do_iteration(self, n_gen=1):
