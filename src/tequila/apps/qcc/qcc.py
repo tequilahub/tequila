@@ -287,6 +287,7 @@ class IterativeQCC:
         Returns:
             the optimization result.
         """
+
         # can add functionality for introducing qubit mean field degrees of freedom here
 
         if x0 is None:
