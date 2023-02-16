@@ -5,8 +5,7 @@
 
 import itertools
 import numpy as np
-from math import floor, log10
-from openfermion import QubitOperator, count_qubits, commutator
+from openfermion import QubitOperator
 
 import tequila as tq
 from tequila.circuit import QCircuit
