@@ -33,9 +33,9 @@ def are_equal_bitwise_check(binary_vec1, binary_vec2):
     return True
 
 
-def z_expectation(binary_occupations, binary_z_placements):
+def z_eigenvalue(binary_occupations, binary_z_placements):
     """
-    Computes the expectation value of a tensor product of Pauli Z operators with
+    Computes the eigenvalue of a tensor product of Pauli Z operators with
     respect to a computational basis state.
 
     Arguments:
@@ -45,7 +45,7 @@ def z_expectation(binary_occupations, binary_z_placements):
             support of the tensor product of Pauli Z operators, with 0 elsewhere.
 
     Returns:
-        int: the expectation value 1 or -1.
+        int: the eigenvalue value 1 or -1.
     """
     return 1 - 2 * (len(np.where(binary_occupations + binary_z_placements == 2)[0]) % 2)
 
@@ -218,7 +218,7 @@ class IterativeQCC:
                         [
                             coeff
                             * even_x_y_overlap_phase(z_term, x_term)
-                            * z_expectation(self.ref_occs, z_term)
+                            * z_eigenvalue(self.ref_occs, z_term)
                             for z_term, coeff in ising_terms
                         ]
                     )
@@ -337,9 +337,22 @@ class IterativeQCC:
         print("Number of terms in iQCC Hamiltonian: {}".format(len(self.hamiltonian)))
         return self.hamiltonian
 
-    def grad_norm(self):
-        # needs implement
-        return 1
+    def grad_norm(self, order = 1):
+        """
+        Computes the `order`-norm of the gradients. Here, the "gradient" directions denote
+        the non-zero gradient partitions of the Pauli group. Hence, each partition contributes
+        a single gradient component to the gradient norm.
+
+        Arguments:
+            order (int): positive integer specifying the order of norm to be used.
+        Returns:
+            float: the computed gradient norm.
+        """
+        if not hasattr(self, 'grad_partitions'):
+            raise ValueError('No previously computed gradient partition to check norm for!')
+
+        return sum([partition[1]**order for partition in self.grad_partitions]) ** (1 / order)
+
 
     def do_iteration(self, n_gen=1):
 
