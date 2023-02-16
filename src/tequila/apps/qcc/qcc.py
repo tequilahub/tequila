@@ -1,6 +1,7 @@
 # Qubit Coupled Cluster
 # as described in Ryabinkin, Yen, Genin, Izmaylov: https://doi.org/10.1021/acs.jctc.8b00932
-# and Ryabinkin, Lang, Genin, Izmaylov: https://doi.org/10.1021/acs.jctc.9b01084
+# and Iterative Qubit Coupled Cluster
+# as described in Ryabinkin, Lang, Genin, Izmaylov: https://doi.org/10.1021/acs.jctc.9b01084
 
 import itertools
 import numpy as np
@@ -15,6 +16,17 @@ from tequila.grouping.binary_rep import BinaryHamiltonian, BinaryPauliString
 
 
 def are_equal_bitwise_check(binary_vec1, binary_vec2):
+    """
+    Checks if two binary vectors identical with O(log(n)) average case
+    run-time.
+
+    Arguments:
+        binary_vec1 (array_like): the first binary vector
+        binary_vec2 (array_like): the second binary vector
+
+    Returns:
+        bool: True if they are the same vector, False otherwise.
+    """
     n = len(binary_vec1)
     for i in range(n):
         if binary_vec1[i] != binary_vec2[i]:
@@ -22,15 +34,52 @@ def are_equal_bitwise_check(binary_vec1, binary_vec2):
     return True
 
 def z_expectation(binary_occupations, binary_z_placements):
+    """
+    Computes the expectation value of a tensor product of Pauli Z operators with
+    respect to a computational basis state.
+
+    Arguments:
+        binary_occupations (array_like): binary vector representing a computational basis
+            state.
+        binary_z_placements (array_like): binary vector with 1 in indices within the
+            support of the tensor product of Pauli Z operators, with 0 elsewhere.
+
+    Returns:
+        int: the expectation value 1 or -1.
+    """
     return 1 - 2 * (len(np.where(binary_occupations + binary_z_placements == 2)[0]) % 2)
 
 def even_x_y_overlap_phase(z_vector, x_vector):
+    """
+    Convenience function used in performing the Ising factorization of the Hamiltonian.
+    This function computes the phase resulting from multiplying a tensor product of X
+    Pauli operations with a tensor product of Z Pauli operations, X*Z, where it is a priori
+    known that the two tensor products have even overlapping support.
+
+    Arguments:
+        z_vector (array_like): binary vector with 1 in indices the Z operator has
+            support on, with 0 elsewhere.
+
+        x_vector (array_like): binary vector with 1 in indices the X operator has
+            support on, with 0 elsewhere.
+
+    Returns:
+        int: 1 or -1.
+    """
     return 1 - 2 * ((len(np.where(x_vector + z_vector == 2)[0]) // 2) % 2)
 
 class IterativeQCC:
+    """
+    Class for performing various computations involved in the iterative QCC method.
+    Directly following instantiation, the class method `do_iteration` can be called
+    to perform a complete iQCC iteration.
+    """
     def __init__(self, molecule):
-        #get hamiltonian in TQ format and binary format
-
+        """
+        Arguments:
+            molecule (tq.Molecule): instance of the tq.Molecule for which the
+                ground state energy will be estimated.
+        """
         self.hamiltonian = molecule.make_hamiltonian()
         self.n_qubits = 2 * molecule.n_orbitals
         self.ref_circ = molecule.prepare_reference()
@@ -40,6 +89,11 @@ class IterativeQCC:
         self.iteration_energies = []
 
     def __get_x_z_factors(self):
+        """
+        Reformats the Hamiltonian terms in binary representation to a "factorized" form such that
+        it is a sum of X tensor products, with each X tensor product multiplying a generalized
+        Ising Hamiltonian.
+        """
 
         x_z_factors = []
         for binary_pauli in self.binary_repr:
@@ -59,7 +113,6 @@ class IterativeQCC:
 
 
     def get_pauli_from_x_string(self, x_string, type="min_weight", format="tequila", sampling_index=0):
-
         """
         Given a binary list describing the x-components of a Pauli word in the binary vector representation,
         returns a Pauli word with an odd number of Pauli-Y operations.
@@ -134,9 +187,24 @@ class IterativeQCC:
 
 
     def select(self, n_gen = 1, grad_threshold=1e-6):
+        """
+        Performs the selection of the generators of the QCC unitary based on the gradient
+        ranking procedure.
 
+        Arguments:
+            n_gen (int): number of generators to select.
+            grad_threshold: gradient magnitude threshold. Any partition characterized by a
+                gradient magnitude less than this threshold will not be sampled from during the
+                selection.
+
+        Returns:
+            dict: a dictionary with keys as labels of the form 'g0', 'g1',... with corresponding
+                values being PauliString instances of the selected generators. Generators are
+                sampled from partitions in order of descending gradient magnitude. If `n_gen`
+                exceeds the number of partitions in the non-zero gradient pool, then the
+                partitions are cycled over until `n_gen` generators have been sampled.
+        """
         self.__get_x_z_factors()
-        print('\nX-strings in new code:')
         grad_partitions = []
         for x_term, ising_terms in self.x_z_factors:
             if not are_equal_bitwise_check(x_term, np.zeros(self.n_qubits)):
@@ -165,6 +233,12 @@ class IterativeQCC:
         return generators
 
     def get_qcc_unitary(self):
+        """
+        Returns:
+            QCircuit: the QCC unitary, composed as a product of parameterized exponentiated Pauli
+                terms. The exponentiated Pauli terms are appended to the circuit following the
+                order the generators appear in `self.generators`
+        """
 
         U_qcc = QCircuit()
         for idx in range(len(self.generators)):
@@ -174,14 +248,19 @@ class IterativeQCC:
         return U_qcc
 
     def optimize(self, method = 'COBYLA'):
-        #optimization performed in TQ format
+        """
+        Performs the optimization of the QCC parameters.
+
+        Returns:
+            the optimization result.
+        """
+        #add functionality for introducing qubit mean field degrees of freedom
 
         qcc_energy = tq.ExpectationValue(H = self.hamiltonian, U = self.ref_circ + self.qcc_circ)
-
         #could add a codeblock to solve for optimal qcc energy by linear variational principle
         #if n_gens is less than ~6?
         result = tq.minimize(
-            objective=qcc_energy, method="COBYLA", initial_values={k: 0.01 for k in qcc_energy.extract_variables()}
+            objective=qcc_energy, method=method, initial_values={k: 0.01 for k in qcc_energy.extract_variables()}
         )
 
         print('Optimized QCC parameters:\n {}'.format(result.variables))
@@ -191,7 +270,12 @@ class IterativeQCC:
         return result
 
     def update(self, compression_threshold = 1e-8):
-        #dressing is performed in binary format
+        """
+        Performs similarity transformation of the Hamiltonian using the optimized QCC unitary.
+        Requires attributes `self.generators` and `self.angles` to be defined.
+
+        Returns: the similarity transformed Hamiltonian.
+        """
 
         generators_binary = {'g{}'.format(idx) : self.generators['g{}'.format(idx)].binary(n_qubits = self.n_qubits) for idx in range(len(self.generators))}
         for idx in range(len(self.generators) - 1, -1, -1):
