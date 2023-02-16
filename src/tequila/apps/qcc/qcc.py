@@ -72,9 +72,11 @@ def even_x_y_overlap_phase(z_vector, x_vector):
 
 class IterativeQCC:
     """
-    Class for performing various computations involved in the iterative QCC method.
+    Class for performing various computations involved in the iterative QCC method,
+    along with full QCC and iterative QCC ground state energy estimations.
     Directly following instantiation, the class method `do_iteration` can be called
-    to perform a complete iQCC iteration.
+    to perform a complete iQCC iteration, while `do_qcc` can be used to perform a one-shot
+    QCC calculation.
     """
 
     def __init__(self, molecule):
@@ -95,6 +97,7 @@ class IterativeQCC:
         self.generators = []
         self.angles = []
         self.n_terms = [len(self.hamiltonian)]
+        self.qcircuits = []
 
     def __get_x_z_factors(self):
         """
@@ -130,7 +133,7 @@ class IterativeQCC:
             x_string (np.array[bool]): A binary vector describing the x-components of a Pauli word in the
                 binary vector representation.
             type (str): can currently only be set to "min_weight" (default). This is the 'canonical' choice made in
-                QCC for sampling specific generators from a direct interaction set partition.
+                QCC for sampling specific generators from a gradient partition.
             format (str): can be set to "tequila" (default) or "openfermion". If set to "tequila", returns the
                 Pauli word as a string describing a Pauli word in tequila format, e.g. "Y(0) X(1)".
                 If set to "openfermion", returns a QubitOperator instance of the Pauli word.
@@ -231,7 +234,7 @@ class IterativeQCC:
 
         grad_partitions.sort(key=lambda x: x[1], reverse=True)
         self.grad_partitions = grad_partitions
-        print('\n Gradient partitions:')
+        print("\nGradient partitions:")
         for x, grad in grad_partitions:
             print("{} : {}".format(x, grad))
 
@@ -249,7 +252,9 @@ class IterativeQCC:
         print("\nSelected QCC generators:")
         for generator in generators:
             print(generator)
-        self.generators.append({"g{}".format(idx): generators[idx] for idx in range(len(generators))})
+        self.generators.append(
+            {"g{}".format(idx): generators[idx] for idx in range(len(generators))}
+        )
         return generators
 
     def get_qcc_unitary(self):
@@ -266,17 +271,33 @@ class IterativeQCC:
                 angle="t{}".format(idx), paulistring=self.generators[-1]["g{}".format(idx)]
             )
         self.qcc_circ = U_qcc
-
+        self.qcircuits.append(U_qcc)
         return U_qcc
 
-    def optimize(self, method="COBYLA"):
+    def optimize(self, method="COBYLA", x0=None):
         """
         Performs the optimization of the QCC parameters.
+
+        Arguments:
+            method (str): optimizer name to be used by tq.minimize.
+            x0 (array_like): initial guess for QCC parameters. This must be a
+                vector with dimensionality equal to number of generators, i.e.
+                `self.n_gen`.
 
         Returns:
             the optimization result.
         """
-        # add functionality for introducing qubit mean field degrees of freedom
+        # can add functionality for introducing qubit mean field degrees of freedom here
+
+        if x0 is None:
+            x0 = np.full(shape=len(self.generators[-1]), fill_value=0.01)
+        else:
+            if len(x0) != len(self.generators[-1]):
+                raise ValueError(
+                    "Expected initial guess x0 to be of dimension {}, instead got {}".format(
+                        len(self.generators[-1]), len(x0)
+                    )
+                )
 
         qcc_energy = tq.ExpectationValue(H=self.hamiltonian, U=self.ref_circ + self.qcc_circ)
         # could add a codeblock to solve for optimal qcc energy by linear variational principle
@@ -284,10 +305,10 @@ class IterativeQCC:
         result = tq.minimize(
             objective=qcc_energy,
             method=method,
-            initial_values={k: 0.01 for k in qcc_energy.extract_variables()},
+            initial_values={k: x0[c] for c, k in enumerate(qcc_energy.extract_variables())},
         )
 
-        print("\nOptimized QCC parameters:\n {}".format(result.variables))
+        print("\nOptimized QCC parameters:\n{}".format(result.variables))
         self.angles.append(result.variables)
         self.energy = result.energy
         self.energies.append(result.energy)
@@ -334,7 +355,7 @@ class IterativeQCC:
         )
         self.hamiltonian = binary_h.to_qubit_hamiltonian()
         self.hamiltonian = self.hamiltonian.simplify(threshold=compression_threshold)
-        # reinstantiating `self.binary_repr` seems redundant here, but it lets us consolidate identical binary strings
+        # reassigning `self.binary_repr` seems redundant here, but it lets us consolidate identical binary strings
         # without explicitly performing a search over the binary terms earlier:
         self.binary_repr = [
             pauli.binary(n_qubits=self.n_qubits) for pauli in self.hamiltonian.paulistrings
@@ -344,7 +365,7 @@ class IterativeQCC:
         self.n_terms.append(n_terms)
         return self.hamiltonian
 
-    def grad_norm(self, order = 1):
+    def grad_norm(self, order=1):
         """
         Computes the `order`-norm of the gradients. Here, the "gradient" directions denote
         the non-zero gradient partitions of the Pauli group. Hence, each partition contributes
@@ -355,16 +376,18 @@ class IterativeQCC:
         Returns:
             float: the computed gradient norm.
         """
-        if not hasattr(self, 'grad_partitions'):
-            raise AttributeError('No previously computed gradient partition to check norm for!')
+        if not hasattr(self, "grad_partitions"):
+            raise AttributeError("No previously computed gradient partition to check norm for!")
 
-        return sum([partition[1]**order for partition in self.grad_partitions]) ** (1 / order)
+        return sum([partition[1] ** order for partition in self.grad_partitions]) ** (1 / order)
 
-    def do_qcc(self, n_gen = 1, method = 'COBYLA'):
-        self.select(n_gen = n_gen)
+    def do_qcc(self, n_gen=1, method="COBYLA", grad_threshold=1e-6, x0=None):
+        self.select(n_gen=n_gen, grad_threshold=grad_threshold)
         self.get_qcc_unitary()
-        self.optimize(method = method)
+        self.optimize(method=method)
 
-    def do_iteration(self, n_gen=1):
-        self.do_qcc(n_gen = n_gen)
-        self.update()
+    def do_iteration(
+        self, n_gen=1, method="COBYLA", grad_threshold=1e-6, compression_threshold=1e-8, x0=None
+    ):
+        self.do_qcc(n_gen=n_gen, method=method, grad_threshold=grad_threshold, x0=x0)
+        self.update(compression_threshold=compression_threshold)
