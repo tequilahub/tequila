@@ -91,7 +91,10 @@ class IterativeQCC:
         self.binary_repr = [
             pauli.binary(n_qubits=self.n_qubits) for pauli in self.hamiltonian.paulistrings
         ]
-        self.iteration_energies = []
+        self.energies = []
+        self.generators = []
+        self.angles = []
+        self.n_terms = [len(self.hamiltonian)]
 
     def __get_x_z_factors(self):
         """
@@ -228,6 +231,7 @@ class IterativeQCC:
 
         grad_partitions.sort(key=lambda x: x[1], reverse=True)
         self.grad_partitions = grad_partitions
+        print('\n Gradient partitions:')
         for x, grad in grad_partitions:
             print("{} : {}".format(x, grad))
 
@@ -242,10 +246,10 @@ class IterativeQCC:
                 )
             )
 
-        print("Selected QCC generators:")
+        print("\nSelected QCC generators:")
         for generator in generators:
             print(generator)
-        self.generators = {"g{}".format(idx): generators[idx] for idx in range(len(generators))}
+        self.generators.append({"g{}".format(idx): generators[idx] for idx in range(len(generators))})
         return generators
 
     def get_qcc_unitary(self):
@@ -257,9 +261,9 @@ class IterativeQCC:
         """
 
         U_qcc = QCircuit()
-        for idx in range(len(self.generators)):
+        for idx in range(len(self.generators[-1])):
             U_qcc += tq.gates.ExpPauli(
-                angle="t{}".format(idx), paulistring=self.generators["g{}".format(idx)]
+                angle="t{}".format(idx), paulistring=self.generators[-1]["g{}".format(idx)]
             )
         self.qcc_circ = U_qcc
 
@@ -283,10 +287,10 @@ class IterativeQCC:
             initial_values={k: 0.01 for k in qcc_energy.extract_variables()},
         )
 
-        print("Optimized QCC parameters:\n {}".format(result.variables))
-        self.angles = result.variables
+        print("\nOptimized QCC parameters:\n {}".format(result.variables))
+        self.angles.append(result.variables)
         self.energy = result.energy
-        self.iteration_energies.append(self.energy)
+        self.energies.append(result.energy)
         return result
 
     def update(self, compression_threshold=1e-8):
@@ -298,14 +302,15 @@ class IterativeQCC:
         """
 
         generators_binary = {
-            "g{}".format(idx): self.generators["g{}".format(idx)].binary(n_qubits=self.n_qubits)
-            for idx in range(len(self.generators))
+            "g{}".format(idx): self.generators[-1]["g{}".format(idx)].binary(n_qubits=self.n_qubits)
+            for idx in range(len(self.generators[-1]))
         }
-        for idx in range(len(self.generators) - 1, -1, -1):
+
+        for idx in range(len(self.generators[-1]) - 1, -1, -1):
             gen_binary = generators_binary["g{}".format(idx)]
             gen_x = gen_binary.binary[: self.n_qubits]
             gen_z = gen_binary.binary[self.n_qubits :]
-            angle = self.angles["t{}".format(idx)]
+            angle = self.angles[-1]["t{}".format(idx)]
             introduced_terms = []
             for h_idx in range(len(self.binary_repr)):
                 h_term = self.binary_repr[h_idx]
@@ -334,7 +339,9 @@ class IterativeQCC:
         self.binary_repr = [
             pauli.binary(n_qubits=self.n_qubits) for pauli in self.hamiltonian.paulistrings
         ]
-        print("Number of terms in iQCC Hamiltonian: {}".format(len(self.hamiltonian)))
+        n_terms = len(self.hamiltonian)
+        print("Number of terms in iQCC Hamiltonian: {}".format(n_terms))
+        self.n_terms.append(n_terms)
         return self.hamiltonian
 
     def grad_norm(self, order = 1):
@@ -349,14 +356,15 @@ class IterativeQCC:
             float: the computed gradient norm.
         """
         if not hasattr(self, 'grad_partitions'):
-            raise ValueError('No previously computed gradient partition to check norm for!')
+            raise AttributeError('No previously computed gradient partition to check norm for!')
 
         return sum([partition[1]**order for partition in self.grad_partitions]) ** (1 / order)
 
+    def do_qcc(self, n_gen = 1, method = 'COBYLA'):
+        self.select(n_gen = n_gen)
+        self.get_qcc_unitary()
+        self.optimize(method = method)
 
     def do_iteration(self, n_gen=1):
-
-        self.select(n_gen=n_gen)
-        self.get_qcc_unitary()
-        self.optimize()
+        self.do_qcc(n_gen = n_gen)
         self.update()
