@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use tequila, please cite our release paper alongside with references to used dependencies (e.g. the employed simulators like qulacs). If methods developed after 2020 were used consider citing the aricles these methods are first described in order to acknowledge the contributors after paper release."
+authors:
+  - family-names: Kottmann
+    given-names: Jakob S.
+    orcid: https://orcid.org/0000-0002-4156-2048
+  - family-names: Alperin-Lea
+    given-names: Sumner
+    orcid: https://orcid.org/0000-0003-1082-0400
+  - family-names: Tamayo-Mendoza
+    given-names: Teresa
+  - family-names: Cervera-Lierta
+    given-names: Alba
+  - family-names: Lavigne
+    given-names: Cyrille
+  - family-names: Tzu-Ching
+    given-names: Yen
+  - family-names: Verteletsky
+    given-names: Vladislav
+  - family-names: Schleich
+    given-names: Philipp
+  - family-names: Degroote
+    given-names: Matthias
+  - family-names: Chaney
+    given-names:  Skylar
+  - family-names: Kesibo
+    given-names: Maha
+  - family-names: Curnow
+    given-names: Naomi G.
+  - family-names: Solo
+    given-names: Brandon
+  - family-names: Tsilimigkounakis
+    given-names: Georgios
+  - family-names: Zendejas-Morales 
+    given-names: Claudia
+  - family-names: Izmaylov
+    given-names: Artur
+  - family-names: Aspuru-Guzik
+    given-names: Alan
+title: "Tequila: A platform for rapid development of quantum algorithms"
+doi: 10.1088/2058-9565/abe567
+date-released: 2020-11-5
