@@ -1,4 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENCE)  
+[![DOI](https://zenodo.org/badge/259718912.svg)](https://zenodo.org/badge/latestdoi/259718912)  
 ![Image](docs/all_in_one_example.png)
 
 
