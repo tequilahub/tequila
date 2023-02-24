@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use tequila, please cite our release paper alongside with references to used dependencies (e.g. the employed simulators like qulacs). If methods developed after 2020 were used consider citing the aricles these methods are first described in order to acknowledge the contributors after paper release."
+message: "If you use tequila, please cite our release paper https://iopscience.iop.org/article/10.1088/2058-9565/abe567 alongside with references to used dependencies (e.g. the employed simulators like qulacs). If methods developed after 2020 were used consider citing the aricles these methods are first described in order to acknowledge the contributors after paper release."
 authors:
   - family-names: Kottmann
     given-names: Jakob S.
@@ -37,6 +37,13 @@ authors:
     given-names: Artur
   - family-names: Aspuru-Guzik
     given-names: Alan
+  - family-names: Scala
+    given-names: Francesco
+  - family-names: Saxena
+    given-names: Gaurav
 title: "Tequila: A platform for rapid development of quantum algorithms"
 doi: 10.1088/2058-9565/abe567
+repository-code: https://github.com/tequilahub/tequila 
+version: 1.8.5
+licence: MIT
 date-released: 2020-11-5
