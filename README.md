@@ -1,4 +1,6 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENCE)  
 ![Image](docs/all_in_one_example.png)
+
 
 # Tequila
 
