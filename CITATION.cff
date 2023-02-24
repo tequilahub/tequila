@@ -51,8 +51,7 @@ identifiers:
     description: release article
   - type: doi
     value: 10.1039/D0SC06627C
-    description: >-
-      Automatically Differentiable Framework in Chemistry
+    description: Automatically Differentiable Framework in Chemistry
       Module
 repository-code: https://github.com/tequilahub/tequila 
 version: 1.8.5
