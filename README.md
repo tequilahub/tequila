@@ -19,7 +19,7 @@ or checkout our [overview article](https://arxiv.org/abs/2011.03057)
 Currently supported
 - [Qulacs](https://github.com/qulacs/qulacs)
 - [Qibo](https://github.com/Quantum-TII/qibo) -- currently needs to be qibo==0.1.1
-- [Qiskit](https://github.com/qiskit/qiskit) -- currently needs to be qiskit<0.25
+- [Qiskit](https://github.com/qiskit/qiskit)  
 - [Cirq](https://github.com/quantumlib/cirq)
 - [PyQuil](https://github.com/rigetti/pyquil)
 - [QLM](https://atos.net/en/solutions/quantum-learning-machine) (works also whith [myQLM](https://myqlm.github.io/index.html))
