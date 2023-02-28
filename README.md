@@ -1,3 +1,5 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENCE) [![DOI](https://zenodo.org/badge/259718912.svg)](https://zenodo.org/badge/latestdoi/259718912) [![PyPI version](https://badge.fury.io/py/tequila-basic.svg)](https://badge.fury.io/py/tequila-basic) ![CI](https://github.com/tequilahub/tequila/actions/workflows/ci_basic.yml/badge.svg)
+
 ![Image](docs/all_in_one_example.png)
 
 # Tequila
@@ -17,7 +19,7 @@ or checkout our [overview article](https://arxiv.org/abs/2011.03057)
 Currently supported
 - [Qulacs](https://github.com/qulacs/qulacs)
 - [Qibo](https://github.com/Quantum-TII/qibo) -- currently needs to be qibo==0.1.1
-- [Qiskit](https://github.com/qiskit/qiskit) -- currently needs to be qiskit<0.25
+- [Qiskit](https://github.com/qiskit/qiskit)  
 - [Cirq](https://github.com/quantumlib/cirq)
 - [PyQuil](https://github.com/rigetti/pyquil)
 - [QLM](https://atos.net/en/solutions/quantum-learning-machine) (works also whith [myQLM](https://myqlm.github.io/index.html))
@@ -57,18 +59,18 @@ Works similar as Psi4. Classical methods are also integrated in the madness inte
 
 We recommend installing in editable mode with
 ```bash
-git clone https://github.com/aspuru-guzik-group/tequila.git
+git clone https://github.com/tequilahub/tequila.git
 cd tequila
 pip install -e .
 ```
 
 You can install `tequila` directly with pip over:
 ```bash
-pip install git+https://github.com/aspuru-guzik-group/tequila.git
+pip install git+https://github.com/tequilahub/tequila.git
 ```
 Install from devel branch (most recent updates):
 ```bash
-pip install git+https://github.com/aspuru-guzik-group/tequila.git@devel
+pip install git+https://github.com/tequilahub/tequila.git@devel
 ```
 
 Recommended Python version is 3.7.
@@ -97,7 +99,7 @@ pip install qulacs
 
 # Install with Windows
 ```bash
-pip install git+https://github.com/aspuru-guzik-group/tequila.git@windows
+pip install git+https://github.com/tequilahub/tequila.git@windows
 ```
 See also the troubleshooting below if you want to tweak things manually.  
 The command above will not install the qulacs simulator.  
@@ -302,6 +304,11 @@ Variational quantum iterative power algorithms for global optimization
 R.A. Lang, A. Ganeshram, A. Izmaylov  
 Growth reduction of similarity transformed electronic Hamiltonians in qubit space  
 [arxiv:2210.03875](https://arxiv.org/abs/2210.03875)  
+  
+K. Gratsea, C. Sun, P.D. Johnson  
+When to Reject a Ground State Preparation Algorithm  
+[arxiv:2212.09492](https://doi.org/10.48550/arXiv.2212.09492)  
+
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 

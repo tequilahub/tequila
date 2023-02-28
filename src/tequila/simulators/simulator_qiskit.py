@@ -261,7 +261,7 @@ class BackendCircuitQiskit(BackendCircuit):
                 qiskit_backend = self.retrieve_device('statevector_simulator')
             else:
                 if 'statevector' not in str(self.device):
-                    raise TequilaException('For simulation, only state vector simulators are supported; recieved {}'.format(self.device))
+                    raise TequilaException('For simulation, only state vector simulators are supported; recieved device={}, you might have forgoten to set the samples keyword - e.g. (device={}, samples=1000). If not set, tequila assumes that full wavefunction simualtion is demanded which is not compatible with qiskit devices or fake devices except for device=statevector'.format(self.device, self.device))
                 else:
                     qiskit_backend = self.retrieve_device(self.device)
         else:
@@ -455,7 +455,9 @@ class BackendCircuitQiskit(BackendCircuit):
         measurement = self.initialize_circuit()
         measurement.barrier(range(self.n_qubits))
         measurement.measure(tq, tc)
-        result = circuit + measurement
+        result = self.initialize_circuit()
+        result = result.compose(circuit)
+        result = result.compose(measurement)
         return result
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):

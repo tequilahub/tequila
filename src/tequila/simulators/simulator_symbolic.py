@@ -131,7 +131,7 @@ class BackendCircuitSymbolic(BackendCircuit):
         wfn = QubitWaveFunction()
         if self.convert_to_numpy:
             for k,v in result.items():
-                wfn[k] = numpy.complex(v)
+                wfn[k] = complex(v)
         else:
             wfn = result
 

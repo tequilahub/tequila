@@ -314,7 +314,7 @@ class QubitWaveFunction:
         return paulistring.coeff * result
 
     def to_array(self):
-        result = numpy.zeros(shape=2 ** self.n_qubits, dtype=numpy.complex)
+        result = numpy.zeros(shape=2 ** self.n_qubits, dtype=complex)
         for k, v in self.items():
             result[int(k)] = v
         return result
