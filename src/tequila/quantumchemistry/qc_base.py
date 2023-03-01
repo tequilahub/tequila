@@ -45,6 +45,7 @@ class QuantumChemistryBase:
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = None,
                  frozen_orbitals: list = None,
+                 orbital_type: str = None,
                  reference_orbitals: list = None,
                  orbitals: list = None,
                  *args,
@@ -71,9 +72,14 @@ class QuantumChemistryBase:
             reference_orbitals = [i for i in range(n_electrons // 2)]
         self._reference_orbitals = reference_orbitals
         
+        if orbital_type is None:
+            orbital_type = "unknown"
+
+        # no frozen core with native orbitals (i.e. atomics)
+        overriding_freeze_instruction = orbital_type is not None and orbital_type.lower() == "native"
         # determine frozen core automatically if set
         # only if molecule is computed from scratch and not passed down from above
-        overriding_freeze_instruction = n_electrons != parameters.n_electrons
+        overriding_freeze_instruction = overriding_freeze_instruction or n_electrons != parameters.n_electrons
         overriding_freeze_instruction = overriding_freeze_instruction or frozen_orbitals is not None
         if not overriding_freeze_instruction and self.parameters.frozen_core:
             n_core_electrons = self.parameters.get_number_of_core_electrons()
@@ -87,8 +93,12 @@ class QuantumChemistryBase:
         else:
             self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
                                                                      reference_orbitals=reference_orbitals,
-                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, *args,
+                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, orbital_type=orbital_type, *args,
                                                                      **kwargs)
+        
+        if orbital_type is not None and orbital_type.lower() == "native":
+            self.integral_manager.transform_to_native_orbitals()
+
 
         self.transformation = self._initialize_transformation(transformation=transformation, *args, **kwargs)
 
@@ -302,6 +312,52 @@ class QuantumChemistryBase:
                     indices, self.n_orbitals))
         return gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control,
                                      compile_options=compile_options)
+    
+    def UR(self,i,j,label=None, *args, **kwargs):
+        """
+        Convenience function for orbital rotation circuit (rotating spatial orbital i and j) with standard naming of variables
+        See arXiv:2207.12421 Eq.6 for UR(0,1)
+        """
+        i,j = self.format_excitation_indices([(i,j)])[0]
+        angle = Variable(name=("R",i,j,label))*numpy.pi
+        return self.make_orbital_rotation_gate(indices=(i,j), angle=angle, *args, **kwargs)
+    
+    def UC(self,i,j,label=None, *args, **kwargs):
+        """
+        Convenience function for orbital correlator circuit (correlating spatial orbital i and j through a spin-paired double excitation) with standard naming of variables
+        See arXiv:2207.12421 Eq.22 for UC(1,2)
+        """
+        i,j = self.format_excitation_indices([(i,j)])[0]
+        angle = Variable(name=("C",i,j,label))*numpy.pi
+        if "jordanwigner" in self.transformation.name.lower() and not self.transformation.up_then_down:
+            # for JW we can use the optimized form shown in arXiv:2207.12421 Eq.22
+            return gates.QubitExcitation(target=[2*i,2*j,2*i+1,2*j+1], angle=angle, *args, **kwargs)
+        else:
+            return self.make_excitation_gate(indices=[(2*i,2*j),(2*i+1,2*j+1)], angle=angle, *args, **kwargs)
+
+    def make_orbital_rotation_gate(self, indices:tuple, angle, control:list=None, assume_real:bool=True):
+        """
+        
+        Parameters:
+        ----------
+            indices:
+                tuple of two spatial(!) orbital indices
+            angle:
+                Numeric or hashable type or tequila objective
+            control:
+                List of possible control qubits
+            assume_real:
+                Assume that the wavefunction will always stay real.
+                Will reduce potential gradient costs by a factor of 2
+        """
+
+        assert len(indices) == 2
+        i = indices[0]
+        j = indices[1]
+        U = self.make_excitation_gate(indices=[2*i,2*j],angle=angle, control=control)
+        U+= self.make_excitation_gate(indices=[2*i+1,2*j+1],angle=angle, control=control)
+        return U
+
 
     def make_excitation_gate(self, indices, angle, control=None, assume_real=True, **kwargs):
         """
@@ -455,8 +511,12 @@ class QuantumChemistryBase:
         integral_manager.transform_orbitals(U=orbital_coefficients)
         result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
         return result
-
+    
     def orthonormalize_basis_orbitals(self):
+        # backward compatibility
+        return self.use_native_orbitals()
+    
+    def use_native_orbitals(self, inplace=False):
         """
         Returns
         -------
@@ -467,11 +527,14 @@ class QuantumChemistryBase:
             warnings.warn("orthonormalize_basis_orbitals: active space is set and might lead to inconsistent behaviour", TequilaWarning)
 
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
-        integral_manager = copy.deepcopy(self.integral_manager)
-        c = integral_manager.get_orthonormalized_orbital_coefficients()
-        integral_manager.orbital_coefficients=c
-        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
-        return result
+        if inplace:
+            self.integral_manager.transform_to_native_orbitals()
+            return self
+        else:
+            integral_manager = copy.deepcopy(self.integral_manager)
+            integral_manager.transform_to_native_orbitals()
+            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, orbital_type="native")
+            return result
 
 
     def do_make_molecule(self, *args, **kwargs):
@@ -1859,6 +1922,6 @@ class QuantumChemistryBase:
 
         result += "\nBasis\n"
         result += str(self.integral_manager)
-        result += "\nmore information with: self.print_basis_info()"
+        result += "\nmore information with: self.print_basis_info()\n"
 
         return result

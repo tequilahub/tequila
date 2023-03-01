@@ -769,7 +769,7 @@ class BackendExpectationValue:
                 raise TequilaException(
                     "BackendExpectationValue received not all variables. Circuit depends on variables {}, you gave {}".format(
                         self._variables, variables))
-
+        
         if samples is None:
             data = self.simulate(variables=variables, *args, **kwargs)
         else:
@@ -839,6 +839,19 @@ class BackendExpectationValue:
         numpy.ndarray:
             a numpy array, the result of sampling.
         """
+
+        suggested = None
+        if hasattr(samples, "lower") and samples.lower()[:4] == "auto":
+            if self.abstract_expectationvalue.samples is None:
+                raise TequilaException("samples='auto' requested but no samples where set in individual expectation values")
+            total_samples = int(samples[5:])
+            samples = int(self.abstract_expectationvalue.samples * total_samples)
+            suggested = samples
+            # samples are not necessarily set (either the user has to set it or some functions like optimize_measurements)
+ 
+        if suggested is not None and suggested != samples:
+            warnings.warn("simulating with samples={}, but expectationvalue carries suggested samples={}\nTry calling with samples='auto-total#ofsamples'".format(samples, suggested), TequilaWarning)
+
         self.update_variables(variables)
 
         result = []

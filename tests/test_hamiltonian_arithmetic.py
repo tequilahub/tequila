@@ -49,6 +49,25 @@ def test_convenience():
     test = paulis.Z([0,1,2,3])
     assert test == QubitHamiltonian.from_string("Z(0)Z(1)Z(2)Z(3)", False)
 
+def test_from_string():
+
+    test1 = QubitHamiltonian("2.0*X(0)")
+    test2 = 2.0*paulis.X(0)
+    test = numpy.linalg.norm((test1-test2).to_matrix())
+    assert numpy.isclose(test,0.0)
+
+    test1 = QubitHamiltonian("2.0*X(0) + -1.e-1*Y(1) + 3.0*X(1)Z(0)")
+    test2 = 2.0*paulis.X(0) - 1.e-1*paulis.Y(1) + 3.0*paulis.X(1)*paulis.Z(0)
+    test = numpy.linalg.norm((test1-test2).to_matrix())
+    assert numpy.isclose(test,0.0)
+
+    test1 = QubitHamiltonian("2.0*X(0) + -1.e-1*Y(1) + 3.0j*X(1)Z(0)")
+    test2 = 2.0*paulis.X(0) - 1.e-1*paulis.Y(1) + 3.0j*paulis.X(1)*paulis.Z(0)
+    test = numpy.linalg.norm((test1-test2).to_matrix())
+    assert numpy.isclose(test,0.0)
+
+
+
 def test_initialization():
     H = paulis.I()
     for i in range(10):
