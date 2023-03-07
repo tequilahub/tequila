@@ -379,7 +379,7 @@ class QuantumChemistryBase:
 
     def make_orbital_rotation_gate(self, indices:tuple, *args, **kwargs):
         # backward compatibility
-        return self.R(indicies[0],indices[1], *args, **kwargs)
+        return self.UR(indices[0],indices[1], *args, **kwargs)
 
 
     def make_excitation_gate(self, indices, angle, control=None, assume_real=True, **kwargs):
