@@ -1,3 +1,5 @@
+import importlib.util
+
 import tequila
 from typing import Optional, List
 import matplotlib.pyplot as plt
@@ -54,8 +56,14 @@ def visualize(qubit_hamiltonian: tequila.QubitHamiltonian,
     *** Exported an image of a graph with nodes 0 and 5 having color red and
     node 3 having colour green with edge 0 and 5 exists to test_system.png ***
     """
+    if importlib.util.find_spec("networkx") is None:
+        raise tequila.TequilaException("networkx module is not in the system")
+    if importlib.util.find_spec("matplotlib") is None:
+        raise tequila.TequilaException("matplotlib module is not in the system")
+
     if(len(qubit_hamiltonian.qubit_operator.terms)) != 1:
-        raise Exception("The input qubit_operator should have length 1")
+        raise tequila.TequilaException("The input qubit_operator"
+                                       " should have length 1")
 
     qh = next(iter(qubit_hamiltonian.qubit_operator.terms))
     graph = networkx.Graph()
@@ -64,9 +72,7 @@ def visualize(qubit_hamiltonian: tequila.QubitHamiltonian,
         graph, pos = _visualize_helper(qh, graph, pos)
 
     elif connectivity is None:
-        lConn = _circuit_to_connectivity(circuit)
-        graph.add_edges_from(lConn)
-        graph, pos = _visualize_helper(qh, graph, pos, lConn)
+        graph, pos = _visualize_helper(qh, graph, pos, list(circuit.to_networkx().edges))
 
     elif circuit is None:
         graph, pos = _visualize_helper(qh, graph, pos, connectivity)
@@ -76,40 +82,6 @@ def visualize(qubit_hamiltonian: tequila.QubitHamiltonian,
     if file_path is not None:
         plt.savefig(file_path+".png", format="PNG")
         return plt.figure()
-
-
-def _circuit_to_connectivity(circuit):
-    """
-    A helper function for visualize() function.
-    This function returns the list of connections found in circuit
-    """
-    Gdict = {s: [] for s in circuit.qubits}
-    for gate in circuit.gates:
-        if gate.control:
-            for s in gate.control:
-                for t in gate.target:
-                    tstr = ''
-                    tstr += str(t)
-                    target = int(tstr)
-                    Gdict[s].append(target)  # add target to key of correlated controls
-            for p in gate.target:
-                for r in gate.control:
-                    cstr = ''
-                    cstr += str(r)
-                    control = int(cstr)
-                    Gdict[p].append(control)  # add control to key of correlated targets
-        else:
-            for s in gate.target:
-                for t in gate.target:
-                    tstr2 = ''
-                    tstr2 += str(t)
-                    target2 = int(tstr2)
-                    Gdict[s].append(target2)
-    lConn = []  # List of connections between qubits
-    for a, b in Gdict.items():
-        for q in b:
-            lConn.append((a, q))
-    return lConn
 
 
 def _draw_basics(graph):

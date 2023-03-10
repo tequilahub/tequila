@@ -1,6 +1,6 @@
 import typing
-import openfermion
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
+import tequila.hamiltonian.paulis as paulis
 
 
 def _custom_transform(fermion: str, qubits: list) -> QubitHamiltonian:
@@ -30,35 +30,21 @@ def _custom_transform(fermion: str, qubits: list) -> QubitHamiltonian:
     qubit_hamiltonian = QubitHamiltonian()
     operator = fermion[0]
     site = qubits[int(operator[0])]
-    pauli_x = 'X' + str(site)
-    pauli_y = 'Y' + str(site)
     if fermion[-1] == '^':
-        pauli_z = ''
+        pauli_z = QubitHamiltonian()
         for qubit in range(0, int(operator)):
-            pauli_z += 'Z' + str(qubits[qubit]) + ' '
+            pauli_z *= paulis.Z(qubits[qubit])
 
-        qubit_hamiltonian += QubitHamiltonian(
-            qubit_operator=openfermion.QubitOperator(
-                term=pauli_z + pauli_x, coefficient=0.5)
-        )
-
-        qubit_hamiltonian += QubitHamiltonian(
-            qubit_operator=openfermion.QubitOperator(
-                term=pauli_z + pauli_y, coefficient=-0.5j)
-        )
+        qubit_hamiltonian += 0.5 * (pauli_z + paulis.X(site))
+        qubit_hamiltonian += -0.5j * (pauli_z + paulis.Y(site))
 
     else:
-        pauli_z = ''
+        pauli_z = QubitHamiltonian()
         for qubit in range(0, int(operator)):
-            pauli_z += 'Z' + str(qubits[qubit]) + ' '
-        qubit_hamiltonian += QubitHamiltonian(
-            qubit_operator=openfermion.QubitOperator(
-                term=pauli_z + pauli_x, coefficient=0.5)
-        )
-        qubit_hamiltonian += QubitHamiltonian(
-            qubit_operator=openfermion.QubitOperator(
-                term=pauli_z + pauli_y, coefficient=0.5j)
-        )
+            pauli_z *= paulis.Z(qubits[qubit])
+
+        qubit_hamiltonian += 0.5 * (pauli_z + paulis.X(site))
+        qubit_hamiltonian += 0.5j * (pauli_z + paulis.Y(site))
 
     return qubit_hamiltonian
 
@@ -172,6 +158,9 @@ def custom_jw_transform(
 
 
 def _num_of_fermions(fermions: typing.Union[str, list]) -> int:
+    """
+
+    """
     if isinstance(fermions, str):
         if len(fermions) <= 2:
             return 1
@@ -213,7 +202,7 @@ def _split_fermions(fermions: str) -> list:
 def _is_input_compatible(
         fermion: typing.Union[str, list], qubits: list) -> bool:
     """
-    Helper method for CustomJordanWigner class
+    Helper function for CustomJordanWigner class
     Checks if the inputs, namely the fermion operators are compatible with
     qubits in the following ways; the size, ...
     """
