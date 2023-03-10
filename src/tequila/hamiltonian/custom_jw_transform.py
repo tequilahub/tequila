@@ -30,23 +30,21 @@ def _custom_transform(fermion: str, qubits: list) -> QubitHamiltonian:
     qubit_hamiltonian = QubitHamiltonian()
     operator = fermion[0]
     site = qubits[int(operator[0])]
-    pauli_x = paulis.X(site)
-    pauli_y = paulis.Y(site)
     if fermion[-1] == '^':
         pauli_z = QubitHamiltonian()
         for qubit in range(0, int(operator)):
             pauli_z *= paulis.Z(qubits[qubit])
 
-        qubit_hamiltonian += 0.5 * (pauli_z + pauli_x)
-        qubit_hamiltonian += -0.5j * (pauli_z + pauli_y)
+        qubit_hamiltonian += 0.5 * (pauli_z + paulis.X(site))
+        qubit_hamiltonian += -0.5j * (pauli_z + paulis.Y(site))
 
     else:
         pauli_z = QubitHamiltonian()
         for qubit in range(0, int(operator)):
             pauli_z *= paulis.Z(qubits[qubit])
 
-        qubit_hamiltonian += 0.5 * (pauli_z + pauli_x)
-        qubit_hamiltonian += 0.5j * (pauli_z + pauli_y)
+        qubit_hamiltonian += 0.5 * (pauli_z + paulis.X(site))
+        qubit_hamiltonian += 0.5j * (pauli_z + paulis.Y(site))
 
     return qubit_hamiltonian
 
