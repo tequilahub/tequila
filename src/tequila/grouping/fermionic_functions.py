@@ -1,34 +1,43 @@
 import numpy as np
 import math
-import cmath
-import os
-import gc
 from os.path import exists
-import tequila as tq
 import openfermion as of
-from openfermion import FermionOperator, QubitOperator, MolecularData, expectation, get_sparse_operator
+from openfermion import FermionOperator, QubitOperator, MolecularData, expectation, get_sparse_operator, jordan_wigner, reverse_jordan_wigner, normal_ordered, count_qubits, expectation, variance
 from openfermionpyscf import run_pyscf
 from openfermion.transforms import get_fermion_operator
 from scipy.sparse import save_npz, load_npz, csc_matrix
+from itertools import product
 import scipy as sp
-import itertools
-import multiprocessing as mp
-import pickle
 from functools import partial
+import multiprocessing as mp
 
+def get_molecular_system(mol_name, basis="sto3g", spin_orb=True, geometry=1):
+    '''
+    Parameters
+     ----------
+    mol_name - 
+    Name of the molecule to obtain one- and two-body integrals, Fermionic Hamiltonian, and number of electrons
+    basis - 
+    Basis set used to compute the integrals.
+    spin_orb - 
+    If true, spin-orbitals is used, if false, spin symmetry is used to reduce the number of orbitals by half (assumes that spin-up and spin-down are identical).
+    geometry - 
+    Geometry of the molecular system.
 
-def obtain_SD(mol_name, basis="sto3g", fermion=True, spin_orb=True, geometry=1):
+    Returns
+    -------
+    (obt, tbt) Tuple of one- and two-body integrals.
+    h_ferm Fermionic Hamiltonian of the molecular system.
+    num_elecs Number of electrons in the molecular system.
     '''
-    Gets the one body and two body terms of the hamilatonian
-    '''
-    h_ferm, num_elecs = get_system(mol_name, ferm=fermion, basis=basis, geometry=geometry, n_elec=True)
+    h_ferm, num_elecs = get_system(mol_name, basis=basis, geometry=geometry)
     tbt = get_tbt(h_ferm, spin_orb = spin_orb)
     h1b = h_ferm - tbt_to_ferm(tbt, spin_orb)
     h1b = of_simplify(h1b)
     obt = get_obt(h1b, spin_orb=spin_orb)
     return (obt, tbt), h_ferm, num_elecs
 
-def get_system(mol_name, ferm = False, basis='sto3g', geometry=1):
+def get_system(mol_name, basis='sto3g', geometry=1):
     '''
     Obtain system from specified parameters
     '''
@@ -36,10 +45,8 @@ def get_system(mol_name, ferm = False, basis='sto3g', geometry=1):
     mol = MolecularData(g, basis, 1, c)
     mol = run_pyscf(mol)
     ham = mol.get_molecular_hamiltonian()
-    if ferm:
-        return get_fermion_operator(ham), mol.n_electrons
-    else:
-        return ham, mol.n_electrons
+    return get_fermion_operator(ham), mol.n_electrons
+
     
 def chooseType(typeHam, geometries):
     '''
@@ -164,7 +171,7 @@ def of_simplify(op):
     '''
     Simplifies fermionic operator by converting to Qubit and back again.
     '''
-    return of.reverse_jordan_wigner(of.jordan_wigner(op))
+    return reverse_jordan_wigner(jordan_wigner(op))
 
 def get_spin_orbitals(H : FermionOperator):
     '''
@@ -272,9 +279,9 @@ def get_ferm_op(tsr, spin_orb=False):
     if len(tsr.shape) == 4:
         n = tsr.shape[0]
         op = FermionOperator.zero()
-        for i, j, k, l in itertools.product(range(n), repeat=4):
+        for i, j, k, l in product(range(n), repeat=4):
             if not spin_orb:
-                for a, b in itertools.product(range(2), repeat=2):
+                for a, b in product(range(2), repeat=2):
                     op += FermionOperator(
                         term = (
                             (2*i+a, 1), (2*j+a, 0),
@@ -314,7 +321,7 @@ def tbt_to_ferm(tbt : np.array, spin_orb, norm_ord = False):
     Converts two body tensor into Fermion Operator.
     '''
     if norm_ord == True:
-        return of.normal_ordered(get_ferm_op(tbt, spin_orb))
+        return normal_ordered(get_ferm_op(tbt, spin_orb))
     else:
         return get_ferm_op(tbt, spin_orb)
     
@@ -335,13 +342,10 @@ def tbt_orb_to_so(tbt):
     n_qubit = 2*n
 
     tbt_so = np.zeros([2*n,2*n,2*n,2*n])
-    for i1 in range(n):
-        for i2 in range(n):
-            for i3 in range(n):
-                for i4 in range(n):
-                    for a in [0,1]:
-                        for b in [0,1]:
-                            tbt_so[2*i1+a,2*i2+a,2*i3+b,2*i4+b] = tbt[i1,i2,i3,i4]
+    for i1, i2, i3, i4 in product(range(n), repeat=4):
+        for a in [0,1]:
+            for b in [0,1]:
+                tbt_so[2*i1+a,2*i2+a,2*i3+b,2*i4+b] = tbt[i1,i2,i3,i4]
     return tbt_so
 
 def obt_orb_to_so(obt):
@@ -352,10 +356,10 @@ def obt_orb_to_so(obt):
     n_qubit = 2*n
 
     obt_so = np.zeros([2*n,2*n])
-    for i1 in range(n):
-        for i2 in range(n):
-            for a in [0,1]:
-                obt_so[2*i1+a,2*i2+a] = obt[i1,i2]
+    for i1, i2 in product(range(n), repeat=2):
+        for a in [0,1]:
+            obt_so[2*i1+a,2*i2+a] = obt[i1,i2]
+            
     return obt_so
 
 def convert_u_to_so(U):
@@ -392,27 +396,34 @@ def symmetric(M, tol = 1e-8, ret_op = False):
     else:
         return M_res
                                         
-                                          
-def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
+def check_tbt_symmetry(tbt):
     '''
-     Singular Value Decomposition of the two-body tensor term
+    Returns symmetric form of tbt.
     '''
-    print("Starting SVD routine")
-    n = tbt.shape[0]
-    N = n**2
-    
+    N = tbt.shape[0] ** 2
     tbt_res = np.reshape(tbt, (N,N))
     if not symmetric(tbt_res):
         print("Non-symmetric two-body tensor as input for SVD routine, calculations might have errors...")
     else:
         tbt_res = symmetric(tbt_res, ret_op = True)
+    return tbt_res
 
+def diagonalizing_tbt(tbt_res):
+    '''
+    Returns diagonal form and unitary rotation to diagonalize tbt_res
+    '''    
     print("Diagonalizing two-body tensor")
     lamda, U = np.linalg.eig(tbt_res)
     ind = np.argsort(np.abs(lamda))[::-1]
     lamda = lamda[ind]
     U = U[:,ind]
+    return lamda, U
 
+def fragmentization(lamda, U, n, tol = 1e-8):
+    '''
+    Returns fragments of tbt
+    '''    
+    N = n**2
     L_mats = []
     flags = np.zeros(N)
 
@@ -426,7 +437,20 @@ def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
         else:
             cur_l = symmetric(cur_l, ret_op = True)
         L_mats.append(cur_l)
+    return L_mats, flags
+    
 
+def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
+    '''
+    Singular Value Decomposition of the two-body tensor term
+    '''
+    print("Starting SVD routine")
+    n = tbt.shape[0]
+    N = n**2
+    
+    tbt_res = check_tbt_symmetry(tbt)    
+    lamda, U = diagonalizing_tbt(tbt_res)
+    L_mats, flags = fragmentization(lamda, U, n)
     num_ops = len(L_mats)
 
     TBTS = np.zeros((num_ops, n, n, n, n))
@@ -491,7 +515,398 @@ def qubit_number(op):
     '''
     Returns number of qubits in the operator
     '''
-    return of.count_qubits(op)
+    return count_qubits(op)
+
+def get_occ_no(mol, n_qubits):
+    """
+    Given some molecule, find the reference occupation number state.
+    Args:
+        mol (str): H2, LiH, BeH2, H2O, NH3
+    Returns:
+        occ_no (str): Occupation no. vector.
+    """
+    occ_no = '1'*n_elec(mol) + '0'*(n_qubits - n_elec(mol))
+
+    return occ_no
+
+def n_elec(mol):
+    '''
+    Given some molecule, find the reference occupation number state.
+    Args:
+        mol (str): H2, LiH, BeH2, H2O, NH3
+    Returns:
+        Number of electrons (int)
+    '''
+    n_electrons = {'h2': 2, 'lih': 4, 'beh2': 6, 'h2o': 10, 'nh3': 10, 'n2': 14, 'hf':10, 'ch4':10, 'co':14, 'h4':4, 'ch2':8, 'heh':2, 'h6':6, 'nh':8, 'h3':2, 'h4sq':4, 'h2ost':10, 'beh2st':6, 'h2ost2':10, 'beh2st2':6, 'li2frco':2, 'beh2frco':4}
+    return n_electrons[mol]
+
+def create_hamiltonian_in_subspace(indices, Hq, n_qubits):
+    """
+    Given some basis states, create the Hamiltonian within the span of those basis states.
+    Args:
+        qubit_basis_states(List[array] or List[str]): List of basis vectors to create hamiltonian within
+        Hq (QubitOperator): Qubit hamiltonian
+        n_qubits (int): Number of qubits.
+    Returns:
+        H_mat_sub (sp.sparse.coo_matrix): Hamiltonian matrix defined in subspace.
+        indices (List[int]): Gives the index in the 2**n dimensional space of the ith qubit_basis_state.
+    """
+    subspace_dim = len(indices)
+    row_idx = []
+    col_idx = []
+    H_mat_elements = []
+    elements_sum = np.zeros((len(indices),len(indices)))
+    op_sum = QubitOperator.zero()
+    for prog, op in enumerate(Hq):
+        op_sum += op
+        if (prog + 1)%350 == 0 or prog == len(Hq.terms) - 1:
+            opspar = of.get_sparse_operator(op_sum, n_qubits)
+            op_sum = of.QubitOperator.zero()
+            for iidx, iindx in enumerate(indices):
+                for jidx, jindx in enumerate(indices):
+                    elements_sum[iidx, jidx] += opspar[iindx, jindx]
+                 
+    for iidx, iindx in enumerate(indices):
+        for jidx, jindx in enumerate(indices):
+            row_idx.append(iidx)
+            col_idx.append(jidx)
+            H_mat_elements.append(elements_sum[iidx, jidx])
+    H_mat_sub = sp.sparse.coo_matrix((H_mat_elements, (row_idx, col_idx)), shape = (subspace_dim, subspace_dim))
+    return H_mat_sub  
+
+def get_jw_cisd_basis_states(mol, n_qubits):
+    """
+    Given some molecule, find the all BK basis vectors that correspond to occupation numbers that are achieved by single and double excitations.
+    Args:
+        mol (str): H2, LiH, BeH2, H2O, NH3
+        n_qubits (int): No. of qubits
+    Returns:
+        jw_basis_states (List[array]): List of all JW basis states corresponding to occupation numbers achieved by singles and doubles from reference occupation number.
+    """
+    ref_occ_nos = get_occ_no(mol, n_qubits)
+    indices = get_jw_cisd_basis_states_wrap(ref_occ_nos, n_qubits)
+    return indices
+
+def get_jw_cisd_basis_states_wrap(ref_occ_nos, n_qubits):
+    """
+    Given some occupation number, find the all other occupation numbers that are achieved by single and double excitations.
+    Args:
+        ref_occ_nos (str): Reference (likely HF) occupation number ordered from left to right going from 0 -> n-1 in terms of orbitals.
+    Returns:
+        cisd_basis_states (List[str]): List of all occupation number achieved by singles and doubles from reference occupation number.
+    """
+
+    indices = [find_index(get_jw_basis_states(ref_occ_nos, n_qubits))]
+    for occidx, occ_orbitals in enumerate(ref_occ_nos):
+        if occ_orbitals == '1':
+            annihilated_state = list(ref_occ_nos)
+            annihilated_state[occidx] = '0'
+            #Singles
+            for virtidx, virtual_orbs in enumerate(ref_occ_nos):
+                if virtual_orbs == '0':
+                    new_state = annihilated_state[:]
+                    new_state[virtidx] = '1'
+                    indices.append(find_index(get_jw_basis_states(''.join(new_state), n_qubits)))
+                    #Doubles
+                    for occ2idx in range(occidx +1, n_qubits):
+                        if ref_occ_nos[occ2idx] == '1':
+                            annihilated_state_double = new_state[:]
+                            annihilated_state_double[occ2idx] = '0'
+                            for virt2idx in range(virtidx +1, n_qubits):
+                                if ref_occ_nos[virt2idx] == '0':
+                                    new_state_double = annihilated_state_double[:]
+                                    new_state_double[virt2idx] = '1'
+                                    indices.append(find_index(get_jw_basis_states(''.join(new_state_double), n_qubits)))
+    return indices
+
+def find_index(basis_state):
+    """
+    Given some qubit/fermionic basis state, find the index of the a wavefunction that corresponds to that array.
+    Args:
+        basis_state (str or list/np.array): Occupation number vector/ Qubit basis state. If str, ordered from left to right going from 0 -> n-1 in terms of orbitals/qubits.
+    Returns:
+        index (int): Index of the basis in total Qubit space.
+    """
+    index = 0
+    n_qubits = len(basis_state)
+    for j in range(n_qubits):
+        index += int(basis_state[j])*2**(n_qubits - j - 1)
+
+    return index
+
+def get_jw_basis_states(occ_no_list, n_qubits):
+    """
+    Implementation from arXiv:quant-ph/0003137 and https://doi.org/10.1021/acs.jctc.8b00450. Given some reference occupation no's in the fermionic space, find the corresponding BK basis state in the qubit space.
+    Args:
+        occ_no_list (List[str]): List of occupation number vectors. Occ no. vectors ordered from left to right going from 0 -> n-1 in terms of orbitals.
+    Returns:
+        basis_state (np.array): Basis vector in (JW transformed) qubit space corresponding to occ_no_state.
+    """
+    jw_list = []
+    for occ_no in occ_no_list:
+        qubit_state = np.array(list(occ_no), dtype = int)
+        jw_list.append(qubit_state)
+    return jw_list
+
+def expectation_value(op, psi, n):
+    '''
+    Calculates expectation of op over psi.
+    '''
+    e_val = expectation(get_sparse_operator(op, n_qubits=n), psi)
+    return real_round(e_val)
+
+def variance_value(op, psi, n, neg_tol = 1e-7):
+    '''
+    Calculates variance of op over psi.
+    '''
+    var_val = variance(get_sparse_operator(op, n_qubits=n), psi)
+    var_val = real_round(var_val)
+    if -neg_tol <= var_val < 0:
+        var_val = 0
+    return var_val
+
+def real_round(x, tol=1e-10):
+    '''
+    Returns real part of complex numbers if the imaginary part is negligible.
+    '''
+    if abs(x.imag)/abs(x) >= tol:
+        print("Warning, rounding x=$x to real, complex component below tolerance!")
+        return abs(x)
+    return x.real
+
+def get_E(psi, n, n_qubits):
+    '''
+    Returns the dictionary of one electron excitations over psi
+    '''
+    gEd = partial(get_E_dummy, psi, n, n_qubits)
+    with mp.Pool(mp.cpu_count()) as pool:
+        sq = pool.map(gEd, range(n ** 2))
+        pool.close()
+        pool.join()
+    return np.array(sq)
+
+def get_E_dummy(psi, n, n_qubits, ind):
+    '''
+    Returns the expectation value of one electron excitation over psi
+    '''
+    j = ind % n
+    i = ind // n
+    op = FermionOperator(((i, 1), (j, 0)), coefficient=1.0)
+    cov = np.real(expectation(get_sparse_operator(op, n_qubits), psi))
+    return cov
+
+def get_EE(psi, n, n_qubits):
+    '''
+    Returns the dictionary value of two electron excitations over psi
+    '''
+    gEEd = partial(get_EE_dummy, psi, n, n_qubits)
+    with mp.Pool(mp.cpu_count()) as pool:
+        sq = pool.map(gEEd, range(n ** 4))
+        pool.close()
+        pool.join()
+    return np.array(sq)
+
+def get_EE_dummy(psi, n, n_qubits, ind):
+    '''
+    Returns the expectation value of two electron excitation over psi
+    '''
+    l = ind % n
+    k = ind % n ** 2 // n
+    j = ind % n ** 3 // n ** 2
+    i = ind // n ** 3
+    op = FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), coefficient=1.0)
+    cov = np.real(expectation(get_sparse_operator(op, n_qubits), psi))
+    return cov
+
+def reorganize(n, ev_dict_E, ev_dict_EE):
+    '''
+    -----------
+    '''
+    ev_dict_ob_ob = np.zeros([n,n,n,n])
+    for i, j, k, l in product(range(n), repeat=4):
+        ev_dict_ob_ob[i, j, k, l] = ev_dict_EE[(n**3) * (i) + (n**2) * (j) + n * (k) + l] - ev_dict_E[n * (i) + j] * ev_dict_E[n * (k) + l]
+    return ev_dict_ob_ob
+            
+def compute_covk(op1, op2, psi, n_qubits):
+    '''
+    ---------------------
+    '''
+    cko = partial(covk_one, op1, op2, psi, n_qubits)
+    length = len(op1) 
+    with mp.Pool(mp.cpu_count()) as pool:
+        covs = pool.map(cko, range(length))
+        pool.close()
+        pool.join()
+    return np.array(covs)
+
+def covk_one(op1, op2, psi, n_qubits, ind):
+    '''
+    ----------------------
+    '''
+    cov = covariance(op1[ind], op2, psi, n_qubits) + covariance(op2, op1[ind], psi, n_qubits)
+    return cov
+
+def covariance(op1, op2, psi, n_qubits):
+    '''
+    Returns covariance between op1 and op2
+    '''
+    sp_op1 = get_sparse_operator(op1, n_qubits)
+    sp_op2 = get_sparse_operator(op2, n_qubits)
+    psi_tmp = sp_op2.dot(psi)
+    cross = np.dot(np.conjugate(psi.T), sp_op1.dot(psi_tmp))
+    exp_op1 = np.dot(np.conjugate(psi.T), sp_op1.dot(psi))
+    exp_op2 = np.dot(np.conjugate(psi.T), sp_op2.dot(psi))
+    return cross - exp_op1 * exp_op2
+
+def covariance_ob_ob(obt1, obt2, ev_dict_ob_ob):
+    '''
+    
+    '''
+    my_cov = 0.0 + 0.0j
+    my_cov = np.einsum('ij,kl,ijkl',obt1, obt2, ev_dict_ob_ob)
+    return my_cov
+
+def fff_1_iter(obt, tbts, var, c0, ck, psi, oep_var):
+    '''
+    Computes a single iteration of FFF optimization (arXiv:2208.14490v3 - Section 2.2)
+    '''
+    met = (np.sum(np.sqrt(var))) ** 2
+    m0 = compute_meas_alloc(var)
+    lambda_opt = compute_lambda_optimum(oep_var.coo, c0, ck, m0, oep_var.nf, oep_var.n)
+    new_obt, new_tbts = modify_ops(obt, tbts, lambda_opt, oep_var.o_t, oep_var.nf, oep_var.n, oep_var.uops)
+    new_var = modify_var(var, oep_var.coo, c0, ck, lambda_opt, oep_var.n)
+    new_c0, new_ck = modify_c(oep_var.coo, c0, ck, lambda_opt, oep_var.nf, oep_var.n)
+    return new_obt, new_tbts, new_var, new_c0, new_ck
+
+def compute_lambda_optimum(Coo, C0, Ck, m0, nf, n):
+    '''
+    Computes the optimum value of lamda
+    '''
+    symCoo = np.zeros_like(Coo)
+    diagCoo = np.zeros_like(Coo)
+    mat = np.zeros_like(Coo)
+    vec = np.zeros_like(C0)
+    nall = Coo.shape[0]
+    for i in range(nall):
+        for j in range(i, nall):
+            symCoo[i,j] = Coo[i,j] + Coo[j,i]
+            symCoo[j,i] = symCoo[i,j]
+    for k in range(nf):
+        for p in range(n):
+            for q in range(n):
+                ind1 = n * k + p
+                ind2 = n * k + q
+                diagCoo[ind1, ind2] = symCoo[ind1, ind2]/m0[k + 1]
+    mat = (1/m0[0]) * symCoo + diagCoo
+    for k in range(nf):
+        for p in range(n):
+            ind = n * k + p
+            vec[ind] = Ck[ind]/m0[k + 1]
+    vec = vec - (1/m0[0]) * C0
+    lam = solve_Axb(mat, vec)
+    return lam
+
+def solve_Axb(A, b):
+    '''
+    Provides asolution frox x, Ax = b.
+    '''
+    b_tmp = np.zeros((len(b), 1))
+    b_tmp[:,0] = b
+    sol = np.linalg.lstsq(A, b_tmp, rcond=None)
+    x0 = sol[0]
+    return x0.T[0]
+
+def modify_ops(obt, tbts, lambda_opt, O_t, nf, n, uops):
+    '''
+    Computes new values of obt and tbt after a single FFF iteration
+    '''
+    ntmp = obt.shape[0]
+    new_tbts = np.zeros([nf, ntmp, ntmp, ntmp, ntmp])
+    sig_o = np.zeros([ntmp, ntmp])
+    for i in range(nf):
+        obt_tmp = np.zeros([ntmp, ntmp])    
+        for j in range(n):
+            ind = n * i + j
+            obt_tmp += lambda_opt[ind] * O_t[i, j, :, :]
+        sig_o += obt_tmp
+        new_tbts[i,:,:,:,:] = tbts[i,:,:,:,:] - my_obt_to_tbt(obt_tmp,uops[i,:,:])
+    new_obt = obt + sig_o
+    return new_obt, new_tbts
+
+def my_obt_to_tbt(obt, uop):
+    '''
+    Converts the repartioned one body term into two body terms.
+    '''
+    nsize = obt.shape[0]
+    rot_obt = np.zeros([nsize, nsize])
+    tbt_from_obt = np.zeros([nsize, nsize, nsize, nsize])
+    rot_obt = np.einsum('pa,kb,pk',np.conjugate(uop),uop,obt)
+    if np.sum(np.abs(np.diag(np.diag(rot_obt)) - rot_obt))  > 1e-5:
+        print("Warning:", np.sum(np.abs(np.diag(np.diag(rot_obt)) - rot_obt)))
+    tbt_from_obt = np.einsum('al,bl,cl,dl,ll',uop, np.conjugate(uop), uop, np.conjugate(uop), rot_obt)
+    return tbt_from_obt
+
+def modify_var(var, coo, c0, ck, lam, n):
+    '''
+    Computes the variances of the repartitioned fragments
+    '''
+    nvar = len(var)
+    new_var = np.zeros(len(var))
+    delta_var1 = 0.0
+    for l1 in range(len(lam)):
+        for l2 in range(len(lam)):
+            delta_var1 += lam[l1] * lam[l2] * coo[l1,l2]
+        delta_var1 += lam[l1] * c0[l1]
+    new_var[0] = var[0] + delta_var1
+    for k in range(nvar-1):
+        delta_var_k = 0.0
+        for p in range(n):
+            ind1 = n * k + p
+            for q in range(n):
+                ind2 = n * k + q
+                delta_var_k += lam[ind1] * lam[ind2] * coo[ind1, ind2]
+            delta_var_k -= lam[ind1] * ck[ind1]
+        new_var[k+1] = var[k+1] + delta_var_k 
+    return new_var
+
+def modify_c(coo, c0, ck, lam, nf, n):
+    '''
+    Computes the covariances of the repartitioned fragments
+    '''    
+    new_c0 = np.copy(c0)
+    new_ck = np.copy(ck)
+    for ind1 in range(len(lam)):
+        for ind2 in range(len(lam)):
+            new_c0[ind1] += coo[ind1, ind2] * lam[ind2] + coo[ind2, ind1] * lam[ind2]
+    for k in range(nf):
+        for p in range(n):
+            ind1 = n * k + p
+            for q in range(n):
+                ind2 = n * k + q
+                new_ck[ind1] -= coo[ind1, ind2] * lam[ind2] + coo[ind2, ind1] * lam[ind2]
+    return new_c0, new_ck
+
+def compute_meas_alloc(varbs):
+    '''
+    Computes the measurement allocations based on the variances of repartitioned fragments.
+    '''    
+    sqrt_vars = np.sqrt(varbs)
+    meas_alloc = sqrt_vars/np.sum(sqrt_vars)
+    meas_alloc = meas_alloc.real
+    for i in range(len(meas_alloc)):
+        if abs(meas_alloc[i]) < 1e-8:
+            meas_alloc[i] = 1e-8
+    return meas_alloc
+#     meas_alloc = np.sqrt(varbs)
+# #     meas_alloc = sqrt_vars/np.sum(sqrt_vars)
+#     for i in range(len(meas_alloc)):
+#         if meas_alloc[i] < 1e-3:
+#             meas_alloc[i] = 1e-3
+#     meas_alloc = meas_alloc/np.sum(meas_alloc)        
+#     print(meas_alloc)
+#     print(np.sum(meas_alloc))
+#     print(np.sum(np.sqrt(varbs))**2)
+#     return meas_alloc    
 
 
 
