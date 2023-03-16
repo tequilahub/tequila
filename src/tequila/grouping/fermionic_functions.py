@@ -2,12 +2,13 @@ import numpy as np
 import math
 from os.path import exists
 import openfermion as of
-from openfermion import FermionOperator, QubitOperator, MolecularData, expectation, get_sparse_operator, jordan_wigner, reverse_jordan_wigner, normal_ordered, count_qubits, expectation, variance
+from openfermion import FermionOperator, QubitOperator, MolecularData, expectation, get_sparse_operator, jordan_wigner, reverse_jordan_wigner, normal_ordered, count_qubits, variance
 from openfermionpyscf import run_pyscf
 from openfermion.transforms import get_fermion_operator
 from scipy.sparse import save_npz, load_npz, csc_matrix
 from itertools import product
 import scipy as sp
+import tequila.grouping.ev_utils as evu
 from functools import partial
 import multiprocessing as mp
 
@@ -648,21 +649,31 @@ def get_jw_basis_states(occ_no_list, n_qubits):
         jw_list.append(qubit_state)
     return jw_list
 
-def expectation_value(op, psi, n):
+def expectation_value(op, psi, n, trunc=False):
     '''
     Calculates expectation of op over psi.
     '''
-    e_val = expectation(get_sparse_operator(op, n_qubits=n), psi)
+    opq = jordan_wigner(op)
+    if trunc is False:
+        e_val = expectation(get_sparse_operator(opq, n_qubits=n), psi)
+    else:
+        e_val = evu.op_ev_multiple_bases(opq, psi[0], psi[1], n)
     return real_round(e_val)
 
-def variance_value(op, psi, n, neg_tol = 1e-7):
+def variance_value(op, psi, n, trunc=False, neg_tol = 1e-7):
     '''
     Calculates variance of op over psi.
     '''
-    var_val = variance(get_sparse_operator(op, n_qubits=n), psi)
-    var_val = real_round(var_val)
+    opq = jordan_wigner(op)
+    if trunc is False:
+        var_val = variance(get_sparse_operator(opq, n_qubits=n), psi)
+    else:
+        var_val = evu.op_ev_multiple_bases(opq * opq, psi[0], psi[1], n) - evu.op_ev_multiple_bases(opq, psi[0], psi[1], n) ** 2
+    var_val = real_round(var_val) #CS to AC: Why not just use numpy.real_if_close?
     if -neg_tol <= var_val < 0:
         var_val = 0
+    if var_val < -neg_tol:
+        raise ValueError('Variance of an observable should not be negative')
     return var_val
 
 def real_round(x, tol=1e-10):
@@ -674,39 +685,38 @@ def real_round(x, tol=1e-10):
         return abs(x)
     return x.real
 
-def get_E(psi, n, n_qubits):
+def get_E(psi, n, n_qubits, trunc=False):
     '''
     Returns the dictionary of one electron excitations over psi
     '''
-    gEd = partial(get_E_dummy, psi, n, n_qubits)
+    gEd = partial(get_E_dummy, psi, n, n_qubits, trunc)
     with mp.Pool(mp.cpu_count()) as pool:
         sq = pool.map(gEd, range(n ** 2))
         pool.close()
         pool.join()
     return np.array(sq)
 
-def get_E_dummy(psi, n, n_qubits, ind):
+def get_E_dummy(psi, n, n_qubits, trunc, ind):
     '''
     Returns the expectation value of one electron excitation over psi
     '''
     j = ind % n
     i = ind // n
     op = FermionOperator(((i, 1), (j, 0)), coefficient=1.0)
-    cov = np.real(expectation(get_sparse_operator(op, n_qubits), psi))
-    return cov
+    return expectation_value(op, psi, n_qubits, trunc)
 
-def get_EE(psi, n, n_qubits):
+def get_EE(psi, n, n_qubits, trunc=False):
     '''
     Returns the dictionary value of two electron excitations over psi
     '''
-    gEEd = partial(get_EE_dummy, psi, n, n_qubits)
+    gEEd = partial(get_EE_dummy, psi, n, n_qubits, trunc)
     with mp.Pool(mp.cpu_count()) as pool:
         sq = pool.map(gEEd, range(n ** 4))
         pool.close()
         pool.join()
     return np.array(sq)
 
-def get_EE_dummy(psi, n, n_qubits, ind):
+def get_EE_dummy(psi, n, n_qubits, trunc, ind):
     '''
     Returns the expectation value of two electron excitation over psi
     '''
@@ -715,8 +725,7 @@ def get_EE_dummy(psi, n, n_qubits, ind):
     j = ind % n ** 3 // n ** 2
     i = ind // n ** 3
     op = FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), coefficient=1.0)
-    cov = np.real(expectation(get_sparse_operator(op, n_qubits), psi))
-    return cov
+    return expectation_value(op, psi, n_qubits, trunc=trunc)
 
 def reorganize(n, ev_dict_E, ev_dict_EE):
     '''
@@ -727,11 +736,11 @@ def reorganize(n, ev_dict_E, ev_dict_EE):
         ev_dict_ob_ob[i, j, k, l] = ev_dict_EE[(n**3) * (i) + (n**2) * (j) + n * (k) + l] - ev_dict_E[n * (i) + j] * ev_dict_E[n * (k) + l]
     return ev_dict_ob_ob
             
-def compute_covk(op1, op2, psi, n_qubits):
+def compute_covk(op1, op2, psi, n_qubits, trunc=False):
     '''
     ---------------------
     '''
-    cko = partial(covk_one, op1, op2, psi, n_qubits)
+    cko = partial(covk_one, op1, op2, psi, n_qubits, trunc)
     length = len(op1) 
     with mp.Pool(mp.cpu_count()) as pool:
         covs = pool.map(cko, range(length))
@@ -739,23 +748,31 @@ def compute_covk(op1, op2, psi, n_qubits):
         pool.join()
     return np.array(covs)
 
-def covk_one(op1, op2, psi, n_qubits, ind):
+def covk_one(op1, op2, psi, n_qubits, trunc, ind):
     '''
     ----------------------
     '''
-    cov = covariance(op1[ind], op2, psi, n_qubits) + covariance(op2, op1[ind], psi, n_qubits)
+    cov = covariance(op1[ind], op2, psi, n_qubits, trunc) + covariance(op2, op1[ind], psi, n_qubits, trunc)
     return cov
 
-def covariance(op1, op2, psi, n_qubits):
+def covariance(op1, op2, psi, n_qubits, trunc):
     '''
     Returns covariance between op1 and op2
-    '''
-    sp_op1 = get_sparse_operator(op1, n_qubits)
-    sp_op2 = get_sparse_operator(op2, n_qubits)
-    psi_tmp = sp_op2.dot(psi)
-    cross = np.dot(np.conjugate(psi.T), sp_op1.dot(psi_tmp))
-    exp_op1 = np.dot(np.conjugate(psi.T), sp_op1.dot(psi))
-    exp_op2 = np.dot(np.conjugate(psi.T), sp_op2.dot(psi))
+    ''' 
+    op1q = of.jordan_wigner(op1)
+    op2q = of.jordan_wigner(op2)
+
+    sp_op1 = get_sparse_operator(op1q, n_qubits)
+    sp_op2 = get_sparse_operator(op2q, n_qubits)
+    if trunc is False:
+        psi_tmp = sp_op2.dot(psi)
+        cross = np.dot(np.conjugate(psi.T), sp_op1.dot(psi_tmp))
+        exp_op1 = np.dot(np.conjugate(psi.T), sp_op1.dot(psi))
+        exp_op2 = np.dot(np.conjugate(psi.T), sp_op2.dot(psi))
+    else:
+        cross = evu.op_ev_multiple_bases(op1q * op2q, psi[0], psi[1], n_qubits)
+        exp_op1 = evu.op_ev_multiple_bases(op1q, psi[0], psi[1], n_qubits)
+        exp_op2 = evu.op_ev_multiple_bases(op2q, psi[0], psi[1], n_qubits)
     return cross - exp_op1 * exp_op2
 
 def covariance_ob_ob(obt1, obt2, ev_dict_ob_ob):
@@ -771,7 +788,7 @@ def fff_1_iter(obt, tbts, var, c0, ck, psi, oep_var):
     Computes a single iteration of FFF optimization (arXiv:2208.14490v3 - Section 2.2)
     '''
     met = (np.sum(np.sqrt(var))) ** 2
-    m0 = compute_meas_alloc(var)
+    m0 = compute_meas_alloc(var, obt, tbts, oep_var.nq, oep_var.mix)
     lambda_opt = compute_lambda_optimum(oep_var.coo, c0, ck, m0, oep_var.nf, oep_var.n)
     new_obt, new_tbts = modify_ops(obt, tbts, lambda_opt, oep_var.o_t, oep_var.nf, oep_var.n, oep_var.uops)
     new_var = modify_var(var, oep_var.coo, c0, ck, lambda_opt, oep_var.n)
@@ -805,6 +822,32 @@ def compute_lambda_optimum(Coo, C0, Ck, m0, nf, n):
     vec = vec - (1/m0[0]) * C0
     lam = solve_Axb(mat, vec)
     return lam
+
+def var_avg(n_qubits):
+    """ Haar average variance of a Pauli product.
+    """
+    return 1. - 1. / ( 2 ** n_qubits  + 1 )
+
+def get_avg_variances(ops, n_qubits):
+    """ Compute Haar average variances of ops.
+    """
+    return np.array(list(map(lambda x: get_avg_variance(x, n_qubits), ops)))
+
+def get_avg_variance(op, n_qubits):
+    """ Compute Haar average variance of op.
+    """
+    pws = get_pauliword_list(jordan_wigner(op))
+    c_sq = np.sum(list(map(lambda x: np.abs(evu.get_pauli_word_coefficient(x)) ** 2, pws)))
+    return c_sq * var_avg(n_qubits)
+
+def get_pauliword_list(H: QubitOperator):
+    """Obtain a list of pauli words in H. 
+    """
+    pws = []
+    for pw, val in H.terms.items():
+        if len(pw) != 0: pws.append(QubitOperator(term=pw, coefficient=val))
+    return pws
+
 
 def solve_Axb(A, b):
     '''
@@ -846,7 +889,7 @@ def my_obt_to_tbt(obt, uop):
     tbt_from_obt = np.einsum('al,bl,cl,dl,ll',uop, np.conjugate(uop), uop, np.conjugate(uop), rot_obt)
     return tbt_from_obt
 
-def modify_var(var, coo, c0, ck, lam, n):
+def modify_var(var, coo, c0, ck, lam, n, tol=1e-10):
     '''
     Computes the variances of the repartitioned fragments
     '''
@@ -858,6 +901,7 @@ def modify_var(var, coo, c0, ck, lam, n):
             delta_var1 += lam[l1] * lam[l2] * coo[l1,l2]
         delta_var1 += lam[l1] * c0[l1]
     new_var[0] = var[0] + delta_var1
+    if new_var[0] < tol: new_var[0] = 0.
     for k in range(nvar-1):
         delta_var_k = 0.0
         for p in range(n):
@@ -867,6 +911,7 @@ def modify_var(var, coo, c0, ck, lam, n):
                 delta_var_k += lam[ind1] * lam[ind2] * coo[ind1, ind2]
             delta_var_k -= lam[ind1] * ck[ind1]
         new_var[k+1] = var[k+1] + delta_var_k 
+        if new_var[k+1] < tol: new_var[k+1] = 0.
     return new_var
 
 def modify_c(coo, c0, ck, lam, nf, n):
@@ -886,27 +931,22 @@ def modify_c(coo, c0, ck, lam, nf, n):
                 new_ck[ind1] -= coo[ind1, ind2] * lam[ind2] + coo[ind2, ind1] * lam[ind2]
     return new_c0, new_ck
 
-def compute_meas_alloc(varbs):
+def compute_meas_alloc(varbs, obt=None, tbts=None, n_qubits=None, mix=0.0):
     '''
     Computes the measurement allocations based on the variances of repartitioned fragments.
     '''    
-    sqrt_vars = np.sqrt(varbs)
+    if mix > 1e-6:
+        all_ops = [obt_to_ferm(obt, True)]
+        ops = convert_tbts_to_frags(tbts, True)
+        for i in range(len(ops)):
+            all_ops.append(ops[i])
+        avg_vars = get_avg_variances(all_ops, n_qubits)
+        vtmp = mix * avg_vars + (1-mix) * varbs
+    else:
+        vtmp = varbs
+    sqrt_vars = np.sqrt(vtmp)
     meas_alloc = sqrt_vars/np.sum(sqrt_vars)
-    meas_alloc = meas_alloc.real
     for i in range(len(meas_alloc)):
-        if abs(meas_alloc[i]) < 1e-8:
+        if meas_alloc[i] < 1e-8:
             meas_alloc[i] = 1e-8
-    return meas_alloc
-#     meas_alloc = np.sqrt(varbs)
-# #     meas_alloc = sqrt_vars/np.sum(sqrt_vars)
-#     for i in range(len(meas_alloc)):
-#         if meas_alloc[i] < 1e-3:
-#             meas_alloc[i] = 1e-3
-#     meas_alloc = meas_alloc/np.sum(meas_alloc)        
-#     print(meas_alloc)
-#     print(np.sum(meas_alloc))
-#     print(np.sum(np.sqrt(varbs))**2)
-#     return meas_alloc    
-
-
-
+    return np.real( meas_alloc/np.sum(meas_alloc) )
