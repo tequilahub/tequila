@@ -377,10 +377,10 @@ class Objective:
         return self.unary_operator(left=self, op=lambda v: numpy.multiply(v, -1))
 
     def __pow__(self, other):
-        return self._left_helper(numpy.float_power, other)
+        return self._left_helper(numpy.power, other)
 
     def __rpow__(self, other):
-        return self._right_helper(numpy.float_power, other)
+        return self._right_helper(numpy.power, other)
 
     def __rmul__(self, other):
         return self._right_helper(numpy.multiply, other)
@@ -799,10 +799,10 @@ class Variable:
         return Objective(args=[self], transformation=lambda v: numpy.multiply(v, -1.))
 
     def __pow__(self, other):
-        return self._left_helper(numpy.float_power, other)
+        return self._left_helper(numpy.power, other)
 
     def __rpow__(self, other):
-        return self._right_helper(numpy.float_power, other)
+        return self._right_helper(numpy.power, other)
 
     def __rmul__(self, other):
         return self._right_helper(numpy.multiply, other)

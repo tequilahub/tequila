@@ -617,8 +617,13 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             n_pno = n_orbitals - n_pairs
 
         if maxrank is None:
-            maxrank = int(numpy.ceil(n_pno // n_pairs))
-
+            # need at least maxrank=1, otherwise no PNOs are computed
+            # this was a bug in <=v1.8.5 
+            maxrank = max(1,int(numpy.ceil(n_pno // n_pairs)))
+        
+        if maxrank<=0:
+            warnings.warn("maxrank={} in tequila madness backend! No PNOs will be computed. Set the value when initializing the Molecule as tq.Molecule(..., pno={\"maxrank\":1, ...})".format(maxrank), TequilaWarning)
+        
         data = {}
         if self.parameters.multiplicity != 1:
             raise TequilaMadnessException(
