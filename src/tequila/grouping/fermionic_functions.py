@@ -947,6 +947,6 @@ def compute_meas_alloc(varbs, obt=None, tbts=None, n_qubits=None, mix=0.0):
     sqrt_vars = np.sqrt(vtmp)
     meas_alloc = sqrt_vars/np.sum(sqrt_vars)
     for i in range(len(meas_alloc)):
-        if meas_alloc[i] < 1e-8:
-            meas_alloc[i] = 1e-8
+        if meas_alloc[i] < 1e-6:
+            meas_alloc[i] = 1e-6
     return np.real( meas_alloc/np.sum(meas_alloc) )
