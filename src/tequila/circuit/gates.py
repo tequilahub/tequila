@@ -351,7 +351,7 @@ def ExpPauli(paulistring: typing.Union[PauliString, str, dict], angle, control: 
         return QCircuit.wrap_gate(
             impl.RotationGateImpl(axis=axis, target=target, angle=ps.coeff * assign_variable(angle), control=control, *args, **kwargs))
     else:
-        return QCircuit.wrap_gate(impl.ExponentialPauliGateImpl(paulistring=ps, angle=angle, control=control, *args, **kwargs))
+        return QCircuit.wrap_gate(impl.ExponentialPauliGateImpl(paulistring=ps, angle=ps.coeff* assign_variable(angle), control=control, *args, **kwargs))
 
 
 def Rp(paulistring: typing.Union[PauliString, str], angle, control: typing.Union[list, int] = None, *args, **kwargs):
@@ -1089,6 +1089,12 @@ def _convert_Paulistring(paulistring: typing.Union[PauliString, str, dict]) -> P
     ps : PauliString
     '''
     
+    if hasattr(paulistring, "paulistrings"):
+        nps = len(paulistring.paulistrings)
+        if nps>1:
+            raise TequilaException("tried to convert QubitHamiltonian to PauliString, but have more than one primtive PauliString in H={}".format(paulistring))
+        else:
+            ps = paulistring.paulistrings[0]
     if isinstance(paulistring, str):
         ps = PauliString.from_string(string=paulistring)
     elif isinstance(paulistring, list):
