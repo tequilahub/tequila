@@ -1,3 +1,4 @@
+from tequila.utils import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit import _gates_impl as impl
