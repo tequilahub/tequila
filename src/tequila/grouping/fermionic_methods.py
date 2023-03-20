@@ -184,7 +184,7 @@ def get_init_ops(mol_name, calc_type, spin_orb):
         tbt = tbt_ham_opt
     n = obt.shape[0]
     
-    if calc_type == "lr":
+    if calc_type.lower() == "lr":
         if os.path.isfile(path + "lr.pkl"):
             with open(path + "lr.pkl", 'rb') as file:
                 INIT = pickle.load(file)
@@ -235,9 +235,9 @@ def get_wavefunction(h_ferm, wf_type, mol_name, N=1):
     '''
     Hq = jordan_wigner(h_ferm)
     n_qubits = count_qubits(h_ferm)
-    if wf_type == "fci":
+    if wf_type.lower() == "fci":
        return get_fci_states(Hq, mol_name, n_qubits, N=N)
-    elif wf_type == "cisd":
+    elif wf_type.lower() == "cisd":
        return get_cisd_states(Hq, mol_name, n_qubits, N=N)
 
 def get_fci_states(Hq, mol_name, n_qubits, N=1):
@@ -347,8 +347,10 @@ def compute_and_print_ev_var(psi, h_ferm, all_OPS, mol_name, meas_alloc=None):
     h_ferm Fermionic hamiltonian of the molecule
     all_OPS Fermionic fragments
     mol_name Name of molecule
+    meas_alloc If given, the shot per fragment is allocated according to meas_alloc. If None, then
+    it is computed according to the variances [see Quantum 5, 385 (2021)].
     
-    Prints out the variances and expectation of each fragment over psi
+    Prints out the variances and expectation of each fragment over psi.
     '''
     n_qubit = ferm.qubit_number(h_ferm) 
     h_const = h_ferm.constant
@@ -378,22 +380,12 @@ def compute_ev_var_all_ops(psi, n_qubit, all_OPS, mol_name, trunc=False):
     exps Expectations of the fragments over psi
     variances Variances of the fragments over psi
     '''
-    path = "SAVE/" + mol_name + "/"
-    Path(path).mkdir(exist_ok=True)
-    if os.path.isfile(path + "ev_var.pkl"):
-        with open(path + "ev_var.pkl", 'rb') as f:
-            exps, variances = pickle.load(f)
-    else:
-        num_frags = len(all_OPS)
-        exps = np.zeros(num_frags)
-        variances = np.zeros(num_frags)
-        for i in range(num_frags):
-            exps[i] = ferm.expectation_value(all_OPS[i], psi, n_qubit, trunc=trunc)
-            variances[i] = ferm.variance_value(all_OPS[i], psi, n_qubit, trunc=trunc)
-            
-# CS to AC: Why is  
-#         with open(path + "ev_var.pkl", 'wb') as file:
-#             pickle.dump([exps, variances], file)    
+    num_frags = len(all_OPS)
+    exps = np.zeros(num_frags)
+    variances = np.zeros(num_frags)
+    for i in range(num_frags):
+        exps[i] = ferm.expectation_value(all_OPS[i], psi, n_qubit, trunc=trunc)
+        variances[i] = ferm.variance_value(all_OPS[i], psi, n_qubit, trunc=trunc)
     return exps, variances
 
 def init_ev_dict(mol_name, psi, n_qubit, trunc=False, spin_orb=True):
@@ -426,7 +418,7 @@ def init_ev_dict(mol_name, psi, n_qubit, trunc=False, spin_orb=True):
     return ev_dict_all
 
 def check_method(method):
-    if method not in ["Full", "R1", "R2"]:
+    if method.lower() not in ["full", "r1", "r2"]:
        raise ValueError("method has to be specified as one from Full, R1 or R2")
 
 def compute_O_t(U_OPS, method, tbts, mol_name):
@@ -452,14 +444,14 @@ def compute_O_t(U_OPS, method, tbts, mol_name):
     
     num_frags = U_OPS.shape[0]
     n = U_OPS.shape[1]
-    if method == "Full":
+    if method.lower() == "full":
         n_param = n//2
     else:
         n_param = 1
         ratios = np.zeros([num_frags,n])
         for frag1 in range(num_frags):
             for p1 in range(n):
-                if method == "R1":
+                if method.lower() == "r1":
                     ratios[frag1, p1] = tbts[frag1, p1,p1,p1,p1]
                 else:
                     ratios[frag1, p1] = np.sum([tbts[frag1,p1,p1,r1,r1] for r1 in range(n)])
@@ -472,7 +464,7 @@ def compute_O_t(U_OPS, method, tbts, mol_name):
             for r, s in product(range(n), repeat=2):
                 Otmp[r,s] = Umat[r,p] * Umat[s,p].conjugate()
             O_t_tmp[k,p,:,:] = Otmp
-    if method == "Full":
+    if method.lower() == "full":
         for k in range(num_frags):
             for p in range(n_param):
                 for alpha in range(2):
@@ -614,7 +606,6 @@ class fff_aux:
         self.uops = uops
         self.mix = mix
         
-#CS to AC: Please change oep with fff.
 def fff_multi_iter(obt, tbts, psi, varbs, fff_var, mol_name, method):
     '''
     Parameters

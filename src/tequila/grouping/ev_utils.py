@@ -41,7 +41,7 @@ def get_occ_no(mol, n_qubits):
         occ_no (str): Occupation no. vector.
     """
     n_electrons = {'h2': 2, 'lih': 4, 'beh2': 6, 'h2o': 10, 'nh3': 10, 'n2': 14, 'hf':10, 'ch4':10, 'co':14, 'h4':4, 'ch2':8, 'heh':2, 'h6':6, 'nh':8, 'h3':2}
-    occ_no = '1'*n_electrons[mol] + '0'*(n_qubits - n_electrons[mol])
+    occ_no = '1'*n_electrons[mol.lower()] + '0'*(n_qubits - n_electrons[mol.lower()])
 
     return occ_no
 

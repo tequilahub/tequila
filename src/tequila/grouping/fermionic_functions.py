@@ -54,30 +54,30 @@ def chooseType(typeHam, geometries):
     Genreate the molecular data of specified type of Hamiltonian
     '''
     charge = 0
-    if typeHam == 'h2':
+    if typeHam.lower() == 'h2':
         molData = [
             ['H', [0, 0, 0]],
             ['H', [0, 0, geometries]]
         ]
-    elif typeHam == 'h3':
+    elif typeHam.lower() == 'h3':
         molData = [
             ['H', [0, 0, 0]],
             ['H', [0, 0, geometries]],
             ['H', [0, 0, 2*geometries]]
         ]
         charge = 1
-    elif typeHam == 'n2':
+    elif typeHam.lower() == 'n2':
         molData = [
             ['N', [0, 0, 0]],
             ['N', [0, 0, geometries]]
         ]
-    elif typeHam == 'lih':
+    elif typeHam.lower() == 'lih':
         molData = [
             ['Li', [0, 0, 0]],
             ['H', [0, 0, geometries]]
         ]
     # Giving symmetrically stretch H2O. ∠HOH = 107.6°
-    elif typeHam == 'h2o':
+    elif typeHam.lower() == 'h2o':
         angle = 107.6 / 2
         angle = math.radians(angle)
         xDistance = geometries * math.sin(angle)
@@ -87,30 +87,30 @@ def chooseType(typeHam, geometries):
             ['H', [-xDistance, yDistance, 0]],
             ['H', [xDistance, yDistance, 0]]
         ]
-    elif typeHam == 'hf':
+    elif typeHam.lower() == 'hf':
         molData = [
             ['H', [0, 0, 0]],
             ['F', [0, 0, geometries]]
         ]
-    elif typeHam == 'co':
+    elif typeHam.lower() == 'co':
         molData = [
             ['C', [0, 0, 0]],
             ['O', [0, 0, geometries]]
         ]
-    elif typeHam == 'beh2':
+    elif typeHam.lower() == 'beh2':
         molData = [
             ['Be', [0, 0, 0]],
             ['H', [0, 0, -geometries]],
             ['H', [0, 0, geometries]]
         ]
-    elif typeHam == 'h4':
+    elif typeHam.lower() == 'h4':
         molData = [
             ['H', [0, 0, 0]],
             ['H', [0, 0, geometries]],
             ['H', [0, 0, 2*geometries]],
             ['H', [0, 0, 3*geometries]]
         ]
-    elif typeHam == 'h6':
+    elif typeHam.lower() == 'h6':
         molData = [
             ['H', [0, 0, 0]],
             ['H', [0, 0, geometries]],
@@ -119,13 +119,13 @@ def chooseType(typeHam, geometries):
             ['H', [0, 0, 4*geometries]],
             ['H', [0, 0, 5*geometries]]
         ]
-    elif typeHam == 'heh':
+    elif typeHam.lower() == 'heh':
         molData = [
             ['He', [0, 0, 0]],
             ['H', [0, 0, geometries]]
         ]
         charge = 1
-    elif typeHam == 'ch2':
+    elif typeHam.lower() == 'ch2':
         angle = 101.89 / 2
         angle = math.radians(angle)
         xDistance = 1.0 * math.sin(angle)
@@ -135,7 +135,7 @@ def chooseType(typeHam, geometries):
             ['H', [-xDistance, yDistance, 0]],
             ['H', [xDistance, yDistance, 0]]
         ]
-    elif typeHam == 'nh3':
+    elif typeHam.lower() == 'nh3':
     # Is there a more direct way of making three vectors with specific mutual angle?
         bondAngle = 107
         bondAngle = math.radians(bondAngle)
@@ -151,7 +151,7 @@ def chooseType(typeHam, geometries):
             ['H', [thirdxRatio * geometries, thirdyRatio * geometries, cos * geometries]], 
             ['N', [0, 0, 0]], 
         ]
-    elif typeHam == 'ch4':
+    elif typeHam.lower() == 'ch4':
         l_edge = (2./3.) * math.sqrt(6.) * geometries #length of the edge of the tetrahedron.
         h_tet = (4./3.) * geometries
         zdisp = -(1./3.) * geometries
@@ -539,7 +539,7 @@ def n_elec(mol):
         Number of electrons (int)
     '''
     n_electrons = {'h2': 2, 'lih': 4, 'beh2': 6, 'h2o': 10, 'nh3': 10, 'n2': 14, 'hf':10, 'ch4':10, 'co':14, 'h4':4, 'ch2':8, 'heh':2, 'h6':6, 'nh':8, 'h3':2, 'h4sq':4, 'h2ost':10, 'beh2st':6, 'h2ost2':10, 'beh2st2':6, 'li2frco':2, 'beh2frco':4}
-    return n_electrons[mol]
+    return n_electrons[mol.lower()]
 
 def create_hamiltonian_in_subspace(indices, Hq, n_qubits):
     """
@@ -669,7 +669,7 @@ def variance_value(op, psi, n, trunc=False, neg_tol = 1e-7):
         var_val = variance(get_sparse_operator(opq, n_qubits=n), psi)
     else:
         var_val = evu.op_ev_multiple_bases(opq * opq, psi[0], psi[1], n) - evu.op_ev_multiple_bases(opq, psi[0], psi[1], n) ** 2
-    var_val = real_round(var_val) #CS to AC: Why not just use numpy.real_if_close?
+    var_val = real_round(var_val)
     if -neg_tol <= var_val < 0:
         var_val = 0
     if var_val < -neg_tol:
@@ -681,7 +681,7 @@ def real_round(x, tol=1e-10):
     Returns real part of complex numbers if the imaginary part is negligible.
     '''
     if abs(x.imag)/abs(x) >= tol:
-        print("Warning, rounding x=$x to real, complex component below tolerance!")
+        print("Warning, rounding x={} to abs(x). Complex component is above tolerance (relative magnitude: {:.2f})".format(x, abs(x.imag)/abs(x)))
         return abs(x)
     return x.real
 
@@ -783,16 +783,16 @@ def covariance_ob_ob(obt1, obt2, ev_dict_ob_ob):
     my_cov = np.einsum('ij,kl,ijkl',obt1, obt2, ev_dict_ob_ob)
     return my_cov
 
-def fff_1_iter(obt, tbts, var, c0, ck, psi, oep_var):
+def fff_1_iter(obt, tbts, var, c0, ck, psi, fff_var):
     '''
     Computes a single iteration of FFF optimization (arXiv:2208.14490v3 - Section 2.2)
     '''
     met = (np.sum(np.sqrt(var))) ** 2
-    m0 = compute_meas_alloc(var, obt, tbts, oep_var.nq, oep_var.mix)
-    lambda_opt = compute_lambda_optimum(oep_var.coo, c0, ck, m0, oep_var.nf, oep_var.n)
-    new_obt, new_tbts = modify_ops(obt, tbts, lambda_opt, oep_var.o_t, oep_var.nf, oep_var.n, oep_var.uops)
-    new_var = modify_var(var, oep_var.coo, c0, ck, lambda_opt, oep_var.n)
-    new_c0, new_ck = modify_c(oep_var.coo, c0, ck, lambda_opt, oep_var.nf, oep_var.n)
+    m0 = compute_meas_alloc(var, obt, tbts, fff_var.nq, fff_var.mix)
+    lambda_opt = compute_lambda_optimum(fff_var.coo, c0, ck, m0, fff_var.nf, fff_var.n)
+    new_obt, new_tbts = modify_ops(obt, tbts, lambda_opt, fff_var.o_t, fff_var.nf, fff_var.n, fff_var.uops)
+    new_var = modify_var(var, fff_var.coo, c0, ck, lambda_opt, fff_var.n)
+    new_c0, new_ck = modify_c(fff_var.coo, c0, ck, lambda_opt, fff_var.nf, fff_var.n)
     return new_obt, new_tbts, new_var, new_c0, new_ck
 
 def compute_lambda_optimum(Coo, C0, Ck, m0, nf, n):
