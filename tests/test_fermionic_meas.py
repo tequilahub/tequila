@@ -2,6 +2,8 @@ from tequila.grouping.fermionic_functions import get_molecular_system, obt_orb_t
 import tequila.grouping.fermionic_methods as fm
 from openfermion import count_qubits
 import numpy as np
+import os
+from shutil import rmtree
 
 mol_name = "h3"
 (obt_orb,tbt_orb), h_ferm, num_elecs = obtb, h_ferm, num_elecs = get_molecular_system(mol_name, spin_orb=False)
@@ -51,6 +53,12 @@ def test_truncation():
 
 def test_fff():
     fff_method = "Full"
+    try:
+        os.remove("SAVE/" + mol_name.lower() + "/ev_dict.pkl")
+    except OSError:
+        pass
+    rmtree("SAVE/" + mol_name.lower() + "/" + fff_method.lower(), ignore_errors=True)
+    
     exps_appr, vars_appr = fm.compute_ev_var_all_ops(psi_appr, n_qubit, all_ops, mol_name, trunc=True)
     ev_dict_all = fm.init_ev_dict(mol_name, psi_appr, n_qubit, trunc=True, save=False)
 
@@ -69,10 +77,18 @@ def test_fff():
     new_obt, new_tbts, meas_alloc, var_new = fm.fff_multi_iter(obt, tbts, psi_appr, vars_appr, fff_var, mol_name, fff_method)
     meas_alloc = compute_meas_alloc(var_new, new_obt, new_tbts, n_qubit, 1e-3)
     exps_new, vars_new = fm.compute_ev_var_all_ops(psis_fci[0], n_qubit, [obt_to_ferm(new_obt,True)] + convert_tbts_to_frags(new_tbts, True), mol_name)
-    #Test whether FFF does lower variances.
+    #FFF lowers variances.
     assert np.sum(np.divide(vars_new, meas_alloc)) < np.sum(np.sqrt(vars_appr)) ** 2
     print(np.sum(np.sqrt(vars_appr)) ** 2)
     print(np.sum(np.divide(vars_new, meas_alloc)))
-    #Test whether FFF fragments add up to the original expectation value.
+    #FFF fragments add up to the original expectation value.
     print(np.sum(exps_new) + h_ferm.constant)
     assert np.abs( np.sum(exps_new) + h_ferm.constant - psis_energy[0] ) < 1e-6
+
+    #FFF fragments are still orbital rotations of HF solvable parts.
+    new_c_tbts = np.einsum('ipa, iqb, irc, isd, ipqrs -> iabcd', uops, uops, uops, uops, new_tbts)
+    new_c_tbts_diag = np.zeros_like(new_c_tbts)
+    for p in range(new_c_tbts.shape[1]):
+        for q in range(new_c_tbts.shape[3]):
+            new_c_tbts_diag[:,p,p,q,q] = new_c_tbts[:,p,p,q,q]
+    assert np.sum(np.abs(new_c_tbts - new_c_tbts_diag)) < 1e-6

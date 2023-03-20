@@ -135,7 +135,10 @@ def do_fff(mol_name, fff_method, n_iter=7, calc_type='lr', trunc_perc=100., mix=
     print("===================================================")
     _, uop_oe = np.linalg.eig(new_obt)
     all_uops = [uop_oe] + [U_OPS[i] for i in range(len(U_OPS))]
-    return new_all_ops, np.array(all_uops)
+
+    new_c_obt = np.einsum("pa, qb, pq", uop_oe, uop_oe, new_obt)
+    new_c_tbts = np.einsum('ipa, iqb, irc, isd, ipqrs -> iabcd', U_OPS, U_OPS, U_OPS, U_OPS, new_tbts)
+    return new_all_ops, np.array(all_uops), new_c_obt, new_c_tbts, meas_alloc
 
 def get_init_ops(mol_name, calc_type, spin_orb, save=True):
     '''
