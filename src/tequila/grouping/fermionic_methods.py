@@ -44,10 +44,10 @@ def do_fff(mol_name, fff_method, n_iter=7, calc_type='lr', trunc_perc=100., mix=
     def check_restart(restart):
         if not(restart):
             try:
-                os.remove("SAVE/" + mol_name + "/ev_dict.pkl")
+                os.remove("SAVE/" + mol_name.lower() + "/ev_dict.pkl")
             except OSError:
                 pass
-            rmtree("SAVE/" + mol_name + "/" + fff_method, ignore_errors=True)
+            rmtree("SAVE/" + mol_name.lower() + "/" + fff_method.lower(), ignore_errors=True)
 
     def get_psi(h_ferm, mol_name, trunc, trunc_perc):
         es_fci, psis_fci = get_wavefunction(h_ferm, "fci", mol_name)
@@ -137,7 +137,7 @@ def do_fff(mol_name, fff_method, n_iter=7, calc_type='lr', trunc_perc=100., mix=
     all_uops = [uop_oe] + [U_OPS[i] for i in range(len(U_OPS))]
     return new_all_ops, np.array(all_uops)
 
-def get_init_ops(mol_name, calc_type, spin_orb):
+def get_init_ops(mol_name, calc_type, spin_orb, save=True):
     '''
     Parameters
      ----------
@@ -160,7 +160,6 @@ def get_init_ops(mol_name, calc_type, spin_orb):
     cartan_tbts Polynomial functions of Pauli Z under qubit fermion mappings
     '''
     path = "SAVE/" + mol_name + "/"
-    Path(path).mkdir(exist_ok=True, parents=True)
     if os.path.isfile(path + "tensor_terms.pkl"):
         with open(path + "tensor_terms.pkl", 'rb') as file:
             INIT = pickle.load(file)
@@ -172,10 +171,12 @@ def get_init_ops(mol_name, calc_type, spin_orb):
         obtb, h_ferm, num_elecs = ferm.get_molecular_system(mol_name, spin_orb = spin_orb)
         obt = obtb[0]
         tbt_ham_opt = obtb[1]
-        with open(path + "tensor_terms.pkl", 'wb') as file:
-            pickle.dump([obt, tbt_ham_opt], file)
-        with open(path + "ham.pkl", 'wb') as file:
-            pickle.dump(h_ferm, file)
+        if save:
+            Path(path).mkdir(exist_ok=True, parents=True)
+            with open(path + "tensor_terms.pkl", 'wb') as file:
+                pickle.dump([obt, tbt_ham_opt], file)
+            with open(path + "ham.pkl", 'wb') as file:
+                pickle.dump(h_ferm, file)
     n_qubit = ferm.qubit_number(h_ferm)
     if spin_orb != True:
         obt = ferm.obt_orb_to_so(obt)
@@ -193,8 +194,9 @@ def get_init_ops(mol_name, calc_type, spin_orb):
             U_OPS_tmp = INIT[2]                
         else:
             CARTAN_TBTS_tmp, TBTS_tmp, OPS_tmp, U_OPS_tmp = ferm.lr_decomp(tbt_ham_opt, tol=1e-8, spin_orb=spin_orb)
-            with open(path + "lr.pkl", 'wb') as file:
-                pickle.dump([CARTAN_TBTS_tmp, TBTS_tmp, U_OPS_tmp], file)
+            if save:
+                with open(path + "lr.pkl", 'wb') as file:
+                    pickle.dump([CARTAN_TBTS_tmp, TBTS_tmp, U_OPS_tmp], file)
         OPS = ferm.convert_tbts_to_frags(TBTS_tmp, spin_orb)
     
     if spin_orb != True:
@@ -215,7 +217,7 @@ def get_init_ops(mol_name, calc_type, spin_orb):
         all_OPS.append(OPS[i])
     return h_ferm, obt, tbt, n_qubit, all_OPS, U_OPS, tbts, cartan_tbts
 
-def get_wavefunction(h_ferm, wf_type, mol_name, N=1):
+def get_wavefunction(h_ferm, wf_type, mol_name, N=1, save=True):
     '''
     Parameters
      ----------
@@ -236,11 +238,11 @@ def get_wavefunction(h_ferm, wf_type, mol_name, N=1):
     Hq = jordan_wigner(h_ferm)
     n_qubits = count_qubits(h_ferm)
     if wf_type.lower() == "fci":
-       return get_fci_states(Hq, mol_name, n_qubits, N=N)
+       return get_fci_states(Hq, mol_name, n_qubits, N=N, save=save)
     elif wf_type.lower() == "cisd":
-       return get_cisd_states(Hq, mol_name, n_qubits, N=N)
+       return get_cisd_states(Hq, mol_name, n_qubits, N=N, save=save)
 
-def get_fci_states(Hq, mol_name, n_qubits, N=1):
+def get_fci_states(Hq, mol_name, n_qubits, N=1, save=True):
     '''
     Parameters
      ----------
@@ -257,8 +259,7 @@ def get_fci_states(Hq, mol_name, n_qubits, N=1):
     psi_fci Wavefunction of FCI ground state
     '''
     
-    path = "SAVE/" + mol_name + "/"
-    Path(path).mkdir(exist_ok=True)
+    path = "SAVE/" + mol_name.lower() + "/"
     if os.path.isfile(path + "psi_fci.pkl"):
         with open(path + "psi_fci.pkl", 'rb') as file:
             INIT = pickle.load(file)
@@ -288,11 +289,13 @@ def get_fci_states(Hq, mol_name, n_qubits, N=1):
             values.append(w[i])
             vectors.append(v[:,i])
         if len(values) == N or i == len(w)-1:
-            with open(path + "psi_fci.pkl", 'wb') as file:
-                pickle.dump([values, vectors], file) 
+            if save:
+                Path(path).mkdir(exist_ok=True)
+                with open(path + "psi_fci.pkl", 'wb') as file:
+                    pickle.dump([values, vectors], file) 
             return values, vectors
         
-def get_cisd_states(Hq, mol_name, n_qubits, N=1):
+def get_cisd_states(Hq, mol_name, n_qubits, N=1, save=True):
     '''
     Parameters
      ----------
@@ -308,8 +311,7 @@ def get_cisd_states(Hq, mol_name, n_qubits, N=1):
     e_cisd Energy of CISD ground state
     psi_cisd Wavefunction of CISD ground state
     '''
-    path = "SAVE/" + mol_name + "/"
-    Path(path).mkdir(exist_ok=True)
+    path = "SAVE/" + mol_name.lower() + "/"
     if os.path.isfile(path + "psi_cisd.pkl"):
         with open(path + "psi_cisd.pkl", 'rb') as file:
             INIT = pickle.load(file)
@@ -334,7 +336,9 @@ def get_cisd_states(Hq, mol_name, n_qubits, N=1):
             wfs[iindx] = v[iidx, i]
         wfs = wfs/np.linalg.norm(wfs)
         vectors.append(wfs)
-    with open(path + "psi_cisd.pkl", 'wb') as file:
+    if save:
+        Path(path).mkdir(exist_ok=True)
+        with open(path + "psi_cisd.pkl", 'wb') as file:
             pickle.dump([values, vectors], file) 
             
     return values, vectors
@@ -388,7 +392,7 @@ def compute_ev_var_all_ops(psi, n_qubit, all_OPS, mol_name, trunc=False):
         variances[i] = ferm.variance_value(all_OPS[i], psi, n_qubit, trunc=trunc)
     return exps, variances
 
-def init_ev_dict(mol_name, psi, n_qubit, trunc=False, spin_orb=True):
+def init_ev_dict(mol_name, psi, n_qubit, trunc=False, spin_orb=True, save=True):
     '''
     Parameters
      ----------
@@ -404,8 +408,7 @@ def init_ev_dict(mol_name, psi, n_qubit, trunc=False, spin_orb=True):
         n = n_qubit
     else:
         n = n_qubit // 2
-    path = "SAVE/" + mol_name + "/"
-    Path(path).mkdir(exist_ok=True)
+    path = "SAVE/" + mol_name.lower() + "/"
     if os.path.isfile(path + "ev_dict.pkl"):
         with open(path + "ev_dict.pkl", 'rb') as file:
             ev_dict_all = pickle.load(file)
@@ -413,15 +416,17 @@ def init_ev_dict(mol_name, psi, n_qubit, trunc=False, spin_orb=True):
         ev_dict_E = ferm.get_E(psi, n, n_qubit, trunc=trunc)
         ev_dict_EE = ferm.get_EE(psi, n, n_qubit, trunc=trunc) 
         ev_dict_all = ferm.reorganize(n, ev_dict_E, ev_dict_EE)
-        with open(path + "ev_dict.pkl", 'wb') as file:
-            pickle.dump(ev_dict_all, file)    
+        if save:
+            Path(path).mkdir(exist_ok=True)
+            with open(path + "ev_dict.pkl", 'wb') as file:
+                pickle.dump(ev_dict_all, file)    
     return ev_dict_all
 
 def check_method(method):
     if method.lower() not in ["full", "r1", "r2"]:
        raise ValueError("method has to be specified as one from Full, R1 or R2")
 
-def compute_O_t(U_OPS, method, tbts, mol_name):
+def compute_O_t(U_OPS, method, tbts, mol_name, save=True):
     '''
     Parameters
      ----------
@@ -435,8 +440,7 @@ def compute_O_t(U_OPS, method, tbts, mol_name):
     '''
     check_method(method)
 
-    path = "SAVE/" + mol_name + "/" + method + "/"
-    Path(path).mkdir(exist_ok=True)
+    path = "SAVE/" + mol_name.lower() + "/" + method.lower() + "/"
     if os.path.isfile(path + "O_t.pkl"):
         with open(path + "O_t.pkl", 'rb') as file:
             O_t = pickle.load(file)
@@ -474,12 +478,14 @@ def compute_O_t(U_OPS, method, tbts, mol_name):
             for p1 in range(n):
                 O_t[k,0,:,:] += ratios[k,p1] * O_t_tmp[k,p1,:,:]
     
-    with open(path + "O_t.pkl", 'wb') as file:
-            pickle.dump(O_t, file)
+    if save:
+        Path(path).mkdir(exist_ok=True)
+        with open(path + "O_t.pkl", 'wb') as file:
+                pickle.dump(O_t, file)
                                                        
     return O_t
 
-def compute_all_covs(all_OPS, O_t, psi, n_qubit, mol_name, method, trunc=False):
+def compute_all_covs(all_OPS, O_t, psi, n_qubit, mol_name, method, trunc=False, save=True):
     '''
     Parameters
      ----------
@@ -494,9 +500,8 @@ def compute_all_covs(all_OPS, O_t, psi, n_qubit, mol_name, method, trunc=False):
     -------
     all_covs --------------------
     '''
-    path = "SAVE/" + mol_name + "/" + method + "/"
+    path = "SAVE/" + mol_name.lower() + "/" + method.lower() + "/"
     check_method(method)
-    Path(path).mkdir(exist_ok=True)
     if os.path.isfile(path + "all_covs.pkl"):
         with open(path + "all_covs.pkl", 'rb') as file:
             all_covs = pickle.load(file)
@@ -509,12 +514,14 @@ def compute_all_covs(all_OPS, O_t, psi, n_qubit, mol_name, method, trunc=False):
             ops1.append(ferm.obt_to_ferm(O_t[frag_idx, p, :, :], True))
         all_covs.append(ferm.compute_covk(ops1, all_OPS[frag_idx+1], psi, n_qubit, trunc=trunc))
         
-    with open(path + "all_covs.pkl", 'wb') as file:
-        pickle.dump(all_covs, file)
+    if save:
+        Path(path).mkdir(exist_ok=True)
+        with open(path + "all_covs.pkl", 'wb') as file:
+            pickle.dump(all_covs, file)
     
     return all_covs
 
-def compute_cov_OO(O_t, ev_dict_all, mol_name, method):
+def compute_cov_OO(O_t, ev_dict_all, mol_name, method, save=True):
     '''
     Parameters
      ----------
@@ -527,9 +534,8 @@ def compute_cov_OO(O_t, ev_dict_all, mol_name, method):
     -------
     covmat Dictionary of covariances between O_alpha's
     '''
-    path = "SAVE/" + mol_name + "/" + method + "/"
+    path = "SAVE/" + mol_name.lower() + "/" + method.lower() + "/"
     check_method(method)
-    Path(path).mkdir(exist_ok=True)
     if os.path.isfile(path + "cov_OO.pkl"):
         with open(path + "cov_OO.pkl", 'rb') as file:
             covmat = pickle.load(file)
@@ -547,12 +553,14 @@ def compute_cov_OO(O_t, ev_dict_all, mol_name, method):
                     ind2 = n * (l) + q
                     covmat[ind1, ind2] = ferm.covariance_ob_ob(O_t[k,p,:,:], O_t[l,q,:,:], ev_dict_all[0])
                     
-    with open(path + "cov_OO.pkl", 'wb') as file:
-        pickle.dump(covmat, file)                
+    if save:
+        Path(path).mkdir(exist_ok=True)
+        with open(path + "cov_OO.pkl", 'wb') as file:
+            pickle.dump(covmat, file)                
     
     return covmat
 
-def compute_cov_O(O_t, H0, ev_dict_all, mol_name, method):
+def compute_cov_O(O_t, H0, ev_dict_all, mol_name, method, save=True):
     '''
     Parameters
      ----------
@@ -566,9 +574,8 @@ def compute_cov_O(O_t, H0, ev_dict_all, mol_name, method):
     -------
     covvec Covariance of O_alpha's and original fragments
     '''
-    path = "SAVE/" + mol_name + "/" + method + "/"
+    path = "SAVE/" + mol_name.lower() + "/" + method.lower() + "/"
     check_method(method)
-    Path(path).mkdir(exist_ok=True)
     if os.path.isfile(path + "cov_O.pkl"):
         with open(path + "cov_O.pkl", 'rb') as file:
             covvec = pickle.load(file)
@@ -585,8 +592,10 @@ def compute_cov_O(O_t, H0, ev_dict_all, mol_name, method):
             covr = ferm.covariance_ob_ob(H0, O_t[k,p,:,:], ev_dict_all[0])
             covvec[ind] = covl + covr
             
-    with open(path + "cov_O.pkl", 'wb') as file:
-        pickle.dump(covvec, file) 
+    if save:
+        Path(path).mkdir(exist_ok=True)
+        with open(path + "cov_O.pkl", 'wb') as file:
+            pickle.dump(covvec, file) 
         
     return covvec
 
@@ -624,13 +633,7 @@ def fff_multi_iter(obt, tbts, psi, varbs, fff_var, mol_name, method):
     new_tbts Repartitioned two body terms
     m0 Optimal Measurement Allocation
     '''
-    path = "SAVE/" + mol_name + "/" + method + "/"
     check_method(method)
-    Path(path).mkdir(exist_ok=True)
-    if os.path.isfile(path + "FFF.pkl"):
-        with open(path + "FFF.pkl", 'rb') as file:
-            m0, var0, obt_list, tbts_list = pickle.load(file)
-        return obt_list[len(obt_list)-1,:,:], tbts_list[len(tbts_list)-1,:,:,:,:,:], m0, var0
     
     ntmp = obt.shape[0]
     obt_list = np.zeros([ fff_var.n_iter+1, ntmp, ntmp])
@@ -650,8 +653,4 @@ def fff_multi_iter(obt, tbts, psi, varbs, fff_var, mol_name, method):
     var0 = var_list[len(var_list)-1,:]
     met = (np.sum(np.sqrt(var0))) ** 2
     m0 = ferm.compute_meas_alloc(var0, obt, tbts, fff_var.nq, fff_var.mix)
-    
-    with open(path + "FFF.pkl", 'wb') as file:
-        pickle.dump([m0, var0, obt_list, tbts_list], file) 
-    
     return obt_list[len(obt_list)-1,:,:], tbts_list[len(tbts_list)-1,:,:,:,:,:], m0, var0
