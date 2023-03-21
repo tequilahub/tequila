@@ -1,13 +1,15 @@
-from tequila.grouping.fermionic_functions import get_molecular_system, obt_orb_to_so, tbt_orb_to_so, lr_decomp, compute_meas_alloc, convert_tbts_to_frags, obt_to_ferm, given_rotation
+from tequila.grouping.fermionic_functions import obt_orb_to_so, tbt_orb_to_so, lr_decomp, compute_meas_alloc, convert_tbts_to_frags, obt_to_ferm, given_rotation, get_system, get_obt_tbt, n_elec, of_simplify
 import tequila.grouping.fermionic_methods as fm
-from openfermion import count_qubits
+from openfermion import count_qubits, jordan_wigner, normal_ordered
 from numpy.testing import assert_allclose
 import numpy as np
 import os
 from shutil import rmtree
 
 mol_name = "h3"
-(obt_orb,tbt_orb), h_ferm, num_elecs = obtb, h_ferm, num_elecs = get_molecular_system(mol_name, spin_orb=False)
+h_ferm, _ = get_system(mol_name, basis="sto-3g", geometry=1.0)
+h_ferm = normal_ordered(of_simplify(h_ferm))
+(obt_orb,tbt_orb) = get_obt_tbt(h_ferm, spin_orb=False)
 obt = obt_orb_to_so(obt_orb)
 tbt = tbt_orb_to_so(tbt_orb)
 ctbts, rtbts, _, uops_orb = lr_decomp(tbt_orb, tol=1e-8, spin_orb=False)
@@ -42,9 +44,9 @@ def test_lr_sum():
     #The two-body fragments sum to tbt_orb.
     assert np.sum(np.abs( np.sum(rtbts, axis=0) - tbt_orb )) < 1e-6
             
-h_ferm, obt, tbt, n_qubit, all_ops, uops, tbts, cartan_tbts = fm.get_init_ops(mol_name, "lr", spin_orb = False, save=False)
-psis_energy, psis_fci = fm.get_wavefunction(h_ferm, "fci", mol_name, save=False)
-_, psis_appr = fm.get_wavefunction(h_ferm, "cisd", mol_name, save=False)
+h_ferm, obt, tbt, n_qubit, all_ops, uops, tbts, cartan_tbts = fm.get_init_ops(h_ferm, mol_name, "lr", spin_orb = False, save=False)
+psis_energy, psis_fci = fm.get_wavefunction(jordan_wigner(h_ferm), "fci", mol_name, n_elec(mol_name), save=False)
+_, psis_appr = fm.get_wavefunction(jordan_wigner(h_ferm), "cisd", mol_name, n_elec(mol_name), save=False)
 psi_appr = fm.truncate_wavefunction(psis_appr[0], perc=50., n_qubits=n_qubit)
 
 def test_truncation():
@@ -54,13 +56,9 @@ def test_truncation():
 
 def test_fff():
     fff_method = "Full"
-    try:
-        os.remove("SAVE/" + mol_name.lower() + "/ev_dict.pkl")
-    except OSError:
-        pass
-    rmtree("SAVE/" + mol_name.lower() + "/" + fff_method.lower(), ignore_errors=True)
+    rmtree("SAVE/" + mol_name.lower() + "/", ignore_errors=True)
     
-    exps_appr, vars_appr = fm.compute_ev_var_all_ops(psi_appr, n_qubit, all_ops, mol_name, trunc=True)
+    exps_appr, vars_appr = fm.compute_ev_var_all_ops(psi_appr, n_qubit, all_ops, trunc=True)
     ev_dict_all = fm.init_ev_dict(mol_name, psi_appr, n_qubit, trunc=True, save=False)
 
     O_t = fm.compute_O_t(uops, fff_method, cartan_tbts, mol_name, save=False)
@@ -77,7 +75,7 @@ def test_fff():
     fff_var = fm.fff_aux(3, n_qubit, O_t.shape[0], O_t.shape[1], O_t, CovOO, Cov0, Covk, uops, 1e-3)
     new_obt, new_tbts, meas_alloc, var_new = fm.fff_multi_iter(obt, tbts, psi_appr, vars_appr, fff_var, mol_name, fff_method)
     meas_alloc = compute_meas_alloc(var_new, new_obt, new_tbts, n_qubit, 1e-3)
-    exps_new, vars_new = fm.compute_ev_var_all_ops(psis_fci[0], n_qubit, [obt_to_ferm(new_obt,True)] + convert_tbts_to_frags(new_tbts, True), mol_name)
+    exps_new, vars_new = fm.compute_ev_var_all_ops(psis_fci[0], n_qubit, [obt_to_ferm(new_obt,True)] + convert_tbts_to_frags(new_tbts, True))
     #FFF lowers variances.
     assert np.sum(np.divide(vars_new, meas_alloc)) < np.sum(np.sqrt(vars_appr)) ** 2
     print(np.sum(np.sqrt(vars_appr)) ** 2)

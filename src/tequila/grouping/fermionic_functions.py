@@ -13,7 +13,7 @@ import tequila.grouping.ev_utils as evu
 from functools import partial
 import multiprocessing as mp
 
-def get_molecular_system(mol_name, basis="sto3g", spin_orb=True, geometry=1):
+def get_obt_tbt(h_ferm, spin_orb=True):
     '''
     Parameters
      ----------
@@ -32,12 +32,12 @@ def get_molecular_system(mol_name, basis="sto3g", spin_orb=True, geometry=1):
     h_ferm Fermionic Hamiltonian of the molecular system.
     num_elecs Number of electrons in the molecular system.
     '''
-    h_ferm, num_elecs = get_system(mol_name, basis=basis, geometry=geometry)
-    tbt = get_tbt(h_ferm, spin_orb = spin_orb)
-    h1b = h_ferm - tbt_to_ferm(tbt, spin_orb)
-    h1b = of_simplify(h1b)
+    no_h_ferm = normal_ordered(h_ferm)
+    tbt = get_tbt(no_h_ferm, spin_orb = spin_orb)
+    h1b = no_h_ferm - tbt_to_ferm(tbt, spin_orb)
+    h1b = normal_ordered(of_simplify(h1b))
     obt = get_obt(h1b, spin_orb=spin_orb)
-    return (obt, tbt), h_ferm, num_elecs
+    return (obt, tbt)
 
 def get_system(mol_name, basis='sto3g', geometry=1):
     '''
@@ -207,23 +207,30 @@ def get_tbt(H : FermionOperator, n = None, spin_orb=False):
             phy_tbt[
                 term[0][0], term[1][0],
                 term[2][0], term[3][0]
-            ] = val
+            ] = np.real_if_close(val)
 
     chem_tbt = np.transpose(phy_tbt, [0, 3, 1, 2])
-
-    if spin_orb:
-        return chem_tbt
+    chem_tbt_sym = (chem_tbt - np.transpose(chem_tbt, [0,3,2,1]) + np.transpose(chem_tbt, [2,3,0,1]) - np.transpose(chem_tbt, [2,1,0,3]) ) / 4.0
 
     # Spin-orbital to orbital 
     n_orb = phy_tbt.shape[0]
     n_orb = n_orb // 2
     alpha_indices = list(range(0, n_orb * 2, 2))
     beta_indices = list(range(1, n_orb * 2, 2))
-    chem_tbt = chem_tbt[
-        np.ix_(alpha_indices, alpha_indices,
-                    beta_indices, beta_indices)]
 
-    return chem_tbt
+    chem_tbt_orb = (chem_tbt_sym[np.ix_(alpha_indices, alpha_indices, beta_indices, beta_indices)] 
+                    - np.transpose(chem_tbt_sym[np.ix_(alpha_indices, beta_indices, beta_indices, alpha_indices)], [0,3,2,1]))
+    if spin_orb:
+        chem_tbt = np.zeros_like(chem_tbt_sym)    
+        n = chem_tbt_orb.shape[0]
+        for i, j, k, l in product(range(n), repeat=4):
+            for a, b in product(range(2), repeat=2):
+                chem_tbt[(2*i+a, 1), (2*j+a, 0), (2*k+b, 1), (2*l+b, 0)] = chem_tbt_orb[i,j,k,l]
+        return chem_tbt
+    else:
+        return chem_tbt_orb
+
+    
 
 def get_obt(H : FermionOperator, n = None, spin_orb=False, tiny=1e-12):
     '''
@@ -272,6 +279,50 @@ def get_obt(H : FermionOperator, n = None, spin_orb=False, tiny=1e-12):
     obt = (obt_red_uu + obt_red_dd) / 2
 
     return obt
+
+def get_cartan_ferm_op(tsr, spin_orb=False):
+    '''
+    Return the corresponding fermionic operators in Cartan subalgebra
+    based on the tensor. This tensor can index over spin-orbtals or orbitals
+    '''
+    if len(tsr.shape) == 4:
+        n = tsr.shape[0]
+        op = FermionOperator.zero()
+        for i, j in product(range(n), repeat=2):
+            if not spin_orb:
+                for a, b in product(range(2), repeat=2):
+                    op += FermionOperator(
+                        term = (
+                            (2*i+a, 1), (2*i+a, 0),
+                            (2*j+b, 1), (2*j+b, 0)
+                        ), coefficient=tsr[i, i, j, j]
+                    )
+            else:
+                op += FermionOperator(
+                    term=(
+                        (i, 1), (i, 0),
+                        (j, 1), (j, 0)
+                    ), coefficient=tsr[i, i, j, j]
+                )
+        return op
+    elif len(tsr.shape) == 2:
+        n = tsr.shape[0]
+        op = FermionOperator.zero()
+        for i in range(n):
+            if not spin_orb:
+                for a in range(2):
+                    op += FermionOperator(
+                        term = (
+                            (2*i+a, 1), (2*i+a, 0)
+                        ), coefficient=tsr[i, i]
+                    )
+            else:
+                op += FermionOperator(
+                    term = (
+                        (i, 1), (i, 0)
+                    ), coefficient=tsr[i, i]
+                )
+        return op
 
 def get_ferm_op(tsr, spin_orb=False):
     '''
@@ -326,6 +377,15 @@ def tbt_to_ferm(tbt : np.array, spin_orb, norm_ord = False):
         return normal_ordered(get_ferm_op(tbt, spin_orb))
     else:
         return get_ferm_op(tbt, spin_orb)
+
+def cartan_tbt_to_ferm(ctbt : np.array, spin_orb, norm_ord = False):
+    '''
+    Converts two body tensor into Fermion Operator.
+    '''
+    if norm_ord == True:
+        return normal_ordered(get_cartan_ferm_op(ctbt, spin_orb))
+    else:
+        return get_cartan_ferm_op(ctbt, spin_orb)
     
 def obt_to_ferm(obt : np.array, spin_orb = False, norm_ord = False):
     '''
@@ -519,15 +579,15 @@ def qubit_number(op):
     '''
     return count_qubits(op)
 
-def get_occ_no(mol, n_qubits):
+def get_occ_no(n_elec, n_qubits):
     """
     Given some molecule, find the reference occupation number state.
     Args:
-        mol (str): H2, LiH, BeH2, H2O, NH3
+        n_elec (int): Number of electrons in the system.
     Returns:
         occ_no (str): Occupation no. vector.
     """
-    occ_no = '1'*n_elec(mol) + '0'*(n_qubits - n_elec(mol))
+    occ_no = '1'*n_elec + '0'*(n_qubits - n_elec)
 
     return occ_no
 
@@ -576,7 +636,7 @@ def create_hamiltonian_in_subspace(indices, Hq, n_qubits):
     H_mat_sub = sp.sparse.coo_matrix((H_mat_elements, (row_idx, col_idx)), shape = (subspace_dim, subspace_dim))
     return H_mat_sub  
 
-def get_jw_cisd_basis_states(mol, n_qubits):
+def get_jw_cisd_basis_states(n_elec, n_qubits):
     """
     Given some molecule, find the all BK basis vectors that correspond to occupation numbers that are achieved by single and double excitations.
     Args:
@@ -585,7 +645,7 @@ def get_jw_cisd_basis_states(mol, n_qubits):
     Returns:
         jw_basis_states (List[array]): List of all JW basis states corresponding to occupation numbers achieved by singles and doubles from reference occupation number.
     """
-    ref_occ_nos = get_occ_no(mol, n_qubits)
+    ref_occ_nos = get_occ_no(n_elec, n_qubits)
     indices = get_jw_cisd_basis_states_wrap(ref_occ_nos, n_qubits)
     return indices
 
