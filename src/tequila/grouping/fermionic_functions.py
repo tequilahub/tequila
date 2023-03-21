@@ -1,4 +1,5 @@
 import numpy as np
+import tequila as tq
 import math
 from os.path import exists
 import openfermion as of
@@ -950,3 +951,64 @@ def compute_meas_alloc(varbs, obt=None, tbts=None, n_qubits=None, mix=0.0):
         if meas_alloc[i] < 1e-6:
             meas_alloc[i] = 1e-6
     return np.real( meas_alloc/np.sum(meas_alloc) )
+
+def get_orb_rot(U, tol = 1e-12):
+    '''
+    Construct sequence of orbital rotations that implement mean-field unitary given by NxN unitary U
+    Currently supported only for real U
+    '''
+    U[abs(U) < tol] = 0 
+    theta, phi = given_rotation(U, tol) 
+    C = tq.QCircuit()
+    for i, p in enumerate(phi):
+        C += n_rotation(i, p) 
+    gates = []
+    for th in theta:
+        gates.append(orbital_rotation(th[1], th[2], -th[0])) 
+    gates.reverse()
+    for gate in gates:
+        C += gate
+    return C
+
+def orbital_rotation(i, j, theta):
+    '''
+    Implements exp(theta(a^_i a_j - a^_j a_i))
+    Right now restricted to |i-j| <= 1
+    '''
+    if abs(i-j) <= 1:
+        return tq.gates.CNOT(control=i, target=j) + tq.gates.Ry(angle=2*theta, target=i, control=j) + tq.gates.CNOT(control=i, target=j)
+
+def n_rotation(i, phi): 
+    return tq.gates.Rz(angle = phi, target=i) 
+
+def given_rotation(U, tol = 1e-12): #verified
+    '''
+    Decomposes the Unitary into a set of Rz by angle phi and Givens Rotations by angle theta.
+    Input:
+    U (np.array): 
+    '''
+    #filter small values
+    U[abs(U) < tol] = 0
+    n = U.shape[0]
+    theta = []
+    phi = []
+    for c in range(n):
+        for r in range(n-1, c, -1):
+            t = np.arctan2(-U[r,c], U[r-1,c])
+            theta.append([t, r, r-1])
+            g = givens_matrix(n,r,r-1,t)
+            U = np.dot(g, U)
+    for i in range(n):
+        phi.append(np.angle(U[i,i]))
+    return theta, phi
+
+def givens_matrix(n, p, q, theta): #verified
+    '''
+    Returns the n dimension givens rotation matrix by theta between rows p and q.
+    '''
+    g = np.eye(n)
+    g[p,p] = np.cos(theta)
+    g[q,q] = np.cos(theta)
+    g[p,q] = np.sin(theta)
+    g[q,p] = - np.sin(theta)
+    return g

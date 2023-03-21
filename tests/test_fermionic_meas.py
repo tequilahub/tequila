@@ -1,6 +1,7 @@
-from tequila.grouping.fermionic_functions import get_molecular_system, obt_orb_to_so, tbt_orb_to_so, lr_decomp, compute_meas_alloc, convert_tbts_to_frags, obt_to_ferm
+from tequila.grouping.fermionic_functions import get_molecular_system, obt_orb_to_so, tbt_orb_to_so, lr_decomp, compute_meas_alloc, convert_tbts_to_frags, obt_to_ferm, given_rotation
 import tequila.grouping.fermionic_methods as fm
 from openfermion import count_qubits
+from numpy.testing import assert_allclose
 import numpy as np
 import os
 from shutil import rmtree
@@ -92,3 +93,19 @@ def test_fff():
         for q in range(new_c_tbts.shape[3]):
             new_c_tbts_diag[:,p,p,q,q] = new_c_tbts[:,p,p,q,q]
     assert np.sum(np.abs(new_c_tbts - new_c_tbts_diag)) < 1e-6
+   
+
+def test_given_rotation():
+    U = np.array([[0, 1, 0],
+                  [1, 0, 0],
+                  [0, 0, 1]])
+
+    expected_theta = [[0.0, 2, 1], [-np.pi/2, 1, 0], [-np.pi, 2, 1]]
+    expected_phi = [0.0, 0.0, np.pi]
+
+    theta, phi = given_rotation(U)
+
+    assert_allclose(theta, expected_theta)
+    assert_allclose(phi, expected_phi)
+
+

@@ -140,6 +140,54 @@ def do_fff(mol_name, fff_method, n_iter=7, calc_type='lr', trunc_perc=100., mix=
     new_c_tbts = np.einsum('ipa, iqb, irc, isd, ipqrs -> iabcd', U_OPS, U_OPS, U_OPS, U_OPS, new_tbts)
     return new_all_ops, np.array(all_uops), new_c_obt, new_c_tbts, meas_alloc
 
+def do_svd(mol_name, calc_type, spin_orb):
+    obtb, h_ferm, num_elecs = ferm.get_molecular_system(mol_name, spin_orb = spin_orb)
+    obt = obtb[0]
+    tbt_ham_opt = obtb[1]
+    n_qubit = ferm.qubit_number(h_ferm)
+    if spin_orb != True:
+        obt = ferm.obt_orb_to_so(obt)
+        tbt = ferm.tbt_orb_to_so(tbt_ham_opt)
+    else:
+        tbt = tbt_ham_opt
+    n = obt.shape[0]
+    CARTAN_TBTS_tmp, TBTS_tmp, OPS_tmp, U_OPS_tmp = ferm.lr_decomp(tbt_ham_opt, tol=1e-8, spin_orb=spin_orb)
+    if spin_orb != True:
+        U_OPS = ferm.convert_u_to_so(U_OPS_tmp)
+        tbts = np.zeros([len(OPS), n, n, n, n])
+        cartan_tbts = np.zeros([len(OPS), n, n, n, n])
+        for i in range(len(OPS)):
+            tbts[i,:,:,:,:] = ferm.tbt_orb_to_so(TBTS_tmp[i,:,:,:,:])
+            cartan_tbts[i, :, :, :, :] = ferm.tbt_orb_to_so(CARTAN_TBTS_tmp[i, :, :, :, :])
+    else:
+        U_OPS = U_OPS_tmp
+        tbts = TBTS_tmp
+        cartan_tbts = CARTAN_TBTS_tmp
+        
+    all_OPS = [ferm.obt_to_ferm(obt, True)]
+    for i in range(len(OPS)):
+        all_OPS.append(OPS[i])
+        
+    _, uop_oe = np.linalg.eig(obt)
+    all_uops = [uop_oe] + [U_OPS[i] for i in range(len(U_OPS))]
+    cartan_obt = np.einsum("pa, qb, pq", uop_oe, uop_oe, obt)
+    
+    psi_fci, psi_appr = get_psi(h_ferm, mol_name, trunc = False, trunc_perc = 100)
+    exps_appr, vars_appr = compute_ev_var_all_ops(psi_appr, n_qubit, all_OPS, mol_name, trunc=False)
+    
+    meas_alloc = ferm.compute_meas_alloc(vars_appr, obt, tbts, n_qubit, mix = 0)
+    
+    return all_uops, cartan_obt, cartan_tbts
+    
+
+def get_fermion_wise(H, U):
+    
+    H = ferm.tbt_to_ferm(H, spin_orb = True)
+    z_form = jordan_wigner(H)
+    
+    circuit = ferm.get_orb_rot(U, tol = 1e-12)
+    return [z_form, circuit]
+
 def get_init_ops(mol_name, calc_type, spin_orb, save=True):
     '''
     Parameters

@@ -1,4 +1,5 @@
 from tequila.grouping.binary_rep import BinaryHamiltonian
+from tequila.grouping.fermionic_methods import get_fermion_wise, do_fff, do_svd
 import tequila as tq
 import numpy as np
 import numpy.linalg as npl
@@ -17,15 +18,32 @@ def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
     -------
         A list of tuples containing all-Z Hamiltonian and corresponding Rotations
     """
-    if unitary_circuit is None or unitary_circuit.lower() == "improved":
-        # @ Zack
-        result, suggested_samples = _compile_commuting_parts_zb(H, *args, **kwargs)
-    else:
-        # original implementation of Thomson (T.C. Yen)
-        binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-        commuting_parts, suggested_samples = binary_H.commuting_groups(*args, **kwargs)
-        result = [cH.get_qubit_wise() for cH in commuting_parts]
-    return result, suggested_samples
+    if kwargs["method_class"] == 'qubit':
+        if unitary_circuit is None or unitary_circuit.lower() == "improved":
+            # @ Zack
+            result, suggested_samples = _compile_commuting_parts_zb(H, *args, **kwargs)
+        else:
+            # original implementation of Thomson (T.C. Yen)
+            binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+            commuting_parts, suggested_samples = binary_H.commuting_groups(*args, **kwargs)
+            result = [cH.get_qubit_wise() for cH in commuting_parts]
+        return result, suggested_samples
+    
+    elif kwargs["method_class"] == 'fermion':
+        
+        if kwargs["method"] == 'lr':
+            u_ops, cartan_obt, cartan_tbt, suggested_samples = do_svd(kwargs["mol_name"])
+            result = [get_fermion_wise(cartan_obt, u_ops[0])]
+            for i in range(1, len(SVD_CARTAN_TBTS)):
+                result.append(get_fermion_wise(cartan_tbt[i-1], u_ops[i]))
+            return result, suggested_samples
+        
+        elif kwargs["method"] == 'lr_fff':
+            all_ops, u_ops, cartan_obt, cartan_tbt, suggested_samples = do_fff(kwargs["mol_name"], kwargs["fff_method"], trunc_perc=kwargs["appr_wf_perc"])
+            result = [get_fermion_wise(cartan_obt, u_ops[0])]
+            for i in range(1, len(SVD_CARTAN_TBTS)):
+                result.append(get_fermion_wise(cartan_tbt[i-1], u_ops[i]))
+            return result, suggested_samples
 
 def _compile_commuting_parts_zb(H, *args, **kwargs):
     # @ Zack add main function here and rest in this file
