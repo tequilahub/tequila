@@ -51,7 +51,6 @@ def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
         else:
             raise TequilaException("Please specify either {mol_name:} or {n_el:} in the dictionary provided as the keyward argument (optimize_measurements) to function (ExpectationValue).")
 
-        options["reverse_H_transf"] = _reverse_jordan_wigner
         if "reverse_H_transf" in options:
             reverse_H_transf = options["reverse_H_transf"]
         else:
