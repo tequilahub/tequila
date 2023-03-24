@@ -11,12 +11,12 @@ import scipy as sp
 from tequila.grouping.ev_utils import truncate_wavefunction
 from tequila import TequilaException
 from shutil import rmtree
-import logging 
+import logging
 
 def get_psi(h_ferm, mol_name, n_elec, n_qubit, trunc, trunc_perc, get_fci):
     if get_fci:
-        es_fci, psis_fci = get_wavefunction(jordan_wigner(h_ferm), "fci", mol_name, n_elec)
-    es_appr, psis_appr = get_wavefunction(jordan_wigner(h_ferm), "cisd", mol_name, n_elec)
+        _, psis_fci = get_wavefunction(jordan_wigner(h_ferm), "fci", mol_name, n_elec)
+    _, psis_appr = get_wavefunction(jordan_wigner(h_ferm), "cisd", mol_name, n_elec)
     psi_appr = psis_appr[0]
     if trunc:
         psi_appr = truncate_wavefunction(psi_appr, perc=trunc_perc, n_qubits=n_qubit)
@@ -29,7 +29,7 @@ def do_fff(h_ferm, n_elec, options=None, restart=False, metric_estim=True):
     '''
     Main function for Fluid Fermionic Fragments methods.
     Parameters
-    --------- 
+    ---------
     options: dictionary: Dictionary containing user-defined parameters:
         mol_name -
         Name of the molecule to perform FFF on: Used for saving restart files.
@@ -37,7 +37,7 @@ def do_fff(h_ferm, n_elec, options=None, restart=False, metric_estim=True):
         Method for F3 optimization.
         One from Full, R1, or R2 [see Quantum 7, 889 (2023)].
         n_iter -
-        Number of FFF iteration. 
+        Number of FFF iteration.
         calc_type -
         Method used for decomposing the molecular electronic Hamiltonian into Hartree-Fock solvable fragments.
         One from lr or fr. Only lr is implemented for now [see Quantum 7, 889 (2023)].
@@ -59,13 +59,13 @@ def do_fff(h_ferm, n_elec, options=None, restart=False, metric_estim=True):
     def process_options(options):
         mol_name, fff_method, n_iter, calc_type, trunc_perc, mix, fff_thresh = 'null', "r2", 5, 'lr', 100., 0.0, 1e-4
         if options is not None:
-            if "mol_name" in options: mol_name=options["mol_name"] 
-            if "fff_method" in options: fff_method=options["fff_method"] 
-            if "n_iter" in options: n_iter=options["n_iter"] 
-            if "calc_type" in options: calc_type=options["calc_type"] 
-            if "trunc_perc" in options: trunc_perc=options["trunc_perc"] 
-            if "mix" in options: mix=options["mix"] 
-            if "fff_thresh" in options: fff_thresh=options["fff_thresh"] 
+            if "mol_name" in options: mol_name=options["mol_name"]
+            if "fff_method" in options: fff_method=options["fff_method"]
+            if "n_iter" in options: n_iter=options["n_iter"]
+            if "calc_type" in options: calc_type=options["calc_type"]
+            if "trunc_perc" in options: trunc_perc=options["trunc_perc"]
+            if "mix" in options: mix=options["mix"]
+            if "fff_thresh" in options: fff_thresh=options["fff_thresh"]
         return mol_name, fff_method, n_iter, calc_type, trunc_perc, mix, fff_thresh
 
     def check_restart(restart, mol_name):
@@ -96,7 +96,7 @@ def do_fff(h_ferm, n_elec, options=None, restart=False, metric_estim=True):
         new_tbts = []
         new_all_ops = [ferm.obt_to_ferm(new_obt, True)]
         var_new = [var_new_fff[0]]
-        
+
         for i in range(len(all_OPS) - 1):
             if i in apply_fff_to:
                 new_all_ops.append(None)
@@ -106,18 +106,18 @@ def do_fff(h_ferm, n_elec, options=None, restart=False, metric_estim=True):
                 new_all_ops.append(all_OPS[i+1])
                 var_new.append(vars_appr[i+1])
                 new_tbts.append(tbts[i])
-        
+
         for idx, i in enumerate(apply_fff_to):
             new_all_ops[i + 1] = new_ops_fff[idx]
             new_tbts[i] = new_tbts_fff[idx]
             var_new[i + 1] = var_new_fff[idx+1]
-        
+
         return new_all_ops, np.array(new_tbts), np.array(var_new)
 
     mol_name, fff_method, n_iter, calc_type, trunc_perc, mix, fff_thresh = process_options(options)
     check_restart(restart, mol_name)
 
-    if trunc_perc < 100.: 
+    if trunc_perc < 100.:
         trunc = True
         if mix < 1e-8: mix = 1e-3
     else:
@@ -131,12 +131,12 @@ def do_fff(h_ferm, n_elec, options=None, restart=False, metric_estim=True):
         print("===================================================")
     else:
         psi_appr = get_psi(h_ferm, mol_name, n_elec, n_qubit, trunc, trunc_perc, False)
-    
-    
+
+
     print("===================================================")
     print("Getting approximate variances")
-    exps_appr, vars_appr = compute_ev_var_all_ops(psi_appr, n_qubit, all_OPS, trunc=trunc)
-    apply_fff_to = np.where(vars_appr[1:] > fff_thresh)[0] 
+    _, vars_appr = compute_ev_var_all_ops(psi_appr, n_qubit, all_OPS, trunc=trunc)
+    apply_fff_to = np.where(vars_appr[1:] > fff_thresh)[0]
     all_ops_fff, uops_fff, cartan_tbts_fff, tbts_fff, vars_appr_fff = get_fff_obj(all_OPS, U_OPS, cartan_tbts, tbts, vars_appr, apply_fff_to)
     print("Applying F3 to {} fragments out of {}".format(len(vars_appr_fff), len(vars_appr)))
     print("===================================================")
@@ -144,22 +144,22 @@ def do_fff(h_ferm, n_elec, options=None, restart=False, metric_estim=True):
     print("Computing necessary covariance estimates")
     ev_dict_all = init_ev_dict(mol_name, psi_appr, n_qubit, trunc=trunc)
     O_t = compute_O_t(uops_fff, fff_method, cartan_tbts_fff, mol_name)
-    
+
     CovOO = compute_cov_OO(O_t, [ev_dict_all], mol_name, fff_method)
     Cov0 = compute_cov_O(O_t, obt, [ev_dict_all], mol_name, fff_method)
     all_covs = compute_all_covs(all_ops_fff, O_t, psi_appr, n_qubit, mol_name, fff_method, trunc=trunc)
-    
+
     Covk = np.zeros(O_t.shape[0] * O_t.shape[1])
     for k in range(O_t.shape[0]):
         for p in range(O_t.shape[1]):
             ind = O_t.shape[1] * k + p
             Covk[ind] = all_covs[k][p]
-    
+
     fff_var = fff_aux(n_iter, n_qubit, O_t.shape[0], O_t.shape[1], O_t, CovOO, Cov0, Covk, uops_fff, mix)
-    
-    new_obt, new_tbts_fff, meas_alloc, var_new_fff = fff_multi_iter(obt, tbts_fff, psi_appr, vars_appr_fff, fff_var, mol_name, fff_method)
+
+    new_obt, new_tbts_fff, meas_alloc, var_new_fff = fff_multi_iter(obt, tbts_fff, psi_appr, vars_appr_fff, fff_var, fff_method)
     new_all_ops, new_tbts, var_new = reorganize_fff_obj(new_obt, new_tbts_fff, var_new_fff, all_OPS, tbts, vars_appr)
-    
+
     print("Allocating measurements")
     meas_alloc = ferm.compute_meas_alloc(var_new, new_obt, new_tbts, n_qubit, mix)
     if metric_estim:
@@ -182,11 +182,9 @@ def do_svd(h_ferm, n_elec):
     n_qubit = ferm.qubit_number(h_ferm)
     if spin_orb != True:
         obt = ferm.obt_orb_to_so(obt)
-        tbt = ferm.tbt_orb_to_so(tbt_ham_opt)
-    else:
-        tbt = tbt_ham_opt
+
     n = obt.shape[0]
-    CARTAN_TBTS_tmp, TBTS_tmp, OPS_tmp, U_OPS_tmp = ferm.lr_decomp(tbt_ham_opt, tol=1e-8, spin_orb=spin_orb)
+    CARTAN_TBTS_tmp, TBTS_tmp, OPS_tmp, U_OPS_tmp = ferm.lr_decomp(tbt_ham_opt, spin_orb=spin_orb)
     if spin_orb != True:
         U_OPS = ferm.convert_u_to_so(U_OPS_tmp)
         tbts = np.zeros([len(OPS_tmp), n, n, n, n])
@@ -198,29 +196,29 @@ def do_svd(h_ferm, n_elec):
         U_OPS = U_OPS_tmp
         tbts = TBTS_tmp
         cartan_tbts = CARTAN_TBTS_tmp
-        
+
     all_OPS = [ferm.obt_to_ferm(obt, True)]
     for i in range(len(OPS_tmp)):
         all_OPS.append(OPS_tmp[i])
-        
+
     _, uop_oe = np.linalg.eig(obt)
     all_uops = [uop_oe] + [U_OPS[i] for i in range(len(U_OPS))]
     cartan_obt = np.einsum("pa, qb, pq", uop_oe, uop_oe, obt)
-    
+
     _, psis_appr = get_wavefunction(jordan_wigner(h_ferm), "cisd", "None", n_elec, save=False)
     print("Allocating measurements")
-    exps_appr, vars_appr = compute_ev_var_all_ops(psis_appr[0], n_qubit, all_OPS, trunc=False)
-    
+    _, vars_appr = compute_ev_var_all_ops(psis_appr[0], n_qubit, all_OPS, trunc=False)
+
     meas_alloc = ferm.compute_meas_alloc(vars_appr, obt, tbts, n_qubit, mix = 0.0)
-    
+
     return all_uops, cartan_obt, cartan_tbts, meas_alloc
-    
+
 
 def get_fermion_wise(H, U):
-    
+
     H = ferm.cartan_tbt_to_ferm(H, spin_orb = True)
     z_form = QubitHamiltonian(jordan_wigner(H))
-    
+
     circuit = ferm.get_orb_rot(U, tol = 1e-12)
     return [z_form, circuit]
 
@@ -228,11 +226,11 @@ def get_init_ops(h_ferm, mol_name, calc_type, spin_orb, save=True):
     '''
     Parameters
      ----------
-    mol_name - 
+    mol_name -
     Name of the molecule
-    calc_type - 
+    calc_type -
     Method used to obtain fragments of hamiltonian (LR Decomposition/ GFRO).
-    spin_orb - 
+    spin_orb -
     If true, spin-orbitals is used, if false, spin symmetry is used to reduce the number of orbitals by half (assumes that spin-up and spin-down are identical)
 
     Returns
@@ -274,7 +272,7 @@ def get_init_ops(h_ferm, mol_name, calc_type, spin_orb, save=True):
     else:
         tbt = tbt_ham_opt
     n = obt.shape[0]
-    
+
     if calc_type.lower() == "lr":
         if os.path.isfile(path + "lr.pkl"):
             print("Using saved LR decomposition saved in {}. Run with a different mol_name if this is not desired.".format(path))
@@ -282,14 +280,14 @@ def get_init_ops(h_ferm, mol_name, calc_type, spin_orb, save=True):
                 INIT = pickle.load(file)
             CARTAN_TBTS_tmp = INIT[0]
             TBTS_tmp = INIT[1]
-            U_OPS_tmp = INIT[2]                
+            U_OPS_tmp = INIT[2]
         else:
-            CARTAN_TBTS_tmp, TBTS_tmp, OPS_tmp, U_OPS_tmp = ferm.lr_decomp(tbt_ham_opt, tol=1e-8, spin_orb=spin_orb)
+            CARTAN_TBTS_tmp, TBTS_tmp, OPS_tmp, U_OPS_tmp = ferm.lr_decomp(tbt_ham_opt, spin_orb=spin_orb)
             if save:
                 with open(path + "lr.pkl", 'wb') as file:
                     pickle.dump([CARTAN_TBTS_tmp, TBTS_tmp, U_OPS_tmp], file)
         OPS = ferm.convert_tbts_to_frags(TBTS_tmp, spin_orb)
-    
+
     if spin_orb != True:
         U_OPS = ferm.convert_u_to_so(U_OPS_tmp)
         tbts = np.zeros([len(OPS), n, n, n, n])
@@ -312,11 +310,11 @@ def get_wavefunction(Hq, wf_type, mol_name, n_elec, N=1, save=True):
     '''
     Parameters
      ----------
-    h_ferm - 
+    h_ferm -
     Molecular electronic Hamiltonian in the second quantized form.
     wf_type -
     Type of the wavefunction: CISD or FCI.
-    mol_name - 
+    mol_name -
     Name of molecule
     N -
     Number of eigenstates/eigenenergies to return.
@@ -324,7 +322,7 @@ def get_wavefunction(Hq, wf_type, mol_name, n_elec, N=1, save=True):
     Returns
     -------
     energies Eigenenergies
-    psi Eigenstates 
+    psi Eigenstates
     '''
     n_qubits = count_qubits(Hq)
     if wf_type.lower() == "fci":
@@ -336,13 +334,13 @@ def get_fci_states(Hq, mol_name, n_elec, n_qubits, N=1, save=True):
     '''
     Parameters
      ----------
-    Hq - 
+    Hq -
     Jordan wigner transform of fermionic hamiltonian
-    mol_name - 
+    mol_name -
     Name of molecule
-    n_elec - 
+    n_elec -
     Number of electroncs in the system
-    n_qubit - 
+    n_qubit -
     Number of qubits in the hamiltonian
 
     Returns
@@ -350,7 +348,7 @@ def get_fci_states(Hq, mol_name, n_elec, n_qubits, N=1, save=True):
     e_fci Energy of FCI ground state
     psi_fci Wavefunction of FCI ground state
     '''
-    
+
     path = "SAVE/" + mol_name.lower() + "/"
     if os.path.isfile(path + "psi_fci.pkl"):
         print("Using saved psi_fci in {}. Run with a different mol_name if this is not desired.".format(path))
@@ -359,7 +357,7 @@ def get_fci_states(Hq, mol_name, n_elec, n_qubits, N=1, save=True):
         e_fci = INIT[0]
         psi_fci = INIT[1]
         return e_fci, psi_fci
-    
+
     Nop = FermionOperator.zero()
     for i in range(n_qubits):
         Nop += FermionOperator("{}^ {}".format(i, i))
@@ -368,7 +366,7 @@ def get_fci_states(Hq, mol_name, n_elec, n_qubits, N=1, save=True):
     M = 4 * N
     sparse_H = get_sparse_operator(Hq, n_qubits)
     size_H = sparse_H.get_shape()[0]
-    if M >= size_H - 1: 
+    if M >= size_H - 1:
         M = size_H - 2
     w,v = sp.sparse.linalg.eigsh(sparse_H, k = max(10, M), which = "SA")
     srt_arg = np.argsort(w)
@@ -385,20 +383,20 @@ def get_fci_states(Hq, mol_name, n_elec, n_qubits, N=1, save=True):
             if save:
                 Path(path).mkdir(exist_ok=True)
                 with open(path + "psi_fci.pkl", 'wb') as file:
-                    pickle.dump([values, vectors], file) 
+                    pickle.dump([values, vectors], file)
             return values, vectors
-        
+
 def get_cisd_states(Hq, mol_name, n_elec, n_qubits, N=1, save=True):
     '''
     Parameters
      ----------
-    Hq - 
+    Hq -
     Jordan wigner transform of fermionic hamiltonian
-    mol_name - 
+    mol_name -
     Name of molecule
-    n_elec - 
+    n_elec -
     Number of electrons in the system
-    n_qubit - 
+    n_qubit -
     Number of qubits in the hamiltonian
 
     Returns
@@ -414,7 +412,7 @@ def get_cisd_states(Hq, mol_name, n_elec, n_qubits, N=1, save=True):
         e_cisd = INIT[0]
         psi_cisd = INIT[1]
         return e_cisd, psi_cisd
-    
+
     indices = ferm.get_jw_cisd_basis_states(n_elec, n_qubits)
     H_mat_cisd = ferm.create_hamiltonian_in_subspace(indices, Hq, n_qubits)
     size_H = H_mat_cisd.get_shape()[0]
@@ -435,8 +433,8 @@ def get_cisd_states(Hq, mol_name, n_elec, n_qubits, N=1, save=True):
     if save:
         Path(path).mkdir(exist_ok=True)
         with open(path + "psi_cisd.pkl", 'wb') as file:
-            pickle.dump([values, vectors], file) 
-            
+            pickle.dump([values, vectors], file)
+
     return values, vectors
 
 def compute_and_print_ev_var(psi, h_ferm, all_OPS, meas_alloc=None):
@@ -448,15 +446,15 @@ def compute_and_print_ev_var(psi, h_ferm, all_OPS, meas_alloc=None):
     all_OPS Fermionic fragments
     meas_alloc If given, the shot per fragment is allocated according to meas_alloc. If None, then
     it is computed according to the variances [see Quantum 5, 385 (2021)].
-    
+
     Prints out the variances and expectation of each fragment over psi.
     '''
-    n_qubit = ferm.qubit_number(h_ferm) 
+    n_qubit = ferm.qubit_number(h_ferm)
     h_const = h_ferm.constant
     exps, variances = compute_ev_var_all_ops(psi, n_qubit, all_OPS)
     if meas_alloc is None: meas_alloc = ferm.compute_meas_alloc(variances)
     scaled_variances = np.divide(variances,meas_alloc)
-   
+
     scaled_variances_sum = np.sum(scaled_variances)
     print("Full variances:")
     print(variances)
@@ -508,12 +506,12 @@ def init_ev_dict(mol_name, psi, n_qubit, trunc=False, spin_orb=True, save=True):
             ev_dict_all = pickle.load(file)
     else:
         ev_dict_E = ferm.get_E(psi, n, n_qubit, trunc=trunc)
-        ev_dict_EE = ferm.get_EE(psi, n, n_qubit, trunc=trunc) 
+        ev_dict_EE = ferm.get_EE(psi, n, n_qubit, trunc=trunc)
         ev_dict_all = ferm.reorganize(n, ev_dict_E, ev_dict_EE)
         if save:
             Path(path).mkdir(exist_ok=True)
             with open(path + "ev_dict.pkl", 'wb') as file:
-                pickle.dump(ev_dict_all, file)    
+                pickle.dump(ev_dict_all, file)
     return ev_dict_all
 
 def check_method(method):
@@ -539,7 +537,7 @@ def compute_O_t(U_OPS, method, tbts, mol_name, save=True):
         with open(path + "O_t.pkl", 'rb') as file:
             O_t = pickle.load(file)
         return O_t
-    
+
     num_frags = U_OPS.shape[0]
     n = U_OPS.shape[1]
     if method.lower() == "full":
@@ -571,12 +569,12 @@ def compute_O_t(U_OPS, method, tbts, mol_name, save=True):
         for k in range(num_frags):
             for p1 in range(n):
                 O_t[k,0,:,:] += ratios[k,p1] * O_t_tmp[k,p1,:,:]
-    
+
     if save:
         Path(path).mkdir(exist_ok=True)
         with open(path + "O_t.pkl", 'wb') as file:
                 pickle.dump(O_t, file)
-                                                       
+
     return O_t
 
 def compute_all_covs(all_OPS, O_t, psi, n_qubit, mol_name, method, trunc=False, save=True):
@@ -600,19 +598,19 @@ def compute_all_covs(all_OPS, O_t, psi, n_qubit, mol_name, method, trunc=False, 
         with open(path + "all_covs.pkl", 'rb') as file:
             all_covs = pickle.load(file)
         return all_covs
-    
+
     all_covs = []
     for frag_idx in range((len(all_OPS) - 1)):
         ops1 = []
         for p in range(O_t.shape[1]):
             ops1.append(ferm.obt_to_ferm(O_t[frag_idx, p, :, :], True))
         all_covs.append(ferm.compute_covk(ops1, all_OPS[frag_idx+1], psi, n_qubit, trunc=trunc))
-        
+
     if save:
         Path(path).mkdir(exist_ok=True)
         with open(path + "all_covs.pkl", 'wb') as file:
             pickle.dump(all_covs, file)
-    
+
     return all_covs
 
 def compute_cov_OO(O_t, ev_dict_all, mol_name, method, save=True):
@@ -634,24 +632,24 @@ def compute_cov_OO(O_t, ev_dict_all, mol_name, method, save=True):
         with open(path + "cov_OO.pkl", 'rb') as file:
             covmat = pickle.load(file)
         return covmat
-    
+
     nf = O_t.shape[0]
     n = O_t.shape[1]
     nmat = nf * n
     covmat = np.zeros([nmat, nmat])
     for k in range(nf):
         for p in range(n):
-            for l in range(nf): 
+            for l in range(nf):
                 for q in range(n):
                     ind1 = n * (k) + p
                     ind2 = n * (l) + q
                     covmat[ind1, ind2] = ferm.covariance_ob_ob(O_t[k,p,:,:], O_t[l,q,:,:], ev_dict_all[0])
-                    
+
     if save:
         Path(path).mkdir(exist_ok=True)
         with open(path + "cov_OO.pkl", 'wb') as file:
-            pickle.dump(covmat, file)                
-    
+            pickle.dump(covmat, file)
+
     return covmat
 
 def compute_cov_O(O_t, H0, ev_dict_all, mol_name, method, save=True):
@@ -674,7 +672,7 @@ def compute_cov_O(O_t, H0, ev_dict_all, mol_name, method, save=True):
         with open(path + "cov_O.pkl", 'rb') as file:
             covvec = pickle.load(file)
         return covvec
-    
+
     nf = O_t.shape[0]
     n = O_t.shape[1]
     nvec = nf * n
@@ -685,12 +683,12 @@ def compute_cov_O(O_t, H0, ev_dict_all, mol_name, method, save=True):
             covl = ferm.covariance_ob_ob(O_t[k,p,:,:], H0, ev_dict_all[0])
             covr = ferm.covariance_ob_ob(H0, O_t[k,p,:,:], ev_dict_all[0])
             covvec[ind] = covl + covr
-            
+
     if save:
         Path(path).mkdir(exist_ok=True)
         with open(path + "cov_O.pkl", 'wb') as file:
-            pickle.dump(covvec, file) 
-        
+            pickle.dump(covvec, file)
+
     return covvec
 
 class fff_aux:
@@ -708,8 +706,8 @@ class fff_aux:
         self.ck = ck
         self.uops = uops
         self.mix = mix
-        
-def fff_multi_iter(obt, tbts, psi, varbs, fff_var, mol_name, method):
+
+def fff_multi_iter(obt, tbts, psi, varbs, fff_var, method):
     '''
     Parameters
      ----------
@@ -718,7 +716,6 @@ def fff_multi_iter(obt, tbts, psi, varbs, fff_var, mol_name, method):
     tbts Two body terms
     varbs Variances of the fragments
     fff_var Class containing all the variables needed for FFF
-    mol_name Name of molecule
     method FFF method (Full / R1 / R2)
 
     Returns
@@ -728,7 +725,7 @@ def fff_multi_iter(obt, tbts, psi, varbs, fff_var, mol_name, method):
     m0 Optimal Measurement Allocation
     '''
     check_method(method)
-    
+
     ntmp = obt.shape[0]
     obt_list = np.zeros([ fff_var.n_iter+1, ntmp, ntmp])
     tbts_list = np.zeros([fff_var.n_iter+1, fff_var.nf, ntmp, ntmp, ntmp, ntmp])
@@ -736,15 +733,14 @@ def fff_multi_iter(obt, tbts, psi, varbs, fff_var, mol_name, method):
     obt_list[0,:,:] = obt
     tbts_list[0,:,:,:,:,:] = tbts
     var_list[0,:] = varbs
-    new_c0 = fff_var.c0 
-    new_ck = fff_var.ck 
+    new_c0 = fff_var.c0
+    new_ck = fff_var.ck
     for i in range(fff_var.n_iter):
         print("Progress: iteration #{} out of {}".format(i + 1, fff_var.n_iter))
-        new_obt, new_tbts, new_vars, new_c0, new_ck = ferm.fff_1_iter(obt_list[i,:,:], tbts_list[i,:,:,:,:,:], var_list[i,:], new_c0, new_ck, psi, fff_var)
+        new_obt, new_tbts, new_vars, new_c0, new_ck = ferm.fff_1_iter(obt_list[i,:,:], tbts_list[i,:,:,:,:,:], var_list[i,:], new_c0, new_ck, fff_var)
         obt_list[i+1,:,:] = new_obt
         tbts_list[i+1,:,:,:,:,:] = new_tbts
         var_list[i+1,:] = new_vars
     var0 = var_list[len(var_list)-1,:]
-    met = (np.sum(np.sqrt(var0))) ** 2
     m0 = ferm.compute_meas_alloc(var0, obt, tbts, fff_var.nq, fff_var.mix)
     return obt_list[len(obt_list)-1,:,:], tbts_list[len(tbts_list)-1,:,:,:,:,:], m0, var0

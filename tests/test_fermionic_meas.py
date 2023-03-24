@@ -18,7 +18,7 @@ h_ferm = normal_ordered(of_simplify(h_ferm))
 (obt_orb,tbt_orb) = get_obt_tbt(h_ferm, spin_orb=False)
 obt = obt_orb_to_so(obt_orb)
 tbt = tbt_orb_to_so(tbt_orb)
-ctbts, rtbts, _, uops_orb = lr_decomp(tbt_orb, tol=1e-8, spin_orb=False)
+ctbts, rtbts, _, uops_orb = lr_decomp(tbt_orb, spin_orb=False)
 
 def test_to_so():
     #orb_to_so doubles the dimensions.
@@ -79,7 +79,7 @@ def test_fff():
             Covk[ind] = all_covs[k][p]
 
     fff_var = fm.fff_aux(3, n_qubit, O_t.shape[0], O_t.shape[1], O_t, CovOO, Cov0, Covk, uops, 1e-3)
-    new_obt, new_tbts, meas_alloc, var_new = fm.fff_multi_iter(obt, tbts, psi_appr, vars_appr, fff_var, mol_name, fff_method)
+    new_obt, new_tbts, meas_alloc, var_new = fm.fff_multi_iter(obt, tbts, psi_appr, vars_appr, fff_var, fff_method)
     meas_alloc = compute_meas_alloc(var_new, new_obt, new_tbts, n_qubit, 1e-3)
     exps_new, vars_new = fm.compute_ev_var_all_ops(psis_fci[0], n_qubit, [obt_to_ferm(new_obt,True)] + convert_tbts_to_frags(new_tbts, True))
     #FFF lowers variances.

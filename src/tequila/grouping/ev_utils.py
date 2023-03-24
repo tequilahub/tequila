@@ -5,7 +5,7 @@ from itertools import combinations
 from tequila import TequilaException
 
 def get_pauli_word_tuple(P: QubitOperator):
-    """Given a single pauli word P, extract the tuple representing the word. 
+    """Given a single pauli word P, extract the tuple representing the word.
     """
     words = list(P.terms.keys())
     if len(words) != 1:
@@ -14,7 +14,7 @@ def get_pauli_word_tuple(P: QubitOperator):
 
 
 def get_pauli_word(P: QubitOperator):
-    """Given a single pauli word P, extract the same word with coefficient 1. 
+    """Given a single pauli word P, extract the same word with coefficient 1.
     """
     words = list(P.terms.keys())
     if len(words) != 1:
@@ -23,7 +23,7 @@ def get_pauli_word(P: QubitOperator):
 
 
 def get_pauli_word_coefficient(P: QubitOperator):
-    """Given a single pauli word P, extract its coefficient. 
+    """Given a single pauli word P, extract its coefficient.
     """
     coeffs = list(P.terms.values())
     return coeffs[0]
@@ -147,15 +147,15 @@ def pw_matrix_element(pw: QubitOperator, l_index, r_index, n_qubits = None):
                 if basis[i] == 'Z':
                     if l_index[i] == 1: me *= -1
                 elif basis[i] != 'I':
-                    return 0. 
+                    return 0.
             else:
                 if basis[i] == 'Y':
-                    if l_index[i] == 0: 
+                    if l_index[i] == 0:
                         me *= -1j
                     else:
                         me *= 1j
                 elif basis[i] != 'X':
-                    return 0. 
+                    return 0.
         return me
 
 def op_matrix_element(op: QubitOperator, l_index, r_index, n_qubits = None):

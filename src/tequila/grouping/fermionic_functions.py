@@ -1,6 +1,5 @@
 import numpy as np
 import tequila as tq
-from os.path import exists
 import openfermion as of
 from openfermion import FermionOperator, QubitOperator, expectation, get_sparse_operator, jordan_wigner, reverse_jordan_wigner, normal_ordered, count_qubits, variance
 from itertools import product
@@ -14,13 +13,13 @@ def get_obt_tbt(h_ferm, spin_orb=True):
     '''
     Parameters
      ----------
-    mol_name - 
+    mol_name -
     Name of the molecule to obtain one- and two-body integrals, Fermionic Hamiltonian, and number of electrons
-    basis - 
+    basis -
     Basis set used to compute the integrals.
-    spin_orb - 
+    spin_orb -
     If true, spin-orbitals is used, if false, spin symmetry is used to reduce the number of orbitals by half (assumes that spin-up and spin-down are identical).
-    geometry - 
+    geometry -
     Geometry of the molecular system.
 
     Returns
@@ -46,7 +45,7 @@ def get_spin_orbitals(H : FermionOperator):
     '''
     Obtain the number of spin orbitals of H
     '''
-    n = -1 
+    n = -1
     for term, val in H.terms.items():
         if len(term) == 4:
             n = max([
@@ -56,13 +55,13 @@ def get_spin_orbitals(H : FermionOperator):
         elif len(term) == 2:
             n = max([
                 n, term[0][0], term[1][0]])
-    n += 1 
+    n += 1
     return n
 
 def get_tbt(H : FermionOperator, n = None, spin_orb=False):
     '''
-    Obtain the 4-rank tensor that represents two body interaction in H. 
-    In chemist ordering a^ a a^ a. 
+    Obtain the 4-rank tensor that represents two body interaction in H.
+    In chemist ordering a^ a a^ a.
     In addition, simplify tensor assuming symmetry between alpha/beta coefficients
     '''
     if n is None:
@@ -79,16 +78,16 @@ def get_tbt(H : FermionOperator, n = None, spin_orb=False):
     chem_tbt = np.transpose(phy_tbt, [0, 3, 1, 2])
     chem_tbt_sym = (chem_tbt - np.transpose(chem_tbt, [0,3,2,1]) + np.transpose(chem_tbt, [2,3,0,1]) - np.transpose(chem_tbt, [2,1,0,3]) ) / 4.0
 
-    # Spin-orbital to orbital 
+    # Spin-orbital to orbital
     n_orb = phy_tbt.shape[0]
     n_orb = n_orb // 2
     alpha_indices = list(range(0, n_orb * 2, 2))
     beta_indices = list(range(1, n_orb * 2, 2))
 
-    chem_tbt_orb = (chem_tbt_sym[np.ix_(alpha_indices, alpha_indices, beta_indices, beta_indices)] 
+    chem_tbt_orb = (chem_tbt_sym[np.ix_(alpha_indices, alpha_indices, beta_indices, beta_indices)]
                     - np.transpose(chem_tbt_sym[np.ix_(alpha_indices, beta_indices, beta_indices, alpha_indices)], [0,3,2,1]))
     if spin_orb:
-        chem_tbt = np.zeros_like(chem_tbt_sym)    
+        chem_tbt = np.zeros_like(chem_tbt_sym)
         n = chem_tbt_orb.shape[0]
         for i, j, k, l in product(range(n), repeat=4):
             for a, b in product(range(2), repeat=2):
@@ -97,17 +96,17 @@ def get_tbt(H : FermionOperator, n = None, spin_orb=False):
     else:
         return chem_tbt_orb
 
-    
+
 
 def get_obt(H : FermionOperator, n = None, spin_orb=False, tiny=1e-12):
     '''
-    Obtain the 2-rank tensor that represents one body interaction in H. 
+    Obtain the 2-rank tensor that represents one body interaction in H.
     In addition, simplify tensor assuming symmetry between alpha/beta coefficients
     '''
-    # getting N^2 phy_tbt and then (N/2)^2 chem_tbt 
+    # getting N^2 phy_tbt and then (N/2)^2 chem_tbt
     if n is None:
         n = get_spin_orbitals(H)
-    
+
     obt = np.zeros((n,n))
     for term, val in H.terms.items():
         if len(term) == 2:
@@ -122,7 +121,7 @@ def get_obt(H : FermionOperator, n = None, spin_orb=False, tiny=1e-12):
     if spin_orb:
         return obt
 
-    # Spin-orbital to orbital 
+    # Spin-orbital to orbital
     n_orb = obt.shape[0]
     n_orb = n_orb // 2
 
@@ -235,7 +234,7 @@ def get_ferm_op(tsr, spin_orb=False):
                         ), coefficient=tsr[i, j]
                     )
         return op
-    
+
 def tbt_to_ferm(tbt : np.array, spin_orb, norm_ord = False):
     '''
     Converts two body tensor into Fermion Operator.
@@ -253,7 +252,7 @@ def cartan_tbt_to_ferm(ctbt : np.array, spin_orb, norm_ord = False):
         return normal_ordered(get_cartan_ferm_op(ctbt, spin_orb))
     else:
         return get_cartan_ferm_op(ctbt, spin_orb)
-    
+
 def obt_to_ferm(obt : np.array, spin_orb = False, norm_ord = False):
     '''
     Converts one body tensor into Fermion Operator.
@@ -262,13 +261,12 @@ def obt_to_ferm(obt : np.array, spin_orb = False, norm_ord = False):
         return of.normal_ordered(get_ferm_op(obt, spin_orb))
     else:
         return get_ferm_op(obt, spin_orb)
-    
+
 def tbt_orb_to_so(tbt):
     '''
     Converts two body term to spin orbitals.
     '''
     n = tbt.shape[0]
-    n_qubit = 2*n
 
     tbt_so = np.zeros([2*n,2*n,2*n,2*n])
     for i1, i2, i3, i4 in product(range(n), repeat=4):
@@ -282,13 +280,12 @@ def obt_orb_to_so(obt):
     Converts one body term to spin orbitals.
     '''
     n = obt.shape[0]
-    n_qubit = 2*n
 
     obt_so = np.zeros([2*n,2*n])
     for i1, i2 in product(range(n), repeat=2):
         for a in [0,1]:
             obt_so[2*i1+a,2*i2+a] = obt[i1,i2]
-            
+
     return obt_so
 
 def convert_u_to_so(U):
@@ -324,7 +321,7 @@ def symmetric(M, tol = 1e-8, ret_op = False):
         return True
     else:
         return M_res
-                                        
+
 def check_tbt_symmetry(tbt):
     '''
     Returns symmetric form of tbt.
@@ -340,7 +337,7 @@ def check_tbt_symmetry(tbt):
 def diagonalizing_tbt(tbt_res):
     '''
     Returns diagonal form and unitary rotation to diagonalize tbt_res
-    '''    
+    '''
     print("Diagonalizing two-body tensor")
     lamda, U = np.linalg.eig(tbt_res)
     ind = np.argsort(np.abs(lamda))[::-1]
@@ -351,7 +348,7 @@ def diagonalizing_tbt(tbt_res):
 def fragmentization(lamda, U, n, tol = 1e-8):
     '''
     Returns fragments of tbt
-    '''    
+    '''
     N = n**2
     L_mats = []
     flags = np.zeros(N)
@@ -367,17 +364,16 @@ def fragmentization(lamda, U, n, tol = 1e-8):
             cur_l = symmetric(cur_l, ret_op = True)
         L_mats.append(cur_l)
     return L_mats, flags
-    
 
-def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
+
+def lr_decomp(tbt : np.array, spin_orb=True, tiny=1e-8):
     '''
     Singular Value Decomposition of the two-body tensor term
     '''
     print("Starting SVD routine")
     n = tbt.shape[0]
-    N = n**2
-    
-    tbt_res = check_tbt_symmetry(tbt)    
+
+    tbt_res = check_tbt_symmetry(tbt)
     lamda, U = diagonalizing_tbt(tbt_res)
     L_mats, flags = fragmentization(lamda, U, n)
     num_ops = len(L_mats)
@@ -385,7 +381,7 @@ def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
     TBTS = np.zeros((num_ops, n, n, n, n))
     CARTAN_TBTS = np.zeros(( num_ops, n, n, n, n))
     U_ARR = np.zeros((num_ops, n,n))
-    
+
     for i in range(num_ops):
         if flags[i] == 0:
             omega_l, U_l = np.linalg.eigh(L_mats[i])
@@ -398,7 +394,7 @@ def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
                     tbt_svd_CSA[k,k,j,j] = tbt_svd_CSA[j,j,k,k]
 
 
-            tbt_svd_CSA = lamda[i] * tbt_svd_CSA 
+            tbt_svd_CSA = lamda[i] * tbt_svd_CSA
             tbt_svd = unitary_cartan_rotation_from_matrix(U_l, tbt_svd_CSA)
             TBTS[i,:,:,:,:] = tbt_svd
             CARTAN_TBTS[i,:,:,:,:] = tbt_svd_CSA
@@ -416,8 +412,8 @@ def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
                 for k in range(j,n):
                     tbt_svd_CSA[j,j,k,k] = -omega_l[j]*omega_l[k]
                     tbt_svd_CSA[k,k,j,j] = tbt_svd_CSA[j,j,k,k]
-  
-            tbt_svd_CSA = lamda[i] * tbt_svd_CSA 
+
+            tbt_svd_CSA = lamda[i] * tbt_svd_CSA
             tbt_svd = unitary_cartan_rotation_from_matrix(U_l, tbt_svd_CSA)
             TBTS[i,:,:,:,:] = tbt_svd
             CARTAN_TBTS[i,:,:,:,:] = tbt_svd_CSA
@@ -426,7 +422,7 @@ def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
     print("Finished SVD routine")
 
     L_ops = []
-    
+
     for i in range(num_ops):
         op_1d = obt_to_ferm(L_mats[i], spin_orb)
         L_ops.append(lamda[i] * op_1d * op_1d)
@@ -436,7 +432,6 @@ def unitary_cartan_rotation_from_matrix(Umat, tbt : np.array):
     '''
     Rotates Cartan tbt using orbital rotation matrix U_mat
     '''
-    n = tbt.shape[0]
     rotated_tbt = np.einsum('al,bl,cm,dm,llmm',Umat,Umat,Umat,Umat,tbt)
     return rotated_tbt
 
@@ -494,14 +489,14 @@ def create_hamiltonian_in_subspace(indices, Hq, n_qubits):
             for iidx, iindx in enumerate(indices):
                 for jidx, jindx in enumerate(indices):
                     elements_sum[iidx, jidx] += opspar[iindx, jindx]
-                 
+
     for iidx, iindx in enumerate(indices):
         for jidx, jindx in enumerate(indices):
             row_idx.append(iidx)
             col_idx.append(jidx)
             H_mat_elements.append(elements_sum[iidx, jidx])
     H_mat_sub = sp.sparse.coo_matrix((H_mat_elements, (row_idx, col_idx)), shape = (subspace_dim, subspace_dim))
-    return H_mat_sub  
+    return H_mat_sub
 
 def get_jw_cisd_basis_states(n_elec, n_qubits):
     """
@@ -525,7 +520,7 @@ def get_jw_cisd_basis_states_wrap(ref_occ_nos, n_qubits):
         cisd_basis_states (List[str]): List of all occupation number achieved by singles and doubles from reference occupation number.
     """
 
-    indices = [find_index(get_jw_basis_states(ref_occ_nos, n_qubits))]
+    indices = [find_index(get_jw_basis_states(ref_occ_nos))]
     for occidx, occ_orbitals in enumerate(ref_occ_nos):
         if occ_orbitals == '1':
             annihilated_state = list(ref_occ_nos)
@@ -535,7 +530,7 @@ def get_jw_cisd_basis_states_wrap(ref_occ_nos, n_qubits):
                 if virtual_orbs == '0':
                     new_state = annihilated_state[:]
                     new_state[virtidx] = '1'
-                    indices.append(find_index(get_jw_basis_states(''.join(new_state), n_qubits)))
+                    indices.append(find_index(get_jw_basis_states(''.join(new_state))))
                     #Doubles
                     for occ2idx in range(occidx +1, n_qubits):
                         if ref_occ_nos[occ2idx] == '1':
@@ -545,7 +540,7 @@ def get_jw_cisd_basis_states_wrap(ref_occ_nos, n_qubits):
                                 if ref_occ_nos[virt2idx] == '0':
                                     new_state_double = annihilated_state_double[:]
                                     new_state_double[virt2idx] = '1'
-                                    indices.append(find_index(get_jw_basis_states(''.join(new_state_double), n_qubits)))
+                                    indices.append(find_index(get_jw_basis_states(''.join(new_state_double))))
     return indices
 
 def find_index(basis_state):
@@ -563,7 +558,7 @@ def find_index(basis_state):
 
     return index
 
-def get_jw_basis_states(occ_no_list, n_qubits):
+def get_jw_basis_states(occ_no_list):
     """
     Implementation from arXiv:quant-ph/0003137 and https://doi.org/10.1021/acs.jctc.8b00450. Given some reference occupation no's in the fermionic space, find the corresponding BK basis state in the qubit space.
     Args:
@@ -663,13 +658,13 @@ def reorganize(n, ev_dict_E, ev_dict_EE):
     for i, j, k, l in product(range(n), repeat=4):
         ev_dict_ob_ob[i, j, k, l] = ev_dict_EE[(n**3) * (i) + (n**2) * (j) + n * (k) + l] - ev_dict_E[n * (i) + j] * ev_dict_E[n * (k) + l]
     return ev_dict_ob_ob
-            
+
 def compute_covk(op1, op2, psi, n_qubits, trunc=False):
     '''
     ---------------------
     '''
     cko = partial(covk_one, op1, op2, psi, n_qubits, trunc)
-    length = len(op1) 
+    length = len(op1)
     with mp.Pool(mp.cpu_count()) as pool:
         covs = pool.map(cko, range(length))
         pool.close()
@@ -686,7 +681,7 @@ def covk_one(op1, op2, psi, n_qubits, trunc, ind):
 def covariance(op1, op2, psi, n_qubits, trunc):
     '''
     Returns covariance between op1 and op2
-    ''' 
+    '''
     op1q = of.jordan_wigner(op1)
     op2q = of.jordan_wigner(op2)
 
@@ -705,17 +700,16 @@ def covariance(op1, op2, psi, n_qubits, trunc):
 
 def covariance_ob_ob(obt1, obt2, ev_dict_ob_ob):
     '''
-    
+
     '''
     my_cov = 0.0 + 0.0j
     my_cov = np.einsum('ij,kl,ijkl',obt1, obt2, ev_dict_ob_ob)
     return my_cov
 
-def fff_1_iter(obt, tbts, var, c0, ck, psi, fff_var):
+def fff_1_iter(obt, tbts, var, c0, ck, fff_var):
     '''
     Computes a single iteration of FFF optimization (arXiv:2208.14490v3 - Section 2.2)
     '''
-    met = (np.sum(np.sqrt(var))) ** 2
     m0 = compute_meas_alloc(var, obt, tbts, fff_var.nq, fff_var.mix)
     lambda_opt = compute_lambda_optimum(fff_var.coo, c0, ck, m0, fff_var.nf, fff_var.n)
     new_obt, new_tbts = modify_ops(obt, tbts, lambda_opt, fff_var.o_t, fff_var.nf, fff_var.n, fff_var.uops)
@@ -769,7 +763,7 @@ def get_avg_variance(op, n_qubits):
     return c_sq * var_avg(n_qubits)
 
 def get_pauliword_list(H: QubitOperator):
-    """Obtain a list of pauli words in H. 
+    """Obtain a list of pauli words in H.
     """
     pws = []
     for pw, val in H.terms.items():
@@ -795,7 +789,7 @@ def modify_ops(obt, tbts, lambda_opt, O_t, nf, n, uops):
     new_tbts = np.zeros([nf, ntmp, ntmp, ntmp, ntmp])
     sig_o = np.zeros([ntmp, ntmp])
     for i in range(nf):
-        obt_tmp = np.zeros([ntmp, ntmp])    
+        obt_tmp = np.zeros([ntmp, ntmp])
         for j in range(n):
             ind = n * i + j
             obt_tmp += lambda_opt[ind] * O_t[i, j, :, :]
@@ -838,14 +832,14 @@ def modify_var(var, coo, c0, ck, lam, n, tol=1e-10):
                 ind2 = n * k + q
                 delta_var_k += lam[ind1] * lam[ind2] * coo[ind1, ind2]
             delta_var_k -= lam[ind1] * ck[ind1]
-        new_var[k+1] = var[k+1] + delta_var_k 
+        new_var[k+1] = var[k+1] + delta_var_k
         if new_var[k+1] < tol: new_var[k+1] = 0.
     return new_var
 
 def modify_c(coo, c0, ck, lam, nf, n):
     '''
     Computes the covariances of the repartitioned fragments
-    '''    
+    '''
     new_c0 = np.copy(c0)
     new_ck = np.copy(ck)
     for ind1 in range(len(lam)):
@@ -862,7 +856,7 @@ def modify_c(coo, c0, ck, lam, nf, n):
 def compute_meas_alloc(varbs, obt=None, tbts=None, n_qubits=None, mix=0.0):
     '''
     Computes the measurement allocations based on the variances of repartitioned fragments.
-    '''    
+    '''
     if mix > 1e-6:
         all_ops = [obt_to_ferm(obt, True)]
         ops = convert_tbts_to_frags(tbts, True)
@@ -884,14 +878,14 @@ def get_orb_rot(U, tol = 1e-12):
     Construct sequence of orbital rotations that implement mean-field unitary given by NxN unitary U
     Currently supported only for real U
     '''
-    U[abs(U) < tol] = 0 
-    theta, phi = given_rotation(U, tol) 
+    U[abs(U) < tol] = 0
+    theta, phi = given_rotation(U, tol)
     C = tq.QCircuit()
     for i, p in enumerate(phi):
-        C += n_rotation(i, p) 
+        C += n_rotation(i, p)
     gates = []
     for th in theta:
-        gates.append(orbital_rotation(th[1], th[2], -th[0])) 
+        gates.append(orbital_rotation(th[1], th[2], -th[0]))
     gates.reverse()
     for gate in gates:
         C += gate
@@ -905,14 +899,14 @@ def orbital_rotation(i, j, theta):
     if abs(i-j) <= 1:
         return tq.gates.CNOT(control=i, target=j) + tq.gates.Ry(angle=2*theta, target=i, control=j) + tq.gates.CNOT(control=i, target=j)
 
-def n_rotation(i, phi): 
-    return tq.gates.Rz(angle = phi, target=i) 
+def n_rotation(i, phi):
+    return tq.gates.Rz(angle = phi, target=i)
 
 def given_rotation(U, tol = 1e-12): #verified
     '''
     Decomposes the Unitary into a set of Rz by angle phi and Givens Rotations by angle theta.
     Input:
-    U (np.array): 
+    U (np.array):
     '''
     #filter small values
     U[abs(U) < tol] = 0
