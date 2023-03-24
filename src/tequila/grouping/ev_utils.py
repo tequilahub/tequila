@@ -1,19 +1,15 @@
 from openfermion import QubitOperator
-import openfermion as of
 import numpy as np
-import time
 from scipy.sparse import csc_matrix
-from pathos import multiprocessing as mp
-from itertools import combinations, combinations_with_replacement
-import copy
-from functools import partial
+from itertools import combinations
+from tequila import TequilaException
 
 def get_pauli_word_tuple(P: QubitOperator):
     """Given a single pauli word P, extract the tuple representing the word. 
     """
     words = list(P.terms.keys())
     if len(words) != 1:
-        raise(ValueError("P given is not a single pauli word"))
+        raise TequilaException("P given is not a single pauli word")
     return words[0]
 
 
@@ -22,7 +18,7 @@ def get_pauli_word(P: QubitOperator):
     """
     words = list(P.terms.keys())
     if len(words) != 1:
-        raise(ValueError("P given is not a single pauli word"))
+        raise TequilaException("P given is not a single pauli word")
     return QubitOperator(words[0])
 
 
@@ -75,49 +71,6 @@ def partial_order(x, y):
 
         return partial_order
 
-def get_bk_tf_matrix(n_qubits):
-    """
-    Implementation from arXiv:quant-ph/0003137 and https://doi.org/10.1021/acs.jctc.8b00450. Given some reference occupation no's in the fermionic space, find the corresponding BK basis state in the qubit space.
-    Args:
-        n_qubits (int): No. of qubits
-    Returns:
-        tf_mat (np.array): Transformation matrix that converts fermionic occupation numbers to BK transformed basis vectors.
-    """
-
-    tf_mat = np.zeros((n_qubits, n_qubits))
-
-    for i in range(n_qubits):
-        if np.mod(i, 2) == 0:
-            tf_mat[i, i] = 1
-        elif np.mod(math.log(i+1, 2), 1) == 0:
-            for j in range(i+1):
-                tf_mat[i, j] = 1
-        else:
-            for j in range(n_qubits):
-                if partial_order(j, i) == True:
-                    tf_mat[i, j] = 1
-
-    return tf_mat
-
-def get_bk_basis_states(occ_no_list, n_qubits):
-    """
-    Implementation from arXiv:quant-ph/0003137 and https://doi.org/10.1021/acs.jctc.8b00450. Given some reference occupation no's in the fermionic space, find the corresponding BK basis state in the qubit space.
-    Args:
-        occ_no_list (List[str]): List of occupation number vectors. Occ no. vectors ordered from left to right going from 0 -> n-1 in terms of orbitals.
-    Returns:
-        basis_state (np.array): Basis vector in (BK transformed) qubit space corresponding to occ_no_state.
-    """
-
-    tf_mat = get_bk_tf_matrix(n_qubits)
-
-    bk_list = []
-    for occ_no in occ_no_list:
-        occ_no_vec = np.array(list(occ_no), dtype = int)
-        qubit_state = np.mod(np.matmul(tf_mat, occ_no_vec), 2)
-        bk_list.append(qubit_state)
-
-    return bk_list
-
 def allz(pw: QubitOperator):
     """
     Checks if a Pauli word is all-z.
@@ -145,7 +98,7 @@ def isz(pw, qubit_no):
             return True
     return False
 
-def pw_ev_single_basis_state(pw: QubitOperator, index, n_qubits):
+def pw_ev_single_basis_state(pw: QubitOperator, index):
     """
     Returns the EV of a single PW w.r.t. a computational basis state
     Args:
@@ -224,7 +177,6 @@ def truncate_wavefunction(wfs, perc = None, n_qubits = None, tol = 1e-5):
     Returns a config_dict {Computational basis state: coefficient}
     """
 
-    dim = len(wfs)
     configs = []
     coeffs = []
     if perc is None:
@@ -263,7 +215,7 @@ def truncate_wavefunction(wfs, perc = None, n_qubits = None, tol = 1e-5):
                 configs.append(np.array(list(config),dtype=int))
                 coeffs.append(coeff)
     else:
-        raise ValueError("The number of truncated slater determinant terms must be between 1 and 2^N_q")
+        raise TequilaException("The number of truncated slater determinant terms must be between 1 and 2^N_q")
     print("Using {} slater determinants: {}% of the approximate WF".format(len(configs), weight))
     return configs, np.array(coeffs)
 
@@ -272,7 +224,7 @@ def build_multiple_bases_mat(op, configs, n_qubits):
     """
     Returns the sparse matrix representation of op.
     """
-    data = np.array(list(map(lambda x: qubit_op_ev_single_basis_state(op, x, n_qubits), configs)))
+    data = np.array(list(map(lambda x: qubit_op_ev_single_basis_state(op, x), configs)))
     nz_loc = np.where(np.abs(data) > 1e-8)[0]
     col = row = nz_loc
     data = data[nz_loc]
@@ -293,7 +245,7 @@ def op_ev_multiple_bases(op: QubitOperator, configs, coeffs, n_qubits):
     ev = np.dot( np.conjugate(coeffs), mat * coeffs )
     return ev
 
-def qubit_op_ev_single_basis_state(op: QubitOperator, index, n_qubits):
+def qubit_op_ev_single_basis_state(op: QubitOperator, index):
     """
     Returns the EV of an arbitrary QubitOperator w.r.t. a computational basis state
     Args:
@@ -303,4 +255,4 @@ def qubit_op_ev_single_basis_state(op: QubitOperator, index, n_qubits):
     Returns:
         ev (float): Expectation value of Operator
     """
-    return np.sum(list(map(lambda x: pw_ev_single_basis_state(QubitOperator(term=x[0], coefficient=x[1]), index, n_qubits), op.terms.items())))
+    return np.sum(list(map(lambda x: pw_ev_single_basis_state(QubitOperator(term=x[0], coefficient=x[1]), index), op.terms.items())))

@@ -1,17 +1,14 @@
 import numpy as np
 import tequila as tq
-import math
 from os.path import exists
 import openfermion as of
-from openfermion import FermionOperator, QubitOperator, MolecularData, expectation, get_sparse_operator, jordan_wigner, reverse_jordan_wigner, normal_ordered, count_qubits, variance
-from openfermionpyscf import run_pyscf
-from openfermion.transforms import get_fermion_operator
-from scipy.sparse import save_npz, load_npz, csc_matrix
+from openfermion import FermionOperator, QubitOperator, expectation, get_sparse_operator, jordan_wigner, reverse_jordan_wigner, normal_ordered, count_qubits, variance
 from itertools import product
 import scipy as sp
 import tequila.grouping.ev_utils as evu
 from functools import partial
 import multiprocessing as mp
+from tequila import TequilaException
 
 def get_obt_tbt(h_ferm, spin_orb=True):
     '''
@@ -38,136 +35,6 @@ def get_obt_tbt(h_ferm, spin_orb=True):
     h1b = normal_ordered(of_simplify(h1b))
     obt = get_obt(h1b, spin_orb=spin_orb)
     return (obt, tbt)
-
-def get_system(mol_name, basis='sto3g', geometry=1):
-    '''
-    Obtain system from specified parameters
-    '''
-    g, c = chooseType(mol_name, geometry)
-    mol = MolecularData(g, basis, 1, c)
-    mol = run_pyscf(mol)
-    ham = mol.get_molecular_hamiltonian()
-    return get_fermion_operator(ham), mol.n_electrons
-
-    
-def chooseType(typeHam, geometries):
-    '''
-    Genreate the molecular data of specified type of Hamiltonian
-    '''
-    charge = 0
-    if typeHam.lower() == 'h2':
-        molData = [
-            ['H', [0, 0, 0]],
-            ['H', [0, 0, geometries]]
-        ]
-    elif typeHam.lower() == 'h3':
-        molData = [
-            ['H', [0, 0, 0]],
-            ['H', [0, 0, geometries]],
-            ['H', [0, 0, 2*geometries]]
-        ]
-        charge = 1
-    elif typeHam.lower() == 'n2':
-        molData = [
-            ['N', [0, 0, 0]],
-            ['N', [0, 0, geometries]]
-        ]
-    elif typeHam.lower() == 'lih':
-        molData = [
-            ['Li', [0, 0, 0]],
-            ['H', [0, 0, geometries]]
-        ]
-    # Giving symmetrically stretch H2O. ∠HOH = 107.6°
-    elif typeHam.lower() == 'h2o':
-        angle = 107.6 / 2
-        angle = math.radians(angle)
-        xDistance = geometries * math.sin(angle)
-        yDistance = geometries * math.cos(angle)
-        molData = [
-            ['O', [0, 0, 0]],
-            ['H', [-xDistance, yDistance, 0]],
-            ['H', [xDistance, yDistance, 0]]
-        ]
-    elif typeHam.lower() == 'hf':
-        molData = [
-            ['H', [0, 0, 0]],
-            ['F', [0, 0, geometries]]
-        ]
-    elif typeHam.lower() == 'co':
-        molData = [
-            ['C', [0, 0, 0]],
-            ['O', [0, 0, geometries]]
-        ]
-    elif typeHam.lower() == 'beh2':
-        molData = [
-            ['Be', [0, 0, 0]],
-            ['H', [0, 0, -geometries]],
-            ['H', [0, 0, geometries]]
-        ]
-    elif typeHam.lower() == 'h4':
-        molData = [
-            ['H', [0, 0, 0]],
-            ['H', [0, 0, geometries]],
-            ['H', [0, 0, 2*geometries]],
-            ['H', [0, 0, 3*geometries]]
-        ]
-    elif typeHam.lower() == 'h6':
-        molData = [
-            ['H', [0, 0, 0]],
-            ['H', [0, 0, geometries]],
-            ['H', [0, 0, 2*geometries]],
-            ['H', [0, 0, 3*geometries]],
-            ['H', [0, 0, 4*geometries]],
-            ['H', [0, 0, 5*geometries]]
-        ]
-    elif typeHam.lower() == 'heh':
-        molData = [
-            ['He', [0, 0, 0]],
-            ['H', [0, 0, geometries]]
-        ]
-        charge = 1
-    elif typeHam.lower() == 'ch2':
-        angle = 101.89 / 2
-        angle = math.radians(angle)
-        xDistance = 1.0 * math.sin(angle)
-        yDistance = 1.0 * math.cos(angle)
-        molData = [
-            ['C', [0, 0, 0]],
-            ['H', [-xDistance, yDistance, 0]],
-            ['H', [xDistance, yDistance, 0]]
-        ]
-    elif typeHam.lower() == 'nh3':
-    # Is there a more direct way of making three vectors with specific mutual angle?
-        bondAngle = 107
-        bondAngle = math.radians(bondAngle)
-        cos = math.cos(bondAngle)
-        sin = math.sin(bondAngle)
-
-        # The idea is second and third vecctor dot product is cos(angle) * geometry^2. 
-        thirdyRatio = (cos - cos**2) / sin
-        thirdxRatio = (1 - cos**2 - thirdyRatio**2) ** (1/2)
-        molData = [
-            ['H', [0, 0, geometries]],
-            ['H', [0, sin * geometries, cos * geometries]], 
-            ['H', [thirdxRatio * geometries, thirdyRatio * geometries, cos * geometries]], 
-            ['N', [0, 0, 0]], 
-        ]
-    elif typeHam.lower() == 'ch4':
-        l_edge = (2./3.) * math.sqrt(6.) * geometries #length of the edge of the tetrahedron.
-        h_tet = (4./3.) * geometries
-        zdisp = -(1./3.) * geometries
-        molData = [
-            ['H', [0, 0, geometries]],
-            ['H', [- (math.sqrt(3.)/3.) * l_edge, 0, zdisp]],
-            ['H', [(math.sqrt(3.) / 6.) * l_edge, l_edge / 2.0, zdisp]], 
-            ['H', [(math.sqrt(3.) / 6.) * l_edge, -l_edge / 2.0, zdisp]], 
-            ['C', [0, 0, 0]], 
-        ]
-        
-    else:
-        raise(ValueError(typeHam, 'Unknown type of hamiltonian given'))
-
-    return molData, charge
 
 def of_simplify(op):
     '''
@@ -537,7 +404,7 @@ def lr_decomp(tbt : np.array, tol=1e-6, spin_orb=True, tiny=1e-8):
             CARTAN_TBTS[i,:,:,:,:] = tbt_svd_CSA
         else:
             if np.sum(np.abs(L_mats[i] + L_mats[i].T)) > tiny:
-                error("SVD operator {} if neither Hermitian or anti-Hermitian, cannot do double factorization into Hermitian fragment!".format(i))
+                raise TequilaException("SVD operator {} if neither Hermitian or anti-Hermitian, cannot do double factorization into Hermitian fragment!".format(i))
 
             temp_l = 1j * L_mats[i]
             cur_l = (temp_l + temp_l.conj().T)/2
@@ -734,7 +601,7 @@ def variance_value(op, psi, n, trunc=False, neg_tol = 1e-7):
     if -neg_tol <= var_val < 0:
         var_val = 0
     if var_val < -neg_tol:
-        raise ValueError('Variance of an observable should not be negative')
+        raise TequilaException('Variance of an observable should not be negative')
     return var_val
 
 def real_round(x, tol=1e-10):

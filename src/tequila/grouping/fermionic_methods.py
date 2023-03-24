@@ -9,9 +9,9 @@ from itertools import product
 from tequila.hamiltonian import QubitHamiltonian
 import scipy as sp
 from tequila.grouping.ev_utils import truncate_wavefunction
+from tequila import TequilaException
 from shutil import rmtree
 import logging 
-
 
 def get_psi(h_ferm, mol_name, n_elec, n_qubit, trunc, trunc_perc, get_fci):
     if get_fci:
@@ -518,7 +518,7 @@ def init_ev_dict(mol_name, psi, n_qubit, trunc=False, spin_orb=True, save=True):
 
 def check_method(method):
     if method.lower() not in ["full", "r1", "r2"]:
-       raise ValueError("method has to be specified as one from Full, R1 or R2")
+       raise TequilaException("method has to be specified as one from Full, R1 or R2")
 
 def compute_O_t(U_OPS, method, tbts, mol_name, save=True):
     '''

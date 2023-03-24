@@ -1,13 +1,19 @@
-from tequila.grouping.fermionic_functions import obt_orb_to_so, tbt_orb_to_so, lr_decomp, compute_meas_alloc, convert_tbts_to_frags, obt_to_ferm, given_rotation, get_system, get_obt_tbt, n_elec, of_simplify
+from tequila.grouping.fermionic_functions import obt_orb_to_so, tbt_orb_to_so, lr_decomp, compute_meas_alloc, convert_tbts_to_frags, obt_to_ferm, given_rotation, get_obt_tbt, n_elec, of_simplify
 import tequila.grouping.fermionic_methods as fm
-from openfermion import count_qubits, jordan_wigner, normal_ordered
+import tequila as tq
+from openfermion import count_qubits, jordan_wigner, normal_ordered, FermionOperator
 from numpy.testing import assert_allclose
 import numpy as np
 import os
 from shutil import rmtree
+import pickle
+from pathlib import Path
+
+TEST_DATA_DIR = Path(__file__).resolve().parent / 'data'
 
 mol_name = "h3"
-h_ferm, _ = get_system(mol_name, basis="sto-3g", geometry=1.0)
+with open( TEST_DATA_DIR / "h3_sto3g.pkl", "rb") as f:
+    h_ferm = pickle.load(f)
 h_ferm = normal_ordered(of_simplify(h_ferm))
 (obt_orb,tbt_orb) = get_obt_tbt(h_ferm, spin_orb=False)
 obt = obt_orb_to_so(obt_orb)
