@@ -22,7 +22,7 @@ def visualize(qubit_hamiltonian: tequila.QubitHamiltonian,
     One thing to note is that if you are using command-line interface,
     the plot might not be successfully shown
 
-    , so it's better idea to save it as an image.
+    so it's better idea to save it as an image.
     === parameters ===
     qubit_hamiltonian: A QubitHamiltonian representation of pauli operators
     circuit: A QCircuit that corresponds to the
@@ -36,21 +36,21 @@ def visualize(qubit_hamiltonian: tequila.QubitHamiltonian,
 
     === sample usages ===
     >>> visualize(
-    >>> tequila.QubitHamiltonian(openfermion.QubitOperator("X0 X5 Y3", 1)))
+    >>> tequila.QubitHamiltonian("X(0)X(5)Y(3)")))
     *** A graph with nodes 0 and 5 having colour red
     and node 3 having colour green ***
     >>> visualize(
-    >>> tequila.QubitHamiltonian(openfermion.QubitOperator("X0 X5 Y3", 1)),
-    >>> circuit=gates.X(0) + gates.CNOT(0, 5) + gates.Y(3))
+    >>> tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
+    >>> circuit=tequila.gates.X(0) + tequila.gates.CNOT(0, 5) + tequila.gates.Y(3))
     *** A graph with nodes 0 and 5 having color red and
     node 3 having colour green with edge 0 and 5 exists ***
     >>> visualize(
-    >>> tequila.QubitHamiltonian(openfermion.QubitOperator("X0 X5 Y3", 1)),
+    >>> tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
     >>> connectivity=[(0, 0), (0, 5), (3, 3)])
     *** A graph with nodes 0 and 5 having color red and
     node 3 having colour green with edge 0 and 5 exists ***
     >>> visualize(
-    >>> tequila.QubitHamiltonian(openfermion.QubitOperator("X0 X5 Y3", 1)),
+    >>> tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
     >>> connectivity=[(0, 0), (0, 5), (3, 3)],
     >>> file_name="test_system")
     *** Exported an image of a graph with nodes 0 and 5 having color red and

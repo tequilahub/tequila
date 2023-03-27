@@ -24,7 +24,7 @@ else:
 @pytest.mark.skipif(condition=not NETWORKX_EXIST, reason="You don't have networkx")
 @pytest.mark.skipif(condition=not MATPLOTLIB_EXIST, reason="You don't have matplotlib")
 @pytest.mark.skipif(condition=not OPENFERMION_EXIST, reason="You don't have openfermion")
-@pytest.mark.parametrize("qh", tequila.QubitHamiltonian(openfermion.QubitOperator("X0 X5 Y3", 1)))
+@pytest.mark.parametrize("qh", [tequila.QubitHamiltonian("X(0)X(5)Y(3)")])
 def test_visualize_with_qubit_hamiltonian(qh):
     fig = visualize(qh)
     assert plt.fignum_exists(fig.number)
