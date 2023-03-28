@@ -1,7 +1,5 @@
 import typing
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
-import tequila.hamiltonian.paulis as paulis
-import openfermion
 
 
 def _custom_transform(fermion: str, qubits: list) -> QubitHamiltonian:

@@ -1,23 +1,25 @@
 import importlib.util
-
 import tequila
 from typing import Optional, List
-import matplotlib.pyplot as plt
-import matplotlib.figure as figure
-import networkx
 
+if importlib.util.find_spec("networkx") is not None:
+    import networkx
+
+if importlib.util.find_spec("matplotlib") is not None:
+    import matplotlib.pyplot as plt
+    import matplotlib.figure as figure
 
 def visualize(qubit_hamiltonian: tequila.QubitHamiltonian,
               circuit: Optional[tequila.QCircuit] = None,
               connectivity: Optional[List[tuple]] = None,
-              file_path: Optional[str] = None) -> figure.Figure:
+              filename: Optional[str] = None) -> figure.Figure:
     """
     Precondition:
     The maximum number of qubits is 10 at the moment (Feb24, 2023)
 
     Post condition:
     The graph of the qubit_hamiltonian is displayed
-    or is stored in file_path
+    or is stored in filename
 
     One thing to note is that if you are using command-line interface,
     the plot might not be successfully shown
@@ -28,38 +30,33 @@ def visualize(qubit_hamiltonian: tequila.QubitHamiltonian,
     circuit: A QCircuit that corresponds to the
     connectivity: networkx.Graph.edges that show the connectivity of qubits
     A nested list should be provided for this argument.
-    file_name: str format of file name
+    filename: str format of file name
     to which the plotted graph will be exported. The file will be a png format
 
     === return ===
-    None
+    matplotlib.figure
 
     === sample usages ===
-    >>> visualize(
-    >>> tequila.QubitHamiltonian("X(0)X(5)Y(3)")))
+    visualize(tequila.QubitHamiltonian("X(0)X(5)Y(3)")))
     *** A graph with nodes 0 and 5 having colour red
     and node 3 having colour green ***
-    >>> visualize(
-    >>> tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
-    >>> circuit=tequila.gates.X(0) + tequila.gates.CNOT(0, 5) + tequila.gates.Y(3))
+
+    visualize(tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
+    circuit=tequila.gates.X(0) + tequila.gates.CNOT(0, 5) + tequila.gates.Y(3))
     *** A graph with nodes 0 and 5 having color red and
     node 3 having colour green with edge 0 and 5 exists ***
-    >>> visualize(
-    >>> tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
-    >>> connectivity=[(0, 0), (0, 5), (3, 3)])
+
+    visualize(tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
+    connectivity=[(0, 0), (0, 5), (3, 3)])
     *** A graph with nodes 0 and 5 having color red and
     node 3 having colour green with edge 0 and 5 exists ***
-    >>> visualize(
-    >>> tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
-    >>> connectivity=[(0, 0), (0, 5), (3, 3)],
-    >>> file_name="test_system")
+
+    visualize(tequila.QubitHamiltonian("X(0)X(5)Y(3)"),
+    connectivity=[(0, 0), (0, 5), (3, 3)],
+    filename="test_system")
     *** Exported an image of a graph with nodes 0 and 5 having color red and
     node 3 having colour green with edge 0 and 5 exists to test_system.png ***
     """
-    if importlib.util.find_spec("networkx") is None:
-        raise tequila.TequilaException("networkx module is not in the system")
-    if importlib.util.find_spec("matplotlib") is None:
-        raise tequila.TequilaException("matplotlib module is not in the system")
 
     if(len(qubit_hamiltonian.qubit_operator.terms)) != 1:
         raise tequila.TequilaException("The input qubit_operator"
@@ -77,10 +74,10 @@ def visualize(qubit_hamiltonian: tequila.QubitHamiltonian,
     elif circuit is None:
         graph, pos = _visualize_helper(qh, graph, pos, connectivity)
 
-    if file_path is None:
+    if filename is None:
         return plt.figure()
-    if file_path is not None:
-        plt.savefig(file_path+".png", format="PNG")
+    if filename is not None:
+        plt.savefig(filename+".png", format="PNG")
         return plt.figure()
 
 
