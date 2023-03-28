@@ -1,6 +1,7 @@
 import typing
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 import tequila.hamiltonian.paulis as paulis
+import openfermion
 
 
 def _custom_transform(fermion: str, qubits: list) -> QubitHamiltonian:
@@ -30,21 +31,28 @@ def _custom_transform(fermion: str, qubits: list) -> QubitHamiltonian:
     qubit_hamiltonian = QubitHamiltonian()
     operator = fermion[0]
     site = qubits[int(operator[0])]
+    x_op = 'X(' + str(site) + ')'
+    pauli_x = QubitHamiltonian(x_op)
+    y_op = 'Y(' + str(site) + ')'
+    pauli_y = QubitHamiltonian(y_op)
     if fermion[-1] == '^':
-        pauli_z = QubitHamiltonian()
+        pauli_z = QubitHamiltonian("1")
         for qubit in range(0, int(operator)):
-            pauli_z *= paulis.Z(qubits[qubit])
+            z_op = 'Z(' + str(qubits[qubit]) + ')'
+            pauli_z *= QubitHamiltonian(z_op)
 
-        qubit_hamiltonian += 0.5 * (pauli_z + paulis.X(site))
-        qubit_hamiltonian += -0.5j * (pauli_z + paulis.Y(site))
+        qubit_hamiltonian += pauli_z * pauli_x * 0.5
+
+        qubit_hamiltonian += pauli_z * pauli_y * -0.5j
 
     else:
-        pauli_z = QubitHamiltonian()
+        pauli_z = QubitHamiltonian("1")
         for qubit in range(0, int(operator)):
-            pauli_z *= paulis.Z(qubits[qubit])
+            z_op = 'Z(' + str(qubits[qubit]) + ')'
+            pauli_z *= QubitHamiltonian(z_op)
 
-        qubit_hamiltonian += 0.5 * (pauli_z + paulis.X(site))
-        qubit_hamiltonian += 0.5j * (pauli_z + paulis.Y(site))
+        qubit_hamiltonian += pauli_z * pauli_x * 0.5
+        qubit_hamiltonian += pauli_z * pauli_y * 0.5j
 
     return qubit_hamiltonian
 
