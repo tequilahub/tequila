@@ -70,6 +70,13 @@ def Molecule(geometry: str = None,
         The Fermion to Qubit Transformation (jordan-wigner, bravyi-kitaev, bravyi-kitaev-tree and whatever OpenFermion supports)
     """
 
+    # failsafe for common mistake
+    if "basis" in kwargs:
+        warnings.warn("called molecule with keyword \"basis={0}\" converting it to \"basis_set={0}\"".format(kwargs["basis"]), TequilaWarning)
+        if basis_set is not None:
+            warnings.warn("did not convert as \"basis_set={}\" was already given".format(basis_set), TequilaWarning)
+        basis_set=kwargs["basis"]
+    
     keyvals = {}
     for k, v in kwargs.items():
         if k in ParametersQC.__dict__.keys():
