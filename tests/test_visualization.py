@@ -46,7 +46,7 @@ def test_visualize_with_circuit(qh, circuit):
 @pytest.mark.skipif(condition=not MATPLOTLIB_EXIST, reason="You don't have matplotlib")
 @pytest.mark.parametrize("qh, file", [(tequila.QubitHamiltonian("X(0)X(5)Y(3)"), "test_file1")])
 def test_visualize_with_filepath(qh, file):
-    fig = visualize(qh, file_path=file)
+    fig = visualize(qh, filename=file)
     assert plt.fignum_exists(fig.number)
     if os.path.isfile(file+".png"):
         os.remove(file+".png")
@@ -56,7 +56,7 @@ def test_visualize_with_filepath(qh, file):
 @pytest.mark.skipif(condition=not MATPLOTLIB_EXIST, reason="You don't have matplotlib")
 @pytest.mark.parametrize("qh, circuit, file", [(tequila.QubitHamiltonian("X(0)X(5)Y(3)"), tequila.gates.X(0) + tequila.gates.CNOT(0, 5) + tequila.gates.Y(3), "test_file2")])
 def test_visualize_with_circuit_and_file(qh, circuit, file):
-    fig = visualize(qh, circuit=circuit, file_path=file)
+    fig = visualize(qh, circuit=circuit, filename=file)
     assert os.path.isfile(file+".png") and not plt.fignum_exists(fig)
     if os.path.isfile(file+".png"):
         os.remove(file+".png")
@@ -66,7 +66,7 @@ def test_visualize_with_circuit_and_file(qh, circuit, file):
 @pytest.mark.skipif(condition=not MATPLOTLIB_EXIST, reason="You don't have matplotlib")
 @pytest.mark.parametrize("qh, connectivity, file", [(tequila.QubitHamiltonian("X(0)X(5)Y(3)"), [(0, 0), (0, 5), (3, 3)], "test_file3")])
 def test_visualize_with_connectivity(qh, connectivity, file):
-    fig = visualize(qh, connectivity=connectivity, file_path=file)
+    fig = visualize(qh, connectivity=connectivity, filename=file)
     assert plt.fignum_exists(fig.number)
     if os.path.isfile(file+".png"):
         os.remove(file+".png")
