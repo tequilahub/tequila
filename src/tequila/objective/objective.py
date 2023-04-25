@@ -985,4 +985,5 @@ class Variables(collections.abc.MutableMapping):
         return result
 
     def __repr__(self):
-        return self.__str__()
+        xdict = {k:v for k,v in self.items()}
+        return xdict.__repr__()
