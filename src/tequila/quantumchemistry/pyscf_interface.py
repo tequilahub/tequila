@@ -32,6 +32,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             mol = pyscf.gto.Mole()
             mol.atom = pyscf_geomstring
             mol.basis = parameters.basis_set
+            mol.charge = parameters.charge
 
             if point_group is not None:
                 if point_group.lower() != "c1":
