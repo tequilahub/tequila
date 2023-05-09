@@ -31,7 +31,7 @@ jobs:
         pip install -r requirements.txt
         pip install "pyquil<3.0"
         pip install -e .
-        docker pull rigetti/qvm
+        docker pull rigetti/qvm:edge
         docker pull rigetti/quilc
         docker run --rm -itd -p 5555:5555 rigetti/quilc -R
         docker run --rm -itd -p 5000:5000 rigetti/qvm -S
