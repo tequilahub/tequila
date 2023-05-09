@@ -369,40 +369,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         return super().initialize_integral_manager(*args, **kwargs)
 
-    def compute_one_body_integrals(self, ref_wfn=None):
-        if ref_wfn is None:
-            self.compute_energy(method="hf")
-            ref_wfn = self.logs['hf'].wfn
-        if ref_wfn.nirrep() != 1:
-            wfn = ref_wfn.c1_deep_copy(ref_wfn.basisset())
-        else:
-            wfn = ref_wfn
-        Ca = numpy.asarray(wfn.Ca())
-        h = wfn.H()
-        h = numpy.einsum("xy, yi -> xi", h, Ca, optimize='greedy')
-        h = numpy.einsum("xj, xi -> ji", Ca, h, optimize='greedy')
-        return h
-
-    def compute_two_body_integrals(self, ref_wfn=None, ordering='openfermion'):
-        if ref_wfn is None:
-            if 'hf' not in self.logs:
-                self.compute_energy(method="hf")
-            ref_wfn = self.logs['hf'].wfn
-
-        if ref_wfn.nirrep() != 1:
-            wfn = ref_wfn.c1_deep_copy(ref_wfn.basisset())
-        else:
-            wfn = ref_wfn
-
-        mints = psi4.core.MintsHelper(wfn.basisset())
-
-        # Molecular orbitals (coeffs)
-        Ca = wfn.Ca()
-        h = NBodyTensor(elems=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), ordering='chem')
-        # Order tensor. default: meet openfermion conventions
-        h.reorder(to=ordering)
-        return h.elems
-
     def compute_ccsd_amplitudes(self):
         return self.compute_amplitudes(method='ccsd')
 
