@@ -845,7 +845,7 @@ class BackendExpectationValue:
             if self.abstract_expectationvalue.samples is None:
                 raise TequilaException("samples='auto' requested but no samples where set in individual expectation values")
             total_samples = int(samples[5:])
-            samples = int(self.abstract_expectationvalue.samples * total_samples)
+            samples = max(1, int(self.abstract_expectationvalue.samples * total_samples))
             suggested = samples
             # samples are not necessarily set (either the user has to set it or some functions like optimize_measurements)
  
