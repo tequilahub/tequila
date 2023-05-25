@@ -12,8 +12,8 @@ import pickle
 import pandas as pd
 from matplotlib import pyplot as plt
 
-path_Frags="/Users/lmartinez/Documents/Github_projects/Frag_Lib/"
-path_Hams="/Users/lmartinez/Documents/Github_projects/ham_lib/"
+path_Frags="./data/Frag_Lib/"
+path_Hams="./data/ham_lib/"
 import openfermion
 import numpy as np
 
@@ -59,9 +59,13 @@ def BuildNumSpinOps(nqubs):
 
     return Nop,S_sq,Sz
 
-mols=['h2']
+mols=['h2','lih','beh2','h2o','nh3']
 Dictnelecs={}
 Dictnelecs['h2']=2
+Dictnelecs['lih']=4
+Dictnelecs['beh2']=6
+Dictnelecs['h2o']=10
+Dictnelecs['nh3']=10
 
 #nelecs=[2,4,6,10,10]
 meths=['FC-SI','LR','LR-LCU','GFRO','GFROLCU','SD-GFRO','FRO','FC-LF']
@@ -110,8 +114,8 @@ for mol in mols:
         GlobDict['method'].append(meth)
         GlobDict['nqubs'].append(nqubs)
         GlobDict['Nfrags'].append(len(Frags))
-        GlobDict['alpha'].append(2.0*alpha_2)
-        GlobDict['sym_alpha'].append(2.0*alpha_2_sym)
+        GlobDict['alpha'].append(alpha_2)
+        GlobDict['sym_alpha'].append(alpha_2_sym)
 
 pdResults=pd.DataFrame(GlobDict)
 #saving results as json file...

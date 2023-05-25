@@ -14,8 +14,8 @@ def SpecNormComm(Op1,Op2,nqubs,Projector=None):
 
     """
 
-    SpOp1=openfermion.get_sparse_operator(Op1)
-    SpOp2=openfermion.get_sparse_operator(Op2)
+    SpOp1=openfermion.get_sparse_operator(Op1,n_qubits=nqubs)
+    SpOp2=openfermion.get_sparse_operator(Op2,n_qubits=nqubs)
 
 
     Comm=1j*(SpOp1*SpOp2-SpOp2*SpOp1)
@@ -78,7 +78,7 @@ def EstTrotErr(ListFrags,nqubs,SymDict=None):
         alpha_2+=SpecNormComm(ListFrags[Pair[0]],ListFrags[Pair[1]],nqubs,Projector=GaussProj)
 
 
-    return alpha_2
+    return 2*alpha_2
 
 def compute_alpha_2(pair, list_frags, nqubs, gauss_proj):
     frag1 = list_frags[pair[0]]
@@ -133,7 +133,7 @@ def EstTrotErrParal(ListFrags,nqubs,SymDict=None):
     args_list = [(pair, ListFrags, nqubs, GaussProj) for pair in idxs]
 
     # Use the multiprocessing pool to compute alpha_2 for all pairs of fragments
-    results = pool.map(compute_alpha_2, args_list)
+    results = pool.starmap(compute_alpha_2, args_list)
 
 
     # Compute the sum of alpha_2 over all pairs of fragments
@@ -143,4 +143,4 @@ def EstTrotErrParal(ListFrags,nqubs,SymDict=None):
     pool.close()
     pool.join()
 
-    return alpha_2
+    return 2*alpha_2
