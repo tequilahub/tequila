@@ -131,7 +131,7 @@ def minimize(objective,
     ovtmp=objective.extract_variables()
     fast_return=False
     if ovtmp is None or len(ovtmp) == 0:
-        return OptimizerResults(energy=numpy.float(simulate(objective, *args, **kwargs)), variables={}, history=OptimizerHistory())
+        return OptimizerResults(energy=float(simulate(objective, *args, **kwargs)), variables={}, history=OptimizerHistory())
 
     for k, v in INSTALLED_OPTIMIZERS.items():
         if method.lower() in v.methods or method.upper() in v.methods:
