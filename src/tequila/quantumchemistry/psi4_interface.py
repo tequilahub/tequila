@@ -325,7 +325,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         S = numpy.asarray(mints.ao_overlap())
         h = numpy.asarray(wfn.H())
         g = numpy.asarray(mints.ao_eri())
-        c = numpy.float(wfn.variables()['NUCLEAR REPULSION ENERGY'])
+        c = float(wfn.variables()['NUCLEAR REPULSION ENERGY'])
 
         g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
 
