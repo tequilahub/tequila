@@ -31,8 +31,8 @@ def test_unary_states(target_space: list):
     checksum = 0.0
     for k, v in wfn.items():
         assert (v.imag == 0.0)
-        vv = numpy.float(v.real)
-        cc = numpy.float(coeff.real)
+        vv = float(v.real)
+        cc = float(coeff.real)
         assert (numpy.isclose(vv, cc, atol=1.e-4))
         checksum += vv
 
