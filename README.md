@@ -8,16 +8,17 @@ Tequila is an abstraction framework for (variational) quantum algorithms.
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
 Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.  
 
-Check out this small overview to get a glimpse on [what tequila is,](https://kottmanj.github.io/tequila-in-a-nutshell/#/)  
-or, get an overview through different slides and recordings of talks on different level of detail: See [here](https://kottmanj.github.io/talks_and_material/).  
-
-Get started with our [BasicUsage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb) Tutorial or find more in the [Tutorial collection](https://github.com/aspuru-guzik-group/tequila-tutorials)  
-
-or checkout our [overview article](https://arxiv.org/abs/2011.03057)  
+- [overview article](https://arxiv.org/abs/2011.03057)   
+- [tequila in a nutshell](https://kottmanj.github.io/tequila-in-a-nutshell/#/)  
+- [getting started](https://jakobkottmann.com/posts/tq-get-started/)    
+- [circuits in tequila](https://jakobkottmann.com/posts/tq-circuits/)  
+- [notebook collection](https://github.com/tequilahub/tequila-tutorials)  
+- [talks and slides](https://kottmanj.github.io/talks_and_material/)  
+   
 
 # Quantum Backends
 Currently supported
-- [Qulacs](https://github.com/qulacs/qulacs)
+- [Qulacs](https://github.com/qulacs/qulacs) (recommended)
 - [Qibo](https://github.com/Quantum-TII/qibo) -- currently needs to be qibo==0.1.1
 - [Qiskit](https://github.com/qiskit/qiskit)  
 - [Cirq](https://github.com/quantumlib/cirq)
