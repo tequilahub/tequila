@@ -1,7 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENCE) [![DOI](https://zenodo.org/badge/259718912.svg)](https://zenodo.org/badge/latestdoi/259718912) [![PyPI version](https://badge.fury.io/py/tequila-basic.svg)](https://badge.fury.io/py/tequila-basic) ![CI](https://github.com/tequilahub/tequila/actions/workflows/ci_basic.yml/badge.svg)
 
-![Image](https://jakobkottmann.com/tequila.png)
-
 # Tequila
 
 Tequila is an abstraction framework for (variational) quantum algorithms.  
