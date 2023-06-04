@@ -275,15 +275,15 @@ class OptimizerSciPy(Optimizer):
 
         if self.save_history:
             self.history.energies = callback.energies
-            self.history.energy_evaluations = E.history
+            self.history.energy_calls = E.history
             self.history.angles = callback.angles
-            self.history.angles_evaluations = E.history_angles
+            self.history.angles_calls = E.history_angles
             self.history.gradients = callback.gradients
             self.history.hessians = callback.hessians
             if dE is not None and not isinstance(dE, str):
-                self.history.gradients_evaluations = dE.history
+                self.history.gradient_calls = dE.history
             if ddE is not None and not isinstance(ddE, str):
-                self.history.hessians_evaluations = ddE.history
+                self.history.hessian_calls = ddE.history
 
             # some methods like "cobyla" do not support callback functions
             if len(self.history.energies) == 0:

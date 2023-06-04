@@ -93,7 +93,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     warnings.warn("MADNESS did not terminate as expected! status = {}".format(status), TequilaWarning)
                 status += str(madness_status) + "\n"
             except Exception as E:
-                status += "madness_run={}\n".format(str(E))
+                status += str(E)+"\n"
 
             # will read the binary files, convert them and save them with the right name
             h, g, pinfo= self.convert_madness_output_from_bin_to_npy(name=name, datadir=datadir)
@@ -106,15 +106,15 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             status += str(g)
             status += "pnoinfo report:\n"
             status += str(pinfo)
+
+            solution = "Solution 1: Assuming precomputed files are available:\n    provide {name}_gtensor.npy, {name}_htensor.npy and {name}_pnoinfo.txt\n    and call the Molecule constructor with n_pno='read' keyword \n\nSolution 2: Try installing with conda\n    conda install madtequila -c kottmann\n\nSolution 3: Install from source\n    follow instructions on github.com/kottmanj/madness".format(name=name)
+            if self.executable is not None:
+                solution = "madness executable was found, but calculation did not succeed, check {name}_pno_integrals.out for clues".format(name=name)
+
             if "failed" in h or "failed" in g:
                 raise TequilaMadnessException("Could not initialize the madness interface\n"
                                               "Status report is\n"
-                                              "{status}\n"
-                                              "either provide {name}_gtensor.npy and {name}_htensor.npy files\n"
-                                              "or provide the number of pnos over by giving the n_pnos keyword to run madness\n"
-                                              "in order for madness to run you need to make sure that the pno_integrals executable can be found in your environment\n"
-                                              "alternatively you can provide the path to the madness_root_dir: the directory where you compiled madness\n".format(
-                    name=name, status=status))
+                                              "{status}\n\n".format(status=status) + solution)
         # get additional information from madness file
         nuclear_repulsion = 0.0
         pairinfo = None
@@ -219,8 +219,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
     def run_madness(self, *args, **kwargs):
         if self.executable is None:
-            return "pno_integrals executable not found\n" \
-                   "pass over executable keyword or export MAD_ROOT_DIR to system environment"
+            return "\n\n----> pno_integrals executable not found <----\n\n"
         self.write_madness_input(n_pno=self.n_pno, n_virt=self.n_virt, *args, **kwargs)
 
         # prevent reading in old files

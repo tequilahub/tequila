@@ -36,10 +36,18 @@ class OptimizerHistory:
     angles: typing.List[typing.Dict[str, numbers.Number]] = field(default_factory=list)
 
     # history of all function evaluations
-    energies_calls: typing.List[numbers.Real] = field(default_factory=list)
-    gradients_calls: typing.List[typing.Dict[str, numbers.Real]] = field(default_factory=list)
+    energy_calls: typing.List[numbers.Real] = field(default_factory=list)
+    gradient_calls: typing.List[typing.Dict[str, numbers.Real]] = field(default_factory=list)
     angles_calls: typing.List[typing.Dict[str, numbers.Number]] = field(default_factory=list)
-
+    
+    # backward comp.
+    @property
+    def energies_calls(self):
+        return self.energy_calls
+    @property
+    def energies_evaluations(self):
+        return self.energy_calls
+    
     def __add__(self, other):
         """
         magic method for convenient combination of history objects.
