@@ -14,75 +14,14 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 - [circuits in tequila](https://jakobkottmann.com/posts/tq-circuits/)  
 - [notebook collection](https://github.com/tequilahub/tequila-tutorials)  
 - [talks and slides](https://kottmanj.github.io/talks_and_material/)  
-   
 
-# Quantum Backends
-Currently supported
-- [Qulacs](https://github.com/qulacs/qulacs) (recommended)
-- [Qibo](https://github.com/Quantum-TII/qibo) -- currently needs to be qibo==0.1.1
-- [Qiskit](https://github.com/qiskit/qiskit)  
-- [Cirq](https://github.com/quantumlib/cirq)
-- [PyQuil](https://github.com/rigetti/pyquil)
-- [QLM](https://atos.net/en/solutions/quantum-learning-machine) (works also whith [myQLM](https://myqlm.github.io/index.html))
+# Installation
+Recommended Python version is 3.8-3.9.   
+Tequila supports linux, osx and windows. However, not all optional dependencies are supported on windows.
 
-Tequila detects backends automatically if they are installed on your systems.
-All of them are available over standard pip installation like for example `pip install qulacs`.
-For best performance it is recommended to have `qulacs` installed.
-
-# QuantumChemistry:
-Currently supported
-## [Psi4](https://github.com/psi4/psi4).
-In a conda environment this can be installed with
-```bash
-conda install psi4 -c psi4
-```
-Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
-
-## [Madness](https://github.com/kottmanj/madness)  
-In a conda environment this can be installed with  
-```bash
-conda install madtequila -c kottmann
-```  
-This installs a modified version of madness ready to use with tequila.  
-Alternatively it can be compiled from the sources provided in this [fork](https://github.com/kottmanj/madness) (follow readme instructions there).  
-Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage.
-
-## [PySCF](https://github.com/pyscf/pyscf)  
-Install with
-```bash
-pip install pyscf
-```  
-Works similar as Psi4. Classical methods are also integrated in the madness interface allowing to use them in a basis-set-free representation.
-
-# Install from source
+## Install from PyPi
 **Do not** install like this: (Minecraft lovers excluded)
 <strike>`pip install tequila`</strike>
-
-We recommend installing in editable mode with
-```bash
-git clone https://github.com/tequilahub/tequila.git
-cd tequila
-pip install -e .
-```
-
-You can install `tequila` directly with pip over:
-```bash
-pip install git+https://github.com/tequilahub/tequila.git
-```
-Install from devel branch (most recent updates):
-```bash
-pip install git+https://github.com/tequilahub/tequila.git@devel
-```
-
-Recommended Python version is 3.7.
-Python 3.8 works, but not all (optional) dependencies support it yet (e.g. Psi4).
-Python 3.6 works, but some (optional) dependencies might have issues with numpy >= 1.20.
-
-# Install from PyPi
-**Do not** install like this:
-<strike>`pip install tequila`</strike>
-
-this will install a Minecraft server manager (might be useful for other things, but probably not what you are looking for).
 
 You can install tequila from PyPi as:
 ```bash
@@ -98,22 +37,15 @@ pip install tequila-basic
 pip install qulacs
 ```
 
-# Install with Windows
+## Install from github 
+You can install `tequila` directly with pip over:
 ```bash
-pip install git+https://github.com/tequilahub/tequila.git@windows
+pip install git+https://github.com/tequilahub/tequila.git
 ```
-See also the troubleshooting below if you want to tweak things manually.  
-The command above will not install the qulacs simulator.  
-You can install it on windows OS, but you need to have cmake and c++ compilers ready (can be installed for example over visual studio).  
-Of course you can also use one of the other backends (see above).  
-
-# Getting Started
-We have a collection of [*tutorials*](https://github.com/tequilahub/tequila-tutorials) covering basic usage of tequila as well as cutting edge research content:
-- Tutorial on [Basic Usage](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/BasicUsage.ipynb)  
-- Chemistry tutorial with psi4: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb)
-- Chemistry tutorial with madness: see [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)
-- check the list of research projects below for links to specific examples.  
-- all tutorials: [github/tequilahub/tequila-tutorials](https://github.com/tequilahub/tequila-tutorials).  
+Install from devel branch (most recent updates):
+```bash
+pip install git+https://github.com/tequilahub/tequila.git@devel
+```
 
 ## Tequila Hello World
 ```python
@@ -138,13 +70,8 @@ result.history.plot("angles")
 result.history.plot("gradients")
 ```
 
-## Chemistry Hello World (Madness backend)  
-Install backend as
-```bash
-conda install madtequila -c kottmann
-```  
-or see above for more.    
-more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb)  
+## Chemistry Hello World (Madness backend)   
+see below for installation of dependencies  
 ```python
 import tequila as tq
 
@@ -165,7 +92,7 @@ E = tq.ExpectationValue(H=H, U=U)
 result = tq.minimize(E)
 
 # optional:compute classical reference energies
-# needs pyscf
+# needs pyscf as well
 cisd = mol.compute_energy("cisd")
 fci = mol.compute_energy("fci")
 
@@ -176,23 +103,17 @@ print("FCI : {:+2.8}f".format(fci))
 ```
 
 ## Chemistry Hello World (Psi4 or PySCF backend)
-install backends with
-```bash
-pip install pyscf
-# and/or
-conda install psi4 -c psi4 
-```
-more info [here](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb)
+see below for installation of dependencies  
 ```python
 # define a molecule within an active space
-active = {"a1": [1], "b1":[0]}
+active_orbitals=[1,2,5]
 molecule = tq.quantumchemistry.Molecule(geometry="lih.xyz", basis_set='6-31g', active_orbitals=active, transformation="bravyi-kitaev")
 
 # get the qubit hamiltonian
 H = molecule.make_hamiltonian()
 
 # create an k-UpCCGSD circuit of order k
-U = molecule.make_upccgsd_ansatz(order=1, include_singles=True)
+U = molecule.make_ansatz(name="UpCCGSD")
 
 # define the expectationvalue
 E = tq.ExpectationValue(H=H, U=U)
@@ -205,7 +126,6 @@ cisd = molecule.compute_energy("detci", options={"detci__ex_level": 2})
 result = tq.minimize(objective=E, method="BFGS", initial_values=0.0)
 
 print("VQE : {:+2.8}f".format(result.energy))
-print("CISD: {:+2.8}f".format(cisd))
 print("FCI : {:+2.8}f".format(fci))
 ```
 
@@ -319,6 +239,44 @@ Tequila will then detect them automatically.
 Currently those are: [Phoenics](https://github.com/aspuru-guzik-group/phoenics)
  and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).
 Quantum backends are treated in the same way.
+
+## Quantum Backends
+Currently supported
+- [Qulacs](https://github.com/qulacs/qulacs) (recommended)
+- [Qibo](https://github.com/Quantum-TII/qibo) -- currently needs to be qibo==0.1.1
+- [Qiskit](https://github.com/qiskit/qiskit)  
+- [Cirq](https://github.com/quantumlib/cirq)
+- [PyQuil](https://github.com/rigetti/pyquil)
+- [QLM](https://atos.net/en/solutions/quantum-learning-machine) (works also whith [myQLM](https://myqlm.github.io/index.html))
+
+Tequila detects backends automatically if they are installed on your systems.
+All of them are available over standard pip installation like for example `pip install qulacs`.
+For best performance it is recommended to have `qulacs` installed.
+
+## QuantumChemistry:
+Currently supported
+### [Psi4](https://github.com/psi4/psi4).
+In a conda environment this can be installed with
+```bash
+conda install psi4 -c psi4
+```
+Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
+
+### [Madness](https://github.com/kottmanj/madness)  
+In a conda environment this can be installed with  
+```bash
+conda install madtequila -c kottmann
+```  
+This installs a modified version of madness ready to use with tequila.  
+Alternatively it can be compiled from the sources provided in this [fork](https://github.com/kottmanj/madness) (follow readme instructions there).  
+Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/MadnessInterface.ipynb) that illustrates the usage. For fast performance it is recommended to not use the conda package.
+
+### [PySCF](https://github.com/pyscf/pyscf)  
+Install with
+```bash
+pip install pyscf
+```  
+Works similar as Psi4. Classical methods are also integrated in the madness interface allowing to use them in a basis-set-free representation.
 
 # Documentation
 You can build the documentation by navigating to `docs` and entering `make html`.
