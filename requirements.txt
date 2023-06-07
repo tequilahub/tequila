@@ -4,7 +4,7 @@ scipy >= 1.5 # can in principle be smaller, we recommend >= 1.5 for consistency 
 sympy
 #jax
 #jaxlib
-autograd # use if jaxlib gives you trouble (e.g. on Windows), make sure jax and jaxlib are uninstalled and install autograd
+autograd # autograd works better on OSX-ARM64 (M1 and M2) and Windows, feel free to try jax however (no big differences)
 setuptools
 pytest
 openfermion ~= 1.0 # can not be smaller than 1.0 
