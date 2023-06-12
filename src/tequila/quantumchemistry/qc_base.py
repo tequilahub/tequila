@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from tequila import TequilaException, BitString, TequilaWarning
 from tequila.hamiltonian import QubitHamiltonian
 
-from tequila.hamiltonian.paulis import Sp, Sm
+from tequila.hamiltonian.paulis import Sp, Sm, Zero
 
 from tequila.circuit import QCircuit, gates
 from tequila.objective.objective import Variable, Variables, ExpectationValue
@@ -1584,7 +1584,7 @@ class QuantumChemistryBase:
             return None
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", make_hbc = False):
+                     get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -1616,14 +1616,9 @@ class QuantumChemistryBase:
         Returns
         -------
         """
-
-        if make_hcb:
-            raise TequilaException("HCB-RDM not implemented yet")
-
         # Check whether unitary circuit is not 0
         if U is None:
             raise TequilaException('Need to specify a Quantum Circuit.')
-
         # Check whether transformation is BKSF.
         # Issue here: when a single operator acts only on a subset of qubits, BKSF might not yield the correct
         # transformation, because it computes the number of qubits incorrectly in this case.
@@ -1631,7 +1626,10 @@ class QuantumChemistryBase:
         if type(self.transformation).__name__ == "BravyiKitaevFast":
             raise TequilaException(
                 "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet.")
-
+        if (use_hcb and not self.transformation.up_then_down):
+            warnings.warn(
+                "Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency",
+                TequilaWarning)
         # Set up number of spin-orbitals and molecular orbitals respectively
         n_SOs = 2 * self.n_orbitals
         n_MOs = self.n_orbitals
@@ -1639,6 +1637,25 @@ class QuantumChemistryBase:
         # Check whether unitary circuit is not 0
         if U is None:
             raise TequilaException('Need to specify a Quantum Circuit.')
+
+        def _get_of_op_hcb(op_tuple):
+            '''Build b^\dagger_ib_j + h.c. '''
+            if (len(op_tuple) == 2):
+                return 2 * Sm(op_tuple[0][0]) * Sp(op_tuple[1][0])
+            elif (len(op_tuple) == 4):
+                if ((op_tuple[0][0] == op_tuple[1][0]) and (op_tuple[2][0] == op_tuple[3][0])):  # iijj
+                    if (op_tuple[0][0] != op_tuple[2][0]):
+                        return Sm(op_tuple[0][0]) * Sp(op_tuple[2][0]) + Sp(op_tuple[0][0]) * Sm(op_tuple[2][0])
+                    else:
+                        return 2 * Sm(op_tuple[0][0]) * Sp(op_tuple[2][0])
+                if ((op_tuple[0][0] == op_tuple[2][0]) and (op_tuple[1][0] == op_tuple[3][0]) and (
+                        op_tuple[0][0] != op_tuple[1][0]) and (op_tuple[2][0] != op_tuple[3][0])):
+                    return 2 * Sm(op_tuple[0][0]) * Sm(op_tuple[1][0]) * Sp(op_tuple[2][0]) * Sp(op_tuple[3][0])
+                if ((op_tuple[0][0] == op_tuple[3][0]) and (op_tuple[1][0] == op_tuple[2][0]) and (
+                        op_tuple[0][0] != op_tuple[1][0]) and (op_tuple[2][0] != op_tuple[3][0])):
+                    return 2 * Sm(op_tuple[0][0]) * Sm(op_tuple[1][0]) * Sp(op_tuple[2][0]) * Sp(op_tuple[3][0])
+            else:
+                return Zero()
 
         def _get_of_op(operator_tuple):
             """ Returns operator given by a operator tuple as OpenFermion - Fermion operator """
@@ -1722,9 +1739,7 @@ class QuantumChemistryBase:
                     op_tuple = ((2 * p + 1, 1), (2 * q + 1, 1), (2 * s + 1, 0), (2 * r + 1, 0)) if (
                             p != q and r != s) else '0.0 []'
                     op += _get_of_op(op_tuple)
-
                     ops += [op]
-
             return ops
 
         def _assemble_rdm1(evals) -> numpy.ndarray:
@@ -1787,17 +1802,60 @@ class QuantumChemistryBase:
 
             return rdm2
 
+        def _build_1bdy_operators_hcb() -> list:
+            """ Returns hcb one-body operators as a symmetry-reduced list of QubitHamiltonians """
+            # Exploit symmetry pq = qp (not changed by spin-summation)
+            ops = []
+            for p in range(n_MOs):
+                for q in range(p + 1):
+                    if (p == q):
+                        if (n_MOs):
+                            op_tuple = ((p, 1), (p, 0))
+                            op = _get_of_op_hcb(op_tuple)
+                        else:
+                            op_tuple = ((2 * p, 1), (2 * p, 0))
+                            op = _get_of_op_hcb(op_tuple)
+                        ops += [op]
+                    else:
+                        ops += [Zero()]
+            return ops
+
+        def _build_2bdy_operators_hcb() -> list:
+            """ Returns hcb two-body operators as a symmetry-reduced list of QubitHamiltonians """
+            # Exploit symmetries pqrs = qpsr (due to spin summation, '-pqsr = -qprs' drops out)
+            #                and      = rspq
+            ops = []
+            for p, q, r, s in product(range(n_MOs), repeat=4):
+                if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
+                    # Spin aaaa+ bbbb dont allow p=q=r=s  orb ijji
+                    op_tuple = ((p, 1), (q, 1), (r, 0), (s, 0)) if (
+                            p != q and r != s and p == s and q == r) else '0.0 []'
+                    op = _get_of_op_hcb(op_tuple)
+                    # Spin abba+ baab allow p=q=r=s orb iijj
+                    op_tuple = ((p, 1), (q, 1), (r, 0), (s, 0)) if (p == q and s == r) else '0.0 []'
+                    op += _get_of_op_hcb(op_tuple)
+                    # Spin abba+ baab dont allow p=q=r=s orb ijij
+                    op_tuple = ((p, 1), (q, 1), (r, 0), (s, 0)) if (
+                            p != q and r != s and p == r and s == q) else '0.0 []'
+                    op += _get_of_op_hcb(op_tuple)
+                    ops += [op]
+            return ops
+
         # Build operator lists
         qops = []
-        if spin_free:
+        if spin_free and not use_hcb:
             qops += _build_1bdy_operators_spinfree() if get_rdm1 else []
             qops += _build_2bdy_operators_spinfree() if get_rdm2 else []
+        elif use_hcb:
+            qops += _build_1bdy_operators_hcb() if get_rdm1 else []
+            qops += _build_2bdy_operators_hcb() if get_rdm2 else []
         else:
             qops += _build_1bdy_operators_spinful() if get_rdm1 else []
             qops += _build_2bdy_operators_spinful() if get_rdm2 else []
 
         # Transform operator lists to QubitHamiltonians
-        qops = [_get_qop_hermitian(op) for op in qops]
+        if (not use_hcb):
+            qops = [_get_qop_hermitian(op) for op in qops]
         # Compute expected values
         evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
 
@@ -1805,7 +1863,7 @@ class QuantumChemistryBase:
         # If self._rdm1, self._rdm2 exist, reset them if they are of the other spin-type
         def _reset_rdm(rdm):
             if rdm is not None:
-                if spin_free and rdm.shape[0] != n_MOs:
+                if (spin_free or use_hcb) and rdm.shape[0] != n_MOs:
                     return None
                 if not spin_free and rdm.shape[0] != n_SOs:
                     return None
@@ -1815,13 +1873,13 @@ class QuantumChemistryBase:
         self._rdm2 = _reset_rdm(self._rdm2)
         # Split expectation values in 1- and 2-particle expectation values
         if get_rdm1:
-            len_1 = n_MOs * (n_MOs + 1) // 2 if spin_free else n_SOs * (n_SOs + 1) // 2
+            len_1 = n_MOs * (n_MOs + 1) // 2 if (spin_free or use_hcb) else n_SOs * (n_SOs + 1) // 2
         else:
             len_1 = 0
         evals_1, evals_2 = evals[:len_1], evals[len_1:]
         # Build matrices using the expectation values
         self._rdm1 = _assemble_rdm1(evals_1) if get_rdm1 else self._rdm1
-        if spin_free:
+        if spin_free or use_hcb:
             self._rdm2 = _assemble_rdm2_spinfree(evals_2) if get_rdm2 else self._rdm2
         else:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
