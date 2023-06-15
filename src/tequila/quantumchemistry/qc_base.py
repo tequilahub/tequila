@@ -556,7 +556,7 @@ class QuantumChemistryBase:
         else:
             integral_manager = copy.deepcopy(self.integral_manager)
             integral_manager.transform_to_native_orbitals()
-            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, orbital_type="native")
+            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, orbital_type="native", transformation=self.transformation)
             return result
 
 
