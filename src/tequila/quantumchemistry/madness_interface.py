@@ -500,6 +500,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         continue
                     idx = self.format_excitation_indices([(x.idx, a.idx)])
                     U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
+
+        if not self.transformation.up_then_down:
+            alpha_map = {k.idx:self.transformation.up(k.idx) for k in self.orbitals}
+            U = U.map_qubits(alpha_map)
+
         return U
 
     def make_upccgsd_indices(self, label=None, name="UpCCGD", exclude: list = None, *args, **kwargs):
