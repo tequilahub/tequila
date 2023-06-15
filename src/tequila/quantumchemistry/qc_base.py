@@ -11,19 +11,20 @@ from tequila.objective.objective import Variable, Variables, ExpectationValue
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
 from .chemistry_tools import ActiveSpaceData, FermionicGateImpl, prepare_product_state, ClosedShellAmplitudes, \
-    Amplitudes, ParametersQC, NBodyTensor, IntegralManager, OrbitalData
+    Amplitudes, ParametersQC, NBodyTensor, IntegralManager
 
 from .encodings import known_encodings
 
 import typing, numpy, numbers
 from itertools import product
 
-# if you are experiencing import errors you need to update openfermion
-# required is version >= 1.0
-# otherwise replace with from openfermion.hamiltonians import MolecularData
-import openfermion
+
 
 try:
+    # if you are experiencing import errors you need to update openfermion
+    # required is version >= 1.0
+    # otherwise replace with from openfermion.hamiltonians import MolecularData
+    import openfermion
     from openfermion.chem import MolecularData
 except:
     try:
@@ -199,9 +200,8 @@ class QuantumChemistryBase:
             1j*Transformed qubit excitation operator, depends on self.transformation
         """
 
-        if type(self.transformation).__name__ == "BravyiKitaevFast":
-            raise TequilaException(
-                "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet")
+        if not self.supports_ucc():
+            raise TequilaException("Molecule with transformation {} does not support general UCC operations".format(self.transformation))
 
         # check indices and convert to list of tuples if necessary
         if len(indices) == 0:
@@ -414,6 +414,10 @@ class QuantumChemistryBase:
                 Assume that the wavefunction will always stay real.
                 Will reduce potential gradient costs by a factor of 2
         """
+
+        if not self.supports_ucc():
+            raise TequilaException("Molecule with transformation {} does not support general UCC operations".format(self.transformation))
+
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
 
