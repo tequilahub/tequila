@@ -491,15 +491,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         c = [a.idx, a.idx]
                     else:
                         c = [x.idx, x.idx]
+
+            alpha_map = {k.idx: self.transformation.up(k.idx) for k in self.orbitals}
+            U = U.map_qubits(alpha_map)
         else:
             for x in pairs:
                 if include_reference:
-                    U += gates.X(x.idx)
+                    U += gates.X(self.transformation.up(x.idx))
                 for a in self.get_pair_orbitals(i=x, j=x):
                     if x == a:
                         continue
                     idx = self.format_excitation_indices([(x.idx, a.idx)])
                     U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
+
         return U
 
     def make_upccgsd_indices(self, label=None, name="UpCCGD", exclude: list = None, *args, **kwargs):
