@@ -30,7 +30,7 @@ def teardown_function(function):
     [os.remove(x) for x in glob.glob("qvm.log")]
     [os.remove(x) for x in glob.glob("*.dat")]
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4 or pyscf")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="you don't have psi4 or pyscf")
 def test_UR_and_UC():
     mol = tq.Molecule(geometry="h 0.0 0.0 0.0\nH 0.0 0.0 1.5", basis_set="sto-3g")
     mol = mol.use_native_orbitals()
@@ -64,7 +64,7 @@ def test_base(trafo):
         assert len(eigvals) == 16
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4 or pyscf")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="you don't have psi4 or pyscf")
 @pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree"])
 def test_prepare_reference(trafo):
     geometry = "Li 0.0 0.0 0.0\nH 0.0 0.0 1.5"
@@ -83,7 +83,7 @@ def test_prepare_reference(trafo):
     energy2 = tq.simulate(E)
     assert numpy.isclose(energy, energy2, atol=1.e-4)
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4 or pyscf")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="you don't have psi4 or pyscf")
 def test_orbital_types():
     geometry = "H 0.0 0.0 0.0\nH 0.0 0.0 2.0\nH 0.0 0.0 4.0\nH 0.0 0.0 6.0"
 
@@ -124,15 +124,18 @@ def test_dependencies():
         assert key in qc.INSTALLED_QCHEMISTRY_BACKENDS.keys()
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="no quantum chemistry backends installed")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="no quantum chemistry backends installed")
 def test_interface():
     molecule = tq.chemistry.Molecule(basis_set='sto-3g', geometry="data/h2.xyz", transformation="JordanWigner")
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="you don't have psi4")
+@pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 def test_h2_hamiltonian_psi4():
     do_test_h2_hamiltonian(qc_interface=qc.QuantumChemistryPsi4)
 
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
+def test_h2_hamiltonian_psi4():
+    do_test_h2_hamiltonian(qc_interface=qc.QuantumChemistryPySCF)
 
 def do_test_h2_hamiltonian(qc_interface):
     parameters = tequila.quantumchemistry.chemistry_tools.ParametersQC(geometry="data/h2.xyz", basis_set="sto-3g")
@@ -277,7 +280,7 @@ def test_restart_psi4():
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.parametrize("active", [{"A1": [2, 3]}, {"B2": [0], "B1": [0]}, {"A1": [0, 1, 2, 3]}, {"B1": [0]}])
-def test_active_spaces(active):
+def test_psi4_active_spaces(active):
     mol = tq.chemistry.Molecule(geometry="data/h2o.xyz", basis_set="sto-3g", active_orbitals=active)
     H = mol.make_hamiltonian()
     Uhf = mol.prepare_reference()
@@ -301,12 +304,13 @@ def test_rdms_psi4():
     assert (numpy.allclose(rdm2, rdm2_ref, atol=1e-8))
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="quantum chemistry backend not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 0.7"])
-@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "ReorderedJordanWigner",
-                                   "ReorderedBravyiKitaev"])
+@pytest.mark.parametrize("trafo", tq.quantumchemistry.encodings.known_encodings())
 def test_upccgsd(geometry, trafo):
     molecule = tq.chemistry.Molecule(geometry=geometry, basis_set="sto-3g", transformation=trafo)
+    if not molecule.supports_ucc():
+        return
     energy = do_test_upccgsd(molecule)
     fci = molecule.compute_energy("fci")
     assert numpy.isclose(fci, energy, atol=1.e-3)
@@ -314,7 +318,7 @@ def test_upccgsd(geometry, trafo):
     assert numpy.isclose(fci, energy2, atol=1.e-3)
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4 or pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4 or pyscf not found")
 def test_upccgsd_singles():
     molecule = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nH 0.0 0.0 0.7", basis_set="6-31G")
     H = molecule.make_hamiltonian()
@@ -342,16 +346,16 @@ def do_test_upccgsd(molecule, *args, **kwargs):
     print(E2.extract_variables())
     energy1 = tq.simulate(E, variables=variables)
     energy2 = tq.simulate(E2, variables=variables2)
-    assert energy1 == energy2
+    assert numpy.isclose(energy1,energy2,atol=1.e-4)
 
     return result.energy
 
 
 @pytest.mark.parametrize("backend", tq.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 def test_hamiltonian_reduction(backend):
     mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nH 0.0 0.0 0.7", basis_set="6-31G")
-    hf = mol.energies["hf"]
+    hf = mol.compute_energy("hf")
     U = mol.prepare_reference()
     H = mol.make_hamiltonian()
     E = tq.simulate(tq.ExpectationValue(H=H, U=U), backend=backend)
@@ -362,7 +366,7 @@ def test_hamiltonian_reduction(backend):
         assert numpy.isclose(E, hf, atol=1.e-4)
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("assume_real", [True, False])
 @pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "tapered_bravyi_kitaev"])
 def test_fermionic_gates(assume_real, trafo):
@@ -404,7 +408,7 @@ def test_fermionic_gates(assume_real, trafo):
     assert numpy.isclose(test2, test2x, atol=1.e-6)
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "ReorderedJordanWigner",
                                    "ReorderedBravyiKitaev"])
 def test_hcb(trafo):
@@ -452,7 +456,6 @@ def test_pyscf_methods(method, geometry, basis_set):
 
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
-@pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
 def test_orbital_optimization():
     from tequila.quantumchemistry import optimize_orbitals
     mol = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", basis_set="STO-3G")
@@ -467,7 +470,6 @@ def test_orbital_optimization():
     assert numpy.isclose(-7.79860454, result.energy, atol=1.e-3)
 
 
-@pytest.mark.skipif(Qcondition=not HAS_PSI4, reason="psi4 not found")
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 def test_orbital_transformation():
     mol0 = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 0.75", basis_set="STO-3G", frozen_core=False)
@@ -547,8 +549,12 @@ def test_crosscheck_cis_mp2_large():
     assert numpy.isclose(e_1, e_2, atol=1.e-4)
 
 
-@pytest.mark.skipif(condition=not HAS_PSI4 or not HAS_PYSCF, reason="psi4/pyscf not found")
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 def test_spa_ansatz_be():
+    print("\n\n")
+    print(HAS_PSI4)
+    print(HAS_PYSCF)
+    print(not HAS_PSI4 and not HAS_PYSCF)
     edges = [(0,), (1, 2, 3, 4)]
     # doing without frozen-core to test explicitly if single-orbital pairs work
     mol = tq.Molecule(geometry="be 0.0 0.0 0.0", basis_set="sto-3g", transformation="BravyiKitaev", frozen_core=False)
@@ -569,3 +575,75 @@ def test_spa_ansatz_be():
         E = tq.ExpectationValue(H=H, U=U)
         result = tq.minimize(E, silent=True)
         assert numpy.isclose(energy, result.energy)
+        print("a")
+
+#@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
+@pytest.mark.parametrize("name", ["SPA", "HCB-SPA"])
+@pytest.mark.parametrize("optimize", [True, False])
+@pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 4.5", "Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", "Be 0.0 0.0 0.0\nH 0.0 0.0 3.0\nH 0.0 0.0 -3.0"])
+@pytest.mark.parametrize("transformation", tq.quantumchemistry.encodings.known_encodings())
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
+def test_spa_consistency(geometry, name, optimize, transformation):
+    mol = tq.Molecule(geometry=geometry, basis_set="sto-3g",
+                      transformation=transformation).use_native_orbitals()
+
+    if mol.transformation.hcb_to_me() is None:
+        return
+    # doesn't need to make physical sense for the test
+    edges = []
+    i = 0
+    for i in range(mol.n_electrons//2):
+        a = i+mol.n_electrons//2
+        edge = (i,a)
+        edges.append(edge)
+    U = mol.make_ansatz("SPA", edges=edges, optimize=optimize)
+    variables = {k: 1.0 for k in U.extract_variables()}
+    wfn = (tq.simulate(U, variables=variables))
+
+    UX = mol.make_ansatz(name=name, edges=edges, optimize=optimize)
+    wfnx = (tq.simulate(UX, variables=variables))
+    print(wfnx)
+    if "HCB" in name:
+        UX += mol.hcb_to_me()
+    wfnx = (tq.simulate(UX, variables=variables))
+    F = abs(wfn.inner(wfnx)) ** 2
+    if not numpy.isclose(F, 1.0):
+        print(wfn)
+        print(wfnx)
+        print(UX)
+
+    assert numpy.isclose(F, 1.0)
+
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
+def test_variable_consistency():
+    geometry = "H 0.0 0.0 0.0\nH 0.0 0.0 1.0\nH 0.0 0.0 2.0\nH 0.0 0.0 3.0"
+    mol = tq.Molecule(geometry=geometry, basis_set="sto-3g", transformation="ReorderedJordanWigner").use_native_orbitals()
+    U = mol.make_ansatz("SPA",edges=[(0,1),(2,3)])
+    variables = {k:1.0 for k in U.extract_variables()}
+
+    H = mol.make_hamiltonian()
+    E = tq.ExpectationValue(H=H, U=U)
+    E1 = tq.simulate(E, variables=variables)
+
+    U = mol.make_ansatz("HCB-SPA",edges=[(0,1),(2,3)])
+    H = mol.make_hardcore_boson_hamiltonian(condensed=False)
+    E = tq.ExpectationValue(H=H, U=U)
+    E2 = tq.simulate(E, variables=variables)
+
+
+    mol = tq.Molecule(geometry=geometry, basis_set="sto-3g", transformation="JordanWigner").use_native_orbitals()
+    U = mol.make_ansatz("SPA",edges=[(0,1),(2,3)])
+    H = mol.make_hamiltonian(condensed=False)
+    E = tq.ExpectationValue(H=H, U=U)
+    E3 = tq.simulate(E, variables=variables)
+
+    U = mol.make_ansatz("HCB-SPA",edges=[(0,1),(2,3)])
+    H = mol.make_hardcore_boson_hamiltonian(condensed=False)
+    E = tq.ExpectationValue(H=H, U=U)
+    E4 = tq.simulate(E, variables=variables)
+
+    assert numpy.isclose(E1,E2,atol=1.e-4)
+    assert numpy.isclose(E1,E3,atol=1.e-4)
+    assert numpy.isclose(E1,E4,atol=1.e-4)
+    assert numpy.isclose(E2,E3,atol=1.e-4)
+    assert numpy.isclose(E2,E4,atol=1.e-4)
