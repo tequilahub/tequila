@@ -65,7 +65,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         if filename is not None:
             callist.append("outfile={}".format(filename))
-        for k, v in kwargs:
+        for k, v in kwargs.items():
             callist.append("{}={}".format(k, v))
         for k in args:
             callist.append("{}".format(k))
