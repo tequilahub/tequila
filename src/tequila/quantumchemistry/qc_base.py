@@ -1670,8 +1670,8 @@ class QuantumChemistryBase:
         if U is None:
             raise TequilaException('Need to specify a Quantum Circuit.')
 
-        def _get_of_op_hcb(op_tuple):
-            '''Build b^\dagger_ib_j + h.c. '''
+        def _get_hcb_op(op_tuple):
+            '''Build the hardcore boson operators: b^\dagger_ib_j + h.c. in qubit encoding '''
             if (len(op_tuple) == 2):
                 return 2 * Sm(op_tuple[0][0]) * Sp(op_tuple[1][0])
             elif (len(op_tuple) == 4):
@@ -1841,12 +1841,12 @@ class QuantumChemistryBase:
             for p in range(n_MOs):
                 for q in range(p + 1):
                     if (p == q):
-                        if (n_MOs):
+                        if (self.transformation.up_then_down):
                             op_tuple = ((p, 1), (p, 0))
-                            op = _get_of_op_hcb(op_tuple)
+                            op = _get_hcb_op(op_tuple)
                         else:
                             op_tuple = ((2 * p, 1), (2 * p, 0))
-                            op = _get_of_op_hcb(op_tuple)
+                            op = _get_hcb_op(op_tuple)
                         ops += [op]
                     else:
                         ops += [Zero()]
@@ -1857,19 +1857,22 @@ class QuantumChemistryBase:
             # Exploit symmetries pqrs = qpsr (due to spin summation, '-pqsr = -qprs' drops out)
             #                and      = rspq
             ops = []
+            scale = 2
+            if self.transformation.up_then_down:
+                scale=1
             for p, q, r, s in product(range(n_MOs), repeat=4):
                 if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
                     # Spin aaaa+ bbbb dont allow p=q=r=s  orb ijji
-                    op_tuple = ((p, 1), (q, 1), (r, 0), (s, 0)) if (
+                    op_tuple = ((scale*p, 1), (scale*q, 1), (scale*r, 0), (scale*s, 0)) if (
                             p != q and r != s and p == s and q == r) else '0.0 []'
-                    op = _get_of_op_hcb(op_tuple)
+                    op = _get_hcb_op(op_tuple)
                     # Spin abba+ baab allow p=q=r=s orb iijj
-                    op_tuple = ((p, 1), (q, 1), (r, 0), (s, 0)) if (p == q and s == r) else '0.0 []'
-                    op += _get_of_op_hcb(op_tuple)
+                    op_tuple = ((scale*p, 1), (scale*q, 1), (scale*r, 0), (scale*s, 0)) if (p == q and s == r) else '0.0 []'
+                    op += _get_hcb_op(op_tuple)
                     # Spin abba+ baab dont allow p=q=r=s orb ijij
-                    op_tuple = ((p, 1), (q, 1), (r, 0), (s, 0)) if (
+                    op_tuple = ((scale*p, 1), (scale*q, 1), (scale*r, 0), (scale*s, 0)) if (
                             p != q and r != s and p == r and s == q) else '0.0 []'
-                    op += _get_of_op_hcb(op_tuple)
+                    op += _get_hcb_op(op_tuple)
                     ops += [op]
             return ops
 
@@ -1882,6 +1885,8 @@ class QuantumChemistryBase:
             qops += _build_1bdy_operators_hcb() if get_rdm1 else []
             qops += _build_2bdy_operators_hcb() if get_rdm2 else []
         else:
+            if use_hcb:
+                raise TequilaException("compute_rdms: spin_free={} and use_hcb={} are not compatible".format(spin_free,use_hcb))
             qops += _build_1bdy_operators_spinful() if get_rdm1 else []
             qops += _build_2bdy_operators_spinful() if get_rdm2 else []
 
