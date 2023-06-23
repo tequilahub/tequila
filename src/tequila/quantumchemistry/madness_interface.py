@@ -37,6 +37,47 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             executable = shutil.which("{}/src/apps/pno/pno_integrals".format(madness_root_dir))
         return executable
 
+    def plot2cube(self, orbital, filename=None, *args, **kwargs):
+        """
+        plot orbitals to cube file (needs madtequila backend installed)
+        Parameters
+        ----------
+        method: orbital, the orbital index (starting from 0 on the active orbitals)
+                if you want to plot frozen orbitals you can hand in a Tequila Orbital structure with idx_total defined
+        filename: name of the cubefile (default: mra_orbital_X.cube where X is the total index of the active orbital)
+        args: further arguments for plot2cube
+        kwargs further keyword arguments for plot2cube
+
+        see here for more https://github.com/kottmanj/madness/tree/tequila/src/apps/plot
+        """
+
+        plot2cube = shutil.which("plot2cube")
+        if plot2cube is None:
+            raise TequilaMadnessException(
+                "can't plot to cube file. Couldn't find plot2cube executable.\n\nTry installing\n\t conda install madtequila -c kottmann\nand assure the version is >2.3")
+
+        if hasattr(orbital,"idx"):
+            idx = orbital.idx
+        else:
+            idx = self.orbitals[orbital].idx_total
+
+        callist = [plot2cube, "file=mra_orbital_{}".format(idx)]
+
+        if filename is not None:
+            callist.append("outfile={}".format(filename))
+        for k, v in kwargs.items():
+            callist.append("{}={}".format(k, v))
+        for k in args:
+            callist.append("{}".format(k))
+
+        import subprocess
+        try:
+            with open("plot2cube_{}.log".format(orbital), "w") as logfile:
+                subprocess.call(callist, stdout=logfile)
+        except:
+            print("plotting failed ....")
+            print("see plot2cube_{}.log".format(orbital))
+
     def __init__(self, parameters: ParametersQC,
                  transformation: typing.Union[str, typing.Callable] = None,
                  active_orbitals: list = "auto",
@@ -93,10 +134,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     warnings.warn("MADNESS did not terminate as expected! status = {}".format(status), TequilaWarning)
                 status += str(madness_status) + "\n"
             except Exception as E:
-                status += str(E)+"\n"
+                status += str(E) + "\n"
 
             # will read the binary files, convert them and save them with the right name
-            h, g, pinfo= self.convert_madness_output_from_bin_to_npy(name=name, datadir=datadir)
+            h, g, pinfo = self.convert_madness_output_from_bin_to_npy(name=name, datadir=datadir)
             status += "found {}_htensor.npy={}\n".format(name, "failed" not in h)
             status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
             status += "found {}_pnoinfo.txt={}\n".format(name, "failed" not in pinfo)
@@ -107,9 +148,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             status += "pnoinfo report:\n"
             status += str(pinfo)
 
-            solution = "Solution 1: Assuming precomputed files are available:\n    provide {name}_gtensor.npy, {name}_htensor.npy and {name}_pnoinfo.txt\n    and call the Molecule constructor with n_pno='read' keyword \n\nSolution 2: Try installing with conda\n    conda install madtequila -c kottmann\n\nSolution 3: Install from source\n    follow instructions on github.com/kottmanj/madness".format(name=name)
+            solution = "Solution 1: Assuming precomputed files are available:\n    provide {name}_gtensor.npy, {name}_htensor.npy and {name}_pnoinfo.txt\n    and call the Molecule constructor with n_pno='read' keyword \n\nSolution 2: Try installing with conda\n    conda install madtequila -c kottmann\n\nSolution 3: Install from source\n    follow instructions on github.com/kottmanj/madness".format(
+                name=name)
             if self.executable is not None:
-                solution = "madness executable was found, but calculation did not succeed, check {name}_pno_integrals.out for clues".format(name=name)
+                solution = "madness executable was found, but calculation did not succeed, check {name}_pno_integrals.out for clues".format(
+                    name=name)
 
             if "failed" in h or "failed" in g:
                 raise TequilaMadnessException("Could not initialize the madness interface\n"
@@ -142,12 +185,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         if pairinfo is None:
             raise TequilaMadnessException("Pairinfo from madness calculation not found\nPlease provide pnoinfo.txt")
-        
+
         n_orbitals_total = h.shape[0]
         if "n_orbitals" in kwargs:
             # this would be the active orbitals
             kwargs.pop("n_orbitals")
-            
+
         assert h.shape[1] == n_orbitals_total
         assert sum(g.shape) == 4 * n_orbitals_total
         assert len(g.shape) == 4
@@ -491,15 +534,19 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                         c = [a.idx, a.idx]
                     else:
                         c = [x.idx, x.idx]
+
+            alpha_map = {k.idx: self.transformation.up(k.idx) for k in self.orbitals}
+            U = U.map_qubits(alpha_map)
         else:
             for x in pairs:
                 if include_reference:
-                    U += gates.X(x.idx)
+                    U += gates.X(self.transformation.up(x.idx))
                 for a in self.get_pair_orbitals(i=x, j=x):
                     if x == a:
                         continue
                     idx = self.format_excitation_indices([(x.idx, a.idx)])
                     U += self.make_hardcore_boson_excitation_gate(indices=idx, angle=(idx, "D", label))
+
         return U
 
     def make_upccgsd_indices(self, label=None, name="UpCCGD", exclude: list = None, *args, **kwargs):
@@ -611,18 +658,20 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         n_pairs = n_electrons // 2
         if n_orbitals is None:
             n_orbitals = n_electrons  # minimal correlated (each active pair will have one virtual)
-        
+
         if n_pno is None:
             n_pno = n_orbitals - n_pairs
 
         if maxrank is None:
             # need at least maxrank=1, otherwise no PNOs are computed
             # this was a bug in <=v1.8.5 
-            maxrank = max(1,int(numpy.ceil(n_pno // n_pairs)))
-        
-        if maxrank<=0:
-            warnings.warn("maxrank={} in tequila madness backend! No PNOs will be computed. Set the value when initializing the Molecule as tq.Molecule(..., pno={\"maxrank\":1, ...})".format(maxrank), TequilaWarning)
-        
+            maxrank = max(1, int(numpy.ceil(n_pno // n_pairs)))
+
+        if maxrank <= 0:
+            warnings.warn(
+                "maxrank={} in tequila madness backend! No PNOs will be computed. Set the value when initializing the Molecule as tq.Molecule(..., pno={\"maxrank\":1, ...})".format(
+                    maxrank), TequilaWarning)
+
         data = {}
         if self.parameters.multiplicity != 1:
             raise TequilaMadnessException(

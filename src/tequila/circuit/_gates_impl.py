@@ -180,18 +180,18 @@ class ParametrizedGateImpl(QGateImpl, ABC):
 
     def __init__(self, name, parameter: UnionParam, target: UnionList, control: UnionList = None,
                 generator: QubitHamiltonian = None):
-        super().__init__(name=name, target=target, control=control, generator=generator)
         # failsafe
         if hasattr(parameter, "shape") and parameter.shape not in [tuple()]: # take care of new numpy conventions where scalars have shape ()
+            self._parameter=None
             raise TequilaException("parameter has to be a scalar. Received {}\n{}\n{}".format(repr(parameter), type(parameter), str(parameter)))
         self._parameter = assign_variable(variable=parameter)
+        super().__init__(name=name, target=target, control=control, generator=generator)
 
     def __str__(self):
         result = str(self.name) + "(target=" + str(self.target)
         if not self.is_single_qubit_gate():
             result += ", control=" + str(self.control)
-
-        result += ", parameter=" + repr(self._parameter)
+        result += ", parameter=" + repr(self.parameter)
         result += ")"
         return result
 

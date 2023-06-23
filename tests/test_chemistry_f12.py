@@ -40,10 +40,13 @@ data_path = 'data/f12/'
 @pytest.mark.skipif(not(    os.path.isfile(str(data_path)+'he-f12_gtensor.npy')
                         and os.path.isfile(str(data_path)+'he-f12_htensor.npy')
                         and os.path.isfile(str(data_path)+'he-f12_f12tensor.npy')), reason="data not there")
-def test_correction_madness():
+@pytest.mark.parametrize("trafo", tq.quantumchemistry.encodings.known_encodings())
+def test_correction_madness(trafo):
     geomstring = "He 0.0 0.0 0.0"
-    mol = tq.Molecule(name='data/f12/he-f12',geometry=geomstring, basis_set='madness', n_pno=None,
-                      active_orbitals=[0, 1], madness_root_dir=None, keep_mad_files=True)
+    mol = tq.Molecule(name='data/f12/he-f12',geometry=geomstring, basis_set='madness', n_pno="read",
+                      active_orbitals=[0, 1], madness_root_dir=None, keep_mad_files=trafo)
+    if not mol.supports_ucc():
+        return
     U = mol.make_upccgsd_ansatz(name='UpCCD')
     angles = {(((0, 1),), 'D', (None, 0)): -0.1278860185100716} 
     rdminfo = {"U": U, "variables": angles}
