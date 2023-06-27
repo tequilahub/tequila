@@ -709,7 +709,7 @@ def test_orbital_optimization_hcb(geometry):
     elif mol.n_electrons == 2:
         edges=[(0, 1)]
     else:
-        raise Exception("test only created for n_electrons = 2,4 you gave {}".format(mol1.n_electrons))
+        raise Exception("test only created for n_electrons = 2,4 you gave {}".format(mol.n_electrons))
 
 
     U1 = mol.make_ansatz(name="HCB-SPA", edges=edges)
