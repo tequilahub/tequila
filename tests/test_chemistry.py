@@ -647,3 +647,51 @@ def test_variable_consistency():
     assert numpy.isclose(E1,E4,atol=1.e-4)
     assert numpy.isclose(E2,E3,atol=1.e-4)
     assert numpy.isclose(E2,E4,atol=1.e-4)
+
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="you don't have psi4 or pyscf")
+@pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 4.5", "Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", "Be 0.0 0.0 0.0\nH 0.0 0.0 3.0\nH 0.0 0.0 -3.0"])
+@pytest.mark.parametrize("optimize", [True, False])
+def test_hcb_rdms(geometry, optimize):
+
+    mol1 = tq.Molecule(geometry=geometry, basis_set="sto-3g", transformation="ReorderedJordanWigner")
+    H = mol1.make_hamiltonian()
+    HCB = mol1.make_hardcore_boson_hamiltonian()
+
+    if mol1.n_electrons == 4:
+        edges=[(0, 2, 5), (1, 3, 4)]
+    elif mol1.n_electrons == 2:
+        edges=[(0, 1)]
+    else:
+        raise Exception("test only created for n_electrons = 2,4 you gave {}".format(mol1.n_electrons))
+
+
+    U1_1 = mol1.make_ansatz("SPA", edges=edges, optimize=optimize)
+    U1_2 = mol1.make_ansatz("HCB-SPA", edges=edges, optimize=optimize)
+    E1 = tq.ExpectationValue(H=H, U=U1_1)
+    E2 = tq.ExpectationValue(H=HCB, U=U1_2)
+
+    variables = {k: 1.0 for k in U1_1.extract_variables()}
+    energy1 = tq.simulate(E1, variables=variables)
+    energy2 = tq.simulate(E2, variables=variables)
+
+    xrdm1_1, xrdm1_2 = mol1.compute_rdms(U1_1, variables=variables, use_hcb=False)
+    yrdm1_1, yrdm1_2 = mol1.compute_rdms(U1_2, variables=variables, use_hcb=True)
+
+    c,h1,h2 = mol1.get_integrals()
+    # this is the default for RDMs
+    # integrals are given in openfermion ordering
+    h2 = h2.reorder(to="phys").elems
+
+    energy3 = numpy.einsum('qp, pq', h1,xrdm1_1, optimize='greedy')
+    energy3+= 1 / 2 * numpy.einsum('rspq, pqrs', h2,xrdm1_2, optimize='greedy')
+    energy3+= c
+
+
+    d1_1 = tq.numpy.linalg.norm(xrdm1_1 - yrdm1_1)
+    d1_2 = tq.numpy.linalg.norm(xrdm1_2 - yrdm1_2)
+
+    assert numpy.isclose(d1_1, 0., atol=1.e-4)
+    assert numpy.isclose(d1_2, 0., atol=1.e-4)
+
+    assert numpy.isclose(energy1, energy2, atol=1.e-4)
+    assert numpy.isclose(energy1, energy3, atol=1.e-4)
