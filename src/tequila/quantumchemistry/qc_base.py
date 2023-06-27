@@ -1675,17 +1675,14 @@ class QuantumChemistryBase:
             if (len(op_tuple) == 2):
                 return 2 * Sm(op_tuple[0][0]) * Sp(op_tuple[1][0])
             elif (len(op_tuple) == 4):
-                if ((op_tuple[0][0] == op_tuple[1][0]) and (op_tuple[2][0] == op_tuple[3][0])):  # iijj
-                    if (op_tuple[0][0] != op_tuple[2][0]):
-                        return Sm(op_tuple[0][0]) * Sp(op_tuple[2][0]) + Sp(op_tuple[0][0]) * Sm(op_tuple[2][0])
-                    else:
-                        return 2 * Sm(op_tuple[0][0]) * Sp(op_tuple[2][0])
+                if ((op_tuple[0][0] == op_tuple[1][0]) and (op_tuple[2][0] == op_tuple[3][0])):  # iijj uddu+duud
+                    return Sm(op_tuple[0][0]) * Sp(op_tuple[2][0]) + Sm(op_tuple[2][0]) * Sp(op_tuple[0][0])
                 if ((op_tuple[0][0] == op_tuple[2][0]) and (op_tuple[1][0] == op_tuple[3][0]) and (
-                        op_tuple[0][0] != op_tuple[1][0]) and (op_tuple[2][0] != op_tuple[3][0])):
-                    return 2 * Sm(op_tuple[0][0]) * Sm(op_tuple[1][0]) * Sp(op_tuple[2][0]) * Sp(op_tuple[3][0])
+                        op_tuple[0][0] != op_tuple[1][0]) and (op_tuple[2][0] != op_tuple[3][0])):  # ijij uuuu+dddd
+                    return 4 * Sm(op_tuple[0][0]) * Sm(op_tuple[1][0]) * Sp(op_tuple[2][0]) * Sp(op_tuple[3][0])
                 if ((op_tuple[0][0] == op_tuple[3][0]) and (op_tuple[1][0] == op_tuple[2][0]) and (
-                        op_tuple[0][0] != op_tuple[1][0]) and (op_tuple[2][0] != op_tuple[3][0])):
-                    return 2 * Sm(op_tuple[0][0]) * Sm(op_tuple[1][0]) * Sp(op_tuple[2][0]) * Sp(op_tuple[3][0])
+                        op_tuple[0][0] != op_tuple[1][0]) and (op_tuple[2][0] != op_tuple[3][0])):  # ijji abba
+                    return -2 * Sm(op_tuple[0][0]) * Sm(op_tuple[1][0]) * Sp(op_tuple[2][0]) * Sp(op_tuple[3][0])
             else:
                 return Zero()
 
@@ -1859,19 +1856,20 @@ class QuantumChemistryBase:
             ops = []
             scale = 2
             if self.transformation.up_then_down:
-                scale=1
+                scale = 1
             for p, q, r, s in product(range(n_MOs), repeat=4):
                 if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
-                    # Spin aaaa+ bbbb dont allow p=q=r=s  orb ijji
-                    op_tuple = ((scale*p, 1), (scale*q, 1), (scale*r, 0), (scale*s, 0)) if (
-                            p != q and r != s and p == s and q == r) else '0.0 []'
-                    op = _get_hcb_op(op_tuple)
                     # Spin abba+ baab allow p=q=r=s orb iijj
-                    op_tuple = ((scale*p, 1), (scale*q, 1), (scale*r, 0), (scale*s, 0)) if (p == q and s == r) else '0.0 []'
-                    op += _get_hcb_op(op_tuple)
+                    op_tuple = ((scale * p, 1), (scale * q, 1), (scale * r, 0), (scale * s, 0)) if (
+                            p == q and s == r) else '0.0 []'
+                    op = _get_hcb_op(op_tuple)
                     # Spin abba+ baab dont allow p=q=r=s orb ijij
-                    op_tuple = ((scale*p, 1), (scale*q, 1), (scale*r, 0), (scale*s, 0)) if (
+                    op_tuple = ((scale * p, 1), (scale * q, 1), (scale * r, 0), (scale * s, 0)) if (
                             p != q and r != s and p == r and s == q) else '0.0 []'
+                    op += _get_hcb_op(op_tuple)
+                    # Spin aaaa+ bbbb dont allow p=q=r=s  orb ijji
+                    op_tuple = ((scale * p, 1), (scale * q, 1), (scale * r, 0), (scale * s, 0)) if (
+                            p != q and r != s and p == s and q == r) else '0.0 []'
                     op += _get_hcb_op(op_tuple)
                     ops += [op]
             return ops
@@ -1886,7 +1884,8 @@ class QuantumChemistryBase:
             qops += _build_2bdy_operators_hcb() if get_rdm2 else []
         else:
             if use_hcb:
-                raise TequilaException("compute_rdms: spin_free={} and use_hcb={} are not compatible".format(spin_free,use_hcb))
+                raise TequilaException(
+                    "compute_rdms: spin_free={} and use_hcb={} are not compatible".format(spin_free, use_hcb))
             qops += _build_1bdy_operators_spinful() if get_rdm1 else []
             qops += _build_2bdy_operators_spinful() if get_rdm2 else []
 
