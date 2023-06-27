@@ -605,7 +605,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         -------
         """
         if not psi4_method:
-            super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
+            return super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
                                  get_rdm1=get_rdm1, get_rdm2=get_rdm2, *args, **kwargs)
         else:
             # Get 1- and 2-particle reduced density matrix via Psi4 CISD computation
