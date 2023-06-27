@@ -321,7 +321,7 @@ def test_get_qubit_wise():
     assert np.isclose(result_ori, result_integrated_si)
 
     # Checking the optimized expectation values are the same
-    initial_values = {k: np.random.uniform(0.0, 6.0, 1) for k in e_ori.extract_variables()}
+    initial_values = {k: np.random.uniform(0.0, 6.0) for k in e_ori.extract_variables()}
     sol1 = tq.minimize(method='bfgs', objective=e_ori, initial_values=initial_values)
     sol2 = tq.minimize(method='bfgs', objective=e_qwc, initial_values=initial_values)
     sol3 = tq.minimize(method='bfgs', objective=e_integrated, initial_values=initial_values)
