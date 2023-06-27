@@ -576,7 +576,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True, psi4_method: str = None,
-                     psi4_options: dict = {}):
+                     psi4_options: dict = {}, *args, **kwargs):
         """
         Same functionality as qc_base.compute_rdms (look there for more information),
         plus the additional option to compute 1- and 2-RDM using psi4 by the keyword psi4_rdms
@@ -606,7 +606,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         """
         if not psi4_method:
             super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
-                                 get_rdm1=get_rdm1, get_rdm2=get_rdm2)
+                                 get_rdm1=get_rdm1, get_rdm2=get_rdm2, *args, **kwargs)
         else:
             # Get 1- and 2-particle reduced density matrix via Psi4 CISD computation
             # If "cisd" is chosen, change to "detci" (default is excitation level 2 anyhow) to obtain a CIWavefunction
