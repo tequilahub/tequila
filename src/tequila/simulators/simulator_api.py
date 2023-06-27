@@ -11,7 +11,7 @@ from tequila.simulators.simulator_base import BackendCircuit, BackendExpectation
 from tequila.circuit.noise import NoiseModel
 
 SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic", "qlm"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit",'qibo', 'cirq', 'pyquil', 'qulacs', "qulacs_gpu"]
+SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil'] # qulacs removed in v.1.9
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
