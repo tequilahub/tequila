@@ -402,16 +402,21 @@ def get_angle(name: str) -> list:
                 raise TequilaException("Invalid specification {}".format(name))
             angle = angle.replace('pi', '')
             try:
+                sign = 1
+                div = 1
+                if angle.find('-') != -1:
+                    angle = angle.replace('-', '')
+                    sign = -1
+                if angle.find('/') != -1:
+                    div = float(angle[angle.index('/')+1:])
+                    angle = angle[:angle.index('/')]
                 if angle.find('*') != -1:
                     angle = angle.replace('*', '')
-                    phase = float(angle) * pi
-                elif angle.find('/') != -1:
-                    angle = angle.replace('/', '')
-                    phase = pi / float(angle)
+                    phase = sign * float(angle) * pi / div
                 elif len(angle) == 0:
-                    phase = pi
+                    phase = sign * pi / div
                 else:
-                    phase = float(angle)
+                    phase = sign * float(angle) / div
             except ValueError:
                 raise TequilaException("Invalid specification {}".format(name))
         angles.append(phase)
