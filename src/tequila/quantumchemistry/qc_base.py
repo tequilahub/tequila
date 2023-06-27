@@ -1658,10 +1658,6 @@ class QuantumChemistryBase:
         if type(self.transformation).__name__ == "BravyiKitaevFast":
             raise TequilaException(
                 "The Bravyi-Kitaev-Superfast transformation does not support general FermionOperators yet.")
-        if (use_hcb and not self.transformation.up_then_down):
-            warnings.warn(
-                "Hardcore-Boson Hamiltonian without reordering will result in non-consecutive Hamiltonians that are eventually not be combinable with other features of tequila. Try transformation=\'ReorderedJordanWigner\' or similar for more consistency",
-                TequilaWarning)
         # Set up number of spin-orbitals and molecular orbitals respectively
         n_SOs = 2 * self.n_orbitals
         n_MOs = self.n_orbitals
