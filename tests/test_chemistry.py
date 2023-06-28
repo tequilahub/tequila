@@ -695,3 +695,33 @@ def test_hcb_rdms(geometry, optimize):
 
     assert numpy.isclose(energy1, energy2, atol=1.e-4)
     assert numpy.isclose(energy1, energy3, atol=1.e-4)
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
+@pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 4.5", "Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", "Be 0.0 0.0 0.0\nH 0.0 0.0 3.0\nH 0.0 0.0 -3.0"])
+def test_orbital_optimization_hcb(geometry):
+
+    mol = tq.Molecule(geometry=geometry, basis_set="sto-3g")
+
+
+    if mol.n_electrons == 4:
+        edges=[(0, 2, 5), (1, 3, 4)]
+    elif mol.n_electrons == 2:
+        edges=[(0, 1)]
+    else:
+        raise Exception("test only created for n_electrons = 2,4 you gave {}".format(mol.n_electrons))
+
+
+    U1 = mol.make_ansatz(name="HCB-SPA", edges=edges)
+    import time
+    start = time.time()
+    opt1 = tq.chemistry.optimize_orbitals(circuit=U1, molecule=mol, silent=True, use_hcb=True)
+    time1 = time.time()-start
+    U2 = mol.make_ansatz(name="SPA", edges=edges)
+    start = time.time()
+    opt2 = tq.chemistry.optimize_orbitals(circuit=U2, molecule=mol, silent=True)
+    time2 = time.time()-start
+
+    assert numpy.isclose(opt1.energy,opt2.energy,atol=1.e-5)
+    assert time1 < time2
+    assert (numpy.isclose(opt1.mo_coeff,opt2.mo_coeff, atol=1.e-5)).all()
