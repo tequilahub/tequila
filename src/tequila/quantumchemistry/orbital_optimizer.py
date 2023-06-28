@@ -92,7 +92,7 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
             vqe_solver_arguments={}
         vqe_solver_arguments["restrict_to_hcb"]=True
         # consistency check
-        n_qubits = circuit.n_qubits
+        n_qubits = len(circuit.qubits)
         n_orbitals = molecule.n_orbitals
         if n_qubits > n_orbitals:
             warnings.warn("Potential inconsistency in orbital optimization: use_hcb is switched on but we have\n n_qubits={} in the circuit\n n_orbital={} in the molecule\n".format(n_qubits,n_orbitals), TequilaWarning)
