@@ -1,6 +1,6 @@
 # necessary
 numpy
-scipy >= 1.5 # can in principle be smaller, we recommend >= 1.5 for consistency with our tutorials (numerical gradients mostly)
+scipy < 1.11 # for now, until issues with scipy/pyscf are fixed # can in principle be smaller, we recommend >= 1.5 for consistency with our tutorials (numerical gradients mostly)
 sympy
 #jax
 #jaxlib
