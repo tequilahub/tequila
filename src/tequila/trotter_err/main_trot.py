@@ -87,7 +87,7 @@ def compute_alpha_2(pair, list_frags, nqubs, gauss_proj):
 
 
 #Experimental parallel version of Trotter error calculation....
-def EstTrotErrParal(ListFrags,nqubs,SymDict=None):
+def EstTrotErrParal(ListFrags,nqubs,SymDict=None,pool=None):
     """
     Parallel version of EstTrotErr function
     Returns: the sum of the spectral norm of (unique) commutators between Hamiltonian fragments listed in ListFrags. If SymDict is different from None
@@ -128,8 +128,9 @@ def EstTrotErrParal(ListFrags,nqubs,SymDict=None):
 
     #mp.set_start_method('spawn')
     # Define the function that computes alpha_2 for a pair of fragments
-    pool = mp.Pool(mp.cpu_count())
-    #with mp.Pool(mp.cpu_count()) as pool:
+    if pool==None:
+        pool = mp.Pool(mp.cpu_count())
+        #with mp.Pool(mp.cpu_count()) as pool:
     args_list = [(pair, ListFrags, nqubs, GaussProj) for pair in idxs]
 
     # Use the multiprocessing pool to compute alpha_2 for all pairs of fragments
@@ -142,5 +143,6 @@ def EstTrotErrParal(ListFrags,nqubs,SymDict=None):
     # Close the multiprocessing pool
     pool.close()
     pool.join()
+
 
     return 2*alpha_2
