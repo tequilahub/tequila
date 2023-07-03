@@ -246,7 +246,7 @@ def test_overlapping_sorted_insertion():
     H, _, _, _ = prepare_test_hamiltonian()
     H = H + paulis.X(0) + paulis.Y(0) + 1.05 * paulis.Z(0) * paulis.Z(1) * paulis.Z(2)
     Hbin = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-    options = {"method":"osi", "condition": "qwc", "cov_dict":prepare_cov_dict(H)}
+    options = {"method":"ics", "condition": "qwc", "cov_dict":prepare_cov_dict(H)}
     commuting_parts, suggested_sample_size = Hbin.commuting_groups(options=options)
     H_tmp = QubitHamiltonian.zero()
     for part in commuting_parts:
@@ -267,9 +267,9 @@ def test_overlapping_sorted_insertion():
     U = tq.gates.ExpPauli(angle="a", paulistring=tq.PauliString.from_string('X(0)Y(1)'))
     variables = {"a": np.random.rand(1) * 2 * np.pi}
     e_ori = tq.ExpectationValue(H=Hbin.to_qubit_hamiltonian(), U=U)
-    e_integrated_osi = tq.ExpectationValue(H=Hbin.to_qubit_hamiltonian(), U=U, optimize_measurements=options)
+    e_integrated_ics = tq.ExpectationValue(H=Hbin.to_qubit_hamiltonian(), U=U, optimize_measurements=options)
     result_ori = tq.simulate(e_ori, variables)
-    compiled = tq.compile(e_integrated_osi)
+    compiled = tq.compile(e_integrated_ics)
     evaluated = compiled(variables)
     assert np.isclose(result_ori, evaluated)
 
@@ -321,7 +321,7 @@ def test_get_qubit_wise():
     assert np.isclose(result_ori, result_integrated_si)
 
     # Checking the optimized expectation values are the same
-    initial_values = {k: np.random.uniform(0.0, 6.0, 1) for k in e_ori.extract_variables()}
+    initial_values = {k: np.random.uniform(0.0, 6.0) for k in e_ori.extract_variables()}
     sol1 = tq.minimize(method='bfgs', objective=e_ori, initial_values=initial_values)
     sol2 = tq.minimize(method='bfgs', objective=e_qwc, initial_values=initial_values)
     sol3 = tq.minimize(method='bfgs', objective=e_integrated, initial_values=initial_values)

@@ -1,9 +1,12 @@
 from tequila.grouping.binary_rep import BinaryHamiltonian
+from tequila.grouping.fermionic_methods import get_fermion_wise, do_fff, do_svd
+from tequila.grouping.fermionic_functions import n_elec
+from tequila.utils import TequilaException
+from openfermion import reverse_jordan_wigner
 import tequila as tq
 import numpy as np
 import numpy.linalg as npl
 import copy
-
 
 def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
     """
@@ -17,15 +20,66 @@ def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
     -------
         A list of tuples containing all-Z Hamiltonian and corresponding Rotations
     """
-    if unitary_circuit is None or unitary_circuit.lower() == "improved":
-        # @ Zack
-        result, suggested_samples = _compile_commuting_parts_zb(H, *args, **kwargs)
+    if "options" in kwargs and not(kwargs["options"] is None) and "method" in kwargs["options"]:
+        method = kwargs["options"]["method"]
     else:
-        # original implementation of Thomson (T.C. Yen)
-        binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
-        commuting_parts, suggested_samples = binary_H.commuting_groups(*args, **kwargs)
-        result = [cH.get_qubit_wise() for cH in commuting_parts]
-    return result, suggested_samples
+        method = "rlf"
+
+    def method_class(method):
+        if method == "lf" or method == "rlf" or method == "si" or method == "ics":
+            return "qubit"
+        elif method == "lr" or method == "fff-lr":
+            return "fermionic"
+    
+    if method_class(method) == 'qubit':
+        if unitary_circuit is None or unitary_circuit.lower() == "improved":
+            # @ Zack
+            result, suggested_samples = _compile_commuting_parts_zb(H, *args, **kwargs)
+        else:
+            # original implementation of Thomson (T.C. Yen)
+            binary_H = BinaryHamiltonian.init_from_qubit_hamiltonian(H)
+            commuting_parts, suggested_samples = binary_H.commuting_groups(*args, **kwargs)
+            result = [cH.get_qubit_wise() for cH in commuting_parts]
+        return result, suggested_samples
+    
+    elif method_class(method) == 'fermionic':
+        options = kwargs["options"]
+        if "n_el" in options:
+            n_el = int(options["n_el"])
+        elif "mol_name" in options: 
+            n_el = n_elec(options["mol_name"])
+        else:
+            raise TequilaException("Please specify either {mol_name:} or {n_el:} in the dictionary provided as the keyward argument (optimize_measurements) to function (ExpectationValue).")
+
+        if "reverse_H_transf" in options:
+            reverse_H_transf = options["reverse_H_transf"]
+        else:
+            print("Using default reverse_H_transf, i.e., reverse_jordan_wigner.")
+            reverse_H_transf = _reverse_jordan_wigner
+        
+        h_ferm = reverse_H_transf(H)
+
+        if method == 'lr':
+            u_ops, cartan_obt, cartan_tbt, suggested_samples = do_svd(h_ferm, n_el)
+            result = [get_fermion_wise(cartan_obt, u_ops[0])]
+            for i in range(len(cartan_tbt)):
+                result.append(get_fermion_wise(cartan_tbt[i], u_ops[i+1]))
+            return result, suggested_samples
+        elif method == 'fff-lr':
+            
+            all_ops, u_ops, cartan_obt, cartan_tbt, suggested_samples = do_fff(h_ferm, n_el, options=options, metric_estim=False)
+            result = [get_fermion_wise(cartan_obt, u_ops[0])]
+            for i in range(len(cartan_tbt)):
+                result.append(get_fermion_wise(cartan_tbt[i], u_ops[i+1]))
+            return result, suggested_samples
+
+def _reverse_jordan_wigner(H):
+    '''
+    Default funcion used by fermionic methods to obtain the H in the second quantized form.
+    The user can specify a different reverse function if H was obtained from the fermionic 
+    Hamiltonian using a mapping different than the JordanWigner transformation.
+    '''
+    return reverse_jordan_wigner(H.to_openfermion())
 
 def _compile_commuting_parts_zb(H, *args, **kwargs):
     # @ Zack add main function here and rest in this file

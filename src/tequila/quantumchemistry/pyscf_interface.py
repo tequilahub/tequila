@@ -32,6 +32,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             mol = pyscf.gto.Mole()
             mol.atom = pyscf_geomstring
             mol.basis = parameters.basis_set
+            mol.charge = parameters.charge
 
             if point_group is not None:
                 if point_group.lower() != "c1":
@@ -42,7 +43,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             else:
                 mol.symmetry = True
 
-            mol.build()
+            mol.build(parse_arg=False)
 
             # solve restricted HF
             mf = pyscf.scf.RHF(mol)
@@ -119,7 +120,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         mo_occ = numpy.zeros(norb)
         mo_occ[:nelec // 2] = 2
 
-        pyscf_mol = pyscf.gto.M(verbose=0)
+        pyscf_mol = pyscf.gto.M(verbose=0, parse_arg=False)
         pyscf_mol.nelectron = nelec
         pyscf_mol.incore_anyway = True  # ensure that custom integrals are used
         pyscf_mol.energy_nuc = lambda *args: c

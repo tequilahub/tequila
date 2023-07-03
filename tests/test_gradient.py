@@ -220,8 +220,8 @@ def test_gradient_UY_HX_wfnsim(simulator, angle_value, controlled, assume_real, 
     E = simulate(O, variables=variables, backend=simulator)
     dO = grad(objective=O, variable='angle')
     dE = simulate(dO, variables=variables, backend=simulator)
-    E = numpy.float(E)  # for isclose
-    dE = numpy.float(dE)  # for isclose
+    E = float(E)  # for isclose
+    dE = float(dE)  # for isclose
     assert (numpy.isclose(E, numpy.sin(angle(variables)), atol=0.0001))
     assert (numpy.isclose(dE, numpy.cos(angle(variables)), atol=0.0001))
     if not silent:
