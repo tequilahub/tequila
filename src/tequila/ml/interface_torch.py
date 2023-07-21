@@ -128,7 +128,7 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
                     g_keys = [j for j in grads.keys()]
                     probe = grads[g_keys[0]]  # first entry will tell us number of output
                     dims = len(g_keys), len(probe)
-                    arr = np.empty(dims, dtype=np.float)
+                    arr = np.empty(dims, dtype=np.float64)
                     for j, key in enumerate(g_keys):
                         line = grads[key]
                         for k, ob in enumerate(line):
