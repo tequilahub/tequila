@@ -337,7 +337,7 @@ class GramianExpectationBound(RobustnessInterval):
         for eigvals, expec, variance in zip(self._pauligroups_eigenvalues, self._pauligroups_expectations,
                                             self._pauligroups_variances):
             min_eigval = min(eigvals)
-            expec_pos = np.clip(expec - min_eigval, 0, None, dtype=np.float)
+            expec_pos = np.clip(expec - min_eigval, 0, None, dtype=np.float64)
             bound += min_eigval + self._calc_lower_bound(expec_pos, variance, self.fidelity)
 
         return bound
