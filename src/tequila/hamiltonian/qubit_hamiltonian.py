@@ -523,7 +523,7 @@ class QubitHamiltonian:
         hermitian = QubitHamiltonian.zero()
         anti_hermitian = QubitHamiltonian.zero()
         for k, v in self.qubit_operator.terms.items():
-            hermitian.qubit_operator.terms[k] = np.float(v.real)
+            hermitian.qubit_operator.terms[k] = v.real
             anti_hermitian.qubit_operator.terms[k] = 1.j * v.imag
 
         return hermitian.simplify(), anti_hermitian.simplify()

@@ -355,7 +355,7 @@ class BackendCircuitQibo(BackendCircuit):
         """
         n_qubits = max(self.highest_qubit + 1, self.n_qubits, self.abstract_circuit.max_qubit() + 1)
         if initial_state is not None:
-            if isinstance(initial_state, int) or isinstance(initial_state,np.int):
+            if isinstance(initial_state, (int, np.int64)):
                 wave = QubitWaveFunction.from_int(i=initial_state, n_qubits=n_qubits)
             elif isinstance(initial_state, str):
                 wave = QubitWaveFunction.from_string(string=initial_state).to_array()
