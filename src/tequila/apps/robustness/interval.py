@@ -190,7 +190,7 @@ class SDPInterval(RobustnessInterval):
                 pauli_lower_bound = pauli_upper_bound = 1.0
             else:
                 expec_normalized = np.clip(2 * (p_expec - min_eigval) / (max_eigval - min_eigval) - 1, -1, 1,
-                                           dtype=np.float64)
+                                           dtype=float)
 
                 pauli_lower_bound = (max_eigval - min_eigval) / 2.0 * (
                         1 + self._calc_lower_bound(expec_normalized, self.fidelity)) + min_eigval
@@ -337,7 +337,7 @@ class GramianExpectationBound(RobustnessInterval):
         for eigvals, expec, variance in zip(self._pauligroups_eigenvalues, self._pauligroups_expectations,
                                             self._pauligroups_variances):
             min_eigval = min(eigvals)
-            expec_pos = np.clip(expec - min_eigval, 0, None, dtype=np.float64)
+            expec_pos = np.clip(expec - min_eigval, 0, None, dtype=float)
             bound += min_eigval + self._calc_lower_bound(expec_pos, variance, self.fidelity)
 
         return bound
