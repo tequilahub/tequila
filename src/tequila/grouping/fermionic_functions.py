@@ -871,22 +871,58 @@ def compute_meas_alloc(varbs, obt=None, tbts=None, n_qubits=None, mix=0.0):
     for i in range(len(meas_alloc)):
         if meas_alloc[i] < 1e-6:
             meas_alloc[i] = 1e-6
-    return np.real( meas_alloc/np.sum(meas_alloc) )
+    return np.real( meas_alloc/np.sum(meas_alloc))
 
-def get_orb_rot(U, tol = 1e-12):
+def depth_eff_order_mf(N):
+    '''
+    Returns index ordering for linear depth circuit
+
+    For example N = 6 gives elimination order
+    [ 0.  0.  0.  0.  0.  0.]
+    [ 7.  0.  0.  0.  0.  0.]
+    [ 5. 10.  0.  0.  0.  0.]
+    [ 3.  8. 12.  0.  0.  0.]
+    [ 2.  6. 11. 14.  0.  0.]
+    [ 1.  4.  9. 13. 15.  0.]
+    '''
+    l = []
+    for c in range(0, N-1):
+        for r in range(1, N):
+            if r - c > 0:
+                l.append([r, c, 2*c - r + N])
+    l.sort(key=lambda x: x[2])
+    return [(a[0], a[1]) for a in l]
+
+def get_orb_rot(U, qubit_list = [], method = 'short', tol = 1e-12):
     '''
     Construct sequence of orbital rotations that implement mean-field unitary given by NxN unitary U
     Currently supported only for real U
     '''
-    U[abs(U) < tol] = 0
-    theta, phi = given_rotation(U, tol)
+    
+    N = len(U)
     C = tq.QCircuit()
-    for i, p in enumerate(phi):
-        C += n_rotation(i, p)
+    
+    if qubit_list == []:
+        qubit_list = list(range(N))
+    
+    assert len(qubit_list) >= len(U), 'Insufficient qubits for orbital rotation' #check if sufficient qubits
+    
+    U[abs(U) < tol] = 0
+
+    if method == 'naive':
+        theta_list, phi_list = given_rotation(U, tol)
+    elif method == 'short':
+        ordering = depth_eff_order_mf(N)
+        theta_list, phi_list = given_rotation(U, tol, ordering)
+
+    for phi in phi_list:
+        C += n_rotation(qubit_list[phi[1]], phi[0])
+    
     gates = []
-    for th in theta:
-        gates.append(orbital_rotation(th[1], th[2], -th[0]))
+    for theta in theta_list:
+        gates.append(orbital_rotation(qubit_list[theta[1]], qubit_list[theta[2]], -theta[0]))
     gates.reverse()
+
     for gate in gates:
         C += gate
     return C
@@ -894,7 +930,7 @@ def get_orb_rot(U, tol = 1e-12):
 def orbital_rotation(i, j, theta):
     '''
     Implements exp(theta(a^_i a_j - a^_j a_i))
-    Right now restricted to |i-j| <= 1
+    Right now restricted to |i-j| <= 1 and jordan wigner transform.
     '''
     if abs(i-j) <= 1:
         return tq.gates.CNOT(control=i, target=j) + tq.gates.Ry(angle=2*theta, target=i, control=j) + tq.gates.CNOT(control=i, target=j)
@@ -902,25 +938,45 @@ def orbital_rotation(i, j, theta):
 def n_rotation(i, phi):
     return tq.gates.Rz(angle = phi, target=i)
 
-def given_rotation(U, tol = 1e-12): #verified
+def given_rotation(U, tol = 1e-12, ordering = None):
     '''
     Decomposes the Unitary into a set of Rz by angle phi and Givens Rotations by angle theta.
     Input:
-    U (np.array):
+    U (np.array): Rotation matrix
+    tol: tolerance for U elements
     '''
-    #filter small values
+    
     U[abs(U) < tol] = 0
     n = U.shape[0]
+
     theta = []
     phi = []
-    for c in range(n):
-        for r in range(n-1, c, -1):
+    if ordering is None:
+        for c in range(n):
+            for r in range(n-1, c, -1):
+                t = np.arctan2(-U[r,c], U[r-1,c])
+
+                if abs(t % (2*np.pi)) >= tol:
+                    theta.append((t, r, r-1))
+                
+                g = givens_matrix(n,r,r-1,t)
+                U = np.dot(g, U)
+    else:
+        for r, c in ordering:
             t = np.arctan2(-U[r,c], U[r-1,c])
-            theta.append([t, r, r-1])
+
+            if abs(t % (2*np.pi)) >= tol:
+                theta.append((t, r, r-1))
+            
             g = givens_matrix(n,r,r-1,t)
             U = np.dot(g, U)
+    
     for i in range(n):
-        phi.append(np.angle(U[i,i]))
+        ph = np.angle(U[i,i])
+
+        if abs(ph) >= tol:
+            phi.append((ph, i))
+        
     return theta, phi
 
 def givens_matrix(n, p, q, theta): #verified
