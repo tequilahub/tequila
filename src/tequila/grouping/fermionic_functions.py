@@ -914,12 +914,23 @@ def get_orb_rot(U, qubit_list = [], method = 'short', tol = 1e-12):
     elif method == 'short':
         ordering = depth_eff_order_mf(N)
         theta_list, phi_list = given_rotation(U, tol, ordering)
-
-    for phi in phi_list:
+    
+    #filter
+    theta_list_new = []
+    for i, theta in enumerate(theta_list):
+        if abs(theta[0] % (2*np.pi)) > tol:
+            theta_list_new.append(theta)
+    
+    phi_list_new = []
+    for i, phi in enumerate(phi_list):
+        if abs(phi[0]) > tol:
+            phi_list_new.append(phi)
+    
+    for phi in phi_list_new:
         C += n_rotation(qubit_list[phi[1]], phi[0])
     
     gates = []
-    for theta in theta_list:
+    for theta in theta_list_new:
         gates.append(orbital_rotation(qubit_list[theta[1]], qubit_list[theta[2]], -theta[0]))
     gates.reverse()
 
@@ -955,27 +966,21 @@ def given_rotation(U, tol = 1e-12, ordering = None):
         for c in range(n):
             for r in range(n-1, c, -1):
                 t = np.arctan2(-U[r,c], U[r-1,c])
-
-                if abs(t % (2*np.pi)) >= tol:
-                    theta.append((t, r, r-1))
+                theta.append((t, r, r-1))
                 
                 g = givens_matrix(n,r,r-1,t)
                 U = np.dot(g, U)
     else:
         for r, c in ordering:
             t = np.arctan2(-U[r,c], U[r-1,c])
-
-            if abs(t % (2*np.pi)) >= tol:
-                theta.append((t, r, r-1))
+            theta.append((t, r, r-1))
             
             g = givens_matrix(n,r,r-1,t)
             U = np.dot(g, U)
     
     for i in range(n):
         ph = np.angle(U[i,i])
-
-        if abs(ph) >= tol:
-            phi.append((ph, i))
+        phi.append((ph, i))
         
     return theta, phi
 
