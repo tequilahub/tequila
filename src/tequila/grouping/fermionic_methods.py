@@ -214,12 +214,15 @@ def do_svd(h_ferm, n_elec):
     return all_uops, cartan_obt, cartan_tbts, meas_alloc
 
 
-def get_fermion_wise(H, U):
+def get_fermion_wise(H, U, qubit_list = []):
+    '''
+    Return z_form and orbital rotations over qubits at qubit_list
+    '''
 
     H = ferm.cartan_tbt_to_ferm(H, spin_orb = True)
     z_form = QubitHamiltonian(jordan_wigner(H))
 
-    circuit = ferm.get_orb_rot(U, tol = 1e-12)
+    circuit = ferm.get_orb_rot(U, qubit_list=qubit_list, tol = 1e-12)
     return [z_form, circuit]
 
 def get_init_ops(h_ferm, mol_name, calc_type, spin_orb, save=True):

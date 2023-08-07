@@ -105,7 +105,7 @@ def test_given_rotation():
                   [0, 0, 1]])
 
     expected_theta = [[0.0, 2, 1], [-np.pi/2, 1, 0], [-np.pi, 2, 1]]
-    expected_phi = [0.0, 0.0, np.pi]
+    expected_phi = [[0.0, 0], [0.0, 1], [np.pi, 2]]
 
     theta, phi = given_rotation(U)
 
