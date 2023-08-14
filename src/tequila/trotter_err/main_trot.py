@@ -128,7 +128,7 @@ def EstTrotErrParal(ListFrags,nqubs,SymDict=None,pool=None):
 
     #mp.set_start_method('spawn')
     # Define the function that computes alpha_2 for a pair of fragments
-    if pool==None:
+    if pool is None:
         pool = mp.Pool(mp.cpu_count())
         #with mp.Pool(mp.cpu_count()) as pool:
     args_list = [(pair, ListFrags, nqubs, GaussProj) for pair in idxs]
