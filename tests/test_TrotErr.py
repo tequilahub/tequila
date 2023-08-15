@@ -94,7 +94,7 @@ def test_FCLF():
     nqubs=openfermion.count_qubits(Hferm)
     alpha=EstTrotErr(FCLFFrags,nqubs)
 
-    assert numpy.isclose(alpha, 0.42117695296, atol=1.e-4)
+    assert np.isclose(alpha, 0.42117695296, atol=1.e-4)
 
 def test_FCSI():
     Hq,Hferm=build_toymol()
@@ -102,7 +102,7 @@ def test_FCSI():
     nqubs=openfermion.count_qubits(Hferm)
     alpha=EstTrotErr(FCSIFrags,nqubs)
 
-    assert numpy.isclose(alpha, 0.42117695296, atol=1.e-4)
+    assert np.isclose(alpha, 0.42117695296, atol=1.e-4)
 
 def test_LR():
     Hq,Hferm=build_toymol()
@@ -110,4 +110,4 @@ def test_LR():
     nqubs=openfermion.count_qubits(Hferm)
     alpha=EstTrotErr(LRFrags,nqubs)
 
-    assert numpy.isclose(alpha, 0.42178077369, atol=1.e-4)
+    assert np.isclose(alpha, 0.42178077369, atol=1.e-4)
