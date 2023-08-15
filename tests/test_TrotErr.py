@@ -7,7 +7,9 @@ from tequila.grouping.fermionic_methods import do_svd
 from tequila.grouping.fermionic_functions import obt_to_ferm, convert_tbts_to_frags
 from tequila.grouping.fermionic_functions import n_elec
 import openfermion
+import pytest
 
+HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 def build_toymol():
     '''
@@ -88,6 +90,7 @@ def get_LR(Hferm,name="h2"):
     return ferm_ops
 
 #####Testing functions.....
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
 def test_FCLF():
     Hq,Hferm=build_toymol()
     FCLFFrags=get_fclf(Hq)
@@ -96,6 +99,7 @@ def test_FCLF():
 
     assert np.isclose(alpha, 0.42117695296, atol=1.e-4)
 
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
 def test_FCSI():
     Hq,Hferm=build_toymol()
     FCSIFrags=get_fcsi(Hq)
@@ -104,6 +108,7 @@ def test_FCSI():
 
     assert np.isclose(alpha, 0.42117695296, atol=1.e-4)
 
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
 def test_LR():
     Hq,Hferm=build_toymol()
     LRFrags=get_LR(Hferm)
