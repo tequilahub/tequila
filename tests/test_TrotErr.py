@@ -9,7 +9,7 @@ from tequila.grouping.fermionic_functions import n_elec
 import openfermion
 import pytest
 
-HAS_PYSCF = "pyscf" in tequila.quantumchemistry.INSTALLED_QCHEMISTRY_BACKENDS
+HAS_PYSCF = "pyscf" in tq.quantumchemistry.INSTALLED_QCHEMISTRY_BACKENDS
 
 def build_toymol():
     '''
