@@ -504,6 +504,38 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     else:
         return GeneralizedRotation(angle=power * np.pi, control=control, generator=generator,
                                    eigenvalues_magnitude=0.25)
+        
+        
+def iSWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None, *args,
+         **kwargs) -> QCircuit:
+    """
+    Notes
+    ----------
+    iSWAP gate
+    .. math::
+        iSWAP = e^{i\\frac{\\pi}{4} (X \otimes X + Y \otimes Y )}
+
+    Parameters
+    ----------
+    first: int
+        target qubit
+    second: int
+        target qubit
+    control
+        int or list of ints
+    power
+        numeric type (fixed exponent) or hashable type (parametrized exponent)
+
+    Returns
+    -------
+    QCircuit
+
+    """
+
+    generator = paulis.from_string(f"X({first})X({second}) + Y({first})Y({second})")
+
+    return GeneralizedRotation(angle=power * (-np.pi/2), control=control, generator=generator,
+                                eigenvalues_magnitude=0.25)
 
 
 """

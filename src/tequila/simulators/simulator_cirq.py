@@ -120,6 +120,7 @@ class BackendCircuitCirq(BackendCircuit):
             'Ry': (cirq.ops.common_gates.YPowGate, map_2),
             'Rz': (cirq.ops.common_gates.ZPowGate, map_2),
             'SWAP': (cirq.ops.SwapPowGate, None),
+            'iSWAP': (cirq.ops.ISwapPowGate, None),
         }
 
         self.tq_to_sympy = {}
