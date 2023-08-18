@@ -506,14 +506,14 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
                                    eigenvalues_magnitude=0.25)
         
         
-def iSWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None, *args,
+def iSWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = 1.0, *args,
          **kwargs) -> QCircuit:
     """
     Notes
     ----------
     iSWAP gate
     .. math::
-        iSWAP = e^{i\\frac{\\pi}{4} (X \otimes X + Y \otimes Y )}
+        iSWAP = e^{i\\frac{\\pi}{4} (X \\otimes X + Y \\otimes Y )}
 
     Parameters
     ----------
@@ -533,9 +533,39 @@ def iSWAP(first: int, second: int, control: typing.Union[int, list] = None, powe
     """
 
     generator = paulis.from_string(f"X({first})X({second}) + Y({first})Y({second})")
+    return GeneralizedRotation(angle=power*(-np.pi/2), control=control, generator=generator,
+                                    eigenvalues_magnitude=0.25)
+    
+    
+def Givens(first: int, second: int, control: typing.Union[int, list] = None, angle: float = None, *args,
+         **kwargs) -> QCircuit:
+    """
+    Notes
+    ----------
+    Givens gate G
+    .. math::
+        G = e^{-i\\frac{\\theta}{2} (Y \\otimes X - X \\otimes Y )}
 
-    return GeneralizedRotation(angle=power * (-np.pi/2), control=control, generator=generator,
-                                eigenvalues_magnitude=0.25)
+    Parameters
+    ----------
+    first: int
+        target qubit
+    second: int
+        target qubit
+    control
+        int or list of ints
+    angle
+        numeric type (fixed exponent) or hashable type (parametrized exponent), theta in the above formula
+
+    Returns
+    -------
+    QCircuit
+
+    """
+
+    generator = paulis.from_string(f"1.0*Y({first})X({second}) - 1.0*X({first})Y({second})")
+
+    return GeneralizedRotation(angle=angle, control=control, generator=generator,)
 
 
 """
