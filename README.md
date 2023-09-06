@@ -236,6 +236,10 @@ T.-H. Kyaw, M. B. Soley, B. Allen, P. Bergold, C. Sun, V.S. Batista and A. Aspur
 Boosting quantum amplitude exponentially in variational quantum algorithms
 [10.1088/2058-9565/acf4ba](doi.org/10.1088/2058-9565/acf4ba)  
 
+A.G. Cadavid, I. Montalban, A. Dalal, E. Solano, N.N. Hegade  
+Efficient DCQO Algorithm within the Impulse Regime for Portfolio Optimization  
+[arxiv:2308.15475](https://arxiv.org/abs/2308.15475)  
+
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
 # Dependencies
