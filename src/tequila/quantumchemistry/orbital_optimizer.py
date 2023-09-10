@@ -37,7 +37,7 @@ class OptimizeOrbitalsResult:
         self.iterations += 1
 
 def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=None, silent=False,
-                      vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, use_hcb=False, *args, **kwargs):
+                      vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, use_hcb=False, molecule_factory=None, *args, **kwargs):
     """
 
     Parameters
@@ -97,9 +97,9 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
         if n_qubits > n_orbitals:
             warnings.warn("Potential inconsistency in orbital optimization: use_hcb is switched on but we have\n n_qubits={} in the circuit\n n_orbital={} in the molecule\n".format(n_qubits,n_orbitals), TequilaWarning)
 
-    wrapper = PySCFVQEWrapper(molecule_arguments=pyscf_molecule.parameters, n_electrons=pyscf_molecule.n_electrons,
+    wrapper = PySCFVQEWrapper(molecule_arguments={"parameters":pyscf_molecule.parameters, "transformation":molecule.transformation}, n_electrons=pyscf_molecule.n_electrons,
                               const_part=c, circuit=circuit, vqe_solver_arguments=vqe_solver_arguments, silent=silent,
-                              vqe_solver=vqe_solver, *args, **kwargs)
+                              vqe_solver=vqe_solver, molecule_factory=molecule_factory, *args, **kwargs)
     mc.fcisolver = wrapper
     mc.internal_rotation = True
     if pyscf_arguments is not None:
@@ -153,7 +153,7 @@ class PySCFVQEWrapper:
 
     # needs initialization
     n_electrons: int = None
-    molecule_arguments: ParametersQC = None
+    molecule_arguments: dict = None
 
     # internal data
     rdm1: numpy.ndarray = None
@@ -168,6 +168,7 @@ class PySCFVQEWrapper:
     vqe_solver: typing.Callable = None
     circuit: QCircuit = None
     vqe_solver_arguments: dict = field(default_factory=dict)
+    molecule_factory: typing.Callable = None
 
     def reorder(self, M, ordering, to):
         # convenience since we need to reorder
@@ -183,9 +184,14 @@ class PySCFVQEWrapper:
         restrict_to_hcb = self.vqe_solver_arguments is not None and "restrict_to_hcb" in self.vqe_solver_arguments and \
                           self.vqe_solver_arguments["restrict_to_hcb"]
 
-        molecule = QuantumChemistryBase(one_body_integrals=h1, two_body_integrals=h2of,
+        if self.molecule_factory is None:
+            molecule = QuantumChemistryBase(one_body_integrals=h1, two_body_integrals=h2of,
                                         nuclear_repulsion=self.const_part, n_electrons=self.n_electrons,
-                                        parameters=self.molecule_arguments)
+                                        **self.molecule_arguments)
+        else:
+            molecule = self.molecule_factory(one_body_integrals=h1, two_body_integrals=h2of,
+                                        nuclear_repulsion=self.const_part, n_electrons=self.n_electrons,
+                                        **self.molecule_arguments)
         if restrict_to_hcb:
             H = molecule.make_hardcore_boson_hamiltonian()
         else:
@@ -214,7 +220,7 @@ class PySCFVQEWrapper:
         else:
             # static ansatz
             U = self.circuit
-            
+
         rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb)
         rdm2 = self.reorder(rdm2, 'dirac', 'mulliken')
         if not self.silent:
