@@ -533,8 +533,13 @@ def iSWAP(first: int, second: int, control: typing.Union[int, list] = None, powe
     """
 
     generator = paulis.from_string(f"X({first})X({second}) + Y({first})Y({second})")
-    return GeneralizedRotation(angle=power*(-np.pi/2), control=control, generator=generator,
-                                    eigenvalues_magnitude=0.25)
+    
+    p0 = paulis.Projector("|00>") + paulis.Projector("|11>")
+    p0 = p0.map_qubits({0:first, 1:second})
+
+    gate = QubitExcitationImpl(angle=power*(-np.pi/2), target=generator.qubits, generator=generator, p0=p0, control=control, compile_options="vanilla", *args, **kwargs)
+    
+    return QCircuit.wrap_gate(gate)
     
     
 def Givens(first: int, second: int, control: typing.Union[int, list] = None, angle: float = None, *args,
@@ -544,7 +549,7 @@ def Givens(first: int, second: int, control: typing.Union[int, list] = None, ang
     ----------
     Givens gate G
     .. math::
-        G = e^{-i\\frac{\\theta}{2} (Y \\otimes X - X \\otimes Y )}
+        G = e^{-i\\theta \\frac{(Y \\otimes X - X \\otimes Y )}{2}}
 
     Parameters
     ----------
@@ -563,9 +568,7 @@ def Givens(first: int, second: int, control: typing.Union[int, list] = None, ang
 
     """
 
-    generator = paulis.from_string(f"1.0*Y({first})X({second}) - 1.0*X({first})Y({second})")
-
-    return GeneralizedRotation(angle=angle, control=control, generator=generator,)
+    return QubitExcitation(target=[second,first], angle=2*angle, control=control, *args, **kwargs)  # twice the angle since theta is not divided by two in the matrix exponential
 
 
 """
