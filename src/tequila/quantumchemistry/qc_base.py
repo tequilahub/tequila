@@ -106,6 +106,19 @@ class QuantumChemistryBase:
         self._rdm1 = None
         self._rdm2 = None
 
+
+    @classmethod
+    def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
+        c, h1, h2 = molecule.get_integrals()
+        if transformation is None:
+            transformation = molecule.transformation
+        return cls(nuclear_repulsion=c,
+                   one_body_integrals=h1,
+                   two_body_integrals=h2,
+                   n_electrons=molecule.n_electrons,
+                   transformation=transformation,
+                   parameters=molecule.parameters, *args, **kwargs)
+
     def supports_ucc(self):
         """
         check if the current molecule supports UCC operations
