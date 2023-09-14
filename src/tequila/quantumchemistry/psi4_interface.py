@@ -325,7 +325,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         S = numpy.asarray(mints.ao_overlap())
         h = numpy.asarray(wfn.H())
         g = numpy.asarray(mints.ao_eri())
-        c = numpy.float(wfn.variables()['NUCLEAR REPULSION ENERGY'])
+        c = float(wfn.variables()['NUCLEAR REPULSION ENERGY'])
 
         g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
 
@@ -368,40 +368,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         self.irreps = irreps
 
         return super().initialize_integral_manager(*args, **kwargs)
-
-    def compute_one_body_integrals(self, ref_wfn=None):
-        if ref_wfn is None:
-            self.compute_energy(method="hf")
-            ref_wfn = self.logs['hf'].wfn
-        if ref_wfn.nirrep() != 1:
-            wfn = ref_wfn.c1_deep_copy(ref_wfn.basisset())
-        else:
-            wfn = ref_wfn
-        Ca = numpy.asarray(wfn.Ca())
-        h = wfn.H()
-        h = numpy.einsum("xy, yi -> xi", h, Ca, optimize='greedy')
-        h = numpy.einsum("xj, xi -> ji", Ca, h, optimize='greedy')
-        return h
-
-    def compute_two_body_integrals(self, ref_wfn=None, ordering='openfermion'):
-        if ref_wfn is None:
-            if 'hf' not in self.logs:
-                self.compute_energy(method="hf")
-            ref_wfn = self.logs['hf'].wfn
-
-        if ref_wfn.nirrep() != 1:
-            wfn = ref_wfn.c1_deep_copy(ref_wfn.basisset())
-        else:
-            wfn = ref_wfn
-
-        mints = psi4.core.MintsHelper(wfn.basisset())
-
-        # Molecular orbitals (coeffs)
-        Ca = wfn.Ca()
-        h = NBodyTensor(elems=numpy.asarray(mints.mo_eri(Ca, Ca, Ca, Ca)), ordering='chem')
-        # Order tensor. default: meet openfermion conventions
-        h.reorder(to=ordering)
-        return h.elems
 
     def compute_ccsd_amplitudes(self):
         return self.compute_amplitudes(method='ccsd')
@@ -610,7 +576,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True, psi4_method: str = None,
-                     psi4_options: dict = {}):
+                     psi4_options: dict = {}, *args, **kwargs):
         """
         Same functionality as qc_base.compute_rdms (look there for more information),
         plus the additional option to compute 1- and 2-RDM using psi4 by the keyword psi4_rdms
@@ -639,8 +605,8 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         -------
         """
         if not psi4_method:
-            super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
-                                 get_rdm1=get_rdm1, get_rdm2=get_rdm2)
+            return super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
+                                 get_rdm1=get_rdm1, get_rdm2=get_rdm2, *args, **kwargs)
         else:
             # Get 1- and 2-particle reduced density matrix via Psi4 CISD computation
             # If "cisd" is chosen, change to "detci" (default is excitation level 2 anyhow) to obtain a CIWavefunction

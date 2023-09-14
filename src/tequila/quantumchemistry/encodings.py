@@ -26,6 +26,15 @@ def known_encodings():
 
 class EncodingBase:
 
+    # true if the encoding is fully integrated
+    # false: can only do special things (like building the Hamiltionian)
+    # but is not consistent with UCC gate generation
+    _ucc_support=False
+
+    @property
+    def supports_ucc(self):
+        return self._ucc_support
+
     @property
     def name(self):
         prefix=""
@@ -129,6 +138,7 @@ class JordanWigner(EncodingBase):
     """
     OpenFermion::jordan_wigner
     """
+    _ucc_support=True
 
     def do_transform(self, fermion_operator:openfermion.FermionOperator, *args, **kwargs) -> openfermion.QubitOperator:
         return openfermion.jordan_wigner(fermion_operator, *args, **kwargs)
@@ -152,6 +162,8 @@ class BravyiKitaev(EncodingBase):
     Uses OpenFermion::bravyi_kitaev
     """
 
+    _ucc_support=True
+
     def do_transform(self, fermion_operator:openfermion.FermionOperator, *args, **kwargs) -> openfermion.QubitOperator:
         return openfermion.bravyi_kitaev(fermion_operator, n_qubits=self.n_orbitals*2)
 
@@ -161,6 +173,8 @@ class BravyiKitaevTree(EncodingBase):
     Uses OpenFermion::bravyi_kitaev_tree
     """
 
+    _ucc_support=True
+
     def do_transform(self, fermion_operator:openfermion.FermionOperator, *args, **kwargs) -> openfermion.QubitOperator:
         return openfermion.bravyi_kitaev_tree(fermion_operator, n_qubits=self.n_orbitals*2)
 
@@ -168,6 +182,8 @@ class BravyiKitaevFast(EncodingBase):
     """
     Uses OpenFermion::bravyi_kitaev_tree
     """
+
+    _ucc_support=False
 
     def do_transform(self, fermion_operator:openfermion.FermionOperator, *args, **kwargs) -> openfermion.QubitOperator:
         n_qubits = openfermion.count_qubits(fermion_operator)
@@ -177,6 +193,9 @@ class BravyiKitaevFast(EncodingBase):
         return openfermion.bravyi_kitaev_fast(op)
 
 class TaperedBravyKitaev(EncodingBase):
+
+    _ucc_support=False
+
     """
     Uses OpenFermion::symmetry_conserving_bravyi_kitaev (tapered bravyi_kitaev_tree arxiv:1701.07072)
     Reduces Hamiltonian by 2 qubits

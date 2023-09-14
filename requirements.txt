@@ -1,15 +1,15 @@
 # necessary
 numpy
-scipy >= 1.5 # can in principle be smaller, we recommend >= 1.5 for consistency with our tutorials (numerical gradients mostly)
+scipy < 1.11 # for now, until issues with scipy/pyscf are fixed # can in principle be smaller, we recommend >= 1.5 for consistency with our tutorials (numerical gradients mostly)
 sympy
-jax
-jaxlib
-# autograd # use if jaxlib gives you trouble (e.g. on Windows), make sure jax and jaxlib are uninstalled and install autograd
+#jax
+#jaxlib
+autograd # autograd works better on OSX-ARM64 (M1 and M2) and Windows, feel free to try jax however (no big differences)
 setuptools
 pytest
 openfermion ~= 1.0 # can not be smaller than 1.0 
 #cmake # needed by qulacs, can be removed otherwise, now in qulacs requirements
-qulacs < 0.5.0 # default simulator (best integration), remove if the installation gives you trouble and just install one of the other supported backend. Version restriction only for noise models, otherwise the new version is fine
+qulacs # default simulator (best integration), remove if the installation gives you trouble and just install one of the other supported backend. Version restriction only for noise models, otherwise the new version is fine
 
 #optional quantum backends
 #cirq >= 0.9.2 #

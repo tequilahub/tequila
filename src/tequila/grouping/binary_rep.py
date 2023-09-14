@@ -246,14 +246,14 @@ class BinaryHamiltonian:
         Parameters
         ----------
         options: dictionary: Dictionary containing user-defined parameters:
-            key: method, val: 'lf' (largest first), 'rlf' (recursive largest first), 'si' (sorted insertion)
-                              'osi' [overlapping sorted insertion, i.e., ICS arXiv: 2201.01471 (2022)]
+            key: method, val: 'lf' [largest first J. Chem. Phys. 152, 124114 (2020)], 'rlf' [recursive largest first J. Chem. Phys. 152, 124114 (2020)], 
+                              'si' [sorted insertion Quantum 5, 385 (2021)], 'ics' [iterative coefficient splitting npj Quantum Inf. 9, 14 (2023)]
             key: condition, val: 'fc' (fully commuting Pauli products are measured together)
                                  'qwc' (qubit-wise commuting Pauli products are measured together)
             key: cov_dict, val: Dictionary containing {(binary_tuple of pw1, binary_tuple of pw2) : Cov (pw1, pw2)}. 
-                                Only covariances for [pw1,pw2]=0 are necessary. This dictionary is necessary for osi.
+                                Only covariances for [pw1,pw2]=0 are necessary. This dictionary is necessary for ics.
                                 For other methods, if cov_dict is given, the optimal allocation of samples will be returned.
-            key: n_iter, val: integer number of iterations in osi.
+            key: n_iter, val: integer number of iterations in ics.
 
         Returns
         ----------
@@ -288,7 +288,7 @@ class BinaryHamiltonian:
             if (method == 'lf' or method == 'rlf'): 
                 mc = 'mcc' 
                 if condition != "fc": raise TequilaException(f"Combination of options={{method:{method},condition:{condition}}} is not valid. E.g., lf and rlf can only return fully commuting fragments, i.e., condition=fc is necessary.")
-            elif (method == 'si' or method == 'osi'):
+            elif (method == 'si' or method == 'ics'):
                 mc = 'greedy'
             else:
                 raise TequilaException(f"There is not options={{method:{method}}}")
@@ -308,7 +308,7 @@ class BinaryHamiltonian:
             result = [BinaryHamiltonian(value) for key, value in colors.items()]
         elif method_class(method, condition) == 'greedy':
             if method == 'si': groups = sorted_insertion_grouping(terms, condition)
-            if method == 'osi':
+            if method == 'ics':
                 if overlap_aux == None: raise TequilaException("Overlapping SI grouping requires a dictionary of covariances, call with options={cov_dict:X}, where X is the dictionary.")
                 o_groups = OverlappingGroups.init_from_binary_terms(terms, condition)
                 groups = o_groups.optimal_overlapping_groups(overlap_aux)

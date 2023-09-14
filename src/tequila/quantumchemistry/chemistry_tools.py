@@ -803,7 +803,7 @@ class IntegralManager:
     _overlap_integrals: numpy.ndarray = None
     _one_body_integrals: numpy.ndarray = None
     _two_body_integrals: NBodyTensor = None
-    _constant_term: numpy.float = None
+    _constant_term: float = None
     _basis_type: str = "unknown"
     _basis_name: str = "unknown"
     _orbital_type: str = "unknown" # e.g. "HF", "PNO", "native"
