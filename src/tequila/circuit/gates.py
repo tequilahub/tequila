@@ -504,6 +504,71 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     else:
         return GeneralizedRotation(angle=power * np.pi, control=control, generator=generator,
                                    eigenvalues_magnitude=0.25)
+        
+        
+def iSWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = 1.0, *args,
+         **kwargs) -> QCircuit:
+    """
+    Notes
+    ----------
+    iSWAP gate
+    .. math::
+        iSWAP = e^{i\\frac{\\pi}{4} (X \\otimes X + Y \\otimes Y )}
+
+    Parameters
+    ----------
+    first: int
+        target qubit
+    second: int
+        target qubit
+    control
+        int or list of ints
+    power
+        numeric type (fixed exponent) or hashable type (parametrized exponent)
+
+    Returns
+    -------
+    QCircuit
+
+    """
+
+    generator = paulis.from_string(f"X({first})X({second}) + Y({first})Y({second})")
+    
+    p0 = paulis.Projector("|00>") + paulis.Projector("|11>")
+    p0 = p0.map_qubits({0:first, 1:second})
+
+    gate = QubitExcitationImpl(angle=power*(-np.pi/2), target=generator.qubits, generator=generator, p0=p0, control=control, compile_options="vanilla", *args, **kwargs)
+    
+    return QCircuit.wrap_gate(gate)
+    
+    
+def Givens(first: int, second: int, control: typing.Union[int, list] = None, angle: float = None, *args,
+         **kwargs) -> QCircuit:
+    """
+    Notes
+    ----------
+    Givens gate G
+    .. math::
+        G = e^{-i\\theta \\frac{(Y \\otimes X - X \\otimes Y )}{2}}
+
+    Parameters
+    ----------
+    first: int
+        target qubit
+    second: int
+        target qubit
+    control
+        int or list of ints
+    angle
+        numeric type (fixed exponent) or hashable type (parametrized exponent), theta in the above formula
+
+    Returns
+    -------
+    QCircuit
+
+    """
+
+    return QubitExcitation(target=[second,first], angle=2*angle, control=control, *args, **kwargs)  # twice the angle since theta is not divided by two in the matrix exponential
 
 
 """
