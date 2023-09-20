@@ -406,7 +406,7 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
         Um1._parameter = self.parameter-s
         Um2 = GeneralizedRotationImpl(angle=-s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
 
-        return [(2.0 * r, [Up1,  Up2]), (-2.0 * r, [Um1 + Um2])]
+        return [(2.0 * r, [Up1,  Up2]), (-2.0 * r, [Um1, Um2])]
         
 class ExponentialPauliGateImpl(DifferentiableGateImpl):
     """
