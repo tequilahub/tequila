@@ -1030,11 +1030,7 @@ and should all implement a compile function that
 returns a QCircuit of primitive tq gates
 """
 
-class QubitExcitationImpl(impl.DifferentiableGateImpl):
-
-    @property
-    def steps(self):
-        return 1
+class QubitExcitationImpl(impl.GeneralizedRotationImpl):
 
     def __init__(self, angle, target, generator=None, p0=None, assume_real=True, control=None, compile_options=None):
         angle = assign_variable(angle)
@@ -1056,14 +1052,13 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             assert generator is not None
             assert p0 is not None
 
-        super().__init__(name="QubitExcitation", parameter=angle, target=target, control=control)
-        self.generator = generator
         if control is not None:
             # augment p0 for control qubits
             # Qp = 1/2(1+Z) = |0><0|
             p0 = p0*paulis.Qp(control)
-        self.p0 = p0
-        self.assume_real = assume_real
+        
+        super().__init__(name="QubitExcitation", angle=angle, generator=generator, p0=p0, control=control, assume_real=assume_real, steps=1)
+        
         if compile_options is None:
             self.compile_options = "optimize"
         elif hasattr(compile_options, "lower"):
@@ -1104,35 +1099,6 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             return U0 + U1 + U0.dagger()
         else:
             return Trotterized(angle=self.parameter, generator=self.generator, steps=1)
-
-    def shifted_gates(self):
-        if not self.assume_real:
-            # following https://arxiv.org/abs/2104.05695
-            s = 0.5 * np.pi
-            shifts = [s, -s, 3 * s, -3 * s]
-            coeff1 = 0.25 * (np.sqrt(2) + 1)/np.sqrt(2)
-            coeff2 = 0.25 * (np.sqrt(2) - 1)/np.sqrt(2)
-            coefficients = [coeff1, -coeff1, -coeff2, coeff2]
-            circuits = []
-            for i, shift in enumerate(shifts):
-                shifted_gate = copy.deepcopy(self)
-                shifted_gate.parameter += shift
-                circuits.append((coefficients[i], shifted_gate))
-            return circuits
-
-        r = 0.25
-        s = 0.5*np.pi
-
-        Up1 = copy.deepcopy(self)
-        Up1._parameter = self.parameter+s
-        Up1 = QCircuit.wrap_gate(Up1)
-        Up2 = GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
-        Um1 = copy.deepcopy(self)
-        Um1._parameter = self.parameter-s
-        Um1 = QCircuit.wrap_gate(Um1)
-        Um2 = GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
-
-        return [(2.0 * r, Up1 +  Up2), (-2.0 * r, Um1 + Um2)]
 
 def _convert_Paulistring(paulistring: typing.Union[PauliString, str, dict]) -> PauliString:
     '''

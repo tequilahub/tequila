@@ -6,7 +6,7 @@ from tequila.utils.exceptions import TequilaException
 from tequila.objective.objective import Variable, FixedVariable, assign_variable
 from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
-from numpy import pi, sqrt
+import numpy as np
 
 from dataclasses import dataclass
 
@@ -234,12 +234,12 @@ class DifferentiableGateImpl(ParametrizedGateImpl):
         if r is None:
             r = self.eigenvalues_magnitude
 
-        s =  pi / (4 * r)
+        s =  np.pi / (4 * r)
         if self.is_controlled() and not self.assume_real:
             # following https://arxiv.org/abs/2104.05695
             shifts = [s, -s, 3 * s, -3 * s]
-            coeff1 = (sqrt(2) + 1)/sqrt(8) * r
-            coeff2 = (sqrt(2) - 1)/sqrt(8) * r
+            coeff1 = (np.sqrt(2) + 1)/np.sqrt(8) * r
+            coeff2 = (np.sqrt(2) - 1)/np.sqrt(8) * r
             coefficients = [coeff1, -coeff1, -coeff2, coeff2]
             circuits = []
             for i, shift in enumerate(shifts):
@@ -344,7 +344,7 @@ class PowerGateImpl(ParametrizedGateImpl):
 
     @property
     def power(self):
-        return self.parameter/pi
+        return self.parameter/np.pi
 
     def __init__(self, name, generator: QubitHamiltonian,  target: list, power, control: list = None):
         if generator is None:
@@ -353,7 +353,7 @@ class PowerGateImpl(ParametrizedGateImpl):
         if name is None:
             assert generator is not None
             name = str(generator)
-        super().__init__(name=name, parameter=power * pi, target=target, control=control, generator=generator)
+        super().__init__(name=name, parameter=power * np.pi, target=target, control=control, generator=generator)
 
 
 class GeneralizedRotationImpl(DifferentiableGateImpl):
@@ -376,11 +376,38 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
             targets += [k for k in ps.keys()]
         return tuple(set(targets))
 
-    def __init__(self, angle, generator, control=None, eigenvalues_magnitude=0.5, steps=1, assume_real=False):
-        super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, assume_real=assume_real, name="GenRot", parameter=angle, target=self.extract_targets(generator), control=control)
+    def __init__(self, angle, generator, p0=None, control=None, eigenvalues_magnitude=0.5, steps=1, name="GenRot", assume_real=False):
+        super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, generator=generator, assume_real=assume_real, name=name, parameter=angle, target=self.extract_targets(generator), control=control)
         self.steps = steps
-        self.generator = generator
+        self.p0 = p0
+        
+    def shifted_gates(self):
+        if not self.assume_real:
+            # following https://arxiv.org/abs/2104.05695
+            s = 0.5 * np.pi
+            shifts = [s, -s, 3 * s, -3 * s]
+            coeff1 = 0.25 * (np.sqrt(2) + 1)/np.sqrt(2)
+            coeff2 = 0.25 * (np.sqrt(2) - 1)/np.sqrt(2)
+            coefficients = [coeff1, -coeff1, -coeff2, coeff2]
+            circuits = []
+            for i, shift in enumerate(shifts):
+                shifted_gate = copy.deepcopy(self)
+                shifted_gate.parameter += shift
+                circuits.append((coefficients[i], shifted_gate))
+            return circuits
 
+        r = 0.25
+        s = 0.5*np.pi
+        
+        Up1 = copy.deepcopy(self)
+        Up1._parameter = self.parameter+s
+        Up2 = GeneralizedRotationImpl(angle=s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
+        Um1 = copy.deepcopy(self)
+        Um1._parameter = self.parameter-s
+        Um2 = GeneralizedRotationImpl(angle=-s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
+
+        return [(2.0 * r, [Up1,  Up2]), (-2.0 * r, [Um1 + Um2])]
+        
 class ExponentialPauliGateImpl(DifferentiableGateImpl):
     """
     Same convention as for rotation gates:
