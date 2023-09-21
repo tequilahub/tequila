@@ -473,7 +473,7 @@ def Trotterized(generator: QubitHamiltonian = None,
     return QCircuit.wrap_gate(impl.TrotterizedGateImpl(generator=generator, angle=angle, steps=steps, control=control, randomize=randomize, **kwargs))
 
 
-def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None, *args,
+def SWAP(first: int, second: int, angle: float = None, control: typing.Union[int, list] = None, power: float = None, *args,
          **kwargs) -> QCircuit:
     """
     Notes
@@ -486,10 +486,12 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
         target qubit
     second: int
         target qubit
+    angle: numeric type or hashable type
+        exponent in the for e^{-i a/2 G}
     control
         int or list of ints
     power
-        numeric type (fixed exponent) or hashable type (parametrized exponent)
+        numeric type (fixed exponent) or hashable type (parametrized exponent in the form (SWAP)^n
 
     Returns
     -------
@@ -498,11 +500,17 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     """
 
     target = [first, second]
+    if angle is not None:
+        assert power is None
+        angle = assign_variable(angle)
+    elif power is not None:
+        # keep e^{-i a/2 G} convention
+        angle = assign_variable(power)*(-np.pi/2)
     generator = 0.5 * (paulis.X(target) + paulis.Y(target) + paulis.Z(target) - paulis.I(target))
-    if power is None or power in [1, 1.0]:
+    if angle is None or power in [1, 1.0]:
         return QGate(name="SWAP", target=target, control=control, generator=generator)
     else:
-        return GeneralizedRotation(angle=power * np.pi, control=control, generator=generator,
+        return GeneralizedRotation(angle=angle, control=control, generator=generator,
                                    eigenvalues_magnitude=0.25)
         
         
