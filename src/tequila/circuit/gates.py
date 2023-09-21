@@ -1062,18 +1062,9 @@ class QubitExcitationImpl(impl.GeneralizedRotationImpl):
             self.compile_options = compile_options
 
     def map_qubits(self, qubit_map: dict):
-        mapped_generator = self.generator.map_qubits(qubit_map=qubit_map)
-        mapped_p0 = self.p0.map_qubits(qubit_map=qubit_map)
-        mapped_control = self.control
-        if mapped_control is not None:
-            mapped_control=tuple([qubit_map[i] for i in self.control])
-        result = copy.deepcopy(self)
-        result.generator=mapped_generator
-        result.p0 = mapped_p0
-        result._target = tuple([qubit_map[x] for x in self.target])
-        result._control = mapped_control
-        result.finalize()
-        return result
+        mapped = super().map_qubits(qubit_map)
+        mapped.p0 = self.p0.map_qubits(qubit_map=qubit_map)
+        return mapped
 
     def compile(self, exponential_pauli=False, *args, **kwargs):
         # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475
