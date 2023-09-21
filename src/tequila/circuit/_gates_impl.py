@@ -381,7 +381,7 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
             target = self.extract_targets(generator)
         super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, generator=generator, assume_real=assume_real, name=name, parameter=angle, target=target, control=control)
         self.steps = steps
-        if control is not None:
+        if control is None and p0 is not None:
             # augment p0 for control qubits
             # Qp = 1/2(1+Z) = |0><0|
             p0 = p0*paulis.Qp(control)
