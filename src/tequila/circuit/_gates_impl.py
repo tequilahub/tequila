@@ -379,6 +379,10 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
     def __init__(self, angle, generator, p0=None, control=None, eigenvalues_magnitude=0.5, steps=1, name="GenRot", assume_real=False):
         super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, generator=generator, assume_real=assume_real, name=name, parameter=angle, target=self.extract_targets(generator), control=control)
         self.steps = steps
+        if control is not None:
+            # augment p0 for control qubits
+            # Qp = 1/2(1+Z) = |0><0|
+            p0 = p0*paulis.Qp(control)
         self.p0 = p0
         
     def shifted_gates(self):

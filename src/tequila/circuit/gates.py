@@ -1051,11 +1051,6 @@ class QubitExcitationImpl(impl.GeneralizedRotationImpl):
         else:
             assert generator is not None
             assert p0 is not None
-
-        if control is not None:
-            # augment p0 for control qubits
-            # Qp = 1/2(1+Z) = |0><0|
-            p0 = p0*paulis.Qp(control)
         
         super().__init__(name="QubitExcitation", angle=angle, generator=generator, p0=p0, control=control, assume_real=assume_real, steps=1)
         
