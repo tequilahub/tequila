@@ -376,8 +376,10 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
             targets += [k for k in ps.keys()]
         return tuple(set(targets))
 
-    def __init__(self, angle, generator, p0=None, control=None, eigenvalues_magnitude=0.5, steps=1, name="GenRot", assume_real=False):
-        super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, generator=generator, assume_real=assume_real, name=name, parameter=angle, target=self.extract_targets(generator), control=control)
+    def __init__(self, angle, generator, p0=None, control=None, target=None, eigenvalues_magnitude=0.5, steps=1, name="GenRot", assume_real=False):
+        if target == None:
+            target = self.extract_targets(generator)
+        super().__init__(eigenvalues_magnitude=eigenvalues_magnitude, generator=generator, assume_real=assume_real, name=name, parameter=angle, target=target, control=control)
         self.steps = steps
         if control is not None:
             # augment p0 for control qubits

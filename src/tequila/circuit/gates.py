@@ -1052,7 +1052,7 @@ class QubitExcitationImpl(impl.GeneralizedRotationImpl):
             assert generator is not None
             assert p0 is not None
         
-        super().__init__(name="QubitExcitation", angle=angle, generator=generator, p0=p0, control=control, assume_real=assume_real, steps=1)
+        super().__init__(name="QubitExcitation", angle=angle, generator=generator, target=target, p0=p0, control=control, assume_real=assume_real, steps=1)
         
         if compile_options is None:
             self.compile_options = "optimize"
