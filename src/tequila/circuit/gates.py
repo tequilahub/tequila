@@ -504,8 +504,7 @@ def SWAP(first: int, second: int, angle: float = None, control: typing.Union[int
         assert power is None
         angle = assign_variable(angle)
     elif power is not None:
-        # keep e^{-i a/2 G} convention
-        angle = assign_variable(power)*(-np.pi/2)
+        angle = assign_variable(power)*np.pi
     generator = 0.5 * (paulis.X(target) + paulis.Y(target) + paulis.Z(target) - paulis.I(target))
     if angle is None or power in [1, 1.0]:
         return QGate(name="SWAP", target=target, control=control, generator=generator)
