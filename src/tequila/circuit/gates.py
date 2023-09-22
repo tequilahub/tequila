@@ -364,7 +364,7 @@ def Rp(paulistring: typing.Union[PauliString, str], angle, control: typing.Union
 def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real]],
                         generator: QubitHamiltonian,
                         control: typing.Union[list, int] = None,
-                        eigenvalues_magnitude: float = 0.5,
+                        eigenvalues_magnitude: float = 0.5, p0=None,
                         steps: int = 1, assume_real=False) -> QCircuit:
     """
 
@@ -403,7 +403,7 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
 
     return QCircuit.wrap_gate(
         impl.GeneralizedRotationImpl(angle=assign_variable(angle), generator=generator, control=control,
-                                eigenvalues_magnitude=eigenvalues_magnitude, steps=steps, assume_real=assume_real))
+                                eigenvalues_magnitude=eigenvalues_magnitude, steps=steps, assume_real=assume_real, p0=p0))
 
 
 
