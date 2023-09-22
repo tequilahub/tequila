@@ -361,6 +361,9 @@ def Rp(paulistring: typing.Union[PauliString, str], angle, control: typing.Union
     return ExpPauli(paulistring=paulistring, angle=angle, control=control, *args, **kwargs)
 
 
+def GenRot(*args, **kwargs):
+    return GeneralizedRotation(*args, **kwargs)
+
 def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real]],
                         generator: QubitHamiltonian,
                         control: typing.Union[list, int] = None,
@@ -393,6 +396,8 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
         list of control qubits
     eigenvalues_magnitude
         magnitude of eigenvalues, in most papers referred to as "r" (default 0.5)
+    p0
+        possible nullspace projector (if the rotation is happens in Q = 1-P0). See arxiv:2011.05938
     steps
         possible Trotterization steps (default 1)
 
