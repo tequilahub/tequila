@@ -361,10 +361,13 @@ def Rp(paulistring: typing.Union[PauliString, str], angle, control: typing.Union
     return ExpPauli(paulistring=paulistring, angle=angle, control=control, *args, **kwargs)
 
 
+def GenRot(*args, **kwargs):
+    return GeneralizedRotation(*args, **kwargs)
+
 def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing.List[numbers.Real]],
                         generator: QubitHamiltonian,
                         control: typing.Union[list, int] = None,
-                        eigenvalues_magnitude: float = 0.5,
+                        eigenvalues_magnitude: float = 0.5, p0=None,
                         steps: int = 1, assume_real=False) -> QCircuit:
     """
 
@@ -393,6 +396,8 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
         list of control qubits
     eigenvalues_magnitude
         magnitude of eigenvalues, in most papers referred to as "r" (default 0.5)
+    p0
+        possible nullspace projector (if the rotation is happens in Q = 1-P0). See arxiv:2011.05938
     steps
         possible Trotterization steps (default 1)
 
@@ -403,7 +408,7 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
 
     return QCircuit.wrap_gate(
         impl.GeneralizedRotationImpl(angle=assign_variable(angle), generator=generator, control=control,
-                                eigenvalues_magnitude=eigenvalues_magnitude, steps=steps, assume_real=assume_real))
+                                eigenvalues_magnitude=eigenvalues_magnitude, steps=steps, assume_real=assume_real, p0=p0))
 
 
 
@@ -473,7 +478,7 @@ def Trotterized(generator: QubitHamiltonian = None,
     return QCircuit.wrap_gate(impl.TrotterizedGateImpl(generator=generator, angle=angle, steps=steps, control=control, randomize=randomize, **kwargs))
 
 
-def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = None, *args,
+def SWAP(first: int, second: int, angle: float = None, control: typing.Union[int, list] = None, power: float = None, *args,
          **kwargs) -> QCircuit:
     """
     Notes
@@ -486,10 +491,12 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
         target qubit
     second: int
         target qubit
+    angle: numeric type or hashable type
+        exponent in the for e^{-i a/2 G}
     control
         int or list of ints
     power
-        numeric type (fixed exponent) or hashable type (parametrized exponent)
+        numeric type (fixed exponent) or hashable type (parametrized exponent in the form (SWAP)^n
 
     Returns
     -------
@@ -498,11 +505,16 @@ def SWAP(first: int, second: int, control: typing.Union[int, list] = None, power
     """
 
     target = [first, second]
+    if angle is not None:
+        assert power is None
+        angle = assign_variable(angle)
+    elif power is not None:
+        angle = assign_variable(power)*np.pi
     generator = 0.5 * (paulis.X(target) + paulis.Y(target) + paulis.Z(target) - paulis.I(target))
-    if power is None or power in [1, 1.0]:
+    if angle is None or power in [1, 1.0]:
         return QGate(name="SWAP", target=target, control=control, generator=generator)
     else:
-        return GeneralizedRotation(angle=power * np.pi, control=control, generator=generator,
+        return GeneralizedRotation(angle=angle, control=control, generator=generator,
                                    eigenvalues_magnitude=0.25)
         
         
@@ -1030,11 +1042,7 @@ and should all implement a compile function that
 returns a QCircuit of primitive tq gates
 """
 
-class QubitExcitationImpl(impl.DifferentiableGateImpl):
-
-    @property
-    def steps(self):
-        return 1
+class QubitExcitationImpl(impl.GeneralizedRotationImpl):
 
     def __init__(self, angle, target, generator=None, p0=None, assume_real=True, control=None, compile_options=None):
         angle = assign_variable(angle)
@@ -1055,15 +1063,9 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
         else:
             assert generator is not None
             assert p0 is not None
-
-        super().__init__(name="QubitExcitation", parameter=angle, target=target, control=control)
-        self.generator = generator
-        if control is not None:
-            # augment p0 for control qubits
-            # Qp = 1/2(1+Z) = |0><0|
-            p0 = p0*paulis.Qp(control)
-        self.p0 = p0
-        self.assume_real = assume_real
+        
+        super().__init__(name="QubitExcitation", angle=angle, generator=generator, target=target, p0=p0, control=control, assume_real=assume_real, steps=1)
+        
         if compile_options is None:
             self.compile_options = "optimize"
         elif hasattr(compile_options, "lower"):
@@ -1072,18 +1074,9 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             self.compile_options = compile_options
 
     def map_qubits(self, qubit_map: dict):
-        mapped_generator = self.generator.map_qubits(qubit_map=qubit_map)
-        mapped_p0 = self.p0.map_qubits(qubit_map=qubit_map)
-        mapped_control = self.control
-        if mapped_control is not None:
-            mapped_control=tuple([qubit_map[i] for i in self.control])
-        result = copy.deepcopy(self)
-        result.generator=mapped_generator
-        result.p0 = mapped_p0
-        result._target = tuple([qubit_map[x] for x in self.target])
-        result._control = mapped_control
-        result.finalize()
-        return result
+        mapped = super().map_qubits(qubit_map)
+        mapped.p0 = self.p0.map_qubits(qubit_map=qubit_map)
+        return mapped
 
     def compile(self, exponential_pauli=False, *args, **kwargs):
         # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475
@@ -1104,35 +1097,6 @@ class QubitExcitationImpl(impl.DifferentiableGateImpl):
             return U0 + U1 + U0.dagger()
         else:
             return Trotterized(angle=self.parameter, generator=self.generator, steps=1)
-
-    def shifted_gates(self):
-        if not self.assume_real:
-            # following https://arxiv.org/abs/2104.05695
-            s = 0.5 * np.pi
-            shifts = [s, -s, 3 * s, -3 * s]
-            coeff1 = 0.25 * (np.sqrt(2) + 1)/np.sqrt(2)
-            coeff2 = 0.25 * (np.sqrt(2) - 1)/np.sqrt(2)
-            coefficients = [coeff1, -coeff1, -coeff2, coeff2]
-            circuits = []
-            for i, shift in enumerate(shifts):
-                shifted_gate = copy.deepcopy(self)
-                shifted_gate.parameter += shift
-                circuits.append((coefficients[i], shifted_gate))
-            return circuits
-
-        r = 0.25
-        s = 0.5*np.pi
-
-        Up1 = copy.deepcopy(self)
-        Up1._parameter = self.parameter+s
-        Up1 = QCircuit.wrap_gate(Up1)
-        Up2 = GeneralizedRotation(angle=s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
-        Um1 = copy.deepcopy(self)
-        Um1._parameter = self.parameter-s
-        Um1 = QCircuit.wrap_gate(Um1)
-        Um2 = GeneralizedRotation(angle=-s, generator=self.p0, eigenvalues_magnitude=r) # controls are in p0
-
-        return [(2.0 * r, Up1 +  Up2), (-2.0 * r, Um1 + Um2)]
 
 def _convert_Paulistring(paulistring: typing.Union[PauliString, str, dict]) -> PauliString:
     '''

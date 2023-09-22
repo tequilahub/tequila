@@ -209,7 +209,7 @@ def Sm(qubit) -> QubitHamiltonian:
     Initialize
 
     .. math::
-        \\frac{1}{2} \\left( \\sigma_x + i \\sigma_y \\right)
+        \\frac{1}{2} \\left( \\sigma_x - i \\sigma_y \\right)
 
     Parameters
     ----------
