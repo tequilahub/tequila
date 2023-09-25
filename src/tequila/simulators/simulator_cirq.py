@@ -9,6 +9,7 @@ import numpy as np
 import typing, numbers
 
 import cirq
+import cirq_google
 
 map_1 = lambda x: {'exponent': x}
 map_2 = lambda x: {'exponent': x / np.pi, 'global_shift': -0.5}
@@ -356,35 +357,20 @@ class BackendCircuitCirq(BackendCircuit):
         line = None
         circuit = None
         if isinstance(device, cirq.Device):
-            if isinstance(device, cirq.google.devices.XmonDevice) or isinstance(device,
-                                                                                cirq.google.devices.serializable_device.SerializableDevice):
-                options = ['xmon', 'xmon_partial_cz', 'sqrt_iswap', 'sycamore']
-                if device in [cirq.google.Sycamore, cirq.google.Sycamore23]:
-                    options = ['sycamore', 'sqrt_iswap', 'xmon', 'xmon_partial_cz']
-                for option in options:
-                    try:
-                        line = cirq.google.line_on_device(device, length=len(self.abstract_circuit.qubits))
-
-                        circuit = cirq.google.optimized_for_sycamore(circuit=c, new_device=device,
-                                                                     optimizer_type=option,
-                                                                     qubit_map=lambda q: line[q.x])
-                    except:
-                        line = None
-                        pass
-                if circuit is None:
-                    raise TequilaCirqException('could not optimize for device={}'.format(device))
-
+            if device in [cirq_google.Sycamore, cirq_google.Sycamore23]:
+                try:
+                    circuit = cirq.optimize_for_target_gateset(circuit=c, gateset=cirq_google.SycamoreTargetGateset())
+                except ValueError as E:
+                    original_message = str(E)
+                    raise TequilaCirqException('original message:\n{}\n\ncould not optimize for device={}'.format(original_message,device))
             else:
                 ### under construction (potentially on other branches)
-                raise TequilaException('Only known and Xmon devices currently functional. Sorry!')
+                raise TequilaException('Only Sycamore and Sycamore23 devices currently functional. Sorry!')
+
         else:
             raise TequilaException(
                 'build_device_circuit demands a cirq.Device object; received {}, of type {}'.format(str(device),
                                                                                                     type(device)))
-
-        if line is not None:
-            for k in self.qubit_map.keys():
-                self.qubit_map[k].instance = line[self.qubit_map[k].instance.x]
         return circuit
 
     def build_noisy_circuit(self, noise):
@@ -447,7 +433,7 @@ class BackendCircuitCirq(BackendCircuit):
             the device on which to execute cirq circuits.
         """
         if isinstance(device, str):
-            return getattr(cirq.google, device)
+            return getattr(cirq_google, device)
         else:
             if device is None:
                 return device
@@ -474,7 +460,7 @@ class BackendCircuitCirq(BackendCircuit):
             return
         else:
             assert isinstance(device, str)
-            if device.lower() in ['foxtail', 'sycamore', 'sycamore23', 'bristlecone']:
+            if device.lower() in ['sycamore', 'sycamore23']:
                 pass
             else:
                 raise TequilaException('requested device {} could not be found!'.format(device))
