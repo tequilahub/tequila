@@ -5,6 +5,7 @@ from tequila import BitString, BitNumbering
 import sympy
 from tequila.utils import to_float
 
+import importlib
 import numpy as np
 import typing, numbers
 
@@ -357,6 +358,9 @@ class BackendCircuitCirq(BackendCircuit):
         line = None
         circuit = None
         if isinstance(device, cirq.Device):
+            HAS_GOOGLE = importlib.util.find_spec('cirq_google')
+            assert HAS_GOOGLE, TequilaCirqException(' cirq_google package is not installed.')
+            
             if device in [cirq_google.Sycamore, cirq_google.Sycamore23]:
                 try:
                     circuit = cirq.optimize_for_target_gateset(circuit=c, gateset=cirq_google.SycamoreTargetGateset())
