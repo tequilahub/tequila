@@ -32,7 +32,7 @@ jobs:
             # myqlm does not work in python3.7
             pip install "cirq" "qiskit>=0.30" "qulacs" "qibo==0.1.1"
         elif [ $ver -eq 8 ]; then
-            pip install "cirq" "qiskit>=0.30" "qulacs" "qibo==0.1.1" "myqlm"
+            pip install "cirq" "qiskit>=0.30" "qulacs" "qibo==0.1.1" "myqlm" "cirq-google"
         fi
         pip install -e .
     - name: Lint with flake8
