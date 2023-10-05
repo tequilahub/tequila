@@ -1,11 +1,9 @@
-from tequila import TequilaException, TequilaWarning, ExpectationValue, QCircuit, minimize
-from openfermion import MolecularData
+from tequila import TequilaException
 from tequila.quantumchemistry.qc_base import QuantumChemistryBase
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
-from dataclasses import dataclass, field
 import pyscf
 
-import numpy, typing, warnings
+import numpy, typing
 
 
 class OpenVQEEPySCFException(TequilaException):
@@ -43,7 +41,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             else:
                 mol.symmetry = True
 
-            mol.build()
+            mol.build(parse_arg=False)
 
             # solve restricted HF
             mf = pyscf.scf.RHF(mol)
@@ -70,18 +68,6 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                 kwargs["nuclear_repulsion"] = mol.energy_nuc()
 
         super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
-
-    @classmethod
-    def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
-        c, h1, h2 = molecule.get_integrals()
-        if transformation is None:
-            transformation = molecule.transformation
-        return cls(nuclear_repulsion=c,
-                   one_body_integrals=h1,
-                   two_body_integrals=h2,
-                   n_electrons=molecule.n_electrons,
-                   transformation=transformation,
-                   parameters=molecule.parameters, *args, **kwargs)
 
     def compute_fci(self, *args, **kwargs):
         from pyscf import fci
@@ -120,7 +106,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         mo_occ = numpy.zeros(norb)
         mo_occ[:nelec // 2] = 2
 
-        pyscf_mol = pyscf.gto.M(verbose=0)
+        pyscf_mol = pyscf.gto.M(verbose=0, parse_arg=False)
         pyscf_mol.nelectron = nelec
         pyscf_mol.incore_anyway = True  # ensure that custom integrals are used
         pyscf_mol.energy_nuc = lambda *args: c

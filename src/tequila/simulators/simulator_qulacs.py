@@ -1,6 +1,8 @@
 import qulacs
 import numbers, numpy
-from tequila import TequilaException
+import warnings
+
+from tequila import TequilaException, TequilaWarning
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, QCircuit, change_basis
@@ -91,6 +93,9 @@ class BackendCircuitQulacs(BackendCircuit):
         super().__init__(abstract_circuit=abstract_circuit, noise=noise, *args, **kwargs)
         self.has_noise=False
         if noise is not None:
+
+            warnings.warn("Warning: noise in qulacs module will be dropped. Currently only works for qulacs version 0.5 or lower", TequilaWarning)
+
             self.has_noise=True
             self.noise_lookup = {
                 'bit flip': [qulacs.gate.BitFlipNoise],
