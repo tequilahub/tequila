@@ -29,8 +29,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install --upgrade pytest
         pip install -r requirements.txt
-        pip install "pyquil<3.0"
+        pip install "pyquil<3.0" # needs updates
         pip install -e .
+        pip install --upgrade pip 'urllib3<2' # issues with old pyquil version otherwise
         docker pull rigetti/qvm:edge
         docker pull rigetti/quilc
         docker run --rm -itd -p 5555:5555 rigetti/quilc -R
