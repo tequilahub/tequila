@@ -15,7 +15,7 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 
 # Installation
 Recommended Python version is 3.8-3.9.   
-Tequila supports linux, osx and windows. However, not all optional dependencies are supported on windows.
+Tequila supports linux, osx and windows. However, not all optional dependencies are supported on windows.  
 
 ## Install from PyPi
 **Do not** install like this: (Minecraft lovers excluded)
