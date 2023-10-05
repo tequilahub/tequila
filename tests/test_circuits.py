@@ -6,7 +6,7 @@ import sympy
 from tequila import assign_variable, paulis, TequilaWarning
 from tequila.circuit._gates_impl import RotationGateImpl
 from tequila.circuit.gates import CNOT, ExpPauli, H, Phase, QCircuit, RotationGate, Rx, Ry, Rz, S, \
-    SWAP, T, Trotterized, u1, u2, u3, X, Y, Z
+    SWAP, iSWAP, Givens, T, Trotterized, u1, u2, u3, X, Y, Z
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
@@ -332,6 +332,31 @@ def test_swap():
     wfn = simulate(U)
     wfnx = simulate(X(2)+X(3))
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
+    
+def test_iswap():
+    U = X(0)
+    U += iSWAP(0, 2, power=0.5)
+    wfn = simulate(U)
+    wfnx = simulate(X(2))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2, 0.5)
+
+    
+def test_givens():
+    U = X(0)
+    U += Givens(0, 1, angle=-numpy.pi/4)
+    wfn = simulate(U)
+    wfnx = simulate(X(0))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2, 0.5)
+    wfnx = simulate(X(1))
+    assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2, 0.5)
+    
+    U = X(0)
+    U += Givens(0, 1, angle=numpy.pi/4)
+    wfn = simulate(U)
+    wfnx0 = simulate(Phase([0, 1], angle=numpy.pi) + X(0))
+    wfnx1 = simulate(X(1))
+    assert numpy.isclose(wfn.inner(wfnx0), -wfn.inner(wfnx1))
+
 
 def test_variable_map():
     U = Ry(angle="a", target=0) + Rx(angle="b", target=1) + Rz(angle="c", target=2) + H(angle="d", target=3) + ExpPauli(paulistring="X(0)Y(1)Z(2)", angle="e")

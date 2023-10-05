@@ -9,12 +9,49 @@ from tequila import simulators
 import numpy
 import pytest
 
+import tequila as tq
+
 # Get QC backends for parametrized testing
 import select_backends
 
 simulators = select_backends.get()
 samplers = select_backends.get(sampler=True)
 
+# special tests
+def test_gradient_swap():
+    U1 = tq.gates.X(2) + tq.gates.SWAP(1,2,angle="a")
+    U2 = tq.compile_circuit(U1)
+    H = tq.paulis.Z(1) - tq.paulis.Z(2) 
+    E1 = tq.ExpectationValue(H=H, U=U1)
+    E2 = tq.ExpectationValue(H=H, U=U2)
+    dE1 = tq.grad(E1, "a")
+    dE2 = tq.grad(E1, "a")
+    for angle in numpy.random.uniform(0.0,numpy.pi*4,10):
+        g1 = tq.simulate(dE1, variables={"a":angle})
+        g2 = tq.simulate(dE2, variables={"a":angle})
+        assert numpy.isclose(g1,g2,atol=1.e-5)
+
+# special tests
+def test_gradient_genrot():
+    G = tq.paulis.KetBra(ket="|101>", bra="|010>")
+    G = G + G.dagger()
+    P0 = 1.0 - tq.paulis.Projector("|101>") - tq.paulis.Projector("|010>")
+    U1 = tq.gates.X([0,2]) + tq.gates.GeneralizedRotation(generator=G, p0=P0 ,angle="a")
+    U2 = tq.gates.X([0,2]) + tq.gates.GeneralizedRotation(generator=G, p0=P0 ,angle="a", assume_real=True)
+    U3 = tq.compile_circuit(U1)
+    H = tq.paulis.Z(1) - tq.paulis.Z(2)
+    E1 = tq.ExpectationValue(H=H, U=U1)
+    E2 = tq.ExpectationValue(H=H, U=U2)
+    E3 = tq.ExpectationValue(H=H, U=U3)
+    dE1 = tq.grad(E1, "a")
+    dE2 = tq.grad(E2, "a")
+    dE3 = tq.grad(E3, "a")
+    for angle in numpy.random.uniform(0.0,numpy.pi*4,10):
+        g1 = tq.simulate(dE1, variables={"a":angle})
+        g2 = tq.simulate(dE2, variables={"a":angle})
+        g3 = tq.simulate(dE3, variables={"a":angle})
+        assert numpy.isclose(g1,g2,atol=1.e-5)
+        assert numpy.isclose(g1,g3,atol=1.e-5)
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
