@@ -228,6 +228,17 @@ K. Gratsea, C. Sun, P.D. Johnson
 When to Reject a Ground State Preparation Algorithm  
 [arxiv:2212.09492](https://doi.org/10.48550/arXiv.2212.09492)  
 
+R.P. Pothukuchi, L. Lufkin, Y.J. Shen, A. Simon, R. Thorstenson, B.E. Trevisan, M. Tu, M. Yang, B. Foxman, V. S. Pothukuchi, G. Epping, B. J. Jongkees, T.-H. Kyaw, J. R. Busemeyer, J. D Cohen, A. Bhattacharjee  
+Quantum Cognitive Modeling: New Applications and Systems Research Directions  
+[arxiv:2309.00597](https://arxiv.org/abs/2309.00597)  
+
+T.-H. Kyaw, M. B. Soley, B. Allen, P. Bergold, C. Sun, V.S. Batista and A. Aspuru-Guzik  
+Boosting quantum amplitude exponentially in variational quantum algorithms  
+[10.1088/2058-9565/acf4ba](doi.org/10.1088/2058-9565/acf4ba)  
+
+A.G. Cadavid, I. Montalban, A. Dalal, E. Solano, N.N. Hegade  
+Efficient DCQO Algorithm within the Impulse Regime for Portfolio Optimization  
+[arxiv:2308.15475](https://arxiv.org/abs/2308.15475)  
 
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
