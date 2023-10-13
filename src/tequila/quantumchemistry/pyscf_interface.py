@@ -50,7 +50,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             # only works if point_group is not C1
             # otherwise PySCF uses a different SCF object
             # irrep information is however not critical to tequila
-            if hasattr(mf, "get_irrep_nelec")
+            if hasattr(mf, "get_irrep_nelec"):
                 self.irreps = mf.get_irrep_nelec()
             else:
                 self.irreps = None
