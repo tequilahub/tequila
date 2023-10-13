@@ -46,7 +46,15 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             # solve restricted HF
             mf = pyscf.scf.RHF(mol)
             mf.kernel()
-            self.irreps = mf.get_irrep_nelec()
+
+            # only works if point_group is not C1
+            # otherwise PySCF uses a different SCF object
+            # irrep information is however not critical to tequila
+            if hasattr(mf, "get_irrep_nelec")
+                self.irreps = mf.get_irrep_nelec()
+            else:
+                self.irreps = None
+                
             orbital_energies = mf.mo_energy
 
             # compute mo integrals
