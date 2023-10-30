@@ -18,7 +18,7 @@ import os, glob
 
 
 HAS_GOOGLE = importlib.util.find_spec('cirq_google')
-@pytest.mark.skipif(condition=HAS_GOOGLE, reason="cirq_google not installed")
+@pytest.mark.skipif(condition=not HAS_GOOGLE, reason="cirq_google not installed")
 def test_cirq_google_devices():
     import cirq_google
     
