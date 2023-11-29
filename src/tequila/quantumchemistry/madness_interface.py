@@ -696,9 +696,9 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                 data[key] = {**data[key], **kwargs[key]}
 
         geom = {}
-        if hasattr(self, mad_geometry_options):
+        if hasattr(self, "mad_geometry_options"):
             geom = self.mad_geometry_options
-        
+
         if "units" not in geom:
             geom["units"] = "angstrom"
         if "eprec" not in geom:
