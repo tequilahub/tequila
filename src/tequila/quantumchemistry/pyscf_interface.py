@@ -45,6 +45,10 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
             # solve restricted HF
             mf = pyscf.scf.RHF(mol)
+            mf.verbose = False
+            if "verbose" in kwargs:
+                mf.verbose = kwargs["verbose"]
+
             mf.kernel()
 
             # only works if point_group is not C1
