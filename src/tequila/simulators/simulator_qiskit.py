@@ -1,5 +1,6 @@
 from tequila.simulators.simulator_base import BackendCircuit, QCircuit, BackendExpectationValue
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.wavefunction.density_matrix import DensityMatrix
 from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
@@ -256,6 +257,8 @@ class BackendCircuitQiskit(BackendCircuit):
         QubitWaveFunction:
             the result of simulation.
         """
+        circuit = self.circuit.bind_parameters(self.resolver)
+        
         if self.noise_model is None:
             if self.device is None:
                 qiskit_backend = self.retrieve_device('statevector_simulator')
@@ -265,7 +268,12 @@ class BackendCircuitQiskit(BackendCircuit):
                 else:
                     qiskit_backend = self.retrieve_device(self.device)
         else:
-            raise TequilaQiskitException("wave function simulation with noise cannot be performed presently.")
+            ## density simulation in the presence of noise model
+            if self.device is None:
+                qiskit_backend = self.retrieve_device('aer_simulator_density_matrix') #try statevector simulator too
+            #raise TequilaQiskitException("wave function simulation with noise cannot be performed presently.")
+            qiskit_backend.set_options(noise_model=self.noise_model)
+            circuit.save_density_matrix()
 
         optimization_level = None
         if "optimization_level" in kwargs:
@@ -278,13 +286,16 @@ class BackendCircuitQiskit(BackendCircuit):
             print(initial_state, " -> ", i)
             array[i.integer] = 1.0
             opts = {"initial_statevector": array}
-
-        circuit = self.circuit.bind_parameters(self.resolver)
+        
 
         qiskit_job = qiskit_backend.run(circuit,optimization_level=optimization_level,**opts)
 
         backend_result = qiskit_job.result()
-        return QubitWaveFunction.from_array(arr=backend_result.get_statevector(circuit), numbering=self.numbering)
+        if self.noise_model is not None:
+            #return density
+            return DensityMatrix.from_array(density_matrix = backend_result.data()['density_matrix'].data, numbering = BitNumbering.MSB)
+        else:
+            return QubitWaveFunction.from_array(arr=backend_result.get_statevector(circuit), numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, *args, **kwargs) -> QubitWaveFunction:
         """
@@ -306,6 +317,10 @@ class BackendCircuitQiskit(BackendCircuit):
         optimization_level = 1
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
+        if 'save_runs' in kwargs:
+            save_runs = kwargs['save_runs']
+        else:
+            save_runs = False #default
         if self.device is None:
             qiskit_backend = self.retrieve_device('aer_simulator')
         else:
@@ -317,8 +332,8 @@ class BackendCircuitQiskit(BackendCircuit):
             circuit = circuit.bind_parameters(self.resolver)  # this is necessary in spite of qiskit "fixing" it
             circuit = qiskit.transpile(circuit, qiskit_backend)
             return self.convert_measurements(qiskit_backend.run(circuit,shots=samples,
-                                                            optimization_level=optimization_level),
-                                             target_qubits=read_out_qubits)
+                                                            optimization_level=optimization_level, memory=save_runs),
+                                             target_qubits=read_out_qubits, save_runs=save_runs)
         else:
             if isinstance(qiskit_backend, qiskit.test.mock.FakeBackend):
                 circuit = circuit.bind_parameters(self.resolver)  # this is necessary in spite of qiskit "fixing" it
@@ -335,8 +350,8 @@ class BackendCircuitQiskit(BackendCircuit):
                                            optimization_level=optimization_level
                                            )
 
-                job=qiskit_backend.run(circuit, shots=samples)
-                return self.convert_measurements(job,target_qubits=read_out_qubits)
+                job=qiskit_backend.run(circuit, shots=samples, memory=save_runs)
+                return self.convert_measurements(job,target_qubits=read_out_qubits, save_runs=save_runs)
             else:
                 if self.noise_model is not None:
                     qiskit_backend.set_options(noise_model=self.noise_model)  # fits better with our methodology.
@@ -349,11 +364,11 @@ class BackendCircuitQiskit(BackendCircuit):
                                            optimization_level=optimization_level
                                            )
 
-                job = qiskit_backend.run(circuit, shots=samples)
+                job = qiskit_backend.run(circuit, shots=samples, memory=save_runs)
                 return self.convert_measurements(job,
-                                                 target_qubits=read_out_qubits)
+                                                 target_qubits=read_out_qubits, save_runs=save_runs)
 
-    def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
+    def convert_measurements(self, backend_result, target_qubits=None, save_runs=False) -> QubitWaveFunction:
         """
         map backend results to QubitWaveFunction
         Parameters
@@ -365,8 +380,18 @@ class BackendCircuitQiskit(BackendCircuit):
         QubitWaveFunction:
             measurements converted into wave function form.
         """
+        def process_qiskit_memory(memory):
+            """
+            Returns run list from qiskit.result.get_memory() (list of run readouts in lSB)
+            """
+            runs = [BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k)) for k in memory]
+            return runs
         qiskit_counts = backend_result.result().get_counts()
         result = QubitWaveFunction()
+        if save_runs:
+            qiskit_memory = backend_result.result().get_memory()
+            qiskit_runs = process_qiskit_memory(qiskit_memory)
+            result.runs = qiskit_runs #todo bitstring!
         # todo there are faster ways
         for k, v in qiskit_counts.items():
             converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
@@ -376,6 +401,9 @@ class BackendCircuitQiskit(BackendCircuit):
             mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
             keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
             result = result.apply_keymap(keymap=keymap)
+            if save_runs:
+                #map results.runs
+                result.runs = [keymap(input_state=k, initial_state=None) for k in result.runs]
 
         return result
 

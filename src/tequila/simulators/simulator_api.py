@@ -176,9 +176,9 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
                 for f in INSTALLED_SAMPLERS.keys():
                     return f
         else:
-            if samples is None:
-                raise TequilaException(
-                    "Noise requires sampling; please provide a positive, integer value for samples")
+            #if samples is None:
+            #    raise TequilaException(
+            #        "Noise requires sampling; please provide a positive, integer value for samples")
             for f in SUPPORTED_NOISE_BACKENDS:
                 return f
             raise TequilaException(
