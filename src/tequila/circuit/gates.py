@@ -1081,10 +1081,14 @@ class QubitExcitationImpl(impl.GeneralizedRotationImpl):
     def compile(self, exponential_pauli=False, *args, **kwargs):
         # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475
         # Alternative representation in arxiv:2104.05695 (not implemented -> could be added and controlled with optional compile keywords)
+        if self.is_controlled():
+            control = list(self.control)
+        else:
+            control = []
         if self.compile_options == "optimize" and len(self.target) == 2 and exponential_pauli:
             p,q = self.target
             U0 = X(target=p, control=q)
-            U1 = Ry(angle=self.parameter, target=q, control=p)
+            U1 = Ry(angle=self.parameter, target=q, control=[p]+control)
             return U0 + U1 + U0
         elif self.compile_options == "optimize" and len(self.target) == 4 and exponential_pauli:
             p,r,q,s = self.target
@@ -1093,10 +1097,11 @@ class QubitExcitationImpl(impl.GeneralizedRotationImpl):
             U0 += X(target=r, control=p)
             U0 += X(target=q)
             U0 += X(target=s)
-            U1 = Ry(angle=-self.parameter, target=p, control=[q,r,s])
+            U1 = Ry(angle=-self.parameter, target=p, control=[q,r,s]+control)
             return U0 + U1 + U0.dagger()
         else:
-            return Trotterized(angle=self.parameter, generator=self.generator, steps=1)
+            return Trotterized(angle=self.parameter, generator=self.generator, steps=1, control=self.control)
+
 
 def _convert_Paulistring(paulistring: typing.Union[PauliString, str, dict]) -> PauliString:
     '''

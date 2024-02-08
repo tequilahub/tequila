@@ -150,6 +150,10 @@ class Adapt:
             variables = {**variables, **static_variables}
 
         U = QCircuit()
+        if "U" in kwargs:
+            U = kwargs["U"]
+        elif hasattr(self.operator_pool, "initialize_circuit"):
+            U = self.operator_pool.initialize_circuit()
 
         initial_objective = self.make_objective(U, variables = variables)
         for k in initial_objective.extract_variables():
