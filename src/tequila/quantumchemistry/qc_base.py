@@ -559,7 +559,7 @@ class QuantumChemistryBase:
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         integral_manager = copy.deepcopy(self.integral_manager)
         integral_manager.transform_orbitals(U=orbital_coefficients)
-        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
+        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
         return result
     
     def orthonormalize_basis_orbitals(self):
