@@ -1638,7 +1638,8 @@ class QuantumChemistryBase:
             return None
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False):
+                     get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False,
+                     transformation: QCircuit = False):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -1666,6 +1667,9 @@ class QuantumChemistryBase:
         get_rdm1, get_rdm2 :
             Set whether either one or both rdm1, rdm2 should be computed. If both are needed at some point,
             it is recommended to compute them at once.
+        transformation :
+            The rdm operators can be transformed, e.g., a^dagger_i a_j -> U^dagger a^dagger_i a_j U,
+            where U represents the transformation. The default is set to False, implying that U equals 1.
 
         Returns
         -------
@@ -1911,7 +1915,12 @@ class QuantumChemistryBase:
         if (not use_hcb):
             qops = [_get_qop_hermitian(op) for op in qops]
         # Compute expected values
-        evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+   
+        if transformation is False:
+            evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+        else:
+            qops = [self.make_transformation(operator=qops[i], transformation=transformation) for i in range(len(qops))]
+            evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
 
         # Assemble density matrices
         # If self._rdm1, self._rdm2 exist, reset them if they are of the other spin-type
@@ -2043,6 +2052,10 @@ class QuantumChemistryBase:
         correction = ExplicitCorrelationCorrection(mol=self, rdm1=rdm1, rdm2=rdm2, gamma=gamma,
                                                    n_ri=n_ri, external_info=external_info, **kwargs)
         return correction.compute()
+
+    def make_transformation(self, operator, U):
+        op = U.dagger()*operator*U
+        return op
 
 
     def print_basis_info(self):

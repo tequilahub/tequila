@@ -37,7 +37,9 @@ class OptimizeOrbitalsResult:
         self.iterations += 1
 
 def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=None, silent=False,
-                      vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, use_hcb=False, molecule_factory=None, molecule_arguments=None, *args, **kwargs):
+                      vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, use_hcb=False, 
+                      oo_between_spaces: bool=True, active_orbitals: list=None, save_history: str=False,
+                      molecule_factory=None, molecule_arguments=None, *args, **kwargs):
     """
 
     Parameters
@@ -60,6 +62,11 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
                         initial_guess="random_loc=X_scale=Y" with X and Y being floats
                         This initialized a random guess using numpy.random.normal(loc=X, scale=Y) with X=0.0 and Y=0.1 as defaults
     return_mcscf: return the PySCF MCSCF structure after optimization
+    oo_between_spaces: The default (True) perform orbital optimization between the spaces, i.e., inactive->active, inactive->virtual, and active->virtual. 
+                       If set to False, the orbital optimization is only within the active space, i.e., active->active.
+    active_orbitals: Indicate the active space as a list. 
+    save_history: File name for the stored history of ooVQE calculations (pickle file). 
+                  The default setting (False) will not save the prior ooVQE energies and history; it will only display the most recent one.
     molecule_arguments: arguments to pass to molecule_factory or default molecule constructor | only change if you know what you are doing
     args: just here for convenience
     kwargs: just here for conveniece
@@ -101,9 +108,31 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
     if molecule_arguments is None:
         molecule_arguments = {"parameters": pyscf_molecule.parameters, "transformation": molecule.transformation}
 
+    if oo_between_spaces is True:
+        if active_orbitals is None:
+            raise Exception("specify the active space") 
+            
+        active_spin_orbitals = []
+        for i in active_orbitals:
+            active_spin_orbitals.append(i * 2)
+            active_spin_orbitals.append(i * 2 + 1)
+        
+        # Fix the indices for the active space
+        new_indices_in_active_orbitals = {}
+        for i in active_spin_orbitals:
+            new_indices_in_active_orbitals[i -  active_spin_orbitals[0]] = i
+        circuit = circuit.map_qubits(new_indices_in_active_orbitals) 
+
+        inactive_spin_orbitals = numpy.arange(active_spin_orbitals[0])
+
+    if oo_between_spaces is False: 
+        inactive_spin_orbitals = None
+
+
     wrapper = PySCFVQEWrapper(molecule_arguments=molecule_arguments, n_electrons=pyscf_molecule.n_electrons,
                               const_part=c, circuit=circuit, vqe_solver_arguments=vqe_solver_arguments, silent=silent,
-                              vqe_solver=vqe_solver, molecule_factory=molecule_factory, *args, **kwargs)
+                              vqe_solver=vqe_solver, molecule_factory=molecule_factory,
+                              inactive_spin_orbitals=inactive_spin_orbitals, save_history=save_history, *args, **kwargs)
     mc.fcisolver = wrapper
     mc.internal_rotation = True
     if pyscf_arguments is not None:
@@ -167,6 +196,8 @@ class PySCFVQEWrapper:
     one_body_integrals: numpy.ndarray = None
     two_body_integrals: numpy.ndarray = None
     history: list = field(default_factory=list)
+    inactive_spin_orbitals: list = None
+    print_history: str = False
 
     # optional
     const_part: float = 0.0
@@ -200,8 +231,14 @@ class PySCFVQEWrapper:
                                         **self.molecule_arguments)
         if restrict_to_hcb:
             H = molecule.make_hardcore_boson_hamiltonian()
-        else:
+        
+        if self.inactive_spin_orbitals is None:
             H = molecule.make_hamiltonian()
+        
+        else: #Fold the X gates from the inactive part in the ansatz into the Hamiltonian
+            X_string = math.prod([X(i) for i in self.inactive_spin_orbitals])
+            H = molecule.make_transformation(operator = molecule.make_hamiltonian(), transformation=X_string)
+
         if self.vqe_solver is not None:
             vqe_solver_arguments = {}
             if self.vqe_solver_arguments is not None:
@@ -217,8 +254,17 @@ class PySCFVQEWrapper:
                 optimizer_arguments = self.vqe_solver_arguments["optimizer_arguments"]
             if self.silent is not None and "silent" not in optimizer_arguments:
                 optimizer_arguments["silent"] = True
+            
+            if not self.history:
+                if self.vqe_solver_arguments["initial_values"] is None:
+                    initial_values = {k: 0 for k in E.extract_variables()}
+                else:
+                    initial_values = self.vqe_solver_arguments["initial_values"]
+            else:
+                initial_values = self.history[-1].variables
 
-            result = minimize(E, **optimizer_arguments)
+            result = minimize(E, initial_values=initial_values, **optimizer_arguments)
+
         if hasattr(result, "circuit"):
             # potential adaptive ansatz
             U = result.circuit
@@ -239,6 +285,15 @@ class PySCFVQEWrapper:
         self.rdm2 = rdm2
         self.one_body_integrals = h1
         self.two_body_integrals = h2
+
+        if self.print_history is not False: #save history along the optimization
+            import pickle
+            dic = {'oo_vqe_history': [], 'opt_molecule': []}
+            dic['oo_vqe_history'].append(self.history)
+            dic['opt_molecule'].append(molecule)
+            obj_file = open(self.print_history+".obj", 'wb+') #'wb+'
+            pickle.dump(dic, obj_file)
+            
         return result.energy, None
 
     def make_rdm12(self, *args, **kwargs):
