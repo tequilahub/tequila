@@ -1919,7 +1919,7 @@ class QuantumChemistryBase:
         if transformation is False:
             evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
         else:
-            qops = [self.make_transformation(operator=qops[i], transformation=transformation) for i in range(len(qops))]
+            qops = [self.make_transformation(operator=qops[i], U=transformation) for i in range(len(qops))]
             evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
 
         # Assemble density matrices
