@@ -1,5 +1,4 @@
 import numpy
-import math
 import typing
 import copy
 import pickle
@@ -241,7 +240,11 @@ class PySCFVQEWrapper:
             H = molecule.make_hamiltonian()
         
         else: #Fold the X gates from the inactive part in the ansatz into the Hamiltonian
-            X_string = math.prod([X(i) for i in self.inactive_spin_orbitals])
+            X_list = [X(i) for i in self.inactive_spin_orbitals]
+            X_string = 1
+            for X_gate in X_list:
+                X_string *= X_gate
+
             H = molecule.make_transformation(operator = molecule.make_hamiltonian(), U=X_string)
 
         if self.vqe_solver is not None:
