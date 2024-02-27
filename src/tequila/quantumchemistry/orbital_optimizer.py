@@ -124,9 +124,9 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
                     scale = 1.0
                 loc = 0.0
                 if "scale" in kwargs:
-                    scale = float(initial_values.split("scale")[1].split("_")[0].split("=")[1])
+                    scale = float(initial_guess.split("scale")[1].split("_")[0].split("=")[1])
                 if "loc" in kwargs:
-                    loc = float(initial_values.split("loc")[1].split("_")[0].split("=")[1])
+                    loc = float(initial_guess.split("loc")[1].split("_")[0].split("=")[1])
                 initial_guess = numpy.eye(no) + numpy.random.normal(scale=scale, loc=loc, size=no * no).reshape(no, no)
             else:
                 raise Exception("Unknown initial_guess={}".format(initial_guess.lower()))
