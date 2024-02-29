@@ -559,7 +559,7 @@ class QuantumChemistryBase:
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         integral_manager = copy.deepcopy(self.integral_manager)
         integral_manager.transform_orbitals(U=orbital_coefficients)
-        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
+        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
         return result
     
     def orthonormalize_basis_orbitals(self):
@@ -1939,7 +1939,7 @@ class QuantumChemistryBase:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
 
         if get_rdm2:
-            rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac")
+            rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac", verify=False)
             rdm2.reorder(to=ordering)
             rdm2 = rdm2.elems
             self._rdm2 = rdm2

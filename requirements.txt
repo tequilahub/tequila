@@ -20,7 +20,6 @@ qulacs # default simulator (best integration), remove if the installation gives 
 #qibo <= 0.1.1 # can not be installed in the same environment as gpyopt
 
 #optional optimizers
-#phoenics # version on PyPi  isc urrently broken, we recommend to install from source (AAG github)
 #gpyopt # not in combination with qibo as quantum backend
 
 #optional third party libraries
