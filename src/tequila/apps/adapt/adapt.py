@@ -21,7 +21,7 @@ class AdaptParameters:
     degeneracy_threshold: float = 5.e-4
     silent: bool = False
     
-    def __post__init__(self):
+    def __post_init__(self):
         # avoid stacking of same operator-types in a row
         if "method_options" in self.optimizer_args:
             if "gtol" in self.optimizer_args["method_options"]:
