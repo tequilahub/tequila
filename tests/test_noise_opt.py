@@ -59,6 +59,20 @@ def test_bit_flip_scipy_hessian(p, method):
     result = tq.optimizer_scipy.minimize(objective=O, samples=1, backend=simulator, method=method, noise=NM, tol=1.e-4,
                                          silent=False)
 
+
+@pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
+@pytest.mark.skipif(not tq.optimizers.has_phoenics, reason="Missing phoenics installation")
+@pytest.mark.parametrize("p", numpy.random.uniform(0.1, .4, 1))
+def test_bit_flip_phoenics(p):
+    simulator = numpy.random.choice(samplers)
+    qubit = 0
+    H = paulis.Qm(qubit)
+    U = gates.Rx(target=qubit, angle=tq.Variable('a'))
+    O = ExpectationValue(U=U, H=H)
+    NM = BitFlip(p, 1)
+    result = tq.optimizers.optimizer_phoenics.minimize(objective=O, maxiter=3, samples=1, backend=simulator, noise=NM)
+
+
 @pytest.mark.skipif(len(samplers) == 0, reason="Missing necessary backends")
 @pytest.mark.skipif(not tq.optimizers.has_gpyopt, reason="Missing gpyopt installation")
 @pytest.mark.parametrize("p", numpy.random.uniform(0.1, .4, 1))

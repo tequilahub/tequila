@@ -569,7 +569,7 @@ class NBodyTensor:
         return True
 
     def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, ordering: str = None,
-                 size_full: int = None, verify=False):
+                 size_full: int = None):
         """
         Parameters
         ----------
@@ -611,7 +611,7 @@ class NBodyTensor:
         if self.order == 4:
             if ordering is None:
                 ordering = self.identify_ordering()
-            elif verify:
+            else:
                 try: # some RDMs are really sloppy (depends on backend)
                     auto_ordering=self.identify_ordering()
                     if auto_ordering is not ordering:

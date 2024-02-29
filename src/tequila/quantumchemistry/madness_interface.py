@@ -122,7 +122,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             h = "failed"
             g = "failed"
 
-        if (isinstance(h, str) and "failed" in h) or (isinstance(g, str) and "failed" in g):
+        if "failed" in h or "failed" in g:
             status = "found {}_htensor.npy={}\n".format(name, "failed" not in h)
             status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
             try:

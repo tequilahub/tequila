@@ -4,6 +4,8 @@ import typing
 import numbers
 from tequila.objective.objective import Variable
 import warnings
+
+warnings.simplefilter("ignore")
 import GPyOpt
 from GPyOpt.methods import BayesianOptimization
 import numpy as np
