@@ -315,7 +315,7 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
     if name in ("x", "y", "z", "h", "cx", "cy", "cz", "ch"):
         G = getattr(gates, name.upper())
         control = get_qregister(args[0], qregisters), get_qregister(args[1], qregisters)
-        target = get_qregister(args[1 if name[0] == 'c' else 0], qregisters)
+        target = get_qregister(args[1 if name[0] == 'C' else 0], qregisters)
         return G(control=control, target=target)
 
     if name in ("ccx", "ccy", "ccz"):
@@ -331,7 +331,7 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
         name[-1] = name[-1].lower()
         name = "".join(name)
         G = getattr(gates, name)
-        return G(angle=get_angle(name)[0],control=get_qregister(args[0], qregisters) if name[0] == 'c' else None,target=get_qregister(args[1 if name[0] == 'c' else 0], qregisters))
+        return G(angle=get_angle(name)[0],control=get_qregister(args[0], qregisters) if name[0] == 'C' else None,target=get_qregister(args[1 if name[0] == 'C' else 0], qregisters))
             
     if name.startswith("U("):
         angles = get_angle(name)
