@@ -369,7 +369,7 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
                   control=get_qregister(args[0], qregisters),
                   target=get_qregister(args[1], qregisters))
     if name in ("s", "t", "sdg", "tdg"):
-        g = gates.Phase(pi / (2 if name.startswith("s") else 4),
+        g = gates.Phase(angle=pi / (2 if name.startswith("s") else 4),
                      control=None,
                      target=get_qregister(args[0], qregisters))
         if name.find("dg") != -1:
