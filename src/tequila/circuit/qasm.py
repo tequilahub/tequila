@@ -321,7 +321,7 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
     if name in ("ccx", "ccy", "ccz"):
         G = getattr(gates, name[2].upper())
         control = [get_qregister(args[0], qregisters), get_qregister(args[1], qregisters)]
-        target = get_qregister(args[2], qregisters)))
+        target = get_qregister(args[2], qregisters)
         return G(control=control, target=target)
 
     if name.startswith("rx(") or name.startswith("ry(") or name.startswith("rz(") or \
