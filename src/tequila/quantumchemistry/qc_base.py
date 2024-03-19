@@ -1639,7 +1639,7 @@ class QuantumChemistryBase:
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False,
-                     transformation: QCircuit = False):
+                     transformation: QubitHamiltonian = False):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -1919,7 +1919,7 @@ class QuantumChemistryBase:
         if transformation is False:
             evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
         else:
-            qops = [self.make_transformation(operator=qops[i], U=transformation) for i in range(len(qops))]
+            qops = [transformation.dagger()*qops[i]*transformation for i in range(len(qops))]
             evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
 
         # Assemble density matrices
@@ -2052,10 +2052,6 @@ class QuantumChemistryBase:
         correction = ExplicitCorrelationCorrection(mol=self, rdm1=rdm1, rdm2=rdm2, gamma=gamma,
                                                    n_ri=n_ri, external_info=external_info, **kwargs)
         return correction.compute()
-
-    def make_transformation(self, operator, U):
-        op = U.dagger()*operator*U
-        return op
 
 
     def print_basis_info(self):
