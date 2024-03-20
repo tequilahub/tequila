@@ -314,8 +314,11 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
 
     if name in ("x", "y", "z", "h", "cx", "cy", "cz", "ch"):
         G = getattr(gates, name.upper())
-        control = get_qregister(args[0], qregisters), get_qregister(args[1], qregisters)
-        target = get_qregister(args[1 if name[0] == 'C' else 0], qregisters)
+        target = get_qregister(args[0], qregisters)
+        control = None
+        if name[0] == c:
+            control = get_qregister(args[0], qregisters)
+            target = get_qregister(args[1], qregisters)
         return G(control=control, target=target)
 
     if name in ("ccx", "ccy", "ccz"):
