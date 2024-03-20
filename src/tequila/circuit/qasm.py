@@ -316,7 +316,7 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
         G = getattr(gates, name.upper())
         target = get_qregister(args[0], qregisters)
         control = None
-        if name[0] == c:
+        if name[0].lower() == 'c':
             control = get_qregister(args[0], qregisters)
             target = get_qregister(args[1], qregisters)
         return G(control=control, target=target)
