@@ -645,6 +645,40 @@ class QuantumChemistryBase:
         """
         return 2 * len(self.integral_manager.active_reference_orbitals)
 
+    def make_annihilation_op(self, orbital, coefficient=1.0):
+        assert orbital<=self.n_orbitals*2
+        aop = openfermion.ops.FermionOperator(f'{orbital}', coefficient)
+        return self.transformation(aop)
+
+    def make_creation_op(self, orbital, coefficient=1.0):
+        assert orbital<=self.n_orbitals*2
+        cop = openfermion.ops.FermionOperator(f'{orbital}^', coefficient)
+        return self.transformation(cop)
+    
+    def make_sz_op(self):
+        sz = QubitHamiltonian()
+        for i in range(0, self.n_orbitals * 2, 2):
+            one = 0.5 * self.make_creation_op(i) * self.make_annihilation_op(i)
+            two = 0.5 * self.make_creation_op(i+1) * self.make_annihilation_op(i+1)
+            sz += (one - two)
+        return sz
+
+    def make_sp_op(self):
+        sp = QubitHamiltonian()
+        for i in range(self.n_orbitals):
+            sp += self.make_creation_op(i*2) * self.make_annihilation_op(i*2 + 1)
+        return sp
+
+    def make_sm_op(self):
+        sm = QubitHamiltonian()
+        for i in range(self.n_orbitals):
+            sm += self.make_creation_op(i*2 + 1) * self.make_annihilation_op(i*2)
+        return sm
+
+    def make_s2_op(self):
+        s2_op = self.make_sm_op() * self.make_sp_op() + self.make_sz_op() * (self.make_sz_op() + 1)
+        return s2_op
+
     def make_hamiltonian(self, *args, **kwargs) -> QubitHamiltonian:
         """
         Parameters
