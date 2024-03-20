@@ -313,12 +313,13 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
         return apply_custom_gate(custom_circuit=custom_circuit, qregisters_values=qregisters_values)
 
     if name in ("x", "y", "z", "h", "cx", "cy", "cz", "ch"):
-        G = getattr(gates, name.upper())
         target = get_qregister(args[0], qregisters)
         control = None
         if name[0].lower() == 'c':
             control = get_qregister(args[0], qregisters)
             target = get_qregister(args[1], qregisters)
+            name = name[1]
+        G = getattr(gates, name.upper())
         return G(control=control, target=target)
 
     if name in ("ccx", "ccy", "ccz"):
