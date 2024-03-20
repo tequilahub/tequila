@@ -329,6 +329,9 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
 
     if name.startswith("rx(") or name.startswith("ry(") or name.startswith("rz(") or \
         name.startswith("crx(") or name.startswith("cry(") or name.startswith("crz("):
+        get_angle(name)[0]
+        i = name.find('(')
+        name = name[0:i]
         name = name.upper()
         name = [x for x in name]
         name[-1] = name[-1].lower()
