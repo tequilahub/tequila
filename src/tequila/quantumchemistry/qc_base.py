@@ -647,7 +647,8 @@ class QuantumChemistryBase:
 
     def make_annihilation_op(self, orbital, coefficient=1.0):
         """
-        Compute annihilation operator on orbital=orbital in qubit representation
+        Compute annihilation operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
         """
         assert orbital<=self.n_orbitals*2
         aop = openfermion.ops.FermionOperator(f'{orbital}', coefficient)
@@ -655,7 +656,8 @@ class QuantumChemistryBase:
 
     def make_creation_op(self, orbital, coefficient=1.0):
         """
-        Compute creation operator on orbital=orbital in qubit representation
+        Compute creation operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
         """
         assert orbital<=self.n_orbitals*2
         cop = openfermion.ops.FermionOperator(f'{orbital}^', coefficient)
@@ -663,7 +665,8 @@ class QuantumChemistryBase:
 
     def make_number_op(self, orbital):
         """
-        Compute number operator on orbital=orbital in qubit representation
+        Compute number operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
         """
         num_op = self.make_creation_op(orbital) * self.make_annihilation_op(orbital)
         return num_op
