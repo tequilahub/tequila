@@ -240,6 +240,10 @@ A.G. Cadavid, I. Montalban, A. Dalal, E. Solano, N.N. Hegade
 Efficient DCQO Algorithm within the Impulse Regime for Portfolio Optimization  
 [arxiv:2308.15475](https://arxiv.org/abs/2308.15475)  
 
+A. Anand, K. Brown  
+Hamiltonians, groups, graphs and ansätze  
+[arxiv:2312.17146](https://arxiv.org/abs/2312.17146)  
+
 P.W.K. Jensen, E.R. Kjellgren, P. Reinholdt, K.M. Ziems, S. Coriani, J. Kongsted, S. Sauer  
 Quantum Equation of Motion with Orbital Optimization for Computing Molecular Properties in Near-Term Quantum Computing  
 [arxiv:2312.12386](https://arxiv.org/abs/2312.12386)  
