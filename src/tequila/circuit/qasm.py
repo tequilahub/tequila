@@ -313,19 +313,33 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
         return apply_custom_gate(custom_circuit=custom_circuit, qregisters_values=qregisters_values)
 
     if name in ("x", "y", "z", "h", "cx", "cy", "cz", "ch"):
-        return QCircuit.wrap_gate(gates.impl.QGateImpl(name=(name[1] if name[0] == 'c' else name).upper(),
-                                            control=get_qregister(args[0], qregisters) if name[0] == 'c' else None,
-                                            target=get_qregister(args[1 if name[0] == 'c' else 0], qregisters)))
+        target = get_qregister(args[0], qregisters)
+        control = None
+        if name[0].lower() == 'c':
+            control = get_qregister(args[0], qregisters)
+            target = get_qregister(args[1], qregisters)
+            name = name[1]
+        G = getattr(gates, name.upper())
+        return G(control=control, target=target)
+
     if name in ("ccx", "ccy", "ccz"):
-        return QCircuit.wrap_gate(gates.impl.QGateImpl(name=name.upper()[2],
-                                            control=[get_qregister(args[0], qregisters), get_qregister(args[1], qregisters)],
-                                            target=get_qregister(args[2], qregisters)))
+        G = getattr(gates, name[2].upper())
+        control = [get_qregister(args[0], qregisters), get_qregister(args[1], qregisters)]
+        target = get_qregister(args[2], qregisters)
+        return G(control=control, target=target)
+
     if name.startswith("rx(") or name.startswith("ry(") or name.startswith("rz(") or \
         name.startswith("crx(") or name.startswith("cry(") or name.startswith("crz("):
-        return QCircuit.wrap_gate(gates.impl.RotationGateImpl(axis=name[2 if name[0] == 'c' else 1],
-                                                   angle=get_angle(name)[0],
-                                                   control=get_qregister(args[0], qregisters) if name[0] == 'c' else None,
-                                                   target=get_qregister(args[1 if name[0] == 'c' else 0], qregisters)))
+        angle = get_angle(name)[0]
+        i = name.find('(')
+        name = name[0:i]
+        name = name.upper()
+        name = [x for x in name]
+        name[-1] = name[-1].lower()
+        name = "".join(name)
+        G = getattr(gates, name)
+        return G(angle=angle,control=get_qregister(args[0], qregisters) if name[0] == 'C' else None,target=get_qregister(args[1 if name[0] == 'C' else 0], qregisters))
+            
     if name.startswith("U("):
         angles = get_angle(name)
         return gates.U(theta=angles[0], phi=angles[1], lambd=angles[2],

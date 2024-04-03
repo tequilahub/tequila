@@ -14,7 +14,7 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 - [talks and slides](https://kottmanj.github.io/talks_and_material/)  
 
 # Installation
-Recommended Python version is 3.8-3.9.   
+Recommended Python version is 3.9 - 3.10.   
 Tequila supports linux, osx and windows. However, not all optional dependencies are supported on windows.  
 
 ## Install from PyPi
@@ -275,7 +275,7 @@ Currently supported
 ### [Psi4](https://github.com/psi4/psi4).
 In a conda environment this can be installed with
 ```bash
-conda install psi4 -c psi4
+conda install psi4 -c conda-forge
 ```
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
 

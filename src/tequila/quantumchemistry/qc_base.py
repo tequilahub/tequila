@@ -645,6 +645,68 @@ class QuantumChemistryBase:
         """
         return 2 * len(self.integral_manager.active_reference_orbitals)
 
+    def make_annihilation_op(self, orbital, coefficient=1.0):
+        """
+        Compute annihilation operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
+        """
+        assert orbital<=self.n_orbitals*2
+        aop = openfermion.ops.FermionOperator(f'{orbital}', coefficient)
+        return self.transformation(aop)
+
+    def make_creation_op(self, orbital, coefficient=1.0):
+        """
+        Compute creation operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
+        """
+        assert orbital<=self.n_orbitals*2
+        cop = openfermion.ops.FermionOperator(f'{orbital}^', coefficient)
+        return self.transformation(cop)
+
+    def make_number_op(self, orbital):
+        """
+        Compute number operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
+        """
+        num_op = self.make_creation_op(orbital) * self.make_annihilation_op(orbital)
+        return num_op
+    
+    def make_sz_op(self):
+        """
+        Compute the spin_z operator of the molecule in qubit representation
+        """
+        sz = QubitHamiltonian()
+        for i in range(0, self.n_orbitals * 2, 2):
+            one = 0.5 * self.make_creation_op(i) * self.make_annihilation_op(i)
+            two = 0.5 * self.make_creation_op(i+1) * self.make_annihilation_op(i+1)
+            sz += (one - two)
+        return sz
+
+    def make_sp_op(self):
+        """
+        Compute the spin+ operator of the molecule in qubit representation
+        """
+        sp = QubitHamiltonian()
+        for i in range(self.n_orbitals):
+            sp += self.make_creation_op(i*2) * self.make_annihilation_op(i*2 + 1)
+        return sp
+
+    def make_sm_op(self):
+        """
+        Compute the spin- operator of the molecule in qubit representation
+        """
+        sm = QubitHamiltonian()
+        for i in range(self.n_orbitals):
+            sm += self.make_creation_op(i*2 + 1) * self.make_annihilation_op(i*2)
+        return sm
+
+    def make_s2_op(self):
+        """
+        Compute the spin^2 operator of the molecule in qubit representation
+        """
+        s2_op = self.make_sm_op() * self.make_sp_op() + self.make_sz_op() * (self.make_sz_op() + 1)
+        return s2_op
+
     def make_hamiltonian(self, *args, **kwargs) -> QubitHamiltonian:
         """
         Parameters
