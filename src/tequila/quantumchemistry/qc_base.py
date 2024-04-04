@@ -108,16 +108,26 @@ class QuantumChemistryBase:
 
 
     @classmethod
-    def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
-        c, h1, h2 = molecule.get_integrals()
+    def from_tequila(cls, molecule, transformation=None, basis_name=None, *args, **kwargs):
+        c = molecule.integral_manager.constant_term
+        h1 = molecule.integral_manager.one_body_integrals
+        h2 = molecule.integral_manager.two_body_integrals
+        S = molecule.integral_manager.overlap_integrals
+        active_orbitals = [o.idx for o in molecule.integral_manager.active_orbitals]
         if transformation is None:
             transformation = molecule.transformation
+        if basis_name is None:
+            basis_name = molecule.integral_manager._orbital_type
+        parameters = molecule.parameters
+        parameters.basis_set = basis_name
         return cls(nuclear_repulsion=c,
                    one_body_integrals=h1,
                    two_body_integrals=h2,
+                   overlap_integrals = S,
+                   active_orbitals= active_orbitals,
                    n_electrons=molecule.n_electrons,
                    transformation=transformation,
-                   parameters=molecule.parameters, *args, **kwargs)
+                   parameters=parameters, *args, **kwargs)
 
     def supports_ucc(self):
         """
@@ -584,7 +594,7 @@ class QuantumChemistryBase:
         else:
             integral_manager = copy.deepcopy(self.integral_manager)
             integral_manager.transform_to_native_orbitals()
-            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
+            result = type(self)(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
             return result
 
 
