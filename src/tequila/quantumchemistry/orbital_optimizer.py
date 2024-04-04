@@ -243,9 +243,12 @@ class PySCFVQEWrapper:
         if restrict_to_hcb is True and self.restrict_to_active_space is False:
             X = paulis.X
             X_list = [X(i) for i in molecule.active_space.active_orbitals]
-            X_string = 1
-            for X_gate in X_list:
-                X_string *= X_gate
+            if len(X_list) == 0:
+                X_string = None
+            else:
+                X_string = 1
+                for X_gate in X_list:
+                    X_string *= X_gate
 
             H = X_string*molecule.make_hamiltonian()*X_string
 
@@ -253,9 +256,12 @@ class PySCFVQEWrapper:
         if self.restrict_to_active_space is False: #Fold the X gates from the inactive part in the ansatz into the Hamiltonian
             X = paulis.X
             X_list = [X(i) for i in self.frozen_doubly_occupied_spin_orbitals]
-            X_string = 1
-            for X_gate in X_list:
-                X_string *= X_gate
+            if len(X_list) == 0:
+                X_string = None
+            else:
+                X_string = 1
+                for X_gate in X_list:
+                    X_string *= X_gate
 
             H = X_string*molecule.make_hamiltonian()*X_string
 
@@ -302,7 +308,7 @@ class PySCFVQEWrapper:
         if self.frozen_doubly_occupied_spin_orbitals is None:
             rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb)
         else:
-            rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb, transformation = X_string)
+            rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb, hcb_trafo = X_string)
 
         rdm2 = self.reorder(rdm2, 'dirac', 'mulliken')
         if not self.silent:
