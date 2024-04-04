@@ -567,9 +567,17 @@ class QuantumChemistryBase:
         New molecule with transformed orbitals
         """
 
+        U = numpy.eye(self.integral_manager.orbital_coefficients.shape[0])
+        # mo_coeff by default only acts on the active space
+        active_indices = [o.idx_total for o in self.integral_manager.active_orbitals]
+
+        for kk,k in enumerate(active_indices):
+            for ll,l in enumerate(active_indices):
+                U[k][l] = orbital_coefficients[kk][ll]
+
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         integral_manager = copy.deepcopy(self.integral_manager)
-        integral_manager.transform_orbitals(U=orbital_coefficients, name=name)
+        integral_manager.transform_orbitals(U=U, name=name)
         result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
         return result
     
