@@ -108,7 +108,7 @@ class QuantumChemistryBase:
 
 
     @classmethod
-    def from_tequila(cls, molecule, transformation=None, basis_name=None, *args, **kwargs):
+    def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
         c = molecule.integral_manager.constant_term
         h1 = molecule.integral_manager.one_body_integrals
         h2 = molecule.integral_manager.two_body_integrals
@@ -116,17 +116,15 @@ class QuantumChemistryBase:
         active_orbitals = [o.idx_total for o in molecule.integral_manager.active_orbitals]
         if transformation is None:
             transformation = molecule.transformation
-        if basis_name is None:
-            basis_name = molecule.integral_manager._orbital_type
         parameters = molecule.parameters
-        parameters.basis_set = basis_name
         return cls(nuclear_repulsion=c,
                    one_body_integrals=h1,
                    two_body_integrals=h2,
                    overlap_integrals = S,
+                   orbital_coefficients = molecule.integral_manager.orbital_coefficients,
                    active_orbitals= active_orbitals,
-                   n_electrons=molecule.n_electrons,
                    transformation=transformation,
+                   orbital_type=molecule.integral_manager._orbital_type,
                    parameters=parameters, *args, **kwargs)
 
     def supports_ucc(self):
