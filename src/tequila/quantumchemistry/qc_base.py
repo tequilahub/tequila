@@ -113,7 +113,7 @@ class QuantumChemistryBase:
         h1 = molecule.integral_manager.one_body_integrals
         h2 = molecule.integral_manager.two_body_integrals
         S = molecule.integral_manager.overlap_integrals
-        active_orbitals = [o.idx for o in molecule.integral_manager.active_orbitals]
+        active_orbitals = [o.idx_total for o in molecule.integral_manager.active_orbitals]
         if transformation is None:
             transformation = molecule.transformation
         if basis_name is None:
@@ -553,11 +553,12 @@ class QuantumChemistryBase:
 
         return manager
 
-    def transform_orbitals(self, orbital_coefficients, name=None, *args, **kwargs):
+    def transform_orbitals(self, orbital_coefficients, ignore_active_space=False, name=None, *args, **kwargs):
         """
         Parameters
         ----------
-        orbital_coefficients: second index is new orbital indes, first is old orbital index (summed over)
+        orbital_coefficients: second index is new orbital indes, first is old orbital index (summed over), indices are assumed to be defined on the active space
+        ignore_active_space: if true orbital_coefficients are not assumed to be given in the active space
         name: str, name the new orbitals
         args
         kwargs
@@ -571,9 +572,12 @@ class QuantumChemistryBase:
         # mo_coeff by default only acts on the active space
         active_indices = [o.idx_total for o in self.integral_manager.active_orbitals]
 
-        for kk,k in enumerate(active_indices):
-            for ll,l in enumerate(active_indices):
-                U[k][l] = orbital_coefficients[kk][ll]
+        if ignore_active_space:
+            U = orbital_coefficients
+        else:
+            for kk,k in enumerate(active_indices):
+                for ll,l in enumerate(active_indices):
+                    U[k][l] = orbital_coefficients[kk][ll]
 
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         integral_manager = copy.deepcopy(self.integral_manager)
@@ -886,13 +890,13 @@ class QuantumChemistryBase:
         """
         if U is None:
             U = QCircuit()
-
-        # consistency
-        consistency = [x < self.n_orbitals for x in U.qubits]
-        if not all(consistency):
-            warnings.warn(
-                "hcb_to_me: given circuit is not defined on the first {} qubits. Is this a HCB circuit?".format(
-                    self.n_orbitals))
+        else:
+            ups = [self.transformation.up(i.idx) for i in self.orbitals]
+            consistency = [x in ups for x in U.qubits]
+            if not all(consistency):
+                warnings.warn(
+                    "hcb_to_me: given circuit is not defined on all first {} qubits. Is this a HCB circuit?".format(
+                        self.n_orbitals))
 
         # map to alpha qubits
         if condensed:
