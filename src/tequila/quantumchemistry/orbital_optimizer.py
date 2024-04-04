@@ -308,7 +308,7 @@ class PySCFVQEWrapper:
         if self.frozen_doubly_occupied_spin_orbitals is None:
             rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb)
         else:
-            rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb, hcb_trafo = X_string)
+            rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb, rdm_trafo = X_string)
 
         rdm2 = self.reorder(rdm2, 'dirac', 'mulliken')
         if not self.silent:
