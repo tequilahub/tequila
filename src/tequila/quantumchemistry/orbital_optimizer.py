@@ -281,7 +281,7 @@ class PySCFVQEWrapper:
                 optimizer_arguments["silent"] = True
             
             if not self.history: 
-                if (self.vqe_solver_arguments is not None) and ("initial_values" not in self.vqe_solver_arguments):
+                if (self.vqe_solver_arguments is None) or ("initial_values" not in self.vqe_solver_arguments):
                     initial_values = {k: 0 for k in E.extract_variables()}
                 else:
                     initial_values = self.vqe_solver_arguments["initial_values"]
