@@ -188,7 +188,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # psi4 active space will be formed later
         super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None,
-                         reference_orbitals=reference_orbitals,frozen_orbitals=[],
+                         reference_orbitals=reference_orbitals,frozen_orbitals=[], orbital_type="hf",
                          *args, **kwargs)
 
         oenergies = []

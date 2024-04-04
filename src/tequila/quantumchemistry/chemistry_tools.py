@@ -804,20 +804,18 @@ class IntegralManager:
     _one_body_integrals: numpy.ndarray = None
     _two_body_integrals: NBodyTensor = None
     _constant_term: float = None
-    _basis_type: str = "unknown"
     _basis_name: str = "unknown"
     _orbital_type: str = "unknown" # e.g. "HF", "PNO", "native"
     _orbital_coefficients: numpy.ndarray = None
     _active_space: ActiveSpaceData = None
     _orbitals: typing.List[OrbitalData] = None
 
-    def __init__(self, one_body_integrals, two_body_integrals, basis_type="custom",
+    def __init__(self, one_body_integrals, two_body_integrals,
                  basis_name="unknown", orbital_type="unknown",
                  constant_term=0.0, orbital_coefficients=None, active_space=None, overlap_integrals=None, orbitals=None, *args, **kwargs):
         self._one_body_integrals = one_body_integrals
         self._two_body_integrals = two_body_integrals
         self._constant_term = constant_term
-        self._basis_type = basis_type
         self._basis_name = basis_name
         self._orbital_type = orbital_type
 
@@ -956,9 +954,16 @@ class IntegralManager:
         """
         c = self.get_orthonormalized_orbital_coefficients()
         self.orbital_coefficients=c
-        self._orbital_type="orthonormalized-{}-basis".format(self._orbital_type)
+        self._orbital_type="orthonormalized-{}-basis".format(self._basis_name)
 
-    def transform_orbitals(self, U):
+    def is_unitary(self, U):
+        if len(U.shape) != 2: return False
+        if U.shape[0] != U.shape[1]: return False
+        test = (U.conj().T).dot(U) - numpy.eye(U.shape[0])
+        if not numpy.isclose(numpy.linalg.norm(test), 0.0): return False
+        return True
+
+    def transform_orbitals(self, U, name=None):
         """
         Transform orbitals
         Parameters
@@ -969,10 +974,12 @@ class IntegralManager:
         -------
         updates the structure with new orbitals: c = cU
         """
-        c = self.orbital_coefficients
-        c = numpy.einsum("ix, xj -> ij", c, U, optimize="greedy")
-        self.orbital_coefficients = c
-        self._orbital_type += "-transformed"
+        assert self.is_unitary(U)
+        self.orbital_coefficients = numpy.einsum("ix, xj -> ij", self.orbital_coefficients, U, optimize="greedy")
+        if name is None:
+            self._orbital_type += "-transformed"
+        else:
+            self._orbital_type = name
 
     def get_integrals(self, orbital_coefficients=None, ordering="openfermion", ignore_active_space=False, *args, **kwargs):
         """
@@ -1070,7 +1077,6 @@ class IntegralManager:
         return result
 
     def print_basis_info(self, *args, **kwargs) -> None:
-        print("{:15} : {}".format("basis_type", self._basis_type), *args, **kwargs)
         print("{:15} : {}".format("basis_name", self._basis_name), *args, **kwargs)
         print("{:15} : {}".format("orbital_type", self._orbital_type), *args, **kwargs)
         print("{:15} : {}".format("orthogonal", self.basis_is_orthogonal()), *args, **kwargs)

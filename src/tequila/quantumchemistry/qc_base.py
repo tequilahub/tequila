@@ -94,7 +94,7 @@ class QuantumChemistryBase:
         else:
             self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
                                                                      reference_orbitals=reference_orbitals,
-                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, orbital_type=orbital_type, *args,
+                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, orbital_type=orbital_type, basis_name=self.parameters.basis_set, *args,
                                                                      **kwargs)
         
         if orbital_type is not None and orbital_type.lower() == "native":
@@ -543,11 +543,12 @@ class QuantumChemistryBase:
 
         return manager
 
-    def transform_orbitals(self, orbital_coefficients, *args, **kwargs):
+    def transform_orbitals(self, orbital_coefficients, name=None, *args, **kwargs):
         """
         Parameters
         ----------
         orbital_coefficients: second index is new orbital indes, first is old orbital index (summed over)
+        name: str, name the new orbitals
         args
         kwargs
 
@@ -558,7 +559,7 @@ class QuantumChemistryBase:
 
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         integral_manager = copy.deepcopy(self.integral_manager)
-        integral_manager.transform_orbitals(U=orbital_coefficients)
+        integral_manager.transform_orbitals(U=orbital_coefficients, name=name)
         result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
         return result
     
@@ -583,7 +584,7 @@ class QuantumChemistryBase:
         else:
             integral_manager = copy.deepcopy(self.integral_manager)
             integral_manager.transform_to_native_orbitals()
-            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, orbital_type="native", transformation=self.transformation)
+            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
             return result
 
 

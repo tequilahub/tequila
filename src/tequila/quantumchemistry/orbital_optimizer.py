@@ -140,7 +140,7 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
         mc.kernel()
     # make new molecule
 
-    transformed_molecule = pyscf_molecule.transform_orbitals(orbital_coefficients=mc.mo_coeff)
+    transformed_molecule = pyscf_molecule.transform_orbitals(orbital_coefficients=mc.mo_coeff, name="optimized")
     result.molecule=transformed_molecule
     result.old_molecule=molecule
     result.mo_coeff=mc.mo_coeff
