@@ -37,7 +37,7 @@ class OptimizeOrbitalsResult:
         self.iterations += 1
 
 def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=None, silent=False,
-                      vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, use_hcb=False, molecule_factory=None, molecule_arguments=None, *args, **kwargs):
+                      vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, use_hcb=False, molecule_factory=None, molecule_arguments=None, restrict_to_active_space=True, *args, **kwargs):
     """
 
     Parameters
@@ -78,7 +78,12 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
     if pyscf_arguments is None:
         pyscf_arguments = {"max_cycle_macro": 10, "max_cycle_micro": 3}
     no = molecule.n_orbitals
-    pyscf_molecule = QuantumChemistryPySCF.from_tequila(molecule=molecule, transformation=molecule.transformation)
+
+    if not isinstance(molecule, QuantumChemistryPySCF):
+        pyscf_molecule = QuantumChemistryPySCF.from_tequila(molecule=molecule, transformation=molecule.transformation)
+    else:
+        pyscf_molecule = molecule
+
     mf = pyscf_molecule._get_hf()
     result=OptimizeOrbitalsResult()
     mc = mcscf.CASSCF(mf, pyscf_molecule.n_orbitals, pyscf_molecule.n_electrons)
@@ -140,10 +145,11 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
         mc.kernel()
     # make new molecule
 
-    transformed_molecule = pyscf_molecule.transform_orbitals(orbital_coefficients=mc.mo_coeff)
+    mo_coeff = mc.mo_coeff
+    transformed_molecule = pyscf_molecule.transform_orbitals(orbital_coefficients=mo_coeff, name="optimized")
     result.molecule=transformed_molecule
     result.old_molecule=molecule
-    result.mo_coeff=mc.mo_coeff
+    result.mo_coeff=mo_coeff
     result.energy=mc.e_tot
     
     if return_mcscf:
