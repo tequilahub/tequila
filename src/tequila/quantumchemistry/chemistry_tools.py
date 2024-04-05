@@ -1078,12 +1078,15 @@ class IntegralManager:
             result += str(x) + "\n"
         return result
 
-    def print_basis_info(self, *args, **kwargs) -> None:
+    def print_basis_info(self, print_coefficients=True, *args, **kwargs) -> None:
         print("{:15} : {}".format("basis_name", self._basis_name), *args, **kwargs)
         print("{:15} : {}".format("orbital_type", self._orbital_type), *args, **kwargs)
-        print("{:15} : {}".format("orthogonal", self.basis_is_orthogonal()), *args, **kwargs)
-        print("{:15} : {}".format("functions", self.one_body_integrals.shape[0]), *args, **kwargs)
+        print("{:15} : {}".format("orthogonal basis", self.basis_is_orthogonal()), *args, **kwargs)
+        print("{:15} : {}".format("basis functions", self.one_body_integrals.shape[0]), *args, **kwargs)
+        print("{:15} : {}".format("active orbitals", [o.idx_total for o in self.active_orbitals]), *args, **kwargs)
         print("{:15} : {}".format("reference", [x.idx_total for x in self.reference_orbitals]), *args, **kwargs)
+
+        if not print_coefficients: return
 
         print("Current Orbitals", *args, **kwargs)
         for i,x in enumerate(self.orbitals):
