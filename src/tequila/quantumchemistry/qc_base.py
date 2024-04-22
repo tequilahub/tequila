@@ -17,7 +17,7 @@ from .encodings import known_encodings
 
 import typing, numpy, numbers
 from itertools import product
-
+import tequila.grouping.fermionic_functions as ff
 
 
 try:
@@ -32,8 +32,7 @@ except:
     except Exception as E:
         raise Exception("{}\nIssue with Tequila Chemistry: Please update openfermion".format(str(E)))
 import warnings
-
-
+OPTIMIZED_ORDERING = "Optimized"
 class QuantumChemistryBase:
     """
     Base Class for tequila chemistry functionality
@@ -2127,6 +2126,58 @@ class QuantumChemistryBase:
                                                    n_ri=n_ri, external_info=external_info, **kwargs)
         return correction.compute()
 
+    def n_rotation(self, i, phi):
+        '''
+        Creates a quantum circuit that applies a phase rotation based on phi to both components (up and down) of a given qubit.
+
+        Parameters:
+        - i (int): The index of the qubit to which the rotation will be applied.
+        - phi (float): The rotation angle. The actual rotation applied will be multiplied with -2 for both components.
+
+        Returns:
+        - QCircuit: A quantum circuit object containing the sequence of rotations applied to the up and down components of the specified qubit.
+        '''
+
+        # Generate number operators for the up and down components of the qubit.
+        n_up = self.make_number_op(2*i)
+        n_down = self.make_number_op(2*i+1)
+
+        # Start a new circuit and apply rotations to each component.
+        circuit = gates.GeneralizedRotation(generator = n_up, angle=-2*phi)
+        circuit += gates.GeneralizedRotation(generator = n_down, angle=-2*phi)
+        return circuit
+        
+    def get_givens_circuit(self, unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING):
+        '''
+        Constructs a quantum circuit from a given real unitary matrix using Givens rotations.
+        
+        This method decomposes a unitary matrix into a series of Givens and Rz (phase) rotations,
+        then constructs and returns a quantum circuit that implements this sequence of rotations.
+
+        Parameters:
+        - unitary (numpy.array): A real unitary matrix representing the transformation to implement.
+        - tol (float): A tolerance threshold below which matrix elements are considered zero.
+        - ordering (list of tuples or 'Optimized'): Custom ordering of indices for Givens rotations or 'Optimized' to generate them automatically.
+
+        Returns:
+        - QCircuit: A quantum circuit implementing the series of rotations decomposed from the unitary.
+        '''
+        # Decompose the unitary matrix into Givens and phase (Rz) rotations.
+        theta_list, phi_list = get_givens_decomposition(unitary, tol, ordering)
+
+        # Initialize an empty quantum circuit.
+        circuit = QCircuit()
+
+        # Add all Rz (phase) rotations to the circuit.
+        for phi in phi_list:
+            circuit += self.n_rotation(phi[1], phi[0])
+
+        # Add all Givens rotations to the circuit.
+        for theta in reversed(theta_list):
+            circuit += self.UR(theta[1], theta[2], theta[0]*2)
+
+        return circuit
+
 
     def print_basis_info(self):
         return self.integral_manager.print_basis_info()
@@ -2147,3 +2198,140 @@ class QuantumChemistryBase:
         result += "\nmore information with: self.print_basis_info()\n"
 
         return result
+
+def givens_matrix(n, p, q, theta):
+    '''
+    Construct a complex Givens rotation matrix of dimension n by theta between rows/columns p and q.
+    '''
+    '''
+    Generates a Givens rotation matrix of size n x n to rotate by angle theta in the (p, q) plane. This matrix can be complex
+
+    Parameters:
+    - n (int): The size of the Givens rotation matrix.
+    - p (int): The first index for the rotation plane.
+    - q (int): The second index for the rotation plane.
+    - theta (float): The rotation angle.
+
+    Returns:
+    - numpy.array: The Givens rotation matrix.
+    '''
+    matrix = numpy.eye(n)  # Matrix to hold complex numbers
+    cos_theta = numpy.cos(theta)
+    sin_theta = numpy.sin(theta)
+
+    # Directly assign cosine and sine without complex phase adjustment
+    matrix[p, p] = cos_theta
+    matrix[q, q] = cos_theta
+    matrix[p, q] = sin_theta
+    matrix[q, p] = -sin_theta
+
+    return matrix
+
+def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING, return_diagonal = False):
+    '''
+    Decomposes a real unitary matrix into Givens rotations (theta) and Rz rotations (phi).
+
+    Parameters:
+    - unitary (numpy.array): A real unitary matrix to decompose. It cannot be complex.
+    - tol (float): Tolerance for considering matrix elements as zero. Elements with absolute value less than tol are treated as zero.
+    - ordering (list of tuples or 'Optimized'): Custom ordering of indices for Givens rotations or 'Optimized' to generate them automatically.
+    - return_diagonal (bool): If True, the function also returns the diagonal matrix as part of the output.
+
+    Returns:
+    - list: A list of tuples, each representing a Givens rotation. Each tuple contains the rotation angle theta and indices (i,j) of the rotation.
+    - list: A list of tuples, each representing an Rz rotation. Each tuple contains the rotation angle phi and the index (i) of the rotation.
+    - numpy.array (optional): The diagonal matrix after applying all Givens rotations, returned if return_diagonal is True.
+    '''
+    U = unitary # no need to copy as we don't modify the original
+    U[abs(U) < tol] = 0 # Zeroing out the small elements as per the tolerance level.
+    n = U.shape[0]
+
+    # Determine optimized ordering if specified.
+    if ordering == OPTIMIZED_ORDERING:
+        ordering = ff.depth_eff_order_mf(n)
+
+    theta_list = []
+    phi_list = []
+
+    def calcTheta(U, c, r):
+        '''Calculate and apply the Givens rotation for a specific matrix element.'''
+        t = numpy.arctan2(-U[r,c], U[r-1,c])
+        theta_list.append((t, r, r-1))
+        g = givens_matrix(n,r,r-1,t)
+        U = numpy.dot(g, U)
+
+        return U
+
+    # Apply and store Givens rotations as per the given or computed ordering.
+    if ordering is None:
+        for c in range(n):
+            for r in range(n-1, c, -1):
+                U = calcTheta(U, c, r)
+    else:
+        for r, c in ordering:
+            U = calcTheta(U, c, r)
+    
+    # Calculating the Rz rotations based on the phases of the diagonal elements.
+    # For real elements this means a 180 degree shift, i.e. a sign change.
+    for i in range(n):
+        ph = numpy.angle(U[i,i])
+        phi_list.append((ph, i))
+
+    # Filtering out rotations without significance.
+    theta_list_new = []
+    for i, theta in enumerate(theta_list):
+        if abs(theta[0] % (2*numpy.pi)) > tol:
+            theta_list_new.append(theta)
+    
+    phi_list_new = []
+    for i, phi in enumerate(phi_list):
+        if abs(phi[0]) > tol:
+            phi_list_new.append(phi)
+        
+    if return_diagonal:
+        # Optionally return the resulting diagonal
+        return theta_list_new, phi_list_new, U
+    else:
+        return theta_list_new, phi_list_new
+    
+def reconstruct_matrix_from_givens(n, theta_list, phi_list, to_real_if_possible = True, tol = 1e-12):
+    '''
+    Reconstructs a matrix from given Givens rotations and Rz diagonal rotations.
+    This function is effectively an inverse of get_givens_decomposition, and therefore only works with data in the same format as its output.
+
+    Parameters:
+    - n (int): The size of the unitary matrix to be reconstructed.
+    - theta_list (list of tuples): Each tuple contains (angle, i, j) representing a Givens rotation of `angle` radians, applied to rows/columns `i` and `j`.
+    - phi_list (list of tuples): Each tuple contains (angle, i), representing an Rz rotation by `angle` radians applied to the `i`th diagonal element.
+    - to_real_if_possible (bool): If True, converts the matrix to real if its imaginary part is effectively zero.
+    - tol (float): The tolerance whether to swap a complex rotation for a sign change.
+
+    Returns:
+    - numpy.ndarray: The reconstructed complex or real matrix, depending on the `to_real_if_possible` flag and matrix composition.
+    '''
+    # Start with an identity matrix
+    reconstructed = numpy.eye(n, dtype=complex)
+    
+    # Apply Rz rotations for diagonal elements
+    for phi in phi_list:
+        angle, i = phi
+        # Directly apply a sign flip if the rotation angle is π
+        if numpy.isclose(angle, numpy.pi, atol=tol):
+            reconstructed[i, i] *= -1
+        else:
+            reconstructed[i, i] *= numpy.exp(1j * angle)
+        
+    # Apply Givens rotations in reverse order
+    for theta in reversed(theta_list):
+        angle, i, j = theta
+        g = givens_matrix(n, i, j, angle)
+        reconstructed = numpy.dot(g.conj().T, reconstructed) # Transpose of Givens matrix applied to the left
+
+    # Convert matrix to real if its imaginary part is negligible unless disabled via to_real_if_possible
+    if to_real_if_possible:
+        # Directly apply a sign flip if the rotation angle is π
+        if numpy.all(reconstructed.imag == 0):
+            # Convert to real by taking the real part
+            reconstructed = reconstructed.real
+
+    return reconstructed
