@@ -1639,7 +1639,7 @@ class QuantumChemistryBase:
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False,
-                     rdm_trafo: QubitHamiltonian = False):
+                     rdm_trafo: QubitHamiltonian = None):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
