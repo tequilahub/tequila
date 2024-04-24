@@ -94,7 +94,7 @@ class QuantumChemistryBase:
         else:
             self.integral_manager = self.initialize_integral_manager(active_orbitals=active_orbitals,
                                                                      reference_orbitals=reference_orbitals,
-                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, orbital_type=orbital_type, *args,
+                                                                     orbitals=orbitals, frozen_orbitals=frozen_orbitals, orbital_type=orbital_type, basis_name=self.parameters.basis_set, *args,
                                                                      **kwargs)
         
         if orbital_type is not None and orbital_type.lower() == "native":
@@ -109,15 +109,23 @@ class QuantumChemistryBase:
 
     @classmethod
     def from_tequila(cls, molecule, transformation=None, *args, **kwargs):
-        c, h1, h2 = molecule.get_integrals()
+        c = molecule.integral_manager.constant_term
+        h1 = molecule.integral_manager.one_body_integrals
+        h2 = molecule.integral_manager.two_body_integrals
+        S = molecule.integral_manager.overlap_integrals
+        active_orbitals = [o.idx_total for o in molecule.integral_manager.active_orbitals]
         if transformation is None:
             transformation = molecule.transformation
+        parameters = molecule.parameters
         return cls(nuclear_repulsion=c,
                    one_body_integrals=h1,
                    two_body_integrals=h2,
-                   n_electrons=molecule.n_electrons,
+                   overlap_integrals = S,
+                   orbital_coefficients = molecule.integral_manager.orbital_coefficients,
+                   active_orbitals= active_orbitals,
                    transformation=transformation,
-                   parameters=molecule.parameters, *args, **kwargs)
+                   orbital_type=molecule.integral_manager._orbital_type,
+                   parameters=parameters, *args, **kwargs)
 
     def supports_ucc(self):
         """
@@ -543,11 +551,13 @@ class QuantumChemistryBase:
 
         return manager
 
-    def transform_orbitals(self, orbital_coefficients, *args, **kwargs):
+    def transform_orbitals(self, orbital_coefficients, ignore_active_space=False, name=None, *args, **kwargs):
         """
         Parameters
         ----------
-        orbital_coefficients: second index is new orbital indes, first is old orbital index (summed over)
+        orbital_coefficients: second index is new orbital indes, first is old orbital index (summed over), indices are assumed to be defined on the active space
+        ignore_active_space: if true orbital_coefficients are not assumed to be given in the active space
+        name: str, name the new orbitals
         args
         kwargs
 
@@ -556,9 +566,20 @@ class QuantumChemistryBase:
         New molecule with transformed orbitals
         """
 
+        U = numpy.eye(self.integral_manager.orbital_coefficients.shape[0])
+        # mo_coeff by default only acts on the active space
+        active_indices = [o.idx_total for o in self.integral_manager.active_orbitals]
+
+        if ignore_active_space:
+            U = orbital_coefficients
+        else:
+            for kk,k in enumerate(active_indices):
+                for ll,l in enumerate(active_indices):
+                    U[k][l] = orbital_coefficients[kk][ll]
+
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         integral_manager = copy.deepcopy(self.integral_manager)
-        integral_manager.transform_orbitals(U=orbital_coefficients)
+        integral_manager.transform_orbitals(U=U, name=name)
         result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
         return result
     
@@ -583,7 +604,7 @@ class QuantumChemistryBase:
         else:
             integral_manager = copy.deepcopy(self.integral_manager)
             integral_manager.transform_to_native_orbitals()
-            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, orbital_type="native", transformation=self.transformation)
+            result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
             return result
 
 
@@ -644,6 +665,68 @@ class QuantumChemistryBase:
         The number of active electrons in this molecule
         """
         return 2 * len(self.integral_manager.active_reference_orbitals)
+
+    def make_annihilation_op(self, orbital, coefficient=1.0):
+        """
+        Compute annihilation operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
+        """
+        assert orbital<=self.n_orbitals*2
+        aop = openfermion.ops.FermionOperator(f'{orbital}', coefficient)
+        return self.transformation(aop)
+
+    def make_creation_op(self, orbital, coefficient=1.0):
+        """
+        Compute creation operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
+        """
+        assert orbital<=self.n_orbitals*2
+        cop = openfermion.ops.FermionOperator(f'{orbital}^', coefficient)
+        return self.transformation(cop)
+
+    def make_number_op(self, orbital):
+        """
+        Compute number operator on spin-orbital in qubit representation
+        Spin-orbital order is always (up,down,up,down,...)
+        """
+        num_op = self.make_creation_op(orbital) * self.make_annihilation_op(orbital)
+        return num_op
+    
+    def make_sz_op(self):
+        """
+        Compute the spin_z operator of the molecule in qubit representation
+        """
+        sz = QubitHamiltonian()
+        for i in range(0, self.n_orbitals * 2, 2):
+            one = 0.5 * self.make_creation_op(i) * self.make_annihilation_op(i)
+            two = 0.5 * self.make_creation_op(i+1) * self.make_annihilation_op(i+1)
+            sz += (one - two)
+        return sz
+
+    def make_sp_op(self):
+        """
+        Compute the spin+ operator of the molecule in qubit representation
+        """
+        sp = QubitHamiltonian()
+        for i in range(self.n_orbitals):
+            sp += self.make_creation_op(i*2) * self.make_annihilation_op(i*2 + 1)
+        return sp
+
+    def make_sm_op(self):
+        """
+        Compute the spin- operator of the molecule in qubit representation
+        """
+        sm = QubitHamiltonian()
+        for i in range(self.n_orbitals):
+            sm += self.make_creation_op(i*2 + 1) * self.make_annihilation_op(i*2)
+        return sm
+
+    def make_s2_op(self):
+        """
+        Compute the spin^2 operator of the molecule in qubit representation
+        """
+        s2_op = self.make_sm_op() * self.make_sp_op() + self.make_sz_op() * (self.make_sz_op() + 1)
+        return s2_op
 
     def make_hamiltonian(self, *args, **kwargs) -> QubitHamiltonian:
         """
@@ -805,13 +888,13 @@ class QuantumChemistryBase:
         """
         if U is None:
             U = QCircuit()
-
-        # consistency
-        consistency = [x < self.n_orbitals for x in U.qubits]
-        if not all(consistency):
-            warnings.warn(
-                "hcb_to_me: given circuit is not defined on the first {} qubits. Is this a HCB circuit?".format(
-                    self.n_orbitals))
+        else:
+            ups = [self.transformation.up(i.idx) for i in self.orbitals]
+            consistency = [x in ups for x in U.qubits]
+            if not all(consistency):
+                warnings.warn(
+                    "hcb_to_me: given circuit is not defined on all first {} qubits. Is this a HCB circuit?".format(
+                        self.n_orbitals))
 
         # map to alpha qubits
         if condensed:
