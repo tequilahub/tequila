@@ -125,7 +125,8 @@ class QuantumChemistryBase:
                    active_orbitals= active_orbitals,
                    transformation=transformation,
                    orbital_type=molecule.integral_manager._orbital_type,
-                   parameters=parameters, *args, **kwargs)
+                   parameters=parameters,
+                   reference_orbitals= molecule.integral_manager.active_space.reference_orbitals,*args, **kwargs)
 
     def supports_ucc(self):
         """
