@@ -124,7 +124,8 @@ class QuantumChemistryBase:
                    active_orbitals= active_orbitals,
                    transformation=transformation,
                    orbital_type=molecule.integral_manager._orbital_type,
-                   parameters=parameters, *args, **kwargs)
+                   parameters=parameters,
+                   reference_orbitals= molecule.integral_manager.active_space.reference_orbitals,*args, **kwargs)
 
     def supports_ucc(self):
         """
@@ -1720,7 +1721,8 @@ class QuantumChemistryBase:
             return None
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False):
+                     get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False,
+                     rdm_trafo: QubitHamiltonian = None):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -1748,6 +1750,9 @@ class QuantumChemistryBase:
         get_rdm1, get_rdm2 :
             Set whether either one or both rdm1, rdm2 should be computed. If both are needed at some point,
             it is recommended to compute them at once.
+        rdm_trafo :
+            The rdm operators can be transformed, e.g., a^dagger_i a_j -> U^dagger a^dagger_i a_j U,
+            where U represents the transformation. The default is set to None, implying that U equas the identity.
 
         Returns
         -------
@@ -1992,8 +1997,13 @@ class QuantumChemistryBase:
         # Transform operator lists to QubitHamiltonians
         if (not use_hcb):
             qops = [_get_qop_hermitian(op) for op in qops]
+        
         # Compute expected values
-        evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+        if rdm_trafo is None:
+            evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+        else:
+            qops = [rdm_trafo.dagger()*qops[i]*rdm_trafo for i in range(len(qops))]
+            evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
 
         # Assemble density matrices
         # If self._rdm1, self._rdm2 exist, reset them if they are of the other spin-type
