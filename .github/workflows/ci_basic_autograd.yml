@@ -29,7 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip uninstall autograd -y
-        pip install -y jax jaxlib
+        pip install jax jaxlib
     - name: Lint with flake8
       run: |
         pip install flake8
