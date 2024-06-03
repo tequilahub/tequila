@@ -251,11 +251,7 @@ Quantum Equation of Motion with Orbital Optimization for Computing Molecular Pro
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
 # Dependencies
-Support for additional optimizers or quantum backends can be activated by intalling them in your environment.
-Tequila will then detect them automatically.
-Currently those are: [Phoenics](https://github.com/aspuru-guzik-group/phoenics)
- and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).
-Quantum backends are treated in the same way.
+Support for specific backends (quantum simulators, optimizers, quantum chemistry) can be activated by intalling them in your environment.
 
 ## Quantum Backends
 Currently supported
@@ -389,5 +385,3 @@ Tequila runs on Mac OSX.
 You might get in trouble with installing qulacs since it currently does not work with Apple's clang compiler.
 You need to install latest GNU compile (at least gcc-7 and g++7) and set them as default before installing qulacs over pip.
 
-## Qibo and GPyOpt
-Currently you can't use Qibo and GPyOpt within the same environment.
