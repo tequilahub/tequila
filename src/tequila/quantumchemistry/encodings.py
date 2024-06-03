@@ -4,12 +4,12 @@ Most are Interfaces to OpenFermion
 """
 import abc
 
-from pubchempy import UnimplementedError
+from tequila import TequilaExcpetion
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import X, CNOT
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 import openfermion
-import math
+import numpy
 
 
 def known_encodings():
@@ -166,7 +166,7 @@ class EncodingBase(metaclass=abc.ABCMeta):
 
             # every power of 2 connects to the last power of 2
             # this corresponds to the last row in the recursive definitions being all 1s
-            x = math.log2(i + 1)
+            x = numpy.log2(i + 1)
             if x.is_integer() and x >= 3:
                 x = int(x)
                 U += CNOT(control=2 ** (x - 1) - 1, target=i)
@@ -260,7 +260,7 @@ class BravyiKitaevTree(EncodingBase):
         return openfermion.bravyi_kitaev_tree(fermion_operator, n_qubits=self.n_orbitals * 2)
 
     def me_to_jw(self) -> QCircuit:
-        raise UnimplementedError("{}::me_to_jw: unimplemented".format(type(self).__name__))
+        raise TequilaException("{}::me_to_jw: unimplemented".format(type(self).__name__))
 
 
 class BravyiKitaevFast(EncodingBase):
@@ -280,7 +280,7 @@ class BravyiKitaevFast(EncodingBase):
         return openfermion.bravyi_kitaev_fast(op)
 
     def me_to_jw(self) -> QCircuit:
-        raise UnimplementedError("{}::me_to_jw: unimplemented".format(type(self).__name__))
+        raise TequilaException("{}::me_to_jw: unimplemented".format(type(self).__name__))
 
 
 class TaperedBravyKitaev(EncodingBase):
@@ -324,4 +324,4 @@ class TaperedBravyKitaev(EncodingBase):
         return key
 
     def me_to_jw(self) -> QCircuit:
-        raise UnimplementedError("{}::me_to_jw: unimplemented".format(type(self).__name__))
+        raise TequilaException("{}::me_to_jw: unimplemented".format(type(self).__name__))
