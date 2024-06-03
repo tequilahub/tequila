@@ -23,12 +23,7 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install quantum backends
-      run: |
-              pip install "cirq" "qiskit>=0.30" "qulacs"
-              pip uninstall pyquil -y
-              
+        python-version: ${{ matrix.python-version }}              
     - name: Install and test GPyOpt interface (no qibo)
       run: |  
               python -m pip install --upgrade pip 
