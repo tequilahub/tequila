@@ -441,10 +441,14 @@ class QuantumChemistryBase:
 
         generator = self.make_excitation_generator(indices=indices, remove_constant_term=control is None)
         p0 = self.make_excitation_generator(indices=indices, form="P0", remove_constant_term=control is None)
-
+        if self.transformation.up_then_down:
+            idx = []
+            for pair in indices:
+                idx.append((pair[0]//2+(pair[0]%2)*self.n_orbitals,pair[1]//2+(pair[1]%2)*self.n_orbitals))
+        else:idx = indices
         return QCircuit.wrap_gate(
             FermionicGateImpl(angle=angle, generator=generator, p0=p0,
-                              transformation=type(self.transformation).__name__.lower(), indices=indices,
+                              transformation=type(self.transformation).__name__.lower(), indices=idx,
                               assume_real=assume_real,
                               control=control, **kwargs))
 

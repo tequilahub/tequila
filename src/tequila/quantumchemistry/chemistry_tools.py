@@ -2,10 +2,11 @@ import os
 import typing
 import warnings
 from dataclasses import dataclass
-
+from copy import deepcopy
+from numbers import Real
 import numpy
 
-from tequila import BitString, QCircuit, TequilaException
+from tequila import BitString, QCircuit, TequilaException,Variable,compile_circuit
 from tequila.circuit import gates
 
 try:
@@ -59,7 +60,91 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
                     target.append(y)
             return gates.QubitExcitation(target=target, angle=-self.parameter, control=self.control)
         else:
-            return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
+            if self.transformation.lower().strip("_") == "jordanwigner":
+                return self.fermionic_excitation(angle=self.parameter, indices=self.indices, control=self.control)
+            else:
+                return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
+
+    def cCRy(self, target: int, dcontrol: typing.Union[list, int], control: typing.Union[list, int],
+             angle: typing.Union[Real, Variable, typing.Hashable], case: int = 1) -> QCircuit:
+        '''
+        Compilation of CRy as on https://doi.org/10.1103/PhysRevA.102.062612
+        If not control passed, Ry returned
+        Parameters
+        ----------
+        case: if 1 employs eq. 12 from the paper, if 0 eq. 13
+        '''
+        if control is not None and not len(control):
+            control = None
+        if isinstance(dcontrol, int):
+            dcontrol = [dcontrol]
+        if not len(dcontrol):
+            return compile_circuit(gates.Ry(angle=angle, target=target, control=control))
+        else:
+            if isinstance(angle, str):
+                angle = Variable(angle)
+            U = QCircuit()
+            aux = dcontrol[0]
+            ctr = deepcopy(dcontrol)
+            ctr.pop(0)
+            if case:
+                U += self.cCRy(target=target, dcontrol=ctr, angle=angle / 2, case=1, control=control) + gates.H(
+                    aux) + gates.CNOT(target, aux)
+                U += self.cCRy(target=target, dcontrol=ctr, angle=-angle / 2, case=0, control=control) + gates.CNOT(
+                    target, aux) + gates.H(aux)
+            else:
+                U += gates.H(aux) + gates.CNOT(target, aux) + self.cCRy(target=target, dcontrol=ctr, angle=-angle / 2,
+                                                                        case=0, control=control)
+                U += gates.CNOT(target, aux) + gates.H(aux) + self.cCRy(target=target, dcontrol=ctr, angle=angle / 2,
+                                                                        case=1, control=control)
+            return U
+
+    def fermionic_excitation(self, angle: typing.Union[Real, Variable, typing.Hashable], indices: typing.List,
+                             control: typing.Union[int, typing.List] = None, opt: bool = True) -> QCircuit:
+        '''
+            Excitation [(i,j),(k,l)],... compiled following https://doi.org/10.1103/PhysRevA.102.062612
+            opt: whether to optimized CNOT H CNOT --> Rz Rz CNOT Rz
+        '''
+        lto = []
+        lfrom = []
+        for pair in indices:
+            lfrom.append(pair[0])
+            lto.append(pair[1])
+        Upair = QCircuit()
+        if isinstance(angle, str) or isinstance(angle, tuple):
+            angle = Variable(angle)
+        for i in range(len(lfrom) - 1):
+            Upair += gates.CNOT(lfrom[i + 1], lfrom[i])
+            Upair += gates.CNOT(lto[i + 1], lto[i])
+            Upair += gates.X(lto[i]) + gates.X(lfrom[i])
+        Upair += gates.CNOT(lto[-1], lfrom[-1])
+        crt = lfrom[::-1] + lto
+        Uladder = QCircuit()
+        pairs = lfrom + lto
+        pairs.sort()
+        orbs = []
+        for o in range(len(pairs) // 2):
+            orbs += [*range(pairs[2 * o] + 1, pairs[2 * o + 1])]
+        if len(orbs):
+            for o in range(len(orbs) - 1):
+                Uladder += gates.CNOT(orbs[o], orbs[o + 1])
+            Uladder += compile_circuit(gates.CZ(orbs[-1], lto[-1]))
+        crt.pop(-1)
+        if control is not None and (isinstance(control, int) or len(control) == 1):
+            if isinstance(control, int):
+                crt.append(control)
+            else:
+                crt = crt + control
+            control = []
+        Ur = self.cCRy(target=lto[-1], dcontrol=crt, angle=-1 * angle, control=control)
+        Upair2 = Upair.dagger()
+        if opt:
+            Ur.gates.pop(-1)
+            Ur.gates.pop(-1)
+            Upair2.gates.pop(0)
+            Ur += gates.Rz(numpy.pi / 2, target=lto[-1]) + gates.Rz(-numpy.pi / 2, target=lfrom[-1])
+            Ur += gates.CNOT(lto[-1], lfrom[-1]) + gates.Rz(numpy.pi / 2, target=lfrom[-1]) + gates.H(lfrom[-1])
+        return Upair + Uladder + Ur + Uladder.dagger() + Upair2
 
     def __str(self):
         if self.indices is not None:
