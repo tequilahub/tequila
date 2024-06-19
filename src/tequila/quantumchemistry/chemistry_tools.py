@@ -8,7 +8,6 @@ import numpy
 
 from tequila import BitString, QCircuit, TequilaException,Variable,compile_circuit
 from tequila.circuit import gates
-
 try:
     from openfermion.ops.representations import get_active_space_integrals  # needs openfermion 1.3
 except ImportError as E:
@@ -51,20 +50,50 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self._name = "FermionicExcitation"
         self.transformation = transformation
         self.indices = indices
-
+        if isinstance(indices,tuple) and not hasattr(indices[0],"__len__"):
+            self.indices = [(indices[2 * i], indices[2 * i+1]) for i in range(len(indices) // 2)]
+        self.sign = self.format_excitation_variables(self.indices)
+        self.indices = self.format_excitation_indices(self.indices)
     def compile(self, *args, **kwargs):
         if self.is_convertable_to_qubit_excitation():
             target = []
             for x in self.indices:
                 for y in x:
                     target.append(y)
-            return gates.QubitExcitation(target=target, angle=-self.parameter, control=self.control)
+            return gates.QubitExcitation(target=target, angle=self.parameter, control=self.control)
         else:
             if self.transformation.lower().strip("_") == "jordanwigner":
-                return self.fermionic_excitation(angle=self.parameter, indices=self.indices, control=self.control)
+                return self.fermionic_excitation(angle=self.sign*self.parameter, indices=self.indices, control=self.control,opt=False)
             else:
                 return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
+    def format_excitation_indices(self, idx):
+        """
+        Consistent formatting of excitation indices
+        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
+        sorted as: p0<p1<pn and pi<qi
+        :param idx: list of index tuples describing a single(!) fermionic excitation
+        :return: list of index tuples
+        """
 
+        idx = [tuple(sorted(x)) for x in idx]
+        idx = sorted(idx, key=lambda x: x[0])
+        return list(idx)
+    def format_excitation_variables(self, idx):
+        """
+        Consistent formatting of excitation variable
+        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
+        sorted as: pi<qi and p0 < p1 < p2
+        :param idx: list of index tuples describing a single(!) fermionic excitation
+        :return: sign of the variable with re-ordered indices
+        """
+        sig = 1
+        for pair in idx:
+            if pair[1]>pair[0]:
+                sig *= -1
+        for pair in range(len(idx)-1):
+            if idx[pair+1][0]>idx[pair][0]:
+                sig *= -1
+        return sig
     def cCRy(self, target: int, dcontrol: typing.Union[list, int], control: typing.Union[list, int],
              angle: typing.Union[Real, Variable, typing.Hashable], case: int = 1) -> QCircuit:
         '''
@@ -107,6 +136,8 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         '''
         lto = []
         lfrom = []
+        if isinstance(indices,tuple) and not hasattr(indices[0],"__len__"):
+            indices = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
         for pair in indices:
             lfrom.append(pair[0])
             lto.append(pair[1])
@@ -136,7 +167,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
             else:
                 crt = crt + control
             control = []
-        Ur = self.cCRy(target=lto[-1], dcontrol=crt, angle=-1 * angle, control=control)
+        Ur = self.cCRy(target=lto[-1], dcontrol=crt, angle=angle, control=control)
         Upair2 = Upair.dagger()
         if opt:
             Ur.gates.pop(-1)

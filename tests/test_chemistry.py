@@ -173,8 +173,6 @@ def test_ucc_singles_psi4():
 def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     # check examples for comments
     psi4_interface = qc_interface(parameters=parameters, transformation=trafo)
-
-    hqc = psi4_interface.make_hamiltonian()
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
     U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes=amplitudes, include_reference_ansatz=True)
     variables = amplitudes.make_parameter_dictionary()
