@@ -30,7 +30,7 @@ jobs:
         # remove qulacs from dependencies (issues with windows and mac)
         # users need to install themselves if they want it
        
-        cat requirements.txt | sed "s|qulacs|#qulacs|g" > tmp.txt
+        #cat requirements.txt | sed "s|qulacs|#qulacs|g" > tmp.txt
         rm requirements.txt
         mv tmp.txt requirements.txt
         python setup.py sdist bdist_wheel

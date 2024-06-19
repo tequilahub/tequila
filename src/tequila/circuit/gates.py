@@ -940,7 +940,7 @@ def QubitExcitation(angle: typing.Union[numbers.Real, Variable, typing.Hashable]
     except:
         raise Exception("QubitExcitation: Needs an even number of targets")
 
-    return QCircuit.wrap_gate(QubitExcitationImpl(angle=angle, target=target, assume_real=assume_real, compile_options=compile_options))
+    return QCircuit.wrap_gate(QubitExcitationImpl(angle=angle, target=target, assume_real=assume_real, compile_options=compile_options, control=control))
 
 
 """

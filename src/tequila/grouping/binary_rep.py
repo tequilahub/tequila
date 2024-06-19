@@ -26,7 +26,7 @@ class BinaryHamiltonian:
                 del Hof.terms[()]
                 hamiltonian = QubitHamiltonian.from_openfermion(Hof)
         if n_qubits is None:
-            n_qubits = hamiltonian.n_qubits
+            n_qubits = max(hamiltonian.qubits)+1
         binary_terms = [
             BinaryPauliString(
                 p.binary(n_qubits).binary,
