@@ -1491,7 +1491,8 @@ class QuantumChemistryBase:
         factor = 1.0 / trotter_steps
         for step in range(trotter_steps):
             for idx, angle in indices.items():
-                UCCSD += self.make_excitation_gate(indices=idx, angle=factor * angle)
+                converted = [(idx[2 * i], idx[2 * i + 1]) for i in range(len(idx) // 2)]
+                UCCSD += self.make_excitation_gate(indices=converted, angle=factor * angle)
         if hasattr(initial_amplitudes,
                    "lower") and initial_amplitudes.lower() == "mp2" and parametrized and add_singles:
             # mp2 has no singles, need to initialize them here (if not parametrized initializling as 0.0 makes no sense though)
@@ -1726,7 +1727,7 @@ class QuantumChemistryBase:
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False,
-                     rdm_trafo: QubitHamiltonian = None):
+                     rdm_trafo: QubitHamiltonian = None, decompose=None):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -2004,7 +2005,12 @@ class QuantumChemistryBase:
         
         # Compute expected values
         if rdm_trafo is None:
-            evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+            if decompose is not None:
+                print("MANIPULATED")
+                X = decompose(H=qops, U=U)
+                evals = simulate(X, variables=variables)
+            else:
+                evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
         else:
             qops = [rdm_trafo.dagger()*qops[i]*rdm_trafo for i in range(len(qops))]
             evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
