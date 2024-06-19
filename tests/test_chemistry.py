@@ -173,8 +173,6 @@ def test_ucc_singles_psi4():
 def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     # check examples for comments
     psi4_interface = qc_interface(parameters=parameters, transformation=trafo)
-
-    hqc = psi4_interface.make_hamiltonian()
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
     U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes=amplitudes, include_reference_ansatz=True)
     variables = amplitudes.make_parameter_dictionary()
@@ -370,9 +368,9 @@ def test_hamiltonian_reduction(backend):
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("assume_real", [True, False])
-@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "tapered_bravyi_kitaev"])
+@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "reordered_jordan_wigner"])
 def test_fermionic_gates(assume_real, trafo):
-    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.7\nLi 0.0 0.0 0.0", basis_set="sto-3g")
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.7\nLi 0.0 0.0 0.0", basis_set="sto-3g",transformation=trafo)
     U1 = mol.prepare_reference()
     U2 = mol.prepare_reference()
     variable_count = {}
