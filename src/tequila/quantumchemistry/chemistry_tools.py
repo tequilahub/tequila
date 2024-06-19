@@ -50,7 +50,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self._name = "FermionicExcitation"
         self.transformation = transformation
         self.indices = indices
-        if isinstance(indices,tuple) and not hasattr(indices[0],"__len__"):
+        if not hasattr(indices[0],"__len__"):
             self.indices = [(indices[2 * i], indices[2 * i+1]) for i in range(len(indices) // 2)]
         self.sign = self.format_excitation_variables(self.indices)
         self.indices = self.format_excitation_indices(self.indices)
