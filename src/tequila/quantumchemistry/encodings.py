@@ -4,7 +4,7 @@ Most are Interfaces to OpenFermion
 """
 import abc
 
-from tequila import TequilaExcpetion
+from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import X, CNOT
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
