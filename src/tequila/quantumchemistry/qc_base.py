@@ -112,7 +112,11 @@ class QuantumChemistryBase:
         h1 = molecule.integral_manager.one_body_integrals
         h2 = molecule.integral_manager.two_body_integrals
         S = molecule.integral_manager.overlap_integrals
-        active_orbitals = [o.idx_total for o in molecule.integral_manager.active_orbitals]
+        if "active_orbitals" not in kwargs:
+            active_orbitals = [o.idx_total for o in molecule.integral_manager.active_orbitals]
+        else:
+            active_orbitals = kwargs["active_orbitals"]
+            kwargs.pop("active_orbitals")
         if transformation is None:
             transformation = molecule.transformation
         parameters = molecule.parameters
