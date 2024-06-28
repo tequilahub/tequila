@@ -1239,7 +1239,13 @@ class QuantumChemistryBase:
         indices = self.make_upccgsd_indices(key=name)
 
         # check if the used qubit encoding has a hcb transformation
-        have_hcb_trafo = self.transformation.hcb_to_me() is not None
+        have_hcb_trafo = True
+        try:
+            if self.transformation.hcb_to_me() is None:
+                have_hcb_trafo = False
+        except:
+            have_hcb_trafo = False
+        
 
         # consistency checks for optimization
         if have_hcb_trafo and hcb_optimization is None and include_reference:
