@@ -2,6 +2,7 @@ import numpy as np
 from tequila.circuit import gates
 from tequila.circuit.circuit import QCircuit
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
+from scipy.stats import unitary_group, ortho_group
 
 def make_random_circuit(n_qubits: int, rotation_gates: list=['rx', 'ry', 'rz'], n_rotations: int=None,
                         enable_controls: bool=None) -> QCircuit:
@@ -75,3 +76,19 @@ def make_random_hamiltonian(n_qubits: int , paulis: list=['X','Y','Z'], n_ps: in
     
     H = QubitHamiltonian(ham)
     return H
+
+def generate_random_unitary(size, complex = False):
+    '''
+    Generates a random unitary (or furthermore orthogonal if complex is False) matrix of a specified size.
+
+    Parameters:
+    - size (int): The size of the unitary matrix to be generated.
+    - complex (bool, optional): Whether the unitary should be complex.
+
+    Returns:
+    - numpy.ndarray: A randomly generated unitary matrix.
+    '''
+    if complex:
+        return unitary_group.rvs(size)
+    else:
+        return ortho_group.rvs(size)
