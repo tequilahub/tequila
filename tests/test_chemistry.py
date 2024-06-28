@@ -587,8 +587,14 @@ def test_spa_consistency(geometry, name, optimize, transformation):
     mol = tq.Molecule(geometry=geometry, basis_set="sto-3g",
                       transformation=transformation).use_native_orbitals()
 
-    if mol.transformation.hcb_to_me() is None:
+    # test compares HCB and non-HCB SPA implementations
+    # conversion needs to be implemented for comparisson
+    # if not, HCB is not used in  circuit optimization anyways
+    try:
+        mol.transformation.hcb_to_me()
+    except:
         return
+        
     # doesn't need to make physical sense for the test
     edges = []
     i = 0
