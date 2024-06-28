@@ -135,9 +135,9 @@ def test_madness_upccgsd(trafo):
     E = tq.ExpectationValue(H=H, U=U)
     assert (len(E.extract_variables()) == 2)
     variables = result.variables
-    # if "bravyi" in trafo.lower():
-    #     # signs of angles change in BK compared to JW-like HCB
-    #     variables = {k: -v for k, v in variables.items()}
+    if "bravyikitaevtree" in trafo.lower():
+        # signs of angles change in BK compared to JW-like HCB
+        variables = {k: -v for k, v in variables.items()}
     energy = tq.simulate(E, variables)
     result = tq.minimize(E)
     assert numpy.isclose(result.energy, oigawert, atol=1.e-3)
