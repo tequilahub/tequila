@@ -137,7 +137,7 @@ class BackendCircuitQiskit(BackendCircuit):
     }
 
     numbering = BitNumbering.LSB
-
+            
     def __init__(self, abstract_circuit: QCircuit, variables, qubit_map=None, noise=None,
                  device=None, *args, **kwargs):
         """
@@ -169,7 +169,7 @@ class BackendCircuitQiskit(BackendCircuit):
             'Rx': (lambda c: c.rx, lambda c: c.mcrx),
             'Ry': (lambda c: c.ry, lambda c: c.mcry),
             'Rz': (lambda c: c.rz, lambda c: c.mcrz),
-            'Phase': (lambda c: c.u1, lambda c: c.cu1),
+            'Phase': (lambda c: c.p, lambda c: c.cp),
             'SWAP': (lambda c: c.swap, lambda c: c.cswap),
         }
 
