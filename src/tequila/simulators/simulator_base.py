@@ -3,6 +3,7 @@ from tequila.circuit.circuit import QCircuit
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila.utils.misc import to_float
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.wavefunction.density_matrix import DensityMatrix
 from tequila.circuit.compiler import change_basis
 from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
@@ -363,6 +364,44 @@ class BackendCircuit():
         keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
 
         result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args,
+                                  **kwargs)
+        result.apply_keymap(keymap=keymap, initial_state=initial_state)
+        return result
+
+    def simulate_density(self, variables, initial_state=0, *args, **kwargs) -> DensityMatrix:
+        """
+        simulate the circuit via the backend.
+
+        Parameters
+        ----------
+        variables:
+            the parameters with which to simulate the circuit.
+        initial_state: Default = 0:
+            one of several types; determines the base state onto which the circuit is applied.
+            Default: the circuit is applied to the all-zero state.
+        args
+        kwargs
+
+        Returns
+        -------
+        DensityMatrix
+            the density of the system produced by the action of the circuit on the initial state and noise, if provided.
+        """
+        self.update_variables(variables)
+        if isinstance(initial_state, BitString):
+            initial_state = initial_state.integer
+        if isinstance(initial_state, QubitWaveFunction):
+            if len(initial_state.keys()) != 1:
+                raise TequilaException("only product states as initial states accepted as of now") # TODO: add initial density state for simulation. Can use qiskit quantum info .DensityMatrix.evolve
+            initial_state = list(initial_state.keys())[0].integer
+
+        all_qubits = [i for i in range(self.abstract_circuit.n_qubits)]
+        active_qubits = self.qubit_map.keys()
+
+        # maps from reduced register to full register
+        keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
+
+        result = self.do_simulate_density(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args,
                                   **kwargs)
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result

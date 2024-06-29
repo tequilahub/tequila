@@ -269,11 +269,11 @@ class BackendCircuitQiskit(BackendCircuit):
                     qiskit_backend = self.retrieve_device(self.device)
         else:
             ## density simulation in the presence of noise model
-            if self.device is None:
-                qiskit_backend = self.retrieve_device('aer_simulator_density_matrix') #try statevector simulator too
-            #raise TequilaQiskitException("wave function simulation with noise cannot be performed presently.")
-            qiskit_backend.set_options(noise_model=self.noise_model)
-            circuit.save_density_matrix()
+            #if self.device is None:
+            #    qiskit_backend = self.retrieve_device('aer_simulator_density_matrix') #try statevector simulator too
+            raise TequilaQiskitException("wave function simulation with noise cannot be performed, try simulate_density() or sample() instead.")
+            #qiskit_backend.set_options(noise_model=self.noise_model)
+            #circuit.save_density_matrix()
 
         optimization_level = None
         if "optimization_level" in kwargs:
@@ -289,13 +289,58 @@ class BackendCircuitQiskit(BackendCircuit):
         
 
         qiskit_job = qiskit_backend.run(circuit,optimization_level=optimization_level,**opts)
-
         backend_result = qiskit_job.result()
-        if self.noise_model is not None:
-            #return density
-            return DensityMatrix.from_array(density_matrix = backend_result.data()['density_matrix'].data, numbering = BitNumbering.MSB)
+
+        return QubitWaveFunction.from_array(arr=backend_result.get_statevector(circuit), numbering=self.numbering)
+
+    def do_simulate_density(self, variables, initial_state=0, *args, **kwargs) -> DensityMatrix:
+        """
+        Helper function for performing Density simulation.
+        Parameters
+        ----------
+        variables:
+            variables to pass to the circuit for simulation.
+        initial_state:
+            indicate initial state on which the unitary self.circuit should act.
+        args
+        kwargs
+
+        Returns
+        -------
+        DensityMatrix:
+            the result of simulation.
+        """
+        circuit = self.circuit.bind_parameters(self.resolver)
+
+        if self.device is None:
+            qiskit_backend = self.retrieve_device('aer_simulator_density_matrix')
         else:
-            return QubitWaveFunction.from_array(arr=backend_result.get_statevector(circuit), numbering=self.numbering)
+            if 'aer_simulator_density_matrix' not in str(self.device):
+                raise TequilaException('Density simulation with qiskit requires Qiskit Aer density simulator.')
+            else:
+                qiskit_backend = self.retrieve_device(self.device)
+        
+        qiskit_backend.set_options(noise_model=self.noise_model)
+        circuit.save_density_matrix()
+
+        optimization_level = None
+        if "optimization_level" in kwargs:
+            optimization_level = kwargs['optimization_level']
+        
+        #inital state stuff to add depending on whether it works
+        opts={}
+        if initial_state != 0:
+            array = numpy.zeros(shape=[2 ** self.n_qubits])
+            i = BitStringLSB.from_binary(BitString.from_int(integer=initial_state, nbits=self.n_qubits).binary)
+            print(initial_state, " -> ", i)
+            array[i.integer] = 1.0
+            opts = {"initial_statevector": array}
+
+
+        qiskit_job = qiskit_backend.run(circuit,optimization_level=optimization_level,**opts)
+        backend_result = qiskit_job.result()
+
+        return DensityMatrix.from_array(density_matrix = backend_result.data()['density_matrix'].data, numbering = BitNumbering.MSB)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, *args, **kwargs) -> QubitWaveFunction:
         """
