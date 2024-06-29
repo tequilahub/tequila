@@ -559,7 +559,7 @@ class QuantumChemistryBase:
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         integral_manager = copy.deepcopy(self.integral_manager)
         integral_manager.transform_orbitals(U=orbital_coefficients)
-        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager)
+        result = QuantumChemistryBase(parameters=self.parameters, integral_manager=integral_manager, transformation=self.transformation)
         return result
     
     def orthonormalize_basis_orbitals(self):
@@ -1102,7 +1102,8 @@ class QuantumChemistryBase:
                             assume_real: bool = True,
                             hcb_optimization: bool = None,
                             spin_adapt_singles: bool = True,
-                            neglect_z=False,
+                            neglect_z: bool = False,
+                            mix_sd: bool = False,
                             *args, **kwargs):
         """
         UpGCCSD Ansatz similar as described by Lee et. al.
@@ -1127,6 +1128,10 @@ class QuantumChemistryBase:
         assume_real
             assume a real wavefunction (that is always the case if the reference state is real)
             reduces potential gradient costs from 4 to 2
+        mix_sd
+            Changes the ordering from first all doubles and then all singles excitations (DDDDD....SSSS....) to
+            a mixed order (DS-DS-DS-DS-...) where one DS pair acts on the same MOs. Useful to consider when systems
+            with high electronic correlation and system high error associated with the no Trotterized UCC.
         Returns
         -------
             UpGCCSD ansatz
@@ -1167,7 +1172,8 @@ class QuantumChemistryBase:
                 raise Exception(
                     "name={}, Singles can't be realized without mapping back to the standard encoding leave S or HCB out of the name".format(
                         name))
-
+        if hcb_optimization and mix_sd:
+            raise TequilaException("Mixed SD can not be employed together with HCB Optimization")
         # convenience
         S = "S" in name.upper()
         D = "D" in name.upper()
@@ -1178,7 +1184,8 @@ class QuantumChemistryBase:
             if include_reference:
                 U = self.prepare_reference()
             U += self.make_upccgsd_layer(include_singles=S, include_doubles=D, indices=indices, assume_real=assume_real,
-                                         label=(label, 0), spin_adapt_singles=spin_adapt_singles, *args, **kwargs)
+                                         label=(label, 0), mix_sd=mix_sd, spin_adapt_singles=spin_adapt_singles, *args,
+                                         **kwargs)
         else:
             U = QCircuit()
             if include_reference:
@@ -1197,12 +1204,14 @@ class QuantumChemistryBase:
 
         for k in range(1, order):
             U += self.make_upccgsd_layer(include_singles=S, include_doubles=D, indices=indices, label=(label, k),
-                                         spin_adapt_singles=spin_adapt_singles, neglect_z=neglect_z)
+                                         spin_adapt_singles=spin_adapt_singles, neglect_z=neglect_z, mix_sd=mix_sd)
 
         return U
 
-    def make_upccgsd_layer(self, indices, include_singles=True, include_doubles=True, assume_real=True, label=None,
-                           spin_adapt_singles: bool = True, angle_transform=None, mix_sd=False, neglect_z=False, *args,
+    def make_upccgsd_layer(self, indices, include_singles: bool = True, include_doubles: bool = True,
+                           assume_real: bool = True, label=None,
+                           spin_adapt_singles: bool = True, angle_transform=None, mix_sd: bool = False,
+                           neglect_z: bool = False, *args,
                            **kwargs):
         U = QCircuit()
         for idx in indices:
@@ -1220,7 +1229,7 @@ class QuantumChemistryBase:
                                                    indices=((2 * idx[0], 2 * idx[1]), (2 * idx[0] + 1, 2 * idx[1] + 1)),
                                                    assume_real=assume_real, **kwargs)
             if include_singles and mix_sd:
-                U += self.make_upccgsd_singles(indices=[idx], assume_real=assume_real, label=label,
+                U += self.make_upccgsd_singles(indices=[(idx,)], assume_real=assume_real, label=label,
                                                spin_adapt_singles=spin_adapt_singles, angle_transform=angle_transform,
                                                neglect_z=neglect_z)
 
@@ -1930,7 +1939,7 @@ class QuantumChemistryBase:
             self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
 
         if get_rdm2:
-            rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac")
+            rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac", verify=False)
             rdm2.reorder(to=ordering)
             rdm2 = rdm2.elems
             self._rdm2 = rdm2

@@ -21,7 +21,7 @@ class AdaptParameters:
     degeneracy_threshold: float = 5.e-4
     silent: bool = False
     
-    def __post__init__(self):
+    def __post_init__(self):
         # avoid stacking of same operator-types in a row
         if "method_options" in self.optimizer_args:
             if "gtol" in self.optimizer_args["method_options"]:
@@ -150,6 +150,10 @@ class Adapt:
             variables = {**variables, **static_variables}
 
         U = QCircuit()
+        if "U" in kwargs:
+            U = kwargs["U"]
+        elif hasattr(self.operator_pool, "initialize_circuit"):
+            U = self.operator_pool.initialize_circuit()
 
         initial_objective = self.make_objective(U, variables = variables)
         for k in initial_objective.extract_variables():

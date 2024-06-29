@@ -37,7 +37,7 @@ class OptimizeOrbitalsResult:
         self.iterations += 1
 
 def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=None, silent=False,
-                      vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, use_hcb=False, molecule_factory=None, *args, **kwargs):
+                      vqe_solver_arguments=None, initial_guess=None, return_mcscf=False, use_hcb=False, molecule_factory=None, molecule_arguments=None, *args, **kwargs):
     """
 
     Parameters
@@ -60,6 +60,7 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
                         initial_guess="random_loc=X_scale=Y" with X and Y being floats
                         This initialized a random guess using numpy.random.normal(loc=X, scale=Y) with X=0.0 and Y=0.1 as defaults
     return_mcscf: return the PySCF MCSCF structure after optimization
+    molecule_arguments: arguments to pass to molecule_factory or default molecule constructor | only change if you know what you are doing
     args: just here for convenience
     kwargs: just here for conveniece
 
@@ -97,7 +98,10 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
         if n_qubits > n_orbitals:
             warnings.warn("Potential inconsistency in orbital optimization: use_hcb is switched on but we have\n n_qubits={} in the circuit\n n_orbital={} in the molecule\n".format(n_qubits,n_orbitals), TequilaWarning)
 
-    wrapper = PySCFVQEWrapper(molecule_arguments={"parameters":pyscf_molecule.parameters, "transformation":molecule.transformation}, n_electrons=pyscf_molecule.n_electrons,
+    if molecule_arguments is None:
+        molecule_arguments = {"parameters": pyscf_molecule.parameters, "transformation": molecule.transformation}
+
+    wrapper = PySCFVQEWrapper(molecule_arguments=molecule_arguments, n_electrons=pyscf_molecule.n_electrons,
                               const_part=c, circuit=circuit, vqe_solver_arguments=vqe_solver_arguments, silent=silent,
                               vqe_solver=vqe_solver, molecule_factory=molecule_factory, *args, **kwargs)
     mc.fcisolver = wrapper
@@ -114,13 +118,15 @@ def optimize_orbitals(molecule, circuit=None, vqe_solver=None, pyscf_arguments=N
         print(wrapper)
     if initial_guess is not None:
         if hasattr(initial_guess, "lower"):
-            if "random" in initial_guess.lower():
-                scale = 0.1
+            if "random" or "near_zero" in initial_guess.lower():
+                scale = 1.e-3
+                if "random" in initial_guess.lower():
+                    scale = 1.0
                 loc = 0.0
                 if "scale" in kwargs:
-                    scale = kwargs["scale"]
+                    scale = float(initial_guess.split("scale")[1].split("_")[0].split("=")[1])
                 if "loc" in kwargs:
-                    loc = kwargs["loc"]
+                    loc = float(initial_guess.split("loc")[1].split("_")[0].split("=")[1])
                 initial_guess = numpy.eye(no) + numpy.random.normal(scale=scale, loc=loc, size=no * no).reshape(no, no)
             else:
                 raise Exception("Unknown initial_guess={}".format(initial_guess.lower()))

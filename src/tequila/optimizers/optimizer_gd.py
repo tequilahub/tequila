@@ -334,11 +334,12 @@ class OptimizerGD(Optimizer):
 
 
             if not self.silent:
+                self.__dx = numpy.asarray(self.__dx)
                 print("%3i   %+15.8f   %+7.2e   %7.3e   %7.3e    %s"
                       % (step,
                          e,
                          e-last,
-                         numpy.max(abs(self.__dx)),
+                         numpy.max([abs(x) for x in self.__dx]),
                          numpy.sqrt(numpy.average(self.__dx**2)),
                          comment))
 
