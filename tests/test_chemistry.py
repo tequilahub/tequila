@@ -8,6 +8,8 @@ import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
 from tequila.quantumchemistry.encodings import known_encodings
 from tequila.simulators.simulator_api import simulate
+import tequila.quantumchemistry.qc_base as qcb
+import tequila.tools.random_generators as rg
 
 HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
@@ -171,8 +173,6 @@ def test_ucc_singles_psi4():
 def do_test_ucc(qc_interface, parameters, result, trafo, backend="qulacs"):
     # check examples for comments
     psi4_interface = qc_interface(parameters=parameters, transformation=trafo)
-
-    hqc = psi4_interface.make_hamiltonian()
     amplitudes = psi4_interface.compute_ccsd_amplitudes()
     U = psi4_interface.make_uccsd_ansatz(trotter_steps=1, initial_amplitudes=amplitudes, include_reference_ansatz=True)
     variables = amplitudes.make_parameter_dictionary()
@@ -368,9 +368,9 @@ def test_hamiltonian_reduction(backend):
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("assume_real", [True, False])
-@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "tapered_bravyi_kitaev"])
+@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "reordered_jordan_wigner"])
 def test_fermionic_gates(assume_real, trafo):
-    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.7\nLi 0.0 0.0 0.0", basis_set="sto-3g")
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.7\nLi 0.0 0.0 0.0", basis_set="sto-3g",transformation=trafo)
     U1 = mol.prepare_reference()
     U2 = mol.prepare_reference()
     variable_count = {}
@@ -587,8 +587,14 @@ def test_spa_consistency(geometry, name, optimize, transformation):
     mol = tq.Molecule(geometry=geometry, basis_set="sto-3g",
                       transformation=transformation).use_native_orbitals()
 
-    if mol.transformation.hcb_to_me() is None:
+    # test compares HCB and non-HCB SPA implementations
+    # conversion needs to be implemented for comparisson
+    # if not, HCB is not used in  circuit optimization anyways
+    try:
+        mol.transformation.hcb_to_me()
+    except:
         return
+        
     # doesn't need to make physical sense for the test
     edges = []
     i = 0
@@ -725,3 +731,55 @@ def test_orbital_optimization_hcb(geometry):
     assert numpy.isclose(opt1.energy,opt2.energy,atol=1.e-5)
     assert time1 < time2
     assert (numpy.isclose(opt1.mo_coeff,opt2.mo_coeff, atol=1.e-5)).all()
+
+@pytest.mark.parametrize("transformation", ["JordanWigner", "ReorderedJordanWigner", "BravyiKitaev", "BravyiKitaevTree"])
+@pytest.mark.parametrize("size", [2, 8])
+def test_givens_on_molecule(size, transformation):
+    # dummy one-electron integrals
+    h = numpy.ones(shape=[size,size])
+    # dummy two-electron integrals
+    g = numpy.ones(shape=[size, size, size, size])
+
+    U = rg.generate_random_unitary(size)
+
+    # transformed integrals
+    th = (U.T.dot(h)).dot(U)
+    tg = numpy.einsum("ijkx, xl -> ijkl", g, U, optimize='greedy')
+    tg = numpy.einsum("ijxl, xk -> ijkl", tg, U, optimize='greedy')
+    tg = numpy.einsum("ixkl, xj -> ijkl", tg, U, optimize='greedy')
+    tg = numpy.einsum("xjkl, xi -> ijkl", tg, U, optimize='greedy')
+
+    # original molecule/H
+    mol = tq.Molecule(geometry="He 0.0 0.0 0.0", nuclear_repulsion=0.0, one_body_integrals=h, two_body_integrals=g, basis_set="dummy", transformation=transformation)
+    H = mol.make_hamiltonian()
+    # transformed molecule/H
+    tmol = tq.Molecule(geometry="He 0.0 0.0 0.0", nuclear_repulsion=0.0, one_body_integrals=th, two_body_integrals=tg,basis_set="dummy", transformation=transformation)
+    tH = tmol.make_hamiltonian()
+
+    # transformation in qubit space (this corresponds to the U above)
+    UR = mol.get_givens_circuit(U) # Works!
+
+    # test circuit
+    circuit = rg.make_random_circuit(size)
+
+    # create expectation values and see if they are the same
+    E1 = tq.ExpectationValue(U=circuit, H=tH)
+    E2 = tq.ExpectationValue(U=circuit + UR, H=H)
+
+    result1 = tq.simulate(E1)
+    result2 = tq.simulate(E2)
+    
+    assert numpy.isclose(result1, result2)
+
+@pytest.mark.parametrize("size", [2, 8])
+def test_givens_decomposition(size):
+    # generate random unitary
+    unitary = rg.generate_random_unitary(size)
+
+    # decompose givens
+    theta_list, phi_list = qcb.get_givens_decomposition(unitary)
+
+    # reconstruct original unitary from givens
+    reconstructed_matrix = qcb.reconstruct_matrix_from_givens(unitary.shape[0], theta_list, phi_list)
+    
+    assert numpy.allclose(unitary, reconstructed_matrix)

@@ -420,7 +420,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         """
         # check if the used qubit encoding has a hcb transformation
-        have_hcb_trafo = self.transformation.hcb_to_me() is not None
+        try:
+            have_hcb_trafo = self.transformation.hcb_to_me() is not None
+        except:
+            have_hcb_trafo = False
         name = name.upper()
 
         # Default Method
