@@ -3,12 +3,20 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
-import qiskit, numpy, warnings
-import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
-import qiskit.test.mock.backends
-from qiskit.providers.ibmq import IBMQBackend
+import qiskit, numpy, warnings
 
+HAS_NOISE=True
+try:
+    from qiskit_aer import noise as qiskitnoise
+except:
+    HAS_NOISE = False
+
+HAS_IBMQ=True
+try:
+    from qiskit.providers.ibmq import IBMQBackend
+except:
+    HAS_IBMQ=False
 
 def get_bit_flip(p):
     """
