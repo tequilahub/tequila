@@ -36,9 +36,12 @@ try:
     HAS_QISKIT = True
     INSTALLED_SIMULATORS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
     INSTALLED_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
-    INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
+    from tequila.simulators.simulator_qiskit import HAS_NOISE as HAS_QISKIT_NOISE
+    if HAS_QISKIT_NOISE:
+        INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
 except ImportError:
     HAS_QISKIT = False
+    HAS_QISKIT_NOISE = False
 
 HAS_QIBO = True
 try:
@@ -133,6 +136,8 @@ def show_available_simulators():
                                                              str(k in INSTALLED_SAMPLERS),
                                                              str(k in INSTALLED_NOISE_SAMPLERS),
                                                              str(k in INSTALLED_BACKENDS)))
+    if HAS_QISKIT and not HAS_QISKIT_NOISE:
+        print("missing qiskit_aer: no noisy simulation")
 
 
 def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = None, device=None,
