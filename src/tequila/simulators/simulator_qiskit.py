@@ -3,12 +3,20 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
-import qiskit, numpy, warnings
-import qiskit.providers.aer.noise as qiskitnoise
 from tequila.utils import to_float
-import qiskit.test.mock.backends
-from qiskit.providers.ibmq import IBMQBackend
+import qiskit, numpy, warnings
 
+HAS_NOISE=True
+try:
+    from qiskit_aer import noise as qiskitnoise
+except:
+    HAS_NOISE = False
+
+HAS_IBMQ=True
+try:
+    from qiskit.providers.ibmq import IBMQBackend
+except:
+    HAS_IBMQ=False
 
 def get_bit_flip(p):
     """
@@ -137,7 +145,7 @@ class BackendCircuitQiskit(BackendCircuit):
     }
 
     numbering = BitNumbering.LSB
-
+            
     def __init__(self, abstract_circuit: QCircuit, variables, qubit_map=None, noise=None,
                  device=None, *args, **kwargs):
         """
@@ -169,7 +177,7 @@ class BackendCircuitQiskit(BackendCircuit):
             'Rx': (lambda c: c.rx, lambda c: c.mcrx),
             'Ry': (lambda c: c.ry, lambda c: c.mcry),
             'Rz': (lambda c: c.rz, lambda c: c.mcrz),
-            'Phase': (lambda c: c.u1, lambda c: c.cu1),
+            'Phase': (lambda c: c.p, lambda c: c.cp),
             'SWAP': (lambda c: c.swap, lambda c: c.cswap),
         }
 
