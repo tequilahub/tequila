@@ -46,10 +46,7 @@ class QCircuit():
         Convenience: see src/tequila/circuit/qpic.py - export_to for more
         Parameters
         """
-        # this way we allow calling U.export_to("asd.png") instead of having to specify U.export_to(filename="asd.png")
-        if "circuit" not in kwargs:
-            kwargs["circuit"]=self
-        return export_to(*args, **kwargs)
+        return export_to(self, *args, **kwargs)
 
     @property
     def moments(self):
