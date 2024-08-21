@@ -356,15 +356,23 @@ class BackendCircuit():
                 raise TequilaException("only product states as initial states accepted")
             initial_state = list(initial_state.keys())[0].integer
 
-        all_qubits = [i for i in range(self.abstract_circuit.n_qubits)]
+        all_qubits = list(range(self.abstract_circuit.n_qubits))
         active_qubits = self.qubit_map.keys()
 
-        # maps from reduced register to full register
-        keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
+        # Keymap is only necessary if not all qubits are active
+        keymap_required = sorted(active_qubits) != all_qubits
 
-        result = self.do_simulate(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args,
+        if keymap_required:
+            # maps from reduced register to full register
+            keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
+
+        mapped_initial_state = keymap.inverted(initial_state).integer if keymap_required else int(initial_state)
+        result = self.do_simulate(variables=variables, initial_state=mapped_initial_state, *args,
                                   **kwargs)
-        result.apply_keymap(keymap=keymap, initial_state=initial_state)
+
+        if keymap_required:
+            result.apply_keymap(keymap=keymap, initial_state=initial_state)
+
         return result
 
     def sample(self, variables, samples, read_out_qubits=None, circuit=None, *args, **kwargs):
