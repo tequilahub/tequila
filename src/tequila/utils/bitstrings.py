@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List
 from functools import total_ordering
+from math import ceil, log2
 
 
 class BitNumbering(Enum):
@@ -35,7 +36,7 @@ class BitString:
 
     def update_nbits(self):
         current = self.nbits
-        min_needed = self._value.bit_length()
+        min_needed = ceil(log2(self._value + 1))
         self._nbits = max(current, min_needed)
         return self
 
@@ -177,15 +178,23 @@ class BitStringLSB(BitString):
         return BitNumbering.LSB
 
 
+def _reverse_int_bits(x: int, nbits: int) -> int:
+    if nbits is None:
+        nbits = x.bit_length()
+    assert nbits <= 32
+
+    x = ((x & 0x55555555) << 1) | ((x & 0xAAAAAAAA) >> 1)
+    x = ((x & 0x33333333) << 2) | ((x & 0xCCCCCCCC) >> 2)
+    x = ((x & 0x0F0F0F0F) << 4) | ((x & 0xF0F0F0F0) >> 4)
+    x = ((x & 0x00FF00FF) << 8) | ((x & 0xFF00FF00) >> 8)
+    x = ((x & 0x0000FFFF) << 16) | ((x & 0xFFFF0000) >> 16)
+    return x >> (32 - nbits)
+
+
 def initialize_bitstring(integer: int, nbits: int = None, numbering_in: BitNumbering = BitNumbering.MSB,
                          numbering_out: BitNumbering = BitNumbering.MSB):
+    integer = _reverse_int_bits(integer, nbits) if numbering_in != numbering_out else integer
     if numbering_out == BitNumbering.MSB:
-        if numbering_in == BitNumbering.MSB:
-            return BitString.from_int(integer=integer, nbits=nbits)
-        else:
-            return BitString.from_binary(binary=BitStringLSB.from_int(integer=integer, nbits=nbits).binary, nbits=nbits)
+        return BitString.from_int(integer=integer, nbits=nbits)
     else:
-        if numbering_in == BitNumbering.LSB:
-            return BitStringLSB.from_int(integer=integer, nbits=nbits)
-        else:
-            return BitStringLSB.from_binary(binary=BitString.from_int(integer=integer, nbits=nbits).binary, nbits=nbits)
+        return BitStringLSB.from_int(integer=integer, nbits=nbits)
