@@ -151,12 +151,6 @@ class QubitWaveFunction:
                 state[key] = v
         result = QubitWaveFunction(state, n_qubits=n_qubits)
 
-        if cls.numbering != numbering:
-            if cls.numbering == BitNumbering.MSB:
-                result.apply_keymap(keymap=KeyMapLSB2MSB())
-            else:
-                result.apply_keymap(keymap=KeyMapMSB2LSB())
-
         return result
 
     @classmethod

@@ -35,7 +35,7 @@ class BitString:
 
     def update_nbits(self):
         current = self.nbits
-        min_needed = len(format(self._value, 'b'))
+        min_needed = self._value.bit_length()
         self._nbits = max(current, min_needed)
         return self
 
@@ -179,13 +179,13 @@ class BitStringLSB(BitString):
 
 def initialize_bitstring(integer: int, nbits: int = None, numbering_in: BitNumbering = BitNumbering.MSB,
                          numbering_out: BitNumbering = BitNumbering.MSB):
-    if numbering_in == BitNumbering.MSB:
-        if numbering_out == BitNumbering.MSB:
+    if numbering_out == BitNumbering.MSB:
+        if numbering_in == BitNumbering.MSB:
             return BitString.from_int(integer=integer, nbits=nbits)
         else:
             return BitString.from_binary(binary=BitStringLSB.from_int(integer=integer, nbits=nbits).binary, nbits=nbits)
     else:
-        if numbering_out == BitNumbering.LSB:
+        if numbering_in == BitNumbering.LSB:
             return BitStringLSB.from_int(integer=integer, nbits=nbits)
         else:
             return BitStringLSB.from_binary(binary=BitString.from_int(integer=integer, nbits=nbits).binary, nbits=nbits)
