@@ -145,8 +145,8 @@ class QubitWaveFunction:
         maxkey = len(arr) - 1
         maxbit = initialize_bitstring(integer=maxkey, numbering_in=numbering, numbering_out=cls.numbering).nbits
         for ii, v in enumerate(arr):
-            i = initialize_bitstring(integer=ii, nbits=maxbit, numbering_in=numbering, numbering_out=cls.numbering)
-            if not numpy.isclose(abs(v), 0.0, atol=threshold):
+            if abs(v) > threshold:
+                i = initialize_bitstring(integer=ii, nbits=maxbit, numbering_in=numbering, numbering_out=cls.numbering)
                 key = i if keymap is None else keymap(i)
                 state[key] = v
         result = QubitWaveFunction(state, n_qubits=n_qubits)
