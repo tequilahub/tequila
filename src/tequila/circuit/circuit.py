@@ -386,7 +386,7 @@ class QCircuit():
         for k, v in other._parameter_map.items():
             self._parameter_map[k] += [(x[0] + offset, x[1]) for x in v]
 
-        self._gates += other.gates
+        self._gates += copy.deepcopy(other.gates)
         self._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
 
         return self
