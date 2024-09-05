@@ -8,7 +8,8 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 
 # Getting Started
 
-Get started with our collection of *[Tutorials](https://thuytr18.github.io/tequila-tutorials-beta/tutorials.html)*  
+Get started with our collection of  
+- *[Tutorials](https://thuytr18.github.io/tequila-tutorials-beta/tutorials.html)*  
 
 Further sources:
 - [overview article](https://arxiv.org/abs/2011.03057)   
