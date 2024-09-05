@@ -6,11 +6,13 @@ Tequila is an abstraction framework for (variational) quantum algorithms.
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
 Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.  
 
+# Getting Started
+
+Get started with our collection of *[Tutorials](https://thuytr18.github.io/tequila-tutorials-beta/tutorials.html)*  
+
+Further sources:
 - [overview article](https://arxiv.org/abs/2011.03057)   
 - [tequila in a nutshell](https://kottmanj.github.io/tequila-in-a-nutshell/#/)  
-- [getting started](https://jakobkottmann.com/posts/tq-get-started/)    
-- [circuits in tequila](https://jakobkottmann.com/posts/tq-circuits/)  
-- [notebook collection](https://github.com/tequilahub/tequila-tutorials)  
 - [talks and slides](https://kottmanj.github.io/talks_and_material/)  
 
 # Installation
