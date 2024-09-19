@@ -46,10 +46,7 @@ class QCircuit():
         Convenience: see src/tequila/circuit/qpic.py - export_to for more
         Parameters
         """
-        # this way we allow calling U.export_to("asd.png") instead of having to specify U.export_to(filename="asd.png")
-        if "circuit" not in kwargs:
-            kwargs["circuit"]=self
-        return export_to(*args, **kwargs)
+        return export_to(self, *args, **kwargs)
 
     @property
     def moments(self):
@@ -389,7 +386,7 @@ class QCircuit():
         for k, v in other._parameter_map.items():
             self._parameter_map[k] += [(x[0] + offset, x[1]) for x in v]
 
-        self._gates += other.gates
+        self._gates += copy.deepcopy(other.gates)
         self._min_n_qubits = max(self._min_n_qubits, other._min_n_qubits)
 
         return self
