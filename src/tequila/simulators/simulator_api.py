@@ -10,8 +10,8 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 
-SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic", "qlm"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil'] # qulacs removed in v.1.9
+SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm"]
+SUPPORTED_NOISE_BACKENDS = ["qiskit", "qiskit_gpu", "cirq", "pyquil"]  # qulacs removed in v.1.9
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -42,6 +42,19 @@ try:
 except ImportError:
     HAS_QISKIT = False
     HAS_QISKIT_NOISE = False
+
+try:
+    pkg_resources.require("qiskit-aer-gpu")
+    from tequila.simulators.simulator_qiskit_gpu import BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu
+    HAS_QISKIT_GPU = True
+    INSTALLED_SIMULATORS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
+    INSTALLED_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
+    from tequila.simulators.simulator_qiskit_gpu import HAS_NOISE as HAS_QISKIT_GPU_NOISE
+    if HAS_QISKIT_GPU_NOISE:
+        INSTALLED_NOISE_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
+except (ImportError, DistributionNotFound):
+    HAS_QISKIT_GPU = False
+    HAS_QISKIT_GPU_NOISE = False
 
 HAS_QIBO = True
 try:
@@ -82,8 +95,8 @@ except (ImportError, DistributionNotFound):
     HAS_QULACS = False
 
 try:
-    pkg_resources.require("qulacs-gpu")
-    import qulacs
+    # pkg_resources.require("qulacs-gpu")
+    from qulacs import QuantumStateGpu
     from tequila.simulators.simulator_qulacs_gpu import BackendCircuitQulacsGpu, BackendExpectationValueQulacsGpu
 
     HAS_QULACS_GPU = True

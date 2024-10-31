@@ -275,7 +275,7 @@ def test_wfn_multitarget(simulator):
 @pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
 def test_wfn_multi_control(simulator):
     # currently no compiler, so that test can not succeed
-    if simulator == 'qiskit':
+    if simulator in ["qiskit", "qiskit_gpu"]:
         return
     ac = tq.gates.X([0, 1, 2])
     ac += tq.gates.Ry(target=[0], control=[1, 2], angle=2.3 / 2)
