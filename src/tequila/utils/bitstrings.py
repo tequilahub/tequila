@@ -178,7 +178,7 @@ class BitStringLSB(BitString):
         return BitNumbering.LSB
 
 
-def _reverse_int_bits(x: int, nbits: int) -> int:
+def reverse_int_bits(x: int, nbits: int) -> int:
     if nbits is None:
         nbits = x.bit_length()
     assert nbits <= 32
@@ -193,7 +193,7 @@ def _reverse_int_bits(x: int, nbits: int) -> int:
 
 def initialize_bitstring(integer: int, nbits: int = None, numbering_in: BitNumbering = BitNumbering.MSB,
                          numbering_out: BitNumbering = BitNumbering.MSB):
-    integer = _reverse_int_bits(integer, nbits) if numbering_in != numbering_out else integer
+    integer = reverse_int_bits(integer, nbits) if numbering_in != numbering_out else integer
     if numbering_out == BitNumbering.MSB:
         return BitString.from_int(integer=integer, nbits=nbits)
     else:

@@ -342,12 +342,7 @@ You can avoid it by downgrading cirq and openfermion
 ```bash
 pip install --upgrade "openfermion<=1.0.0"
 pip install --upgrade "cirq<=0.9.1"
-```  
-
-
-## Qiskit backend
-Qiskit version 0.25 is not yet supported.
-`pip install --upgrade qiskit<0.25` fixes potential issues. If not: Please let us know.
+```
 
 ## Circuit drawing
 Standard graphical circuit representation within a Jupyter environment is often done using `tq.draw`.
