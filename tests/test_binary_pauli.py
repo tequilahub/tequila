@@ -169,7 +169,7 @@ def test_commuting_groups():
 
 def prepare_cov_dict(H):
     eigenValues, eigenVectors = np.linalg.eigh(H.to_matrix())
-    wfn0 = tq.QubitWaveFunction(eigenVectors[:,0])
+    wfn0 = tq.QubitWaveFunction.from_array(eigenVectors[:, 0])
     terms = BinaryHamiltonian.init_from_qubit_hamiltonian(H).binary_terms
     cov_dict = {}
     for term1 in terms:

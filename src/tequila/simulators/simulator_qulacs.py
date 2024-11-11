@@ -3,7 +3,7 @@ import numbers, numpy
 import warnings
 
 from tequila import TequilaException, TequilaWarning
-from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
+from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB, reverse_int_bits
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, QCircuit, change_basis
 from tequila.utils.keymap import KeyMapRegisterToSubregister
@@ -149,11 +149,10 @@ class BackendCircuitQulacs(BackendCircuit):
             QubitWaveFunction representing result of the simulation.
         """
         state = self.initialize_state(self.n_qubits)
-        lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
-        state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
+        state.set_computational_basis(reverse_int_bits(initial_state, self.n_qubits))
         self.circuit.update_quantum_state(state)
 
-        wfn = QubitWaveFunction.from_array(arr=state.get_vector(), numbering=self.numbering)
+        wfn = QubitWaveFunction.from_array(array=state.get_vector(), numbering=self.numbering)
         return wfn
 
     def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
@@ -170,22 +169,17 @@ class BackendCircuitQulacs(BackendCircuit):
             results transformed to tequila native QubitWaveFunction
         """
 
-        result = QubitWaveFunction()
+        result = QubitWaveFunction(self.n_qubits, self.numbering)
         # todo there are faster ways
 
-
         for k in backend_result:
-            converted_key = BitString.from_binary(BitStringLSB.from_int(integer=k, nbits=self.n_qubits).binary)
-            if converted_key in result._state:
-                result._state[converted_key] += 1
-            else:
-                result._state[converted_key] = 1
+            result[k] += 1
 
         if target_qubits is not None:
             mapped_target = [self.qubit_map[q].number for q in target_qubits]
             mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
             keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
-            result = result.apply_keymap(keymap=keymap)
+            result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(target_qubits))
 
         return result
 
@@ -212,8 +206,7 @@ class BackendCircuitQulacs(BackendCircuit):
             the results of sampling, as a Qubit Wave Function.
         """
         state = self.initialize_state(self.n_qubits)
-        lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
-        state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
+        state.set_computational_basis(reverse_int_bits(initial_state, self.n_qubits))
         circuit.update_quantum_state(state)
         sampled = state.sampling(samples)
         return self.convert_measurements(backend_result=sampled, target_qubits=self.measurements)

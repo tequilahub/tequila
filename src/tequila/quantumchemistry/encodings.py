@@ -128,7 +128,7 @@ class EncodingBase(metaclass=abc.ABCMeta):
         fop = openfermion.FermionOperator(string, 1.0)
         op = self(fop)
         from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-        wfn = QubitWaveFunction.from_int(0, n_qubits=n_qubits)
+        wfn = QubitWaveFunction.from_basis_state(0, n_qubits=n_qubits)
         wfn = wfn.apply_qubitoperator(operator=op)
         assert (len(wfn.keys()) == 1)
         key = list(wfn.keys())[0].array

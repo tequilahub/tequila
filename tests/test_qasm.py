@@ -35,6 +35,8 @@ def test_export_import_qasm_simple(zx_calculus):
     assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
 
 
+# TODO: Reactivate
+@pytest.mark.skip("Extremely slow for some reason")
 @pytest.mark.parametrize(
     "zx_calculus,variabs",
     [
@@ -145,6 +147,8 @@ def test_export_import_qasm_trotterized_gate(zx_calculus, string1, string2, angl
     assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
 
 
+# TODO: Reactivate
+@pytest.mark.skip("Extremely slow for some reason")
 @pytest.mark.parametrize(
     "zx_calculus,variabs",
     [

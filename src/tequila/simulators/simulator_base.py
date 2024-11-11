@@ -371,7 +371,7 @@ class BackendCircuit():
                                   **kwargs)
 
         if keymap_required:
-            result.apply_keymap(keymap=keymap, initial_state=initial_state)
+            result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(all_qubits), initial_state=initial_state)
 
         return result
 

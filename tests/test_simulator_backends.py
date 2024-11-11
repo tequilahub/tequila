@@ -9,6 +9,7 @@ import random
 import numbers
 import tequila as tq
 import tequila.simulators.simulator_api
+from tequila import BitString
 
 """
 Warn if Simulators are not installed
@@ -40,7 +41,7 @@ def teardown_function(function):
 @pytest.mark.dependencies
 def test_dependencies():
     for package in tequila.simulators.simulator_api.SUPPORTED_BACKENDS:
-        if package != "qulacs_gpu":
+        if package not in ["qulacs_gpu", "qiskit_gpu"]:
             assert (package in tq.simulators.simulator_api.INSTALLED_BACKENDS)
 
 
@@ -351,8 +352,8 @@ def test_initial_state_from_integer(simulator, initial_state):
         U += tq.gates.X(target=i) + tq.gates.X(target=i)
 
     wfn = tq.simulate(U, initial_state=initial_state, backend=simulator)
-    assert (initial_state in wfn)
-    assert (numpy.isclose(wfn[initial_state], 1.0))
+    assert BitString.from_int(initial_state, 6) in wfn
+    assert numpy.isclose(wfn[BitString.from_int(initial_state, 6)], 1.0)
 
 
 @pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
