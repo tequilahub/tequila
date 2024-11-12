@@ -398,7 +398,7 @@ class BackendCircuitQibo(BackendCircuit):
         if isinstance(initial_state, BitString):
             initial_state = initial_state.integer
         if isinstance(initial_state, QubitWaveFunction):
-            if len(initial_state) != 1:
+            if initial_state.length() != 1:
                 return self.do_simulate(variables=variables,initial_state=initial_state, *args, **kwargs)
             initial_state = list(initial_state.keys())[0].integer
         if isinstance(initial_state,np.ndarray):

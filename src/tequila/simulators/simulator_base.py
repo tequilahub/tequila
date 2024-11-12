@@ -352,7 +352,7 @@ class BackendCircuit():
         if isinstance(initial_state, BitString):
             initial_state = initial_state.integer
         if isinstance(initial_state, QubitWaveFunction):
-            if len(initial_state.keys()) != 1:
+            if initial_state.length() != 1:
                 raise TequilaException("only product states as initial states accepted")
             initial_state = list(initial_state.keys())[0].integer
 
