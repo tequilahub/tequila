@@ -317,9 +317,11 @@ def test_swap():
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
 
     U = X(2)
-    U += SWAP(0,2, power=2.0)
+    U += SWAP(0,2, power=3.0)
     wfn = simulate(U)
-    wfnx = simulate(X(0))
+    V = X(0)
+    V.n_qubits = 3
+    wfnx = simulate(V)
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
 
     U = X(0)+X(3)

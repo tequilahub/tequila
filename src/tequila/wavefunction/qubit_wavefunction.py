@@ -66,7 +66,8 @@ class QubitWaveFunction:
             if wfn._dense and wfn._state.dtype == object:
                 result = sympy.Integer(1) * result
             for index, coeff in wfn.raw_items():
-                key = keymap(initialize_bitstring(index, wfn._n_qubits, numbering_in=wfn._numbering), initial_state)
+                key = initialize_bitstring(index, wfn._n_qubits, numbering_in=wfn._numbering, numbering_out=keymap.numbering)
+                key = keymap(key, initial_state)
                 result[key] += coeff
             return result
         else:

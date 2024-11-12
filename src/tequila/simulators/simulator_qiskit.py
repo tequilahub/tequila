@@ -396,7 +396,8 @@ class BackendCircuitQiskit(BackendCircuit):
         result = QubitWaveFunction(self.n_qubits, self.numbering)
         # todo there are faster ways
         for k, v in qiskit_counts.items():
-            converted_key = BitString.from_binary(k)
+            # Qiskit uses LSB bitstrings, but from_binary expects MSB
+            converted_key = BitString.from_binary(k[::-1])
             result[converted_key] = v
         if target_qubits is not None:
             mapped_target = [self.qubit_map[q].number for q in target_qubits]

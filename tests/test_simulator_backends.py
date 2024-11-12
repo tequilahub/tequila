@@ -389,7 +389,7 @@ def test_sampling_read_out_qubits(backend):
     U = tq.gates.X(0)
     U += tq.gates.Z(1)
 
-    wfn = tq.QubitWaveFunction(2)
+    wfn = tq.QubitWaveFunction.from_basis_state(n_qubits=2, basis_state=BitString.from_int(2))
 
     result = tq.simulate(U, backend=backend, samples=1, read_out_qubits=[0, 1])
     assert (numpy.isclose(numpy.abs(wfn.inner(result)) ** 2, 1.0, atol=1.e-4))

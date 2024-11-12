@@ -49,7 +49,7 @@ try:
     HAS_QISKIT_GPU = True
     INSTALLED_SIMULATORS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
     INSTALLED_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
-    from tequila.simulators.simulator_qiskit_gpu import HAS_NOISE as HAS_QISKIT_GPU_NOISE
+    from tequila.simulators.simulator_qiskit import HAS_NOISE as HAS_QISKIT_GPU_NOISE
     if HAS_QISKIT_GPU_NOISE:
         INSTALLED_NOISE_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
 except (ImportError, DistributionNotFound):
