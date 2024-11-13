@@ -1,3 +1,5 @@
+from typing import Union
+
 import qulacs
 import numbers, numpy
 import warnings
@@ -63,6 +65,11 @@ class BackendCircuitQulacs(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
+    quantum_state_class = qulacs.QuantumState
+
+    supports_sampling_initialization = True
+    supports_generic_initialization = True
+
     def __init__(self, abstract_circuit, noise=None, *args, **kwargs):
         """
 
@@ -110,10 +117,17 @@ class BackendCircuitQulacs(BackendCircuit):
 
             self.circuit=self.add_noise_to_circuit(noise)
 
-    def initialize_state(self, n_qubits:int=None) -> qulacs.QuantumState:
+    def initialize_state(self, n_qubits: int = None, initial_state: Union[int, QubitWaveFunction] = None) -> qulacs.QuantumState:
         if n_qubits is None:
             n_qubits = self.n_qubits
-        return qulacs.QuantumState(n_qubits)
+
+        state = self.quantum_state_class(n_qubits)
+        if isinstance(initial_state, int):
+            state.set_computational_basis(reverse_int_bits(initial_state, self.n_qubits))
+        elif isinstance(initial_state, QubitWaveFunction):
+            state.load(initial_state.to_array(self.numbering))
+
+        return state
 
     def update_variables(self, variables):
         """
@@ -130,7 +144,7 @@ class BackendCircuitQulacs(BackendCircuit):
         for k, angle in enumerate(self.variables):
             self.circuit.set_parameter(k, angle(variables))
 
-    def do_simulate(self, variables, initial_state, *args, **kwargs):
+    def do_simulate(self, variables, initial_state: Union[int, QubitWaveFunction], *args, **kwargs):
         """
         Helper function to perform simulation.
 
@@ -148,8 +162,7 @@ class BackendCircuitQulacs(BackendCircuit):
         QubitWaveFunction:
             QubitWaveFunction representing result of the simulation.
         """
-        state = self.initialize_state(self.n_qubits)
-        state.set_computational_basis(reverse_int_bits(initial_state, self.n_qubits))
+        state = self.initialize_state(self.n_qubits, initial_state)
         self.circuit.update_quantum_state(state)
 
         wfn = QubitWaveFunction.from_array(array=state.get_vector(), numbering=self.numbering)
@@ -205,8 +218,7 @@ class BackendCircuitQulacs(BackendCircuit):
         QubitWaveFunction:
             the results of sampling, as a Qubit Wave Function.
         """
-        state = self.initialize_state(self.n_qubits)
-        state.set_computational_basis(reverse_int_bits(initial_state, self.n_qubits))
+        state = self.initialize_state(self.n_qubits, initial_state)
         circuit.update_quantum_state(state)
         sampled = state.sampling(samples)
         return self.convert_measurements(backend_result=sampled, target_qubits=self.measurements)

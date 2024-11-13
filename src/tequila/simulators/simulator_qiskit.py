@@ -5,9 +5,11 @@ from tequila import TequilaException, TequilaWarning
 from tequila import BitString, BitNumbering, BitStringLSB
 from tequila.utils.keymap import KeyMapRegisterToSubregister
 from tequila.utils import to_float
+from typing import Union
 import warnings
 import numpy as np
 import qiskit, qiskit_aer, qiskit.providers.fake_provider
+from qiskit import QuantumCircuit
 
 HAS_NOISE = True
 try:
@@ -160,6 +162,9 @@ class BackendCircuitQiskit(BackendCircuit):
 
     numbering = BitNumbering.LSB
 
+    supports_sampling_initialization = True
+    supports_generic_initialization = True
+
     def __init__(self, abstract_circuit: QCircuit, variables, qubit_map=None, noise=None,
                  device=None, *args, **kwargs):
         """
@@ -262,6 +267,20 @@ class BackendCircuitQiskit(BackendCircuit):
 
         return classical_map
 
+    def add_state_init(self, circuit: QuantumCircuit, initial_state: Union[int, QubitWaveFunction]) -> QuantumCircuit:
+        if initial_state == 0:
+            return circuit
+
+        if isinstance(initial_state, QubitWaveFunction):
+            statevector = initial_state.to_array(self.numbering)
+        else:
+            statevector = np.zeros(2 ** self.n_qubits)
+            statevector[reverse_int_bits(initial_state, self.n_qubits)] = 1.0
+
+        init_circuit = qiskit.QuantumCircuit(self.q, self.c)
+        init_circuit.set_statevector(statevector)
+        return init_circuit.compose(circuit)
+
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         """
         Helper function for performing simulation.
@@ -298,12 +317,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
         circuit = self.circuit.assign_parameters(self.resolver)
 
-        if initial_state != 0:
-            state = np.zeros(2 ** self.n_qubits)
-            state[reverse_int_bits(initial_state, self.n_qubits)] = 1.0
-            init_circuit = qiskit.QuantumCircuit(self.q, self.c)
-            init_circuit.set_statevector(state)
-            circuit = init_circuit.compose(circuit)
+        circuit = self.add_state_init(circuit, initial_state)
 
         circuit.save_statevector()
 
@@ -311,7 +325,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
         return QubitWaveFunction.from_array(array=backend_result.get_statevector(circuit).data, numbering=self.numbering)
 
-    def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, *args,
+    def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, initial_state=0, *args,
                   **kwargs) -> QubitWaveFunction:
         """
         Helper function for performing sampling.
@@ -321,6 +335,8 @@ class BackendCircuitQiskit(BackendCircuit):
             the circuit from which to sample.
         samples:
             the number of samples to take.
+        initial_state:
+            initial state of the circuit
         args
         kwargs
 
@@ -371,14 +387,14 @@ class BackendCircuitQiskit(BackendCircuit):
                 else:
                     use_basis = qiskit_backend.configuration().basis_gates
                 circuit = circuit.assign_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
+                circuit = self.add_state_init(circuit, initial_state)
                 circuit = qiskit.transpile(circuit, backend=qiskit_backend,
                                            basis_gates=use_basis,
                                            optimization_level=optimization_level
                                            )
 
                 job = qiskit_backend.run(circuit, shots=samples)
-                return self.convert_measurements(job,
-                                                 target_qubits=read_out_qubits)
+                return self.convert_measurements(job, target_qubits=read_out_qubits)
 
     def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
         """

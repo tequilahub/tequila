@@ -9,6 +9,7 @@ from tequila.objective import Objective, Variable, assign_variable, format_varia
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
 SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm"]
 SUPPORTED_NOISE_BACKENDS = ["qiskit", "qiskit_gpu", "cirq", "pyquil"]  # qulacs removed in v.1.9
@@ -22,7 +23,6 @@ if typing.TYPE_CHECKING:
     from tequila.objective import Objective, Variable
     from tequila.circuit.gates import QCircuit
     import numbers.Real as RealNumber
-    from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
 """
 Check which simulators are installed
@@ -369,8 +369,9 @@ def simulate(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
              backend: str = None,
              noise: NoiseModel = None,
              device: str = None,
+             initial_state: Union[int, QubitWaveFunction] = 0,
              *args,
-             **kwargs) -> Union[RealNumber, 'QubitWaveFunction']:
+             **kwargs) -> Union[RealNumber, QubitWaveFunction]:
     """Simulate a tequila objective or circuit
 
     Parameters
@@ -388,6 +389,8 @@ def simulate(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
         specify a noise model to apply to simulation/sampling
     device:
         a device upon which (or in emulation of which) to sample
+    initial_state: int or QubitWaveFunction:
+        the initial state of the circuit
     *args :
 
     **kwargs :
@@ -409,7 +412,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
     compiled_objective = compile(objective=objective, samples=samples, variables=variables, backend=backend,
                                  noise=noise, device=device, *args, **kwargs)
 
-    return compiled_objective(variables=variables, samples=samples, *args, **kwargs)
+    return compiled_objective(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
 
 
 def draw(objective, variables=None, backend: str = None, name=None, *args, **kwargs):
