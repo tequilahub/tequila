@@ -300,8 +300,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
         if initial_state != 0:
             state = np.zeros(2 ** self.n_qubits)
-            initial_state = reverse_int_bits(initial_state, self.n_qubits)
-            state[initial_state] = 1.0
+            state[reverse_int_bits(initial_state, self.n_qubits)] = 1.0
             init_circuit = qiskit.QuantumCircuit(self.q, self.c)
             init_circuit.set_statevector(state)
             circuit = init_circuit.compose(circuit)
@@ -310,7 +309,7 @@ class BackendCircuitQiskit(BackendCircuit):
 
         backend_result = qiskit_backend.run(circuit, optimization_level=optimization_level).result()
 
-        return QubitWaveFunction.from_array(arr=backend_result.get_statevector(circuit), numbering=self.numbering)
+        return QubitWaveFunction.from_array(array=backend_result.get_statevector(circuit).data, numbering=self.numbering)
 
     def do_sample(self, circuit: qiskit.QuantumCircuit, samples: int, read_out_qubits, *args,
                   **kwargs) -> QubitWaveFunction:
@@ -394,16 +393,17 @@ class BackendCircuitQiskit(BackendCircuit):
             measurements converted into wave function form.
         """
         qiskit_counts = backend_result.result().get_counts()
-        result = QubitWaveFunction()
+        result = QubitWaveFunction(self.n_qubits, self.numbering)
         # todo there are faster ways
         for k, v in qiskit_counts.items():
-            converted_key = BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k))
-            result._state[converted_key] = v
+            # Qiskit uses LSB bitstrings, but from_binary expects MSB
+            converted_key = BitString.from_binary(k[::-1])
+            result[converted_key] = v
         if target_qubits is not None:
             mapped_target = [self.qubit_map[q].number for q in target_qubits]
             mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
             keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
-            result = result.apply_keymap(keymap=keymap)
+            result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(target_qubits))
 
         return result
 

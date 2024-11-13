@@ -49,7 +49,7 @@ try:
     HAS_QISKIT_GPU = True
     INSTALLED_SIMULATORS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
     INSTALLED_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
-    from tequila.simulators.simulator_qiskit_gpu import HAS_NOISE as HAS_QISKIT_GPU_NOISE
+    from tequila.simulators.simulator_qiskit import HAS_NOISE as HAS_QISKIT_GPU_NOISE
     if HAS_QISKIT_GPU_NOISE:
         INSTALLED_NOISE_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
 except (ImportError, DistributionNotFound):
@@ -363,7 +363,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device, *args, **kwargs)
 
 
-def simulate(objective: typing.Union['Objective', 'QCircuit','QTensor'],
+def simulate(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,
              samples: int = None,
              backend: str = None,
@@ -407,7 +407,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit','QTensor'],
                 objective.extract_variables()))
 
     compiled_objective = compile(objective=objective, samples=samples, variables=variables, backend=backend,
-                                 noise=noise,device=device, *args, **kwargs)
+                                 noise=noise, device=device, *args, **kwargs)
 
     return compiled_objective(variables=variables, samples=samples, *args, **kwargs)
 

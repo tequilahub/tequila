@@ -12,15 +12,15 @@ from numpy import isclose
 
 
 def test_keymaps():
-    initial_state = 0
+    initial_state = BitString.from_int(0)
 
-    small = QubitWaveFunction.from_int(i=int("0b1111", 2))
-    large = QubitWaveFunction.from_int(i=int("0b01010101", 2))
-    large.n_qubits = 8
+    small = QubitWaveFunction.from_basis_state(4, basis_state=int("0b1111", 2))
+    large = QubitWaveFunction.from_basis_state(8, basis_state=int("0b01010101", 2))
 
     keymap = KeyMapSubregisterToRegister(register=[0, 1, 2, 3, 4, 5, 6, 7], subregister=[1, 3, 5, 7])
 
-    assert (small.apply_keymap(keymap=keymap, initial_state=initial_state).isclose(large))
+    mapped = QubitWaveFunction.from_wavefunction(small, keymap, 8, initial_state)
+    assert mapped.isclose(large)
 
 
 def test_endianness():
@@ -46,6 +46,7 @@ def test_endianness():
         assert (i1 == BitString.from_bitstring(i11))
         assert (i1 == BitString.from_bitstring(i22))
         assert (i2 == BitString.from_bitstring(i11))
+
 
 @pytest.mark.skipif(condition="cirq" not in INSTALLED_SAMPLERS or "qiskit" not in INSTALLED_SAMPLERS, reason="need cirq and qiskit for cross validation")
 def test_endianness_simulators():
@@ -73,7 +74,7 @@ def test_endianness_simulators():
         print("counts_cirq  =", counts_cirq)
         print("counts_qiskit=", counts_qiskit)
         assert (counts_cirq.isclose(counts_qiskit))
-        assert (wfn_cirq.state == counts_cirq.state)
+        assert (wfn_cirq.to_array() == counts_cirq.to_array())
 
 
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
@@ -83,7 +84,7 @@ def test_paulistring_sampling(backend, case):
     H = QubitHamiltonian.from_paulistrings(PauliString.from_string(case[0]))
     U = gates.X(target=1) + gates.X(target=3) + gates.X(target=5)
     E = ExpectationValue(H=H, U=U)
-    result = simulate(E,backend=backend, samples=1)
+    result = simulate(E, backend=backend, samples=1)
     assert isclose(result, case[1], 1.e-4)
 
 
@@ -93,12 +94,13 @@ def test_paulistring_sampling_2(backend, case):
     H = QubitHamiltonian.from_paulistrings(PauliString.from_string(case[0]))
     U = gates.H(target=1) + gates.H(target=3) + gates.X(target=5) + gates.H(target=5)
     E = ExpectationValue(H=H, U=U)
-    result = simulate(E,backend=backend, samples=1)
-    assert (isclose(result, case[1], 1.e-4))
+    result = simulate(E, backend=backend, samples=1)
+    assert isclose(result, case[1], 1.e-4)
+
 
 @pytest.mark.parametrize("array", [numpy.random.uniform(0.0,1.0,i) for i in [2,4,8,16]])
 def test_qubitwavefunction_array(array):
     print(array)
-    wfn = QubitWaveFunction.from_array(arr=array)
+    wfn = QubitWaveFunction.from_array(array=array)
     array2 = wfn.to_array()
-    assert numpy.allclose(array,array2)
+    assert numpy.allclose(array, array2)

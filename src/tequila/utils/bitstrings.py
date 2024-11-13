@@ -192,8 +192,13 @@ def reverse_int_bits(x: int, nbits: int) -> int:
 
 
 def initialize_bitstring(integer: int, nbits: int = None, numbering_in: BitNumbering = BitNumbering.MSB,
-                         numbering_out: BitNumbering = BitNumbering.MSB):
-    integer = reverse_int_bits(integer, nbits) if numbering_in != numbering_out else integer
+                         numbering_out: BitNumbering = None):
+    if numbering_out is None:
+        numbering_out = numbering_in
+
+    if numbering_in != numbering_out:
+        integer = reverse_int_bits(integer, nbits)
+
     if numbering_out == BitNumbering.MSB:
         return BitString.from_int(integer=integer, nbits=nbits)
     else:

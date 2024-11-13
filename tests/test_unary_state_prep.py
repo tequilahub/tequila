@@ -21,7 +21,7 @@ def test_unary_states(target_space: list):
     coeff = 1.0 / numpy.sqrt(qubits)  # fails for the 3-Qubit Case because the wrong sign is picked in the solution
     coeffs = [coeff for i in range(qubits)]
 
-    wfn = QubitWaveFunction()
+    wfn = QubitWaveFunction(qubits)
     for i, c in enumerate(coeffs):
         wfn += c * QubitWaveFunction.from_string("1.0|" + target_space[i] + ">")
 

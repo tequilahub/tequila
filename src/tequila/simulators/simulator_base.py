@@ -352,7 +352,7 @@ class BackendCircuit():
         if isinstance(initial_state, BitString):
             initial_state = initial_state.integer
         if isinstance(initial_state, QubitWaveFunction):
-            if len(initial_state.keys()) != 1:
+            if initial_state.length() != 1:
                 raise TequilaException("only product states as initial states accepted")
             initial_state = list(initial_state.keys())[0].integer
 
@@ -371,7 +371,7 @@ class BackendCircuit():
                                   **kwargs)
 
         if keymap_required:
-            result.apply_keymap(keymap=keymap, initial_state=initial_state)
+            result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(all_qubits), initial_state=initial_state)
 
         return result
 
