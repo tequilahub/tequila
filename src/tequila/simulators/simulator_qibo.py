@@ -356,20 +356,20 @@ class BackendCircuitQibo(BackendCircuit):
         n_qubits = max(self.highest_qubit + 1, self.n_qubits, self.abstract_circuit.max_qubit() + 1)
         if initial_state is not None:
             if isinstance(initial_state, (int, np.int64)):
-                wave = QubitWaveFunction.from_int(i=initial_state, n_qubits=n_qubits)
+                wave = QubitWaveFunction.from_basis_state(n_qubits, initial_state, self.numbering)
             elif isinstance(initial_state, str):
-                wave = QubitWaveFunction.from_string(string=initial_state).to_array()
+                wave = QubitWaveFunction.from_string(initial_state, self.numbering).to_array()
             elif isinstance(initial_state, QubitWaveFunction):
                 wave = initial_state
             elif isinstance(initial_state,np.ndarray):
-                wave = QubitWaveFunction.from_array(initial_state)
+                wave = QubitWaveFunction.from_array(initial_state, self.numbering)
             else:
                 raise TequilaQiboException('could not understand initial state of type {}'.format(type(initial_state)))
             state = wave.to_array()
             result = self.circuit(state)
         else:
             result = self.circuit()
-        back= QubitWaveFunction.from_array(arr=result.numpy())
+        back= QubitWaveFunction.from_array(result.numpy(), self.numbering)
         return back
 
     def simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
@@ -398,7 +398,7 @@ class BackendCircuitQibo(BackendCircuit):
         if isinstance(initial_state, BitString):
             initial_state = initial_state.integer
         if isinstance(initial_state, QubitWaveFunction):
-            if len(initial_state.keys()) != 1:
+            if initial_state.length() != 1:
                 return self.do_simulate(variables=variables,initial_state=initial_state, *args, **kwargs)
             initial_state = list(initial_state.keys())[0].integer
         if isinstance(initial_state,np.ndarray):
@@ -426,19 +426,18 @@ class BackendCircuitQibo(BackendCircuit):
             results transformed to tequila native QubitWaveFunction
         """
 
-        result = QubitWaveFunction()
+        result = QubitWaveFunction(self.n_qubits, self.numbering)
         # todo there are faster ways
 
         for k, v in backend_result.frequencies(binary=True).items():
             converted_key = BitString.from_bitstring(other=BitString.from_binary(binary=k))
-            result._state[converted_key] = v
-
+            result[converted_key] = v
 
         if target_qubits is not None:
             mapped_target = [self.qubit_map[q].number for q in target_qubits]
             mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
             keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
-            result = result.apply_keymap(keymap=keymap)
+            result = QubitWaveFunction.from_wavefunction(result, keymap, len(mapped_target))
 
         return result
 
@@ -521,20 +520,19 @@ class BackendCircuitQibo(BackendCircuit):
         n_qubits = max(self.highest_qubit + 1, self.n_qubits, self.abstract_circuit.max_qubit() + 1)
         if initial_state is not None:
             if isinstance(initial_state, int):
-                wave=QubitWaveFunction.from_int(i=initial_state, n_qubits=n_qubits)
+                wave = QubitWaveFunction.from_basis_state(n_qubits, initial_state, self.numbering)
             elif isinstance(initial_state, str):
-                wave = QubitWaveFunction.from_string(string=initial_state).to_array()
+                wave = QubitWaveFunction.from_string(initial_state, self.numbering).to_array()
             elif isinstance(initial_state, QubitWaveFunction):
                 wave = initial_state
-            elif isinstance(initial_state,np.ndarray):
-                wave = QubitWaveFunction.from_array(arr=initial_state, n_qubits=n_qubits)  # silly but necessary
+            elif isinstance(initial_state, np.ndarray):
+                wave = QubitWaveFunction.from_array(initial_state, self.numbering)  # silly but necessary
             else:
                 raise TequilaQiboException('received an unusable initial state of type {}'.format(type(initial_state)))
-            state=wave.to_array()
-            result = circuit(state,nshots=samples)
+            state = wave.to_array()
+            result = circuit(state, nshots=samples)
         else:
             result = circuit(nshots=samples)
-
 
         back = self.convert_measurements(backend_result=result)
         return back

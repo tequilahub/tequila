@@ -7,6 +7,7 @@ from tequila.circuit.compiler import change_basis
 from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
+from typing import Union
 
 import numbers, typing, numpy, copy, warnings
 
@@ -106,6 +107,11 @@ class BackendCircuit():
         "phase_to_z": True,
         "cc_max": True
     }
+
+    # Can be overwritten by backends that allow basis state initialization when sampling
+    supports_sampling_initialization: bool = False
+    # Can be overwritten by backends that allow initializing arbitrary states
+    supports_generic_initialization: bool = False
 
     @property
     def n_qubits(self) -> numbers.Integral:
@@ -328,7 +334,7 @@ class BackendCircuit():
         """
         self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
 
-    def simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
+    def simulate(self, variables, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs) -> QubitWaveFunction:
         """
         simulate the circuit via the backend.
 
@@ -348,13 +354,12 @@ class BackendCircuit():
             the wavefunction of the system produced by the action of the circuit on the initial state.
 
         """
+        if isinstance(initial_state, QubitWaveFunction) and not self.supports_generic_initialization:
+            raise TequilaException("Backend does not support arbitrary initial states")
+
         self.update_variables(variables)
         if isinstance(initial_state, BitString):
             initial_state = initial_state.integer
-        if isinstance(initial_state, QubitWaveFunction):
-            if len(initial_state.keys()) != 1:
-                raise TequilaException("only product states as initial states accepted")
-            initial_state = list(initial_state.keys())[0].integer
 
         all_qubits = list(range(self.abstract_circuit.n_qubits))
         active_qubits = self.qubit_map.keys()
@@ -362,20 +367,30 @@ class BackendCircuit():
         # Keymap is only necessary if not all qubits are active
         keymap_required = sorted(active_qubits) != all_qubits
 
+        # Combining keymap and general initial states is awkward, because it's not clear what should happen with
+        # different states on non-active qubits. For now, this is simply not allowed.
+        # A better solution might be to check if all components of the initial state differ only on the active qubits.
+        if keymap_required and isinstance(initial_state, QubitWaveFunction):
+            raise TequilaException("Can only set non-basis initial state if all qubits are used")
+
         if keymap_required:
             # maps from reduced register to full register
             keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
 
-        mapped_initial_state = keymap.inverted(initial_state).integer if keymap_required else int(initial_state)
+        if not isinstance(initial_state, QubitWaveFunction):
+            mapped_initial_state = keymap.inverted(initial_state).integer if keymap_required else int(initial_state)
+        else:
+            mapped_initial_state = initial_state
+
         result = self.do_simulate(variables=variables, initial_state=mapped_initial_state, *args,
                                   **kwargs)
 
         if keymap_required:
-            result.apply_keymap(keymap=keymap, initial_state=initial_state)
+            result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(all_qubits), initial_state=initial_state)
 
         return result
 
-    def sample(self, variables, samples, read_out_qubits=None, circuit=None, *args, **kwargs):
+    def sample(self, variables, samples, read_out_qubits=None, circuit=None, initial_state=0, *args, **kwargs):
         """
         Sample the circuit. If circuit natively equips paulistrings, sample therefrom.
         Parameters
@@ -395,6 +410,12 @@ class BackendCircuit():
             The result of sampling, a recreated QubitWaveFunction in the sampled basis.
 
         """
+        if initial_state != 0 and not self.supports_sampling_initialization:
+            raise TequilaException("Backend does not support initial states for sampling")
+
+        if isinstance(initial_state, QubitWaveFunction) and not self.supports_generic_initialization:
+            raise TequilaException("Backend does not support arbitrary initial states")
+
         self.update_variables(variables)
         if read_out_qubits is None:
             read_out_qubits = self.abstract_qubits
@@ -406,7 +427,9 @@ class BackendCircuit():
             circuit = self.add_measurement(circuit=self.circuit, target_qubits=read_out_qubits)
         else:
             circuit = self.add_measurement(circuit=circuit, target_qubits=read_out_qubits)
-        return self.do_sample(samples=samples, circuit=circuit, read_out_qubits=read_out_qubits, *args, **kwargs)
+
+        return self.do_sample(samples=samples, circuit=circuit, read_out_qubits=read_out_qubits,
+                              initial_state=initial_state, *args, **kwargs)
 
     def sample_all_z_hamiltonian(self, samples: int, hamiltonian, variables, *args, **kwargs):
         """
@@ -511,7 +534,7 @@ class BackendCircuit():
         E = E / samples * paulistring.coeff
         return E
 
-    def do_sample(self, samples, circuit, noise, abstract_qubits=None, *args, **kwargs) -> QubitWaveFunction:
+    def do_sample(self, samples, circuit, noise, abstract_qubits=None, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         """
         helper function for sampling. MUST be overwritten by inheritors.
 
@@ -777,7 +800,7 @@ class BackendExpectationValue:
                 raise TequilaException(
                     "BackendExpectationValue received not all variables. Circuit depends on variables {}, you gave {}".format(
                         self._variables, variables))
-        
+
         if samples is None:
             data = self.simulate(variables=variables, *args, **kwargs)
         else:
@@ -856,7 +879,7 @@ class BackendExpectationValue:
             samples = max(1, int(self.abstract_expectationvalue.samples * total_samples))
             suggested = samples
             # samples are not necessarily set (either the user has to set it or some functions like optimize_measurements)
- 
+
         if suggested is not None and suggested != samples:
             warnings.warn("simulating with samples={}, but expectationvalue carries suggested samples={}\nTry calling with samples='auto-total#ofsamples'".format(samples, suggested), TequilaWarning)
 

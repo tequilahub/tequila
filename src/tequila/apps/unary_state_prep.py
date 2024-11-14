@@ -89,7 +89,6 @@ class UnaryStatePrep:
         simulator.convert_to_numpy = False
         variables = None # {k:k.name.evalf() for k in self._abstract_circuit.extract_variables()}
         wfn = simulator.simulate(initial_state=BitString.from_int(0, nbits=self.n_qubits), variables=variables)
-        wfn.n_qubits = self._n_qubits
         equations = []
         for k in target_space:
             equations.append(wfn[k] - abstract_coefficients[k])
@@ -174,7 +173,7 @@ class UnaryStatePrep:
         :return:
         """
         try:
-            assert (len(wfn) == len(self._target_space))
+            assert wfn.length() == len(self._target_space)
             for key in wfn.keys():
                 try:
                     assert (key in self._target_space)

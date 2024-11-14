@@ -42,37 +42,30 @@ class BackendCircuitSymbolic(BackendCircuit):
 
     @classmethod
     def apply_gate(cls, state: QubitWaveFunction, gate: QGate, qubits: dict, variables) -> QubitWaveFunction:
-        result = QubitWaveFunction()
         n_qubits = len(qubits.keys())
+        result = sympy.Integer(1) * QubitWaveFunction(n_qubits)
         for s, v in state.items():
-            s.nbits = n_qubits
-            result += v * cls.apply_on_standard_basis(gate=gate, basisfunction=s, qubits=qubits, variables=variables)
+            result += v * cls.apply_on_standard_basis(gate=gate, basis_state=s, qubits=qubits, variables=variables)
         return result
 
     @classmethod
-    def apply_on_standard_basis(cls, gate: QGate, basisfunction: BitString, qubits:dict, variables) -> QubitWaveFunction:
-
-        basis_array = basisfunction.array
-        if gate.is_controlled():
-            do_apply = True
-            check = [basis_array[qubits[c]] == 1 for c in gate.control]
-            for c in check:
-                if not c:
-                    do_apply = False
-            if not do_apply:
-                return QubitWaveFunction.from_int(basisfunction)
+    def apply_on_standard_basis(cls, gate: QGate, basis_state: BitString, qubits:dict, variables) -> QubitWaveFunction:
+        n_qubits = len(qubits.keys())
+        basis_array = basis_state.array
+        if gate.is_controlled() and not all(basis_array[qubits[c]] == 1 for c in gate.control):
+            return QubitWaveFunction.from_basis_state(n_qubits, basis_state)
 
         if len(gate.target) > 1:
             raise Exception("Multi-targets not supported for symbolic simulators")
 
-        result = QubitWaveFunction()
+        result = sympy.Integer(1) * QubitWaveFunction(n_qubits)
         for tt in gate.target:
             t = qubits[tt]
             qt = basis_array[t]
             a_array = copy.deepcopy(basis_array)
             a_array[t] = (a_array[t] + 1) % 2
-            current_state = QubitWaveFunction.from_int(basisfunction)
-            altered_state = QubitWaveFunction.from_int(BitString.from_array(a_array))
+            current_state = QubitWaveFunction.from_basis_state(n_qubits, basis_state)
+            altered_state = QubitWaveFunction.from_basis_state(n_qubits, BitString.from_array(a_array))
 
             fac1 = None
             fac2 = None
@@ -115,22 +108,21 @@ class BackendCircuitSymbolic(BackendCircuit):
         count = 0
         for q in self.abstract_circuit.qubits:
             qubits[q] = count
-            count +=1
+            count += 1
 
         n_qubits = len(self.abstract_circuit.qubits)
 
         if initial_state is None:
-            initial_state = QubitWaveFunction.from_int(i=0, n_qubits=n_qubits)
-        elif isinstance(initial_state, int):
-            initial_state = QubitWaveFunction.from_int(initial_state, n_qubits=n_qubits)
+            initial_state = 0
+        initial_state = QubitWaveFunction.from_basis_state(n_qubits, initial_state)
 
         result = initial_state
         for g in self.abstract_circuit.gates:
             result = self.apply_gate(state=result, gate=g, qubits=qubits, variables=variables)
 
-        wfn = QubitWaveFunction()
+        wfn = QubitWaveFunction(n_qubits)
         if self.convert_to_numpy:
-            for k,v in result.items():
+            for k, v in result.items():
                 wfn[k] = complex(v)
         else:
             wfn = result

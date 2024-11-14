@@ -173,7 +173,7 @@ class BackendCircuitCirq(BackendCircuit):
         simulator = cirq.Simulator()
         backend_result = simulator.simulate(program=self.circuit, param_resolver=self.resolver,
                                             initial_state=initial_state)
-        return QubitWaveFunction.from_array(arr=backend_result.final_state_vector, numbering=self.numbering)
+        return QubitWaveFunction.from_array(array=backend_result.final_state_vector, numbering=self.numbering)
 
     def convert_measurements(self, backend_result: cirq.Result) -> QubitWaveFunction:
         """
@@ -186,18 +186,18 @@ class BackendCircuitCirq(BackendCircuit):
         Returns
         -------
         QubitWaveFunction:
-            the result of sampling, as a tequila QubitWavefunction.
+            the result of sampling, as a tequila QubitWaveFunction.
 
         """
         assert (len(backend_result.measurements) == 1)
         for key, value in backend_result.measurements.items():
-            counter = QubitWaveFunction()
+            counter = QubitWaveFunction(self.n_qubits, self.numbering)
             for sample in value:
                 binary = BitString.from_array(array=sample.astype(int))
-                if binary in counter._state:
-                    counter._state[binary] += 1
+                if binary in counter.keys():
+                    counter[binary] += 1
                 else:
-                    counter._state[binary] = 1
+                    counter[binary] = 1
             return counter
 
     def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
