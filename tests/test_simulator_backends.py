@@ -4,12 +4,13 @@ All Backends need to be installed for full testing
 
 import importlib
 import numpy
+import numpy as np
 import pytest
 import random
 import numbers
 import tequila as tq
 import tequila.simulators.simulator_api
-from tequila import BitString
+from tequila import BitString, QubitWaveFunction
 
 """
 Warn if Simulators are not installed
@@ -354,6 +355,25 @@ def test_initial_state_from_integer(simulator, initial_state):
     wfn = tq.simulate(U, initial_state=initial_state, backend=simulator)
     assert BitString.from_int(initial_state, 6) in wfn
     assert numpy.isclose(wfn[BitString.from_int(initial_state, 6)], 1.0)
+
+
+@pytest.mark.parametrize("simulator", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
+def test_initial_state_from_wavefunction(simulator):
+    if not tequila.simulators.simulator_api.INSTALLED_SIMULATORS[simulator][0].supports_generic_initialization:
+        return
+
+    U = tq.gates.H(target=0)
+
+    state = QubitWaveFunction.from_array(np.array([1.0, 1.0])).normalize()
+    result = tq.simulate(U, initial_state=state, backend=simulator)
+    assert result.isclose(QubitWaveFunction.from_basis_state(n_qubits=1, basis_state=0))
+    result = tq.simulate(U, initial_state=state, backend=simulator, samples=100)
+    assert result.isclose(QubitWaveFunction.from_array(np.array([100.0, 0.0])))
+
+    state = QubitWaveFunction.from_array(np.array([1.0, -1.0])).normalize()
+    result = tq.simulate(U, initial_state=state, backend=simulator, samples=100)
+    assert result.isclose(QubitWaveFunction.from_array(np.array([0.0, 100.0])))
+
 
 
 @pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())

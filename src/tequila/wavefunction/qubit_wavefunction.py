@@ -178,19 +178,24 @@ class QubitWaveFunction:
         """
         return self._dense
 
-    def to_array(self, copy: bool = True) -> npt.NDArray[complex]:
+    def to_array(self, out_numbering: BitNumbering = BitNumbering.MSB, copy: bool = True) -> npt.NDArray[complex]:
         """
         Returns array of amplitudes.
 
+        :param out_numbering: Whether the first qubit is the most or least significant in the output array indices.
+            For dense wavefunctions, this operation is significantly cheaper when this is the same as the numbering
+            of the wavefunction.
         :param copy: Whether to copy the array or use it directly for dense Wavefunctions.
             If False, changes to the array or wavefunction will affect each other.
         :return: Array of amplitudes.
         """
-        if self._dense:
+        if self._dense and self._numbering == out_numbering:
             return self._state.copy() if copy else self._state
         else:
             result = np.zeros(2 ** self._n_qubits, dtype=complex)
             for k, v in self.raw_items():
+                if self._numbering != out_numbering:
+                    k = reverse_int_bits(k, self._n_qubits)
                 result[k] = v
             return result
 
@@ -246,6 +251,9 @@ class QubitWaveFunction:
         return (v for k, v in self.items())
 
     def __eq__(self, other) -> bool:
+        if not isinstance(other, QubitWaveFunction):
+            return False
+
         raise TequilaException("Wavefunction equality is not well-defined. Consider using isclose.")
 
     def isclose(self: QubitWaveFunction,
@@ -261,8 +269,12 @@ class QubitWaveFunction:
         :return: Whether the wavefunctions are close.
         """
         inner = self.inner(other)
-        cosine_similarity = inner / (self.norm() * other.norm())
-        return np.isclose(abs(cosine_similarity), 1.0, rtol, atol)
+        self_norm = self.norm()
+        other_norm = other.norm()
+        cosine_similarity = inner / (self_norm * other_norm)
+
+        return (np.isclose(abs(cosine_similarity), 1.0, rtol, atol)
+                and np.isclose(self_norm, other_norm, rtol, atol))
 
     def __add__(self, other: QubitWaveFunction) -> QubitWaveFunction:
         if self._dense and other._dense and self._numbering == other._numbering:
