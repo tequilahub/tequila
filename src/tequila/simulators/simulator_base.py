@@ -431,7 +431,8 @@ class BackendCircuit():
         return self.do_sample(samples=samples, circuit=circuit, read_out_qubits=read_out_qubits,
                               initial_state=initial_state, *args, **kwargs)
 
-    def sample_all_z_hamiltonian(self, samples: int, hamiltonian, variables, *args, **kwargs):
+    def sample_all_z_hamiltonian(self, samples: int, hamiltonian, variables,
+                                 initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
         """
         Sample from a Hamiltonian which only consists of Pauli-Z and unit operators
         Parameters
@@ -440,6 +441,8 @@ class BackendCircuit():
             number of samples to take
         hamiltonian
             the tequila hamiltonian
+        initial_state
+            the initial state of the circuit
         args
             arguments for do_sample
         kwargs
@@ -458,7 +461,7 @@ class BackendCircuit():
                                                                                                  self.n_qubits))
 
         # run simulators
-        counts = self.sample(samples=samples, read_out_qubits=abstract_qubits_H, variables=variables, *args, **kwargs)
+        counts = self.sample(samples=samples, read_out_qubits=abstract_qubits_H, variables=variables, initial_state=initial_state, *args, **kwargs)
         read_out_map = {q: i for i, q in enumerate(abstract_qubits_H)}
 
         # compute energy
@@ -481,8 +484,8 @@ class BackendCircuit():
             assert n_samples == samples
         return E
 
-    def sample_paulistring(self, samples: int, paulistring, variables, *args,
-                           **kwargs) -> numbers.Real:
+    def sample_paulistring(self, samples: int, paulistring, variables, initial_state: Union[int, QubitWaveFunction] = 0,
+                           *args, **kwargs) -> numbers.Real:
         """
         Sample an individual pauli word (pauli string) and return the average result thereof.
         Parameters
@@ -520,8 +523,8 @@ class BackendCircuit():
         # on construction: tq.ExpectationValue(H=H, U=U, optimize_measurements=True)
         circuit = self.create_circuit(circuit=copy.deepcopy(self.circuit), abstract_circuit=basis_change)
         # run simulators
-        counts = self.sample(samples=samples, circuit=circuit, read_out_qubits=qubits, variables=variables, *args,
-                             **kwargs)
+        counts = self.sample(samples=samples, circuit=circuit, read_out_qubits=qubits, variables=variables,
+                             initial_state=initial_state, *args, **kwargs)
         # compute energy
         E = 0.0
         n_samples = 0
@@ -792,7 +795,7 @@ class BackendExpectationValue:
     def __deepcopy__(self, memodict={}):
         return type(self)(self.abstract_expectationvalue, **self._input_args)
 
-    def __call__(self, variables, samples: int = None, *args, **kwargs):
+    def __call__(self, variables, samples: int = None, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
 
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
@@ -802,9 +805,9 @@ class BackendExpectationValue:
                         self._variables, variables))
 
         if samples is None:
-            data = self.simulate(variables=variables, *args, **kwargs)
+            data = self.simulate(variables=variables, initial_state=initial_state, *args, **kwargs)
         else:
-            data = self.sample(variables=variables, samples=samples, *args, **kwargs)
+            data = self.sample(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
 
         if self._shape is None and self._contraction is None:
             # this is the default
@@ -852,7 +855,7 @@ class BackendExpectationValue:
         """wrapper over circuit update_variables"""
         self._U.update_variables(variables=variables)
 
-    def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
+    def sample(self, variables, samples, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs) -> numpy.array:
         """
         sample the expectationvalue.
 
@@ -862,6 +865,8 @@ class BackendExpectationValue:
             variables to supply to the unitary.
         samples: int:
             number of samples to perform.
+        initial_state: int or QubitWaveFunction:
+            the initial state of the circuit
         args
         kwargs
 
@@ -891,16 +896,16 @@ class BackendExpectationValue:
             if len(H.qubits) == 0:
                 E = sum([ps.coeff for ps in H.paulistrings])
             elif H.is_all_z():
-                E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, variables=variables, *args,
-                                                    **kwargs)
+                E = self.U.sample_all_z_hamiltonian(samples=samples, hamiltonian=H, variables=variables, initial_state=initial_state,
+                                                *args, **kwargs)
             else:
                 for ps in H.paulistrings:
-                    E += self.U.sample_paulistring(samples=samples, paulistring=ps, variables=variables, *args,
-                                                   **kwargs)
+                    E += self.U.sample_paulistring(samples=samples, paulistring=ps, variables=variables, initial_state=initial_state,
+                                                   *args, **kwargs)
             result.append(to_float(E))
         return numpy.asarray(result)
 
-    def simulate(self, variables, *args, **kwargs):
+    def simulate(self, variables, initial_state: Union[int, QubitWaveFunction], *args, **kwargs):
         """
         Simulate the expectationvalue.
 
@@ -908,6 +913,8 @@ class BackendExpectationValue:
         ----------
         variables:
             variables to supply to the unitary.
+        initial_state: int or QubitWaveFunction:
+            the initial state of the circuit
         args
         kwargs
 
@@ -922,7 +929,7 @@ class BackendExpectationValue:
             final_E = 0.0
             # TODO inefficient,
             # Always better to overwrite this function
-            wfn = self.U.simulate(variables=variables, *args, **kwargs)
+            wfn = self.U.simulate(variables=variables, initial_state=initial_state, *args, **kwargs)
             final_E += wfn.compute_expectationvalue(operator=H)
             result.append(to_float(final_E))
         return numpy.asarray(result)
