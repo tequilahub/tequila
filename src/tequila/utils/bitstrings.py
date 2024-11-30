@@ -69,6 +69,12 @@ class BitString:
         self.update_nbits()
         return self
 
+    def to_integer(self, numbering: BitNumbering):
+        if numbering == self.numbering:
+            return self.integer
+        else:
+            return reverse_int_bits(self.integer, self.nbits)
+
     @property
     def array(self):
         return [int(i) for i in self.binary]
