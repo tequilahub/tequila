@@ -365,7 +365,7 @@ class QubitWaveFunction:
     # because the __mul__ implementation of the number tries to perform some sort of array
     # operation.
     def length(self):
-        return sum(1 for _ in self.raw_items())
+        return sum(1 for (k, v) in self.raw_items() if abs(v) > 1e-6)
 
     def __repr__(self):
         result = str()
