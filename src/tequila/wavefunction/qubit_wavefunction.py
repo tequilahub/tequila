@@ -376,7 +376,7 @@ class QubitWaveFunction:
             if np.isclose(coeff.imag, 0.0):
                 result += f"{coeff.real:+2.4f} |{index:0{self._n_qubits}b}> "
             else:
-                result += f"({coeff.real:+2.4f} + {coeff.imag:+2.4f}i) |{index:0{self._n_qubits}b}>"
+                result += f"({coeff.real:+2.4f} + {coeff.imag:+2.4f}i) |{index:0{self._n_qubits}b}> "
         # If the wavefunction contains no states
         if not result:
             result = "empty wavefunction"
