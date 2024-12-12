@@ -17,15 +17,15 @@ class BackendCircuitSpex(BackendCircuit):
         "multitarget": False,
         "controlled_rotation": False,
         "generalized_rotation": False,
-        "exponential_pauli": True,
-        "controlled_exponential_pauli": True,
+        "exponential_pauli": False,
+        "controlled_exponential_pauli": False,
         "phase": False,
         "power": False,
         "hadamard_power": False,
         "controlled_power": False,
         "controlled_phase": False,
         "toffoli": False,
-        "phase_to_z": True,
+        "phase_to_z": False,
         "cc_max": False
     }
 

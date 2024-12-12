@@ -8,5 +8,5 @@ H = tq.QubitHamiltonian("Z(0)")
 
 E = tq.ExpectationValue(U=U, H=H)
 
-print("\nspex:", tq.simulate(E, backend='spex'))
+print("spex:", tq.simulate(E, backend='spex'))
 print("qulacs:", tq.simulate(E, backend='qulacs'))
