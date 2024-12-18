@@ -35,8 +35,6 @@ try:
     from tequila.simulators.simulator_spex import BackendCircuitSpex, BackendExpectationValueSpex
 
     INSTALLED_SIMULATORS["spex"] = BackendTypes(BackendCircuitSpex, BackendExpectationValueSpex)
-    INSTALLED_SAMPLERS["spex"] = BackendTypes(BackendCircuitSpex, BackendExpectationValueSpex)
-
 except ImportError:
     print("Import Spex Error")
     HAS_SPEX = False

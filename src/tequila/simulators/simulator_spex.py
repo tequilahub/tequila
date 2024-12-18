@@ -2,94 +2,124 @@ from tequila.simulators.simulator_base import BackendExpectationValue, BackendCi
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.utils import TequilaException
 from tequila.hamiltonian import paulis, PauliString
-from tequila.circuit._gates_impl import ExponentialPauliGateImpl
+from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, RotationGateImpl, QubitHamiltonian
+from tequila import BitNumbering
+from tequila.circuit import compile_circuit
 
 import numpy
 import spex_tequila
+
+numbering = BitNumbering.LSB
 
 class TequilaSpexException(TequilaException):
     pass
 
 class BackendCircuitSpex(BackendCircuit):
     compiler_arguments = {
-        "trotterized": False,
-        "swap": False,
-        "multitarget": False,
-        "controlled_rotation": False,
-        "generalized_rotation": False,
+        "multitarget": True,
+        "multicontrol": True,
+        "trotterized": True,
+        "generalized_rotation": True,
         "exponential_pauli": False,
-        "controlled_exponential_pauli": False,
-        "phase": False,
-        "power": False,
-        "hadamard_power": False,
-        "controlled_power": False,
-        "controlled_phase": False,
-        "toffoli": False,
-        "phase_to_z": False,
-        "cc_max": False
+        "controlled_exponential_pauli": True,
+        "hadamard_power": True,
+        "controlled_power": True,
+        "power": True,
+        "toffoli": True,
+        "controlled_phase": True,
+        "phase": True,
+        "phase_to_z": True,
+        "controlled_rotation": True,
+        "swap": True,
+        "cc_max": True,
+        "ry_gate": True,
+        "y_gate": True,
+        "ch_gate": True
     }
 
 
     def initialize_circuit(self, *args, **kwargs):
         return []
+    
+    
+    def extract_pauli_dict(self, ps):
+        # Extract a dict {qubit: 'X'/'Y'/'Z'} from ps.
+        # ps is PauliString or QubitHamiltonian
+        if isinstance(ps, PauliString):
+            return dict(ps.items())
+        elif isinstance(ps, QubitHamiltonian):
+            if len(ps.paulistrings) == 1:
+                return dict(ps.paulistrings[0].items())
+            else:
+                raise TequilaSpexException("Rotation gate generator with multiple PauliStrings is not supported.")
+        else:
+            raise TequilaSpexException(f"Unexpected generator type: {type(ps)}")
+
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
-        """
-        Adds a basic Exponential Pauli gate to the circuit.
-
-        Args:
-            gate: The gate object to be added.
-            circuit: The list representing the circuit.
-        """
-
-        ps = gate.paulistring
-        angle = gate.parameter
-
-
-        # Ensure that ps is a PauliString
-        if isinstance(ps, PauliString):
-            pauli_dict = dict(ps.items())
-        else:
-            raise TequilaSpexException(f"Unexpected paulistring type in add_basic_gate: {type(ps)}")
-
-        # Create the spex_pauli_string in the correct format
-        spex_pauli_string = "".join([f"{p.upper()}({q})" for q, p in pauli_dict.items()])
-
-        # Add the gate to the circuit
-        circuit.append((spex_pauli_string, angle))
-
-
-
-    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
-        """
-        Adds a parametrized Exponential Pauli gate to the circuit.
-
-        Args:
-            gate: The gate object to be added.
-            circuit: The list representing the circuit.
-        """
-
-        # Check if gate is an ExponentialPauliGateImpl
         if isinstance(gate, ExponentialPauliGateImpl):
             ps = gate.paulistring
             angle = gate.parameter
-
-            # Ensure that ps is a PauliString
-            if isinstance(ps, PauliString):
-                pauli_dict = dict(ps.items())
-            elif isinstance(ps, dict):
-                pauli_dict = ps
-            else:
-                raise TequilaSpexException(f"Unexpected paulistring type: {type(ps)}")
-
-            # Create the spex_pauli_string in the correct format
+            pauli_dict = self.extract_pauli_dict(ps)
             spex_pauli_string = "".join([f"{p.upper()}({q})" for q, p in pauli_dict.items()])
-
-            # Add the gate to the circuit
+            if not spex_pauli_string:
+                spex_pauli_string = "I"
             circuit.append((spex_pauli_string, angle))
+
+        elif isinstance(gate, RotationGateImpl):
+            ps = gate.generator
+            angle = gate.parameter
+            pauli_dict = self.extract_pauli_dict(ps)
+            spex_pauli_string = "".join([f"{p.upper()}({q})" for q, p in pauli_dict.items()])
+            if not spex_pauli_string:
+                spex_pauli_string = "I"
+            circuit.append((spex_pauli_string, angle))
+
+        elif isinstance(gate, QGateImpl):
+            for ps in gate.make_generator(include_controls=True).paulistrings:
+                angle = numpy.pi * ps.coeff
+                pauli_dict = self.extract_pauli_dict(ps)
+                spex_pauli_string = "".join([f"{p.upper()}({q})" for q, p in pauli_dict.items()])
+                if not spex_pauli_string:
+                    spex_pauli_string = "I"
+                circuit.append((spex_pauli_string, angle))
+
         else:
-            # If the gate is not an Exponential Pauli gate, raise an error
-            raise TequilaSpexException(f"Unsupported gate type: {type(gate)}. Only Exponential Pauli gates are allowed.")
+            raise TequilaSpexException(f"Unsupported gate object type: {type(gate)}. "
+                                       "All gates should be compiled to exponential pauli or rotation gates.")
+
+
+    def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        if isinstance(gate, ExponentialPauliGateImpl):
+            ps = gate.paulistring
+            angle = gate.parameter
+            pauli_dict = self.extract_pauli_dict(ps)
+            spex_pauli_string = "".join([f"{p.upper()}({q})" for q, p in pauli_dict.items()])
+            if not spex_pauli_string:
+                spex_pauli_string = "I"
+            circuit.append((spex_pauli_string, angle))
+
+        elif isinstance(gate, RotationGateImpl):
+            ps = gate.generator
+            angle = gate.parameter
+            pauli_dict = self.extract_pauli_dict(ps)
+            spex_pauli_string = "".join([f"{p.upper()}({q})" for q, p in pauli_dict.items()])
+            if not spex_pauli_string:
+                spex_pauli_string = "I"
+            circuit.append((spex_pauli_string, angle))
+        
+        elif isinstance(gate, QGateImpl):
+            for ps in gate.make_generator(include_controls=True).paulistrings:
+                angle = gate.parameter
+                pauli_dict = self.extract_pauli_dict(ps)
+                spex_pauli_string = "".join([f"{p.upper()}({q})" for q, p in pauli_dict.items()])
+                if not spex_pauli_string:
+                    spex_pauli_string = "I"
+                circuit.append((spex_pauli_string, angle))
+
+        else:
+            raise TequilaSpexException(f"Unsupported gate type: {type(gate)}. "
+                                       "Only Exponential Pauli and Rotation gates are allowed after compilation.")
 
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
@@ -121,8 +151,9 @@ class BackendCircuitSpex(BackendCircuit):
 
         final_state = spex_tequila.apply_U(U_terms, state)
 
-        # Create the QubitWaveFunction from the final state
-        wfn = QubitWaveFunction.from_dictionary(final_state, n_qubits=n_qubits, numbering=self.numbering)
+        wfn = QubitWaveFunction(n_qubits=n_qubits, numbering=numbering)
+        for state, amplitude in final_state.items():
+            wfn[state] = amplitude
         return wfn
 
 
@@ -150,10 +181,11 @@ class BackendExpectationValueSpex(BackendExpectationValue):
             for ps in H.paulistrings:
                 # Construct Pauli string like "X(0)Y(1)"
                 spex_ps = "".join([f"{p.upper()}({q})" for q, p in dict(ps.items()).items()])
-                terms.append((spex_ps, ps.coeff))
+                if not spex_ps:
+                    spex_ps = "I"                
+                terms.append((spex_ps, ps.coeff))                    
             converted.append(terms)
         return tuple(converted)
-
 
 
     def simulate(self, variables, initial_state=0, *args, **kwargs):
@@ -167,6 +199,9 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         Returns:
             numpy.ndarray: The computed expectation values for the Hamiltonian terms.
         """
+
+        # variables as dict, variable map for var to gates
+
         self.update_variables(variables)
         n_qubits = self.U.n_qubits
 
@@ -191,7 +226,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         # Calculate the expectation value for each Hamiltonian
         results = []
         for H_terms in self.H:
-            val = spex_tequila.expectation_value(final_state, final_state, H_terms)
+            val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms)
             results.append(val.real)
         return numpy.array(results)
 
