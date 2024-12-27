@@ -2,12 +2,12 @@ import os
 import typing
 import warnings
 from dataclasses import dataclass
-
+from copy import deepcopy
+from numbers import Real
 import numpy
 
-from tequila import BitString, QCircuit, TequilaException
+from tequila import BitString, QCircuit, TequilaException,Variable,compile_circuit
 from tequila.circuit import gates
-
 try:
     from openfermion.ops.representations import get_active_space_integrals  # needs openfermion 1.3
 except ImportError as E:
@@ -50,16 +50,132 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self._name = "FermionicExcitation"
         self.transformation = transformation
         self.indices = indices
-
+        if not hasattr(indices[0],"__len__"):
+            self.indices = [(indices[2 * i], indices[2 * i+1]) for i in range(len(indices) // 2)]
+        self.sign = self.format_excitation_variables(self.indices)
+        self.indices = self.format_excitation_indices(self.indices)
     def compile(self, *args, **kwargs):
         if self.is_convertable_to_qubit_excitation():
             target = []
             for x in self.indices:
                 for y in x:
                     target.append(y)
-            return gates.QubitExcitation(target=target, angle=-self.parameter, control=self.control)
+            return gates.QubitExcitation(target=target, angle=self.parameter, control=self.control)
         else:
-            return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
+            if self.transformation.lower().strip("_") == "jordanwigner":
+                return self.fermionic_excitation(angle=self.sign*self.parameter, indices=self.indices, control=self.control,opt=False)
+            else:
+                return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
+    def format_excitation_indices(self, idx):
+        """
+        Consistent formatting of excitation indices
+        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
+        sorted as: p0<p1<pn and pi<qi
+        :param idx: list of index tuples describing a single(!) fermionic excitation
+        :return: list of index tuples
+        """
+
+        idx = [tuple(sorted(x)) for x in idx]
+        idx = sorted(idx, key=lambda x: x[0])
+        return list(idx)
+    def format_excitation_variables(self, idx):
+        """
+        Consistent formatting of excitation variable
+        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
+        sorted as: pi<qi and p0 < p1 < p2
+        :param idx: list of index tuples describing a single(!) fermionic excitation
+        :return: sign of the variable with re-ordered indices
+        """
+        sig = 1
+        for pair in idx:
+            if pair[1]>pair[0]:
+                sig *= -1
+        for pair in range(len(idx)-1):
+            if idx[pair+1][0]>idx[pair][0]:
+                sig *= -1
+        return sig
+    def cCRy(self, target: int, dcontrol: typing.Union[list, int], control: typing.Union[list, int],
+             angle: typing.Union[Real, Variable, typing.Hashable], case: int = 1) -> QCircuit:
+        '''
+        Compilation of CRy as on https://doi.org/10.1103/PhysRevA.102.062612
+        If not control passed, Ry returned
+        Parameters
+        ----------
+        case: if 1 employs eq. 12 from the paper, if 0 eq. 13
+        '''
+        if control is not None and not len(control):
+            control = None
+        if isinstance(dcontrol, int):
+            dcontrol = [dcontrol]
+        if not len(dcontrol):
+            return compile_circuit(gates.Ry(angle=angle, target=target, control=control))
+        else:
+            if isinstance(angle, str):
+                angle = Variable(angle)
+            U = QCircuit()
+            aux = dcontrol[0]
+            ctr = deepcopy(dcontrol)
+            ctr.pop(0)
+            if case:
+                U += self.cCRy(target=target, dcontrol=ctr, angle=angle / 2, case=1, control=control) + gates.H(
+                    aux) + gates.CNOT(target, aux)
+                U += self.cCRy(target=target, dcontrol=ctr, angle=-angle / 2, case=0, control=control) + gates.CNOT(
+                    target, aux) + gates.H(aux)
+            else:
+                U += gates.H(aux) + gates.CNOT(target, aux) + self.cCRy(target=target, dcontrol=ctr, angle=-angle / 2,
+                                                                        case=0, control=control)
+                U += gates.CNOT(target, aux) + gates.H(aux) + self.cCRy(target=target, dcontrol=ctr, angle=angle / 2,
+                                                                        case=1, control=control)
+            return U
+
+    def fermionic_excitation(self, angle: typing.Union[Real, Variable, typing.Hashable], indices: typing.List,
+                             control: typing.Union[int, typing.List] = None, opt: bool = True) -> QCircuit:
+        '''
+            Excitation [(i,j),(k,l)],... compiled following https://doi.org/10.1103/PhysRevA.102.062612
+            opt: whether to optimized CNOT H CNOT --> Rz Rz CNOT Rz
+        '''
+        lto = []
+        lfrom = []
+        if isinstance(indices,tuple) and not hasattr(indices[0],"__len__"):
+            indices = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
+        for pair in indices:
+            lfrom.append(pair[0])
+            lto.append(pair[1])
+        Upair = QCircuit()
+        if isinstance(angle, str) or isinstance(angle, tuple):
+            angle = Variable(angle)
+        for i in range(len(lfrom) - 1):
+            Upair += gates.CNOT(lfrom[i + 1], lfrom[i])
+            Upair += gates.CNOT(lto[i + 1], lto[i])
+            Upair += gates.X(lto[i]) + gates.X(lfrom[i])
+        Upair += gates.CNOT(lto[-1], lfrom[-1])
+        crt = lfrom[::-1] + lto
+        Uladder = QCircuit()
+        pairs = lfrom + lto
+        pairs.sort()
+        orbs = []
+        for o in range(len(pairs) // 2):
+            orbs += [*range(pairs[2 * o] + 1, pairs[2 * o + 1])]
+        if len(orbs):
+            for o in range(len(orbs) - 1):
+                Uladder += gates.CNOT(orbs[o], orbs[o + 1])
+            Uladder += compile_circuit(gates.CZ(orbs[-1], lto[-1]))
+        crt.pop(-1)
+        if control is not None and (isinstance(control, int) or len(control) == 1):
+            if isinstance(control, int):
+                crt.append(control)
+            else:
+                crt = crt + control
+            control = []
+        Ur = self.cCRy(target=lto[-1], dcontrol=crt, angle=angle, control=control)
+        Upair2 = Upair.dagger()
+        if opt:
+            Ur.gates.pop(-1)
+            Ur.gates.pop(-1)
+            Upair2.gates.pop(0)
+            Ur += gates.Rz(numpy.pi / 2, target=lto[-1]) + gates.Rz(-numpy.pi / 2, target=lfrom[-1])
+            Ur += gates.CNOT(lto[-1], lfrom[-1]) + gates.Rz(numpy.pi / 2, target=lfrom[-1]) + gates.H(lfrom[-1])
+        return Upair + Uladder + Ur + Uladder.dagger() + Upair2
 
     def __str(self):
         if self.indices is not None:
@@ -804,20 +920,18 @@ class IntegralManager:
     _one_body_integrals: numpy.ndarray = None
     _two_body_integrals: NBodyTensor = None
     _constant_term: float = None
-    _basis_type: str = "unknown"
     _basis_name: str = "unknown"
     _orbital_type: str = "unknown" # e.g. "HF", "PNO", "native"
     _orbital_coefficients: numpy.ndarray = None
     _active_space: ActiveSpaceData = None
     _orbitals: typing.List[OrbitalData] = None
 
-    def __init__(self, one_body_integrals, two_body_integrals, basis_type="custom",
+    def __init__(self, one_body_integrals, two_body_integrals,
                  basis_name="unknown", orbital_type="unknown",
                  constant_term=0.0, orbital_coefficients=None, active_space=None, overlap_integrals=None, orbitals=None, *args, **kwargs):
         self._one_body_integrals = one_body_integrals
         self._two_body_integrals = two_body_integrals
         self._constant_term = constant_term
-        self._basis_type = basis_type
         self._basis_name = basis_name
         self._orbital_type = orbital_type
 
@@ -956,9 +1070,16 @@ class IntegralManager:
         """
         c = self.get_orthonormalized_orbital_coefficients()
         self.orbital_coefficients=c
-        self._orbital_type="orthonormalized-{}-basis".format(self._orbital_type)
+        self._orbital_type="orthonormalized-{}-basis".format(self._basis_name)
 
-    def transform_orbitals(self, U):
+    def is_unitary(self, U):
+        if len(U.shape) != 2: return False
+        if U.shape[0] != U.shape[1]: return False
+        test = (U.conj().T).dot(U) - numpy.eye(U.shape[0])
+        if not numpy.isclose(numpy.linalg.norm(test), 0.0): return False
+        return True
+
+    def transform_orbitals(self, U, name=None):
         """
         Transform orbitals
         Parameters
@@ -969,10 +1090,12 @@ class IntegralManager:
         -------
         updates the structure with new orbitals: c = cU
         """
-        c = self.orbital_coefficients
-        c = numpy.einsum("ix, xj -> ij", c, U, optimize="greedy")
-        self.orbital_coefficients = c
-        self._orbital_type += "-transformed"
+        assert self.is_unitary(U)
+        self.orbital_coefficients = numpy.einsum("ix, xj -> ij", self.orbital_coefficients, U, optimize="greedy")
+        if name is None:
+            self._orbital_type += "-transformed"
+        else:
+            self._orbital_type = name
 
     def get_integrals(self, orbital_coefficients=None, ordering="openfermion", ignore_active_space=False, *args, **kwargs):
         """
@@ -1001,7 +1124,9 @@ class IntegralManager:
             active_integrals = get_active_space_integrals(one_body_integrals=h, two_body_integrals=g,
                                                           occupied_indices=self._active_space.frozen_reference_orbitals,
                                                           active_indices=self._active_space.active_orbitals)
+
             c = active_integrals[0] + c
+
             h = active_integrals[1]
             g = NBodyTensor(elems=active_integrals[2], ordering="openfermion")
         g.reorder(to=ordering)
@@ -1069,13 +1194,15 @@ class IntegralManager:
             result += str(x) + "\n"
         return result
 
-    def print_basis_info(self, *args, **kwargs) -> None:
-        print("{:15} : {}".format("basis_type", self._basis_type), *args, **kwargs)
+    def print_basis_info(self, print_coefficients=True, *args, **kwargs) -> None:
         print("{:15} : {}".format("basis_name", self._basis_name), *args, **kwargs)
         print("{:15} : {}".format("orbital_type", self._orbital_type), *args, **kwargs)
-        print("{:15} : {}".format("orthogonal", self.basis_is_orthogonal()), *args, **kwargs)
-        print("{:15} : {}".format("functions", self.one_body_integrals.shape[0]), *args, **kwargs)
+        print("{:15} : {}".format("orthogonal basis", self.basis_is_orthogonal()), *args, **kwargs)
+        print("{:15} : {}".format("basis functions", self.one_body_integrals.shape[0]), *args, **kwargs)
+        print("{:15} : {}".format("active orbitals", [o.idx_total for o in self.active_orbitals]), *args, **kwargs)
         print("{:15} : {}".format("reference", [x.idx_total for x in self.reference_orbitals]), *args, **kwargs)
+
+        if not print_coefficients: return
 
         print("Current Orbitals", *args, **kwargs)
         for i,x in enumerate(self.orbitals):

@@ -224,7 +224,7 @@ def export_to(circuit,
             'always_use_generators': True,
             'group_together': "BARRIER"
         }
-    elif not hasattr("style", "items"):
+    elif not hasattr(style, "items"):
         raise Exception(
             "style needs to be `tequila`, or `standard` or `generators` or a dictionary, you gave: {}".format(
                 str(style)))
