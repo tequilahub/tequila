@@ -71,6 +71,11 @@ def test_interface(backend):
 INSTALLED_SIMULATORS = tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys()
 INSTALLED_SAMPLERS = tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys()
 
+INSTALLED_DENSITY_SIMULATORS = []
+for installed_back in tq.simulators.simulator_api.INSTALLED_BACKENDS.keys():
+    if installed_back in tq.simulators.simulator_api.SUPPORTED_DENSITY_BACKENDS:
+        INSTALLED_DENSITY_SIMULATORS.append(installed_back)
+
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
 def test_sampling_accumulation(backend):
     # minimal test that was added after a bug was discovered
@@ -436,3 +441,22 @@ def test_qubit_excitations(backend):
     F = numpy.abs(wfn1.inner(wfn2)) ** 2
 
     assert numpy.isclose(F, 1.0, 1.e-4)
+
+@pytest.mark.parametrize("backend", INSTALLED_DENSITY_SIMULATORS)
+def test_density_simulation(backend):
+
+    #full density check, (circuit objective)
+    assert numpy.allclose(tq.simulate_density(tq.gates.X(0) + tq.gates.X(0), backend=backend).density.toarray(), numpy.array([[1, 0], [0, 0]]))
+    assert numpy.allclose(tq.simulate_density(tq.gates.X(0), backend=backend).density.toarray(), numpy.array([[0, 0], [0, 1]]))
+    assert numpy.allclose(tq.simulate_density(tq.gates.H(0) + tq.gates.X(control=0, target=1), backend=backend).density.toarray(), numpy.array([[0.5, 0, 0, 0.5], [0, 0, 0, 0], [0, 0, 0, 0], [0.5, 0, 0, 0.5]]))
+
+    #with noise
+    assert numpy.allclose(tq.simulate_density(tq.gates.H(0) + tq.gates.X(control=0, target=1), noise=tq.circuit.noise.DepolarizingError(p=0.5, level=1), backend=backend).density.toarray(), numpy.array([[0.5, 0, 0, 0.25], [0, 0, 0, 0], [0, 0, 0, 0], [0.25, 0, 0, 0.5]]))
+
+    # (expectation objective)
+    assert numpy.isclose(tq.simulate_density(tq.ExpectationValue(tq.gates.X(0), tq.paulis.Z(0)), backend=backend), -1.0)
+    noise=tq.circuit.noise.DepolarizingError(p=0.25, level=1)
+    assert numpy.isclose(tq.simulate_density(tq.ExpectationValue(tq.gates.H(0) + tq.gates.X(control=0, target=1), tq.paulis.X(qubit=[0, 1])), noise=noise, backend=backend), 0.75)
+
+    # consistency of densities (currently trivial)
+    assert numpy.allclose(tq.simulate_density(tq.gates.H(0) + tq.gates.X(control=0, target=1), backend=backend, noise = noise).density.toarray(), tq.simulate_density(tq.gates.H(0) + tq.gates.X(control=0, target=1), backend=None, noise = noise).density.toarray())

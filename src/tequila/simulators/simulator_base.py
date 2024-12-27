@@ -203,6 +203,7 @@ class BackendCircuit():
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
                  samples: int = None,
+                 simulate_density: bool = False,
                  *args,
                  **kwargs):
         """
@@ -231,6 +232,9 @@ class BackendCircuit():
                         self._variables, variables))
 
         self.update_variables(variables)
+        if simulate_density:
+            return self.simulate_density(variables=variables, noise=self.noise, *args, **kwargs)
+        
         if samples is None:
             return self.simulate(variables=variables, noise=self.noise, *args, **kwargs)
         else:
@@ -590,6 +594,9 @@ class BackendCircuit():
         """
         raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
+    def do_simulate_density(self, variables, initial_state, *args, **kwargs) -> DensityMatrix:
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
         raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
@@ -800,7 +807,7 @@ class BackendExpectationValue:
     def __deepcopy__(self, memodict={}):
         return type(self)(self.abstract_expectationvalue, **self._input_args)
 
-    def __call__(self, variables, samples: int = None, *args, **kwargs):
+    def __call__(self, variables, samples: int = None, simulate_density: bool = False, *args, **kwargs):
 
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
@@ -809,10 +816,13 @@ class BackendExpectationValue:
                     "BackendExpectationValue received not all variables. Circuit depends on variables {}, you gave {}".format(
                         self._variables, variables))
         
-        if samples is None:
-            data = self.simulate(variables=variables, *args, **kwargs)
+        if simulate_density:
+            data = self.simulate_density(variables=variables, *args, **kwargs)
         else:
-            data = self.sample(variables=variables, samples=samples, *args, **kwargs)
+            if samples is None:
+                data = self.simulate(variables=variables, *args, **kwargs)
+            else:
+                data = self.sample(variables=variables, samples=samples, *args, **kwargs)
 
         if self._shape is None and self._contraction is None:
             # this is the default
@@ -932,5 +942,19 @@ class BackendExpectationValue:
             # Always better to overwrite this function
             wfn = self.U.simulate(variables=variables, *args, **kwargs)
             final_E += wfn.compute_expectationvalue(operator=H)
+            result.append(to_float(final_E))
+        return numpy.asarray(result)
+
+    def simulate_density(self, variables, noise_model = None, *args, **kwargs):
+        """
+        Simulate the expectationvalue, using densities with noise
+
+        """
+        self.update_variables(variables)
+        result = []
+        for H in self.H:
+            final_E = 0.0
+            density = self.U.simulate_density(variables=variables, noise_model=noise_model, *args, **kwargs)
+            final_E += density.QubitHamiltonian_expectation(hamiltonian=H)
             result.append(to_float(final_E))
         return numpy.asarray(result)
