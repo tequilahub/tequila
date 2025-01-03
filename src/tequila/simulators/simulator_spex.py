@@ -6,6 +6,7 @@ from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, Rot
 from tequila import BitNumbering
 from tequila.circuit import compile_circuit
 
+import hashlib
 import numpy
 import spex_tequila
 
@@ -26,7 +27,16 @@ def extract_pauli_dict(ps):
                 raise TequilaSpexException("Rotation gate generator with multiple PauliStrings is not supported.")
         else:
             raise TequilaSpexException(f"Unexpected generator type: {type(ps)}")
-        
+
+def circuit_hash(abstract_circuit):
+    sha = hashlib.md5()
+    if abstract_circuit is None:
+        return None
+    for g in abstract_circuit.gates:
+        gate_str = f"{type(g).__name__}:{g.name}:{g.target}:{g.control}:{g.generator}\n"
+        sha.update(gate_str.encode('utf-8'))
+    return sha.hexdigest()
+
 class BackendCircuitSpex(BackendCircuit):
     compiler_arguments = {
         "multitarget": True,
@@ -51,8 +61,31 @@ class BackendCircuitSpex(BackendCircuit):
     }
 
 
+    def __init__(self, abstract_circuit=None, variables=None, *args, **kwargs):
+        self._cached_circuit_hash = None
+        self._cached_circuit = []
+
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
+
+
     def initialize_circuit(self, *args, **kwargs):
         return []
+    
+
+    def create_circuit(self, abstract_circuit=None, variables=None, *args, **kwargs):
+        if abstract_circuit is None:
+            abstract_circuit = self.abstract_circuit
+
+        new_hash = circuit_hash(abstract_circuit)
+
+        if (new_hash is not None) and (new_hash == self._cached_circuit_hash):
+            return self._cached_circuit
+        
+        circuit = super().create_circuit(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
+
+        self._cached_circuit_key = abstract_circuit
+        self._cached_circuit = circuit
+        return circuit
 
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
@@ -158,7 +191,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
                 # Construct Pauli string like "X(0)Y(1)"
                 pauli_map = dict(ps.items()) 
                 term = spex_tequila.ExpPauliTerm()
-                term.pauli_map = pauli_map             
+                term.pauli_map = pauli_map 
                 terms.append((term, ps.coeff))                    
             converted.append(terms)
         return tuple(converted)
@@ -196,7 +229,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         # Calculate the expectation value for each Hamiltonian
         results = []
         for H_terms in self.H:
-            val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms)
+            val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, num_threads=-1)
             results.append(val.real)
         return numpy.array(results)
 

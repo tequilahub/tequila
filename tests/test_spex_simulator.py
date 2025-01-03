@@ -2,7 +2,7 @@ import tequila as tq
 import numpy as np
 import time
 from tequila.hamiltonian import PauliString
-
+"""
 print("\nTest: 1")
 U = tq.gates.ExpPauli(paulistring=PauliString({0: "X", 1: "Z"}), angle=np.pi / 2)
 H = tq.QubitHamiltonian("Z(0)")
@@ -59,10 +59,10 @@ print("spex-U:", tq.simulate(U, backend='spex'))
 print("qulacs-U:", tq.simulate(U, backend='qulacs'))
 print("spex:", tq.simulate(E, backend='spex'))
 print("qulacs:", tq.simulate(E, backend='qulacs'))
-
+"""
 
 print("\nTest: 5")
-n = 2 # <--- Variabel, qubits sind am Ende 4n
+n = 9 # <--- Variabel, qubits sind am Ende 4n
 
 R = 1.5
 geom = ""
@@ -73,20 +73,29 @@ edges = [(2*i, 2*i+1) for i in range(n)]
 
 # --> pip install pyscf <--
 mol = tq.Molecule(geometry=geom, basis_set="sto-3g")
-U = mol.make_ansatz(name="SPA", edges=edges)
+U = mol.make_ansatz(name="HCB-SPA", edges=edges)
 
 # SPA -> HCB-SPA
 
 U = U.map_variables({k:1.0 for k in U.extract_variables()})
 
-H = mol.make_hamiltonian()
+H = mol.make_hardcore_boson_hamiltonian()
 
 # make_hamiltonian -> make_hardcore_boson_hamiltonian
 
+
 E = tq.ExpectationValue(H=H, U=U)
 
-print(U)
-print("spex-U:", tq.simulate(U, backend='spex'))
-print("qulacs-U:", tq.simulate(U, backend='qulacs'))
+
+#print(U)
+#print("spex-U:", tq.simulate(U, backend='spex'))
+#print("qulacs-U:", tq.simulate(U, backend='qulacs'))
+time_start = time.time()
 print("spex:", tq.simulate(E, backend='spex'))
+time_stop = time.time()
+print("spex time:", time_stop - time_start, "\n")
+
+time_start = time.time()
 print("qulacs:", tq.simulate(E, backend='qulacs'))
+time_stop = time.time()
+print("qulacs time:", time_stop - time_start)
