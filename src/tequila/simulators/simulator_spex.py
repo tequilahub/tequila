@@ -56,21 +56,23 @@ class BackendCircuitSpex(BackendCircuit):
 
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
-            pauli_map = extract_pauli_dict(gate.paulistring)
-            angle = gate.parameter
-            circuit.append({"pauli_map": pauli_map, "angle": angle})
+            exp_term.pauli_map = extract_pauli_dict(gate.paulistring)
+            exp_term.angle = gate.parameter
+            circuit.append(exp_term)
 
         elif isinstance(gate, RotationGateImpl):
-            pauli_map = extract_pauli_dict(gate.generator)
-            angle = gate.parameter
-            circuit.append({"pauli_map": pauli_map, "angle": angle})
+            exp_term.pauli_map = extract_pauli_dict(gate.generator)
+            exp_term.angle = gate.parameter
+            circuit.append(exp_term)
 
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
-                angle = numpy.pi * ps.coeff
-                pauli_map = dict(ps.items())
-                circuit.append({"pauli_map": pauli_map, "angle": angle})
+                exp_term = spex_tequila.ExpPauliTerm()
+                exp_term.pauli_map = dict(ps.items())
+                exp_term.angle = numpy.pi * ps.coeff
+                circuit.append(exp_term)
 
         else:
             raise TequilaSpexException(f"Unsupported gate object type: {type(gate)}. "
@@ -78,21 +80,23 @@ class BackendCircuitSpex(BackendCircuit):
 
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
-            pauli_map = extract_pauli_dict(gate.paulistring)
-            angle = gate.parameter
-            circuit.append({"pauli_map": pauli_map, "angle": angle})
+            exp_term.pauli_map = extract_pauli_dict(gate.paulistring)
+            exp_term.angle = gate.parameter
+            circuit.append(exp_term)
 
         elif isinstance(gate, RotationGateImpl):
-            pauli_map = extract_pauli_dict(gate.generator)
-            angle = gate.parameter
-            circuit.append({"pauli_map": pauli_map, "angle": angle})
+            exp_term.pauli_map = extract_pauli_dict(gate.generator)
+            exp_term.angle = gate.parameter
+            circuit.append(exp_term)
         
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
-                angle = gate.parameter
-                pauli_map = dict(ps.items())
-                circuit.append({"pauli_map": pauli_map, "angle": angle})
+                exp_term = spex_tequila.ExpPauliTerm()
+                exp_term.pauli_map = dict(ps.items())
+                exp_term.angle = gate.parameter
+                circuit.append(exp_term)
 
         else:
             raise TequilaSpexException(f"Unsupported gate type: {type(gate)}. "
@@ -121,19 +125,7 @@ class BackendCircuitSpex(BackendCircuit):
             # initial_state is already a QubitWaveFunction
             state = initial_state.to_dictionary()
 
-        # Apply the Exponential Pauli Term gates
-        U_terms = []
-        for item in self.circuit:
-            pauli_map = item["pauli_map"]
-            angle = item["angle"]
-
-            term = spex_tequila.ExpPauliTerm()
-            term.pauli_map = pauli_map
-            term.angle = float(angle)
-
-            U_terms.append(term)
-
-        final_state = spex_tequila.apply_U(U_terms, state)
+        final_state = spex_tequila.apply_U(self.circuit, state)
 
         wfn = QubitWaveFunction(n_qubits=n_qubits, numbering=numbering)
         for state, amplitude in final_state.items():
@@ -199,19 +191,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
             # initial_state is a QubitWaveFunction
             state = initial_state.to_dictionary()
 
-        # Apply U to the initial state
-        U_terms = []
-        for item in self.U.circuit:
-            pauli_map = item["pauli_map"]
-            angle = item["angle"]
-
-            term = spex_tequila.ExpPauliTerm()
-            term.pauli_map = pauli_map
-            term.angle = float(angle)
-
-            U_terms.append(term)
-
-        final_state = spex_tequila.apply_U(U_terms, state)
+        final_state = spex_tequila.apply_U(self.U.circuit, state)
 
         # Calculate the expectation value for each Hamiltonian
         results = []
