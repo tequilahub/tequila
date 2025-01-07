@@ -217,7 +217,8 @@ class PySCFVQEWrapper:
                 vqe_solver_arguments = self.vqe_solver_arguments
             result = self.vqe_solver(H=H, circuit=self.circuit, molecule=molecule, **vqe_solver_arguments)
             if hasattr(self.vqe_solver, "compute_rdms"):
-                self.rdm1,self.rdm2 = self.vqe_solver.compute_rdms(U=self.circuit, variables=result.variables, molecule=molecule, use_hcb=restrict_to_hcb)
+                rdm1,rdm2 = self.vqe_solver.compute_rdms(U=self.circuit, variables=result.variables, molecule=molecule, use_hcb=restrict_to_hcb)
+                rdm2 = self.reorder(rdm2, 'dirac', 'mulliken')
         elif self.circuit is None:
             raise Exception("Orbital Optimizer: Either provide a callable vqe_solver or a circuit")
         else:
