@@ -8,6 +8,7 @@ from tequila.circuit import compile_circuit
 
 import hashlib
 import numpy
+import os
 import spex_tequila
 
 numbering = BitNumbering.LSB
@@ -225,6 +226,16 @@ class BackendExpectationValueSpex(BackendExpectationValue):
             state = initial_state.to_dictionary()
 
         final_state = spex_tequila.apply_U(self.U.circuit, state)
+
+        num_threads = kwargs.get("num_threads", None)
+        if num_threads is None:
+            if "SPEX_NUM_THREADS" in os.environ:
+                num_threads = int(os.environ["SPEX_NUM_THREADS"])
+            elif "OMP_NUM_THREADS" in os.environ:
+                num_threads = int(os.environ["OMP_NUM_THREADS"])
+            else:
+                """default: uses all availabel threads"""
+                num_threads = -1
 
         # Calculate the expectation value for each Hamiltonian
         results = []
