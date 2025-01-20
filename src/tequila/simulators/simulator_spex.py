@@ -62,9 +62,20 @@ class BackendCircuitSpex(BackendCircuit):
     }
 
 
-    def __init__(self, abstract_circuit=None, variables=None, *args, **kwargs):
+    def __init__(self, 
+                 abstract_circuit=None, 
+                 variables=None, 
+                 num_threads=-1, 
+                 amplitude_threshold=1e-14, 
+                 angle_threshold=1e-14, 
+                 *args, **kwargs):
+        
         self._cached_circuit_hash = None
         self._cached_circuit = []
+
+        self.num_threads = num_threads
+        self.amplitude_threshold = amplitude_threshold
+        self.angle_threshold = angle_threshold
 
         super().__init__(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
 
@@ -86,26 +97,37 @@ class BackendCircuitSpex(BackendCircuit):
 
         self._cached_circuit_key = abstract_circuit
         self._cached_circuit = circuit
+        self._cached_circuit_hash = new_hash
         return circuit
 
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
+            if abs(gate.parameter) < self.angle_threshold:
+                print("used")
+                return
             exp_term.pauli_map = extract_pauli_dict(gate.paulistring)
             exp_term.angle = gate.parameter
             circuit.append(exp_term)
 
         elif isinstance(gate, RotationGateImpl):
+            if abs(gate.parameter) < self.angle_threshold:
+                print("used")
+                return
             exp_term.pauli_map = extract_pauli_dict(gate.generator)
             exp_term.angle = gate.parameter
             circuit.append(exp_term)
 
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
+                angle = numpy.pi * ps.coeff
+                if abs(angle) < self.angle_threshold:
+                    print("used")
+                    continue
                 exp_term = spex_tequila.ExpPauliTerm()
                 exp_term.pauli_map = dict(ps.items())
-                exp_term.angle = numpy.pi * ps.coeff
+                exp_term.angle = angle
                 circuit.append(exp_term)
 
         else:
@@ -113,20 +135,30 @@ class BackendCircuitSpex(BackendCircuit):
                                        "All gates should be compiled to exponential pauli or rotation gates.")
 
 
+
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
         exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
+            if abs(gate.parameter) < self.angle_threshold:
+                print("used")
+                return
             exp_term.pauli_map = extract_pauli_dict(gate.paulistring)
             exp_term.angle = gate.parameter
             circuit.append(exp_term)
 
         elif isinstance(gate, RotationGateImpl):
+            if abs(gate.parameter) < self.angle_threshold:
+                print("used")
+                return
             exp_term.pauli_map = extract_pauli_dict(gate.generator)
             exp_term.angle = gate.parameter
             circuit.append(exp_term)
         
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
+                if abs(gate.parameter) < self.angle_threshold:
+                    print("used")
+                    continue
                 exp_term = spex_tequila.ExpPauliTerm()
                 exp_term.pauli_map = dict(ps.items())
                 exp_term.angle = gate.parameter
@@ -161,6 +193,10 @@ class BackendCircuitSpex(BackendCircuit):
 
         final_state = spex_tequila.apply_U(self.circuit, state)
 
+        for basis, amplitude in list(final_state.items()):
+            if abs(amplitude) < self.amplitude_threshold:
+                del final_state[basis]
+
         wfn = QubitWaveFunction(n_qubits=n_qubits, numbering=numbering)
         for state, amplitude in final_state.items():
             wfn[state] = amplitude
@@ -171,8 +207,23 @@ class BackendExpectationValueSpex(BackendExpectationValue):
     """
     Backend for computing expectation values using the spex_tequila C++ module.
     """
-
     BackendCircuitType = BackendCircuitSpex
+
+    def __init__(self, *args,
+                 num_threads=-1,
+                 amplitude_threshold=1e-14, 
+                 angle_threshold=1e-14,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.num_threads = num_threads
+        self.amplitude_threshold = amplitude_threshold
+        self.angle_threshold = angle_threshold
+    
+        if isinstance(self.U, BackendCircuitSpex):
+            self.U.num_threads = num_threads
+            self.U.amplitude_threshold = amplitude_threshold
+            self.U.angle_threshold = angle_threshold
 
     def initialize_hamiltonian(self, hamiltonians):
         """
@@ -227,15 +278,14 @@ class BackendExpectationValueSpex(BackendExpectationValue):
 
         final_state = spex_tequila.apply_U(self.U.circuit, state)
 
-        num_threads = kwargs.get("num_threads", None)
-        if num_threads is None:
-            if "SPEX_NUM_THREADS" in os.environ:
-                num_threads = int(os.environ["SPEX_NUM_THREADS"])
-            elif "OMP_NUM_THREADS" in os.environ:
-                num_threads = int(os.environ["OMP_NUM_THREADS"])
-            else:
-                """default: uses all availabel threads"""
-                num_threads = -1
+        for basis, amplitude in list(final_state.items()):
+            if abs(amplitude) < self.amplitude_threshold:
+                del final_state[basis]
+
+        if "SPEX_NUM_THREADS" in os.environ:
+            self.num_threads = int(os.environ["SPEX_NUM_THREADS"])
+        elif "OMP_NUM_THREADS" in os.environ:
+            self.num_threads = int(os.environ["OMP_NUM_THREADS"])
 
         # Calculate the expectation value for each Hamiltonian
         results = []
