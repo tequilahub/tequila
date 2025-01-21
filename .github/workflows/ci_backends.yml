@@ -31,7 +31,7 @@ jobs:
         if [ $ver -eq 7 ]; then
             # myqlm does not work in python3.7
             pip install "cirq" "qiskit>=0.30" "qulacs" "qibo==0.1.1"
-        elif [ $ver -eq 8 ]; then
+        elif [ $ver -eq 9 ]; then
             pip install "cirq" "qiskit" "qulacs" "qibo==0.1.1" "myqlm" "cirq-google"
         fi
         pip install -e .
