@@ -91,7 +91,7 @@ E = tq.ExpectationValue(H=H, U=U)
 #print("spex-U:", tq.simulate(U, backend='spex'))
 #print("qulacs-U:", tq.simulate(U, backend='qulacs'))
 time_start = time.time()
-print("spex:", tq.simulate(E, backend='spex', num_threads=-1))
+print("spex:", tq.simulate(E, backend='spex'))
 time_stop = time.time()
 print("spex time:", time_stop - time_start, "\n")
 

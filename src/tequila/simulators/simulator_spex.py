@@ -104,16 +104,14 @@ class BackendCircuitSpex(BackendCircuit):
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
-            if abs(gate.parameter) < self.angle_threshold:
-                print("used")
+            if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
                 return
             exp_term.pauli_map = extract_pauli_dict(gate.paulistring)
             exp_term.angle = gate.parameter
             circuit.append(exp_term)
 
         elif isinstance(gate, RotationGateImpl):
-            if abs(gate.parameter) < self.angle_threshold:
-                print("used")
+            if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
                 return
             exp_term.pauli_map = extract_pauli_dict(gate.generator)
             exp_term.angle = gate.parameter
@@ -122,8 +120,7 @@ class BackendCircuitSpex(BackendCircuit):
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
                 angle = numpy.pi * ps.coeff
-                if abs(angle) < self.angle_threshold:
-                    print("used")
+                if self.angle_threshold != None and abs(angle) < self.angle_threshold:
                     continue
                 exp_term = spex_tequila.ExpPauliTerm()
                 exp_term.pauli_map = dict(ps.items())
@@ -139,16 +136,14 @@ class BackendCircuitSpex(BackendCircuit):
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
         exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
-            if abs(gate.parameter) < self.angle_threshold:
-                print("used")
+            if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
                 return
             exp_term.pauli_map = extract_pauli_dict(gate.paulistring)
             exp_term.angle = gate.parameter
             circuit.append(exp_term)
 
         elif isinstance(gate, RotationGateImpl):
-            if abs(gate.parameter) < self.angle_threshold:
-                print("used")
+            if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
                 return
             exp_term.pauli_map = extract_pauli_dict(gate.generator)
             exp_term.angle = gate.parameter
@@ -156,7 +151,7 @@ class BackendCircuitSpex(BackendCircuit):
         
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
-                if abs(gate.parameter) < self.angle_threshold:
+                if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
                     print("used")
                     continue
                 exp_term = spex_tequila.ExpPauliTerm()
@@ -193,9 +188,10 @@ class BackendCircuitSpex(BackendCircuit):
 
         final_state = spex_tequila.apply_U(self.circuit, state)
 
-        for basis, amplitude in list(final_state.items()):
-            if abs(amplitude) < self.amplitude_threshold:
-                del final_state[basis]
+        if self.amplitude_threshold != None:
+            for basis, amplitude in list(final_state.items()):
+                if abs(amplitude) < self.amplitude_threshold:
+                    del final_state[basis]
 
         wfn = QubitWaveFunction(n_qubits=n_qubits, numbering=numbering)
         for state, amplitude in final_state.items():
@@ -278,9 +274,10 @@ class BackendExpectationValueSpex(BackendExpectationValue):
 
         final_state = spex_tequila.apply_U(self.U.circuit, state)
 
-        for basis, amplitude in list(final_state.items()):
-            if abs(amplitude) < self.amplitude_threshold:
-                del final_state[basis]
+        if self.amplitude_threshold != None:
+            for basis, amplitude in list(final_state.items()):
+                if abs(amplitude) < self.amplitude_threshold:
+                    del final_state[basis]
 
         if "SPEX_NUM_THREADS" in os.environ:
             self.num_threads = int(os.environ["SPEX_NUM_THREADS"])
