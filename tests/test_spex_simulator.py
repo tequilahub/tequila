@@ -62,7 +62,7 @@ print("qulacs:", tq.simulate(E, backend='qulacs'))
 """
 
 print("\nTest: 5")
-n = 10 # <--- Variabel, qubits sind am Ende 4n
+n = 12 # <--- Variabel, qubits sind am Ende 4n
 
 R = 1.5
 geom = ""
@@ -72,7 +72,7 @@ for k in range(2*n):
 edges = [(2*i, 2*i+1) for i in range(n)]
 
 # --> pip install pyscf <--
-mol = tq.Molecule(geometry=geom, basis_set="sto-3g")
+mol = tq.Molecule(geometry=geom, basis_set="sto-3g", transformation='reordered-Jordan-Wigner') #why does this make a difference
 U = mol.make_ansatz(name="HCB-SPA", edges=edges)
 
 # SPA -> HCB-SPA
@@ -86,16 +86,15 @@ H = mol.make_hardcore_boson_hamiltonian()
 
 E = tq.ExpectationValue(H=H, U=U)
 
-
 #print(U)
 #print("spex-U:", tq.simulate(U, backend='spex'))
 #print("qulacs-U:", tq.simulate(U, backend='qulacs'))
 time_start = time.time()
-print("spex:", tq.simulate(E, backend='spex'))
+print("spex:", tq.simulate(E, backend='spex', num_threads=6))
 time_stop = time.time()
 print("spex time:", time_stop - time_start, "\n")
 
-time_start = time.time()
-print("qulacs:", tq.simulate(E, backend='qulacs'))
-time_stop = time.time()
-print("qulacs time:", time_stop - time_start)
+#time_start = time.time()
+#print("qulacs:", tq.simulate(E, backend='qulacs'))
+#time_stop = time.time()
+#print("qulacs time:", time_stop - time_start)

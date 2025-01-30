@@ -36,7 +36,6 @@ try:
 
     INSTALLED_SIMULATORS["spex"] = BackendTypes(BackendCircuitSpex, BackendExpectationValueSpex)
 except ImportError:
-    print("Import Spex Error")
     HAS_SPEX = False
 
 

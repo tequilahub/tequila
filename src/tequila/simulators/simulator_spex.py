@@ -67,7 +67,7 @@ class BackendCircuitSpex(BackendCircuit):
                  variables=None, 
                  num_threads=-1, 
                  amplitude_threshold=1e-14, 
-                 angle_threshold=1e-14, 
+                 angle_threshold=1e-14,
                  *args, **kwargs):
         
         self._cached_circuit_hash = None
