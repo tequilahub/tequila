@@ -118,7 +118,6 @@ class BackendCircuitSpex(BackendCircuit):
         
         circuit = super().create_circuit(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
 
-        self.cached_circuit_key = abstract_circuit
         self.cached_circuit = circuit
         self.cached_circuit_hash = new_hash
 
@@ -149,10 +148,11 @@ class BackendCircuitSpex(BackendCircuit):
         
         for term in self.cached_circuit:
             term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
-            
-        for ham in self.hamiltonians:
-            for term, _ in ham:
-                term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
+
+        if self.hamiltonians is not None:    
+            for ham in self.hamiltonians:
+                for term, _ in ham:
+                    term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
 
         self._n_qubits_compressed = len(used_qubits)
 
