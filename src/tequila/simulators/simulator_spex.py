@@ -1,35 +1,43 @@
 from tequila.simulators.simulator_base import BackendExpectationValue, BackendCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.utils import TequilaException
-from tequila.hamiltonian import paulis, PauliString
+from tequila.hamiltonian import PauliString
 from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, RotationGateImpl, QubitHamiltonian
 from tequila import BitNumbering
-from tequila.circuit import compile_circuit
+
 
 import hashlib
 import numpy
 import os
 import spex_tequila
+import gc
 
 numbering = BitNumbering.LSB
 
 class TequilaSpexException(TequilaException):
+    """Custom exception for SPEX simulator errors"""
     pass
 
 def extract_pauli_dict(ps):
-        # Extract a dict {qubit: 'X'/'Y'/'Z'} from ps.
-        # ps is PauliString or QubitHamiltonian
-        if isinstance(ps, PauliString):
-            return dict(ps.items())
-        elif isinstance(ps, QubitHamiltonian):
-            if len(ps.paulistrings) == 1:
-                return dict(ps.paulistrings[0].items())
-            else:
-                raise TequilaSpexException("Rotation gate generator with multiple PauliStrings is not supported.")
-        else:
-            raise TequilaSpexException(f"Unexpected generator type: {type(ps)}")
+    """
+    Extract qubit:operator mapping from PauliString/QubitHamiltonian
+    Args:
+        ps: PauliString or single-term QubitHamiltonian
+    Returns:
+        dict: {qubit: 'X'/'Y'/'Z'}
+    """
+
+    if isinstance(ps, PauliString):
+        return dict(ps.items())
+    if isinstance(ps, QubitHamiltonian) and len(ps.paulistrings) == 1:
+        return dict(ps.paulistrings[0].items())
+    raise TequilaSpexException("Unsupported generator type")
 
 def circuit_hash(abstract_circuit):
+    """
+    Create MD5 hash for circuit caching
+    Uses gate types, targets, controls and generators for uniqueness
+    """
     sha = hashlib.md5()
     if abstract_circuit is None:
         return None
@@ -39,6 +47,9 @@ def circuit_hash(abstract_circuit):
     return sha.hexdigest()
 
 class BackendCircuitSpex(BackendCircuit):
+    """SPEX circuit implementation using sparse state representation"""
+
+    # Circuit compilation configuration
     compiler_arguments = {
         "multitarget": True,
         "multicontrol": True,
@@ -61,47 +72,93 @@ class BackendCircuitSpex(BackendCircuit):
         "ch_gate": True
     }
 
-
     def __init__(self, 
                  abstract_circuit=None, 
                  variables=None, 
                  num_threads=-1, 
                  amplitude_threshold=1e-14, 
                  angle_threshold=1e-14,
+                 compress_qubits=True,
                  *args, **kwargs):
         
-        self._cached_circuit_hash = None
-        self._cached_circuit = []
+        # Circuit chaching
+        self.cached_circuit_hash = None
+        self.cached_circuit = []
 
+        # Performance parameters
         self.num_threads = num_threads
         self.amplitude_threshold = amplitude_threshold
         self.angle_threshold = angle_threshold
 
+        # State compression
+        self.n_qubits_compressed = None
+        self.hamiltonians = None
+
         super().__init__(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
 
+    @property
+    def n_qubits(self):
+        """Get number of qubits after compression (if enabled)"""
+        if self.compress_qubits and (self.n_qubits_compressed is not None):
+            return self.n_qubits_compressed
+        return super().n_qubits
 
     def initialize_circuit(self, *args, **kwargs):
         return []
     
-
     def create_circuit(self, abstract_circuit=None, variables=None, *args, **kwargs):
+        """Compile circuit with caching using MD5 hash"""
         if abstract_circuit is None:
             abstract_circuit = self.abstract_circuit
 
         new_hash = circuit_hash(abstract_circuit)
 
-        if (new_hash is not None) and (new_hash == self._cached_circuit_hash):
-            return self._cached_circuit
+        if (new_hash is not None) and (new_hash == self.cached_circuit_hash):
+            return self.cached_circuit
         
         circuit = super().create_circuit(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
 
-        self._cached_circuit_key = abstract_circuit
-        self._cached_circuit = circuit
-        self._cached_circuit_hash = new_hash
+        self.cached_circuit_key = abstract_circuit
+        self.cached_circuit = circuit
+        self.cached_circuit_hash = new_hash
+
         return circuit
+    
+    def compress_qubit_indices(self):
+        """
+        Optimize qubit indices by mapping used qubits to contiguous range
+        Reduces memory usage by eliminating unused qubit dimensions
+        """
+        if not self.compress_qubits or not self.cached_circuit:
+            return
+
+        # Collect all qubits used in circuit and Hamiltonians
+        used_qubits = set()
+        for term in self.cached_circuit:
+            used_qubits.update(term.pauli_map.keys())
+        for ham in self.hamiltonians:
+            for term, _ in ham:
+                used_qubits.update(term.pauli_map.keys())
+
+        if not used_qubits:
+            self._n_qubits_compressed = 0
+            return
+
+        # Create qubit mapping and remap all terms
+        qubit_map = {old: new for new, old in enumerate(sorted(used_qubits))}
+        
+        for term in self.cached_circuit:
+            term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
+            
+        for ham in self.hamiltonians:
+            for term, _ in ham:
+                term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
+
+        self._n_qubits_compressed = len(used_qubits)
 
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
+        """Convert Tequila gates to SPEX exponential Pauli terms"""
         exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
             if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
@@ -118,6 +175,7 @@ class BackendCircuitSpex(BackendCircuit):
             circuit.append(exp_term)
 
         elif isinstance(gate, QGateImpl):
+            # Convert standard gates to Pauli rotations
             for ps in gate.make_generator(include_controls=True).paulistrings:
                 angle = numpy.pi * ps.coeff
                 if self.angle_threshold != None and abs(angle) < self.angle_threshold:
@@ -134,6 +192,7 @@ class BackendCircuitSpex(BackendCircuit):
 
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
+        """Convert Tequila parametrized gates to SPEX exponential Pauli terms"""
         exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
             if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
@@ -166,49 +225,46 @@ class BackendCircuitSpex(BackendCircuit):
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         """
-        Simulates the circuit and returns the final qubit state.
-
+        Simulate circuit and return final state
         Args:
-            variables: Variables to adjust the circuit (not used for fixed gates).
-            initial_state: The initial state of the qubit.
-
+            initial_state: Starting state (int or QubitWaveFunction)
         Returns:
-            QubitWaveFunction: The final state after applying the circuit.
+            QubitWaveFunction: Sparse state representation
         """
-        n_qubits = self.n_qubits
-        # Prepare the initial state
+
+        # Initialize state
         if isinstance(initial_state, int):
             if initial_state == 0:
-                state = spex_tequila.initialize_zero_state(n_qubits)
+                state = spex_tequila.initialize_zero_state(self.n_qubits)
             else:
                 state = {initial_state: 1.0 + 0j}
         else:
             # initial_state is already a QubitWaveFunction
             state = initial_state.to_dictionary()
 
-        final_state = spex_tequila.apply_U(self.circuit, state)
+        # Apply circuit with amplitude thresholding, -1.0 disables threshold in spex_tequila
+        threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
+        final_state = spex_tequila.apply_U(self.circuit, state, threshold)
 
-        if self.amplitude_threshold != None:
-            for basis, amplitude in list(final_state.items()):
-                if abs(amplitude) < self.amplitude_threshold:
-                    del final_state[basis]
-
-        wfn = QubitWaveFunction(n_qubits=n_qubits, numbering=numbering)
+        wfn = QubitWaveFunction(n_qubits=self.n_qubits, numbering=numbering)
         for state, amplitude in final_state.items():
             wfn[state] = amplitude
+
+        del final_state
+        gc.collect()
+
         return wfn
 
 
 class BackendExpectationValueSpex(BackendExpectationValue):
-    """
-    Backend for computing expectation values using the spex_tequila C++ module.
-    """
+    """SPEX expectation value calculator using sparse simulations"""
     BackendCircuitType = BackendCircuitSpex
 
     def __init__(self, *args,
                  num_threads=-1,
                  amplitude_threshold=1e-14, 
                  angle_threshold=1e-14,
+                 compress_qubits=True,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -216,18 +272,18 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         self.amplitude_threshold = amplitude_threshold
         self.angle_threshold = angle_threshold
     
+        # Configure circuit parameters
         if isinstance(self.U, BackendCircuitSpex):
             self.U.num_threads = num_threads
             self.U.amplitude_threshold = amplitude_threshold
             self.U.angle_threshold = angle_threshold
+            self.U.compress_qubits = compress_qubits
 
     def initialize_hamiltonian(self, hamiltonians):
         """
         Initializes the Hamiltonian terms for the simulation.
-
         Args:
             hamiltonians: A list of Hamiltonian objects.
-
         Returns:
             tuple: A converted list of (pauli_string, coefficient) tuples.
         """
@@ -242,42 +298,40 @@ class BackendExpectationValueSpex(BackendExpectationValue):
                 term.pauli_map = pauli_map 
                 terms.append((term, ps.coeff))                    
             converted.append(terms)
+
+        if isinstance(self.U, BackendCircuitSpex):
+            self.U.hamiltonians = converted
+
         return tuple(converted)
 
 
     def simulate(self, variables, initial_state=0, *args, **kwargs):
         """
-        Computes the expectation value by simulating the circuit U and evaluating ⟨ψ|H|ψ⟩.
-
-        Args:
-            variables: Variables to adjust the circuit (not used for fixed gates).
-            initial_state: The initial state of the qubit.
-
+        Calculate expectation value through sparse simulation
         Returns:
-            numpy.ndarray: The computed expectation values for the Hamiltonian terms.
+            numpy.ndarray: Expectation values for each Hamiltonian term
         """
 
-        # variables as dict, variable map for var to gates
-
+        # Prepare simulation
         self.update_variables(variables)
-        n_qubits = self.U.n_qubits
+        if self.U.compress_qubits:
+            self.U.compress_qubit_indices()
 
         # Prepare the initial state
         if isinstance(initial_state, int):
             if initial_state == 0:
-                state = spex_tequila.initialize_zero_state(n_qubits)
+                state = spex_tequila.initialize_zero_state(self.n_qubits)
             else:
                 state = {initial_state: 1.0 + 0j}
         else:
             # initial_state is a QubitWaveFunction
             state = initial_state.to_dictionary()
 
-        final_state = spex_tequila.apply_U(self.U.circuit, state)
+        self.U.circuit = [t for t in self.U.circuit if abs(t.angle) >= self.U.angle_threshold]
 
-        if self.amplitude_threshold != None:
-            for basis, amplitude in list(final_state.items()):
-                if abs(amplitude) < self.amplitude_threshold:
-                    del final_state[basis]
+        threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
+        final_state = spex_tequila.apply_U(self.U.circuit, state, threshold)
+        del state
 
         if "SPEX_NUM_THREADS" in os.environ:
             self.num_threads = int(os.environ["SPEX_NUM_THREADS"])
@@ -289,11 +343,8 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         for H_terms in self.H:
             val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, num_threads=-1)
             results.append(val.real)
+        
+        del final_state
+        gc.collect()
+        
         return numpy.array(results)
-
-
-    def sample(self, variables, samples, initial_state=0, *args, **kwargs):
-        return super().sample(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
-
-    def sample_paulistring(self, samples: int, paulistring, variables, initial_state=0, *args, **kwargs):
-        return super().sample_paulistring(samples, paulistring, variables, initial_state=initial_state, *args, **kwargs)
