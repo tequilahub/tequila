@@ -211,7 +211,6 @@ class BackendCircuitSpex(BackendCircuit):
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
                 if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
-                    print("used")
                     continue
                 exp_term = spex_tequila.ExpPauliTerm()
                 exp_term.pauli_map = dict(ps.items())
