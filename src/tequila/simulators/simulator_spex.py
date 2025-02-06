@@ -253,7 +253,7 @@ class BackendCircuitSpex(BackendCircuit):
             if initial_state == 0:
                 state = spex_tequila.initialize_zero_state(self.n_qubits)
             else:
-                state = {initial_state: 1.0 + 0j}
+                state = { reverse_bits(initial_state, self.n_qubits): 1.0 + 0j }
         else:
             # initial_state is already a QubitWaveFunction
             state = initial_state.to_dictionary()
@@ -262,14 +262,18 @@ class BackendCircuitSpex(BackendCircuit):
         threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
         final_state = spex_tequila.apply_U(self.circuit, state, threshold)
 
-        wfn = QubitWaveFunction(n_qubits=self.n_qubits, numbering=numbering)
+        wfn_LSB = QubitWaveFunction(n_qubits=self.n_qubits, numbering=BitNumbering.LSB)
         for state, amplitude in final_state.items():
-            wfn[state] = amplitude
+            wfn_LSB[state] = amplitude
+
+        wfn_MSB = QubitWaveFunction(n_qubits=self.n_qubits, numbering=BitNumbering.MSB)
+        for key, amplitude in final_state.items():
+            wfn_MSB[reverse_bits(key, self.n_qubits)] = amplitude
 
         del final_state
         gc.collect()
 
-        return wfn
+        return wfn_MSB
 
 
 class BackendExpectationValueSpex(BackendExpectationValue):
