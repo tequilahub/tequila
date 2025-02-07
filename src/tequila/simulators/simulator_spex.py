@@ -12,7 +12,7 @@ import os
 import spex_tequila
 import gc
 
-numbering = BitNumbering.LSB
+numbering = BitNumbering.MSB
 
 class TequilaSpexException(TequilaException):
     """Custom exception for SPEX simulator errors"""
@@ -105,9 +105,25 @@ class BackendCircuitSpex(BackendCircuit):
     @property
     def n_qubits(self):
         """Get number of qubits after compression (if enabled)"""
-        if self.compress_qubits and (self.n_qubits_compressed is not None):
-            return self.n_qubits_compressed
-        return super().n_qubits
+        used = set()
+        if self.cached_circuit:
+            for term in self.cached_circuit:
+                used.update(term.pauli_map.keys())
+        
+        if self.abstract_circuit is not None and hasattr(self.abstract_circuit, "gates"):
+            for gate in self.abstract_circuit.gates:
+                if hasattr(gate, "target"):
+                    if isinstance(gate.target, (list, tuple)):
+                        used.update(gate.target)
+                    else:
+                        used.add(gate.target)
+                if hasattr(gate, "control") and gate.control:
+                    if isinstance(gate.control, (list, tuple)):
+                        used.update(gate.control)
+                    else:
+                        used.add(gate.control)
+        computed = max(used) + 1 if used else 0
+        return max(super().n_qubits, computed)
 
     def initialize_circuit(self, *args, **kwargs):
         return []
@@ -146,7 +162,7 @@ class BackendCircuitSpex(BackendCircuit):
                 used_qubits.update(term.pauli_map.keys())
 
         if not used_qubits:
-            self._n_qubits_compressed = 0
+            self.n_qubits_compressed = 0
             return
 
         # Create qubit mapping and remap all terms
@@ -160,7 +176,7 @@ class BackendCircuitSpex(BackendCircuit):
                 for term, _ in ham:
                     term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
 
-        self._n_qubits_compressed = len(used_qubits)
+        self.n_qubits_compressed = len(used_qubits)
 
     def assign_parameter(self, param, variables):
         if isinstance(param, (int, float, complex)):
@@ -253,26 +269,23 @@ class BackendCircuitSpex(BackendCircuit):
             if initial_state == 0:
                 state = spex_tequila.initialize_zero_state(self.n_qubits)
             else:
-                state = { reverse_bits(initial_state, self.n_qubits): 1.0 + 0j }
+                state = {initial_state: 1.0 + 0j}
         else:
             # initial_state is already a QubitWaveFunction
             state = initial_state.to_dictionary()
 
         # Apply circuit with amplitude thresholding, -1.0 disables threshold in spex_tequila
         threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
-        final_state = spex_tequila.apply_U(self.circuit, state, threshold)
-
-        wfn_LSB = QubitWaveFunction(n_qubits=self.n_qubits, numbering=BitNumbering.LSB)
-        for state, amplitude in final_state.items():
-            wfn_LSB[state] = amplitude
+        final_state = spex_tequila.apply_U(self.circuit, state, threshold, self.n_qubits)
 
         wfn_MSB = QubitWaveFunction(n_qubits=self.n_qubits, numbering=BitNumbering.MSB)
-        for key, amplitude in final_state.items():
-            wfn_MSB[reverse_bits(key, self.n_qubits)] = amplitude
+        for state, amplitude in final_state.items():
+            wfn_MSB[state] = amplitude
 
         del final_state
         gc.collect()
 
+        print("wfn_MSB:", wfn_MSB)
         return wfn_MSB
 
 
@@ -350,7 +363,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         self.U.circuit = [t for t in self.U.circuit if abs(t.angle) >= self.U.angle_threshold]
 
         threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
-        final_state = spex_tequila.apply_U(self.U.circuit, state, threshold)
+        final_state = spex_tequila.apply_U(self.U.circuit, state, threshold, self.n_qubits)
         del state
 
         if "SPEX_NUM_THREADS" in os.environ:
@@ -361,7 +374,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         # Calculate the expectation value for each Hamiltonian
         results = []
         for H_terms in self.H:
-            val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, num_threads=-1)
+            val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, self.n_qubits, num_threads=-1)
             results.append(val.real)
         
         del final_state
