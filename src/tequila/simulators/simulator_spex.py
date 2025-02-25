@@ -33,7 +33,7 @@ def extract_pauli_dict(ps):
         return dict(ps.paulistrings[0].items())
     raise TequilaSpexException("Unsupported generator type")
 
-def circuit_hash(abstract_circuit):
+def circuit_hash(abstract_circuit, variables=None):
     """
     Create MD5 hash for circuit caching
     Uses gate types, targets, controls and generators for uniqueness
@@ -42,8 +42,11 @@ def circuit_hash(abstract_circuit):
     if abstract_circuit is None:
         return None
     for g in abstract_circuit.gates:
-        gate_str = f"{type(g).__name__}:{g.name}:{g.target}:{g.control}:{g.generator}\n"
+        gate_str = f"{type(g).__name__}:{g.name}:{g.target}:{g.control}:{g.generator}:{getattr(g, 'parameter', None)}\n"
         sha.update(gate_str.encode('utf-8'))
+    if variables:
+        for key, value in sorted(variables.items()):
+            sha.update(f"{key}:{value}\n".encode('utf-8'))
     return sha.hexdigest()
 
 def reverse_bits(x: int, n_bits: int) -> int:
@@ -130,12 +133,19 @@ class BackendCircuitSpex(BackendCircuit):
     
     def create_circuit(self, abstract_circuit=None, variables=None, *args, **kwargs):
         """Compile circuit with caching using MD5 hash"""
+        print("create circuit")
+        print(abstract_circuit is None)
         if abstract_circuit is None:
+            print("abort")
             abstract_circuit = self.abstract_circuit
 
-        new_hash = circuit_hash(abstract_circuit)
+        new_hash = circuit_hash(abstract_circuit, variables)
+
+        print(new_hash)
+        print(self.cached_circuit_hash)
 
         if (new_hash is not None) and (new_hash == self.cached_circuit_hash):
+            print("abort")
             return self.cached_circuit
         
         circuit = super().create_circuit(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
@@ -178,9 +188,23 @@ class BackendCircuitSpex(BackendCircuit):
 
         self.n_qubits_compressed = len(used_qubits)
 
+    def update_variables(self, variables, *args, **kwargs):
+        if variables is None:
+            variables = {}
+        self.cached_circuit_hash = None
+        self.cached_circuit = []
+        super().update_variables(variables)
+        self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
+
     def assign_parameter(self, param, variables):
+        print("assigning ", param, " with ", variables)
         if isinstance(param, (int, float, complex)):
             return float(param)
+        if isinstance(param, str):
+            if param in variables:
+                return float(variables[param])
+            else:
+                raise TequilaSpexException(f"Variable '{param}' not found in variables")
         if callable(param):
             result = param(variables)
             return float(result)
