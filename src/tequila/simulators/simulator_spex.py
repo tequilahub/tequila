@@ -86,12 +86,11 @@ class BackendCircuitSpex(BackendCircuit):
                  num_threads=-1, 
                  amplitude_threshold=1e-14, 
                  angle_threshold=1e-14,
-                 compress_qubits=True,
+                 compress_qubits=False,
                  *args, **kwargs):
         
         # Circuit chaching
-        self.cached_circuit_hash = None
-        self.cached_circuit = []
+        self.circuit_cache = {}
 
         # Performance parameters
         self.num_threads = num_threads
@@ -109,8 +108,8 @@ class BackendCircuitSpex(BackendCircuit):
     def n_qubits(self):
         """Get number of qubits after compression (if enabled)"""
         used = set()
-        if self.cached_circuit:
-            for term in self.cached_circuit:
+        if hasattr(self, "circuit") and self.circuit:
+            for term in self.circuit:
                 used.update(term.pauli_map.keys())
         
         if self.abstract_circuit is not None and hasattr(self.abstract_circuit, "gates"):
@@ -133,25 +132,24 @@ class BackendCircuitSpex(BackendCircuit):
     
     def create_circuit(self, abstract_circuit=None, variables=None, *args, **kwargs):
         """Compile circuit with caching using MD5 hash"""
-        print("create circuit")
-        print(abstract_circuit is None)
+        print(">> create_circuit called")
+        print("   given variables:", variables)
         if abstract_circuit is None:
-            print("abort")
             abstract_circuit = self.abstract_circuit
 
-        new_hash = circuit_hash(abstract_circuit, variables)
+        key = circuit_hash(abstract_circuit, variables)
+        print("   calculated cache-key:", key)
 
-        print(new_hash)
-        print(self.cached_circuit_hash)
-
-        if (new_hash is not None) and (new_hash == self.cached_circuit_hash):
-            print("abort")
-            return self.cached_circuit
+        if key in self.circuit_cache:
+            print("   circuit found in cache for key:", key)
+            return self.circuit_cache[key]
         
+        print("   no circuit found, creating a new one")
         circuit = super().create_circuit(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
 
-        self.cached_circuit = circuit
-        self.cached_circuit_hash = new_hash
+        self.circuit_cache[key] = circuit
+        print("   new circuit with key:", key)
+        print("   current cache:", list(self.circuit_cache.keys()))
 
         return circuit
     
@@ -160,12 +158,12 @@ class BackendCircuitSpex(BackendCircuit):
         Optimize qubit indices by mapping used qubits to contiguous range
         Reduces memory usage by eliminating unused qubit dimensions
         """
-        if not self.compress_qubits or not self.cached_circuit:
+        if not self.compress_qubits or not (hasattr(self, "circuit") and self.circuit):
             return
 
         # Collect all qubits used in circuit and Hamiltonians
         used_qubits = set()
-        for term in self.cached_circuit:
+        for term in self.circuit:
             used_qubits.update(term.pauli_map.keys())
         for ham in self.hamiltonians:
             for term, _ in ham:
@@ -178,7 +176,7 @@ class BackendCircuitSpex(BackendCircuit):
         # Create qubit mapping and remap all terms
         qubit_map = {old: new for new, old in enumerate(sorted(used_qubits))}
         
-        for term in self.cached_circuit:
+        for term in self.circuit:
             term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
 
         if self.hamiltonians is not None:    
@@ -191,13 +189,14 @@ class BackendCircuitSpex(BackendCircuit):
     def update_variables(self, variables, *args, **kwargs):
         if variables is None:
             variables = {}
-        self.cached_circuit_hash = None
-        self.cached_circuit = []
+        print(">> update_variables called")
+        print("   given variables:", variables)
         super().update_variables(variables)
         self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
+        print("   after update:")
+        print("   current cache:", list(self.circuit_cache.keys()))
 
     def assign_parameter(self, param, variables):
-        print("assigning ", param, " with ", variables)
         if isinstance(param, (int, float, complex)):
             return float(param)
         if isinstance(param, str):
@@ -309,7 +308,8 @@ class BackendCircuitSpex(BackendCircuit):
         del final_state
         gc.collect()
 
-        print("wfn_MSB:", wfn_MSB)
+        print("\nWavefunctions:\n")
+        print("before return in do_simulate:", wfn_MSB, "\n")
         return wfn_MSB
 
 
@@ -321,7 +321,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
                  num_threads=-1,
                  amplitude_threshold=1e-14, 
                  angle_threshold=1e-14,
-                 compress_qubits=True,
+                 compress_qubits=False,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
