@@ -49,11 +49,6 @@ def circuit_hash(abstract_circuit, variables=None):
             sha.update(f"{key}:{value}\n".encode('utf-8'))
     return sha.hexdigest()
 
-def reverse_bits(x: int, n_bits: int) -> int:
-    bin_str = format(x, f'0{n_bits}b')
-    reversed_str = bin_str[::-1]
-    return int(reversed_str, 2)
-
 class BackendCircuitSpex(BackendCircuit):
     """SPEX circuit implementation using sparse state representation"""
 
@@ -204,14 +199,14 @@ class BackendCircuitSpex(BackendCircuit):
         """Convert Tequila gates to SPEX exponential Pauli terms"""
         exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
-            if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
+            if self.angle_threshold is not None and abs(gate.parameter) < self.angle_threshold:
                 return
             exp_term.pauli_map = extract_pauli_dict(gate.paulistring)
             exp_term.angle = gate.parameter
             circuit.append(exp_term)
 
         elif isinstance(gate, RotationGateImpl):
-            if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
+            if self.angle_threshold is not None and abs(gate.parameter) < self.angle_threshold:
                 return
             exp_term.pauli_map = extract_pauli_dict(gate.generator)
             exp_term.angle = gate.parameter
@@ -221,7 +216,7 @@ class BackendCircuitSpex(BackendCircuit):
             # Convert standard gates to Pauli rotations
             for ps in gate.make_generator(include_controls=True).paulistrings:
                 angle = numpy.pi * ps.coeff
-                if self.angle_threshold != None and abs(angle) < self.angle_threshold:
+                if self.angle_threshold is not None and abs(angle) < self.angle_threshold:
                     continue
                 exp_term = spex_tequila.ExpPauliTerm()
                 exp_term.pauli_map = dict(ps.items())
@@ -239,7 +234,7 @@ class BackendCircuitSpex(BackendCircuit):
         exp_term = spex_tequila.ExpPauliTerm()
         if isinstance(gate, ExponentialPauliGateImpl):
             angle = self.assign_parameter(gate.parameter, kwargs.get("variables", {}))
-            if self.angle_threshold != None and abs(angle) < self.angle_threshold:
+            if self.angle_threshold is not None and abs(angle) < self.angle_threshold:
                 return
             exp_term.pauli_map = extract_pauli_dict(gate.paulistring)
             exp_term.angle = angle
@@ -247,7 +242,7 @@ class BackendCircuitSpex(BackendCircuit):
 
         elif isinstance(gate, RotationGateImpl):
             angle = self.assign_parameter(gate.parameter, kwargs.get("variables", {}))
-            if self.angle_threshold != None and abs(angle) < self.angle_threshold:
+            if self.angle_threshold is not None and abs(angle) < self.angle_threshold:
                 return
             exp_term.pauli_map = extract_pauli_dict(gate.generator)
             exp_term.angle = angle
@@ -255,7 +250,7 @@ class BackendCircuitSpex(BackendCircuit):
         
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
-                if self.angle_threshold != None and abs(gate.parameter) < self.angle_threshold:
+                if self.angle_threshold is not None and abs(gate.parameter) < self.angle_threshold:
                     continue
                 exp_term = spex_tequila.ExpPauliTerm()
                 exp_term.pauli_map = dict(ps.items())
@@ -289,7 +284,7 @@ class BackendCircuitSpex(BackendCircuit):
                 state = {initial_state: 1.0 + 0j}
         else:
             # initial_state is already a QubitWaveFunction
-            state = state = {k: v for k, v in initial_state.raw_items()}
+            state = {k: v for k, v in initial_state.raw_items()}
 
         # Apply circuit with amplitude thresholding, -1.0 disables threshold in spex_tequila
         threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
