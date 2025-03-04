@@ -86,7 +86,7 @@ class BackendCircuitSpex(BackendCircuit):
                  num_threads=-1, 
                  amplitude_threshold=1e-14, 
                  angle_threshold=1e-14,
-                 compress_qubits=False,
+                 compress_qubits=True,
                  *args, **kwargs):
         
         # Circuit chaching
@@ -132,24 +132,17 @@ class BackendCircuitSpex(BackendCircuit):
     
     def create_circuit(self, abstract_circuit=None, variables=None, *args, **kwargs):
         """Compile circuit with caching using MD5 hash"""
-        print(">> create_circuit called")
-        print("   given variables:", variables)
         if abstract_circuit is None:
             abstract_circuit = self.abstract_circuit
 
         key = circuit_hash(abstract_circuit, variables)
-        print("   calculated cache-key:", key)
 
         if key in self.circuit_cache:
-            print("   circuit found in cache for key:", key)
             return self.circuit_cache[key]
         
-        print("   no circuit found, creating a new one")
         circuit = super().create_circuit(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
 
         self.circuit_cache[key] = circuit
-        print("   new circuit with key:", key)
-        print("   current cache:", list(self.circuit_cache.keys()))
 
         return circuit
     
@@ -189,12 +182,8 @@ class BackendCircuitSpex(BackendCircuit):
     def update_variables(self, variables, *args, **kwargs):
         if variables is None:
             variables = {}
-        print(">> update_variables called")
-        print("   given variables:", variables)
         super().update_variables(variables)
         self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
-        print("   after update:")
-        print("   current cache:", list(self.circuit_cache.keys()))
 
     def assign_parameter(self, param, variables):
         if isinstance(param, (int, float, complex)):
@@ -287,30 +276,39 @@ class BackendCircuitSpex(BackendCircuit):
             QubitWaveFunction: Sparse state representation
         """
 
+        if self.compress_qubits and self.n_qubits_compressed is not None and self.n_qubits_compressed > 0:
+            n_qubits = self.n_qubits_compressed
+        else:
+            n_qubits = self.n_qubits
+
         # Initialize state
-        if isinstance(initial_state, int):
+        if isinstance(initial_state, (int, numpy.integer)):
             if initial_state == 0:
-                state = spex_tequila.initialize_zero_state(self.n_qubits)
+                state = spex_tequila.initialize_zero_state(n_qubits)
             else:
                 state = {initial_state: 1.0 + 0j}
         else:
             # initial_state is already a QubitWaveFunction
-            state = initial_state.to_dictionary()
+            state = state = {k: v for k, v in initial_state.raw_items()}
 
         # Apply circuit with amplitude thresholding, -1.0 disables threshold in spex_tequila
         threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
-        final_state = spex_tequila.apply_U(self.circuit, state, threshold, self.n_qubits)
+        final_state = spex_tequila.apply_U(self.circuit, state, threshold, n_qubits)
 
-        wfn_MSB = QubitWaveFunction(n_qubits=self.n_qubits, numbering=BitNumbering.MSB)
+        wfn_MSB = QubitWaveFunction(n_qubits=n_qubits, numbering=BitNumbering.MSB)
         for state, amplitude in final_state.items():
             wfn_MSB[state] = amplitude
 
         del final_state
         gc.collect()
 
-        print("\nWavefunctions:\n")
-        print("before return in do_simulate:", wfn_MSB, "\n")
         return wfn_MSB
+    
+    def simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
+        """Override simulate to avoid automatic mapping by KeyMapSubregisterToRegister"""
+        self.update_variables(variables)
+        result = self.do_simulate(variables=variables, initial_state=initial_state, *args, **kwargs)
+        return result
 
 
 class BackendExpectationValueSpex(BackendExpectationValue):
@@ -321,7 +319,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
                  num_threads=-1,
                  amplitude_threshold=1e-14, 
                  angle_threshold=1e-14,
-                 compress_qubits=False,
+                 compress_qubits=True,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -374,20 +372,25 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         if self.U.compress_qubits:
             self.U.compress_qubit_indices()
 
+        if self.U.compress_qubits and self.U.n_qubits_compressed is not None and self.U.n_qubits_compressed > 0:
+            n_qubits = self.U.n_qubits_compressed
+        else:
+            n_qubits = self.U.n_qubits
+
         # Prepare the initial state
         if isinstance(initial_state, int):
             if initial_state == 0:
-                state = spex_tequila.initialize_zero_state(self.n_qubits)
+                state = spex_tequila.initialize_zero_state(n_qubits)
             else:
                 state = {initial_state: 1.0 + 0j}
         else:
             # initial_state is a QubitWaveFunction
-            state = initial_state.to_dictionary()
+            state = {k: v for k, v in initial_state.raw_items()}
 
         self.U.circuit = [t for t in self.U.circuit if abs(t.angle) >= self.U.angle_threshold]
 
         threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
-        final_state = spex_tequila.apply_U(self.U.circuit, state, threshold, self.n_qubits)
+        final_state = spex_tequila.apply_U(self.U.circuit, state, threshold, n_qubits)
         del state
 
         if "SPEX_NUM_THREADS" in os.environ:
@@ -398,7 +401,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         # Calculate the expectation value for each Hamiltonian
         results = []
         for H_terms in self.H:
-            val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, self.n_qubits, num_threads=-1)
+            val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, n_qubits, num_threads=-1)
             results.append(val.real)
         
         del final_state
