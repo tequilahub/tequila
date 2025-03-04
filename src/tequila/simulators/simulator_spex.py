@@ -2,7 +2,7 @@ from tequila.simulators.simulator_base import BackendExpectationValue, BackendCi
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.utils import TequilaException
 from tequila.hamiltonian import PauliString
-from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, RotationGateImpl, QubitHamiltonian
+from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, RotationGateImpl, QubitHamiltonian, QubitExcitationImpl
 from tequila import BitNumbering
 
 
@@ -212,6 +212,11 @@ class BackendCircuitSpex(BackendCircuit):
             exp_term.angle = gate.parameter
             circuit.append(exp_term)
 
+        elif isinstance(gate, QubitExcitationImpl):
+            compiled_gate = gate.compile(exponential_pauli=True)
+            for sub_gate in compiled_gate.abstract_circuit.gates:
+                self.add_basic_gate(sub_gate, circuit, *args, **kwargs)
+
         elif isinstance(gate, QGateImpl):
             # Convert standard gates to Pauli rotations
             for ps in gate.make_generator(include_controls=True).paulistrings:
@@ -247,6 +252,11 @@ class BackendCircuitSpex(BackendCircuit):
             exp_term.pauli_map = extract_pauli_dict(gate.generator)
             exp_term.angle = angle
             circuit.append(exp_term)
+
+        elif isinstance(gate, QubitExcitationImpl):
+            compiled_gate = gate.compile(exponential_pauli=True)
+            for sub_gate in compiled_gate.abstract_circuit.gates:
+                self.add_parametrized_gate(sub_gate, circuit, *args, **kwargs)
         
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
