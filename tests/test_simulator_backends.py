@@ -298,8 +298,8 @@ def test_wfn_simple_consistency(simulator):
     print(ac)
     wfn0 = tequila.simulators.simulator_api.simulate(ac, backend=simulator)
     wfn1 = tequila.simulators.simulator_api.simulate(ac, backend=None)
-    print(wfn0)
-    print(wfn1)
+    print("spex:", wfn0, "\n")
+    print("reference:", wfn1, "\n")
     assert (wfn0.isclose(wfn1))
 
 
