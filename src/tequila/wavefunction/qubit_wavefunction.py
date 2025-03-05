@@ -373,7 +373,10 @@ class QubitWaveFunction:
             index = index.integer
             if self.numbering == BitNumbering.LSB:
                 index = reverse_int_bits(index, self._n_qubits)
-            result += f"{coeff} |{index:0{self._n_qubits}b}> "
+            if np.isclose(coeff.imag, 0.0):
+                result += f"{coeff.real:+2.4f} |{index:0{self._n_qubits}b}> "
+            else:
+                result += f"({coeff.real:+2.4f} + {coeff.imag:+2.4f}i) |{index:0{self._n_qubits}b}> "
         # If the wavefunction contains no states
         if not result:
             result = "empty wavefunction"

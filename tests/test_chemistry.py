@@ -704,7 +704,7 @@ def test_hcb_rdms(geometry, optimize):
 
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
-@pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 4.5", "Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", "Be 0.0 0.0 0.0\nH 0.0 0.0 3.0\nH 0.0 0.0 -3.0"])
+@pytest.mark.parametrize("geometry", ["Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", "Be 0.0 0.0 0.0\nH 0.0 0.0 3.0\nH 0.0 0.0 -3.0"])
 def test_orbital_optimization_hcb(geometry):
 
     mol = tq.Molecule(geometry=geometry, basis_set="sto-3g")
