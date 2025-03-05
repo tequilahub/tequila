@@ -2,7 +2,8 @@ from tequila.simulators.simulator_base import BackendExpectationValue, BackendCi
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.utils import TequilaException
 from tequila.hamiltonian import PauliString
-from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, RotationGateImpl, QubitHamiltonian, QubitExcitationImpl
+from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, RotationGateImpl, QubitHamiltonian
+from tequila.circuit.gates import QubitExcitationImpl
 from tequila import BitNumbering
 
 
