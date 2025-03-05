@@ -51,16 +51,11 @@ jobs:
         source $CONDABASE/bin/activate
         conda activate test_psi4
         conda install psi4 python=3.9 -c conda-forge
-        echo "import psi4" >> asd.py
-        python asd.py
-        print("\n\n\n\n\n\n HERE\n\n\n\n")
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
         python -m pip install -e .
         python -m pip install pyscf
         python -m pip install 'h5py <= 3.1'
-        python asd.py
-        print("\n\n\n\n\n\n HERE as well\n\n\n\n")
         cd tests
         ls
         pytest test_chemistry.py
