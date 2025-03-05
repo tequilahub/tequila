@@ -219,15 +219,28 @@ class BackendCircuitSpex(BackendCircuit):
                 self.add_basic_gate(sub_gate, circuit, *args, **kwargs)
 
         elif isinstance(gate, QGateImpl):
-            # Convert standard gates to Pauli rotations
-            for ps in gate.make_generator(include_controls=True).paulistrings:
-                angle = numpy.pi * ps.coeff
-                if self.angle_threshold is not None and abs(angle) < self.angle_threshold:
-                    continue
-                exp_term = spex_tequila.ExpPauliTerm()
-                exp_term.pauli_map = dict(ps.items())
-                exp_term.angle = angle
-                circuit.append(exp_term)
+            if gate.name.lower() in ["x","y","z"]:
+                # Convert standard gates to Pauli rotations
+                for ps in gate.make_generator(include_controls=True).paulistrings:
+                    angle = numpy.pi * ps.coeff
+                    if self.angle_threshold is not None and abs(angle) < self.angle_threshold:
+                        continue
+                    exp_term = spex_tequila.ExpPauliTerm()
+                    exp_term.pauli_map = dict(ps.items())
+                    exp_term.angle = angle
+                    circuit.append(exp_term)
+            elif gate.name.lower() in ["h", "hadamard"]:
+                assert len(gate.target)==1
+                target = gate.target[0]
+                for ps in ["-0.25*Y({q})", "Z({q})", "0.25*Y({q})"]:
+                    ps = QubitHamiltonian(ps.format(q=gate.target[0])).paulistrings[0]
+                    angle = numpy.pi * ps.coeff
+                    exp_term = spex_tequila.ExpPauliTerm()
+                    exp_term.pauli_map = dict(ps.items())
+                    exp_term.angle = angle
+                    circuit.append(exp_term)
+            else:
+                raise TequilaSpexException("{} not supported. Only x,y,z,h".format(gate.name.lower()))
 
         else:
             raise TequilaSpexException(f"Unsupported gate object type: {type(gate)}. "
