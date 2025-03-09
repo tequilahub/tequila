@@ -11,7 +11,7 @@ from tequila.simulators.simulator_base import BackendCircuit, BackendExpectation
 from tequila.circuit.noise import NoiseModel
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
-SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm"]
+SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm", "spex"]
 # TODO: Reenable noise for Qiskit
 SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
@@ -29,6 +29,15 @@ if typing.TYPE_CHECKING:
 Check which simulators are installed
 We are distinguishing two classes of simulators: Samplers and full wavefunction simulators
 """
+
+
+HAS_SPEX = True
+try:
+    from tequila.simulators.simulator_spex import BackendCircuitSpex, BackendExpectationValueSpex
+
+    INSTALLED_SIMULATORS["spex"] = BackendTypes(BackendCircuitSpex, BackendExpectationValueSpex)
+except ImportError:
+    HAS_SPEX = False
 
 
 HAS_QISKIT = True
