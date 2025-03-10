@@ -395,10 +395,10 @@ class BackendCircuitQLM(BackendCircuit):
         if MY_QLM:
             result = PyLinalg().submit(job)
             statevector = get_statevector(result)
-            return QubitWaveFunction.from_array(arr=statevector, numbering=self.numbering)
+            return QubitWaveFunction.from_array(array=statevector, numbering=self.numbering)
 
         result = LinAlg().submit(job)
-        return QubitWaveFunction.from_array(arr=result.statevector, numbering=self.numbering)
+        return QubitWaveFunction.from_array(array=result.statevector, numbering=self.numbering)
 
     def update_variables(self, variables):
         """
@@ -431,7 +431,7 @@ class BackendCircuitQLM(BackendCircuit):
         QubitWaveFunction:
             measurements converted into wave function form.
         """
-        result = QubitWaveFunction()
+        result = QubitWaveFunction(self.n_qubits, self.numbering)
         shots = int(backend_result.meta_data["nbshots"])
         nbits = backend_result[0].qregs[0].length
         for sample in backend_result:

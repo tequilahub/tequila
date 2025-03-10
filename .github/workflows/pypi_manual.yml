@@ -2,9 +2,7 @@
 # see here for source: https://justinoconnor.codes/2021/05/02/automated-pypi-package-release-versioning-with-github/
 name: Upload Python Package
 
-on:
-  release:
-    types: [released]
+on: workflow_dispatch
 
 
 jobs:

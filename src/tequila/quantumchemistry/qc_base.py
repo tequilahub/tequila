@@ -1737,7 +1737,7 @@ class QuantumChemistryBase:
 
     def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
                      get_rdm1: bool = True, get_rdm2: bool = True, ordering="dirac", use_hcb: bool = False,
-                     rdm_trafo: QubitHamiltonian = None, decompose=None):
+                     rdm_trafo: QubitHamiltonian = None, evaluate=True):
         """
         Computes the one- and two-particle reduced density matrices (rdm1 and rdm2) given
         a unitary U. This method uses the standard ordering in physics as denoted below.
@@ -1768,7 +1768,10 @@ class QuantumChemistryBase:
         rdm_trafo :
             The rdm operators can be transformed, e.g., a^dagger_i a_j -> U^dagger a^dagger_i a_j U,
             where U represents the transformation. The default is set to None, implying that U equas the identity.
-
+        evaluate :
+            if true, the tequila expectation values are evaluated directly via the tq.simulate command.
+            the protocol is optimized to avoid repetation of wavefunction simulation
+            if false, the rdms are returned as tq.QTensors
         Returns
         -------
         """
@@ -1891,13 +1894,14 @@ class QuantumChemistryBase:
                     ops += [op]
             return ops
 
-        def _assemble_rdm1(evals) -> numpy.ndarray:
+        def _assemble_rdm1(evals, rdm1=None) -> numpy.ndarray:
             """
             Returns spin-ful or spin-free one-particle RDM built by symmetry conditions
             Same symmetry with or without spin, so we can use the same function
             """
             N = n_MOs if spin_free else n_SOs
-            rdm1 = numpy.zeros([N, N])
+            if rdm1 is None:
+                rdm1 = numpy.zeros([N, N])
             ctr: int = 0
             for p in range(N):
                 for q in range(p + 1):
@@ -1908,10 +1912,11 @@ class QuantumChemistryBase:
 
             return rdm1
 
-        def _assemble_rdm2_spinful(evals) -> numpy.ndarray:
+        def _assemble_rdm2_spinful(evals, rdm2=None) -> numpy.ndarray:
             """ Returns spin-ful two-particle RDM built by symmetry conditions """
             ctr: int = 0
-            rdm2 = numpy.zeros([n_SOs, n_SOs, n_SOs, n_SOs])
+            if rdm2 is None:
+                rdm2 = numpy.zeros([n_SOs, n_SOs, n_SOs, n_SOs])
             for p in range(n_SOs):
                 for q in range(p):
                     for r in range(n_SOs):
@@ -1933,10 +1938,11 @@ class QuantumChemistryBase:
 
             return rdm2
 
-        def _assemble_rdm2_spinfree(evals) -> numpy.ndarray:
+        def _assemble_rdm2_spinfree(evals, rdm2=None) -> numpy.ndarray:
             """ Returns spin-free two-particle RDM built by symmetry conditions """
             ctr: int = 0
-            rdm2 = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
+            if rdm2 is None:
+                rdm2 = numpy.zeros([n_MOs, n_MOs, n_MOs, n_MOs])
             for p, q, r, s in product(range(n_MOs), repeat=4):
                 if p * n_MOs + q >= r * n_MOs + s and (p >= q or r >= s):
                     rdm2[p, q, r, s] = evals[ctr]
@@ -2012,18 +2018,25 @@ class QuantumChemistryBase:
         # Transform operator lists to QubitHamiltonians
         if (not use_hcb):
             qops = [_get_qop_hermitian(op) for op in qops]
-        
+
         # Compute expected values
-        if rdm_trafo is None:
-            if decompose is not None:
-                print("MANIPULATED")
-                X = decompose(H=qops, U=U)
-                evals = simulate(X, variables=variables)
+        rdm1 = None
+        rdm2 = None
+        from tequila import QTensor
+        if evaluate:
+            if rdm_trafo is None:
+                evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
             else:
+                qops = [rdm_trafo.dagger()*qops[i]*rdm_trafo for i in range(len(qops))]
                 evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
         else:
-            qops = [rdm_trafo.dagger()*qops[i]*rdm_trafo for i in range(len(qops))]
-            evals = simulate(ExpectationValue(H=qops, U=U, shape=[len(qops)]), variables=variables)
+            if rdm_trafo is None:
+                evals = [ExpectationValue(H=x, U=U) for x in qops]
+                N = n_MOs if spin_free else n_SOs
+                rdm1 = QTensor(shape=[N,N])
+                rdm2 = QTensor(shape=[N, N, N, N])
+            else:
+                raise TequilaException("compute_rdms: rdm_trafo was set but evaluate flag is False (not supported)")
 
         # Assemble density matrices
         # If self._rdm1, self._rdm2 exist, reset them if they are of the other spin-type
@@ -2044,11 +2057,11 @@ class QuantumChemistryBase:
             len_1 = 0
         evals_1, evals_2 = evals[:len_1], evals[len_1:]
         # Build matrices using the expectation values
-        self._rdm1 = _assemble_rdm1(evals_1) if get_rdm1 else self._rdm1
+        self._rdm1 = _assemble_rdm1(evals_1, rdm1=rdm1) if get_rdm1 else self._rdm1
         if spin_free or use_hcb:
-            self._rdm2 = _assemble_rdm2_spinfree(evals_2) if get_rdm2 else self._rdm2
+            self._rdm2 = _assemble_rdm2_spinfree(evals_2, rdm2=rdm2) if get_rdm2 else self._rdm2
         else:
-            self._rdm2 = _assemble_rdm2_spinful(evals_2) if get_rdm2 else self._rdm2
+            self._rdm2 = _assemble_rdm2_spinful(evals_2, rdm2=rdm2) if get_rdm2 else self._rdm2
 
         if get_rdm2:
             rdm2 = NBodyTensor(elems=self.rdm2, ordering="dirac", verify=False)

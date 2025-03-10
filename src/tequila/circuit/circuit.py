@@ -9,6 +9,7 @@ import warnings
 
 from .qpic import export_to
 
+
 class QCircuit():
     """
     Fundamental class representing an abstract circuit.
@@ -46,10 +47,7 @@ class QCircuit():
         Convenience: see src/tequila/circuit/qpic.py - export_to for more
         Parameters
         """
-        # this way we allow calling U.export_to("asd.png") instead of having to specify U.export_to(filename="asd.png")
-        if "circuit" not in kwargs:
-            kwargs["circuit"]=self
-        return export_to(*args, **kwargs)
+        return export_to(self, *args, **kwargs)
 
     @property
     def moments(self):
@@ -257,8 +255,8 @@ class QCircuit():
             the gates to add at the corresponding positions
         replace: list of bool: (Default value: None)
             Default is None which corresponds to all true
-            decide if gates shall be replaces or if the new parts shall be inserted without replacement
-            if replace[i] = true: gate at position [i] will be replaces by gates[i]
+            decide if gates shall be replaced or if the new parts shall be inserted without replacement
+            if replace[i] = true: gate at position [i] will be replaced by gates[i]
             if replace[i] = false: gates[i] circuit will be inserted at position [i] (beaming before gate previously at position [i])
         Returns
         -------
@@ -274,8 +272,9 @@ class QCircuit():
         dataset = zip(positions, circuits, replace)
         dataset = sorted(dataset, key=lambda x: x[0])
 
-        offset = 0
-        new_gatelist = self.gates
+        new_gatelist = []
+        last_idx = -1
+
         for idx, circuit, do_replace in dataset:
 
             # failsafe
@@ -286,13 +285,14 @@ class QCircuit():
             else:
                 gatelist = [circuit]
 
-            pos = idx + offset
-            if do_replace:
-                new_gatelist = new_gatelist[:pos] + gatelist + new_gatelist[pos + 1:]
-                offset += len(gatelist) - 1
-            else:
-                new_gatelist = new_gatelist[:pos] + gatelist + new_gatelist[pos:]
-                offset += len(gatelist)
+            new_gatelist += self.gates[last_idx + 1:idx]
+            new_gatelist += gatelist
+            if not do_replace:
+                new_gatelist.append(self.gates[idx])
+
+            last_idx = idx
+
+        new_gatelist += self.gates[last_idx + 1:]
 
         result = QCircuit(gates=new_gatelist)
         result.n_qubits = max(result.n_qubits, self.n_qubits)
@@ -596,7 +596,7 @@ class QCircuit():
 
         This is an in-place method, so it mutates self and doesn't return any value.
 
-        Raise TequilaWarning if there any qubits in common between self and control.
+        Raise TequilaWarning if there are any qubits in common between self and control.
         """
         gates = self.gates
         control = list_assignment(control)
@@ -613,8 +613,10 @@ class QCircuit():
                 if len(control_lst) < len(gate.control) + len(control):
                     # warnings.warn("Some of the controls {} were already included in the control "
                     #               "of a gate {}.".format(control, gate), TequilaWarning)
-                    raise TequilaWarning(f'Some of the controls {control} were already included '
-                                         f'in the control of a gate {gate}.')
+                    raise TequilaWarning(f"Some of the controls {control} were already included "
+                                         f"in the control of a gate {gate}. "
+                                         f"This might be because the same instance of a gate is used in multiple places, "
+                                         f"e.g. because the same circuit was appended twice.")
             else:
                 control_lst, not_control = list(control), list()
 

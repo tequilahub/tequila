@@ -208,11 +208,17 @@ class PySCFVQEWrapper:
             H = molecule.make_hardcore_boson_hamiltonian()
         else:
             H = molecule.make_hamiltonian()
+
+        rdm1 = None
+        rdm2 = None
         if self.vqe_solver is not None:
             vqe_solver_arguments = {}
             if self.vqe_solver_arguments is not None:
                 vqe_solver_arguments = self.vqe_solver_arguments
             result = self.vqe_solver(H=H, circuit=self.circuit, molecule=molecule, **vqe_solver_arguments)
+            if hasattr(self.vqe_solver, "compute_rdms"):
+                rdm1,rdm2 = self.vqe_solver.compute_rdms(U=self.circuit, variables=result.variables, molecule=molecule, use_hcb=restrict_to_hcb)
+                rdm2 = self.reorder(rdm2, 'dirac', 'mulliken')
         elif self.circuit is None:
             raise Exception("Orbital Optimizer: Either provide a callable vqe_solver or a circuit")
         else:
@@ -233,8 +239,9 @@ class PySCFVQEWrapper:
             # static ansatz
             U = self.circuit
 
-        rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb)
-        rdm2 = self.reorder(rdm2, 'dirac', 'mulliken')
+        if rdm1 is None or rdm2 is None:
+            rdm1, rdm2 = molecule.compute_rdms(U=U, variables=result.variables, spin_free=True, get_rdm1=True, get_rdm2=True, use_hcb=restrict_to_hcb)
+            rdm2 = self.reorder(rdm2, 'dirac', 'mulliken')
         if not self.silent:
             print("{:20} : {}".format("energy", result.energy))
             if len(self.history) > 0:
@@ -259,3 +266,4 @@ class PySCFVQEWrapper:
             else:
                 result += "{:30} : {}\n".format(k, v)
         return result
+

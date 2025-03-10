@@ -9,10 +9,12 @@ from tequila.objective import Objective, Variable, assign_variable, format_varia
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
+from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
-SUPPORTED_BACKENDS = ["qulacs_gpu", "qulacs",'qibo', "qiskit", "cirq", "pyquil", "symbolic", "qlm"]
-SUPPORTED_NOISE_BACKENDS = ["qiskit", 'cirq', 'pyquil'] # qulacs removed in v.1.9
-SUPPORTED_DENSITY_BACKENDS = ["qiskit"]
+SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm", "spex"]
+# TODO: Reenable noise for Qiskit
+SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
+
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -23,12 +25,20 @@ if typing.TYPE_CHECKING:
     from tequila.objective import Objective, Variable
     from tequila.circuit.gates import QCircuit
     import numbers.Real as RealNumber
-    from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
 """
 Check which simulators are installed
 We are distinguishing two classes of simulators: Samplers and full wavefunction simulators
 """
+
+
+HAS_SPEX = True
+try:
+    from tequila.simulators.simulator_spex import BackendCircuitSpex, BackendExpectationValueSpex
+
+    INSTALLED_SIMULATORS["spex"] = BackendTypes(BackendCircuitSpex, BackendExpectationValueSpex)
+except ImportError:
+    HAS_SPEX = False
 
 
 HAS_QISKIT = True
@@ -37,9 +47,25 @@ try:
     HAS_QISKIT = True
     INSTALLED_SIMULATORS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
     INSTALLED_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
-    INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
+    from tequila.simulators.simulator_qiskit import HAS_NOISE as HAS_QISKIT_NOISE
+    if HAS_QISKIT_NOISE:
+        INSTALLED_NOISE_SAMPLERS["qiskit"] = BackendTypes(BackendCircuitQiskit, BackendExpectationValueQiskit)
 except ImportError:
     HAS_QISKIT = False
+    HAS_QISKIT_NOISE = False
+
+try:
+    pkg_resources.require("qiskit-aer-gpu")
+    from tequila.simulators.simulator_qiskit_gpu import BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu
+    HAS_QISKIT_GPU = True
+    INSTALLED_SIMULATORS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
+    INSTALLED_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
+    from tequila.simulators.simulator_qiskit import HAS_NOISE as HAS_QISKIT_GPU_NOISE
+    if HAS_QISKIT_GPU_NOISE:
+        INSTALLED_NOISE_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
+except (ImportError, DistributionNotFound):
+    HAS_QISKIT_GPU = False
+    HAS_QISKIT_GPU_NOISE = False
 
 HAS_QIBO = True
 try:
@@ -80,8 +106,8 @@ except (ImportError, DistributionNotFound):
     HAS_QULACS = False
 
 try:
-    pkg_resources.require("qulacs-gpu")
-    import qulacs
+    # pkg_resources.require("qulacs-gpu")
+    from qulacs import QuantumStateGpu
     from tequila.simulators.simulator_qulacs_gpu import BackendCircuitQulacsGpu, BackendExpectationValueQulacsGpu
 
     HAS_QULACS_GPU = True
@@ -134,6 +160,8 @@ def show_available_simulators():
                                                              str(k in INSTALLED_SAMPLERS),
                                                              str(k in INSTALLED_NOISE_SAMPLERS),
                                                              str(k in INSTALLED_BACKENDS)))
+    if HAS_QISKIT and not HAS_QISKIT_NOISE:
+        print("missing qiskit_aer: no noisy simulation")
 
 
 def pick_backend(backend: str = None, samples: int = None, simulate_density: bool = False, noise: NoiseModel = None, device=None,
@@ -355,14 +383,15 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     return CircType(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device, *args, **kwargs)
 
 
-def simulate(objective: typing.Union['Objective', 'QCircuit','QTensor'],
+def simulate(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,
              samples: int = None,
              backend: str = None,
              noise: NoiseModel = None,
              device: str = None,
+             initial_state: Union[int, QubitWaveFunction] = 0,
              *args,
-             **kwargs) -> Union[RealNumber, 'QubitWaveFunction']:
+             **kwargs) -> Union[RealNumber, QubitWaveFunction]:
     """Simulate a tequila objective or circuit
 
     Parameters
@@ -380,6 +409,8 @@ def simulate(objective: typing.Union['Objective', 'QCircuit','QTensor'],
         specify a noise model to apply to simulation/sampling
     device:
         a device upon which (or in emulation of which) to sample
+    initial_state: int or QubitWaveFunction:
+        the initial state of the circuit
     *args :
 
     **kwargs :
@@ -401,7 +432,7 @@ def simulate(objective: typing.Union['Objective', 'QCircuit','QTensor'],
     compiled_objective = compile(objective=objective, samples=samples, simulate_density=False, variables=variables, backend=backend,
                                  noise=noise,device=device, *args, **kwargs)
 
-    return compiled_objective(variables=variables, samples=samples, *args, **kwargs)
+    return compiled_objective(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
 
 def simulate_density(objective: typing.Union['Objective', 'QCircuit','QTensor'],
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,

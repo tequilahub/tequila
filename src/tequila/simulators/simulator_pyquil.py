@@ -439,7 +439,7 @@ class BackendCircuitPyquil(BackendCircuit):
             if val > 0:
                 iprep += pyquil.gates.X(i)
         backend_result = simulator.wavefunction(iprep + self.circuit, memory_map=self.resolver)
-        return QubitWaveFunction.from_array(arr=backend_result.amplitudes, numbering=self.numbering)
+        return QubitWaveFunction.from_array(array=backend_result.amplitudes, numbering=self.numbering)
 
     def do_sample(self, samples, circuit, *args, **kwargs) -> QubitWaveFunction:
         """
@@ -495,7 +495,7 @@ class BackendCircuitPyquil(BackendCircuit):
                     listing.append(int(letter))
             return listing
 
-        result = QubitWaveFunction()
+        result = QubitWaveFunction(self.n_qubits, self.numbering)
         bit_dict = {}
         for b in backend_result:
             try:
@@ -505,7 +505,7 @@ class BackendCircuitPyquil(BackendCircuit):
 
         for k, v in bit_dict.items():
             arr = string_to_array(k)
-            result._state[BitString.from_array(arr)] = v
+            result[BitString.from_array(arr)] = v
         return result
 
     def no_translation(self, abstract_circuit):
