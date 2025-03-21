@@ -10,8 +10,10 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.wavefunction.density_matrix import DensityMatrix
 
 SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm", "spex"]
+SUPPORTED_DENSITY_BACKENDS = ["qiskit"]
 # TODO: Reenable noise for Qiskit
 SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
 
@@ -440,7 +442,7 @@ def simulate_density(objective: typing.Union['Objective', 'QCircuit','QTensor'],
              noise: NoiseModel = None,
              device: str = None,
              *args,
-             **kwargs) -> Union[RealNumber, 'DensityMatrix']:
+             **kwargs) -> Union[RealNumber, DensityMatrix]:
     
     variables = format_variable_dictionary(variables)
 

@@ -841,7 +841,7 @@ class BackendExpectationValue:
     def __deepcopy__(self, memodict={}):
         return type(self)(self.abstract_expectationvalue, **self._input_args)
 
-    def __call__(self, variables, samples: int = None, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
+    def __call__(self, variables, samples: int = None, simulate_density: bool = False, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
             if variables is None or (not set(self._variables) <= set(variables.keys())):

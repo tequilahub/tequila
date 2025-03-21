@@ -24,12 +24,12 @@ HAS_GOOGLE = importlib.util.find_spec('cirq_google')
 def test_cirq_google_devices():
     import cirq_google
     
-    U = tq.paulis.X(0)
+    U = tq.gates.X(0)
     U += tq.gates.Givens(0, 1, angle=numpy.pi/4)    # Givens rotation with angle = pi/4 gives 1/sqrt(2)|01> + 1/sqrt(2)|10> (up to a phase factor).
     wfn = tq.simulate(U, device="Sycamore", backend="cirq")
-    wfnx0 = tq.simulate(tq.paulis.X(0))
+    wfnx0 = tq.simulate(tq.gates.X(0) + tq.gates.X(1) + tq.gates.X(1)) # TODO add qubit count to simulate(?)
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx0))**2, 0.5)
-    wfnx1 = tq.simulate(tq.paulis.X(1))
+    wfnx1 = tq.simulate(tq.gates.X(1))
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx1))**2, 0.5)
 
 
@@ -113,7 +113,7 @@ def test_sampling_circuits(backend):
     assert d1[0] == 10
 
     d1 = tq.simulate(U, samples=10, backend=backend, read_out_qubits=[0, 2, 4, 6])
-    if 1 + 2 + 4 + 8 not in d1 or d1[1 + 2 + 4 + 8] != 10:
+    if 1 + 2 + 4 + 8 not in d1 or d1[1 + 2 + 4 + 8] != 10: # TODO readout is currently not functioning as intended by this test - the unread qubits are retained
         print("got this = ", d1)
     print("got this = ", d1)
     assert d1[1 + 2 + 4 + 8] == 10

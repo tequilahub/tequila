@@ -86,7 +86,7 @@ def qiskit_device_dict():
     # deprecated in the future
     # TODO: Instead of building a dict with all backends just to search it, search directly with `get_backend`
     # https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.AerProvider.html#qiskit_aer.AerProvider.get_backend
-    devices = {backend.name.lower(): backend for backend in qiskit_aer.AerProvider().backends()
+    devices = {backend.name().lower(): backend for backend in qiskit_aer.AerProvider().backends()
                if isinstance(backend, AerSimulator)}
 
     # FakeProvider has been removed, see https://github.com/Qiskit/qiskit/issues/10954
@@ -369,7 +369,7 @@ class BackendCircuitQiskit(BackendCircuit):
         #inital state stuff to add depending on whether it works
         opts={}
         if initial_state != 0:
-            array = numpy.zeros(shape=[2 ** self.n_qubits])
+            array = np.zeros(shape=[2 ** self.n_qubits])
             i = BitStringLSB.from_binary(BitString.from_int(integer=initial_state, nbits=self.n_qubits).binary)
             print(initial_state, " -> ", i)
             array[i.integer] = 1.0
