@@ -10,10 +10,13 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.wavefunction.density_matrix import DensityMatrix
 
 SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm", "spex"]
+SUPPORTED_DENSITY_BACKENDS = ["qiskit"]
 # TODO: Reenable noise for Qiskit
 SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
+
 BackendTypes = namedtuple('BackendTypes', 'CircType ExpValueType')
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
@@ -163,7 +166,7 @@ def show_available_simulators():
         print("missing qiskit_aer: no noisy simulation")
 
 
-def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = None, device=None,
+def pick_backend(backend: str = None, samples: int = None, simulate_density: bool = False, noise: NoiseModel = None, device=None,
                  exclude_symbolic: bool = True) -> str:
 
     """
@@ -195,6 +198,13 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
         raise TequilaException('device use requires backend specification!')
 
     if backend is None:
+        if simulate_density:
+            for f in SUPPORTED_DENSITY_BACKENDS:
+                if f in INSTALLED_SIMULATORS:
+                    return f
+            raise TequilaException(
+                "Density simulators unavailable!")
+
         if noise is None:
             if samples is None:
                 for f in SUPPORTED_BACKENDS:
@@ -250,6 +260,7 @@ def compile_objective(objective: typing.Union['Objective'],
                       variables: typing.Dict['Variable', 'RealNumber'] = None,
                       backend: str = None,
                       samples: int = None,
+                      simulate_density: bool = False,
                       device: str = None,
                       noise: NoiseModel = None,
                       *args,
@@ -279,7 +290,7 @@ def compile_objective(objective: typing.Union['Objective'],
         the compiled objective.
     """
 
-    backend = pick_backend(backend=backend, samples=samples, noise=noise, device=device)
+    backend = pick_backend(backend=backend, samples=samples, simulate_density=simulate_density, noise=noise, device=device)
 
     # dummy variables
     if variables is None:
@@ -325,6 +336,7 @@ def compile_circuit(abstract_circuit: 'QCircuit',
                     variables: typing.Dict['Variable', 'RealNumber'] = None,
                     backend: str = None,
                     samples: int = None,
+                    simulate_density: bool = False,
                     noise: NoiseModel = None,
                     device: str = None,
                     *args,
@@ -419,11 +431,34 @@ def simulate(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
             "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
                 objective.extract_variables()))
 
-    compiled_objective = compile(objective=objective, samples=samples, variables=variables, backend=backend,
-                                 noise=noise, device=device, *args, **kwargs)
+    compiled_objective = compile(objective=objective, samples=samples, simulate_density=False, variables=variables, backend=backend,
+                                 noise=noise,device=device, *args, **kwargs)
 
     return compiled_objective(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
 
+def simulate_density(objective: typing.Union['Objective', 'QCircuit','QTensor'],
+             variables: Dict[Union[Variable, Hashable], RealNumber] = None,
+             backend: str = None,
+             noise: NoiseModel = None,
+             device: str = None,
+             *args,
+             **kwargs) -> Union[RealNumber, DensityMatrix]:
+    
+    variables = format_variable_dictionary(variables)
+
+    if variables is None and not (len(objective.extract_variables()) == 0):
+        raise TequilaException(
+            "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
+                objective.extract_variables()))
+    
+    if backend == None:
+        backend = 'qiskit' #currently only permissible backend!
+    elif backend.lower() != 'qiskit':
+        TequilaException("Density matrix simulation currently works with only qiskit backend!")
+
+    compiled_objective = compile(objective=objective, samples=None, simulate_density=True, variables=variables, backend=backend,
+                                 noise=noise,device=device, *args, **kwargs)
+    return compiled_objective(variables=variables, samples=None, simulate_density=True, *args, **kwargs)
 
 def draw(objective, variables=None, backend: str = None, name=None, *args, **kwargs):
     """
@@ -515,6 +550,7 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
 def compile(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
             variables: Dict[Union['Variable', Hashable], RealNumber] = None,
             samples: int = None,
+            simulate_density: bool = False,
             backend: str = None,
             noise: NoiseModel = None,
             device: str = None,
@@ -544,7 +580,7 @@ def compile(objective: typing.Union['Objective', 'QCircuit', 'QTensor'],
 
     """
 
-    backend = pick_backend(backend=backend, noise=noise, samples=samples, device=device)
+    backend = pick_backend(backend=backend, noise=noise, samples=samples, simulate_density=simulate_density, device=device)
 
     if variables is not None:
         # allow hashable types as keys without casting it to variables

@@ -13,7 +13,7 @@ braket = BraKet
 from tequila.optimizers import INSTALLED_OPTIMIZERS, show_available_optimizers
 from tequila.optimizers import minimize, minimize_scipy, minimize_gd, optimizer_scipy
 
-from tequila.simulators.simulator_api import simulate, compile, compile_to_function, draw, pick_backend, \
+from tequila.simulators.simulator_api import simulate, simulate_density, compile, compile_to_function, draw, pick_backend, \
     INSTALLED_SAMPLERS, \
     INSTALLED_SIMULATORS, SUPPORTED_BACKENDS, INSTALLED_BACKENDS, show_available_simulators
 from tequila.wavefunction import QubitWaveFunction
