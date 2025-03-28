@@ -595,16 +595,116 @@ class QuantumChemistryBase:
         # backward compatibility
         return self.use_native_orbitals()
     
-    def use_native_orbitals(self, inplace=False):
+    def use_native_orbitals(self, inplace=False, core: list = None, *args, **kwargs):
         """
+        Parameters
+        ----------
+        inplace: update current molecule or return a new instance
+        core: list of the core orbitals indices (they will be frozen) on the current orbital schema. If not provided, they will be employed the
+        indices on the integral manager. If active space on the intregral manager and core is not None, core will be interpreted
+        with respect to the complete basis.
+        active(in kwargs): list of the active orbital indices on the Native Orbs schema. If not provided they will be chosen the ones
+        with the lowest overlap with the core orbitals. For example where it may necesary, check the H-He-H molecule
+        with pyscf; the fist HF orbital (at high interatomic distances) correspond to |\phi_0> = 1.|\chi_1>, being identical to the \varphi_1>.
+        If not specified,an with core=[0], active will be [1,2] breaking the orthogonalization.
         Returns
         -------
         New molecule in the native (orthonormalized) basis given
         e.g. for standard basis sets the orbitals are orthonormalized Gaussian Basis Functions
         """
-        if not self.integral_manager.active_space_is_trivial():
-            warnings.warn("orthonormalize_basis_orbitals: active space is set and might lead to inconsistent behaviour", TequilaWarning)
+        c = copy.deepcopy(self.integral_manager.orbital_coefficients)
+        s = self.integral_manager.overlap_integrals
+        d = self.integral_manager.get_orthonormalized_orbital_coefficients()
+        def inner(a, b,s):
+            return numpy.sum(numpy.multiply(numpy.outer(a,b),s))
+        def orthogonalize(c,d,s):
+            '''
+            :return: orthogonalized orbitals with core HF orbitals and active Orthongonalized Native orbitals.
+            '''
+            ### Computing Core-Active overlap Matrix
+                # sbar_{ki} = \langle \phi_k | \varphi_i \rangle = \sum_{m,n} c_{nk}d_{mi}\langle \chi_n | \chi_m \rangle
+                # c_{nk} = HF coeffs, d_{mi} = nat orb coef s_{mn} = Atomic Overlap Matrix
+                # k \in active orbs, i \in core orbs, m,n \in basis coeffs
+                # sbar = np.einsum('nk,mi,nm->ki', c, d, s) #only works if active == to_active
+            c = c.T
+            d = d.T
+            sbar = numpy.zeros(shape=s.shape)
+            for k in active:
+                for i in core:
+                    sbar[i][to_active[k]] = inner(c[i],d[k],s)
+            ### Projecting out Core orbitals from the Native ones
+                # dbar_{ji} = d_{ji} - \sum_k sbar_{ki}c_{jk}
+                # k \in active, i \in core, j in basis coeffs
+            dbar = numpy.zeros(shape=s.shape)
 
+            for j in active:
+                dbar[to_active[j]] = d[j]
+                for i in core:
+                    temp = sbar[i][to_active[j]] * c[i]
+                    dbar[to_active[j]] -= temp
+            ### Projected-out Nat Orbs Normalization
+            for i in to_active.values():
+                norm = numpy.sqrt(numpy.sum(numpy.multiply(numpy.outer(dbar[i], dbar[i]), s.T)))
+                if not numpy.isclose(norm, 0):
+                    dbar[i] = dbar[i] / norm
+            ### Reintroducing the New Coeffs on the HF coeff matrix
+            for j in to_active.values():
+                c[j] = dbar[j]
+            ### Compute new orbital overlap matrix:
+            sprima = numpy.eye(len(c))
+            for idx, i in enumerate(to_active.values()):
+                for j in [*to_active.values()][idx:]:
+                    sprima[i][j] = inner(c[i],c[j],s)
+                    sprima[j][i] = sprima[i][j]
+            ### Symmetric orthonormalization
+            lam_s, l_s = numpy.linalg.eigh(sprima)
+            lam_s = lam_s * numpy.eye(len(lam_s))
+            lam_sqrt_inv = numpy.sqrt(numpy.linalg.inv(lam_s))
+            symm_orthog = numpy.dot(l_s, numpy.dot(lam_sqrt_inv, l_s.T))
+            return symm_orthog.dot(c).T
+        def get_active(core):
+            ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
+            for i in core:
+                for j in range(len(d)):
+                    ov[j] += inner(c[i], d[j],s)
+            act = []
+            for i in range(len(self.integral_manager.orbitals) - len(core)):
+                idx = numpy.argmin(ov)
+                act.append(idx)
+                ov[idx] = 1 * len(core)
+            act.sort()
+            return act
+
+        active = None
+        if not self.integral_manager.active_space_is_trivial() and core is None:
+            core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
+        if 'active' in kwargs:
+            active = kwargs['active']
+            kwargs.pop('active')
+        else:
+            if active is None:
+                if core is None:
+                    core = []
+                    active = [i for i in range(len(self.integral_manager.orbitals))]
+                else:
+                    if isinstance(core,int):
+                       core = [core]
+                    active = get_active(core)
+        assert len(active) + len(core) == len(self.integral_manager.orbitals)
+        to_active = [i for i in range(len(self.integral_manager.orbitals)) if i not in core]
+        to_active = {active[i]: to_active[i] for i in range(len(active))}
+        if len(core):
+            coeff = orthogonalize(c,d,s)
+            if inplace:
+                self.integral_manager.orbital_coefficients = coeff
+                self.integral_manager.active_space = [*to_active.values()]
+                return self
+            else:
+                integral_manager = copy.deepcopy(self.integral_manager)
+                integral_manager.orbital_coefficients = coeff
+                parameters = copy.deepcopy(self.parameters)
+                result = QuantumChemistryBase(parameters=parameters, integral_manager=integral_manager,transformation=self.transformation,active_orbitals=[*to_active.values()])
+                return result
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         if inplace:
             self.integral_manager.transform_to_native_orbitals()
