@@ -1,4 +1,5 @@
 import typing, copy, numbers
+from typing import Union
 from tequila.grouping.compile_groups import compile_commuting_parts
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation
@@ -545,7 +546,7 @@ class Objective:
                "variables          = {}\n" \
                "types              = {}".format(unique, measurements, variables, types)
 
-    def __call__(self, variables=None, *args, **kwargs):
+    def __call__(self, variables=None, initial_state = 0, *args, **kwargs):
         """
         Return the output of the calculation the objective represents.
 
@@ -553,6 +554,8 @@ class Objective:
         ----------
         variables: dict:
             dictionary instantiating all variables that may appear within the objective.
+        initial_state: int or QubitWaveFunction:
+            the initial state of the circuit
         args
         kwargs
 
@@ -579,7 +582,7 @@ class Objective:
         ev_array = []
         for E in self.args:
             if E not in evaluated:  #
-                expval_result = E(variables=variables, *args, **kwargs)
+                expval_result = E(variables=variables, initial_state=initial_state, *args, **kwargs)
                 evaluated[E] = expval_result
             else:
                 expval_result = evaluated[E]

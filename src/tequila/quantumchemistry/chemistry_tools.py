@@ -442,7 +442,14 @@ class ParametersQC:
             for i in range(natoms):
                 coord += content[2 + i]
             return coord, comment
-
+    def get_xyz(self)->str:
+        geom = self.parameters.get_geometry()
+        f = ''
+        f += f'{len(geom)}\n'
+        f += f'{self.parameters.name}\n'
+        for at in geom:
+            f += f'{at[0]} {at[1][0]} {at[1][1]} {at[1][2]}\n'
+        return f
 
 @dataclass
 class ClosedShellAmplitudes:

@@ -298,8 +298,8 @@ def test_wfn_simple_consistency(simulator):
     print(ac)
     wfn0 = tequila.simulators.simulator_api.simulate(ac, backend=simulator)
     wfn1 = tequila.simulators.simulator_api.simulate(ac, backend=None)
-    print(wfn0)
-    print(wfn1)
+    print("spex:", wfn0, "\n")
+    print("reference:", wfn1, "\n")
     assert (wfn0.isclose(wfn1))
 
 
@@ -371,8 +371,19 @@ def test_initial_state_from_wavefunction(simulator):
     assert result.isclose(QubitWaveFunction.from_array(np.array([100.0, 0.0])))
 
     state = QubitWaveFunction.from_array(np.array([1.0, -1.0])).normalize()
+    result = tq.simulate(U, initial_state=state, backend=simulator)
+    assert result.isclose(QubitWaveFunction.from_basis_state(n_qubits=1, basis_state=1))
     result = tq.simulate(U, initial_state=state, backend=simulator, samples=100)
     assert result.isclose(QubitWaveFunction.from_array(np.array([0.0, 100.0])))
+
+    U = tq.gates.X(target=0)
+    H = tq.paulis.Z(qubit=0)
+    E = tq.ExpectationValue(U, H)
+    state = QubitWaveFunction.from_array(np.array([0.0, 1.0])).normalize()
+    result = tq.simulate(E, initial_state=state, backend=simulator)
+    assert numpy.isclose(result, 1.0)
+    result = tq.simulate(E, initial_state=state, backend=simulator, samples=100)
+    assert numpy.isclose(result, 1.0)
 
 
 

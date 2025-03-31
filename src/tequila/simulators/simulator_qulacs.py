@@ -429,13 +429,15 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
     use_mapping = True
     BackendCircuitType = BackendCircuitQulacs
 
-    def simulate(self, variables, *args, **kwargs) -> numpy.array:
+    def simulate(self, variables, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs) -> numpy.array:
         """
         Perform simulation of this expectationvalue.
         Parameters
         ----------
         variables:
             variables, to be supplied to the underlying circuit.
+        initial_state: int or QubitWaveFunction:
+            the initial state of the circuit
         args
         kwargs
 
@@ -453,7 +455,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             return numpy.asarray[self.H]
 
         self.U.update_variables(variables)
-        state = self.U.initialize_state(self.n_qubits)
+        state = self.U.initialize_state(self.n_qubits, initial_state)
         self.U.circuit.update_quantum_state(state)
         result = []
         for H in self.H:
@@ -495,7 +497,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             result.append(qulacs_H)
         return result
 
-    def sample(self, variables, samples, *args, **kwargs) -> numpy.array:
+    def sample(self, variables, samples, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs) -> numpy.array:
         """
         Sample this Expectation Value.
         Parameters
@@ -504,6 +506,8 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             variables, to supply to the underlying circuit.
         samples: int:
             the number of samples to take.
+        initial_state: int or QubitWaveFunction:
+            the initial state of the circuit
         args
         kwargs
 
@@ -513,13 +517,13 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             the result of sampling as a number.
         """
         self.update_variables(variables)
-        state = self.U.initialize_state(self.n_qubits)
+        state = self.U.initialize_state(self.n_qubits, initial_state)
         self.U.circuit.update_quantum_state(state)
         result = []
-        for H in self._reduced_hamiltonians: # those are the hamiltonians which where non-used qubits are already traced out
+        for H in self._reduced_hamiltonians:  # those are the hamiltonians which where non-used qubits are already traced out
             E = 0.0
             if H.is_all_z() and not self.U.has_noise:
-                E = super().sample(samples=samples, variables=variables, *args, **kwargs)
+                E = super().sample(samples=samples, variables=variables, initial_state=initial_state, *args, **kwargs)
             else:
                 for ps in H.paulistrings:
                     # change basis, measurement is destructive so the state will be copied
@@ -530,8 +534,8 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                     qbc = self.U.create_circuit(abstract_circuit=bc, variables=None)
                     Esamples = []
                     for sample in range(samples):
-                        if self.U.has_noise and sample>0:
-                            state = self.U.initialize_state(self.n_qubits)
+                        if self.U.has_noise and sample > 0:
+                            state = self.U.initialize_state(self.n_qubits, initial_state)
                             self.U.circuit.update_quantum_state(state)
                             state_tmp = state
                         else:
@@ -540,7 +544,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                             qbc.update_quantum_state(state_tmp)
                         ps_measure = 1.0
                         for idx in ps.keys():
-                            assert idx in self.U.abstract_qubits # assert that the hamiltonian was really reduced
+                            assert idx in self.U.abstract_qubits  # assert that the hamiltonian was really reduced
                             M = qulacs.gate.Measurement(self.U.qubit(idx), self.U.qubit(idx))
                             M.update_quantum_state(state_tmp)
                             measured = state_tmp.get_classical_value(self.U.qubit(idx))

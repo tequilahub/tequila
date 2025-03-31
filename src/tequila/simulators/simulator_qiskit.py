@@ -9,7 +9,7 @@ from typing import Union
 import warnings
 import numpy as np
 import qiskit, qiskit_aer, qiskit.providers.fake_provider
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, transpile
 
 HAS_NOISE = True
 try:
@@ -316,11 +316,9 @@ class BackendCircuitQiskit(BackendCircuit):
             optimization_level = kwargs['optimization_level']
 
         circuit = self.circuit.assign_parameters(self.resolver)
-
         circuit = self.add_state_init(circuit, initial_state)
-
         circuit.save_statevector()
-
+        circuit = transpile(circuit, qiskit_backend)
         backend_result = qiskit_backend.run(circuit, optimization_level=optimization_level).result()
 
         return QubitWaveFunction.from_array(array=backend_result.get_statevector(circuit).data, numbering=self.numbering)
@@ -349,11 +347,11 @@ class BackendCircuitQiskit(BackendCircuit):
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
         if self.device is None:
-            qiskit_backend = self.retrieve_device('aer_simulator')
+            qiskit_backend = self.retrieve_device(self.STATEVECTOR_DEVICE_NAME)
         else:
             qiskit_backend = self.retrieve_device(self.device)
 
-        if isinstance(qiskit_backend, IBMBackend):
+        if HAS_IBMQ and isinstance(qiskit_backend, IBMBackend):
             if self.noise_model is not None:
                 raise TequilaException(
                     'Cannot combine backend {} with custom noise models.'.format(str(qiskit_backend)))
@@ -370,7 +368,7 @@ class BackendCircuitQiskit(BackendCircuit):
                 if self.noise_model is not None:
                     from_back = self.noise_model
                 basis = from_back.basis_gates
-                use_backend = self.retrieve_device('aer_simulator')
+                use_backend = self.retrieve_device(self.STATEVECTOR_DEVICE_NAME)
                 use_backend.set_options(noise_model=from_back)
                 circuit = qiskit.transpile(circuit, backend=use_backend,
                                            basis_gates=basis,
