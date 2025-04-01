@@ -45,6 +45,10 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
             # solve restricted HF
             mf = pyscf.scf.RHF(mol)
+            mf.verbose = False
+            if "verbose" in kwargs:
+                mf.verbose = kwargs["verbose"]
+
             mf.kernel()
 
             # only works if point_group is not C1
@@ -71,6 +75,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             kwargs["two_body_integrals"] = g_ao
             kwargs["one_body_integrals"] = h_ao
             kwargs["orbital_coefficients"] = mo_coeff
+            kwargs["orbital_type"] = "hf"
 
             if "nuclear_repulsion" not in kwargs:
                 kwargs["nuclear_repulsion"] = mol.energy_nuc()

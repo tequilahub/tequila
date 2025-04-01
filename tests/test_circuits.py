@@ -11,6 +11,7 @@ from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
+
 def test_qubit_map():
 
     for gate in [Rx, Ry, Rz]:
@@ -82,7 +83,7 @@ def test_conventions():
 
 
 def strip_sympy_zeros(wfn: QubitWaveFunction):
-    result = QubitWaveFunction()
+    result = QubitWaveFunction(wfn.n_qubits, wfn.numbering)
     for k, v in wfn.items():
         if v != 0:
             result[k] = v
@@ -130,7 +131,7 @@ def test_basic_gates():
     cos = sympy.cos
     sin = sympy.sin
     exp = sympy.exp
-    BS = QubitWaveFunction.from_int
+    def BS(state): return QubitWaveFunction.from_basis_state(n_qubits=1, basis_state=state)
     angle = sympy.pi
     gates = [X(0), Y(0), Z(0), Rx(target=0, angle=angle), Ry(target=0, angle=angle), Rz(target=0, angle=angle), H(0)]
     results = [
@@ -310,15 +311,17 @@ def test_unitary_gate_u_u3(gate, theta, phi, lambd):
 
 def test_swap():
     U = X(0)
-    U += SWAP(0,2)
+    U += SWAP(0, 2)
     wfn = simulate(U)
     wfnx = simulate(X(2))
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
 
     U = X(2)
-    U += SWAP(0,2, power=2.0)
+    U += SWAP(0,2, power=3.0)
     wfn = simulate(U)
-    wfnx = simulate(X(0))
+    V = X(0)
+    V.n_qubits = 3
+    wfnx = simulate(V)
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2,1.0)
 
     U = X(0)+X(3)
@@ -345,9 +348,13 @@ def test_givens():
     U = X(0)
     U += Givens(0, 1, angle=-numpy.pi/4)
     wfn = simulate(U)
-    wfnx = simulate(X(0))
+    V = X(0)
+    V.n_qubits = 2
+    wfnx = simulate(V)
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2, 0.5)
-    wfnx = simulate(X(1))
+    V = X(1)
+    V.n_qubits = 2
+    wfnx = simulate(V)
     assert numpy.isclose(numpy.abs(wfn.inner(wfnx))**2, 0.5)
     
     U = X(0)

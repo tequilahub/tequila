@@ -92,7 +92,7 @@ def test_gradient_UY_HX(simulator, angle_value, controlled, assume_real, silent=
         print("cos(angle)=", numpy.cos(angle()))
 
 
-@pytest.mark.parametrize("simulator", simulators)
+@pytest.mark.parametrize("simulator", samplers)
 @pytest.mark.parametrize("controlled", [False, True])
 @pytest.mark.parametrize("assume_real", [False, True])
 @pytest.mark.parametrize("angle_value", numpy.random.uniform(0.0, 2.0 * numpy.pi, 1))

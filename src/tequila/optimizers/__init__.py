@@ -16,7 +16,7 @@ class _Optimizers:
     methods: list = None
 
 
-SUPPORTED_OPTIMIZERS = ['scipy', 'phoenics', 'gpyopt', 'gd']
+SUPPORTED_OPTIMIZERS = ['scipy', 'gpyopt', 'gd']
 INSTALLED_OPTIMIZERS = {}
 INSTALLED_OPTIMIZERS['scipy'] = _Optimizers(cls=OptimizerSciPy,
                                             minimize=minimize_scipy,
@@ -36,19 +36,6 @@ try:
     has_gpyopt = True
 except ImportError:
     has_gpyopt = False
-
-has_phoenics = False
-try:
-    from tequila.optimizers.optimizer_phoenics import OptimizerPhoenics
-    from tequila.optimizers.optimizer_phoenics import minimize as minimize_phoenics
-
-    INSTALLED_OPTIMIZERS['phoenics'] = _Optimizers(cls=OptimizerPhoenics,
-                                                   minimize=minimize_phoenics,
-                                                   methods=OptimizerPhoenics.available_methods())
-    has_phoenics = True
-except ImportError:
-    has_phoenics = False
-
 
 def show_available_optimizers(module=None):
     """

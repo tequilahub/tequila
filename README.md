@@ -6,15 +6,18 @@ Tequila is an abstraction framework for (variational) quantum algorithms.
 It operates on abstract data structures allowing the formulation, combination, automatic differentiation and optimization of generalized objectives.
 Tequila can execute the underlying quantum expectation values on state of the art simulators as well as on real quantum devices.  
 
+# Getting Started
+
+Get started with our collection of  
+- *[Tutorials](https://thuytr18.github.io/tequila-tutorials-beta/tutorials.html)*  
+
+Further sources:
 - [overview article](https://arxiv.org/abs/2011.03057)   
 - [tequila in a nutshell](https://kottmanj.github.io/tequila-in-a-nutshell/#/)  
-- [getting started](https://jakobkottmann.com/posts/tq-get-started/)    
-- [circuits in tequila](https://jakobkottmann.com/posts/tq-circuits/)  
-- [notebook collection](https://github.com/tequilahub/tequila-tutorials)  
 - [talks and slides](https://kottmanj.github.io/talks_and_material/)  
 
 # Installation
-Recommended Python version is 3.8-3.9.   
+Recommended Python version is 3.9 (3.10).   
 Tequila supports linux, osx and windows. However, not all optional dependencies are supported on windows.  
 
 ## Install from PyPi
@@ -240,14 +243,18 @@ A.G. Cadavid, I. Montalban, A. Dalal, E. Solano, N.N. Hegade
 Efficient DCQO Algorithm within the Impulse Regime for Portfolio Optimization  
 [arxiv:2308.15475](https://arxiv.org/abs/2308.15475)  
 
+A. Anand, K. Brown  
+Hamiltonians, groups, graphs and ansätze  
+[arxiv:2312.17146](https://arxiv.org/abs/2312.17146)  
+
+P.W.K. Jensen, E.R. Kjellgren, P. Reinholdt, K.M. Ziems, S. Coriani, J. Kongsted, S. Sauer  
+Quantum Equation of Motion with Orbital Optimization for Computing Molecular Properties in Near-Term Quantum Computing  
+[arxiv:2312.12386](https://arxiv.org/abs/2312.12386)  
+
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
 # Dependencies
-Support for additional optimizers or quantum backends can be activated by intalling them in your environment.
-Tequila will then detect them automatically.
-Currently those are: [Phoenics](https://github.com/aspuru-guzik-group/phoenics)
- and [GPyOpt](https://sheffieldml.github.io/GPyOpt/).
-Quantum backends are treated in the same way.
+Support for specific backends (quantum simulators, optimizers, quantum chemistry) can be activated by intalling them in your environment.
 
 ## Quantum Backends
 Currently supported
@@ -267,7 +274,7 @@ Currently supported
 ### [Psi4](https://github.com/psi4/psi4).
 In a conda environment this can be installed with
 ```bash
-conda install psi4 -c psi4
+conda install psi4 -c conda-forge
 ```
 Here is a small [tutorial](https://nbviewer.org/github/tequilahub/tequila-tutorials/blob/main/chemistry/ChemistryModule.ipynb) that illustrates the usage.
 
@@ -335,12 +342,7 @@ You can avoid it by downgrading cirq and openfermion
 ```bash
 pip install --upgrade "openfermion<=1.0.0"
 pip install --upgrade "cirq<=0.9.1"
-```  
-
-
-## Qiskit backend
-Qiskit version 0.25 is not yet supported.
-`pip install --upgrade qiskit<0.25` fixes potential issues. If not: Please let us know.
+```
 
 ## Circuit drawing
 Standard graphical circuit representation within a Jupyter environment is often done using `tq.draw`.
@@ -381,5 +383,3 @@ Tequila runs on Mac OSX.
 You might get in trouble with installing qulacs since it currently does not work with Apple's clang compiler.
 You need to install latest GNU compile (at least gcc-7 and g++7) and set them as default before installing qulacs over pip.
 
-## Qibo and GPyOpt
-Currently you can't use Qibo and GPyOpt within the same environment.

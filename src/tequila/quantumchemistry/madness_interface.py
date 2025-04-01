@@ -127,7 +127,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             h = "failed"
             g = "failed"
 
-        if "failed" in h or "failed" in g:
+        if (isinstance(h, str) and "failed" in h) or (isinstance(g, str) and "failed" in g):
             status = "found {}_htensor.npy={}\n".format(name, "failed" not in h)
             status += "found {}_gtensor.npy={}\n".format(name, "failed" not in g)
             try:
@@ -425,7 +425,10 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         """
         # check if the used qubit encoding has a hcb transformation
-        have_hcb_trafo = self.transformation.hcb_to_me() is not None
+        try:
+            have_hcb_trafo = self.transformation.hcb_to_me() is not None
+        except:
+            have_hcb_trafo = False
         name = name.upper()
 
         # Default Method

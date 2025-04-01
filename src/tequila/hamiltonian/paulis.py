@@ -256,7 +256,7 @@ def Projector(wfn, threshold=0.0, n_qubits=None) -> QubitHamiltonian:
 
     """
 
-    wfn = QubitWaveFunction(state=wfn, n_qubits=n_qubits)
+    wfn = QubitWaveFunction.convert_from(n_qubits, wfn)
 
     H = QubitHamiltonian.zero()
     for k1, v1 in wfn.items():
@@ -304,8 +304,9 @@ def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = Fal
 
     """
     H = QubitHamiltonian.zero()
-    ket = QubitWaveFunction(state=ket, n_qubits=n_qubits)
-    bra = QubitWaveFunction(state=bra, n_qubits=n_qubits)
+
+    ket = QubitWaveFunction.convert_from(n_qubits, ket)
+    bra = QubitWaveFunction.convert_from(n_qubits, bra)
 
     for k1, v1 in bra.items():
         for k2, v2 in ket.items():
