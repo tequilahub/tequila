@@ -507,8 +507,9 @@ def test_orbital_transformation():
 
 @pytest.mark.parametrize("system",["H 0.0 0.0 0.0\nHe 0.0 0.0 1.3\nH 0.0 0.0 2.6","Be 0. 0. 0."])
 @pytest.mark.parametrize("core",[[],[0],[0,1]])
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 def test_native_active_space(system,core):
-    mol = tq.Molecule(geometry=system,basis_set='sto-3g',backend='pyscf',frozen_core=False)
+    mol = tq.Molecule(geometry=system,basis_set='sto-3g',frozen_core=False)
     eival, eivect = numpy.linalg.eigh(mol.make_hamiltonian().to_matrix())
     mol = mol.use_native_orbitals(core=core)
     eival1, eivect1 = numpy.linalg.eigh(mol.make_hamiltonian().to_matrix())
