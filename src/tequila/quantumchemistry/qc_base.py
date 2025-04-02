@@ -666,7 +666,7 @@ class QuantumChemistryBase:
             ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
             for i in core:
                 for j in range(len(d)):
-                    ov[j] += inner(c[i], d[j],s)
+                    ov[j] += numpy.abs(inner(c[i], d[j],s))
             act = []
             for i in range(len(self.integral_manager.orbitals) - len(core)):
                 idx = numpy.argmin(ov)
