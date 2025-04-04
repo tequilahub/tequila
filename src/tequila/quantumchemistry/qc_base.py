@@ -601,12 +601,11 @@ class QuantumChemistryBase:
         ----------
         inplace: update current molecule or return a new instance
         core: list of the core orbitals indices (they will be frozen) on the current orbital schema. If not provided, they will be employed the
-        indices on the integral manager. If active space on the intregral manager and core is not None, core will be interpreted
-        with respect to the complete basis.
+        indices on the integral manager. Indices interpreted with respect to the complete basis. If core provided but not active, will be
+        chosen the ones with the lowest overlap on the Native schema.
         active(in kwargs): list of the active orbital indices on the Native Orbs schema. If not provided they will be chosen the ones
-        with the lowest overlap with the core orbitals. For example where it may necesary, check the H-He-H molecule
-        with pyscf; the fist HF orbital (at high interatomic distances) correspond to |\phi_0> = 1.|\chi_1>, being identical to the \varphi_1>.
-        If not specified,an with core=[0], active will be [1,2] breaking the orthogonalization.
+        with the lowest overlap with the core orbitals. For an example where it may necesary, check the H-He-H molecule
+        with pyscf; the fist HF orbital (at high interatomic distances) correspond to |\phi_0> = 1.|\chi_1>, being identical to the native \varphi_1>.
         Returns
         -------
         New molecule in the native (orthonormalized) basis given
@@ -666,7 +665,7 @@ class QuantumChemistryBase:
             ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
             for i in core:
                 for j in range(len(d)):
-                    ov[j] += numpy.abs(inner(c[i], d[j],s))
+                    ov[j] += numpy.abs(inner(c.T[i], d.T[j],s))
             act = []
             for i in range(len(self.integral_manager.orbitals) - len(core)):
                 idx = numpy.argmin(ov)
@@ -674,13 +673,28 @@ class QuantumChemistryBase:
                 ov[idx] = 1 * len(core)
             act.sort()
             return act
-
+            
+        def get_core(active):
+            ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
+            for i in active:
+                for j in range(len(d)):
+                    ov[j] += numpy.abs(inner(d.T[i], c.T[j], s))
+            co = []
+            for i in range(len(self.integral_manager.orbitals) - len(active)):
+                idx = numpy.argmin(ov)
+                co.append(idx)
+                ov[idx] = 1 * len(active)
+            co.sort()
+            return co
+            
         active = None
         if not self.integral_manager.active_space_is_trivial() and core is None:
             core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
         if 'active' in kwargs:
             active = kwargs['active']
             kwargs.pop('active')
+            if core is None:
+                core = get_core(active)
         else:
             if active is None:
                 if core is None:
@@ -696,12 +710,16 @@ class QuantumChemistryBase:
         if len(core):
             coeff = orthogonalize(c,d,s)
             if inplace:
-                self.integral_manager.orbital_coefficients = coeff
-                self.integral_manager.active_space = [*to_active.values()]
+                self.integral_manager = self.initialize_integral_manager(one_body_integrals=self.integral_manager.one_body_integrals,
+                two_body_integrals=self.integral_manager.two_body_integrals,constant_term=self.integral_manager.constant_term,
+                 active_orbitals=[*to_active.values()],reference_orbitals=[i.idx for i in self.integral_manager.reference_orbitals]
+                , frozen_orbitals=core, orbital_coefficients=coeff, overlap_integrals=s)
                 return self
             else:
-                integral_manager = copy.deepcopy(self.integral_manager)
-                integral_manager.orbital_coefficients = coeff
+                integral_manager = self.initialize_integral_manager(one_body_integrals=self.integral_manager.one_body_integrals,
+                two_body_integrals=self.integral_manager.two_body_integrals,constant_term=self.integral_manager.constant_term
+                , active_orbitals=[*to_active.values()],reference_orbitals=[i.idx for i in self.integral_manager.reference_orbitals]
+                , frozen_orbitals=core, orbital_coefficients=coeff, overlap_integrals=s)
                 parameters = copy.deepcopy(self.parameters)
                 result = QuantumChemistryBase(parameters=parameters, integral_manager=integral_manager,transformation=self.transformation,active_orbitals=[*to_active.values()])
                 return result
