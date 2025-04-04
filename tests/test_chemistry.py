@@ -511,7 +511,7 @@ def test_orbital_transformation():
 def test_native_active_space(system,core):
     mol = tq.Molecule(geometry=system,basis_set='sto-3g',frozen_core=False,frozen_orbitals=core)
     eival, eivect = numpy.linalg.eigh(mol.make_hamiltonian().to_matrix())
-    mol = mol.use_native_orbitals(core=core)
+    mol = tq.Molecule(geometry=system,basis_set='sto-3g',frozen_core=False).use_native_orbitals(core=core)
     eival1, eivect1 = numpy.linalg.eigh(mol.make_hamiltonian().to_matrix())
     assert numpy.allclose(eival,eival1)
 
