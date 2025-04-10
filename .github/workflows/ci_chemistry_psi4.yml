@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.10]
 
     steps:
     - uses: actions/checkout@v2
@@ -50,7 +50,7 @@ jobs:
         source $HOME/.bashrc
         source $CONDABASE/bin/activate
         conda activate test_psi4
-        conda install psi4 python=3.9 -c conda-forge
+        conda install psi4 python=3.10 -c conda-forge
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
         python -m pip install -e .
