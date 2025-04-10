@@ -50,8 +50,8 @@ jobs:
       - name: Set up virtual environment and run tests
         run: |
 
-          conda run -n pip install -e .
-          conda run -n pip install pyscf pytest
+          onda run -n psi4_env pip install -e .
+          onda run -n psi4_env pip install pyscf pytest
           cd tests
-          conda run -n pytest test_chemistry.py
-          conda run -n pytest test_adapt.py
+          onda run -n psi4_env pytest test_chemistry.py
+          onda run -n psi4_env pytest test_adapt.py
