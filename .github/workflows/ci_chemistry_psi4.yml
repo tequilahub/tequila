@@ -53,5 +53,6 @@ jobs:
 
           conda run -n psi4_env pip install -e .
           conda run -n psi4_env pip install pyscf pytest
+          cp -r tests/data data
           conda run -n psi4_env pytest tests/test_chemistry.py
           conda run -n psi4_env pytest tests/test_adapt.py
