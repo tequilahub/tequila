@@ -37,7 +37,7 @@ jobs:
           
       - name: Create Conda environment and install Psi4
         run: |
-          python --version
+          python3 --version
           conda install psi4 python=3.10 -c conda-forge 
       - name: Verify Psi4 installation
         run: |
