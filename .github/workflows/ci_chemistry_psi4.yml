@@ -21,39 +21,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install Python 3.10 from source
+      - name: Set up Python environment
         run: |
-          apt-get update && apt-get install -y \
-            build-essential \
-            zlib1g-dev \
-            libncurses5-dev \
-            libgdbm-dev \
-            libnss3-dev \
-            libssl-dev \
-            libreadline-dev \
-            libffi-dev \
-            curl \
-            libsqlite3-dev \
-            wget \
-            lzma-dev \
-            tk-dev \
-            xz-utils
+          python -m venv venv
+          ./venv/bin/pip install --upgrade pip
+          ./venv/bin/pip install -r requirements.txt 
 
-          curl -O https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz
-          tar -xf Python-3.10.14.tgz
-          cd Python-3.10.14
-          ./configure --enable-optimizations
-          make -j$(nproc)
-          make altinstall
-
-          ln -sf /usr/local/bin/python3.10 /usr/bin/python
-          ln -sf /usr/local/bin/pip3.10 /usr/bin/pip
+      - name: Verify Psi4 and Python installation
+        run: |
+          python -c "import psi4; print(f'Psi4 version: {psi4.__version__}')"
 
       - name: Set up virtual environment and run tests
         run: |
           python -m venv venv
-          ./venv/bin/pip install --upgrade pip
-          ./venv/bin/pip install -r requirements.txt
           ./venv/bin/pip install -e .
           ./venv/bin/pip install pyscf pytest
           cd tests
