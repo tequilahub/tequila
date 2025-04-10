@@ -32,7 +32,7 @@ jobs:
           # Initialize Conda
           conda init bash
           # Restart the shell to apply changes
-          source ~/.bashrc
+          bash 
           
       - name: Create Conda environment and install Psi4
         run: |
