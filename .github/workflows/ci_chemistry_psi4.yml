@@ -26,7 +26,14 @@ jobs:
         with:
           miniconda-version: 'latest'
           auto-activate-base: false
-
+          
+      - name: Initialize Conda for the shell
+        run: |
+          # Initialize Conda
+          conda init bash
+          # Restart the shell to apply changes
+          source ~/.bashrc
+          
       - name: Create Conda environment and install Psi4
         run: |
           conda create --name psi4_env python=3.10 -y
