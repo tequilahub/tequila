@@ -22,10 +22,16 @@ jobs:
     - name: Update apt and install Python 3.10
       run: |
         apt-get update
-        apt-get install -y software-properties-common
-        add-apt-repository ppa:deadsnakes/ppa
+        apt-get install -y wget gnupg lsb-release
+    
+        # Add deadsnakes PPA manually
+        echo "deb http://ppa.launchpad.net/deadsnakes/ppa/ubuntu $(lsb_release -cs) main" \
+          > /etc/apt/sources.list.d/deadsnakes-ppa.list
+        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6A755776
         apt-get update
-        apt-get install -y python3.10 python3.10-venv python3.10-dev python3-pip
+    
+        # Install Python 3.10
+        apt-get install -y python3.10 python3.10-dev python3.10-venv python3-pip
         ln -s /usr/bin/python3.10 /usr/bin/python || true
         ln -s /usr/bin/pip3 /usr/bin/pip || true
 
