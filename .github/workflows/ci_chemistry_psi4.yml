@@ -19,20 +19,45 @@ jobs:
      options: --user root
 
     steps:
-    - name: Install Python 3.11 on Debian Bookworm
-      run: |
-        apt-get update
-        apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip
-        ln -sf /usr/bin/python3.11 /usr/bin/python
-        ln -sf /usr/bin/pip3 /usr/bin/pip
+       - name: Checkout code
+         uses: actions/checkout@v3
+          
+        - name: Install Python 3.10 from source
+          run: |
+            apt-get update && apt-get install -y \
+              build-essential \
+              zlib1g-dev \
+              libncurses5-dev \
+              libgdbm-dev \
+              libnss3-dev \
+              libssl-dev \
+              libreadline-dev \
+              libffi-dev \
+              curl \
+              libsqlite3-dev \
+              wget \
+              lzma-dev \
+              tk-dev \
+              xz-utils
+    
+            curl -O https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz
+            tar -xf Python-3.10.14.tgz
+            cd Python-3.10.14
+            ./configure --enable-optimizations
+            make -j$(nproc)
+            make altinstall
+    
+            ln -sf /usr/local/bin/python3.10 /usr/bin/python
+            ln -sf /usr/local/bin/pip3.10 /usr/bin/pip
 
-    - name: Install and test Psi4 interface
+    - name: Set up virtual environment and test
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt
-        python -m pip install -e .
-        python -m pip install pyscf
-        python -m pip install 'h5py <= 3.1'
+        python -m venv venv
+        ./venv/bin/pip install --upgrade pip
+        ./venv/bin/pip install -r requirements.txt
+        ./venv/bin/pip install -e .
+        ./venv/bin/pip install pyscf
+        ./venv/bin/pip install pytest
         cd tests
         ls
         pytest test_chemistry.py
