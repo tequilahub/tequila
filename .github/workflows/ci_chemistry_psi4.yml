@@ -14,10 +14,12 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    container: psi4/psi4:1.9.1
+    container: 
+     image: psi4/psi4:1.9.1
+     options: --user root
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
