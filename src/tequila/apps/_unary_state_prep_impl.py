@@ -1,4 +1,4 @@
-'''
+f'''
 A program that can generate an arbitrary quantum state.
 
 Some conditions: if the number of states exceed the total number of bits,

@@ -3,13 +3,11 @@
 
 # # put to sleep, need to update docker container
 
-# name: Test-Madness
+name: Test-Madness
 
-# on:
-#   push:
-#     branches: [ ]
-#   pull_request:
-#     branches: [ ]
+on:
+  push:
+    branches: [master]
 
 # jobs:
 
