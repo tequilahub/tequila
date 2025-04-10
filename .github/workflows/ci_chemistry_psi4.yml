@@ -13,10 +13,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    container: 
-      image: psi4/psi4:1.9.1
-      options: --user root
-
     steps:
       - name: Checkout the code
         uses: actions/checkout@v3
@@ -47,6 +43,9 @@ jobs:
         run: |
           # Verify Python version inside the environment
           conda run -n psi4_env python --version
+          echo "import psi4" > asd.py
+          echo "print(psi4.__version__)" >> asd.py
+          conda run -n psi4_env python asd.py
 
       - name: Set up virtual environment and run tests
         run: |
