@@ -38,7 +38,6 @@ jobs:
           conda create --name psi4_env python=3.10 -y
           # Install Psi4 via Conda
           # some issue with qcelemental where imports fail for pydantic>2
-          conda uninstall -n psi4_env pydantic
           conda install -n psi4_env -c conda-forge pydantic=1.*
           conda install -n psi4_env -c psi4 psi4 -y
 
