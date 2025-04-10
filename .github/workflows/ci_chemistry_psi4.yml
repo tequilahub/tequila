@@ -37,14 +37,10 @@ jobs:
           
       - name: Create Conda environment and install Psi4
         run: |
-          #conda create --name psi4_env python=3.10 -y
-          #ls 3/envs/psi4_env/bin/
-          #conda activate psi4_env
-          conda install -c psi4 psi4 -y  # Install Psi4 using Conda
-
+          python --version
+          conda install psi4 python=3.10 -c conda-forge 
       - name: Verify Psi4 installation
         run: |
-          #conda activate psi4_env
           psi4 --version
 
       - name: Verify Psi4 and Python installation
