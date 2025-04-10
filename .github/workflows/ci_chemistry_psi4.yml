@@ -19,11 +19,18 @@ jobs:
      options: --user root
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v1
-      with:
-        python-version: "3.10"
+    - name: Update apt and install Python 3.10
+      run: |
+        apt-get update
+        apt-get install -y software-properties-common
+        add-apt-repository ppa:deadsnakes/ppa
+        apt-get update
+        apt-get install -y python3.10 python3.10-venv python3.10-dev python3-pip
+        ln -s /usr/bin/python3.10 /usr/bin/python || true
+        ln -s /usr/bin/pip3 /usr/bin/pip || true
+
+    - name: Verify Python installation
+      run: python --version
 
     - name: Install and test Psi4 interface
       run: |
