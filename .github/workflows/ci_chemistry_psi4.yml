@@ -23,17 +23,17 @@ jobs:
 
       - name: Set up Python environment
         run: |
-          python -m venv venv
+          python3 -m venv venv
           ./venv/bin/pip install --upgrade pip
           ./venv/bin/pip install -r requirements.txt 
 
       - name: Verify Psi4 and Python installation
         run: |
-          python -c "import psi4; print(f'Psi4 version: {psi4.__version__}')"
+          python3 -c "import psi4; print(f'Psi4 version: {psi4.__version__}')"
 
       - name: Set up virtual environment and run tests
         run: |
-          python -m venv venv
+          python3 -m venv venv
           ./venv/bin/pip install -e .
           ./venv/bin/pip install pyscf pytest
           cd tests
