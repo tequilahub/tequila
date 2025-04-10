@@ -18,27 +18,35 @@ jobs:
       options: --user root
 
     steps:
-      - name: Checkout code
+      - name: Checkout the code
         uses: actions/checkout@v3
 
-      - name: Set up Python environment
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: 'latest'
+          auto-activate-base: false
+
+      - name: Create Conda environment and install Psi4
         run: |
-          cat /usr/local/bin/_entrypoint.sh
-          bash /usr/local/bin/_entrypoint.sh
-          python3 -m venv venv
-          ./venv/bin/pip install --upgrade pip
-          ./venv/bin/pip install -r requirements.txt 
+          conda create --name psi4_env python=3.10 -y
+          conda activate psi4_env
+          conda install -c psi4 psi4 -y  # Install Psi4 using Conda
+
+      - name: Verify Psi4 installation
+        run: |
+          conda activate psi4_env
+          psi4 --version
 
       - name: Verify Psi4 and Python installation
         run: |
-          python3 -c "import psi4; print(f'Psi4 version: {psi4.__version__}')"
+          python -c "import psi4; print(f'Psi4 version: {psi4.__version__}')"
 
       - name: Set up virtual environment and run tests
         run: |
-          python3 -m venv venv
-          ./venv/bin/pip install -e .
-          ./venv/bin/pip install pyscf pytest
+
+          python -m pip install -e .
+          python -m pip install pyscf pytest
           cd tests
-          ls
-          ./../venv/bin/pytest test_chemistry.py
-          ./../venv/bin/pytest test_adapt.py
+          pytest test_chemistry.py
+          pytest test_adapt.py
