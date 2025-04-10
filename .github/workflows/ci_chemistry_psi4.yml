@@ -43,6 +43,7 @@ jobs:
         run: |
           # Verify Python version inside the environment
           conda run -n psi4_env python --version
+          conda run -n psi4_env pip install pydantic-settings
           echo "import psi4" > asd.py
           echo "print(psi4.__version__)" >> asd.py
           conda run -n psi4_env python asd.py
