@@ -51,7 +51,9 @@ jobs:
         source $CONDABASE/bin/activate
         conda activate test_psi4
         conda install psi4 python=3.10 -c conda-forge
-        echo "import psi4\nprint(psi4.__version__)"| python
+        echo "import psi4" > asd.py
+        echo "print(psi4.__version__)" >> asd.py
+        python asd.py
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
         python -m pip install -e .
