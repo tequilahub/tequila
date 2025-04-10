@@ -19,24 +19,15 @@ jobs:
      options: --user root
 
     steps:
-    - name: Update apt and install Python 3.10
+    - name: Install Python 3.10 on Debian
       run: |
         apt-get update
-        apt-get install -y wget gnupg lsb-release
+        apt-get install -y python3.10 python3.10-venv python3.10-dev python3-pip
+        ln -sf /usr/bin/python3.10 /usr/bin/python
+        ln -sf /usr/bin/pip3 /usr/bin/pip
     
-        # Add deadsnakes PPA manually
-        echo "deb http://ppa.launchpad.net/deadsnakes/ppa/ubuntu $(lsb_release -cs) main" \
-          > /etc/apt/sources.list.d/deadsnakes-ppa.list
-        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6A755776
-        apt-get update
-    
-        # Install Python 3.10
-        apt-get install -y python3.10 python3.10-dev python3.10-venv python3-pip
-        ln -s /usr/bin/python3.10 /usr/bin/python || true
-        ln -s /usr/bin/pip3 /usr/bin/pip || true
-
-    - name: Verify Python installation
-      run: python --version
+        - name: Verify Python installation
+          run: python --version
 
     - name: Install and test Psi4 interface
       run: |
