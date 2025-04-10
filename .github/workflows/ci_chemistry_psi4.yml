@@ -43,7 +43,8 @@ jobs:
         run: |
           # Verify Python version inside the environment
           conda run -n psi4_env python --version
-          conda run -n psi4_env pip install pydantic-settings
+          # some issue with qcelemental where imports fail for pydantic>2
+          conda run -n psi4_env pip install "pydantic<=2.0"
           echo "import psi4" > asd.py
           echo "print(psi4.__version__)" >> asd.py
           conda run -n psi4_env python asd.py
