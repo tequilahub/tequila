@@ -37,21 +37,21 @@ jobs:
           
       - name: Create Conda environment and install Psi4
         run: |
-          python3 --version
-          conda install psi4 python=3.10 -c conda-forge 
-      - name: Verify Psi4 installation
-        run: |
-          psi4 --version
+          # Create Conda environment with Python 3.10
+          conda create --name psi4_env python=3.10 -y
+          # Install Psi4 via Conda
+          conda install -n psi4_env -c psi4 psi4 -y
 
-      - name: Verify Psi4 and Python installation
+      - name: Verify Python version with conda run
         run: |
-          python -c "import psi4; print(f'Psi4 version: {psi4.__version__}')"
+          # Verify Python version inside the environment
+          conda run -n psi4_env python --version
 
       - name: Set up virtual environment and run tests
         run: |
 
-          python -m pip install -e .
-          python -m pip install pyscf pytest
+          conda run -n pip install -e .
+          conda run -n pip install pyscf pytest
           cd tests
-          pytest test_chemistry.py
-          pytest test_adapt.py
+          conda run -n pytest test_chemistry.py
+          conda run -n pytest test_adapt.py
