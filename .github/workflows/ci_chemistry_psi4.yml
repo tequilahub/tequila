@@ -30,6 +30,7 @@ jobs:
           
       - name: Initialize Conda for the shell
         run: |
+          which conda
           # Initialize Conda
           conda init bash
           # Restart the shell to apply changes
