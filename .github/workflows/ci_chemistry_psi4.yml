@@ -45,8 +45,7 @@ jobs:
           conda run -n psi4_env python --version
           # some issue with qcelemental where imports fail for pydantic>2
           conda uninstall -n psi4_env pydantic
-          conda run -n psi4_env pip install -upgrade "pydantic<2.0"
-
+          conda install -n psi4_env -c conda-forge pydantic=1.*
           echo "import psi4" > asd.py
           echo "print(psi4.__version__)" >> asd.py
           conda run -n psi4_env python asd.py
