@@ -3,6 +3,7 @@ from tequila.circuit.circuit import QCircuit
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila.utils.misc import to_float
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.wavefunction.density_matrix import DensityMatrix
 from tequila.circuit.compiler import change_basis
 from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
@@ -208,6 +209,7 @@ class BackendCircuit():
     def __call__(self,
                  variables: typing.Dict[Variable, numbers.Real] = None,
                  samples: int = None,
+                 simulate_density: bool = False,
                  *args,
                  **kwargs):
         """
@@ -236,6 +238,9 @@ class BackendCircuit():
                         self._variables, variables))
 
         self.update_variables(variables)
+        if simulate_density:
+            return self.simulate_density(variables=variables, noise=self.noise, *args, **kwargs)
+        
         if samples is None:
             return self.simulate(variables=variables, noise=self.noise, *args, **kwargs)
         else:
@@ -388,6 +393,44 @@ class BackendCircuit():
         if keymap_required:
             result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(all_qubits), initial_state=initial_state)
 
+        return result
+
+    def simulate_density(self, variables, initial_state=0, *args, **kwargs) -> DensityMatrix:
+        """
+        simulate the circuit via the backend.
+
+        Parameters
+        ----------
+        variables:
+            the parameters with which to simulate the circuit.
+        initial_state: Default = 0:
+            one of several types; determines the base state onto which the circuit is applied.
+            Default: the circuit is applied to the all-zero state.
+        args
+        kwargs
+
+        Returns
+        -------
+        DensityMatrix
+            the density of the system produced by the action of the circuit on the initial state and noise, if provided.
+        """
+        self.update_variables(variables)
+        if isinstance(initial_state, BitString):
+            initial_state = initial_state.integer
+        if isinstance(initial_state, QubitWaveFunction):
+            if len(initial_state.keys()) != 1:
+                raise TequilaException("only product states as initial states accepted as of now") # TODO: add initial density state for simulation. Can use qiskit quantum info .DensityMatrix.evolve
+            initial_state = list(initial_state.keys())[0].integer
+
+        all_qubits = [i for i in range(self.abstract_circuit.n_qubits)]
+        active_qubits = self.qubit_map.keys()
+
+        # maps from reduced register to full register
+        keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
+
+        result = self.do_simulate_density(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args,
+                                  **kwargs)
+        result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
     def sample(self, variables, samples, read_out_qubits=None, circuit=None, initial_state=0, *args, **kwargs):
@@ -583,6 +626,9 @@ class BackendCircuit():
             the result of simulating the circuit.
 
         """
+        raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
+
+    def do_simulate_density(self, variables, initial_state, *args, **kwargs) -> DensityMatrix:
         raise TequilaException("Backend Handler needs to be overwritten for supported simulators")
 
     def convert_measurements(self, backend_result) -> QubitWaveFunction:
@@ -795,16 +841,18 @@ class BackendExpectationValue:
     def __deepcopy__(self, memodict={}):
         return type(self)(self.abstract_expectationvalue, **self._input_args)
 
-    def __call__(self, variables, samples: int = None, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
-
+    def __call__(self, variables, samples: int = None, simulate_density: bool = False, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
             if variables is None or (not set(self._variables) <= set(variables.keys())):
                 raise TequilaException(
                     "BackendExpectationValue received not all variables. Circuit depends on variables {}, you gave {}".format(
                         self._variables, variables))
-
-        if samples is None:
+        
+        if simulate_density:
+            data = self.simulate_density(variables=variables, *args, **kwargs)
+     
+        elif samples is None:
             data = self.simulate(variables=variables, initial_state=initial_state, *args, **kwargs)
         else:
             data = self.sample(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
@@ -931,5 +979,19 @@ class BackendExpectationValue:
             # Always better to overwrite this function
             wfn = self.U.simulate(variables=variables, initial_state=initial_state, *args, **kwargs)
             final_E += wfn.compute_expectationvalue(operator=H)
+            result.append(to_float(final_E))
+        return numpy.asarray(result)
+
+    def simulate_density(self, variables, noise_model = None, *args, **kwargs):
+        """
+        Simulate the expectationvalue, using densities with noise
+
+        """
+        self.update_variables(variables)
+        result = []
+        for H in self.H:
+            final_E = 0.0
+            density = self.U.simulate_density(variables=variables, noise_model=noise_model, *args, **kwargs)
+            final_E += density.QubitHamiltonian_expectation(hamiltonian=H)
             result.append(to_float(final_E))
         return numpy.asarray(result)

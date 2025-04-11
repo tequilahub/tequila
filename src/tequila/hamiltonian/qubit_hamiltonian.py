@@ -666,3 +666,6 @@ class QubitHamiltonian:
             if not p.is_all_z():
                 return False
         return True
+    
+    def constant(self):
+        return self._qubit_operator.constant
