@@ -2,7 +2,8 @@ from tequila.simulators.simulator_base import BackendExpectationValue, BackendCi
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.utils import TequilaException
 from tequila.hamiltonian import PauliString
-from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, RotationGateImpl, QubitHamiltonian, QubitExcitationImpl
+from tequila.circuit._gates_impl import ExponentialPauliGateImpl, QGateImpl, RotationGateImpl, QubitHamiltonian
+from tequila.circuit.gates import QubitExcitationImpl
 from tequila import BitNumbering
 
 
@@ -202,6 +203,7 @@ class BackendCircuitSpex(BackendCircuit):
 
         return new_circuit, new_hamiltonians, self.n_qubits_compressed
 
+      
     def update_variables(self, variables, *args, **kwargs):
         if variables is None:
             variables = {}
@@ -241,21 +243,33 @@ class BackendCircuitSpex(BackendCircuit):
             circuit.append(exp_term)
 
         elif isinstance(gate, QubitExcitationImpl):
-            print("is instance QubitExcitationImpl")
             compiled_gate = gate.compile(exponential_pauli=True)
             for sub_gate in compiled_gate.abstract_circuit.gates:
                 self.add_basic_gate(sub_gate, circuit, *args, **kwargs)
 
         elif isinstance(gate, QGateImpl):
-            # Convert standard gates to Pauli rotations
-            for ps in gate.make_generator(include_controls=True).paulistrings:
-                angle = numpy.pi * ps.coeff
-                if self.angle_threshold is not None and abs(angle) < self.angle_threshold:
-                    continue
-                exp_term = spex_tequila.ExpPauliTerm()
-                exp_term.pauli_map = dict(ps.items())
-                exp_term.angle = angle
-                circuit.append(exp_term)
+            if gate.name.lower() in ["x","y","z"]:
+                # Convert standard gates to Pauli rotations
+                for ps in gate.make_generator(include_controls=True).paulistrings:
+                    angle = numpy.pi * ps.coeff
+                    if self.angle_threshold is not None and abs(angle) < self.angle_threshold:
+                        continue
+                    exp_term = spex_tequila.ExpPauliTerm()
+                    exp_term.pauli_map = dict(ps.items())
+                    exp_term.angle = angle
+                    circuit.append(exp_term)
+            elif gate.name.lower() in ["h", "hadamard"]:
+                assert len(gate.target)==1
+                target = gate.target[0]
+                for ps in ["-0.25*Y({q})", "Z({q})", "0.25*Y({q})"]:
+                    ps = QubitHamiltonian(ps.format(q=gate.target[0])).paulistrings[0]
+                    angle = numpy.pi * ps.coeff
+                    exp_term = spex_tequila.ExpPauliTerm()
+                    exp_term.pauli_map = dict(ps.items())
+                    exp_term.angle = angle
+                    circuit.append(exp_term)
+            else:
+                raise TequilaSpexException("{} not supported. Only x,y,z,h".format(gate.name.lower()))
 
         else:
             raise TequilaSpexException(f"Unsupported gate object type: {type(gate)}. "
@@ -424,6 +438,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
 
         threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
         final_state = spex_tequila.apply_U(circuit, state, threshold, n_qubits)
+
         del state
 
         if "SPEX_NUM_THREADS" in os.environ:
@@ -433,6 +448,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
 
         # Calculate the expectation value for each Hamiltonian
         results = []
+
         for H_terms in comp_hams:
             val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, n_qubits, num_threads=-1)
             results.append(val.real)

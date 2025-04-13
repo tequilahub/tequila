@@ -1,4 +1,4 @@
-'''
+f'''
 A program that can generate an arbitrary quantum state.
 
 Some conditions: if the number of states exceed the total number of bits,
@@ -198,7 +198,6 @@ class UnaryStatePrepImpl:
     '''
 
     def get_a_compression(self, s, i1, i2):
-        global alph_index
         target_index = self.calc_H_distance(s[i1], s[i2])[1][
             0]  # collect target index, the bit where they are different
         move_param = None
