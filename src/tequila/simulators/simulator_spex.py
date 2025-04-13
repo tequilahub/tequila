@@ -49,6 +49,15 @@ def circuit_hash(abstract_circuit, variables=None):
             sha.update(f"{key}:{value}\n".encode('utf-8'))
     return sha.hexdigest()
 
+def copy_exp_pauli_term(term):
+    """Create a copy of a ExpPauliTerm."""
+    new_term = spex_tequila.ExpPauliTerm()
+    if hasattr(term, 'pauli_map'):
+        new_term.pauli_map = dict(term.pauli_map)
+    if hasattr(term, 'angle'):
+        new_term.angle = term.angle
+    return new_term
+
 class BackendCircuitSpex(BackendCircuit):
     """SPEX circuit implementation using sparse state representation"""
 
@@ -147,32 +156,51 @@ class BackendCircuitSpex(BackendCircuit):
         Reduces memory usage by eliminating unused qubit dimensions
         """
         if not self.compress_qubits or not (hasattr(self, "circuit") and self.circuit):
-            return
+            return self.circuit, self.hamiltonians, self.n_qubits
+        
+        new_circuit = [copy_exp_pauli_term(term) for term in self.circuit]
+        for term in new_circuit:
+            if hasattr(term, "pauli_map"):
+                term.pauli_map = dict(term.pauli_map)
+
+        new_hamiltonians = []
+        if self.hamiltonians is not None:
+            for ham in self.hamiltonians:
+                new_ham = []
+                for term, coeff in ham:
+                    cloned = copy_exp_pauli_term(term)
+                    cloned.pauli_map = dict(cloned.pauli_map)
+                    new_ham.append((cloned, coeff))
+                new_hamiltonians.append(new_ham)
 
         # Collect all qubits used in circuit and Hamiltonians
         used_qubits = set()
-        for term in self.circuit:
+        for term in new_circuit:
             used_qubits.update(term.pauli_map.keys())
-        for ham in self.hamiltonians:
-            for term, _ in ham:
-                used_qubits.update(term.pauli_map.keys())
+
+        if new_hamiltonians is not None:
+            for ham in new_hamiltonians:
+                for term, _ in ham:
+                    used_qubits.update(term.pauli_map.keys())
 
         if not used_qubits:
             self.n_qubits_compressed = 0
-            return
+            return new_circuit, new_hamiltonians, 0
 
         # Create qubit mapping and remap all terms
         qubit_map = {old: new for new, old in enumerate(sorted(used_qubits))}
         
-        for term in self.circuit:
+        for term in new_circuit:
             term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
 
-        if self.hamiltonians is not None:    
-            for ham in self.hamiltonians:
+        if new_hamiltonians is not None:    
+            for ham in new_hamiltonians:
                 for term, _ in ham:
                     term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
 
         self.n_qubits_compressed = len(used_qubits)
+
+        return new_circuit, new_hamiltonians, self.n_qubits_compressed
 
     def update_variables(self, variables, *args, **kwargs):
         if variables is None:
@@ -213,6 +241,7 @@ class BackendCircuitSpex(BackendCircuit):
             circuit.append(exp_term)
 
         elif isinstance(gate, QubitExcitationImpl):
+            print("is instance QubitExcitationImpl")
             compiled_gate = gate.compile(exponential_pauli=True)
             for sub_gate in compiled_gate.abstract_circuit.gates:
                 self.add_basic_gate(sub_gate, circuit, *args, **kwargs)
@@ -231,7 +260,6 @@ class BackendCircuitSpex(BackendCircuit):
         else:
             raise TequilaSpexException(f"Unsupported gate object type: {type(gate)}. "
                                        "All gates should be compiled to exponential pauli or rotation gates.")
-
 
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
@@ -374,12 +402,12 @@ class BackendExpectationValueSpex(BackendExpectationValue):
 
         # Prepare simulation
         self.update_variables(variables)
-        if self.U.compress_qubits:
-            self.U.compress_qubit_indices()
 
-        if self.U.compress_qubits and self.U.n_qubits_compressed is not None and self.U.n_qubits_compressed > 0:
-            n_qubits = self.U.n_qubits_compressed
+        if self.U.compress_qubits:
+            circuit, comp_hams, n_qubits = self.U.compress_qubit_indices()
         else:
+            circuit = self.U.circuit
+            comp_hams = self.H
             n_qubits = self.U.n_qubits
 
         # Prepare the initial state
@@ -392,10 +420,10 @@ class BackendExpectationValueSpex(BackendExpectationValue):
             # initial_state is a QubitWaveFunction
             state = {k: v for k, v in initial_state.raw_items()}
 
-        self.U.circuit = [t for t in self.U.circuit if abs(t.angle) >= self.U.angle_threshold]
+        circuit = [t for t in circuit if abs(t.angle) >= self.U.angle_threshold]
 
         threshold = self.amplitude_threshold if self.amplitude_threshold is not None else -1.0
-        final_state = spex_tequila.apply_U(self.U.circuit, state, threshold, n_qubits)
+        final_state = spex_tequila.apply_U(circuit, state, threshold, n_qubits)
         del state
 
         if "SPEX_NUM_THREADS" in os.environ:
@@ -405,7 +433,7 @@ class BackendExpectationValueSpex(BackendExpectationValue):
 
         # Calculate the expectation value for each Hamiltonian
         results = []
-        for H_terms in self.H:
+        for H_terms in comp_hams:
             val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, n_qubits, num_threads=-1)
             results.append(val.real)
         
