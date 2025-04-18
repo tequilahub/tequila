@@ -31,7 +31,7 @@ def test_spex_mappings():
     for a in [1.5,2.0,1.0]:
         e1 = E1({"a":a,"b":a})
         e2 = E2({"a":a,"b":a})
-        assert numpy.is_close(e1,e2)
+        assert numpy.isclose(e1,e2)
 
 HAS_GOOGLE = importlib.util.find_spec('cirq_google')
 @pytest.mark.skipif(condition=not HAS_GOOGLE, reason="cirq_google not installed")
