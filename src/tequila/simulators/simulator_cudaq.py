@@ -13,7 +13,6 @@ from tequila.utils.keymap import KeyMapRegisterToSubregister
 
 
 
-# from tequila.simulators.debug_kernel_inside import kernel_inside
 
 
 
