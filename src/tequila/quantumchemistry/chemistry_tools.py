@@ -201,20 +201,20 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         if not self.indices[0][1] // 2 == self.indices[1][1] // 2: return False
         return True
     def map_qubits(self, qubit_map: dict):
-    mapped = deepcopy(self)
-    mapped._target = tuple([qubit_map[i] for i in self.target])
-    if self.control is not None:
-        mapped._control = tuple([qubit_map[i] for i in self.control])
-    if hasattr(self, "generator") and self.generator:
-        mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
-    if hasattr(self, "generators"):
-        mapped.generators = [i.map_qubits(qubit_map=qubit_map) for i in self.generators]
-    mapped.finalize()
-    if hasattr(self, "generator"):
-        mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
-    if hasattr(self, "indices"):
-        mapped.indices = [(qubit_map[t[0]],qubit_map[t[1]]) for t in self.indices]
-    return mapped
+        mapped = deepcopy(self)
+        mapped._target = tuple([qubit_map[i] for i in self.target])
+        if self.control is not None:
+            mapped._control = tuple([qubit_map[i] for i in self.control])
+        if hasattr(self, "generator") and self.generator:
+            mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
+        if hasattr(self, "generators"):
+            mapped.generators = [i.map_qubits(qubit_map=qubit_map) for i in self.generators]
+        mapped.finalize()
+        if hasattr(self, "generator"):
+            mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
+        if hasattr(self, "indices"):
+            mapped.indices = [(qubit_map[t[0]],qubit_map[t[1]]) for t in self.indices]
+        return mapped
 
 
 def prepare_product_state(state: BitString) -> QCircuit:
