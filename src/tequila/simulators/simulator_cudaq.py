@@ -430,7 +430,9 @@ class BackendCircuitCudaq(BackendCircuit):
 
         - performs simulation in the following order:
             1. create a quantum state based on a given input integer 
-            2. 
+            2. apply a given quantum circuit on this state 
+            3. gate the amplitudes of the resulting wave function (wfn)
+               after application of the circuit 
 
 
         Parameters
@@ -457,9 +459,7 @@ class BackendCircuitCudaq(BackendCircuit):
         quantum_state_from_integer = cudaq.get_state(self.state_modifier, *params)
 
 
-        # for debugging - showing the initial state the was transformed from decimal >> binary >> quantum state 
-        wfn_of_from_int = QubitWaveFunction.from_array(arr=numpy.array(quantum_state_from_integer), numbering=self.numbering)
-        print(f"from int {initial_state} then qubit state {wfn_of_from_int}")
+
 
 
         # prepare circuit components for state modifier annotation block of cudaq 
