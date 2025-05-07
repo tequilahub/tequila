@@ -450,45 +450,22 @@ class BackendCircuitCudaq(BackendCircuit):
             QubitWaveFunction representing result of the simulation.
         """
         
-        
-
         # given an input integer get the parameters to create a quantum state from 
         params = BackendCircuitCudaq.prepare_state_from_integer(initial_state, self.n_qubits)
-
+        
         # get the quantum state created based on a given initial state for applying the circuit on it 
         quantum_state_from_integer = cudaq.get_state(self.state_modifier, *params)
 
-
-
-
-
-        # prepare circuit components for state modifier annotation block of cudaq 
+        # prepare the circuit to apply onto the state made from an integer
         (number_of_qubits, gate_encodings, target_qubits, angles, 
          control_qubits, iteration_length) = BackendCircuitCudaq.prepare_circuit_for_state_modifier(self)
         
-
-        print('after param fetch')
-
-        
-
         # apply state modifier (circuit) onto state and get amplitudes 
         vector = cudaq.get_state(self.state_modifier_from_initial_state, number_of_qubits, gate_encodings, target_qubits,
                                  angles, control_qubits, iteration_length, quantum_state_from_integer)
-
         
-
-        print('before wfn')
-
-        print("circuit cudaq ", self.circuit)
-        for k,v in self.circuit.items():
-            print(k, type(k))
-            print(v, type(v))
-            pass
-
         wfn = QubitWaveFunction.from_array(arr=numpy.array(vector), numbering=self.numbering)
-
-        # print("state vector cudaq ", wfn)
-
+    
         return wfn
 
 
