@@ -18,9 +18,9 @@ from tequila.utils.keymap import KeyMapRegisterToSubregister
 
 """
 Developer Note:
-    Qulacs uses different Rotational Gate conventions: Rx(angle) = exp(i angle/2 X) instead of exp(-i angle/2 X)
-    And the same for MultiPauli rotational gates
-    The angles are scaled with -1.0 to keep things consistent with the rest of tequila
+    Cudaq does not have objects for circuits and gates. Instead it uses quantum kernels. These only allow the input of
+    arguments of certain types (and are therefore quite picky), i.e. ints, floats or a list[int], list[float].
+    Due to this restriction the circuit is a list of these primitive types and the used gates are encoded.
 """
 
 class TequilaCudaqException(TequilaException):
@@ -68,7 +68,7 @@ class BackendCircuitCudaq(BackendCircuit):
         "phase_to_z": True,
         "cc_max": True
     }
-    # try MSB, if doesnt work try LSB 
+    # set convention of numbering to LSB 
     numbering = BitNumbering.LSB
 
     def __init__(self, abstract_circuit, noise=None, *args, **kwargs):
@@ -77,7 +77,7 @@ class BackendCircuitCudaq(BackendCircuit):
         Parameters
         ----------
         abstract_circuit: QCircuit:
-            the circuit to compile to qulacs
+            the circuit to compile to cudaq
         noise: optional:
             noise to apply to the circuit.
         args
@@ -85,8 +85,7 @@ class BackendCircuitCudaq(BackendCircuit):
         """
 
 
-        # rotations are instantiated like this: 
-        # doesnt work 
+        # gates encodings 
         self.op_lookup = {
             # primitives
             'I': None,
@@ -146,9 +145,9 @@ class BackendCircuitCudaq(BackendCircuit):
 
 
     
-    """ as for now without control qubits """
 
-    """ equivalent to circuit in other backends – blackbox "oracle" """
+
+
     @cudaq.kernel
     def state_modifier(             ## create a state based on an empty state like |000..00> 
         number_of_qubits : int,
@@ -158,7 +157,17 @@ class BackendCircuitCudaq(BackendCircuit):
         control_qubits : list[int],
         iteration_length : int,
     ):
+        """ 
+        This function applies a circuit to an EMPTY QUANTUM STATE with a given number of qubits,
+        i.e. |00> for a two-qubit state.
+        The function collects the gates to apply, which are stored in a list (cudaq's circuit "object")
+        applies them in the given order to the state. 
 
+        These circuits support:
+            1. single-qubit gates like: X, Y, Z, H, S, T as well as controlled variantes of them with up 
+            to one control-qubit
+            2. parametrized single qubit gates like: Rx, Ry, Rz with a given angle  
+        """
         # create an empty state with given number of qubits
         s = cudaq.qvector(number_of_qubits)
 
@@ -196,25 +205,19 @@ class BackendCircuitCudaq(BackendCircuit):
             # Rx gate 
             elif encoding == 5:
                 if control != -1:
-                    # print('as for now rotation not controlled ')
-                    # raise ValueError('rot not controlled as for now')
                     pass
                 else:
                     rx(angle, s[target])
             # Rx gate 
             elif encoding == 6:
+                # support only parametrized rotations but without controls 
                 if control != -1:
-                    # print('as for now rotation not controlled ')
-                    # raise ValueError('rot not controlled as for now')
                     pass
                 else:
                     ry(angle, s[target])        
             # Rx gate 
             elif encoding == 7:
                 if control != -1:
-                    # print('as for now rotation not controlled ')
-                    # raise ValueError('rot not controlled as for now')
-                    # auskommentiert da kernel das nicht kann 
                     pass
                 else:
                     rz(angle, s[target])
@@ -224,7 +227,7 @@ class BackendCircuitCudaq(BackendCircuit):
                     s.ctrl(s[control], s[target])
                 else:
                     s(s[target])
-            # T ga<te
+            # T gate
             elif encoding == 9:
                 if control != -1:
                     t.ctrl(s[control], s[target])
@@ -232,7 +235,6 @@ class BackendCircuitCudaq(BackendCircuit):
                     t(s[target])
 
 
-            # see on docs how the syntax of controlled rotations works, as for not "pass"
 
                     
 
@@ -246,6 +248,20 @@ class BackendCircuitCudaq(BackendCircuit):
         iteration_length : int,
         inital_state : cudaq.State
     ):
+        """ 
+        This function applies a circuit to an EXISTING QUANTUM STATE with a given number of qubits,
+        i.e. |10110>
+        - unlike "state_modifier" this function needs a special preperation of the gates to apply to the state
+        and therefore works with prepare_state_from_integer
+
+        The function collects the gates to apply, which are stored in a list (cudaq's circuit "object")
+        applies them in the given order to the state. 
+
+        These circuits support:
+            1. single-qubit gates like: X, Y, Z, H, S, T as well as controlled variantes of them with up 
+            to one control-qubit
+            2. parametrized single qubit gates like: Rx, Ry, Rz with a given angle  
+        """
 
         # create a quantum state based on a given initial state 
         s = cudaq.qvector(inital_state)
@@ -284,25 +300,18 @@ class BackendCircuitCudaq(BackendCircuit):
             # Rx gate 
             elif encoding == 5:
                 if control != -1:
-                    # print('as for now rotation not controlled ')
-                    # raise ValueError('rot not controlled as for now')
                     pass
                 else:
                     rx(angle, s[target])
             # Rx gate 
             elif encoding == 6:
                 if control != -1:
-                    # print('as for now rotation not controlled ')
-                    # raise ValueError('rot not controlled as for now')
                     pass
                 else:
                     ry(angle, s[target])        
             # Rx gate 
             elif encoding == 7:
                 if control != -1:
-                    # print('as for now rotation not controlled ')
-                    # raise ValueError('rot not controlled as for now')
-                    # auskommentiert da kernel das nicht kann 
                     pass
                 else:
                     rz(angle, s[target])
@@ -312,15 +321,12 @@ class BackendCircuitCudaq(BackendCircuit):
                     s.ctrl(s[control], s[target])
                 else:
                     s(s[target])
-            # T ga<te
+            # T gate
             elif encoding == 9:
                 if control != -1:
                     t.ctrl(s[control], s[target])
                 else:
                     t(s[target])
-
-
-            # see on docs how the syntax of controlled rotations works, as for not "pass"
 
                     
 
@@ -334,11 +340,12 @@ class BackendCircuitCudaq(BackendCircuit):
         ''' 
         this function decomposes the circuit elements for later usage in state_modifier, which uses the 
         cudaq annotation @cudaq.kernel. 
+        
         Has to be done this way since other functions for expectation value for example like cudaq.observe have special syntax 
         and accept parameters and the state modifier itself 
         '''
 
-        # for tests this in terminal pytest  /Users/rammosco/Desktop/tequila/tequila/tests/test_simulator_backends.py
+
 
         print('before nqb')
 
@@ -421,6 +428,11 @@ class BackendCircuitCudaq(BackendCircuit):
         """
         Helper function to perform simulation.
 
+        - performs simulation in the following order:
+            1. create a quantum state based on a given input integer 
+            2. 
+
+
         Parameters
         ----------
         variables: dict:
@@ -436,20 +448,10 @@ class BackendCircuitCudaq(BackendCircuit):
             QubitWaveFunction representing result of the simulation.
         """
         
-        # print(f"init state cudaq {initial_state}")
-
-        # use the initial state just like in do_simulate of simulator_qulacs.py
-        # state = self.initialize_state(self.n_qubits)
-        # lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
-        # state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
-        # self.circuit.update_quantum_state(state)
         
 
-        print('before param fetch')
-
+        # given an input integer get the parameters to create a quantum state from 
         params = BackendCircuitCudaq.prepare_state_from_integer(initial_state, self.n_qubits)
-
-        print("params new function ", params)
 
         # get the quantum state created based on a given initial state for applying the circuit on it 
         quantum_state_from_integer = cudaq.get_state(self.state_modifier, *params)
