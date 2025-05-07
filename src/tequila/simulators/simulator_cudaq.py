@@ -503,6 +503,9 @@ class BackendCircuitCudaq(BackendCircuit):
     def add_parametrized_gate(self, gate, circuit, variables, *args, **kwargs):
         """
         add a parametrized gate.
+        -   for this fetch params like 1. angle 2. gate encoding 3. target qubits 
+            and store them in the corresponding lists within the circuit (as a dict)
+
         Parameters
         ----------
         gate: QGateImpl:
@@ -520,7 +523,6 @@ class BackendCircuitCudaq(BackendCircuit):
         """
         gate_encoding = self.op_lookup[gate.name]
 
-
         # target qubits as a list 
         target_qubits = [self.qubit(t) for t in gate.target]
 
@@ -535,7 +537,7 @@ class BackendCircuitCudaq(BackendCircuit):
 
         # more than one control currently not supported 
         if len(control_qubits) > 1:
-            raise ValueError('at must 1 control qubit is supported, NOT MORE ')
+            raise ValueError('at most 1 control qubit is supported for cudaq, NOT MORE ')
 
         # extract information about angle - one per gate 
         angle = gate.parameter(variables)
@@ -559,6 +561,9 @@ class BackendCircuitCudaq(BackendCircuit):
         """
         add an unparametrized gate to the circuit.
         Parameters
+        -   add a gate with 1. control 2. target 3. encoding 
+            since these gates are not parametrized save an angle of 0.0 into the angles list 
+            
         ----------
         gate: QGateImpl:
             the gate to be added to the circuit.
@@ -591,10 +596,6 @@ class BackendCircuitCudaq(BackendCircuit):
         if len(control_qubits) > 1:
             raise ValueError('at must 1 control qubit is supported, NOT MORE ')
 
-        print('tr ', target_qubits, type(target_qubits))
-        print('con ', control_qubits)
-        print('gate enc ', gate_encoding)
-
         # if the gate has one control qubit append its index to the list of the controls 
         if len(control_qubits) == 1:
             circuit['control_qubits'].append(control_qubits[0])
@@ -608,7 +609,6 @@ class BackendCircuitCudaq(BackendCircuit):
         # so all 4 lists have the same length for iteration 
         circuit['angles'].append(0.0)
 
-        print(' finish adding basic gate ')
 
 
 
