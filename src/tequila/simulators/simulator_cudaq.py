@@ -673,7 +673,8 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
 
     def initialize_hamiltonian(self, hamiltonians):
         """
-        Convert reduced hamiltonians to native Qulacs types for efficient expectation value evaluation.
+        Convert reduced hamiltonians to native Cudaq types for efficient expectation value evaluation.
+
         Parameters
         ----------
         hamiltonians:
@@ -685,21 +686,6 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
             initialized hamiltonian objects.
 
         """
-
-
-        """ 
-        # get information for spins 
-        print(" \n \n")
-        for h in hamiltonians:
-            print(h, h.paulistrings)
-            print(type(h), type(h.paulistrings))
-            for pauli in h.paulistrings:
-                print(pauli, type(pauli))
-                for a, b in pauli.items():
-                    print(f"{a} bit {b} gate {pauli._coeff} coeff")
-        """ 
-
-        # TODO -> on black board an example: correct multiplication of paulis and THEN multiplying with coefficient 
 
         list_of_initialized_hamiltonians = []
         hamiltonian_as_spin = 1
@@ -722,13 +708,6 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
                 hamiltonian_as_spin += term  # Accumulate terms
             
             list_of_initialized_hamiltonians.append(hamiltonian_as_spin)
-
-            
-
-        # show hamils 
-        for index, h in enumerate(list_of_initialized_hamiltonians):
-            print(f"hamil number {index + 1} is {h}")
-            continue
 
         return list_of_initialized_hamiltonians
 
