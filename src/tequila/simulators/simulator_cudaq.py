@@ -645,56 +645,16 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
         elif isinstance(self.H, numbers.Number):
             return numpy.asarray[self.H]
 
-        # a tupel: (gate_code, target, control)
-        # gate_to_apply = (gate_encoding, target_qubits, conrtol_qubits)
-
-        # print("self cir ", self.U.circuit)
-
-        #for g, t, c, par in self.U.circuit:
-            # print(g,t,c, par)
-            # continue
-
-        # print(" circ ", self.U.circuit)
-
-        # print("amt of qbits ", self.U.n_qubits)
-
-
-        
-         
+        # prepare circuit to apply onto state          
         (number_of_qubits, gate_encodings, target_qubits, angles, 
          control_qubits, iteration_length) = BackendCircuitCudaq.prepare_circuit_for_state_modifier(self)
 
-        
-        
-
-        print("right before kernel ")
-
-        """ beginning of cudaq kernel (oracle) """
-
-        # rotation_gates_encodings = primitive_gate_encodings
-
-        # use state_modifier here 
-            
-        # print("before print of modifier ")
-        # print(state_modifier)    
-
-        print("right after kernel ")
-
-        # array containing results of simulation 
+        # array containing results of exp. value simulation 
         resulting_expectation_values = []
-
-        # c-of prem
-        # print(f"con of primitives {control_qubits_of_primitives}")
 
         # go over all given hamiltonians 
         for hamiltonian in self.H:
-            print(hamiltonian, "hamil from for loop ")
             # compute expectation value between hamiltonian and state 
-
-
-            print("before ex val")
-            # expectation_value = cudaq.observe(modified_state, hamiltonian).expectation()
-
             expectation_value = cudaq.observe(BackendCircuitCudaq.state_modifier, hamiltonian, number_of_qubits,
                                               gate_encodings, target_qubits, angles,
                                               control_qubits, iteration_length
@@ -704,15 +664,8 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
             amplitudes = cudaq.get_state(BackendCircuitCudaq.state_modifier, number_of_qubits, gate_encodings,
                                          target_qubits, angles, control_qubits, iteration_length)
 
-            # show amplitudes 
-            print(f"amplis {amplitudes}")
-
-            print("after ex val")
-            # print("one before")
-            # print(expectation_value)
+            # store exp. val in results array
             resulting_expectation_values.append(expectation_value)
-
-        # print("res exvals ",resulting_expectation_values)
 
         return numpy.asarray(resulting_expectation_values)
     
