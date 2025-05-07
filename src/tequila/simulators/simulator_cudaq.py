@@ -452,7 +452,7 @@ class BackendCircuitCudaq(BackendCircuit):
         
         # given an input integer get the parameters to create a quantum state from 
         params = BackendCircuitCudaq.prepare_state_from_integer(initial_state, self.n_qubits)
-        
+
         # get the quantum state created based on a given initial state for applying the circuit on it 
         quantum_state_from_integer = cudaq.get_state(self.state_modifier, *params)
 
@@ -471,73 +471,15 @@ class BackendCircuitCudaq(BackendCircuit):
 
 
 
-
-    def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
-        """
-        Transform backend evaluation results into QubitWaveFunction
-        Parameters
-        ----------
-        backend_result:
-            the return value of backend simulation.
-
-        Returns
-        -------
-        QubitWaveFunction
-            results transformed to tequila native QubitWaveFunction
-        """
-
-        result = QubitWaveFunction()
-        # todo there are faster ways
-
-
-        for k in backend_result:
-            converted_key = BitString.from_binary(BitStringLSB.from_int(integer=k, nbits=self.n_qubits).binary)
-            if converted_key in result._state:
-                result._state[converted_key] += 1
-            else:
-                result._state[converted_key] = 1
-
-        if target_qubits is not None:
-            mapped_target = [self.qubit_map[q].number for q in target_qubits]
-            mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
-            keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
-            result = result.apply_keymap(keymap=keymap)
-
-        return result
-
-    def do_sample(self, samples, circuit, noise_model=None, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
-        """
-        Helper function for performing sampling.
-
-        Parameters
-        ----------
-        samples: int:
-            the number of samples to be taken.
-        circuit:
-            the circuit to sample from.
-        noise_model: optional:
-            noise model to be applied to the circuit.
-        initial_state:
-            sampling supports initial states for qulacs. Indicates the initial state to which circuit is applied.
-        args
-        kwargs
-
-        Returns
-        -------
-        QubitWaveFunction:
-            the results of sampling, as a Qubit Wave Function.
-        """
-        state = self.initialize_state(self.n_qubits)
-        lsb = BitStringLSB.from_int(initial_state, nbits=self.n_qubits)
-        state.set_computational_basis(BitString.from_binary(lsb.binary).integer)
-        circuit.update_quantum_state(state)
-        sampled = state.sampling(samples)
-        return self.convert_measurements(backend_result=sampled, target_qubits=self.measurements)
-
-
     def initialize_circuit(self, *args, **kwargs):
         """
         return an empty circuit.
+        for cudaq return an empty dict as the main data structure containing 4 key parameters:
+        1. encodings of gates as integers 
+        2. indices of target qubits to which the gates are applied 
+        3. angles in case of parametrized gates 
+        4. index of a potential control qubit 
+
         Parameters
         ----------
         args
@@ -545,8 +487,6 @@ class BackendCircuitCudaq(BackendCircuit):
 
         Returns
         -------
-        an empty list, since the circuits in cudaq has to be created 
-        based on a list of gates within a kernel 
         """
 
         # as for now circuit supports only CNOT, single qubit gates and single rotations
