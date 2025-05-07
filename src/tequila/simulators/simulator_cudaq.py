@@ -563,7 +563,7 @@ class BackendCircuitCudaq(BackendCircuit):
         Parameters
         -   add a gate with 1. control 2. target 3. encoding 
             since these gates are not parametrized save an angle of 0.0 into the angles list 
-            
+
         ----------
         gate: QGateImpl:
             the gate to be added to the circuit.
@@ -612,25 +612,6 @@ class BackendCircuitCudaq(BackendCircuit):
 
 
 
-    def add_measurement(self, circuit, target_qubits, *args, **kwargs):
-        """
-        Add a measurement operation to a circuit.
-        Parameters
-        ----------
-        circuit:
-            a circuit, to which the measurement is to be added.
-        target_qubits: List[int]
-            abstract target qubits
-        args
-        kwargs
-
-        Returns
-        -------
-        None
-        """
-        pass
-
-
 class BackendExpectationValueCudaq(BackendExpectationValue):
     """
     Class representing Expectation Values compiled for Cudaq.
@@ -639,12 +620,6 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
     """
     use_mapping = True
     BackendCircuitType = BackendCircuitCudaq
-
-
-
-
-
-
 
 
     def simulate(self, variables, *args, **kwargs) -> numpy.array:
