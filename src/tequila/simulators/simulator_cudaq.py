@@ -124,24 +124,6 @@ class BackendCircuitCudaq(BackendCircuit):
         self.has_noise=False
 
 
-        # noise part is still not implemented for cudaq 
-        if noise is not None:
-
-            warnings.warn("Warning: noise in qulacs module will be dropped. Currently only works for qulacs version 0.5 or lower", TequilaWarning)
-
-            self.has_noise=True
-            self.noise_lookup = {
-                'bit flip': [qulacs.gate.BitFlipNoise],
-                'phase flip': [lambda target, prob: qulacs.gate.Probabilistic([prob],[qulacs.gate.Z(target)])],
-                'phase damp': [lambda target, prob: qulacs.gate.DephasingNoise(target,(1/2)*(1-numpy.sqrt(1-prob)))],
-                'amplitude damp': [qulacs.gate.AmplitudeDampingNoise],
-                'phase-amplitude damp': [qulacs.gate.AmplitudeDampingNoise,
-                                         lambda target, prob: qulacs.gate.DephasingNoise(target,(1/2)*(1-numpy.sqrt(1-prob)))
-                                         ],
-                'depolarizing': [lambda target,prob: qulacs.gate.DepolarizingNoise(target,3*prob/4)]
-            }
-
-            self.circuit=self.add_noise_to_circuit(noise)
 
 
     
@@ -345,14 +327,8 @@ class BackendCircuitCudaq(BackendCircuit):
         and accept parameters and the state modifier itself 
         '''
 
-
-
-        print('before nqb')
-
         # prepare parameters for usage in kernal since "self. " access doesnt work within kernels  
         number_of_qubits = self.n_qubits
-
-        print('n qb')
 
         circuit = None
         if isinstance(self, BackendCircuitCudaq):
@@ -363,8 +339,6 @@ class BackendCircuitCudaq(BackendCircuit):
         if circuit is None:
             raise ValueError("wrong attribute access in function - prepare_circuit_for_state_modifier")    
         
-        print("circ prep ", circuit)
-
         gate_encodings = []
         target_qubits = [] 
         angles = []
@@ -385,8 +359,6 @@ class BackendCircuitCudaq(BackendCircuit):
         
         if iteration_length == None:
             raise ValueError('iter length from prepare_circuit shall not be None')
-
-        print('before ret prepare ')
 
         return (number_of_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length)
 
