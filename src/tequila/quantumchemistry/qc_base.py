@@ -2514,8 +2514,8 @@ def reconstruct_matrix_from_givens(n, theta_list, phi_list, to_real_if_possible 
     return reconstructed
 def arctan2(x1, x2, *args, **kwargs):
     if isinstance(x1,(Variable,Objective)) or isinstance(x2,(Variable,Objective)):
-        return Objective().binary_operator(left=1*x1,right=1*x2,op=arctan2)
+        return Objective().binary_operator(left=1*x1,right=1*x2,op=numpy.arctan2)
     elif not isinstance(x1,numbers.Complex) and not isinstance(x2,numbers.Complex):
-        return np.arctan2(x1,x2)
+        return numpy.arctan2(x1,x2)
     else:
-        return np.arctan2(x1.imag,x2.imag)+np.arctan2(x1.real,x2.real)
+        return numpy.arctan2(x1.imag,x2.imag)+numpy.arctan2(x1.real,x2.real)
