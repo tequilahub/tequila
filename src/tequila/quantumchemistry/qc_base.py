@@ -6,7 +6,7 @@ from tequila.hamiltonian import QubitHamiltonian
 from tequila.hamiltonian.paulis import Sp, Sm, Zero
 
 from tequila.circuit import QCircuit, gates
-from tequila.objective.objective import Variable, Variables, ExpectationValue
+from tequila.objective.objective import Variable, Variables, ExpectationValue, Objective
 
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
@@ -2383,9 +2383,13 @@ def givens_matrix(n, p, q, theta):
     Returns:
     - numpy.array: The Givens rotation matrix.
     '''
-    matrix = numpy.eye(n)  # Matrix to hold complex numbers
-    cos_theta = numpy.cos(theta)
-    sin_theta = numpy.sin(theta)
+    matrix = QTensor(shape=(n,n),objective_list=numpy.eye(n).reshape(n*n))  # Matrix to hold complex numbers
+    if isinstance(theta,(Variable,Objective)):
+        cos_theta = theta.apply(numpy.cos)
+        sin_theta = theta.apply(numpy.sin)
+    else:
+        cos_theta = numpy.cos(theta)
+        sin_theta = numpy.sin(theta)
 
     # Directly assign cosine and sine without complex phase adjustment
     matrix[p, p] = cos_theta
@@ -2411,7 +2415,7 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
     - numpy.array (optional): The diagonal matrix after applying all Givens rotations, returned if return_diagonal is True.
     '''
     U = unitary # no need to copy as we don't modify the original
-    U[abs(U) < tol] = 0 # Zeroing out the small elements as per the tolerance level.
+    # U[abs(U) < tol] = 0 # Zeroing out the small elements as per the tolerance level. #comented out, its being considered latter again
     n = U.shape[0]
 
     # Determine optimized ordering if specified.
@@ -2423,11 +2427,10 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
 
     def calcTheta(U, c, r):
         '''Calculate and apply the Givens rotation for a specific matrix element.'''
-        t = numpy.arctan2(-U[r,c], U[r-1,c])
+        t = arctan2(-U[r,c], U[r-1,c])
         theta_list.append((t, r, r-1))
-        g = givens_matrix(n,r,r-1,t)
-        U = numpy.dot(g, U)
-
+        g = givens_matrix(n,r,r-1,t) #is a QTensor
+        U = g.dot(U)
         return U
 
     # Apply and store Givens rotations as per the given or computed ordering.
@@ -2438,24 +2441,29 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
     else:
         for r, c in ordering:
             U = calcTheta(U, c, r)
-    
     # Calculating the Rz rotations based on the phases of the diagonal elements.
     # For real elements this means a 180 degree shift, i.e. a sign change.
     for i in range(n):
-        ph = numpy.angle(U[i,i])
-        phi_list.append((ph, i))
-
+        if isinstance(U[i,i],(Variable,Objective)):
+            if len(U[i,i].args):
+                phi_list.append((U[i,i].apply(numpy.angle), i))
+        else:
+            phi_list.append((numpy.angle(U[i,i]), i))
     # Filtering out rotations without significance.
     theta_list_new = []
     for i, theta in enumerate(theta_list):
-        if abs(theta[0] % (2*numpy.pi)) > tol:
+        if isinstance(theta[0],(Variable,Objective)):
+            if len(theta[0].args):
+                theta_list_new.append(theta)  
+        elif abs(theta[0] % (2*numpy.pi)) > tol:
             theta_list_new.append(theta)
-    
     phi_list_new = []
     for i, phi in enumerate(phi_list):
-        if abs(phi[0]) > tol:
+        if isinstance(phi[0],(Variable,Objective)):
+            if len(phi[0].args):
+                phi_list_new.append(phi)
+        elif abs(phi[0]) > tol:
             phi_list_new.append(phi)
-        
     if return_diagonal:
         # Optionally return the resulting diagonal
         return theta_list_new, phi_list_new, U
@@ -2503,3 +2511,10 @@ def reconstruct_matrix_from_givens(n, theta_list, phi_list, to_real_if_possible 
             reconstructed = reconstructed.real
 
     return reconstructed
+def arctan2(x1, x2, *args, **kwargs):
+    if isinstance(x1,(Variable,Objective)) or isinstance(x2,(Variable,Objective)):
+        return Objective().binary_operator(left=1*x1,right=1*x2,op=arctan2)
+    elif not isinstance(x1,numbers.Complex) and not isinstance(x2,numbers.Complex):
+        return np.arctan2(x1,x2)
+    else:
+        return np.arctan2(x1.imag,x2.imag)+np.arctan2(x1.real,x2.real)
