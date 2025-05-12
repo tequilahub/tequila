@@ -835,6 +835,6 @@ def test_givens_decomposition(size):
 
     # reconstruct original unitary from givens
     reconstructed_matrix = qcb.reconstruct_matrix_from_givens(unitary.shape[0], theta_list, phi_list)
-    reconstructed_matrix = reconstructed_matrix.astype(np.float64)
+    reconstructed_matrix = reconstructed_matrix.astype(numpy.float64)
     
     assert numpy.allclose(unitary, reconstructed_matrix)
