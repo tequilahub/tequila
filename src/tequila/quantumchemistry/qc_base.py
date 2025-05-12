@@ -7,6 +7,7 @@ from tequila.hamiltonian.paulis import Sp, Sm, Zero
 
 from tequila.circuit import QCircuit, gates
 from tequila.objective.objective import Variable, Variables, ExpectationValue, Objective
+from tequila import QTensor
 
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
