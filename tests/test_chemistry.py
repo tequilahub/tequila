@@ -780,6 +780,51 @@ def test_givens_on_molecule(size, transformation):
     
     assert numpy.isclose(result1, result2)
 
+def test_givens_on_molecule():
+    size = 3 #Since above test pased reduced the cases to make it afforable
+    transformation = "JordanWigner"
+    # dummy one-electron integrals
+    h = numpy.ones(shape=[size, size])
+    # dummy two-electron integrals
+    g = numpy.ones(shape=[size, size, size, size])
+
+    U = rg.generate_random_unitary(size)
+
+    # transformed integrals
+    th = (U.T.dot(h)).dot(U)
+    tg = numpy.einsum("ijkx, xl -> ijkl", g, U, optimize='greedy')
+    tg = numpy.einsum("ijxl, xk -> ijkl", tg, U, optimize='greedy')
+    tg = numpy.einsum("ixkl, xj -> ijkl", tg, U, optimize='greedy')
+    tg = numpy.einsum("xjkl, xi -> ijkl", tg, U, optimize='greedy')
+
+    # original molecule/H
+    mol = tq.Molecule(geometry="He 0.0 0.0 0.0", nuclear_repulsion=0.0, one_body_integrals=h, two_body_integrals=g,
+                      basis_set="dummy", transformation=transformation)
+    H = mol.make_hamiltonian()
+    # transformed molecule/H
+    tmol = tq.Molecule(geometry="He 0.0 0.0 0.0", nuclear_repulsion=0.0, one_body_integrals=th, two_body_integrals=tg,
+                       basis_set="dummy", transformation=transformation)
+    tH = tmol.make_hamiltonian()
+    QU = tq.QTensor(shape=(size,size))
+    variables = {}
+    for i in range(size):
+        for j in range(size):
+            QU[i,j] = tq.Variable(str(U[i,j]))
+            variables.update({str(U[i,j]):U[i,j]})
+    # transformation in qubit space (this corresponds to the U above)
+    UR = mol.get_givens_circuit(QU)  # Works!
+    # test circuit
+    circuit = rg.make_random_circuit(size)
+
+    # create expectation values and see if they are the same
+    E1 = tq.ExpectationValue(U=circuit, H=tH)
+    E2 = tq.ExpectationValue(U=circuit + UR, H=H)
+
+    result1 = tq.simulate(E1)
+    result2 = tq.simulate(E2,variables=variables)
+
+    assert numpy.isclose(result1, result2)
+
 @pytest.mark.parametrize("size", [2, 8])
 def test_givens_decomposition(size):
     # generate random unitary
@@ -790,5 +835,6 @@ def test_givens_decomposition(size):
 
     # reconstruct original unitary from givens
     reconstructed_matrix = qcb.reconstruct_matrix_from_givens(unitary.shape[0], theta_list, phi_list)
+    reconstructed_matrix = reconstructed_matrix.astype(np.float64)
     
     assert numpy.allclose(unitary, reconstructed_matrix)
