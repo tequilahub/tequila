@@ -271,7 +271,7 @@ class ParametersQC:
         return result
 
     @property
-    def n_electrons(self, *args, **kwargs):
+    def total_n_electrons(self, *args, **kwargs):
         return self.get_nuc_charge() - self.charge
 
     def get_nuc_charge(self):

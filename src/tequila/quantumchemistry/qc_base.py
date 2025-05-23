@@ -65,7 +65,7 @@ class QuantumChemistryBase:
         """
 
         self.parameters = parameters
-        n_electrons = parameters.n_electrons
+        n_electrons = parameters.total_n_electrons
         if "n_electrons" in kwargs:
             n_electrons = kwargs["n_electrons"]
 
@@ -80,7 +80,7 @@ class QuantumChemistryBase:
         overriding_freeze_instruction = orbital_type is not None and orbital_type.lower() == "native"
         # determine frozen core automatically if set
         # only if molecule is computed from scratch and not passed down from above
-        overriding_freeze_instruction = overriding_freeze_instruction or n_electrons != parameters.n_electrons
+        overriding_freeze_instruction = overriding_freeze_instruction or n_electrons != parameters.total_n_electrons
         overriding_freeze_instruction = overriding_freeze_instruction or frozen_orbitals is not None
         if not overriding_freeze_instruction and self.parameters.frozen_core:
             n_core_electrons = self.parameters.get_number_of_core_electrons()
@@ -505,7 +505,7 @@ class QuantumChemistryBase:
         - result of self.get_integrals()
         """
 
-        n_electrons = self.parameters.n_electrons
+        n_electrons = self.parameters.total_n_electrons
         if "n_electrons" in kwargs:
             n_electrons = kwargs["n_electrons"]
 

@@ -657,7 +657,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             raise TequilaMadnessException(
                 "n_pno={} and n_orbitals={} given ... please pick one".format(n_pno, n_orbitals))
 
-        n_electrons = self.parameters.n_electrons
+        n_electrons = self.parameters.total_n_electrons
         if self.parameters.frozen_core:
             # only count active electrons (will not compute pnos for frozen pairs)
             n_core_electrons = self.parameters.get_number_of_core_electrons()
