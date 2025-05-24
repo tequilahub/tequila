@@ -1,9 +1,7 @@
 from mqp.qiskit_provider import MQPProvider, MQPBackend
 from qiskit.circuit import QuantumCircuit
-from typing import Union
 from mqp.qiskit_provider import MQPProvider, MQPBackend
-from tequila.simulators import TequilaQiskitException
-
+from tequila import TequilaException
 from tequila.simulators.simulator_aqt import BackendCircuitAQT, BackendExpectationValueAQT
 
 # TODO: maxcircles variable
@@ -43,7 +41,7 @@ class BackendExpectationValueMQP(BackendExpectationValueAQT):
     BackendCircuitType = BackendCircuitMQP
 
        
-class TequilaMQPException(TequilaQiskitException):
+class TequilaMQPException(TequilaException):
     def __str__(self):
         return "Error in MQP backend:" + self.message
  

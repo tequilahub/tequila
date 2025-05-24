@@ -5,9 +5,10 @@ from typing import Union
 from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit, TequilaQiskitException
 from qiskit_aqt_provider import AQTProvider
 from qiskit_aqt_provider.aqt_resource import AQTResource
-import qiskit
 from qiskit.circuit import QuantumCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila import TequilaException
+import qiskit
 
 class TequilaAQTException(TequilaQiskitException):
     def __str__(self):
@@ -25,6 +26,16 @@ class BackendCircuitAQT(BackendCircuitQiskit):
         # TODO: what if somebody actually passes a valid aqt cloud token?
         backend = provider.get_backend('offline_simulator_no_noise')
         return backend
+   
+    
+    def get_circuit(self, circuit: QuantumCircuit, qiskit_backend, initial_state=0, optimization_level=1,  *args, **kwargs) -> QuantumCircuit:
+        circ = circuit.assign_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
+        circ = self.add_state_init(circ, initial_state)
+        basis = qiskit_backend.operation_names
+        circ = qiskit.transpile(circ, backend=qiskit_backend, basis_gates=basis, optimization_level=optimization_level) 
+        return circ
+     
+
     
     def sample(self, variables, samples, read_out_qubits=None, circuit=None, initial_state=0, *args, **kwargs):
         if initial_state != 0 and not self.supports_sampling_initialization:
@@ -52,25 +63,22 @@ class BackendCircuitAQT(BackendCircuitQiskit):
         return self.do_sample(samples=samples, circuit=circuit, read_out_qubits=read_out_qubits,
                               initial_state=initial_state, *args, **kwargs)
 
-    
-    
     def do_sample(self, circuit: QuantumCircuit, samples: int, read_out_qubits, initial_state=0, *args,
                   **kwargs) -> QubitWaveFunction:
+        
         optimization_level = 1
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
         qiskit_backend = self.retrieve_device(self.device)
-       
-        circuit = circuit.assign_parameters(self.resolver)  
-        circuit = self.add_state_init(circuit, initial_state)   
-        circuit = qiskit.transpile(circuit, backend=qiskit_backend, optimization_level=optimization_level)
         
+        circuit = self.get_circuit(circuit=circuit, qiskit_backend=qiskit_backend, initial_state=initial_state, optimization_level=optimization_level, *args, **kwargs)
         job = qiskit_backend.run(circuit, shots=samples)
         counts = job.result().get_counts()
         wfn = self.convert_measurements(counts, target_qubits=read_out_qubits)
-        print(type(wfn))
-        return wfn
 
+        return wfn
+    
+    
     def convert_measurements(self, qiskit_counts, target_qubits=None) -> QubitWaveFunction:
         result = QubitWaveFunction(self.n_qubits, self.numbering)
         # todo there are faster ways
