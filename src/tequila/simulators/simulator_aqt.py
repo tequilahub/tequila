@@ -1,13 +1,6 @@
 from calendar import c
-from tequila.circuit.circuit import QCircuit
 from tequila.utils.keymap import KeyMapRegisterToSubregister
-from tequila import BitString, BitNumbering, BitStringLSB
-from tequila.circuit.compiler import change_basis
-import numbers, typing, numpy, copy, warnings
-from tequila.objective.objective import Variable, format_variable_dictionary
-import typing
-from tequila.utils.misc import to_float
-import numpy
+from tequila import BitString 
 from typing import Union
 from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit, TequilaQiskitException
 from qiskit_aqt_provider import AQTProvider
@@ -15,11 +8,6 @@ from qiskit_aqt_provider.aqt_resource import AQTResource
 import qiskit
 from qiskit.circuit import QuantumCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila import TequilaException, TequilaWarning, circuit
-from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
-from tequila.circuit import gates 
-import numpy as np
-from tequila.objective import ExpectationValue
 
 class TequilaAQTException(TequilaQiskitException):
     def __str__(self):
@@ -66,8 +54,8 @@ class BackendCircuitAQT(BackendCircuitQiskit):
 
     
     
-    def do_sample(self, circuit: Union[QuantumCircuit, list[QuantumCircuit]], samples: int, read_out_qubits, initial_state=0, *args,
-                  **kwargs) -> Union[QubitWaveFunction, list[QubitWaveFunction]]:
+    def do_sample(self, circuit: QuantumCircuit, samples: int, read_out_qubits, initial_state=0, *args,
+                  **kwargs) -> QubitWaveFunction:
         optimization_level = 1
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
@@ -80,9 +68,10 @@ class BackendCircuitAQT(BackendCircuitQiskit):
         job = qiskit_backend.run(circuit, shots=samples)
         counts = job.result().get_counts()
         wfn = self.convert_measurements(counts, target_qubits=read_out_qubits)
+        print(type(wfn))
         return wfn
 
-    def convert_measurements(self, qiskit_counts, target_qubits=None) -> list[QubitWaveFunction]:
+    def convert_measurements(self, qiskit_counts, target_qubits=None) -> QubitWaveFunction:
         result = QubitWaveFunction(self.n_qubits, self.numbering)
         # todo there are faster ways
         for k, v in qiskit_counts.items():
