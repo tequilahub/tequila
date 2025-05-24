@@ -4,7 +4,6 @@ from mqp.qiskit_provider import MQPProvider, MQPBackend
 from tequila import TequilaException
 from tequila.simulators.simulator_aqt import BackendCircuitAQT, BackendExpectationValueAQT
 
-# TODO: maxcircles variable
 
 class BackendCircuitMQP(BackendCircuitAQT):
     
@@ -26,7 +25,8 @@ class BackendCircuitMQP(BackendCircuitAQT):
             raise TequilaMQPException(f"Invalid Token for MQP backend")
         return backend
   
-   
+  
+    # don't transpile the circuit for mqp 
     def get_circuit(self, circuit: QuantumCircuit, qiskit_backend, initial_state=0, optimization_level=1,  *args, **kwargs) -> QuantumCircuit:
         circ = circuit.assign_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
         circ = self.add_state_init(circ, initial_state)

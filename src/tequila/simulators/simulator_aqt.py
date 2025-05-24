@@ -1,7 +1,6 @@
 from calendar import c
 from tequila.utils.keymap import KeyMapRegisterToSubregister
 from tequila import BitString 
-from typing import Union
 from tequila.simulators.simulator_qiskit import BackendCircuitQiskit, BackendExpectationValueQiskit, TequilaQiskitException
 from qiskit_aqt_provider import AQTProvider
 from qiskit_aqt_provider.aqt_resource import AQTResource
@@ -19,7 +18,6 @@ class BackendCircuitAQT(BackendCircuitQiskit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.device = self.get_backend()
-    
         
     def get_backend(token: str = "") -> AQTResource:
         provider = AQTProvider(token)
