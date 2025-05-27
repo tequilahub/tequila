@@ -8,6 +8,7 @@ from qiskit.circuit import QuantumCircuit
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila import TequilaException
 import qiskit
+from typing import Union
 
 class TequilaAQTException(TequilaQiskitException):
     def __str__(self):
@@ -25,15 +26,15 @@ class BackendCircuitAQT(BackendCircuitQiskit):
         backend = provider.get_backend('offline_simulator_no_noise')
         return backend
    
-    
+   
+   # state measurement operation? 
     def get_circuit(self, circuit: QuantumCircuit, qiskit_backend, initial_state=0, optimization_level=1,  *args, **kwargs) -> QuantumCircuit:
         circ = circuit.assign_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
         circ = self.add_state_init(circ, initial_state)
-        basis = qiskit_backend.operation_names
+        basis = qiskit_backend.target.operation_names
         circ = qiskit.transpile(circ, backend=qiskit_backend, basis_gates=basis, optimization_level=optimization_level) 
         return circ
      
-
     
     def sample(self, variables, samples, read_out_qubits=None, circuit=None, initial_state=0, *args, **kwargs):
         if initial_state != 0 and not self.supports_sampling_initialization:
@@ -67,7 +68,8 @@ class BackendCircuitAQT(BackendCircuitQiskit):
         optimization_level = 1
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
-        qiskit_backend = self.retrieve_device(self.device)
+        qiskit_backend = self.get_backend()
+        print(type(qiskit_backend))
         
         circuit = self.get_circuit(circuit=circuit, qiskit_backend=qiskit_backend, initial_state=initial_state, optimization_level=optimization_level, *args, **kwargs)
         job = qiskit_backend.run(circuit, shots=samples)
@@ -76,7 +78,7 @@ class BackendCircuitAQT(BackendCircuitQiskit):
 
         return wfn
     
-    
+
     def convert_measurements(self, qiskit_counts, target_qubits=None) -> QubitWaveFunction:
         result = QubitWaveFunction(self.n_qubits, self.numbering)
         # todo there are faster ways
@@ -91,7 +93,10 @@ class BackendCircuitAQT(BackendCircuitQiskit):
             result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(target_qubits))
    
         return result
-
+    
+    def do_simulate(self, variables, initial_state=0, *args, **kwargs):
+        raise TequilaAQTException("AQT backend does not support do_simulate")
+ 
 
 class BackendExpectationValueAQT(BackendExpectationValueQiskit):
     BackendCircuitType = BackendCircuitAQT

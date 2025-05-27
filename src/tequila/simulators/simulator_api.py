@@ -38,11 +38,10 @@ try:
 except ImportError:
     HAS_SPEX = False
 
-# TODO: dummy mqp 
+# mqp and aqt are samplers, not simulators
 HAS_AQT = True
 try:
     from tequila.simulators.simulator_aqt import BackendCircuitAQT, BackendExpectationValueAQT
-    INSTALLED_SIMULATORS["aqt"] = BackendTypes(BackendCircuitAQT, BackendExpectationValueAQT)
     INSTALLED_SAMPLERS["aqt"] = BackendTypes(BackendCircuitAQT, BackendExpectationValueAQT)
 except ImportError:
     HAS_AQT = False
@@ -50,8 +49,6 @@ except ImportError:
 HAS_MQP = True
 try:
     from tequila.simulators.simulator_mqp import BackendCircuitMQP, BackendExpectationValueMQP
-    # TODO: this should actually not be a simulator, but not adding it leads to a 'backend not installed' exception
-    INSTALLED_SIMULATORS["mqp"] = BackendTypes(BackendCircuitMQP, BackendExpectationValueMQP)
     INSTALLED_SAMPLERS["mqp"] = BackendTypes(BackendCircuitMQP, BackendExpectationValueMQP)
 except ImportError:
     HAS_MQP = False
@@ -205,7 +202,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
         the name of the chosen (or verified) backend.
     """
 
-    if len(INSTALLED_SIMULATORS) == 0:
+    if len(INSTALLED_SIMULATORS) == 0 and len(INSTALLED_SAMPLERS) == 0:
         raise TequilaException("No simulators installed on your system")
 
     if backend is None and device is not None:
@@ -302,7 +299,10 @@ def compile_objective(objective: typing.Union['Objective'],
     if variables is None:
         variables = {k: 0.0 for k in objective.extract_variables()}
 
-    ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
+    if samples is None:
+        ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
+    else:
+        ExpValueType = INSTALLED_SAMPLERS[pick_backend(backend=backend, samples=samples)].ExpValueType
     all_compiled = True
     # check if compiling is necessary
     for arg in objective.args:
@@ -370,9 +370,14 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     BackendCircuit:
         the compiled circuit.
     """
-
-    CircType = INSTALLED_SIMULATORS[
+    
+    if samples is None:
+        CircType = INSTALLED_SIMULATORS[
         pick_backend(backend=backend, samples=samples, noise=noise, device=device)].CircType
+    else:    
+        CircType = INSTALLED_SAMPLERS[
+        pick_backend(backend=backend, samples=samples, noise=noise, device=device)].CircType
+
 
     # dummy variables
     if variables is None:
