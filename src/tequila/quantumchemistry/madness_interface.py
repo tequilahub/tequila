@@ -673,7 +673,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if maxrank is None:
             # need at least maxrank=1, otherwise no PNOs are computed
             # this was a bug in <=v1.8.5 
-            maxrank = max(1, int(numpy.ceil(n_pno // n_pairs)))
+            maxrank = max(1, int(numpy.ceil(n_pno / n_pairs)))
 
         if maxrank <= 0:
             warnings.warn(
