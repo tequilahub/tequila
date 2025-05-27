@@ -6,7 +6,8 @@ from tequila.hamiltonian import QubitHamiltonian
 from tequila.hamiltonian.paulis import Sp, Sm, Zero
 
 from tequila.circuit import QCircuit, gates
-from tequila.objective.objective import Variable, Variables, ExpectationValue
+from tequila.objective.objective import Variable, Variables, ExpectationValue, Objective
+from tequila import QTensor
 
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
@@ -64,7 +65,7 @@ class QuantumChemistryBase:
         """
 
         self.parameters = parameters
-        n_electrons = parameters.n_electrons
+        n_electrons = parameters.total_n_electrons
         if "n_electrons" in kwargs:
             n_electrons = kwargs["n_electrons"]
 
@@ -79,7 +80,7 @@ class QuantumChemistryBase:
         overriding_freeze_instruction = orbital_type is not None and orbital_type.lower() == "native"
         # determine frozen core automatically if set
         # only if molecule is computed from scratch and not passed down from above
-        overriding_freeze_instruction = overriding_freeze_instruction or n_electrons != parameters.n_electrons
+        overriding_freeze_instruction = overriding_freeze_instruction or n_electrons != parameters.total_n_electrons
         overriding_freeze_instruction = overriding_freeze_instruction or frozen_orbitals is not None
         if not overriding_freeze_instruction and self.parameters.frozen_core:
             n_core_electrons = self.parameters.get_number_of_core_electrons()
@@ -504,7 +505,7 @@ class QuantumChemistryBase:
         - result of self.get_integrals()
         """
 
-        n_electrons = self.parameters.n_electrons
+        n_electrons = self.parameters.total_n_electrons
         if "n_electrons" in kwargs:
             n_electrons = kwargs["n_electrons"]
 
@@ -595,16 +596,141 @@ class QuantumChemistryBase:
         # backward compatibility
         return self.use_native_orbitals()
     
-    def use_native_orbitals(self, inplace=False):
+    def use_native_orbitals(self, inplace=False, core: list = None, *args, **kwargs):
         """
+        Parameters
+        ----------
+            inplace: 
+                update current molecule or return a new instance
+            core: 
+                list of core orbital indices (optional) — orbitals will be frozen and treated as doubly occupied. The orbitals correspond to 
+                the currently used orbitals of the molecule (default is usually canonical HF), see mol.print_basis_info() if unsure. Providing core 
+                orbitals is optional; the default is inherited from the active space set in self.integral_manager. If core is provided, the 
+                corresponding active native orbitals will be chosen based on their overlap with the core orbitals.
+            active(in kwargs): 
+                list the active orbital indices (optional, in kwargs) - on the Native Orbital schema. Default: All orbitals, if core (see above) is provided, 
+                then the default is to automatically select the active orbitals based on their overlap with the provided core orbitals (selectint the N-|core| 
+                orbitals that have smallest overlap with coree).
+                As an example, Assume the input geometry was H, He, H. active=[0,1,2] is selecting the (orthonormalized) atomic 1s (left H), 1s (He), 1s (right H).
+                If core=[0] and active is not set, then active=[0,2] will be selected automatically (as the 1s He atomic orbital will have the largest overlap 
+                with the lowest energy HF orbital).
         Returns
         -------
         New molecule in the native (orthonormalized) basis given
         e.g. for standard basis sets the orbitals are orthonormalized Gaussian Basis Functions
         """
-        if not self.integral_manager.active_space_is_trivial():
-            warnings.warn("orthonormalize_basis_orbitals: active space is set and might lead to inconsistent behaviour", TequilaWarning)
+        c = copy.deepcopy(self.integral_manager.orbital_coefficients)
+        s = self.integral_manager.overlap_integrals
+        d = self.integral_manager.get_orthonormalized_orbital_coefficients()
+        def inner(a, b,s):
+            return numpy.sum(numpy.multiply(numpy.outer(a,b),s))
+        def orthogonalize(c,d,s):
+            '''
+            :return: orthogonalized orbitals with core HF orbitals and active Orthongonalized Native orbitals.
+            '''
+            ### Computing Core-Active overlap Matrix
+                # sbar_{ki} = \langle \phi_k | \varphi_i \rangle = \sum_{m,n} c_{nk}d_{mi}\langle \chi_n | \chi_m \rangle
+                # c_{nk} = HF coeffs, d_{mi} = nat orb coef s_{mn} = Atomic Overlap Matrix
+                # k \in active orbs, i \in core orbs, m,n \in basis coeffs
+                # sbar = np.einsum('nk,mi,nm->ki', c, d, s) #only works if active == to_active
+            c = c.T
+            d = d.T
+            sbar = numpy.zeros(shape=s.shape)
+            for k in active:
+                for i in core:
+                    sbar[i][to_active[k]] = inner(c[i],d[k],s)
+            ### Projecting out Core orbitals from the Native ones
+                # dbar_{ji} = d_{ji} - \sum_k sbar_{ki}c_{jk}
+                # k \in active, i \in core, j in basis coeffs
+            dbar = numpy.zeros(shape=s.shape)
 
+            for j in active:
+                dbar[to_active[j]] = d[j]
+                for i in core:
+                    temp = sbar[i][to_active[j]] * c[i]
+                    dbar[to_active[j]] -= temp
+            ### Projected-out Nat Orbs Normalization
+            for i in to_active.values():
+                norm = numpy.sqrt(numpy.sum(numpy.multiply(numpy.outer(dbar[i], dbar[i]), s.T)))
+                if not numpy.isclose(norm, 0):
+                    dbar[i] = dbar[i] / norm
+            ### Reintroducing the New Coeffs on the HF coeff matrix
+            for j in to_active.values():
+                c[j] = dbar[j]
+            ### Compute new orbital overlap matrix:
+            sprima = numpy.eye(len(c))
+            for idx, i in enumerate(to_active.values()):
+                for j in [*to_active.values()][idx:]:
+                    sprima[i][j] = inner(c[i],c[j],s)
+                    sprima[j][i] = sprima[i][j]
+            ### Symmetric orthonormalization
+            lam_s, l_s = numpy.linalg.eigh(sprima)
+            lam_s = lam_s * numpy.eye(len(lam_s))
+            lam_sqrt_inv = numpy.sqrt(numpy.linalg.inv(lam_s))
+            symm_orthog = numpy.dot(l_s, numpy.dot(lam_sqrt_inv, l_s.T))
+            return symm_orthog.dot(c).T
+        def get_active(core):
+            ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
+            for i in core:
+                for j in range(len(d)):
+                    ov[j] += numpy.abs(inner(c.T[i], d.T[j],s))
+            act = []
+            for i in range(len(self.integral_manager.orbitals) - len(core)):
+                idx = numpy.argmin(ov)
+                act.append(idx)
+                ov[idx] = 1 * len(core)
+            act.sort()
+            return act
+            
+        def get_core(active):
+            ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
+            for i in active:
+                for j in range(len(d)):
+                    ov[j] += numpy.abs(inner(d.T[i], c.T[j], s))
+            co = []
+            for i in range(len(self.integral_manager.orbitals) - len(active)):
+                idx = numpy.argmin(ov)
+                co.append(idx)
+                ov[idx] = 1 * len(active)
+            co.sort()
+            return co
+            
+        active = None
+        if not self.integral_manager.active_space_is_trivial() and core is None:
+            core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
+        if 'active' in kwargs:
+            active = kwargs['active']
+            kwargs.pop('active')
+            if core is None:
+                core = get_core(active)
+        else:
+            if active is None:
+                if core is None:
+                    core = []
+                    active = [i for i in range(len(self.integral_manager.orbitals))]
+                else:
+                    if isinstance(core,int):
+                       core = [core]
+                    active = get_active(core)
+        assert len(active) + len(core) == len(self.integral_manager.orbitals)
+        to_active = [i for i in range(len(self.integral_manager.orbitals)) if i not in core]
+        to_active = {active[i]: to_active[i] for i in range(len(active))}
+        if len(core):
+            coeff = orthogonalize(c,d,s)
+            if inplace:
+                self.integral_manager = self.initialize_integral_manager(one_body_integrals=self.integral_manager.one_body_integrals,
+                two_body_integrals=self.integral_manager.two_body_integrals,constant_term=self.integral_manager.constant_term,
+                 active_orbitals=[*to_active.values()],reference_orbitals=[i.idx_total for i in self.integral_manager.reference_orbitals]
+                , frozen_orbitals=core, orbital_coefficients=coeff, overlap_integrals=s)
+                return self
+            else:
+                integral_manager = self.initialize_integral_manager(one_body_integrals=self.integral_manager.one_body_integrals,
+                two_body_integrals=self.integral_manager.two_body_integrals,constant_term=self.integral_manager.constant_term
+                , active_orbitals=[*to_active.values()],reference_orbitals=[i.idx_total for i in self.integral_manager.reference_orbitals]
+                , frozen_orbitals=core, orbital_coefficients=coeff, overlap_integrals=s)
+                parameters = copy.deepcopy(self.parameters)
+                result = QuantumChemistryBase(parameters=parameters, integral_manager=integral_manager,transformation=self.transformation,active_orbitals=[*to_active.values()])
+                return result
         # can not be an instance of a specific backend (otherwise we get inconsistencies with classical methods in the backend)
         if inplace:
             self.integral_manager.transform_to_native_orbitals()
@@ -2258,9 +2384,13 @@ def givens_matrix(n, p, q, theta):
     Returns:
     - numpy.array: The Givens rotation matrix.
     '''
-    matrix = numpy.eye(n)  # Matrix to hold complex numbers
-    cos_theta = numpy.cos(theta)
-    sin_theta = numpy.sin(theta)
+    matrix = QTensor(shape=(n,n),objective_list=numpy.eye(n).reshape(n*n))  # Matrix to hold complex numbers
+    if isinstance(theta,(Variable,Objective)):
+        cos_theta = theta.apply(numpy.cos)
+        sin_theta = theta.apply(numpy.sin)
+    else:
+        cos_theta = numpy.cos(theta)
+        sin_theta = numpy.sin(theta)
 
     # Directly assign cosine and sine without complex phase adjustment
     matrix[p, p] = cos_theta
@@ -2286,7 +2416,7 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
     - numpy.array (optional): The diagonal matrix after applying all Givens rotations, returned if return_diagonal is True.
     '''
     U = unitary # no need to copy as we don't modify the original
-    U[abs(U) < tol] = 0 # Zeroing out the small elements as per the tolerance level.
+    # U[abs(U) < tol] = 0 # Zeroing out the small elements as per the tolerance level. #comented out, its being considered latter again
     n = U.shape[0]
 
     # Determine optimized ordering if specified.
@@ -2298,11 +2428,10 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
 
     def calcTheta(U, c, r):
         '''Calculate and apply the Givens rotation for a specific matrix element.'''
-        t = numpy.arctan2(-U[r,c], U[r-1,c])
+        t = arctan2(-U[r,c], U[r-1,c])
         theta_list.append((t, r, r-1))
-        g = givens_matrix(n,r,r-1,t)
-        U = numpy.dot(g, U)
-
+        g = givens_matrix(n,r,r-1,t) #is a QTensor
+        U = g.dot(U)
         return U
 
     # Apply and store Givens rotations as per the given or computed ordering.
@@ -2313,24 +2442,29 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
     else:
         for r, c in ordering:
             U = calcTheta(U, c, r)
-    
     # Calculating the Rz rotations based on the phases of the diagonal elements.
     # For real elements this means a 180 degree shift, i.e. a sign change.
     for i in range(n):
-        ph = numpy.angle(U[i,i])
-        phi_list.append((ph, i))
-
+        if isinstance(U[i,i],(Variable,Objective)):
+            if len(U[i,i].args):
+                phi_list.append((U[i,i].apply(numpy.angle), i))
+        else:
+            phi_list.append((numpy.angle(U[i,i]), i))
     # Filtering out rotations without significance.
     theta_list_new = []
     for i, theta in enumerate(theta_list):
-        if abs(theta[0] % (2*numpy.pi)) > tol:
+        if isinstance(theta[0],(Variable,Objective)):
+            if len(theta[0].args):
+                theta_list_new.append(theta)  
+        elif abs(theta[0] % (2*numpy.pi)) > tol:
             theta_list_new.append(theta)
-    
     phi_list_new = []
     for i, phi in enumerate(phi_list):
-        if abs(phi[0]) > tol:
+        if isinstance(phi[0],(Variable,Objective)):
+            if len(phi[0].args):
+                phi_list_new.append(phi)
+        elif abs(phi[0]) > tol:
             phi_list_new.append(phi)
-        
     if return_diagonal:
         # Optionally return the resulting diagonal
         return theta_list_new, phi_list_new, U
@@ -2378,3 +2512,10 @@ def reconstruct_matrix_from_givens(n, theta_list, phi_list, to_real_if_possible 
             reconstructed = reconstructed.real
 
     return reconstructed
+def arctan2(x1, x2, *args, **kwargs):
+    if isinstance(x1,(Variable,Objective)) or isinstance(x2,(Variable,Objective)):
+        return Objective().binary_operator(left=1*x1,right=1*x2,op=numpy.arctan2)
+    elif not isinstance(x1,numbers.Complex) and not isinstance(x2,numbers.Complex):
+        return numpy.arctan2(x1,x2)
+    else:
+        return numpy.arctan2(x1.imag,x2.imag)+numpy.arctan2(x1.real,x2.real)

@@ -89,6 +89,11 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                  *args,
                  **kwargs):
 
+        # can not use "geometry"
+        # as this is already used for other things furter up
+        if "mad_geometry_options" in kwargs:
+            self.mad_geometry_options = kwargs["mad_geometry_options"]
+
         self.datadir = datadir
 
         # see if MAD_ROOT_DIR is defined
@@ -652,7 +657,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             raise TequilaMadnessException(
                 "n_pno={} and n_orbitals={} given ... please pick one".format(n_pno, n_orbitals))
 
-        n_electrons = self.parameters.n_electrons
+        n_electrons = self.parameters.total_n_electrons
         if self.parameters.frozen_core:
             # only count active electrons (will not compute pnos for frozen pairs)
             n_core_electrons = self.parameters.get_number_of_core_electrons()
@@ -693,6 +698,16 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             if key in kwargs:
                 data[key] = {**data[key], **kwargs[key]}
 
+        geom = {}
+        if hasattr(self, "mad_geometry_options"):
+            geom = self.mad_geometry_options
+
+        if "units" not in geom:
+            geom["units"] = "angstrom"
+        if "eprec" not in geom:
+            geom["eprec"] = 1.e-6
+        if "no_orient" not in geom:
+            geom["no_orient"] = 1
         if filename is not None:
             with open(filename, "w") as f:
                 for k1, v1 in data.items():
@@ -702,8 +717,8 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     print("end\n", file=f)
 
                 print("geometry", file=f)
-                print("units angstrom", file=f)
-                print("eprec 1.e-6", file=f)
+                for k,v in geom.items():
+                    print("{} {}".format(k,v), file=f)
                 for line in self.parameters.get_geometry_string().split("\n"):
                     line = line.strip()
                     if line != "":
