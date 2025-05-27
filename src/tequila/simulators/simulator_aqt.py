@@ -69,31 +69,14 @@ class BackendCircuitAQT(BackendCircuitQiskit):
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
         qiskit_backend = self.get_backend()
-        print(type(qiskit_backend))
         
         circuit = self.get_circuit(circuit=circuit, qiskit_backend=qiskit_backend, initial_state=initial_state, optimization_level=optimization_level, *args, **kwargs)
         job = qiskit_backend.run(circuit, shots=samples)
-        counts = job.result().get_counts()
-        wfn = self.convert_measurements(counts, target_qubits=read_out_qubits)
+        wfn = self.convert_measurements(job, target_qubits=read_out_qubits)
 
         return wfn
     
-
-    def convert_measurements(self, qiskit_counts, target_qubits=None) -> QubitWaveFunction:
-        result = QubitWaveFunction(self.n_qubits, self.numbering)
-        # todo there are faster ways
-        for k, v in qiskit_counts.items():
-            # Qiskit uses LSB bitstrings, but from_binary expects MSB
-            converted_key = BitString.from_binary(k[::-1])
-            result[converted_key] = v
-        if target_qubits is not None:
-            mapped_target = [self.qubit_map[q].number for q in target_qubits]
-            mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
-            keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
-            result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(target_qubits))
    
-        return result
-    
     def do_simulate(self, variables, initial_state=0, *args, **kwargs):
         raise TequilaAQTException("AQT backend does not support do_simulate")
  
