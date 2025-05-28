@@ -5,6 +5,7 @@ from tequila.utils.bitstrings import BitNumbering
 import typing
 import copy
 from collections import defaultdict
+import numpy as np
 import warnings
 
 from .qpic import export_to
@@ -440,6 +441,48 @@ class QCircuit():
             return QCircuit(gates=gate)
         else:
             return QCircuit(gates=[gate])
+
+    def to_matrix(self, variables):
+        import quimb.gates
+        import quimb.tensor as qtn
+        from tequila import compile_circuit
+
+        compiled_circuit = compile_circuit(self)
+        compiled_circuit = compiled_circuit.map_variables(variables)
+
+        gate_mapping = {
+            'Rx': quimb.gates.RX,
+            'Ry': quimb.gates.RY,
+            'Rz': quimb.gates.RZ
+        }
+
+        quimb_circuit = qtn.Circuit(self.n_qubits)
+
+        for g in compiled_circuit.gates:
+            if g.name not in gate_mapping:
+                raise TequilaException(
+                    f"Gate {g.name} is not supported for conversion to matrix. "
+                    f"Supported gates: {list(gate_mapping.keys())}"
+                )
+
+            if g.is_parameterized():
+                quimb_circuit.apply_gate(
+                    gate_mapping[g.name],
+                    g.parameter,
+                    g.target,
+                    parameterize=True
+                )
+            elif g.is_controlled():
+                quimb_circuit.apply_gate(
+                    quimb.gates.CX,
+                    g.control,
+                    g.target
+                )
+
+        uni = quimb_circuit.get_uni()
+        unitary = np.array(uni.to_dense())
+
+        return unitary
 
     def to_networkx(self):
         """
@@ -975,22 +1018,22 @@ class Moment(QCircuit):
 
 def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None)->int:
     '''
-    Function that checks which are the active qubits of two circuits and 
+    Function that checks which are the active qubits of two circuits and
     provides an unused qubit that is not among them. If all qubits are used
     it adds a new one.
 
     Parameters
     ----------
     U0 : QCircuit, corresponding to the first state.
-        
+
     U1 : QCircuit, corresponding to the second state.
 
     Returns
     -------
     control_qubit : int
-        
+
     '''
-    
+
     active_qubits = list(set(U0.qubits+U1.qubits))
     # default
     free_qubit = max(active_qubits) + 1
@@ -1000,5 +1043,5 @@ def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None)->int:
             free_qubit = n
             break
     assert free_qubit not in active_qubits
-    
+
     return free_qubit
