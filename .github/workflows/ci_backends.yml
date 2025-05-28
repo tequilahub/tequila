@@ -35,15 +35,15 @@ jobs:
       run: |
         cuda_version=12.4.0
         conda create -y -n cudaq-env python=3.11 pip
+        conda install -y -n cudaq-env -c "nvidia/label/cuda-${cuda_version}" cuda
+        conda install -y -n cudaq-env -c conda-forge mpi4py "openmpi>=5.0.3" cxx-compiler
+        conda env config vars set -n cudaq-env LD_LIBRARY_PATH="$CONDA_PREFIX/envs/cudaq-env/lib:$LD_LIBRARY_PATH"
+        conda env config vars set -n cudaq-env MPI_PATH="$CONDA_PREFIX/envs/cudaq-env"
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate cudaq-env
-        conda install -y -c "nvidia/label/cuda-${cuda_version}" cuda
-        conda install -y -c conda-forge mpi4py "openmpi>=5.0.3" cxx-compiler
-        conda env config vars set LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
-        conda env config vars set MPI_PATH=$CONDA_PREFIX
         pip install cudaq
         source $CONDA_PREFIX/lib/python3.11/site-packages/distributed_interfaces/activate_custom_mpi.sh
-      
+              
     - name: Install spex
       run: |
         python -m pip install --upgrade pip
