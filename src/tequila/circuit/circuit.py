@@ -442,10 +442,33 @@ class QCircuit():
         else:
             return QCircuit(gates=[gate])
 
-    def to_matrix(self, variables):
+    def to_matrix(self, variables=None):
+        """
+        take the circuit and return the unitary matrix corresponding to it.
+        Parameters
+        ----------
+        variables: dict:
+            (Default value = None)
+            a dictionary mapping variable names to values. If None, the circuit must not contain any variables.
+            If the circuit contains variables, they must be provided here.
+
+        Returns
+        -------
+        np.ndarray:
+            the unitary matrix corresponding to the circuit.
+        """
         import quimb.gates
         import quimb.tensor as qtn
         from tequila import compile_circuit
+
+        num_variables = len(self.extract_variables())
+
+        if num_variables == 0:
+            variables = {}
+        elif variables is None:
+            raise TequilaException(
+                f"QCircuit.to_matrix(): no variables provided, but the circuit has {num_variables} variables"
+            )
 
         compiled_circuit = compile_circuit(self)
         compiled_circuit = compiled_circuit.map_variables(variables)
