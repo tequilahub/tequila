@@ -93,7 +93,7 @@ class QCircuit():
         for g in self.gates:
             p = 0
             qus = g.qubits
-            if g.is_parametrized():
+            if g.is_parameterized():
                 if hasattr(g.parameter, 'extract_variables'):
                     p = 1
 
@@ -211,7 +211,7 @@ class QCircuit():
         """
         parameter_map = defaultdict(list)
         for idx, gate in enumerate(self.gates):
-            if gate.is_parametrized():
+            if gate.is_parameterized():
                 variables = gate.extract_variables()
                 for variable in variables:
                     parameter_map[variable] += [(idx, gate)]
@@ -348,7 +348,7 @@ class QCircuit():
             whether or not all gates in the circuit are paremtrized
         """
         for gate in self.gates:
-            if not gate.is_parametrized():
+            if not gate.is_parameterized():
                 return False
             else:
                 if hasattr(gate, 'parameter'):
@@ -368,7 +368,7 @@ class QCircuit():
             whether or not all gates in the circuit are unparametrized
         """
         for gate in self.gates:
-            if not gate.is_parametrized():
+            if not gate.is_parameterized():
                 continue
             else:
                 if hasattr(gate, 'parameter'):
@@ -474,13 +474,17 @@ class QCircuit():
         compiled_circuit = compiled_circuit.map_variables(variables)
 
         gate_mapping = {
-            'Rx': quimb.gates.RX,
-            'Ry': quimb.gates.RY,
-            'Rz': quimb.gates.RZ
+            'Rx': 'RX',
+            'Ry': 'RY',
+            'Rz': 'RZ',
+            'H': 'H',
+            'X': 'X'
         }
 
         quimb_circuit = qtn.Circuit(self.n_qubits)
 
+        # quimb uses MSB convention, so we need to modify the qubit indices
+        # to LSB
         for g in compiled_circuit.gates:
             if g.name not in gate_mapping:
                 raise TequilaException(
@@ -492,14 +496,19 @@ class QCircuit():
                 quimb_circuit.apply_gate(
                     gate_mapping[g.name],
                     g.parameter,
-                    g.target,
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
                     parameterize=True
                 )
             elif g.is_controlled():
                 quimb_circuit.apply_gate(
-                    quimb.gates.CX,
-                    g.control,
-                    g.target
+                    gate_mapping[g.name],
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                    controls=[abs(c - self.n_qubits + 1) for c in list(g.control)],
+                )
+            else:
+                quimb_circuit.apply_gate(
+                    gate_mapping[g.name],
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
                 )
 
         uni = quimb_circuit.get_uni()
@@ -754,7 +763,7 @@ class Moment(QCircuit):
         mu = []
         mp = []
         for gate in self.gates:
-            if not gate.is_parametrized():
+            if not gate.is_parameterized():
                 mu.append(gate)
             else:
                 if hasattr(gate, 'parameter'):
@@ -935,7 +944,7 @@ class Moment(QCircuit):
             whether or not EVERY gate in self.gates is parameterized.
         """
         for gate in self.gates:
-            if not gate.is_parametrized():
+            if not gate.is_parameterized():
                 return False
             else:
                 if hasattr(gate, 'parameter'):
