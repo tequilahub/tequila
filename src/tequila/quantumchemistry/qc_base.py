@@ -1210,6 +1210,7 @@ class QuantumChemistryBase:
                             U += gates.CNOT(q1, c)
                 if not hcb:
                     U += self.hcb_to_me()
+                return U
             else:
                 return self.make_spa_ansatz(cedges, hcb=hcb,  use_units_of_pi=use_units_of_pi, label=label, optimize=True, ladder=ladder)
         if edges is None:
