@@ -456,6 +456,31 @@ def test_pyscf_methods(method, geometry, basis_set):
 
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.parametrize(
+    "geometry",
+    [
+        "H 0.0 0.0 0.0\nHe 0.0 0.0 1.3\nH 0.0 0.0 2.6",
+        "Li 0.0 0.0 0.0\nH 0.0 0.0 1.5",
+        "Be 0.0 0.0 0.0",
+    ],
+)
+def test_wfn_fci(geometry):
+    mol = tq.Molecule(geometry=geometry, basis_set="sto-3g", backend="pyscf")
+    H = mol.make_hamiltonian()
+    v, vv = numpy.linalg.eigh(H.to_matrix())
+
+    # ground state wavefunction
+    wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
+    energy = v[0]
+
+    fci_energy, fci_wfn = mol.compute_fci(get_wfn=True)
+
+    fidelity = abs(fci_wfn.inner(wfn)) ** 2
+    assert numpy.isclose(fidelity, 1.0)
+    assert numpy.isclose(fci_energy, energy)
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 def test_orbital_optimization():
     from tequila.quantumchemistry import optimize_orbitals
     mol = tq.Molecule(geometry="Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", basis_set="STO-3G")
