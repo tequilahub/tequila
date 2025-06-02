@@ -335,6 +335,7 @@ class QuantumChemistryBase:
 
         """
         target = []
+        U = QCircuit()
         for pair in indices:
             assert len(pair) == 2
             if 'TAPEREDBINARY' in self.transformation.name.upper() and self.n_orbitals-1 in pair:
@@ -350,8 +351,9 @@ class QuantumChemistryBase:
             raise TequilaException(
                 "make_hardcore_boson_excitation_gate: Inconsistencies in indices={} for encoding: {}".format(
                     indices, self.transformation))
-        return gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control,
-                                     compile_options=compile_options)
+        if len(target):
+            U += gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control,compile_options=compile_options) 
+        return U
     
     def UR(self,i,j,angle=None, label=None, control=None, assume_real=True, *args, **kwargs):
         """
