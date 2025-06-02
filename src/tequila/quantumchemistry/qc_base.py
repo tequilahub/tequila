@@ -1725,6 +1725,9 @@ class QuantumChemistryBase:
                 from tequila.quantumchemistry import QuantumChemistryPySCF
                 molx = QuantumChemistryPySCF.from_tequila(self)
                 return molx.compute_energy(method=method)
+    
+    def compute_fci(self, *args, **kwargs):
+        raise NotImplementedError("compute_fci only implemented for the 'pyscf' backend")
 
     def compute_fock_matrix(self):
         c, h, g = self.get_integrals()
