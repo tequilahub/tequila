@@ -3,7 +3,7 @@ from numpy.testing import assert_almost_equal
 import tequila as tq
 
 
-test_case = np.load("tests/data/circuit_3qubit_to_matrix_test.npy")
+test_case = np.load("data/circuit_3qubit_to_matrix_test.npy")
 
 def test_circuit_to_matrix():
     """
