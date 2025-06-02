@@ -1,10 +1,19 @@
+import importlib.util
 import numpy as np
 from numpy.testing import assert_almost_equal
 import tequila as tq
+import pytest
+import importlib
 
 
+# Load the expected result from a file
 test_case = np.load("data/circuit_3qubit_to_matrix_test.npy")
 
+# Check if quimb is installed
+HAS_QUIMB = importlib.util.find_spec("quimb") is not None
+
+
+@pytest.mark.skipif(condition=not HAS_QUIMB, reason="quimb not installed")
 def test_circuit_to_matrix():
     """
     Test the conversion of a 3-qubit circuit to a unitary matrix.
@@ -17,6 +26,7 @@ def test_circuit_to_matrix():
     # Compare with the expected result
     assert_almost_equal(unitary_matrix, test_case, decimal=8)
 
+@pytest.mark.skipif(condition=not HAS_QUIMB, reason="quimb not installed")
 def test_circuit_to_matrix_with_params():
     P = tq.paulis.X(0) + tq.paulis.Y(1)
     U = tq.gates.ExpPauli(paulistring="X(0)Y(1)", angle="a")
