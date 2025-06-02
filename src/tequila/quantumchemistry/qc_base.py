@@ -1278,9 +1278,14 @@ class QuantumChemistryBase:
                 U += self.hcb_to_me()
         else:
             orbs = [edge[0] for edge in edges]
-            U = gates.X([self.transformation.up(i) for i in orbs])
-            if not hcb:
-                U += gates.X(target= [self.transformation.down(i) for i in orbs])
+            if hcb:
+                U = gates.X([self.transformation.up(i) for i in orbs])
+            else:
+                state = [0] * 2*self.n_orbitals
+                for i in orbs:
+                    state[2 * i] = 1
+                    state[2 * i + 1] = 1
+                U = self.prepare_reference(state)
             for edge_qubits in edges:
                 previous = edge_qubits[0]
                 if len(edge_qubits)>1:
