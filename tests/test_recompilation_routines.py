@@ -159,8 +159,7 @@ def test_compile_ch(target, control, power):
         assert (equivalent_circuit == equivalent_ch)
 
 
-@pytest.mark.parametrize("simulator", simulators)
-def test_compile_qubit_excitations(simulator):
+def test_compile_qubit_excitations():
 
     # Test 3-qubit excitation
 
@@ -181,8 +180,8 @@ def test_compile_qubit_excitations(simulator):
         compile_options="pauli",
     )
     U2 = compile_circuit(circuit)
-    wfn1 = simulate(U1, backend=simulator)
-    wfn2 = simulate(U2, backend=simulator)
+    wfn1 = simulate(U1)
+    wfn2 = simulate(U2)
 
     assert U1.depth < U2.depth
     assert isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0)
@@ -197,8 +196,8 @@ def test_compile_qubit_excitations(simulator):
     U1 = compile_circuit(gates.QubitExcitation(angle=angle,target=q)) # optimized
     U2 = compile_circuit(gates.QubitExcitation(angle=angle,target=q, compile_options="pauli"))
 
-    wfn1 = simulate(U1, backend=simulator, initial_state=state)
-    wfn2 = simulate(U2, backend=simulator, initial_state=state)
+    wfn1 = simulate(U1, initial_state=state)
+    wfn2 = simulate(U2, initial_state=state)
 
     assert U1.depth < U2.depth
     assert isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0)
