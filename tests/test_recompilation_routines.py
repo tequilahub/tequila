@@ -5,7 +5,7 @@ from tequila.circuit.compiler import compile_controlled_rotation, change_basis, 
 from numpy.random import uniform, randint
 from numpy import pi, isclose
 from tequila.hamiltonian import paulis
-from tequila import simulators
+from tequila import simulators, QubitWaveFunction, compile_circuit
 from tequila.simulators.simulator_api import simulate
 from tequila.objective.objective import ExpectationValue
 import pytest
@@ -158,3 +158,47 @@ def test_compile_ch(target, control, power):
     if control is not None:
         assert (equivalent_circuit == equivalent_ch)
 
+
+@pytest.mark.parametrize("simulator", simulators)
+def test_compile_qubit_excitations(simulator):
+
+    # Test 3-qubit excitation
+
+    q = [5, 3, 7, 8, 2, 9, 2, 4]
+
+    state_circ = gates.X([q[0], q[1], q[2]])
+
+    # optimized decomposition
+    circuit = state_circ + gates.QubitExcitation(
+        angle=numpy.pi / 2, target=[q[0], q[3], q[1], q[4], q[2], q[5]]
+    )
+    U1 = compile_circuit(circuit)
+
+    # non-optimized decomposition
+    circuit = state_circ + gates.QubitExcitation(
+        angle=numpy.pi / 2,
+        target=[q[0], q[3], q[1], q[4], q[2], q[5]],
+        compile_options="pauli",
+    )
+    U2 = compile_circuit(circuit)
+    wfn1 = simulate(U1, backend=simulator)
+    wfn2 = simulate(U2, backend=simulator)
+
+    assert U1.depth < U2.depth
+    assert isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0)
+
+    # Test 5-qubit excitation with a random state
+
+    q = list(range(10))
+    state = numpy.random.randn(2**10) + 1j * numpy.random.randn(2**10)
+    state = QubitWaveFunction.from_array(state).normalize()
+    angle = numpy.pi * numpy.random.randn()
+
+    U1 = compile_circuit(gates.QubitExcitation(angle=angle,target=q)) # optimized
+    U2 = compile_circuit(gates.QubitExcitation(angle=angle,target=q, compile_options="pauli"))
+
+    wfn1 = simulate(U1, backend=simulator, initial_state=state)
+    wfn2 = simulate(U2, backend=simulator, initial_state=state)
+
+    assert U1.depth < U2.depth
+    assert isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0)
