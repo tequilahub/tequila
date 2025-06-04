@@ -144,7 +144,7 @@ def test_hessian_based_methods(simulator, method, use_hessian):
     # numerical hessian only works for this method
     if use_hessian in ['2-point', '3-point']:
         if method != "TRUST-CONSTR":
-            assert True
+            pytest.skip()
 
     result = tq.optimizer_scipy.minimize(objective=-E, backend=simulator, hessian=use_hessian, method=method, tol=1.e-4,
                                          method_options=method_options, initial_values=initial_values, silent=True)
