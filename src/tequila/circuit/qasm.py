@@ -1,4 +1,4 @@
-d"""
+"""
 Export QCircuits as qasm code
 
 OPENQASM version 2.0 specification from:
@@ -328,7 +328,7 @@ def parse_from_open_qasm_2(qasm_code: str, rigorous: bool = True) -> QCircuit:
     return circuit
 
 
-def parse_custom_gate(gate_custom: str, custom_gates_map: Dict[str, QCircuit]) -> (str, QCircuit):
+def parse_custom_gate(gate_custom: str, custom_gates_map: Dict[str, QCircuit]) -> tuple[str, QCircuit]:
     """
     Parse custom gates code
 
