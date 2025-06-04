@@ -363,11 +363,8 @@ class TaperedBinary(EncodingBase):
         return self.post_processing(QubitHamiltonian.from_openfermion(fop))
 
     def do_transform(self, fermion_operator: openfermion.FermionOperator, *args, **kwargs) -> openfermion.QubitOperator:
-        if not self.up_then_down:
-            mul = openfermion.interleaved_code(self.modes)*(2*openfermion.transforms.checksum_code(self.modes//2,self.spin_parity))
-            return openfermion.transforms.binary_code_transform(fermion_operator, mul)
-        else:
-            return openfermion.transforms.binary_code_transform(openfermion.reorder(operator=fermion_operator, order_function=openfermion.up_then_down),2*openfermion.transforms.checksum_code(self.modes//2,self.spin_parity))
+        mul = openfermion.interleaved_code(self.modes)*(2*openfermion.transforms.checksum_code(self.modes//2,self.spin_parity))
+        return openfermion.transforms.binary_code_transform(fermion_operator, mul)
 
     def post_processing(self, op:QubitHamiltonian, *args, **kwargs):
         if not self.up_then_down:
