@@ -6,7 +6,8 @@ from tequila.hamiltonian import QubitHamiltonian
 from tequila.hamiltonian.paulis import Sp, Sm, Zero
 
 from tequila.circuit import QCircuit, gates
-from tequila.objective.objective import Variable, Variables, ExpectationValue
+from tequila.objective.objective import Variable, Variables, ExpectationValue, Objective
+from tequila import QTensor
 
 from tequila.simulators.simulator_api import simulate
 from tequila.utils import to_float
@@ -64,7 +65,7 @@ class QuantumChemistryBase:
         """
 
         self.parameters = parameters
-        n_electrons = parameters.n_electrons
+        n_electrons = parameters.total_n_electrons
         if "n_electrons" in kwargs:
             n_electrons = kwargs["n_electrons"]
 
@@ -79,7 +80,7 @@ class QuantumChemistryBase:
         overriding_freeze_instruction = orbital_type is not None and orbital_type.lower() == "native"
         # determine frozen core automatically if set
         # only if molecule is computed from scratch and not passed down from above
-        overriding_freeze_instruction = overriding_freeze_instruction or n_electrons != parameters.n_electrons
+        overriding_freeze_instruction = overriding_freeze_instruction or n_electrons != parameters.total_n_electrons
         overriding_freeze_instruction = overriding_freeze_instruction or frozen_orbitals is not None
         if not overriding_freeze_instruction and self.parameters.frozen_core:
             n_core_electrons = self.parameters.get_number_of_core_electrons()
@@ -333,10 +334,15 @@ class QuantumChemistryBase:
         -------
 
         """
+        U = QCircuit()
         target = []
         for pair in indices:
             assert len(pair) == 2
-            target += [self.transformation.up(pair[0]), self.transformation.up(pair[1])]
+            if 'TAPEREDBINARY' in self.transformation.name.upper() and self.n_orbitals-1 in pair:
+                p = [i for i in pair if i != self.n_orbitals-1]
+                U += gates.Ry(angle=angle,target=p,assume_real=assume_real,control=control)
+            else:
+                target += [self.transformation.up(pair[0]), self.transformation.up(pair[1])]
         if self.transformation.up_then_down:
             consistency = [x < self.n_orbitals for x in target]
         else:
@@ -345,8 +351,9 @@ class QuantumChemistryBase:
             raise TequilaException(
                 "make_hardcore_boson_excitation_gate: Inconsistencies in indices={} for encoding: {}".format(
                     indices, self.transformation))
-        return gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control,
-                                     compile_options=compile_options)
+        if len(target):
+            U += gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control,compile_options=compile_options) 
+        return U
     
     def UR(self,i,j,angle=None, label=None, control=None, assume_real=True, *args, **kwargs):
         """
@@ -504,7 +511,7 @@ class QuantumChemistryBase:
         - result of self.get_integrals()
         """
 
-        n_electrons = self.parameters.n_electrons
+        n_electrons = self.parameters.total_n_electrons
         if "n_electrons" in kwargs:
             n_electrons = kwargs["n_electrons"]
 
@@ -1169,6 +1176,43 @@ class QuantumChemistryBase:
         optimize: optimize the circuit construction (see article). Results in shallow circuit from Ry and CNOT gates
         ladder: if true the excitation pattern will be local. E.g. in the pair from orbitals (1,2,3) we will have the excitations 1->2 and 2->3, if set to false we will have standard coupled-cluster style excitations - in this case this would be 1->2 and 1->3 
         """
+        def _make_spa_tappered(edges,hcb=False,use_units_of_pi=False, label=None, optimize=False, ladder=True):
+            U = QCircuit()
+            cedges = []
+            for edge in edges:
+                if self.n_orbitals - 1 in edge:
+                    cedge = [i for i in edge if i != self.n_orbitals - 1] + [self.n_orbitals - 1]
+                    cedges.append(cedge)
+                else:
+                    cedges.append(edge)
+            if optimize:
+                for edge_orbitals in cedges:
+                    edge_qubits = [self.transformation.up(i) for i in edge_orbitals]
+                    if not edge_qubits[0]==self.transformation.up(self.n_orbitals-1):
+                        U += gates.X(edge_qubits[0])
+                    if len(edge_qubits) == 1:
+                        continue
+                    for i in range(1, len(edge_qubits)):
+                        q1 = edge_qubits[i]
+                        c = edge_qubits[i - 1]
+                        if not ladder:
+                            c = edge_qubits[0]
+                        angle = Variable(name=((edge_orbitals[i - 1], edge_orbitals[i]), "D",label))
+                        if use_units_of_pi:
+                            angle = angle * numpy.pi
+                        if (i - 1 == 0) and not (q1 == self.transformation.up(self.n_orbitals-1)):
+                            U += gates.Ry(angle=angle, target=q1, control=None)
+                        elif (i - 1 == 0) and (q1 == self.transformation.up(self.n_orbitals-1)):
+                            U +=  gates.Ry(angle=angle,target=c,control=None)
+                        else:
+                            U += gates.Ry(angle=angle, target=q1, control=c)
+                        if q1 != self.transformation.up(self.n_orbitals-1):
+                            U += gates.CNOT(q1, c)
+                if not hcb:
+                    U += self.hcb_to_me()
+                return U
+            else:
+                return self.make_spa_ansatz(cedges, hcb=hcb,  use_units_of_pi=use_units_of_pi, label=label, optimize=True, ladder=ladder)
         if edges is None:
             raise TequilaException("SPA ansatz within a standard orbital basis needs edges. Please provide with the keyword edges.\nExample: edges=[(0,1,2),(3,4)] would correspond to two edges created from orbitals (0,1,2) and (3,4), note that orbitals can only be assigned to a single edge")
         
@@ -1202,7 +1246,8 @@ class QuantumChemistryBase:
                 optimize=False
 
         U = QCircuit()
-        
+        if 'TAPEREDBINARY' in self.transformation.name.upper():
+            return _make_spa_tappered(edges=edges,hcb=hcb,use_units_of_pi=use_units_of_pi,label=label,optimize=optimize,ladder=ladder)
         # construction of the optimized circuit
         if optimize:
             # circuit in HCB representation
@@ -1232,24 +1277,15 @@ class QuantumChemistryBase:
             if not hcb:
                 U += self.hcb_to_me()
         else:
-            # construction of the non-optimized circuit (UpCCD with paired doubles according to edges)
+            orbs = [edge[0] for edge in edges]
             if hcb:
-                U = self.prepare_hardcore_boson_reference()
+                U = gates.X([self.transformation.up(i) for i in orbs])
             else:
-                U = self.prepare_reference()
-            # will only work if the first orbitals in the edges are the reference orbitals
-            sane = True
-            reference_orbitals = self.reference_orbitals
-            for edge_qubits in edges:
-                if self.orbitals[edge_qubits[0]] not in reference_orbitals:
-                    sane=False
-                if len(edge_qubits)>1:
-                    for q1 in edge_qubits[1:]:
-                        if self.orbitals[q1] in reference_orbitals:
-                            sane=False
-            if not sane:
-                raise TequilaException("Non-Optimized SPA (e.g. with encodings that are not JW) will only work if the first orbitals of all SPA edges are occupied reference orbitals and all others are not. You gave edges={} and reference_orbitals are {}".format(edges, reference_orbitals))
-
+                state = [0] * 2*self.n_orbitals
+                for i in orbs:
+                    state[2 * i] = 1
+                    state[2 * i + 1] = 1
+                U = self.prepare_reference(state)
             for edge_qubits in edges:
                 previous = edge_qubits[0]
                 if len(edge_qubits)>1:
@@ -1694,6 +1730,9 @@ class QuantumChemistryBase:
                 from tequila.quantumchemistry import QuantumChemistryPySCF
                 molx = QuantumChemistryPySCF.from_tequila(self)
                 return molx.compute_energy(method=method)
+    
+    def compute_fci(self, *args, **kwargs):
+        raise NotImplementedError("compute_fci only implemented for the 'pyscf' backend")
 
     def compute_fock_matrix(self):
         c, h, g = self.get_integrals()
@@ -2383,9 +2422,13 @@ def givens_matrix(n, p, q, theta):
     Returns:
     - numpy.array: The Givens rotation matrix.
     '''
-    matrix = numpy.eye(n)  # Matrix to hold complex numbers
-    cos_theta = numpy.cos(theta)
-    sin_theta = numpy.sin(theta)
+    matrix = QTensor(shape=(n,n),objective_list=numpy.eye(n).reshape(n*n))  # Matrix to hold complex numbers
+    if isinstance(theta,(Variable,Objective)):
+        cos_theta = theta.apply(numpy.cos)
+        sin_theta = theta.apply(numpy.sin)
+    else:
+        cos_theta = numpy.cos(theta)
+        sin_theta = numpy.sin(theta)
 
     # Directly assign cosine and sine without complex phase adjustment
     matrix[p, p] = cos_theta
@@ -2411,7 +2454,7 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
     - numpy.array (optional): The diagonal matrix after applying all Givens rotations, returned if return_diagonal is True.
     '''
     U = unitary # no need to copy as we don't modify the original
-    U[abs(U) < tol] = 0 # Zeroing out the small elements as per the tolerance level.
+    # U[abs(U) < tol] = 0 # Zeroing out the small elements as per the tolerance level. #comented out, its being considered latter again
     n = U.shape[0]
 
     # Determine optimized ordering if specified.
@@ -2423,11 +2466,10 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
 
     def calcTheta(U, c, r):
         '''Calculate and apply the Givens rotation for a specific matrix element.'''
-        t = numpy.arctan2(-U[r,c], U[r-1,c])
+        t = arctan2(-U[r,c], U[r-1,c])
         theta_list.append((t, r, r-1))
-        g = givens_matrix(n,r,r-1,t)
-        U = numpy.dot(g, U)
-
+        g = givens_matrix(n,r,r-1,t) #is a QTensor
+        U = g.dot(U)
         return U
 
     # Apply and store Givens rotations as per the given or computed ordering.
@@ -2438,24 +2480,29 @@ def get_givens_decomposition(unitary, tol = 1e-12, ordering = OPTIMIZED_ORDERING
     else:
         for r, c in ordering:
             U = calcTheta(U, c, r)
-    
     # Calculating the Rz rotations based on the phases of the diagonal elements.
     # For real elements this means a 180 degree shift, i.e. a sign change.
     for i in range(n):
-        ph = numpy.angle(U[i,i])
-        phi_list.append((ph, i))
-
+        if isinstance(U[i,i],(Variable,Objective)):
+            if len(U[i,i].args):
+                phi_list.append((U[i,i].apply(numpy.angle), i))
+        else:
+            phi_list.append((numpy.angle(U[i,i]), i))
     # Filtering out rotations without significance.
     theta_list_new = []
     for i, theta in enumerate(theta_list):
-        if abs(theta[0] % (2*numpy.pi)) > tol:
+        if isinstance(theta[0],(Variable,Objective)):
+            if len(theta[0].args):
+                theta_list_new.append(theta)  
+        elif abs(theta[0] % (2*numpy.pi)) > tol:
             theta_list_new.append(theta)
-    
     phi_list_new = []
     for i, phi in enumerate(phi_list):
-        if abs(phi[0]) > tol:
+        if isinstance(phi[0],(Variable,Objective)):
+            if len(phi[0].args):
+                phi_list_new.append(phi)
+        elif abs(phi[0]) > tol:
             phi_list_new.append(phi)
-        
     if return_diagonal:
         # Optionally return the resulting diagonal
         return theta_list_new, phi_list_new, U
@@ -2503,3 +2550,10 @@ def reconstruct_matrix_from_givens(n, theta_list, phi_list, to_real_if_possible 
             reconstructed = reconstructed.real
 
     return reconstructed
+def arctan2(x1, x2, *args, **kwargs):
+    if isinstance(x1,(Variable,Objective)) or isinstance(x2,(Variable,Objective)):
+        return Objective().binary_operator(left=1*x1,right=1*x2,op=numpy.arctan2)
+    elif not isinstance(x1,numbers.Complex) and not isinstance(x2,numbers.Complex):
+        return numpy.arctan2(x1,x2)
+    else:
+        return numpy.arctan2(x1.imag,x2.imag)+numpy.arctan2(x1.real,x2.real)

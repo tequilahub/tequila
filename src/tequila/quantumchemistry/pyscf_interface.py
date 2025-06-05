@@ -1,9 +1,34 @@
-from tequila import TequilaException
+from tequila import TequilaException, QubitWaveFunction
 from tequila.quantumchemistry.qc_base import QuantumChemistryBase
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
 import pyscf
 
 import numpy, typing
+
+
+def _merge_alpha_beta_strs(alpha_str, beta_str, norb):
+    """
+    Merge alpha and beta bitstrings into a single string and compute the resulting phase.
+
+    Args:
+        alpha_str (int): Bitstring representing alpha electrons.
+        beta_str (int): Bitstring representing beta electrons.
+        norb (int): Number of orbitals.
+
+    Returns:
+        tuple:
+            merged_str (int): Interleaved bitstring.
+            phase (int): Phase factor (+1 or -1) from fermionic antisymmetry.
+    """
+    # Interleave the alpha and beta strings
+    alpha_str_b = bin(alpha_str)[2:].zfill(norb)
+    beta_str_b = bin(beta_str)[2:].zfill(norb)
+    merged_str = "".join([alpha_str_b[i] + beta_str_b[i] for i in range(norb)])[::-1]
+
+    # Position of filled orbitals
+    set_bits_beta = [i for i in range(norb) if (beta_str >> i) & 1]
+    phase = (-1) ** sum([(alpha_str & 2**i - 1).bit_count() for i in set_bits_beta])
+    return int(merged_str, 2), phase
 
 
 class OpenVQEEPySCFException(TequilaException):
@@ -82,12 +107,26 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
         super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
 
-    def compute_fci(self, *args, **kwargs):
+    def compute_fci(self, get_wfn=False, **kwargs):
         from pyscf import fci
         c, h1, h2 = self.get_integrals(ordering="chem")
         norb = self.n_orbitals
         nelec = self.n_electrons
         e, fcivec = fci.direct_spin1.kernel(h1, h2.elems, norb, nelec, **kwargs)
+
+        if get_wfn:
+            alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
+            beta_strs = alpha_strs.copy()
+            wfn_dim = 2 ** (2 * norb)
+            wfn = numpy.zeros(wfn_dim)
+            for i, alpha_str in enumerate(alpha_strs):
+                for j, beta_str in enumerate(beta_strs):
+                    merged_str, phase = _merge_alpha_beta_strs(
+                        alpha_str, beta_str, norb
+                    )
+                    wfn[merged_str] = phase * fcivec[i, j]
+            return e + c, QubitWaveFunction.from_array(wfn)
+
         return e + c
 
     def compute_energy(self, method: str, *args, **kwargs) -> float:

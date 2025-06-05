@@ -657,7 +657,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             raise TequilaMadnessException(
                 "n_pno={} and n_orbitals={} given ... please pick one".format(n_pno, n_orbitals))
 
-        n_electrons = self.parameters.n_electrons
+        n_electrons = self.parameters.total_n_electrons
         if self.parameters.frozen_core:
             # only count active electrons (will not compute pnos for frozen pairs)
             n_core_electrons = self.parameters.get_number_of_core_electrons()
@@ -673,7 +673,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         if maxrank is None:
             # need at least maxrank=1, otherwise no PNOs are computed
             # this was a bug in <=v1.8.5 
-            maxrank = max(1, int(numpy.ceil(n_pno // n_pairs)))
+            maxrank = max(1, int(numpy.ceil(n_pno / n_pairs)))
 
         if maxrank <= 0:
             warnings.warn(

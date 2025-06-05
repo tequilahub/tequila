@@ -9,7 +9,7 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 # Getting Started
 
 Get started with our collection of  
-- *[Tutorials](https://thuytr18.github.io/tequila-tutorials-beta/tutorials.html)*  
+- *[Tutorials](https://tequilahub.github.io/tequila-tutorials/)*  
 
 Further sources:
 - [overview article](https://arxiv.org/abs/2011.03057)   
@@ -17,8 +17,8 @@ Further sources:
 - [talks and slides](https://kottmanj.github.io/talks_and_material/)  
 
 # Installation
-Recommended Python version is 3.9 (3.10).   
-Tequila supports linux, osx and windows. However, not all optional dependencies are supported on windows.  
+Recommended Python version is 3.10 (3.11).   
+Tequila supports linux, osx and windows. However, not all optional dependencies (especially chemistry) are supported on windows.  
 
 ## Install from PyPi
 **Do not** install like this: (Minecraft lovers excluded)
@@ -29,7 +29,7 @@ You can install tequila from PyPi as:
 pip install tequila-basic
 ```
 this will install tequila with all essential dependencies.
-We recommend to install some fast quantum backends, like qulacs or qibo, as well.
+We recommend to install some fast quantum backends, like qulacs, as well.
 Those can be installed before or after you install tequila.
 ```bash
 # install basic tequila
@@ -130,7 +130,7 @@ print("VQE : {:+2.8}f".format(result.energy))
 print("FCI : {:+2.8}f".format(fci))
 ```
 
-Do you want to create your own methods? Check out the [tutorials](https://github.com/tequilahub/tequila-tutorials)!
+Do you want to create your own methods? Check out the [tutorials]([https://github.com/tequilahub/tequila-tutorials](https://tequilahub.github.io/tequila-tutorials/))!
 
 # Some Research projects using Tequila
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
