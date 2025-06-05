@@ -470,7 +470,7 @@ class QCircuit():
                 f"QCircuit.to_matrix(): no variables provided, but the circuit has {num_variables} variables"
             )
 
-        compiled_circuit = compile_circuit(self)
+        compiled_circuit = compile_circuit(self, )
         compiled_circuit = compiled_circuit.map_variables(variables)
 
         gate_mapping = {
@@ -495,7 +495,7 @@ class QCircuit():
             if g.is_parameterized():
                 quimb_circuit.apply_gate(
                     gate_mapping[g.name],
-                    g.parameter,
+                    params=[float(g.parameter())],
                     qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
                     parameterize=True
                 )

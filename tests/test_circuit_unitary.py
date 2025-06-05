@@ -78,13 +78,12 @@ def test_circuit_to_matrix():
 
 @pytest.mark.skipif(condition=not HAS_QUIMB, reason="quimb not installed")
 def test_circuit_to_matrix_with_params():
-    P = tq.paulis.X(0) + tq.paulis.Y(1)
+    PM = np.kron(tq.paulis.Y(0).to_matrix(), tq.paulis.X(0).to_matrix())
     U = tq.gates.ExpPauli(paulistring="X(0)Y(1)", angle="a")
 
-    PM = P.to_matrix()
-    N = 2**P.n_qubits
+    N = 2**2
 
     for a in [1.0, 2.0, -1.0]:
         UM1 = U.to_matrix({"a":a})
-        UM2 = np.cos(a/2) * np.eye(N) + 1.0j * np.sin(a/2) * PM
+        UM2 = np.cos(-a/2) * np.eye(N) + 1.0j * np.sin(-a/2) * PM
         assert_almost_equal(UM1, UM2)
