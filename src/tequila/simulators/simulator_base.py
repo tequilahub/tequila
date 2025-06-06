@@ -269,7 +269,7 @@ class BackendCircuit():
             result = self.initialize_circuit(*args, **kwargs)
 
         for g in abstract_circuit.gates:
-            if g.is_parametrized():
+            if g.is_parameterized():
                 self.add_parametrized_gate(g, result, *args, **kwargs)
             else:
                 self.add_basic_gate(g, result, *args, **kwargs)
