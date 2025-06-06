@@ -73,7 +73,6 @@ def test_gradient_free_methods(simulator, method):
     initial_values = {"a": 0.1, "b": 0.01}
     if method == "SLSQP":  # method is not good
         pytest.skip()
-        
 
     result = tq.optimizer_scipy.minimize(objective=-E, method=method, tol=1.e-4, backend=simulator,
                                          initial_values=initial_values, silent=True)
