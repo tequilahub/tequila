@@ -74,6 +74,8 @@ jobs:
     - name: Test quantum backends
       run: |
         echo "import tequila as tq" > test_ci_installation.py
+        # reactivate env for cudaq before running tests 
+        conda activate cudaq-env
         echo "assert ('qulacs' in tq.INSTALLED_SIMULATORS)" >> test_ci_installation.py
         echo "assert ('cudaq' in tq.INSTALLED_SIMULATORS)" >> test_ci_installation.py
         python test_ci_installation.py
