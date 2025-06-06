@@ -31,9 +31,10 @@ def export_open_qasm(circuit: QCircuit, variables=None, version: str = "2.0", fi
 
     if version == "2.0":
         result = convert_to_open_qasm_2(circuit=circuit, variables=variables, zx_calculus=zx_calculus)
+    elif version.startswith("3"):
+        result = convert_to_open_qasm_3(circuit=circuit, variables=variables, zx_calculus=zx_calculus)
     else:
         return "Unsupported OpenQASM version : " + version
-    # TODO: export to version 3
 
     if filename is not None:
         with open(filename, "w") as file:
@@ -58,11 +59,104 @@ def import_open_qasm(qasm_code: str, version: str = "2.0", rigorous: bool = True
 
     if version == "2.0":
         result = parse_from_open_qasm_2(qasm_code=qasm_code, rigorous=rigorous)
+    elif version.startswith("3"):
+        result = parse_from_open_qasm_3(qasm_code=qasm_code, rigorous=rigorous)
     else:
         return "Unsupported OpenQASM version : " + version
-    # TODO: export to version 3
 
     return result
+
+# --- QASM 3 support skeletons ---
+def convert_to_open_qasm_3(circuit: QCircuit, variables=None, zx_calculus: bool = False) -> str:
+    """
+    Allow export to OpenQASM version 3.0 (minimal, symbolic variables supported)
+    Args:
+        circuit: to be exported to OpenQASM
+        variables: optional dictionary with values for variables
+        zx_calculus: indicate if y-gates must be transformed to xz equivalents
+    Returns:
+        str: OpenQASM 3 string
+    """
+    # Compile circuit (do not resolve variables)
+    compiler = CircuitCompiler(multitarget=True,
+                               multicontrol=False,
+                               trotterized=True,
+                               generalized_rotation=True,
+                               exponential_pauli=True,
+                               controlled_exponential_pauli=True,
+                               hadamard_power=True,
+                               controlled_power=True,
+                               power=True,
+                               toffoli=True,
+                               controlled_phase=True,
+                               phase=True,
+                               phase_to_z=True,
+                               controlled_rotation=True,
+                               swap=True,
+                               cc_max=True,
+                               gradient_mode=False,
+                               ry_gate=zx_calculus,
+                               y_gate=zx_calculus,
+                               ch_gate=zx_calculus)
+
+    compiled = compiler(circuit, variables=None)
+
+    # QASM 3 header
+    result = "OPENQASM 3;\n"
+    result += "qubit[{}] q;\n".format(compiled.n_qubits)
+
+    # Export symbolic variables as QASM 3 let statements
+    # Only primitive variables (no functions) for now
+    variables_in_circuit = circuit.extract_variables()
+    if variables_in_circuit:
+        for v in sorted(variables_in_circuit):
+            result += f"let {v}: float;\n"
+
+    # Export gates
+    for g in compiled.gates:
+        # Controls
+        control_str = ''
+        if g.is_controlled():
+            if len(g.control) > 1:
+                raise TequilaException("Multi-controls beyond 1 not yet supported for QASM 3 export. Gate was:\n{}".format(g))
+            control_str = f"ctrl @ "
+
+        # Gate name and parameter
+        gate_name = g.name.lower()
+        param_str = ''
+        if hasattr(g, "parameter") and g.parameter is not None:
+            # Try to get symbolic expression as string
+            try:
+                param = g.parameter(None)
+                if hasattr(param, 'name'):
+                    param_str = f"({param.name})"
+                else:
+                    param_str = f"({param})"
+            except Exception:
+                # fallback: use str(g.parameter)
+                param_str = f"({g.parameter})"
+
+        # Targets
+        for t in g.target:
+            if control_str:
+                # QASM 3 control syntax: ctrl @ gate ...
+                result += f"{control_str}{gate_name}{param_str} q[{t}];\n"
+            else:
+                result += f"{gate_name}{param_str} q[{t}];\n"
+
+    return result
+
+def parse_from_open_qasm_3(qasm_code: str, rigorous: bool = True) -> QCircuit:
+    """
+    Parse OpenQASM 3.0 code into a QCircuit (skeleton)
+    Args:
+        qasm_code: string with the OpenQASM 3 code
+        rigorous: indicates whether the QASM code should be read rigorously
+    Returns:
+        QCircuit: equivalent to the OpenQASM code received
+    """
+    # TODO: Implement full QASM 3 import with symbolic variable support
+    raise NotImplementedError("OpenQASM 3 import is not yet implemented.")
 
 
 def import_open_qasm_from_file(filename: str, version: str = "2.0", rigorous: bool = True) -> QCircuit:
@@ -234,7 +328,7 @@ def parse_from_open_qasm_2(qasm_code: str, rigorous: bool = True) -> QCircuit:
     return circuit
 
 
-def parse_custom_gate(gate_custom: str, custom_gates_map: Dict[str, QCircuit]) -> (str, QCircuit):
+def parse_custom_gate(gate_custom: str, custom_gates_map: Dict[str, QCircuit]) -> tuple[str, QCircuit]:
     """
     Parse custom gates code
 
