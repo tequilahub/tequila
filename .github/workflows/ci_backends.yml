@@ -72,7 +72,12 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --exclude=simulator_cudaq.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test quantum backends
-      run: | 
+      run: |
+        echo "import tequila as tq" > test_ci_installation.py
+        echo "assert ('qulacs' in tq.INSTALLED_SIMULATORS)" >> test_ci_installation.py
+        echo "assert ('cudaq' in tq.INSTALLED_SIMULATORS)" >> test_ci_installation.py
+        python test_ci_installation.py
+        pytest test_ci_installation.py
         pytest -m "not dependencies" tests/test_simulator_backends.py --slow
         pytest -m "not dependencies" tests/test_recompilation_routines.py --slow
         pytest -m "not dependencies" tests/test_noise.py --slow
