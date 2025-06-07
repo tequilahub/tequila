@@ -134,3 +134,7 @@ dmypy.json
 /tests/experiment.py
 /tests/other_thing.py
 /examples/SearchProgress/search_progress.db
+
+
+# so you don't accidentaly push the lrz_key
+config.py
