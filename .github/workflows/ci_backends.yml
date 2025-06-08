@@ -42,7 +42,13 @@ jobs:
           
           source $(conda info --base)/etc/profile.d/conda.sh
           conda activate cudaq-env
-      
+
+          # install dependencies inside cudaq-env so tequila is recognized 
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "qulacs" "qiskit==1.*" "qiskit-aer"
+          pip install -e .
+
           # Export MPI_PATH manually into the shell for the build
           export MPI_PATH="$CONDA_PREFIX"
           
