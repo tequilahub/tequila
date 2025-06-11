@@ -436,7 +436,7 @@ class BackendCircuitCudaq(BackendCircuit):
         vector = cudaq.get_state(self.state_modifier_from_initial_state, number_of_qubits, gate_encodings, target_qubits,
                                  angles, control_qubits, iteration_length, quantum_state_from_integer)
         
-        wfn = QubitWaveFunction.from_array(arr=numpy.array(vector), numbering=self.numbering)
+        wfn = QubitWaveFunction.from_array(array=numpy.array(vector), numbering=self.numbering)
     
         return wfn
 
