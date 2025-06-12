@@ -18,6 +18,20 @@ Warn if Simulators are not installed
 import warnings
 import os, glob
 
+HAS_SPEX = "spex" in tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys()
+@pytest.mark.skipif(condition=not HAS_SPEX, reason="spex not installed")
+def test_spex_mappings():
+    U = tq.gates.Ry("a",0)
+    U+= tq.gates.Ry("b",6)
+    H = tq.paulis.X(0)
+    H+= tq.paulis.X(6)
+    E = tq.ExpectationValue(H=H,U=U)
+    E1 = tq.compile(E,backend="spex")
+    E2 = tq.compile(E)
+    for a in [1.5,2.0,1.0]:
+        e1 = E1({"a":a,"b":a})
+        e2 = E2({"a":a,"b":a})
+        assert numpy.isclose(e1,e2)
 
 HAS_GOOGLE = importlib.util.find_spec('cirq_google')
 @pytest.mark.skipif(condition=not HAS_GOOGLE, reason="cirq_google not installed")

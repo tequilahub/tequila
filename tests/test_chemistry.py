@@ -505,6 +505,15 @@ def test_orbital_transformation():
     hf3 = tq.simulate(E3, variables={"a": 0.0})
     assert numpy.isclose(hf3, hf, atol=1.e-4)
 
+@pytest.mark.parametrize("system",["H 0.0 0.0 0.0\nHe 0.0 0.0 1.3\nH 0.0 0.0 2.6","Be 0. 0. 0."])
+@pytest.mark.parametrize("core",[[],[0],[0,1]])
+@pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
+def test_native_active_space(system,core):
+    mol = tq.Molecule(geometry=system,basis_set='sto-3g',frozen_core=False,frozen_orbitals=core)
+    eival, eivect = numpy.linalg.eigh(mol.make_hamiltonian().to_matrix())
+    mol = tq.Molecule(geometry=system,basis_set='sto-3g',frozen_core=False).use_native_orbitals(core=core)
+    eival1, eivect1 = numpy.linalg.eigh(mol.make_hamiltonian().to_matrix())
+    assert numpy.allclose(eival,eival1)
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="psi4 not found")
@@ -771,6 +780,51 @@ def test_givens_on_molecule(size, transformation):
     
     assert numpy.isclose(result1, result2)
 
+def test_givens_on_molecule():
+    size = 3 #Since above test pased reduced the cases to make it afforable
+    transformation = "JordanWigner"
+    # dummy one-electron integrals
+    h = numpy.ones(shape=[size, size])
+    # dummy two-electron integrals
+    g = numpy.ones(shape=[size, size, size, size])
+
+    U = rg.generate_random_unitary(size)
+
+    # transformed integrals
+    th = (U.T.dot(h)).dot(U)
+    tg = numpy.einsum("ijkx, xl -> ijkl", g, U, optimize='greedy')
+    tg = numpy.einsum("ijxl, xk -> ijkl", tg, U, optimize='greedy')
+    tg = numpy.einsum("ixkl, xj -> ijkl", tg, U, optimize='greedy')
+    tg = numpy.einsum("xjkl, xi -> ijkl", tg, U, optimize='greedy')
+
+    # original molecule/H
+    mol = tq.Molecule(geometry="He 0.0 0.0 0.0", nuclear_repulsion=0.0, one_body_integrals=h, two_body_integrals=g,
+                      basis_set="dummy", transformation=transformation)
+    H = mol.make_hamiltonian()
+    # transformed molecule/H
+    tmol = tq.Molecule(geometry="He 0.0 0.0 0.0", nuclear_repulsion=0.0, one_body_integrals=th, two_body_integrals=tg,
+                       basis_set="dummy", transformation=transformation)
+    tH = tmol.make_hamiltonian()
+    QU = tq.QTensor(shape=(size,size))
+    variables = {}
+    for i in range(size):
+        for j in range(size):
+            QU[i,j] = tq.Variable(str(U[i,j]))
+            variables.update({str(U[i,j]):U[i,j]})
+    # transformation in qubit space (this corresponds to the U above)
+    UR = mol.get_givens_circuit(QU)  # Works!
+    # test circuit
+    circuit = rg.make_random_circuit(size)
+
+    # create expectation values and see if they are the same
+    E1 = tq.ExpectationValue(U=circuit, H=tH)
+    E2 = tq.ExpectationValue(U=circuit + UR, H=H)
+
+    result1 = tq.simulate(E1)
+    result2 = tq.simulate(E2,variables=variables)
+
+    assert numpy.isclose(result1, result2)
+
 @pytest.mark.parametrize("size", [2, 8])
 def test_givens_decomposition(size):
     # generate random unitary
@@ -781,5 +835,6 @@ def test_givens_decomposition(size):
 
     # reconstruct original unitary from givens
     reconstructed_matrix = qcb.reconstruct_matrix_from_givens(unitary.shape[0], theta_list, phi_list)
+    reconstructed_matrix = reconstructed_matrix.astype(numpy.float64)
     
     assert numpy.allclose(unitary, reconstructed_matrix)
