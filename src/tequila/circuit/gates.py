@@ -52,6 +52,19 @@ def Phase(target: typing.Union[list, int],
     return QCircuit.wrap_gate(gates)
 
 
+def I(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None, *args, **kwargs) -> QCircuit:
+    """
+    This function provides a primitive implementation of the identity gate as a place 
+    holder gate with no physical effect. 
+    The user can add this gate into the circuit and get it also when 
+    calling functions regarding the circuit's stats (i.e. gates included)
+    """
+    # zero generator for a no-operation gate 
+    generator = lambda q : 0
+    return _initialize_power_gate(name="I", power=power, angle=angle, target=target, control=control,
+                                  generator=generator, *args, **kwargs)
+
+
 def S(target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
     """
     Notes

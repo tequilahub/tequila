@@ -193,14 +193,16 @@ class BackendCircuit():
 
         # pre-compilation (still an abstract ciruit, but with gates decomposed depending on backend requirements)
         compiled = c(abstract_circuit)
-        self.abstract_circuit = compiled
+
+        # Filter out identity gates because they should not be passed to the backends
+        self.abstract_circuit = QCircuit(gates=filter(lambda g: g.name != "I", compiled.gates))
 
         self.noise = noise
         self.check_device(device)
         self.device = self.retrieve_device(device)
 
         # translate into the backend object
-        self.circuit = self.create_circuit(abstract_circuit=compiled, variables=variables)
+        self.circuit = self.create_circuit(abstract_circuit=self.abstract_circuit, variables=variables)
 
         if optimize_circuit and noise is None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
