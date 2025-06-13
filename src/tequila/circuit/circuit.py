@@ -1,5 +1,5 @@
 from __future__ import annotations
-from tequila.circuit._gates_impl import QGateImpl, assign_variable, list_assignment
+from tequila.circuit._gates_impl import QGateImpl, assign_variable, list_assignment, GlobalPhaseGateImpl, PhaseGateImpl
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.utils.bitstrings import BitNumbering
 import typing
@@ -150,6 +150,10 @@ class QCircuit():
             return []
         else:
             return self._gates
+
+    @gates.setter
+    def gates(self, other):
+        self._gates = list(other)
 
     @property
     def numbering(self) -> BitNumbering:
@@ -676,8 +680,13 @@ class QCircuit():
         gates = self.gates
         control = list_assignment(control)
 
-        for gate in gates:
-            if gate.is_controlled():
+        for i, gate in enumerate(gates):
+            if isinstance(gate, GlobalPhaseGateImpl):
+                gate = PhaseGateImpl(phase=gate.parameter, target=control[0])
+                gates[i] = gate
+                not_control = []
+                control_lst = list(control[1:])
+            elif gate.is_controlled():
                 control_lst = list(set(list(gate.control) + list(control)))
 
                 # Need to check duplicates

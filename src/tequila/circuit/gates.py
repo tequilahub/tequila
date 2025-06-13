@@ -8,6 +8,27 @@ import numpy as np
 import copy
 
 
+def GlobalPhase(angle: typing.Union[typing.Hashable, numbers.Number] = None, *args, **kwargs) -> QCircuit:
+    """
+    Create a global phase gate: G(φ) = e^{iφ} * I
+    This adds a global phase to the entire quantum state.
+
+    Parameters
+    ----------
+    angle: phase value, numeric or symbolic
+
+    Returns
+    -------
+    QCircuit with a GlobalPhaseGate
+    """
+    if angle is None:
+        angle = 0
+
+    gate_impl = impl.GlobalPhaseGateImpl(phase=angle)
+
+    return QCircuit.wrap_gate(gate_impl)
+
+    
 def Phase(target: typing.Union[list, int],
           control: typing.Union[list, int] = None, angle: typing.Union[typing.Hashable, numbers.Number] = None, *args,
           **kwargs) -> QCircuit:

@@ -103,7 +103,7 @@ class QGateImpl:
         return (not self.control) and (len(self.target) == 1)
 
     def finalize(self):
-        if not self.target:
+        if not self.target and not isinstance(self, GlobalPhaseGateImpl):
             raise Exception('Received no targets upon initialization')
         if self.is_controlled():
             for c in self.target:
@@ -138,9 +138,9 @@ class QGateImpl:
         :return: highest qubit index used by this gate
         """
         if self.control is None:
-            return max(self.target)
+            return max(self.target, default=0)
         else:
-            return max(self.target + self.control)
+            return max(self.target + self.control, default=0)
 
     def __eq__(self, other):
         if self.name != other.name:
@@ -317,6 +317,34 @@ class RotationGateImpl(DifferentiableGateImpl):
             return sum(paulis.Y(q) for q in qubits)
 
         return sum(paulis.Z(q) for q in qubits)
+
+
+class GlobalPhaseGateImpl(DifferentiableGateImpl):
+    def __init__(self, phase, target=None, **kwargs):
+        if target is None:
+            # Tequila requires a 'target', so give a dummy qubit (e.g., qubit 0)
+            # shouldn't matter which qubit is target since phase applied on entire state
+            target = ()
+
+        # generator as identity, since global phases should only be collected  
+        generator = paulis.I()
+
+        # Call the base class constructor
+        super().__init__(
+            name="GlobalPhase",           # Name of the gate
+            parameter=phase,              # Phase angle 
+            target=target,                # Dummy target (not used)
+            generator=generator,          # Generator = Identity
+            eigenvalues_magnitude=1.0,    # Magnitude (for bookkeeping)
+            **kwargs
+        )
+
+    def dagger(self):
+        # Return the inverse (Hermitian conjugate) of the gate
+        # For global phase, this is simply negating the angle: e^{iφ} → e^{-iφ}
+        result = copy.deepcopy(self)
+        result.parameter = -self.parameter
+        return result
 
 
 class PhaseGateImpl(DifferentiableGateImpl):
