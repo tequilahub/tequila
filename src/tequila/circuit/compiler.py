@@ -1,6 +1,6 @@
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z
+from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, GlobalPhase
 from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
@@ -306,7 +306,6 @@ class CircuitCompiler:
                     for g in cg.gates:
                         if g.is_controlled():
                             controlled = True
-
 
             # order matters
             # first the real multi-target gates
@@ -790,7 +789,7 @@ def compile_phase_to_z(gate) -> QCircuit:
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     phase = gate.parameter
-    return Z(power=phase / pi, target=gate.target, control=gate.control)
+    return Rz(angle=phase, target=gate.target, control=gate.control) + GlobalPhase(angle=phase / 2)
 
 
 @compiler
@@ -922,7 +921,7 @@ def compile_generalized_rotation_gate(gate, compile_exponential_pauli: bool = Fa
     -------
 
     """
-    if gate.generator is None or gate.name.lower() in ['phase', 'rx', 'ry', 'rz']:
+    if gate.generator is None or gate.name.lower() in ['phase', 'globalphase', 'rx', 'ry', 'rz']:
         return QCircuit.wrap_gate(gate)
     if not hasattr(gate, "eigenvalues_magnitude"):
         return QCircuit.wrap_gate(gate)
