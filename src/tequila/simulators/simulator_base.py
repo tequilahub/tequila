@@ -392,8 +392,10 @@ class BackendCircuit():
         result = self.do_simulate(variables=variables, initial_state=mapped_initial_state, *args,
                                   **kwargs)
 
-        # multiply the state by its global phase (consisting of the sum of the arguments of all global phases)
-        result *= np.exp(1j * self.global_phase)
+        # Multiply the state by its global phase (consisting of the sum of the arguments of all global phases)
+        # Does currently not support variable parameters
+        if isinstance(self.global_phase, float):
+            result *= np.exp(1j * self.global_phase)
 
         if keymap_required:
             result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(all_qubits), initial_state=initial_state)
