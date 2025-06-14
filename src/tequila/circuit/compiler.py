@@ -650,15 +650,14 @@ def compile_power_base(gate):
 
     power = gate.power
     if gate.name.lower() in ['h', 'hadamard']:
-        ### off by global phase of Exp[ pi power /2]
         theta = power * numpy.pi
 
         result = QCircuit()
         result += Ry(angle=-numpy.pi / 4, target=gate.target)
         result += Rz(angle=theta, target=gate.target)
         result += Ry(angle=numpy.pi / 4, target=gate.target)
+        result += Ry(angle=theta / 2, target=gate.target)
     elif gate.name == 'X':
-        ### off by global phase of Exp[ pi power /2]
         '''
         if we wanted to do it formally we would use the following
         a=-numpy.pi/2
@@ -671,19 +670,20 @@ def compile_power_base(gate):
         result+= Rz(angle=a,target=gate.target)
         '''
         result = Rx(angle=power * numpy.pi, target=gate.target)
+        result += GlobalPhase(angle=power * numpy.pi / 2)
     elif gate.name == 'Y':
-        ### off by global phase of Exp[ pi power /2]
         theta = power * numpy.pi
 
         result = QCircuit()
         result += Ry(angle=theta, target=gate.target)
+        result += GlobalPhase(angle=theta / 2)
     elif gate.name == 'Z':
-        ### off by global phase of Exp[ pi power /2]
         a = 0
         b = power * numpy.pi
         theta = 0
         result = QCircuit()
         result += Rz(angle=b, target=gate.target)
+        result += GlobalPhase(angle=b / 2)
     else:
         raise TequilaException('passed a gate with name ' + gate.name + ', which cannot be handled!')
     return result
@@ -738,7 +738,7 @@ def compile_phase(gate) -> QCircuit:
     phase = gate.parameter
     result = QCircuit()
     if len(gate.control) == 0:
-        return Rz(angle=phase, target=gate.target)
+        return Rz(angle=phase, target=gate.target) + GlobalPhase(angle=phase / 2, target=gate.target)
 
     result = compile_controlled_phase(gate)
     result = compile_phase(result)
@@ -789,7 +789,7 @@ def compile_phase_to_z(gate) -> QCircuit:
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     phase = gate.parameter
-    return Rz(angle=phase, target=gate.target, control=gate.control) + GlobalPhase(angle=phase / 2)
+    return Z(power=phase / pi, target=gate.target, control=gate.control)
 
 
 @compiler
