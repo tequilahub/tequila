@@ -6,26 +6,9 @@ from tequila.simulators.simulator_aqt import BackendCircuitAQT, BackendExpectati
 
 
 class BackendCircuitMQP(BackendCircuitAQT):
-    
-    def set_token(self):
-        try:
-            import config
-            self.token = config.lrz_key
-        except:
-            raise TequilaMQPException("No token found for MQP backend. Please create a config.py file with a variable lrz_key containing your MQP token.")
-    
-    def get_backend(self) -> MQPBackend:
-        self.set_token()
-        backend = None
-        try:
-            provider = MQPProvider(self.token)
-            [backend] = provider.backends('AQT20')
-            self.device = backend
-        except Exception as e:
-            raise TequilaMQPException(f"Invalid Token for MQP backend")
-        return backend
-  
-  
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+ 
     # don't transpile the circuit for mqp 
     def get_circuit(self, circuit: QuantumCircuit, qiskit_backend, initial_state=0, optimization_level=1,  *args, **kwargs) -> QuantumCircuit:
         circ = circuit.assign_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346

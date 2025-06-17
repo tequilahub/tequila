@@ -18,15 +18,14 @@ class TequilaAQTException(TequilaQiskitException):
 class BackendCircuitAQT(BackendCircuitQiskit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.device = self.get_backend()
-        
-    def get_backend(token: str = "") -> AQTResource:
-        provider = AQTProvider(token)
-        # TODO: what if somebody actually passes a valid aqt cloud token?
-        backend = provider.get_backend('offline_simulator_no_noise')
-        return backend
-   
-   
+        if 'device' in kwargs.keys() and kwargs['device'] is not None:
+            self.device = kwargs['device']
+  
+    def retrieve_backend(self) -> AQTResource:
+        if self.device is None:
+            raise TequilaAQTException("No AQT device specified. Please provide a valid AQT device as backend.")
+        return self.device
+            
    # state measurement operation? 
     def get_circuit(self, circuit: QuantumCircuit, qiskit_backend, initial_state=0, optimization_level=1,  *args, **kwargs) -> QuantumCircuit:
         circ = circuit.assign_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
@@ -68,7 +67,7 @@ class BackendCircuitAQT(BackendCircuitQiskit):
         optimization_level = 1
         if 'optimization_level' in kwargs:
             optimization_level = kwargs['optimization_level']
-        qiskit_backend = self.get_backend()
+        qiskit_backend = self.retrieve_backend()
         
         circuit = self.get_circuit(circuit=circuit, qiskit_backend=qiskit_backend, initial_state=initial_state, optimization_level=optimization_level, *args, **kwargs)
         job = qiskit_backend.run(circuit, shots=samples)
