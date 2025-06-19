@@ -47,12 +47,12 @@ class QGateImpl:
         return self.compute_max_qubit()
 
     def extract_variables(self):
-        if self.is_parametrized() and hasattr(self.parameter, "extract_variables"):
+        if self.is_parameterized() and hasattr(self.parameter, "extract_variables"):
             return self.parameter.extract_variables()
         else:
             return []
 
-    def is_parametrized(self) -> bool:
+    def is_parameterized(self) -> bool:
         return hasattr(self, "parameter")
 
     def make_generator(self, include_controls=False):
@@ -63,7 +63,7 @@ class QGateImpl:
 
     def map_variables(self, variables):
 
-        if self.is_parametrized():
+        if self.is_parameterized():
             self.parameter=self.parameter.map_variables(variables)
 
         return self

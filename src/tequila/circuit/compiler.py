@@ -1002,7 +1002,7 @@ def compile_y(gate) -> QCircuit:
     if gate.name.lower() == "y":
 
         return Rz(target=gate.target, control=None, angle=-numpy.pi / 2) \
-               + X(target=gate.target, control=gate.control, power=gate.power if gate.is_parametrized() else None) \
+               + X(target=gate.target, control=gate.control, power=gate.power if gate.is_parameterized() else None) \
                + Rz(target=gate.target, control=None, angle=numpy.pi / 2)
 
     else:
@@ -1026,7 +1026,7 @@ def compile_ch(gate: QGateImpl) -> QCircuit:
     if gate.name.lower() == "h" and gate.is_controlled():
 
         return Ry(target=gate.target, control=None, angle=-numpy.pi / 4) \
-               + Z(target=gate.target, control=gate.control, power=gate.power if gate.is_parametrized() else None) \
+               + Z(target=gate.target, control=gate.control, power=gate.power if gate.is_parameterized() else None) \
                + Ry(target=gate.target, control=None, angle=numpy.pi / 4)
     else:
         return QCircuit.wrap_gate(gate)

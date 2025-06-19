@@ -67,7 +67,7 @@ def test_base(trafo):
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="you don't have psi4 or pyscf")
-@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree"])
+@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree",'TaperedBinary'])
 def test_prepare_reference(trafo):
     geometry = "Li 0.0 0.0 0.0\nH 0.0 0.0 1.5"
     basis_set = "sto-3g"
@@ -110,7 +110,7 @@ def test_orbital_types():
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo_args", [{"transformation": "JordanWigner"}, {"transformation": "BravyiKitaev"},
-                                        {"transformation": "bravyi_kitaev_fast"},
+                                        {"transformation": "bravyi_kitaev_fast"},{'transformation':'TaperedBinary'},
                                         {"transformation": "TaperedBravyiKitaev",
                                          "transformation__active_orbitals": 4, "transformation__active_fermions": 2}])
 def test_transformations(trafo_args):
@@ -151,7 +151,7 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 @pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev",
-                                   "BravyiKitaevTree"])  # bravyi_kitaev_fast not yet supported for ucc
+                                   "BravyiKitaevTree","TaperedBinary"])  # bravyi_kitaev_fast not yet supported for ucc
 @pytest.mark.parametrize("backend", backends)
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
@@ -368,7 +368,7 @@ def test_hamiltonian_reduction(backend):
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("assume_real", [True, False])
-@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "reordered_jordan_wigner"])
+@pytest.mark.parametrize("trafo", ["jordan_wigner", "bravyi_kitaev", "reordered_jordan_wigner",'TaperedBinary','REORDEREDTAPEREDBINARY'])
 def test_fermionic_gates(assume_real, trafo):
     mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.7\nLi 0.0 0.0 0.0", basis_set="sto-3g",transformation=trafo)
     U1 = mol.prepare_reference()
@@ -410,7 +410,7 @@ def test_fermionic_gates(assume_real, trafo):
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "ReorderedJordanWigner",
-                                   "ReorderedBravyiKitaev"])
+                                   "ReorderedBravyiKitaev",'TaperedBinary','REORDEREDTAPEREDBINARY'])
 def test_hcb(trafo):
     geomstring = "Be 0.0 0.0 0.0\n H 0.0 0.0 1.6\n H 0.0 0.0 -1.6"
     mol1 = tq.Molecule(geometry=geomstring, active_orbitals=[1, 2, 3, 4, 5, 6], basis_set="sto-3g",
@@ -453,6 +453,31 @@ def test_pyscf_methods(method, geometry, basis_set):
     mol = tq.Molecule(geometry=geometry, basis_set=basis_set, backend="pyscf")
     e3 = mol.compute_energy(method)
     assert numpy.isclose(e1, e3, atol=1.e-4)
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+@pytest.mark.parametrize(
+    "geometry",
+    [
+        "H 0.0 0.0 0.0\nHe 0.0 0.0 1.3\nH 0.0 0.0 2.6",
+        "Li 0.0 0.0 0.0\nH 0.0 0.0 1.5",
+        "Be 0.0 0.0 0.0",
+    ],
+)
+def test_wfn_fci(geometry):
+    mol = tq.Molecule(geometry=geometry, basis_set="sto-3g", backend="pyscf")
+    H = mol.make_hamiltonian()
+    v, vv = numpy.linalg.eigh(H.to_matrix())
+
+    # ground state wavefunction
+    wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
+    energy = v[0]
+
+    fci_energy, fci_wfn = mol.compute_fci(get_wfn=True)
+
+    fidelity = abs(fci_wfn.inner(wfn)) ** 2
+    assert numpy.isclose(fidelity, 1.0)
+    assert numpy.isclose(fci_energy, energy)
 
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
@@ -741,7 +766,7 @@ def test_orbital_optimization_hcb(geometry):
     assert time1 < time2
     assert (numpy.isclose(opt1.mo_coeff,opt2.mo_coeff, atol=1.e-5)).all()
 
-@pytest.mark.parametrize("transformation", ["JordanWigner", "ReorderedJordanWigner", "BravyiKitaev", "BravyiKitaevTree"])
+@pytest.mark.parametrize("transformation", ["JordanWigner", "ReorderedJordanWigner", "BravyiKitaev", "BravyiKitaevTree",'TaperedBinary','REORDEREDTAPEREDBINARY'])
 @pytest.mark.parametrize("size", [2, 8])
 def test_givens_on_molecule(size, transformation):
     # dummy one-electron integrals

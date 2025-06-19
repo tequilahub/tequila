@@ -56,4 +56,5 @@ jobs:
         pytest -m "not dependencies" tests/test_scipy.py --slow
         pytest -m "not dependencies" tests/test_gd_optimizer.py --slow
         pytest -m "not dependencies" tests/test_mappings.py --slow
-
+        pip install "quimb"
+        pytest -m "not dependencies" tests/test_circuit_unitary.py --slow

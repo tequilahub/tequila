@@ -334,10 +334,15 @@ class QuantumChemistryBase:
         -------
 
         """
+        U = QCircuit()
         target = []
         for pair in indices:
             assert len(pair) == 2
-            target += [self.transformation.up(pair[0]), self.transformation.up(pair[1])]
+            if 'TAPEREDBINARY' in self.transformation.name.upper() and self.n_orbitals-1 in pair:
+                p = [i for i in pair if i != self.n_orbitals-1]
+                U += gates.Ry(angle=angle,target=p,assume_real=assume_real,control=control)
+            else:
+                target += [self.transformation.up(pair[0]), self.transformation.up(pair[1])]
         if self.transformation.up_then_down:
             consistency = [x < self.n_orbitals for x in target]
         else:
@@ -346,8 +351,9 @@ class QuantumChemistryBase:
             raise TequilaException(
                 "make_hardcore_boson_excitation_gate: Inconsistencies in indices={} for encoding: {}".format(
                     indices, self.transformation))
-        return gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control,
-                                     compile_options=compile_options)
+        if len(target):
+            U += gates.QubitExcitation(angle=angle, target=target, assume_real=assume_real, control=control,compile_options=compile_options) 
+        return U
     
     def UR(self,i,j,angle=None, label=None, control=None, assume_real=True, *args, **kwargs):
         """
@@ -1170,6 +1176,43 @@ class QuantumChemistryBase:
         optimize: optimize the circuit construction (see article). Results in shallow circuit from Ry and CNOT gates
         ladder: if true the excitation pattern will be local. E.g. in the pair from orbitals (1,2,3) we will have the excitations 1->2 and 2->3, if set to false we will have standard coupled-cluster style excitations - in this case this would be 1->2 and 1->3 
         """
+        def _make_spa_tappered(edges,hcb=False,use_units_of_pi=False, label=None, optimize=False, ladder=True):
+            U = QCircuit()
+            cedges = []
+            for edge in edges:
+                if self.n_orbitals - 1 in edge:
+                    cedge = [i for i in edge if i != self.n_orbitals - 1] + [self.n_orbitals - 1]
+                    cedges.append(cedge)
+                else:
+                    cedges.append(edge)
+            if optimize:
+                for edge_orbitals in cedges:
+                    edge_qubits = [self.transformation.up(i) for i in edge_orbitals]
+                    if not edge_qubits[0]==self.transformation.up(self.n_orbitals-1):
+                        U += gates.X(edge_qubits[0])
+                    if len(edge_qubits) == 1:
+                        continue
+                    for i in range(1, len(edge_qubits)):
+                        q1 = edge_qubits[i]
+                        c = edge_qubits[i - 1]
+                        if not ladder:
+                            c = edge_qubits[0]
+                        angle = Variable(name=((edge_orbitals[i - 1], edge_orbitals[i]), "D",label))
+                        if use_units_of_pi:
+                            angle = angle * numpy.pi
+                        if (i - 1 == 0) and not (q1 == self.transformation.up(self.n_orbitals-1)):
+                            U += gates.Ry(angle=angle, target=q1, control=None)
+                        elif (i - 1 == 0) and (q1 == self.transformation.up(self.n_orbitals-1)):
+                            U +=  gates.Ry(angle=angle,target=c,control=None)
+                        else:
+                            U += gates.Ry(angle=angle, target=q1, control=c)
+                        if q1 != self.transformation.up(self.n_orbitals-1):
+                            U += gates.CNOT(q1, c)
+                if not hcb:
+                    U += self.hcb_to_me()
+                return U
+            else:
+                return self.make_spa_ansatz(cedges, hcb=hcb,  use_units_of_pi=use_units_of_pi, label=label, optimize=True, ladder=ladder)
         if edges is None:
             raise TequilaException("SPA ansatz within a standard orbital basis needs edges. Please provide with the keyword edges.\nExample: edges=[(0,1,2),(3,4)] would correspond to two edges created from orbitals (0,1,2) and (3,4), note that orbitals can only be assigned to a single edge")
         
@@ -1203,7 +1246,8 @@ class QuantumChemistryBase:
                 optimize=False
 
         U = QCircuit()
-        
+        if 'TAPEREDBINARY' in self.transformation.name.upper():
+            return _make_spa_tappered(edges=edges,hcb=hcb,use_units_of_pi=use_units_of_pi,label=label,optimize=optimize,ladder=ladder)
         # construction of the optimized circuit
         if optimize:
             # circuit in HCB representation
@@ -1233,24 +1277,15 @@ class QuantumChemistryBase:
             if not hcb:
                 U += self.hcb_to_me()
         else:
-            # construction of the non-optimized circuit (UpCCD with paired doubles according to edges)
+            orbs = [edge[0] for edge in edges]
             if hcb:
-                U = self.prepare_hardcore_boson_reference()
+                U = gates.X([self.transformation.up(i) for i in orbs])
             else:
-                U = self.prepare_reference()
-            # will only work if the first orbitals in the edges are the reference orbitals
-            sane = True
-            reference_orbitals = self.reference_orbitals
-            for edge_qubits in edges:
-                if self.orbitals[edge_qubits[0]] not in reference_orbitals:
-                    sane=False
-                if len(edge_qubits)>1:
-                    for q1 in edge_qubits[1:]:
-                        if self.orbitals[q1] in reference_orbitals:
-                            sane=False
-            if not sane:
-                raise TequilaException("Non-Optimized SPA (e.g. with encodings that are not JW) will only work if the first orbitals of all SPA edges are occupied reference orbitals and all others are not. You gave edges={} and reference_orbitals are {}".format(edges, reference_orbitals))
-
+                state = [0] * 2*self.n_orbitals
+                for i in orbs:
+                    state[2 * i] = 1
+                    state[2 * i + 1] = 1
+                U = self.prepare_reference(state)
             for edge_qubits in edges:
                 previous = edge_qubits[0]
                 if len(edge_qubits)>1:
@@ -1695,6 +1730,9 @@ class QuantumChemistryBase:
                 from tequila.quantumchemistry import QuantumChemistryPySCF
                 molx = QuantumChemistryPySCF.from_tequila(self)
                 return molx.compute_energy(method=method)
+    
+    def compute_fci(self, *args, **kwargs):
+        raise NotImplementedError("compute_fci only implemented for the 'pyscf' backend")
 
     def compute_fock_matrix(self):
         c, h, g = self.get_integrals()
