@@ -15,6 +15,7 @@ from mqt.core.ir.symbolic import Variable, Expression, Term
 import numbers
 from tequila.circuit.compiler import change_basis
 
+
 def set_computational_basis(state: int, n_qubits: int) -> QuantumComputation:
     qc = QuantumComputation(n_qubits)
     bitstring = BitString.from_int(state, n_qubits)
@@ -79,11 +80,12 @@ class BackendCircuitDDSim(BackendCircuit):
             "Rz": OpType.rz,
             "SWAP": OpType.swap,
         }
-        self.tq_to_ddsim = {}
+
         self.counter = 0
+        self.tq_to_ddsim = {}
+        
         self.resolver = None
         qubit_map = {q: i for i, q in enumerate(abstract_circuit.qubits)}
-        self.circuit_sym = None # Circuit that will hold the symbolic variables.
 
         super().__init__(abstract_circuit=abstract_circuit,
                          variables=variables,
@@ -128,9 +130,6 @@ class BackendCircuitDDSim(BackendCircuit):
                 for v, k in self.tq_to_ddsim.items()
             }
 
-        if self.resolver is not None:
-            self.circuit = self.circuit_sym.instantiate(self.resolver)
-
     def do_simulate(self, variables, initial_state: Union[int,
                                                           QubitWaveFunction],
                     *args, **kwargs):
@@ -165,7 +164,11 @@ class BackendCircuitDDSim(BackendCircuit):
             "seed":
             kwargs.get("seed", -1),
         }
-        sim = CircuitSimulator(self.circuit, **sim_kwargs)
+        if self.resolver is not None:
+            circuit = self.circuit.instantiate(self.resolver)
+        else:
+            circuit = self.circuit
+        sim = CircuitSimulator(circuit, **sim_kwargs)
         sim.simulate(shots=0)
         vec = sim.get_constructed_dd().get_vector()
         wfn = QubitWaveFunction.from_array(array=np.array(vec, copy=False),
@@ -253,7 +256,6 @@ class BackendCircuitDDSim(BackendCircuit):
         -------
         QuantumComputation
         """
-        self.circuit_sym = QuantumComputation(self.n_qubits, self.n_qubits)
         return QuantumComputation(self.n_qubits, self.n_qubits)
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
@@ -296,7 +298,6 @@ class BackendCircuitDDSim(BackendCircuit):
             params=[par],
         )
         circuit.append(ddsim_gate)
-        self.circuit_sym.append(ddsim_gate)
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         """
@@ -322,7 +323,6 @@ class BackendCircuitDDSim(BackendCircuit):
             op_type=op,
         )
         circuit.append(ddsim_gate)
-        self.circuit_sym.append(ddsim_gate)
 
     def add_measurement(self, circuit, target_qubits, *args, **kwargs):
         """
@@ -341,10 +341,9 @@ class BackendCircuitDDSim(BackendCircuit):
         circuit with measurements
 
         """
-        meas = NonUnitaryOperation(targets=target_qubits,
-                                   classics=target_qubits)
+        tq = [self.qubit(t) for t in target_qubits]
+        meas = NonUnitaryOperation(targets=tq, classics=tq)
         circuit.append(meas)
-        self.circuit_sym.append(meas)
         return circuit
 
     # Overwriting `sample_paulistring` since mqt.ir QuantumComputation object is not pickable:
@@ -388,11 +387,17 @@ class BackendCircuitDDSim(BackendCircuit):
             qubits.append(idx)
             basis_change += change_basis(target=idx, axis=p)
 
+        # Simple fix to the `copy` problem
+        if self.resolver is not None:
+            _circuit = self.circuit.instantiate(self.resolver)
+        else:
+            r = {Variable("_"): 0}  # Dummy variable
+            _circuit = self.circuit.instantiate(r)
+
         # add basis change to the circuit
-        # (deepcopy can't be used with this backend)
         # can be circumvented by optimizing the measurements
         # on construction: tq.ExpectationValue(H=H, U=U, optimize_measurements=True)
-        circuit = self.create_circuit(circuit=self.circuit,
+        circuit = self.create_circuit(circuit=_circuit,
                                       abstract_circuit=basis_change)
         # run simulators
         counts = self.sample(samples=samples,
