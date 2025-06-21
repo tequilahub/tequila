@@ -19,6 +19,7 @@ qulacs # default simulator (best integration), remove if the installation gives 
 #qulacs-gpu # you can't have qulacs and qulacs-gpu at the same time
 #qibo <= 0.1.1 # can not be installed in the same environment as gpyopt
 #quimb
+#mqt.ddsim == 2.0.0b2  # requires qiskit < 2
 
 #optional optimizers
 #gpyopt # not in combination with qibo as quantum backend
