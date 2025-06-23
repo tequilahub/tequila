@@ -10,7 +10,8 @@ from tequila.simulators.simulator_base import BackendCircuit, BackendExpectation
 from tequila.circuit.noise import NoiseModel
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
-SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm", "spex", "aqt", "mqp"]
+SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm", "spex", "aqt", "mqp", "ddsim"]
+
 # TODO: Reenable noise for Qiskit
 SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
 
@@ -163,6 +164,14 @@ INSTALLED_SIMULATORS["symbolic"] = BackendTypes(CircType=BackendCircuitSymbolic,
                                                 ExpValueType=BackendExpectationValueSymbolic)
 HAS_SYMBOLIC = True
 
+HAS_DDSIM = True
+try:
+    from tequila.simulators.simulator_ddsim import BackendCircuitDDSim, BackendExpectationValueDDSim
+
+    INSTALLED_SIMULATORS["ddsim"] = BackendTypes(BackendCircuitDDSim, BackendExpectationValueDDSim)
+    INSTALLED_SAMPLERS["ddsim"] = BackendTypes(BackendCircuitDDSim, BackendExpectationValueDDSim)
+except ImportError:
+    HAS_DDSIM = False
 
 def show_available_simulators():
     """ """
