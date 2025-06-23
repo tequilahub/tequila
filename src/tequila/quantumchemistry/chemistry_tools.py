@@ -165,7 +165,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
             if isinstance(control, int):
                 crt.append(control)
             else:
-                crt = crt + control
+                crt = crt + [*control]
             control = []
         Ur = self.cCRy(target=lto[-1], dcontrol=crt, angle=angle, control=control)
         Upair2 = Upair.dagger()
