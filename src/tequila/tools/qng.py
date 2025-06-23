@@ -272,7 +272,7 @@ def qng_circuit_grad(E: ExpectationValueImpl) -> typing.List[Objective]:
     # fast return if possible
     out=[]
     for i, g in enumerate(unitary.gates):
-        if g.is_parametrized():
+        if g.is_parameterized():
             if g.is_controlled():
                 raise TequilaException("controlled gate in qng circuit gradient: Compiler was not called")
             if hasattr(g, "eigenvalues_magnitude"):
@@ -386,7 +386,7 @@ def get_self_pars(U) -> typing.List:
 
     out=[]
     for g in U.gates:
-        if g.is_parametrized():
+        if g.is_parameterized():
             if hasattr(g._parameter,'extract_variables'):
                 out.append(g._parameter)
     return out

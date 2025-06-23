@@ -34,8 +34,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install "qiskit" "qulacs"
+        # TODO: Update to Qiskit 2.0
+        pip install "qulacs" "qiskit==1.*" "qiskit-aer"
         # pip install cirq # installs too much stuff currently
+        pip install "mqt.ddsim==2.0.0b2" # requires qiskit<2
         pip install -e . 
     - name: Lint with flake8
       run: |
@@ -55,4 +57,5 @@ jobs:
         pytest -m "not dependencies" tests/test_scipy.py --slow
         pytest -m "not dependencies" tests/test_gd_optimizer.py --slow
         pytest -m "not dependencies" tests/test_mappings.py --slow
-
+        pip install "quimb"
+        pytest -m "not dependencies" tests/test_circuit_unitary.py --slow

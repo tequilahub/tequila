@@ -5,6 +5,7 @@ from tequila.utils.bitstrings import BitNumbering
 import typing
 import copy
 from collections import defaultdict
+import numpy as np
 import warnings
 
 from .qpic import export_to
@@ -92,7 +93,7 @@ class QCircuit():
         for g in self.gates:
             p = 0
             qus = g.qubits
-            if g.is_parametrized():
+            if g.is_parameterized():
                 if hasattr(g.parameter, 'extract_variables'):
                     p = 1
 
@@ -210,7 +211,7 @@ class QCircuit():
         """
         parameter_map = defaultdict(list)
         for idx, gate in enumerate(self.gates):
-            if gate.is_parametrized():
+            if gate.is_parameterized():
                 variables = gate.extract_variables()
                 for variable in variables:
                     parameter_map[variable] += [(idx, gate)]
@@ -347,7 +348,7 @@ class QCircuit():
             whether or not all gates in the circuit are paremtrized
         """
         for gate in self.gates:
-            if not gate.is_parametrized():
+            if not gate.is_parameterized():
                 return False
             else:
                 if hasattr(gate, 'parameter'):
@@ -367,7 +368,7 @@ class QCircuit():
             whether or not all gates in the circuit are unparametrized
         """
         for gate in self.gates:
-            if not gate.is_parametrized():
+            if not gate.is_parameterized():
                 continue
             else:
                 if hasattr(gate, 'parameter'):
@@ -440,6 +441,80 @@ class QCircuit():
             return QCircuit(gates=gate)
         else:
             return QCircuit(gates=[gate])
+
+    def to_matrix(self, variables=None):
+        """
+        take the circuit and return the unitary matrix corresponding to it.
+        Parameters
+        ----------
+        variables: dict:
+            (Default value = None)
+            a dictionary mapping variable names to values. If None, the circuit must not contain any variables.
+            If the circuit contains variables, they must be provided here.
+
+        Returns
+        -------
+        np.ndarray:
+            the unitary matrix corresponding to the circuit.
+        """
+        import quimb.gates
+        import quimb.tensor as qtn
+        from tequila import compile_circuit
+
+        num_variables = len(self.extract_variables())
+
+        if num_variables == 0:
+            variables = {}
+        elif variables is None:
+            raise TequilaException(
+                f"QCircuit.to_matrix(): no variables provided, but the circuit has {num_variables} variables"
+            )
+
+        compiled_circuit = compile_circuit(self, )
+        compiled_circuit = compiled_circuit.map_variables(variables)
+
+        gate_mapping = {
+            'Rx': 'RX',
+            'Ry': 'RY',
+            'Rz': 'RZ',
+            'H': 'H',
+            'X': 'X'
+        }
+
+        quimb_circuit = qtn.Circuit(self.n_qubits)
+
+        # quimb uses MSB convention, so we need to modify the qubit indices
+        # to LSB
+        for g in compiled_circuit.gates:
+            if g.name not in gate_mapping:
+                raise TequilaException(
+                    f"Gate {g.name} is not supported for conversion to matrix. "
+                    f"Supported gates: {list(gate_mapping.keys())}"
+                )
+
+            if g.is_parameterized():
+                quimb_circuit.apply_gate(
+                    gate_mapping[g.name],
+                    params=[float(g.parameter())],
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                    parameterize=True
+                )
+            elif g.is_controlled():
+                quimb_circuit.apply_gate(
+                    gate_mapping[g.name],
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                    controls=[abs(c - self.n_qubits + 1) for c in list(g.control)],
+                )
+            else:
+                quimb_circuit.apply_gate(
+                    gate_mapping[g.name],
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                )
+
+        uni = quimb_circuit.get_uni()
+        unitary = np.array(uni.to_dense())
+
+        return unitary
 
     def to_networkx(self):
         """
@@ -688,7 +763,7 @@ class Moment(QCircuit):
         mu = []
         mp = []
         for gate in self.gates:
-            if not gate.is_parametrized():
+            if not gate.is_parameterized():
                 mu.append(gate)
             else:
                 if hasattr(gate, 'parameter'):
@@ -869,7 +944,7 @@ class Moment(QCircuit):
             whether or not EVERY gate in self.gates is parameterized.
         """
         for gate in self.gates:
-            if not gate.is_parametrized():
+            if not gate.is_parameterized():
                 return False
             else:
                 if hasattr(gate, 'parameter'):
@@ -975,22 +1050,22 @@ class Moment(QCircuit):
 
 def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None)->int:
     '''
-    Function that checks which are the active qubits of two circuits and 
+    Function that checks which are the active qubits of two circuits and
     provides an unused qubit that is not among them. If all qubits are used
     it adds a new one.
 
     Parameters
     ----------
     U0 : QCircuit, corresponding to the first state.
-        
+
     U1 : QCircuit, corresponding to the second state.
 
     Returns
     -------
     control_qubit : int
-        
+
     '''
-    
+
     active_qubits = list(set(U0.qubits+U1.qubits))
     # default
     free_qubit = max(active_qubits) + 1
@@ -1000,5 +1075,5 @@ def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None)->int:
             free_qubit = n
             break
     assert free_qubit not in active_qubits
-    
+
     return free_qubit

@@ -200,6 +200,21 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         if not self.indices[0][0] // 2 == self.indices[1][0] // 2: return False
         if not self.indices[0][1] // 2 == self.indices[1][1] // 2: return False
         return True
+    def map_qubits(self, qubit_map: dict):
+        mapped = deepcopy(self)
+        mapped._target = tuple([qubit_map[i] for i in self.target])
+        if self.control is not None:
+            mapped._control = tuple([qubit_map[i] for i in self.control])
+        if hasattr(self, "generator") and self.generator:
+            mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
+        if hasattr(self, "generators"):
+            mapped.generators = [i.map_qubits(qubit_map=qubit_map) for i in self.generators]
+        mapped.finalize()
+        if hasattr(self, "generator"):
+            mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
+        if hasattr(self, "indices"):
+            mapped.indices = [(qubit_map[t[0]],qubit_map[t[1]]) for t in self.indices]
+        return mapped
 
 
 def prepare_product_state(state: BitString) -> QCircuit:
@@ -244,19 +259,19 @@ class ParametersQC:
             if n>2:
                 result += 2 
             if n>10:
-                result += 8
+                result += 10-2
             if n>18:
-                result += 18
+                result += 18-10-2
             if n>36:
-                result += 36
-            if n>45:
-                result += 54
+                result += 36-18-10-2
+            if n>54:
+                result += 54-36-18-10-2
             if n>86:
-                result += 86
+                result += 86-54-36-18-10-2
         return result
 
     @property
-    def n_electrons(self, *args, **kwargs):
+    def total_n_electrons(self, *args, **kwargs):
         return self.get_nuc_charge() - self.charge
 
     def get_nuc_charge(self):

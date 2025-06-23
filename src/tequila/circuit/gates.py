@@ -411,8 +411,6 @@ def GeneralizedRotation(angle: typing.Union[typing.List[typing.Hashable], typing
                                 eigenvalues_magnitude=eigenvalues_magnitude, steps=steps, assume_real=assume_real, p0=p0))
 
 
-
-
 def Trotterized(generator: QubitHamiltonian = None,
                 steps: int = 1,
                 angle: typing.Union[typing.Hashable, numbers.Real, Variable] = None,
@@ -516,8 +514,8 @@ def SWAP(first: int, second: int, angle: float = None, control: typing.Union[int
     else:
         return GeneralizedRotation(angle=angle, control=control, generator=generator,
                                    eigenvalues_magnitude=0.25)
-        
-        
+
+
 def iSWAP(first: int, second: int, control: typing.Union[int, list] = None, power: float = 1.0, *args,
          **kwargs) -> QCircuit:
     """
@@ -552,8 +550,8 @@ def iSWAP(first: int, second: int, control: typing.Union[int, list] = None, powe
     gate = QubitExcitationImpl(angle=power*(-np.pi/2), target=generator.qubits, generator=generator, p0=p0, control=control, compile_options="vanilla", *args, **kwargs)
     
     return QCircuit.wrap_gate(gate)
-    
-    
+
+
 def Givens(first: int, second: int, control: typing.Union[int, list] = None, angle: float = None, *args,
          **kwargs) -> QCircuit:
     """
@@ -1063,9 +1061,9 @@ class QubitExcitationImpl(impl.GeneralizedRotationImpl):
         else:
             assert generator is not None
             assert p0 is not None
-        
+
         super().__init__(name="QubitExcitation", angle=angle, generator=generator, target=target, p0=p0, control=control, assume_real=assume_real, steps=1)
-        
+
         if compile_options is None:
             self.compile_options = "optimize"
         elif hasattr(compile_options, "lower"):
@@ -1079,25 +1077,29 @@ class QubitExcitationImpl(impl.GeneralizedRotationImpl):
         return mapped
 
     def compile(self, exponential_pauli=False, *args, **kwargs):
-        # optimized compiling for single and double qubit excitaitons following arxiv:2005.14475
+        # optimized compiling for n-qubit excitaitons following arxiv:2005.14475
         # Alternative representation in arxiv:2104.05695 (not implemented -> could be added and controlled with optional compile keywords)
         if self.is_controlled():
             control = list(self.control)
         else:
             control = []
-        if self.compile_options == "optimize" and len(self.target) == 2 and exponential_pauli:
-            p,q = self.target
-            U0 = X(target=p, control=q)
-            U1 = Ry(angle=self.parameter, target=q, control=[p]+control)
-            return U0 + U1 + U0
-        elif self.compile_options == "optimize" and len(self.target) == 4 and exponential_pauli:
-            p,r,q,s = self.target
-            U0 = X(target=q, control=p)
-            U0 += X(target=s, control=r)
-            U0 += X(target=r, control=p)
-            U0 += X(target=q)
-            U0 += X(target=s)
-            U1 = Ry(angle=-self.parameter, target=p, control=[q,r,s]+control)
+        if self.compile_options == "optimize" and exponential_pauli:
+            q1 = self.target[::2]
+            q2 = self.target[1::2]
+            n = len(self.target) // 2
+            U0 = QCircuit()
+            for i in range(1, n):
+                U0 += X(target=q1[i], control=q1[0])
+                U0 += X(target=q2[i], control=q2[0])
+            U0 += X(target=q2[0], control=q1[0])
+            for i in range(1, n):
+                U0 += X(target=q1[i])
+                U0 += X(target=q2[i])
+            U1 = Ry(
+                angle=-self.parameter,
+                target=q1[0],
+                control=list(self.target[1:]) + control,
+            )
             return U0 + U1 + U0.dagger()
         else:
             return Trotterized(angle=self.parameter, generator=self.generator, steps=1, control=self.control)

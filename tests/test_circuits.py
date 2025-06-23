@@ -2,6 +2,7 @@ from random import randint
 
 import numpy
 import pytest
+import random
 import sympy
 from tequila import assign_variable, paulis, TequilaWarning
 from tequila.circuit._gates_impl import RotationGateImpl
@@ -10,6 +11,7 @@ from tequila.circuit.gates import CNOT, ExpPauli, H, Phase, QCircuit, RotationGa
 from tequila.objective.objective import Variable
 from tequila.simulators.simulator_api import simulate
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.circuit.qasm import export_open_qasm, import_open_qasm
 
 
 def test_qubit_map():
@@ -397,3 +399,19 @@ def test_control_exception() -> None:
         anc = [1 for _ in range(length)]
 
         circ._inpl_control_circ(anc)
+
+def test_qasm_export_import_equivalence():
+    # Create a simple parameterized circuit
+    from tequila.circuit.gates import Rx, H
+    import tequila.simulators.simulator_api as tq
+    U = H(target=0) + Rx(angle='theta', target=0)
+    # Assign random value to variable
+    variables = {k: random.random() for k in U.extract_variables()}
+    # Export to QASM (pass variables)
+    qasm_string = export_open_qasm(U, variables=variables)
+    # Import back from QASM
+    U2 = import_open_qasm(qasm_string)
+    wfn1 = tq.simulate(U, variables=variables)
+    wfn2 = tq.simulate(U2, variables=variables)
+    F = abs(wfn1.inner(wfn2))**2
+    assert numpy.isclose(F, 1.0)
