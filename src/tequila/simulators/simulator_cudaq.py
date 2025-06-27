@@ -661,29 +661,29 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
             initialized hamiltonian objects.
 
         """
+        # Map logical qubit labels to consecutive indices (0,1,2,...)
+        # this turns cases like [0,2,5] into [0,1,2] for cudaq
+        qubit_map = {}
+        for i, q in enumerate(self.U.abstract_circuit.qubits):
+            qubit_map[q] = i
 
         list_of_initialized_hamiltonians = []
-        hamiltonian_as_spin = 1
         # assemble hamiltonian with cudaq "spin" objects                    
         for hamiltonian in hamiltonians:
             hamiltonian_as_spin = 0  # Initialize per Hamiltonian
-            
             for paulistring in hamiltonian.paulistrings:
                 term = 1  # Start with identity
-                
                 for qubit, gate in paulistring.items():
+                    mapped_qubit = qubit_map[qubit]
                     if gate == 'X': 
-                        term *= spin.x(qubit)
+                        term *= spin.x(mapped_qubit)
                     elif gate == 'Y': 
-                        term *= spin.y(qubit)
+                        term *= spin.y(mapped_qubit)
                     elif gate == 'Z': 
-                        term *= spin.z(qubit)
-                
+                        term *= spin.z(mapped_qubit)
                 term *= paulistring._coeff  # Apply coefficient
                 hamiltonian_as_spin += term  # Accumulate terms
-            
             list_of_initialized_hamiltonians.append(hamiltonian_as_spin)
-
         return list_of_initialized_hamiltonians
 
 
