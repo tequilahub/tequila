@@ -617,6 +617,9 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
         elif isinstance(self.H, numbers.Number):
             return numpy.asarray[self.H]
 
+        # update the variables for correct expectation value evaluation
+        self.U.update_variables(variables)
+
         # prepare circuit to apply onto state          
         (number_of_qubits, gate_encodings, target_qubits, angles, 
          control_qubits, iteration_length) = BackendCircuitCudaq.prepare_circuit_for_state_modifier(self)
