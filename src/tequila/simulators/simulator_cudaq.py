@@ -669,13 +669,15 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
             initialized hamiltonian objects.
 
         """
-    # Map logical qubit labels to contiguous indices
+    # Map logical qubit labels to consecutive indices
         qubit_map = {q: i for i, q in enumerate(self.U.abstract_circuit.qubits)}
         list_of_initialized_hamiltonians = []
+
+        # assemble hamiltonian with cudaq "spin" objects
         for hamiltonian in hamiltonians:
-            hamiltonian_as_spin = 0
-            for paulistring in hamiltonian.paulistrings:
-                # save all spin operators in a list
+            hamiltonian_as_spin = None
+            for paulistring in hamiltonian.paulistrings: 
+                # store the spin operators in a list
                 ops = []
                 for qubit, gate in paulistring.items():
                     mapped_qubit = qubit_map[qubit]
@@ -685,15 +687,20 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
                         ops.append(spin.y(mapped_qubit))
                     elif gate == 'Z':
                         ops.append(spin.z(mapped_qubit))
-                # if no operators are found, continue to the next paulistring
+                # If no operators, skip to next paulistring
                 if ops:
-                    # multiply all operators together
-                    # this is done to ensure that the order of multiplication is correct
+                    # start with the first spin operator (instead of identity "1")
                     term = ops[0]
                     for op in ops[1:]:
                         term *= op
                     term *= paulistring._coeff
-                    hamiltonian_as_spin += term
+                    if hamiltonian_as_spin is None:
+                        hamiltonian_as_spin = term
+                    else:
+                        hamiltonian_as_spin += term
+            # If no paulistrings, set to "zero operator" (not float)
+            if hamiltonian_as_spin is None:
+                hamiltonian_as_spin = spin.z(0) * 0.0
             list_of_initialized_hamiltonians.append(hamiltonian_as_spin)
         return list_of_initialized_hamiltonians
 
