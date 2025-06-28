@@ -1,20 +1,11 @@
 import cudaq
 from cudaq import spin
-
-import qulacs
 import numbers, numpy
-import warnings
-
 from tequila import TequilaException, TequilaWarning
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, QCircuit, change_basis
 from tequila.utils.keymap import KeyMapRegisterToSubregister
-
-
-
-
-
 
 """
 Developer Note:
@@ -26,6 +17,7 @@ Developer Note:
 class TequilaCudaqException(TequilaException):
     def __str__(self):
         return "Error in cudaq (cuda-quantum) backend:" + self.message
+
 
 class BackendCircuitCudaq(BackendCircuit):
     """
@@ -84,7 +76,6 @@ class BackendCircuitCudaq(BackendCircuit):
         kwargs
         """
 
-
         # gates encodings 
         self.op_lookup = {
             # primitives
@@ -117,17 +108,10 @@ class BackendCircuitCudaq(BackendCircuit):
 
         # instantiate a cudaq circuit as a list
         self.circuit = self.initialize_circuit()
-
         self.measurements = None
         self.variables = []
         super().__init__(abstract_circuit=abstract_circuit, noise=noise, *args, **kwargs)
         self.has_noise=False
-
-
-
-
-    
-
 
 
     @cudaq.kernel
@@ -152,7 +136,6 @@ class BackendCircuitCudaq(BackendCircuit):
         """
         # create an empty state with given number of qubits
         s = cudaq.qvector(number_of_qubits)
-
 
         for index in range(iteration_length):
             encoding = gate_encodings[index]
@@ -216,10 +199,6 @@ class BackendCircuitCudaq(BackendCircuit):
                 else:
                     t(s[target])
 
-
-
-                    
-
     @cudaq.kernel
     def state_modifier_from_initial_state(             ## create a state based on an EXISTING PREVIOUS STATE i.e. |1010010> 
         number_of_qubits : int,
@@ -247,7 +226,6 @@ class BackendCircuitCudaq(BackendCircuit):
 
         # create a quantum state based on a given initial state 
         s = cudaq.qvector(inital_state)
-
 
         for index in range(iteration_length):
             encoding = gate_encodings[index]
@@ -310,14 +288,6 @@ class BackendCircuitCudaq(BackendCircuit):
                 else:
                     t(s[target])
 
-                    
-
-        
-        
-
-
-
-
     def prepare_circuit_for_state_modifier(self):
         ''' 
         this function decomposes the circuit elements for later usage in state_modifier, which uses the 
@@ -363,7 +333,6 @@ class BackendCircuitCudaq(BackendCircuit):
         return (number_of_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length)
 
 
-
     def prepare_state_from_integer(state_index: int, num_qubits: int):
         """Prepare gate encodings to initialize the quantum state |state_index⟩.
 
@@ -393,7 +362,6 @@ class BackendCircuitCudaq(BackendCircuit):
         iteration_length = len(gate_encodings)
 
         return (num_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length)
-
 
 
     def do_simulate(self, variables, initial_state, *args, **kwargs):
@@ -646,7 +614,7 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
     
 
 
-    def initialize_hamiltonian(self, hamiltonians):
+    def XX__XX__initialize_hamiltonian_old_implementation(self, hamiltonians):
         """
         Convert reduced hamiltonians to native Cudaq types for efficient expectation value evaluation.
 
@@ -683,6 +651,49 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
                         term *= spin.z(mapped_qubit)
                 term *= paulistring._coeff  # Apply coefficient
                 hamiltonian_as_spin += term  # Accumulate terms
+            list_of_initialized_hamiltonians.append(hamiltonian_as_spin)
+        return list_of_initialized_hamiltonians
+
+    def initialize_hamiltonian(self, hamiltonians):
+        """
+        Convert reduced hamiltonians to native Cudaq types for efficient expectation value evaluation.
+
+        Parameters
+        ----------
+        hamiltonians:
+            an interable set of hamiltonian objects.
+
+        Returns
+        -------
+        list:
+            initialized hamiltonian objects.
+
+        """
+    # Map logical qubit labels to contiguous indices
+        qubit_map = {q: i for i, q in enumerate(self.U.abstract_circuit.qubits)}
+        list_of_initialized_hamiltonians = []
+        for hamiltonian in hamiltonians:
+            hamiltonian_as_spin = 0
+            for paulistring in hamiltonian.paulistrings:
+                # save all spin operators in a list
+                ops = []
+                for qubit, gate in paulistring.items():
+                    mapped_qubit = qubit_map[qubit]
+                    if gate == 'X':
+                        ops.append(spin.x(mapped_qubit))
+                    elif gate == 'Y':
+                        ops.append(spin.y(mapped_qubit))
+                    elif gate == 'Z':
+                        ops.append(spin.z(mapped_qubit))
+                # if no operators are found, continue to the next paulistring
+                if ops:
+                    # multiply all operators together
+                    # this is done to ensure that the order of multiplication is correct
+                    term = ops[0]
+                    for op in ops[1:]:
+                        term *= op
+                    term *= paulistring._coeff
+                    hamiltonian_as_spin += term
             list_of_initialized_hamiltonians.append(hamiltonian_as_spin)
         return list_of_initialized_hamiltonians
 
