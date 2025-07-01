@@ -32,7 +32,7 @@ def test_export_import_qasm_simple(zx_calculus):
     wfn1 = simulate(tequila_circuit, backend="symbolic")
     wfn2 = simulate(imported_circuit, backend="symbolic")
 
-    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+    assert wfn1.isclose(wfn2)
 
 
 @pytest.mark.parametrize(
@@ -86,7 +86,7 @@ def test_export_import_qasm(zx_calculus, variabs):
     wfn1 = simulate(tequila_circuit, backend="symbolic", variables=variables)
     wfn2 = simulate(imported_circuit, backend="symbolic")
 
-    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+    assert wfn1.isclose(wfn2)
 
 
 @pytest.mark.parametrize(
@@ -112,7 +112,7 @@ def test_export_import_qasm_h_ch_gate(zx_calculus, target1, control1, target2, c
     wfn1 = simulate(tequila_circuit, backend="symbolic")
     wfn2 = simulate(imported_circuit, backend="symbolic")
 
-    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+    assert wfn1.isclose(wfn2)
 
 
 @pytest.mark.parametrize(
@@ -142,7 +142,7 @@ def test_export_import_qasm_trotterized_gate(zx_calculus, string1, string2, angl
     wfn1 = simulate(tequila_circuit, backend="symbolic", variables=variables)
     wfn2 = simulate(imported_circuit, backend="symbolic")
 
-    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+    assert wfn1.isclose(wfn2)
 
 
 @pytest.mark.parametrize(
@@ -191,9 +191,9 @@ def test_export_import_qasm_file(zx_calculus, variabs):
     if os.path.exists(file_name):
         os.remove(file_name)
 
-    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
-    assert (numpy.isclose(wfn1.inner(wfn3), 1.0))
-    assert (numpy.isclose(wfn2.inner(wfn3), 1.0))
+    assert wfn1.isclose(wfn2)
+    assert wfn1.isclose(wfn3)
+    assert wfn2.isclose(wfn3)
 
 
 def test_import_qasm_with_custom_gates():
@@ -230,5 +230,5 @@ def test_import_qasm_with_custom_gates():
     wfn1 = simulate(tequila_circuit, backend="symbolic")
     wfn2 = simulate(imported_circuit, backend="symbolic")
 
-    assert (numpy.isclose(wfn1.inner(wfn2), 1.0))
+    assert wfn1.isclose(wfn2)
 

@@ -1,3 +1,4 @@
+from tequila.circuit._gates_impl import GlobalPhaseGateImpl
 from tequila.utils import TequilaException, to_float, TequilaWarning
 from tequila.circuit.circuit import QCircuit
 from tequila.utils.keymap import KeyMapSubregisterToRegister
@@ -8,6 +9,8 @@ from tequila import BitString
 from tequila.objective.objective import Variable, format_variable_dictionary
 from tequila.circuit import compiler
 from typing import Union
+import numpy as np
+
 
 import numbers, typing, numpy, copy, warnings
 
@@ -194,6 +197,10 @@ class BackendCircuit():
         # pre-compilation (still an abstract ciruit, but with gates decomposed depending on backend requirements)
         compiled = c(abstract_circuit)
         self.abstract_circuit = compiled
+
+        self.global_phase = sum(g.parameter for g in compiled.gates if isinstance(g, GlobalPhaseGateImpl))
+        # Filter out identity and global phase gates because they should not be passed to the backends
+        compiled.gates = filter(lambda g: g.name != "I" and not isinstance(g, GlobalPhaseGateImpl), compiled.gates)
 
         self.noise = noise
         self.check_device(device)
@@ -384,6 +391,11 @@ class BackendCircuit():
 
         result = self.do_simulate(variables=variables, initial_state=mapped_initial_state, *args,
                                   **kwargs)
+
+        # Multiply the state by its global phase (consisting of the sum of the arguments of all global phases)
+        # Does currently not support variable parameters
+        if isinstance(self.global_phase, float):
+            result *= np.exp(1j * self.global_phase)
 
         if keymap_required:
             result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(all_qubits), initial_state=initial_state)

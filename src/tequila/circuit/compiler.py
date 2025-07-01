@@ -1,6 +1,6 @@
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z
+from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, GlobalPhase
 from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
     ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
 from tequila.utils import to_float
@@ -306,7 +306,6 @@ class CircuitCompiler:
                     for g in cg.gates:
                         if g.is_controlled():
                             controlled = True
-
 
             # order matters
             # first the real multi-target gates
@@ -651,15 +650,14 @@ def compile_power_base(gate):
 
     power = gate.power
     if gate.name.lower() in ['h', 'hadamard']:
-        ### off by global phase of Exp[ pi power /2]
         theta = power * numpy.pi
 
         result = QCircuit()
         result += Ry(angle=-numpy.pi / 4, target=gate.target)
         result += Rz(angle=theta, target=gate.target)
         result += Ry(angle=numpy.pi / 4, target=gate.target)
+        result += GlobalPhase(angle=theta * pi / 2)
     elif gate.name == 'X':
-        ### off by global phase of Exp[ pi power /2]
         '''
         if we wanted to do it formally we would use the following
         a=-numpy.pi/2
@@ -672,19 +670,20 @@ def compile_power_base(gate):
         result+= Rz(angle=a,target=gate.target)
         '''
         result = Rx(angle=power * numpy.pi, target=gate.target)
+        result += GlobalPhase(angle=power * numpy.pi / 2)
     elif gate.name == 'Y':
-        ### off by global phase of Exp[ pi power /2]
         theta = power * numpy.pi
 
         result = QCircuit()
         result += Ry(angle=theta, target=gate.target)
+        result += GlobalPhase(angle=theta / 2)
     elif gate.name == 'Z':
-        ### off by global phase of Exp[ pi power /2]
         a = 0
         b = power * numpy.pi
         theta = 0
         result = QCircuit()
         result += Rz(angle=b, target=gate.target)
+        result += GlobalPhase(angle=b / 2)
     else:
         raise TequilaException('passed a gate with name ' + gate.name + ', which cannot be handled!')
     return result
@@ -737,9 +736,8 @@ def compile_phase(gate) -> QCircuit:
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     phase = gate.parameter
-    result = QCircuit()
     if len(gate.control) == 0:
-        return Rz(angle=phase, target=gate.target)
+        return Rz(angle=phase, target=gate.target) + GlobalPhase(angle=phase / 2)
 
     result = compile_controlled_phase(gate)
     result = compile_phase(result)
@@ -922,7 +920,7 @@ def compile_generalized_rotation_gate(gate, compile_exponential_pauli: bool = Fa
     -------
 
     """
-    if gate.generator is None or gate.name.lower() in ['phase', 'rx', 'ry', 'rz']:
+    if gate.generator is None or gate.name.lower() in ['phase', 'globalphase', 'rx', 'ry', 'rz']:
         return QCircuit.wrap_gate(gate)
     if not hasattr(gate, "eigenvalues_magnitude"):
         return QCircuit.wrap_gate(gate)

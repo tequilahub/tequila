@@ -8,6 +8,32 @@ import numpy as np
 import copy
 
 
+def GlobalPhase(
+        angle: typing.Union[typing.Hashable, numbers.Number] = None,
+        control: typing.Union[list, int] = None,
+) -> QCircuit:
+    """
+    Create a global phase gate: G(φ) = e^{iφ} * I
+    This adds a global phase to the entire quantum state.
+
+    Parameters
+    ----------
+    angle: phase value, numeric or symbolic
+
+    Returns
+    -------
+    QCircuit with a GlobalPhaseGate
+    """
+    if angle is None:
+        angle = 0
+
+    if control is None or not control:
+        gate_impl = impl.GlobalPhaseGateImpl(phase=angle)
+        return QCircuit.wrap_gate(gate_impl)
+    else:
+        return Phase(target=control[0], control=control[1:], angle=angle)
+
+
 def Phase(target: typing.Union[list, int],
           control: typing.Union[list, int] = None, angle: typing.Union[typing.Hashable, numbers.Number] = None, *args,
           **kwargs) -> QCircuit:
@@ -50,6 +76,19 @@ def Phase(target: typing.Union[list, int],
     gates = [impl.PhaseGateImpl(phase=angle, target=q, control=control) for q in target]
 
     return QCircuit.wrap_gate(gates)
+
+
+def I(target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None, *args, **kwargs) -> QCircuit:
+    """
+    This function provides a primitive implementation of the identity gate as a place 
+    holder gate with no physical effect. 
+    The user can add this gate into the circuit and get it also when 
+    calling functions regarding the circuit's stats (i.e. gates included)
+    """
+    # zero generator for a no-operation gate 
+    generator = lambda q : 0
+    return _initialize_power_gate(name="I", power=power, angle=angle, target=target, control=control,
+                                  generator=generator, *args, **kwargs)
 
 
 def S(target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:
