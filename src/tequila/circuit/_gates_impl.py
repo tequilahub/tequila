@@ -320,31 +320,14 @@ class RotationGateImpl(DifferentiableGateImpl):
 
 
 class GlobalPhaseGateImpl(DifferentiableGateImpl):
-    def __init__(self, phase, target=None, **kwargs):
-        if target is None:
-            # Tequila requires a 'target', so give a dummy qubit (e.g., qubit 0)
-            # shouldn't matter which qubit is target since phase applied on entire state
-            target = ()
-
-        # generator as identity, since global phases should only be collected  
-        generator = paulis.I()
-
-        # Call the base class constructor
+    def __init__(self, phase):
         super().__init__(
-            name="GlobalPhase",           # Name of the gate
-            parameter=phase,              # Phase angle 
-            target=target,                # Dummy target (not used)
-            generator=generator,          # Generator = Identity
-            eigenvalues_magnitude=1.0,    # Magnitude (for bookkeeping)
-            **kwargs
+            name="GlobalPhase",
+            parameter=phase,
+            target=(),  # Global phases don't act on any particular qubit
+            generator=paulis.I(),
+            eigenvalues_magnitude=0.5,
         )
-
-    def dagger(self):
-        # Return the inverse (Hermitian conjugate) of the gate
-        # For global phase, this is simply negating the angle: e^{iφ} → e^{-iφ}
-        result = copy.deepcopy(self)
-        result.parameter = -self.parameter
-        return result
 
 
 class PhaseGateImpl(DifferentiableGateImpl):

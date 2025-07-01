@@ -656,7 +656,7 @@ def compile_power_base(gate):
         result += Ry(angle=-numpy.pi / 4, target=gate.target)
         result += Rz(angle=theta, target=gate.target)
         result += Ry(angle=numpy.pi / 4, target=gate.target)
-        result += Ry(angle=theta / 2, target=gate.target)
+        result += GlobalPhase(angle=theta * pi / 2)
     elif gate.name == 'X':
         '''
         if we wanted to do it formally we would use the following
@@ -736,9 +736,8 @@ def compile_phase(gate) -> QCircuit:
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     phase = gate.parameter
-    result = QCircuit()
     if len(gate.control) == 0:
-        return Rz(angle=phase, target=gate.target) + GlobalPhase(angle=phase / 2, target=gate.target)
+        return Rz(angle=phase, target=gate.target) + GlobalPhase(angle=phase / 2)
 
     result = compile_controlled_phase(gate)
     result = compile_phase(result)
