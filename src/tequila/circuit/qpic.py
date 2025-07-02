@@ -18,10 +18,10 @@ def assign_name(parameter):
     if isinstance(parameter, tuple):
         return "\\theta"
     if hasattr(parameter, "extract_variables"):
-        return repr(parameter.extract_variables()).lstrip('[').rstrip(']')
+        return repr(parameter.extract_variables()).lstrip("[").rstrip("]")
     if isinstance(parameter, FixedVariable):
         for i in [1, 2, 3, 4]:
-            if numpy.isclose(numpy.abs(float(parameter)), numpy.pi / i, atol=1.e-4):
+            if numpy.isclose(numpy.abs(float(parameter)), numpy.pi / i, atol=1.0e-4):
                 if float(parameter) < 0.0:
                     return "-\\pi/{}".format(i)
                 else:
@@ -34,10 +34,22 @@ def assign_name(parameter):
         return str(parameter)
 
 
-def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=True,
-                   decompose_control_generators=False,
-                   group_together=False, qubit_names=None, mark_parametrized_gates=True, gatecolor1="tq",
-                   textcolor1="white", gatecolor2="guo", textcolor2="black", *args, **kwargs) -> str:
+def export_to_qpic(
+    circuit,
+    filename=None,
+    filepath=None,
+    always_use_generators=True,
+    decompose_control_generators=False,
+    group_together=False,
+    qubit_names=None,
+    mark_parametrized_gates=True,
+    gatecolor1="tq",
+    textcolor1="white",
+    gatecolor2="guo",
+    textcolor2="black",
+    *args,
+    **kwargs,
+) -> str:
     result = ""
 
     colors = [{"name": "tq", "rgb": (0.03137254901960784, 0.1607843137254902, 0.23921568627450981)}]
@@ -80,34 +92,34 @@ def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=
         # generator decomposition of H is misleading
         if g.name in ["H", "h"]:
             for target in g.target:
-                result += " a{qubit} G:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=target, gcol=gcol,
-                                                                                       tcol="{" + tcol + "}", op="H")
+                result += " a{qubit} G:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(
+                    qubit=target, gcol=gcol, tcol="{" + tcol + "}", op="H"
+                )
                 if g.is_controlled():
                     for c in g.control:
                         result += names[c] + " "
         elif always_use_generators and g.make_generator(include_controls=decompose_control_generators) is not None:
             for ps in g.make_generator(include_controls=decompose_control_generators).paulistrings:
-                if len(ps) == 0: continue
+                if len(ps) == 0:
+                    continue
 
                 # if controls are not decomposed this will become a mess
                 # so we will represent NOT gates as + (and not as X)
                 # and will use standard notation for Y and H
                 if not decompose_control_generators and g.name.upper() in ["X", "Y", "Z", "H"]:
                     if g.name.upper() == "X":
-                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=g.target[0],
-                                                                                               gcol=gcol,
-                                                                                               tcol="{" + tcol + "}",
-                                                                                               op="+")
+                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(
+                            qubit=g.target[0], gcol=gcol, tcol="{" + tcol + "}", op="+"
+                        )
                     else:
-                        result += " a{qubit} G:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=g.target[0],
-                                                                                               gcol=gcol,
-                                                                                               tcol="{" + tcol + "}",
-                                                                                               op=g.name.upper())
+                        result += " a{qubit} G:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(
+                            qubit=g.target[0], gcol=gcol, tcol="{" + tcol + "}", op=g.name.upper()
+                        )
                 else:
                     for k, v in ps.items():
-                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=k, gcol=gcol,
-                                                                                               tcol="{" + tcol + "}",
-                                                                                               op=v.upper())
+                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(
+                            qubit=k, gcol=gcol, tcol="{" + tcol + "}", op=v.upper()
+                        )
                 if g.is_controlled() and not decompose_control_generators:
                     for c in g.control:
                         result += names[c] + " "
@@ -121,11 +133,12 @@ def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=
             if g.name.upper() in ["Exp-Pauli".upper(), "GenRot".upper()]:
                 # represent ExpPaulis as generators
                 for ps in g.generator.paulistrings:
-                    if len(ps) == 0: continue
+                    if len(ps) == 0:
+                        continue
                     for k, v in ps.items():
-                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(qubit=k, gcol=gcol,
-                                                                                               tcol="{" + tcol + "}",
-                                                                                               op=v.upper())
+                        result += " a{qubit} P:fill={gcol}  \\textcolor{tcol}{{{op}}} ".format(
+                            qubit=k, gcol=gcol, tcol="{" + tcol + "}", op=v.upper()
+                        )
                     if g.is_controlled():
                         for c in g.control:
                             result += names[c] + " "
@@ -133,12 +146,12 @@ def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=
             else:
                 for t in g.target:
                     result += names[t] + " G:fill={gcol} ".format(gcol=gcol)
-                gname=g.name
+                gname = g.name
                 if "R" in gname.upper():
-                    gname=gname.replace("R", "R_")
+                    gname = gname.replace("R", "R_")
 
                 if param is not None:
-                    gname="{{{x}}}({angle})".format(x=gname, angle=assign_name(g.parameter))
+                    gname = "{{{x}}}({angle})".format(x=gname, angle=assign_name(g.parameter))
 
                 result += "\\textcolor{tcol}{{${op}$}} ".format(tcol="{" + tcol + "}", op=gname)
                 if hasattr(g, "parameter") and g.parameter is not None:
@@ -161,10 +174,7 @@ def export_to_qpic(circuit, filename=None, filepath=None, always_use_generators=
     return result
 
 
-def export_to(circuit,
-              filename: str,
-              style="tequila",
-              qubit_names: list = None, *args, **kwargs):
+def export_to(circuit, filename: str, style="tequila", qubit_names: list = None, *args, **kwargs):
     """
     Parameters
     ----------
@@ -193,46 +203,40 @@ def export_to(circuit,
 
     if style is None or style == "tequila":
         style = {
-            'decompose_control_generators': False,
-            'always_use_generators': True,
-            'group_together': False,
-            'textcolor1': "white",
+            "decompose_control_generators": False,
+            "always_use_generators": True,
+            "group_together": False,
+            "textcolor1": "white",
             "textcolor2": "black",
             "gatecolor1": "tq",
-            "gatecolor2": "guo"
+            "gatecolor2": "guo",
         }
     elif style == "standard":
-        style = {
-            'decompose_control_generators': False,
-            'always_use_generators': False,
-            'group_together': False
-        }
+        style = {"decompose_control_generators": False, "always_use_generators": False, "group_together": False}
     elif style == "plain":
         # standard without colors
         style = {
-            'decompose_control_generators': False,
-            'always_use_generators': False,
-            'group_together': False,
-            'textcolor1': "black",
+            "decompose_control_generators": False,
+            "always_use_generators": False,
+            "group_together": False,
+            "textcolor1": "black",
             "textcolor2": "black",
             "gatecolor1": "white",
-            "gatecolor2": "white"
+            "gatecolor2": "white",
         }
     elif style == "generators":
-        style = {
-            'decompose_control_generators': True,
-            'always_use_generators': True,
-            'group_together': "BARRIER"
-        }
+        style = {"decompose_control_generators": True, "always_use_generators": True, "group_together": "BARRIER"}
     elif not hasattr(style, "items"):
         raise Exception(
             "style needs to be `tequila`, or `standard` or `generators` or a dictionary, you gave: {}".format(
-                str(style)))
+                str(style)
+            )
+        )
 
     pop = []
-    for k,v in kwargs.items():
+    for k, v in kwargs.items():
         if k in style:
-            style[k]=kwargs[k]
+            style[k] = kwargs[k]
             pop.append(k)
     for k in pop:
         kwargs.pop(k)
@@ -253,9 +257,6 @@ def export_to(circuit,
         if filename[0] == "/":
             fpath = "/" + fpath
 
-    export_to_qpic(circuit=circuit,
-                   filename=fname,
-                   filepath=fpath,
-                   qubit_names=qubit_names, **style, **kwargs)
+    export_to_qpic(circuit=circuit, filename=fname, filepath=fpath, qubit_names=qubit_names, **style, **kwargs)
     if ftype != "qpic":
         subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype], cwd=fpath)

@@ -5,15 +5,19 @@ from tequila.circuit.circuit import QCircuit
 from tequila.simulators.simulator_api import compile_objective
 from tequila.circuit.gradient import __grad_inner
 from tequila.autograd_imports import jax
-from tequila.circuit.compiler import compile_controlled_rotation, compile_power_gate, \
-    compile_trotterized_gate, compile_controlled_phase, compile_multitarget
+from tequila.circuit.compiler import (
+    compile_controlled_rotation,
+    compile_power_gate,
+    compile_trotterized_gate,
+    compile_controlled_phase,
+    compile_multitarget,
+)
 import typing
 import numpy
 import copy
 
 
 class QngMatrix:
-
     """
     A callable class which is meant to be used for calculating the inverse qgt of an expectationvalue.
 
@@ -40,18 +44,18 @@ class QngMatrix:
         d = 0
         for block in self.blocks:
             d += len(block)
-        return (d,d)
+        return (d, d)
 
-    def __init__(self,blocks):
+    def __init__(self, blocks):
         """
         Parameters
         ----------
         blocks: list:
             list of list of lists. the blocks of the qgt.
         """
-        self.blocks= blocks
+        self.blocks = blocks
 
-    def __call__(self, variables,samples=None) -> numpy.ndarray:
+    def __call__(self, variables, samples=None) -> numpy.ndarray:
         """
         from the blocks provided, evaluate all qgt terms, then calculate the pseudo-inverse, and return it.
         Parameters
@@ -71,14 +75,13 @@ class QngMatrix:
         # displace our running index of position, as we enumerate through a block
         # d_v does this. If you only provide one block (the whole QGT), this won't matter
         for block in self.blocks:
-
-            d_v_temp = 0 # how much to increment d_v by when done with the block at hand.
+            d_v_temp = 0  # how much to increment d_v by when done with the block at hand.
             for i, row in enumerate(block):
                 for j, term in enumerate(row):
                     if i <= j:
                         # if its an objective, call it. Else, it is a float.
                         try:
-                            output[i + d_v][j + d_v] = term(variables=variables,samples=samples)
+                            output[i + d_v][j + d_v] = term(variables=variables, samples=samples)
                         except:
                             output[i + d_v][j + d_v] = term
                     else:
@@ -86,7 +89,7 @@ class QngMatrix:
                 d_v_temp += 1
             d_v += d_v_temp
 
-        back = numpy.linalg.pinv(output) # return the pseudo_inverse of the matrix!
+        back = numpy.linalg.pinv(output)  # return the pseudo_inverse of the matrix!
         return back
 
 
@@ -104,7 +107,7 @@ class CallableVector:
     def dim(self):
         return (len(self._vector),)
 
-    def __init__(self,vector):
+    def __init__(self, vector):
         """
         init.
         Parameters
@@ -133,7 +136,7 @@ class CallableVector:
 
         output = numpy.empty(self.dim)
         for i, entry in enumerate(self._vector):
-            if hasattr(entry, '__call__'):
+            if hasattr(entry, "__call__"):
                 output[i] = entry(variables, samples=samples)
             else:
                 output[i] = entry
@@ -155,24 +158,23 @@ def get_generator(gate) -> paulis.QubitHamiltonian:
 
     """
 
-    if gate.name.lower() == 'rx':
+    if gate.name.lower() == "rx":
         gen = paulis.X(gate.target[0])
-    elif gate.name.lower() == 'ry':
+    elif gate.name.lower() == "ry":
         gen = paulis.Y(gate.target[0])
-    elif gate.name.lower() == 'rz':
+    elif gate.name.lower() == "rz":
         gen = paulis.Z(gate.target[0])
-    elif gate.name.lower() == 'phase':
+    elif gate.name.lower() == "phase":
         gen = paulis.Qm(gate.target[0])
     else:
         print(gate.name.lower())
-        raise TequilaException('cant get the generator of a non Gaussian gate, you fool!')
+        raise TequilaException("cant get the generator of a non Gaussian gate, you fool!")
     return gen
 
 
-def stokes_block(expectation, initial_values=None, samples=None, device=None,
-                 backend=None,
-                 noise=None) -> typing.List[typing.List[typing.List[typing.Union[float,Objective]]]]:
-
+def stokes_block(
+    expectation, initial_values=None, samples=None, device=None, backend=None, noise=None
+) -> typing.List[typing.List[typing.List[typing.Union[float, Objective]]]]:
     """
     returns the blocks of the layerwise block-diagonal approximation to the qgt.
     The default for all qng-based optimizations, as a method for obtaining the qgt.
@@ -207,7 +209,7 @@ def stokes_block(expectation, initial_values=None, samples=None, device=None,
     # rebuild the sub circuits used in the expectation values that populate the QGT
     sub = [QCircuit.from_moments(moments[:i]) for i in range(1, len(moments), 2)]
     # this is the list of just the moments which are parametrized.
-    parametric_moms = [moments[i] for i in range(1, len(moments)+1, 2)]
+    parametric_moms = [moments[i] for i in range(1, len(moments) + 1, 2)]
     generators = []
     # generators is a list of lists, ultimately, where each sublist is all the generators in order
     # for a given parametric layer (if said layer is
@@ -238,13 +240,15 @@ def stokes_block(expectation, initial_values=None, samples=None, device=None,
                 for q, gen2 in enumerate(g_set):
                     ### make sure you compile the objectives! otherwise this bad boy will not run
                     if k == q:
-                        arg = (ExpectationValue(U=sub[i], H=gen1 * gen1) - ExpectationValue(U=sub[i], H=gen1)**2)/4
+                        arg = (ExpectationValue(U=sub[i], H=gen1 * gen1) - ExpectationValue(U=sub[i], H=gen1) ** 2) / 4
                     else:
-                        arg = (ExpectationValue(U=sub[i], H=gen1 * gen2) - ExpectationValue(U=sub[i], H=gen1) *
-                               ExpectationValue(U=sub[i], H=gen2)) / 4
-                    block[k][q] = compile_objective(arg, variables=initial_values, samples=samples,
-                                                    backend=backend, device=device,
-                                                    noise=noise)
+                        arg = (
+                            ExpectationValue(U=sub[i], H=gen1 * gen2)
+                            - ExpectationValue(U=sub[i], H=gen1) * ExpectationValue(U=sub[i], H=gen2)
+                        ) / 4
+                    block[k][q] = compile_objective(
+                        arg, variables=initial_values, samples=samples, backend=backend, device=device, noise=noise
+                    )
             blocks.append(block)
     return blocks
 
@@ -270,18 +274,18 @@ def qng_circuit_grad(E: ExpectationValueImpl) -> typing.List[Objective]:
     unitary = E.U
 
     # fast return if possible
-    out=[]
+    out = []
     for i, g in enumerate(unitary.gates):
         if g.is_parameterized():
             if g.is_controlled():
                 raise TequilaException("controlled gate in qng circuit gradient: Compiler was not called")
             if hasattr(g, "eigenvalues_magnitude"):
-                if hasattr(g._parameter,'extract_variables'):
+                if hasattr(g._parameter, "extract_variables"):
                     shifter = qng_grad_gaussian(unitary, g, i, hamiltonian)
                     out.append(shifter)
             else:
                 print(g, type(g))
-                raise TequilaException('No shift found for gate {}'.format(g))
+                raise TequilaException("No shift found for gate {}".format(g))
     if out is None:
         raise TequilaException("caught a dead circuit in qng gradient")
     return out
@@ -336,8 +340,9 @@ def qng_grad_gaussian(unitary, g, i, hamiltonian) -> Objective:
     return dOinc
 
 
-def subvector_procedure(e_val, initial_values=None, samples=None, device=None,
-                        backend=None, noise=None) -> CallableVector:
+def subvector_procedure(
+    e_val, initial_values=None, samples=None, device=None, backend=None, noise=None
+) -> CallableVector:
     """
     take an expectation value and return its (qng style) gradient as a CallableVector.
 
@@ -364,9 +369,11 @@ def subvector_procedure(e_val, initial_values=None, samples=None, device=None,
     vect = qng_circuit_grad(e_val)
     out = []
     for entry in vect:
-        out.append(compile_objective(entry, variables=initial_values, samples=samples, device=device,
-                                     backend=backend,
-                                     noise=noise))
+        out.append(
+            compile_objective(
+                entry, variables=initial_values, samples=samples, device=device, backend=backend, noise=noise
+            )
+        )
     return CallableVector(out)
 
 
@@ -384,10 +391,10 @@ def get_self_pars(U) -> typing.List:
         list eg. of Objectives and Variables; the self-parameters of a circuit.
     """
 
-    out=[]
+    out = []
     for g in U.gates:
         if g.is_parameterized():
-            if hasattr(g._parameter,'extract_variables'):
+            if hasattr(g._parameter, "extract_variables"):
                 out.append(g._parameter)
     return out
 
@@ -416,13 +423,12 @@ def qng_dict(argument, matrix, subvector, mapping, positional) -> typing.Dict:
         dict containing information used to obtain the qng of some argument of an objective.
 
     """
-    return {'arg': argument, 'matrix': matrix, 'vector': subvector, 'mapping': mapping, 'positional': positional}
+    return {"arg": argument, "matrix": matrix, "vector": subvector, "mapping": mapping, "positional": positional}
 
 
-def get_qng_combos(objective, func=stokes_block,
-                   initial_values=None, samples=None,
-                   backend=None, device=None, noise=None) -> typing.List[typing.Dict]:
-
+def get_qng_combos(
+    objective, func=stokes_block, initial_values=None, samples=None, backend=None, device=None, noise=None
+) -> typing.List[typing.Dict]:
     """
     get all the objects needed to evaluate the qng for some objective; return them in a list of dictionaries.
 
@@ -459,7 +465,7 @@ def get_qng_combos(objective, func=stokes_block,
     compiled = compile_power_gate(gate=compiled)
     compiled = compile_controlled_phase(gate=compiled)
     compiled = compile_controlled_rotation(gate=compiled)
-    for i,arg in enumerate(compiled.args):
+    for i, arg in enumerate(compiled.args):
         if not isinstance(arg, ExpectationValueImpl):
             # this is a variable, no QNG involved
             mat = QngMatrix([[[1]]])
@@ -467,13 +473,15 @@ def get_qng_combos(objective, func=stokes_block,
             mapping = {0: {v: __grad_inner(arg, v) for v in var_list}}
         else:
             # if the arg is an expectationvalue, we need to build some qngs and mappings!
-            blocks = func(arg, initial_values=initial_values, samples=samples, device=device,
-                          backend=backend, noise=noise)
+            blocks = func(
+                arg, initial_values=initial_values, samples=samples, device=device, backend=backend, noise=noise
+            )
 
             mat = QngMatrix(blocks)
 
-            vec = subvector_procedure(arg, initial_values=initial_values, samples=samples, device=device,
-                                      backend=backend, noise=noise)
+            vec = subvector_procedure(
+                arg, initial_values=initial_values, samples=samples, device=device, backend=backend, noise=noise
+            )
 
             mapping = {}
             self_pars = get_self_pars(arg.U)
@@ -482,25 +490,25 @@ def get_qng_combos(objective, func=stokes_block,
                 for v in p.extract_variables():
                     gi = __grad_inner(p, v)
                     if isinstance(gi, Objective):
-                        g = compile_objective(gi, variables=initial_values, samples=samples, device=device,
-                                              backend=backend, noise=noise)
+                        g = compile_objective(
+                            gi, variables=initial_values, samples=samples, device=device, backend=backend, noise=noise
+                        )
                     else:
                         g = gi
                     indict[v] = g
                 mapping[j] = indict
 
-
         pos_arg = jax.grad(compiled.transformation, i)
         p = Objective(compiled.args, transformation=pos_arg)
 
-        pos = compile_objective(p, variables=initial_values, samples=samples, device=device,
-                                backend=backend, noise=noise)
+        pos = compile_objective(
+            p, variables=initial_values, samples=samples, device=device, backend=backend, noise=noise
+        )
         combos.append(qng_dict(arg, mat, vec, mapping, pos))
     return combos
 
 
 def evaluate_qng(combos, variables, samples=None) -> list:
-
     """
     actually evaluate the terms of a qng.
     Parameters
@@ -520,17 +528,17 @@ def evaluate_qng(combos, variables, samples=None) -> list:
     """
     gd = {v: 0 for v in variables.keys()}
     for c in combos:
-        qgt = c['matrix']
-        vec = c['vector']
-        m = c['mapping']
-        pos = c['positional']
+        qgt = c["matrix"]
+        vec = c["vector"]
+        m = c["mapping"]
+        pos = c["positional"]
         marco = qgt(variables, samples=samples)
         polo = vec(variables, samples=samples)
         ev = numpy.dot(marco, polo)
         for i, val in enumerate(ev):
             maps = m[i]
             for k in maps.keys():
-                gd[k] += (val*maps[k]*pos)(variables=variables, samples=samples)
+                gd[k] += (val * maps[k] * pos)(variables=variables, samples=samples)
 
     out = [v for v in gd.values()]
     return out
@@ -547,7 +555,7 @@ class QNGVector:
 
     """
 
-    def __init__(self,combos):
+    def __init__(self, combos):
         """
         init.
         Parameters

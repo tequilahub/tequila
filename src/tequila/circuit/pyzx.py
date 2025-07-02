@@ -7,6 +7,7 @@ Using the pyzx library: https://github.com/Quantomatic/pyzx
 HAS_PYZX = True
 try:
     import pyzx
+
     HAS_PYZX = True
 except ImportError:
     HAS_PYZX = False
@@ -28,7 +29,9 @@ def convert_to_pyzx(circuit: QCircuit, variables=None):
         pyzx.circuit.Circuit: pyzx circuit
     """
     if HAS_PYZX:
-        return pyzx.circuit.Circuit.from_qasm(export_open_qasm(circuit=circuit, variables=variables, version="2.0", zx_calculus=True))
+        return pyzx.circuit.Circuit.from_qasm(
+            export_open_qasm(circuit=circuit, variables=variables, version="2.0", zx_calculus=True)
+        )
     else:
         raise TequilaException("Pyzx package not installed.")
 

@@ -9,15 +9,16 @@ from tequila.tools.qng import get_qng_combos
 
 from dataclasses import dataclass
 
+
 class TequilaScipyException(TequilaException):
     """ """
+
     pass
+
 
 @dataclass
 class SciPyResults(OptimizerResults):
-
     scipy_result: scipy.optimize.OptimizeResult = None
-
 
 
 class OptimizerSciPy(Optimizer):
@@ -39,8 +40,9 @@ class OptimizerSciPy(Optimizer):
     silent:
         if False, the optimizer prints out all evaluated energies
     """
-    gradient_free_methods = ['NELDER-MEAD', 'COBYLA', 'POWELL', 'SLSQP']
-    gradient_based_methods = ['L-BFGS-B', 'BFGS', 'CG', 'TNC']
+
+    gradient_free_methods = ["NELDER-MEAD", "COBYLA", "POWELL", "SLSQP"]
+    gradient_based_methods = ["L-BFGS-B", "BFGS", "CG", "TNC"]
     hessian_based_methods = ["TRUST-KRYLOV", "NEWTON-CG", "DOGLEG", "TRUST-NCG", "TRUST-EXACT", "TRUST-CONSTR"]
 
     @classmethod
@@ -48,12 +50,15 @@ class OptimizerSciPy(Optimizer):
         """:return: All tested available methods"""
         return cls.gradient_free_methods + cls.gradient_based_methods + cls.hessian_based_methods
 
-    def __init__(self, method: str = "L-BFGS-B",
-                 tol: numbers.Real = None,
-                 method_options=None,
-                 method_bounds=None,
-                 method_constraints=None,
-                 **kwargs):
+    def __init__(
+        self,
+        method: str = "L-BFGS-B",
+        tol: numbers.Real = None,
+        method_options=None,
+        method_bounds=None,
+        method_constraints=None,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -83,28 +88,30 @@ class OptimizerSciPy(Optimizer):
         self.method_bounds = method_bounds
 
         if method_options is None:
-            self.method_options = {'maxiter': self.maxiter}
+            self.method_options = {"maxiter": self.maxiter}
         else:
             self.method_options = method_options
-            if 'maxiter' not in method_options:
-                self.method_options['maxiter'] = self.maxiter
+            if "maxiter" not in method_options:
+                self.method_options["maxiter"] = self.maxiter
 
-        self.method_options['disp'] = self.print_level > 0
+        self.method_options["disp"] = self.print_level > 0
 
         if method_constraints is None:
             self.method_constraints = ()
         else:
             self.method_constraints = method_constraints
 
-    def __call__(self, objective: Objective,
-                 variables: typing.List[Variable] = None,
-                 initial_values: typing.Dict[Variable, numbers.Real] = None,
-                 gradient: typing.Dict[Variable, Objective] = None,
-                 hessian: typing.Dict[typing.Tuple[Variable, Variable], Objective] = None,
-                 reset_history: bool = True,
-                 *args,
-                 **kwargs) -> SciPyResults:
-
+    def __call__(
+        self,
+        objective: Objective,
+        variables: typing.List[Variable] = None,
+        initial_values: typing.Dict[Variable, numbers.Real] = None,
+        gradient: typing.Dict[Variable, Objective] = None,
+        hessian: typing.Dict[typing.Tuple[Variable, Variable], Objective] = None,
+        reset_history: bool = True,
+        *args,
+        **kwargs,
+    ) -> SciPyResults:
         """
         Perform optimization using scipy optimizers.
 
@@ -157,16 +164,18 @@ class OptimizerSciPy(Optimizer):
                     bounds[k] = v
             infostring += "{:15} : {}\n".format("bounds", self.method_bounds)
             names, bounds = zip(*bounds.items())
-            assert (names == param_keys)  # make sure the bounds are not shuffled
+            assert names == param_keys  # make sure the bounds are not shuffled
 
         # do the compilation here to avoid costly recompilation during the optimization
         compiled_objective = self.compile_objective(objective=objective, *args, **kwargs)
-        E = _EvalContainer(objective=compiled_objective,
-                           param_keys=param_keys,
-                           samples=self.samples,
-                           passive_angles=passive_angles,
-                           save_history=self.save_history,
-                           print_level=self.print_level)
+        E = _EvalContainer(
+            objective=compiled_objective,
+            param_keys=param_keys,
+            samples=self.samples,
+            passive_angles=passive_angles,
+            save_history=self.save_history,
+            print_level=self.print_level,
+        )
 
         compile_gradient = self.method in (self.gradient_based_methods + self.hessian_based_methods)
         compile_hessian = self.method in self.hessian_based_methods
@@ -176,13 +185,18 @@ class OptimizerSciPy(Optimizer):
         # detect if numerical gradients shall be used
         # switch off compiling if so
         if isinstance(gradient, str):
-            if gradient.lower() == 'qng':
+            if gradient.lower() == "qng":
                 compile_gradient = False
                 if compile_hessian:
-                    raise TequilaException('Sorry, QNG and hessian not yet tested together.')
+                    raise TequilaException("Sorry, QNG and hessian not yet tested together.")
 
-                combos = get_qng_combos(objective, initial_values=initial_values, backend=self.backend,
-                                        samples=self.samples, noise=self.noise)
+                combos = get_qng_combos(
+                    objective,
+                    initial_values=initial_values,
+                    backend=self.backend,
+                    samples=self.samples,
+                    noise=self.noise,
+                )
                 dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
                 infostring += "{:15} : QNG {}\n".format("gradient", dE)
             else:
@@ -195,15 +209,21 @@ class OptimizerSciPy(Optimizer):
                 infostring += "{:15} : scipy numerical {}\n".format("gradient", dE)
                 infostring += "{:15} : scipy numerical {}\n".format("hessian", ddE)
 
-        if isinstance(gradient,dict) and "method" in gradient:
-            if gradient['method'] == 'qng':
-                func = gradient['function']
+        if isinstance(gradient, dict) and "method" in gradient:
+            if gradient["method"] == "qng":
+                func = gradient["function"]
                 compile_gradient = False
                 if compile_hessian:
-                    raise TequilaException('Sorry, QNG and hessian not yet tested together.')
+                    raise TequilaException("Sorry, QNG and hessian not yet tested together.")
 
-                combos = get_qng_combos(objective,func=func, initial_values=initial_values, backend=self.backend,
-                                        samples=self.samples, noise=self.noise)
+                combos = get_qng_combos(
+                    objective,
+                    func=func,
+                    initial_values=initial_values,
+                    backend=self.backend,
+                    samples=self.samples,
+                    noise=self.noise,
+                )
                 dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
                 infostring += "{:15} : QNG {}\n".format("gradient", dE)
 
@@ -212,28 +232,33 @@ class OptimizerSciPy(Optimizer):
             compile_hessian = False
 
         if compile_gradient:
-            grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient, *args, **kwargs)
+            grad_obj, comp_grad_obj = self.compile_gradient(
+                objective=objective, variables=variables, gradient=gradient, *args, **kwargs
+            )
             expvals = sum([o.count_expectationvalues() for o in comp_grad_obj.values()])
             infostring += "{:15} : {} expectationvalues\n".format("gradient", expvals)
-            dE = _GradContainer(objective=comp_grad_obj,
-                                param_keys=param_keys,
-                                samples=self.samples,
-                                passive_angles=passive_angles,
-                                save_history=self.save_history,
-                                print_level=self.print_level)
+            dE = _GradContainer(
+                objective=comp_grad_obj,
+                param_keys=param_keys,
+                samples=self.samples,
+                passive_angles=passive_angles,
+                save_history=self.save_history,
+                print_level=self.print_level,
+            )
         if compile_hessian:
-            hess_obj, comp_hess_obj = self.compile_hessian(variables=variables,
-                                                           hessian=hessian,
-                                                           grad_obj=grad_obj,
-                                                           comp_grad_obj=comp_grad_obj, *args, **kwargs)
+            hess_obj, comp_hess_obj = self.compile_hessian(
+                variables=variables, hessian=hessian, grad_obj=grad_obj, comp_grad_obj=comp_grad_obj, *args, **kwargs
+            )
             expvals = sum([o.count_expectationvalues() for o in comp_hess_obj.values()])
             infostring += "{:15} : {} expectationvalues\n".format("hessian", expvals)
-            ddE = _HessContainer(objective=comp_hess_obj,
-                                 param_keys=param_keys,
-                                 samples=self.samples,
-                                 passive_angles=passive_angles,
-                                 save_history=self.save_history,
-                                 print_level=self.print_level)
+            ddE = _HessContainer(
+                objective=comp_hess_obj,
+                param_keys=param_keys,
+                samples=self.samples,
+                passive_angles=passive_angles,
+                save_history=self.save_history,
+                print_level=self.print_level,
+            )
         if self.print_level > 0:
             print(self)
             print(infostring)
@@ -242,6 +267,7 @@ class OptimizerSciPy(Optimizer):
         Es = []
 
         optimizer_instance = self
+
         class SciPyCallback:
             energies = []
             gradients = []
@@ -257,17 +283,23 @@ class OptimizerSciPy(Optimizer):
                 if ddE is not None and not isinstance(ddE, str):
                     self.hessians.append(ddE.history[-1])
                 self.real_iterations += 1
-                if 'callback' in optimizer_instance.kwargs:
-                    optimizer_instance.kwargs['callback'](E.history_angles[-1])
+                if "callback" in optimizer_instance.kwargs:
+                    optimizer_instance.kwargs["callback"](E.history_angles[-1])
 
         callback = SciPyCallback()
-        res = scipy.optimize.minimize(E, x0=param_values, jac=dE, hess=ddE,
-                                      args=(Es,),
-                                      method=self.method, tol=self.tol,
-                                      bounds=bounds,
-                                      constraints=self.method_constraints,
-                                      options=self.method_options,
-                                      callback=callback)
+        res = scipy.optimize.minimize(
+            E,
+            x0=param_values,
+            jac=dE,
+            hess=ddE,
+            args=(Es,),
+            method=self.method,
+            tol=self.tol,
+            bounds=bounds,
+            constraints=self.method_constraints,
+            options=self.method_options,
+            callback=callback,
+        )
 
         # failsafe since callback is not implemented everywhere
         if callback.real_iterations == 0:
@@ -293,10 +325,12 @@ class OptimizerSciPy(Optimizer):
         # some scipy methods always give back the last value and not the minimum (e.g. cobyla)
         ea = sorted(zip(E.history, E.history_angles), key=lambda x: x[0])
         E_final = ea[0][0]
-        angles_final = ea[0][1] #dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
+        angles_final = ea[0][1]  # dict((param_keys[i], res.x[i]) for i in range(len(param_keys)))
         angles_final = {**angles_final, **passive_angles}
 
-        return SciPyResults(energy=E_final, history=self.history, variables=format_variable_dictionary(angles_final), scipy_result=res)
+        return SciPyResults(
+            energy=E_final, history=self.history, variables=format_variable_dictionary(angles_final), scipy_result=res
+        )
 
 
 def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[str]:
@@ -313,7 +347,7 @@ def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[s
     Returns
     -------
     Available methods of the scipy optimizer, a list of strings.
-    
+
     """
     methods = []
     if energy:
@@ -325,26 +359,28 @@ def available_methods(energy=True, gradient=True, hessian=True) -> typing.List[s
     return methods
 
 
-def minimize(objective: Objective,
-             gradient: typing.Union[str, typing.Dict[Variable, Objective]] = None,
-             hessian: typing.Union[str, typing.Dict[typing.Tuple[Variable, Variable], Objective]] = None,
-             initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
-             variables: typing.List[typing.Hashable] = None,
-             samples: int = None,
-             maxiter: int = 100,
-             backend: str = None,
-             backend_options: dict = None,
-             noise: NoiseModel = None,
-             device: str = None,
-             method: str = "BFGS",
-             tol: float = 1.e-3,
-             method_options: dict = None,
-             method_bounds: typing.Dict[typing.Hashable, numbers.Real] = None,
-             method_constraints=None,
-             silent: bool = False,
-             save_history: bool = True,
-             *args,
-             **kwargs) -> SciPyResults:
+def minimize(
+    objective: Objective,
+    gradient: typing.Union[str, typing.Dict[Variable, Objective]] = None,
+    hessian: typing.Union[str, typing.Dict[typing.Tuple[Variable, Variable], Objective]] = None,
+    initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
+    variables: typing.List[typing.Hashable] = None,
+    samples: int = None,
+    maxiter: int = 100,
+    backend: str = None,
+    backend_options: dict = None,
+    noise: NoiseModel = None,
+    device: str = None,
+    method: str = "BFGS",
+    tol: float = 1.0e-3,
+    method_options: dict = None,
+    method_bounds: typing.Dict[typing.Hashable, numbers.Real] = None,
+    method_constraints=None,
+    silent: bool = False,
+    save_history: bool = True,
+    *args,
+    **kwargs,
+) -> SciPyResults:
     """
 
     Parameters
@@ -406,23 +442,29 @@ def minimize(objective: Objective,
 
     # set defaults
 
-    optimizer = OptimizerSciPy(save_history=save_history,
-                               maxiter=maxiter,
-                               method=method,
-                               method_options=method_options,
-                               method_bounds=method_bounds,
-                               method_constraints=method_constraints,
-                               silent=silent,
-                               backend=backend,
-                               backend_options=backend_options,
-                               device=device,
-                               samples=samples,
-                               noise=noise,
-                               tol=tol,
-                               *args,
-                               **kwargs)
-    return optimizer(objective=objective,
-                     gradient=gradient,
-                     hessian=hessian,
-                     initial_values=initial_values,
-                     variables=variables, *args, **kwargs)
+    optimizer = OptimizerSciPy(
+        save_history=save_history,
+        maxiter=maxiter,
+        method=method,
+        method_options=method_options,
+        method_bounds=method_bounds,
+        method_constraints=method_constraints,
+        silent=silent,
+        backend=backend,
+        backend_options=backend_options,
+        device=device,
+        samples=samples,
+        noise=noise,
+        tol=tol,
+        *args,
+        **kwargs,
+    )
+    return optimizer(
+        objective=objective,
+        gradient=gradient,
+        hessian=hessian,
+        initial_values=initial_values,
+        variables=variables,
+        *args,
+        **kwargs,
+    )

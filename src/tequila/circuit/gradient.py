@@ -1,6 +1,12 @@
 from tequila.circuit.compiler import CircuitCompiler
-from tequila.objective.objective import Objective, ExpectationValueImpl, Variable, \
-    assign_variable, identity, FixedVariable
+from tequila.objective.objective import (
+    Objective,
+    ExpectationValueImpl,
+    Variable,
+    assign_variable,
+    identity,
+    FixedVariable,
+)
 from tequila import TequilaException
 from tequila.objective import QTensor
 from tequila.simulators.simulator_api import compile
@@ -10,13 +16,13 @@ from tequila.autograd_imports import jax, __AUTOGRAD__BACKEND__
 
 
 def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None, no_compile=False, *args, **kwargs):
-    '''
+    """
     wrapper function for getting the gradients of Objectives,ExpectationValues, Unitaries (including single gates), and Transforms.
     :param obj (QCircuit,ParametrizedGateImpl,Objective,ExpectationValue,Transform,Variable): structure to be differentiated
     :param variables (list of Variable): parameter with respect to which obj should be differentiated.
         default None: total gradient.
     return: dictionary of Objectives, if called on gate, circuit, exp.value, or objective; if Variable or Transform, returns number.
-    '''
+    """
 
     if variable is None:
         # None means that all components are created
@@ -27,12 +33,11 @@ def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None,
             raise TequilaException("Error in gradient: Objective has no variables")
 
         for k in variables:
-            assert (k is not None)
+            assert k is not None
             result[k] = grad(objective, k, no_compile=no_compile)
         return result
     else:
         variable = assign_variable(variable)
-
 
     if isinstance(objective, QTensor):
         f = lambda x: grad(objective=x, variable=variable, *args, **kwargs)
@@ -46,20 +51,25 @@ def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None,
     # if the objective was already translated to a backend
     # we need to reverse that here
     if objective.is_translated():
-        raise TequilaException("\n\ngradient of:{}\ncan not form gradient that was already compiled to a quantum backend\ntq.grad neds to be applied to the abstract - non compiled objective\nE.g. for the (compiled) objective E1 \n\tE1 = tq.compile(E0)\ninstead of doing\n\tdE = tq.grad(E1)\ndo\n\tdE = tq.grad(E0)\nand compile dE afterwards (if wanted) with\n\tdE = tq.compile(dE)\n".format(str(objective)))
-     
+        raise TequilaException(
+            "\n\ngradient of:{}\ncan not form gradient that was already compiled to a quantum backend\ntq.grad neds to be applied to the abstract - non compiled objective\nE.g. for the (compiled) objective E1 \n\tE1 = tq.compile(E0)\ninstead of doing\n\tdE = tq.grad(E1)\ndo\n\tdE = tq.grad(E0)\nand compile dE afterwards (if wanted) with\n\tdE = tq.compile(dE)\n".format(
+                str(objective)
+            )
+        )
 
     # circuit compilation
     if no_compile:
         compiled = objective
     else:
-        compiler = CircuitCompiler(multitarget=True,
-                                   trotterized=True,
-                                   hadamard_power=True,
-                                   power=True,
-                                   controlled_phase=True,
-                                   controlled_rotation=True,
-                                   gradient_mode=True)
+        compiler = CircuitCompiler(
+            multitarget=True,
+            trotterized=True,
+            hadamard_power=True,
+            power=True,
+            controlled_phase=True,
+            controlled_rotation=True,
+            gradient_mode=True,
+        )
 
         compiled = compiler(objective, variables=[variable])
 
@@ -174,15 +184,15 @@ def __grad_objective(objective: Objective, variable: Variable):
 
 
 def __grad_inner(arg, variable):
-    '''
+    """
     a modified loop over __grad_objective, which gets derivatives
      all the way down to variables, return 1 or 0 when a variable is (isnt) identical to var.
     :param arg: a transform or variable object, to be differentiated
     :param variable: the Variable with respect to which par should be differentiated.
     :ivar var: the string representation of variable
-    '''
+    """
 
-    assert (isinstance(variable, Variable))
+    assert isinstance(variable, Variable)
     if isinstance(arg, Variable):
         if arg == variable:
             return 1.0
@@ -201,12 +211,12 @@ def __grad_inner(arg, variable):
 
 
 def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
-    '''
+    """
     implements the analytic partial derivative of a unitary as it would appear in an expectation value. See the paper.
     :param unitary: the unitary whose gradient should be obtained
     :param variables (list, dict, str): the variables with respect to which differentiation should be performed.
     :return: vector (as dict) of dU/dpi as Objective (without hamiltonian)
-    '''
+    """
 
     hamiltonian = E.H
     unitary = E.U
@@ -230,7 +240,7 @@ def __grad_expectationvalue(E: ExpectationValueImpl, variable: Variable):
 
 
 def __grad_shift_rule(unitary, g, i, variable, hamiltonian):
-    '''
+    """
     function for getting the gradients of directly differentiable gates. Expects precompiled circuits.
     :param unitary: QCircuit: the QCircuit object containing the gate to be differentiated
     :param g: a parametrized: the gate being differentiated
@@ -239,7 +249,7 @@ def __grad_shift_rule(unitary, g, i, variable, hamiltonian):
     :param hamiltonian: the hamiltonian with respect to which unitary is to be measured, in the case that unitary
         is contained within an ExpectationValue
     :return: an Objective, whose calculation yields the gradient of g w.r.t variable
-    '''
+    """
 
     # possibility for overwride in custom gate construction
     if hasattr(g, "shifted_gates"):
@@ -254,4 +264,4 @@ def __grad_shift_rule(unitary, g, i, variable, hamiltonian):
             dOinc += wx * Ex
         return dOinc
     else:
-        raise TequilaException('No shift found for gate {}\nWas the compiler called?'.format(g))
+        raise TequilaException("No shift found for gate {}\nWas the compiler called?".format(g))

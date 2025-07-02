@@ -11,7 +11,7 @@ import warnings
 from .qpic import export_to
 
 
-class QCircuit():
+class QCircuit:
     """
     Fundamental class representing an abstract circuit.
 
@@ -67,7 +67,6 @@ class QCircuit():
             spots = [table[q] for q in qus]
 
             if max(spots) == len(moms):
-
                 moms.append(Moment([g]))
             else:
                 moms[max(spots)].add_gate(g)
@@ -94,7 +93,7 @@ class QCircuit():
             p = 0
             qus = g.qubits
             if g.is_parameterized():
-                if hasattr(g.parameter, 'extract_variables'):
+                if hasattr(g.parameter, "extract_variables"):
                     p = 1
 
             if p == 0:
@@ -175,9 +174,11 @@ class QCircuit():
         self._min_n_qubits = other
         if other < self.max_qubit() + 1:
             raise TequilaException(
-                "You are trying to set n_qubits to " + str(
-                    other) + " but your circuit needs at least: " + str(
-                    self.max_qubit() + 1))
+                "You are trying to set n_qubits to "
+                + str(other)
+                + " but your circuit needs at least: "
+                + str(self.max_qubit() + 1)
+            )
         return self
 
     def __init__(self, gates=None, parameter_map=None):
@@ -281,7 +282,6 @@ class QCircuit():
         last_idx = -1
 
         for idx, circuit, do_replace in dataset:
-
             # failsafe
             if hasattr(circuit, "gates"):
                 gatelist = circuit.gates
@@ -290,14 +290,14 @@ class QCircuit():
             else:
                 gatelist = [circuit]
 
-            new_gatelist += self.gates[last_idx + 1:idx]
+            new_gatelist += self.gates[last_idx + 1 : idx]
             new_gatelist += gatelist
             if not do_replace:
                 new_gatelist.append(self.gates[idx])
 
             last_idx = idx
 
-        new_gatelist += self.gates[last_idx + 1:]
+        new_gatelist += self.gates[last_idx + 1 :]
 
         result = QCircuit(gates=new_gatelist)
         result.n_qubits = max(result.n_qubits, self.n_qubits)
@@ -355,8 +355,8 @@ class QCircuit():
             if not gate.is_parameterized():
                 return False
             else:
-                if hasattr(gate, 'parameter'):
-                    if not hasattr(gate.parameter, 'wrap'):
+                if hasattr(gate, "parameter"):
+                    if not hasattr(gate.parameter, "wrap"):
                         return False
                     else:
                         continue
@@ -375,8 +375,8 @@ class QCircuit():
             if not gate.is_parameterized():
                 continue
             else:
-                if hasattr(gate, 'parameter'):
-                    if not hasattr(gate.parameter, 'wrap'):
+                if hasattr(gate, "parameter"):
+                    if not hasattr(gate.parameter, "wrap"):
                         continue
                     else:
                         return False
@@ -474,16 +474,12 @@ class QCircuit():
                 f"QCircuit.to_matrix(): no variables provided, but the circuit has {num_variables} variables"
             )
 
-        compiled_circuit = compile_circuit(self, )
+        compiled_circuit = compile_circuit(
+            self,
+        )
         compiled_circuit = compiled_circuit.map_variables(variables)
 
-        gate_mapping = {
-            'Rx': 'RX',
-            'Ry': 'RY',
-            'Rz': 'RZ',
-            'H': 'H',
-            'X': 'X'
-        }
+        gate_mapping = {"Rx": "RX", "Ry": "RY", "Rz": "RZ", "H": "H", "X": "X"}
 
         quimb_circuit = qtn.Circuit(self.n_qubits)
 
@@ -501,7 +497,7 @@ class QCircuit():
                     gate_mapping[g.name],
                     params=[float(g.parameter())],
                     qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
-                    parameterize=True
+                    parameterize=True,
                 )
             elif g.is_controlled():
                 quimb_circuit.apply_gate(
@@ -528,6 +524,7 @@ class QCircuit():
         """
         # avoiding dependcies (only used here so far)
         import networkx as nx
+
         G = nx.Graph()
         for q in self.qubits:
             G.add_node(q)
@@ -536,20 +533,20 @@ class QCircuit():
             if gate.control:
                 for s in gate.control:
                     for t in gate.target:
-                        tstr = ''
+                        tstr = ""
                         tstr += str(t)
                         target = int(tstr)
                         Gdict[s].append(target)  # add target to key of correlated controls
                 for p in gate.target:
                     for r in gate.control:
-                        cstr = ''
+                        cstr = ""
                         cstr += str(r)
                         control = int(cstr)
                         Gdict[p].append(control)  # add control to key of correlated targets
             else:
                 for s in gate.target:
                     for t in gate.target:
-                        tstr2 = ''
+                        tstr2 = ""
                         tstr2 += str(t)
                         target2 = int(tstr2)
                         Gdict[s].append(target2)
@@ -558,8 +555,9 @@ class QCircuit():
             for q in b:
                 lConn.append((a, q))
         G.add_edges_from(lConn)
-        GPaths = list(nx.connected_components(
-            G))  # connections of various qubits, excluding repetitions (ex- (1,3) instead of (1,3) and (3,1))
+        GPaths = list(
+            nx.connected_components(G)
+        )  # connections of various qubits, excluding repetitions (ex- (1,3) instead of (1,3) and (3,1))
         GIso = [g for g in GPaths if len(g) == 1]  # list of Isolated qubits
         return G
 
@@ -590,7 +588,10 @@ class QCircuit():
             whether or not the circuit is properly constructed.
 
         """
-        for k, v, in self._parameter_map.items():
+        for (
+            k,
+            v,
+        ) in self._parameter_map.items():
             test = [self.gates[x[0]] == x[1] for x in v]
             test += [k in self._gates[x[0]].extract_variables() for x in v]
         return all(test)
@@ -615,8 +616,7 @@ class QCircuit():
         # currently its recreated in the init function
         return QCircuit(gates=new_gates)
 
-    def add_controls(self, control, inpl: typing.Optional[bool] = False) \
-            -> typing.Optional[QCircuit]:
+    def add_controls(self, control, inpl: typing.Optional[bool] = False) -> typing.Optional[QCircuit]:
         """Depending on the truth value of inpl:
             - return controlled version of self with control as the control qubits if inpl;
             - mutate self so that the qubits in control are added as the control qubits if not inpl.
@@ -652,8 +652,9 @@ class QCircuit():
                 if len(control_lst) < len(gate.control) + len(control):
                     # warnings.warn("Some of the controls {} were already included in the control "
                     #               "of a gate {}.".format(control, gate), TequilaWarning)
-                    raise TequilaWarning(f'Some of the controls {control} were already included '
-                                         f'in the control of a gate {gate}.')
+                    raise TequilaWarning(
+                        f"Some of the controls {control} were already included in the control of a gate {gate}."
+                    )
             else:
                 control_lst, not_control = list(control), list()
 
@@ -661,8 +662,9 @@ class QCircuit():
             if any(qubit in control for qubit in not_control):
                 # warnings.warn("The target and control {} were the same qubit for a gate {}."
                 #               .format(control, gate), TequilaWarning)
-                raise TequilaWarning(f'The target for a gate {gate} '
-                                     f'and the control list {control_lst} had a common qubit.')
+                raise TequilaWarning(
+                    f"The target for a gate {gate} and the control list {control_lst} had a common qubit."
+                )
 
             cgate._control = tuple(control_lst)
             cgate.finalize()
@@ -690,17 +692,18 @@ class QCircuit():
                 control_lst = list(set(list(gate.control) + list(control)))
 
                 # Need to check duplicates
-                not_control = list(set(qubit for qubit in list(gate.qubits)
-                                       if qubit not in list(gate.control)))
+                not_control = list(set(qubit for qubit in list(gate.qubits) if qubit not in list(gate.control)))
 
                 # Raise TequilaWarning if control qubit is duplicated
                 if len(control_lst) < len(gate.control) + len(control):
                     # warnings.warn("Some of the controls {} were already included in the control "
                     #               "of a gate {}.".format(control, gate), TequilaWarning)
-                    raise TequilaWarning(f"Some of the controls {control} were already included "
-                                         f"in the control of a gate {gate}. "
-                                         f"This might be because the same instance of a gate is used in multiple places, "
-                                         f"e.g. because the same circuit was appended twice.")
+                    raise TequilaWarning(
+                        f"Some of the controls {control} were already included "
+                        f"in the control of a gate {gate}. "
+                        f"This might be because the same instance of a gate is used in multiple places, "
+                        f"e.g. because the same circuit was appended twice."
+                    )
             else:
                 control_lst, not_control = list(control), list()
 
@@ -708,8 +711,7 @@ class QCircuit():
             if any(qubit in control for qubit in not_control):
                 # warnings.warn("The target and control {} were the same qubit for a gate {}."
                 #               .format(control, gate), TequilaWarning)
-                raise TequilaWarning(f'The target for a gate {gate} '
-                                     f'and the control list {control} had a common qubit.')
+                raise TequilaWarning(f"The target for a gate {gate} and the control list {control} had a common qubit.")
 
             gate._control = tuple(control_lst)
             gate.finalize()
@@ -734,9 +736,9 @@ class QCircuit():
         for k, v in variables.items():
             if k not in my_variables:
                 warnings.warn(
-                    "map_variables: variable {} is not part of circuit with variables {}".format(k,
-                                                                                                 my_variables),
-                    TequilaWarning)
+                    "map_variables: variable {} is not part of circuit with variables {}".format(k, my_variables),
+                    TequilaWarning,
+                )
 
         new_gates = [copy.deepcopy(gate).map_variables(variables) for gate in self.gates]
 
@@ -775,8 +777,8 @@ class Moment(QCircuit):
             if not gate.is_parameterized():
                 mu.append(gate)
             else:
-                if hasattr(gate, 'parameter'):
-                    if not hasattr(gate.parameter, 'wrap'):
+                if hasattr(gate, "parameter"):
+                    if not hasattr(gate.parameter, "wrap"):
                         mu.append(gate)
                     else:
                         mp.append(gate)
@@ -809,8 +811,8 @@ class Moment(QCircuit):
                 for q in g.qubits:
                     if q in occ:
                         raise TequilaException(
-                            'cannot have doubly occupied qubits, which occurred at qubit {}'.format(
-                                str(q)))
+                            "cannot have doubly occupied qubits, which occurred at qubit {}".format(str(q))
+                        )
                     else:
                         occ.append(q)
         if sort:
@@ -871,8 +873,7 @@ class Moment(QCircuit):
                 if q not in first_overlap:
                     first_overlap.append(q)
                 else:
-                    raise TequilaException(
-                        'cannot have a moment with multiple operations acting on the same qubit!')
+                    raise TequilaException("cannot have a moment with multiple operations acting on the same qubit!")
 
         new = self.with_gate(gl[0])
         for g in gl[1:]:
@@ -899,8 +900,8 @@ class Moment(QCircuit):
         for n in newq:
             if n in prev:
                 raise TequilaException(
-                    'cannot add gate {} to moment; qubit {} already occupied.'.format(str(gate),
-                                                                                      str(n)))
+                    "cannot add gate {} to moment; qubit {} already occupied.".format(str(gate), str(n))
+                )
 
         self._gates.append(gate)
         self.sort_gates()
@@ -921,14 +922,14 @@ class Moment(QCircuit):
         QCircuit or Moment:
             self, with unwanted gate removed and new gates inserted. May not be a moment.
         """
-        if hasattr(gates, '__iter__'):
+        if hasattr(gates, "__iter__"):
             gs = gates
         else:
             gs = [gates]
 
         new = self.gates[:position]
         new.extend(gs)
-        new.extend(self.gates[(position + 1):])
+        new.extend(self.gates[(position + 1) :])
         try:
             return Moment(gates=new)
         except:
@@ -956,8 +957,8 @@ class Moment(QCircuit):
             if not gate.is_parameterized():
                 return False
             else:
-                if hasattr(gate, 'parameter'):
-                    if not hasattr(gate.parameter, 'wrap'):
+                if hasattr(gate, "parameter"):
+                    if not hasattr(gate.parameter, "wrap"):
                         return False
                     else:
                         continue
@@ -972,7 +973,6 @@ class Moment(QCircuit):
         return result
 
     def __iadd__(self, other):
-
         new = self.as_circuit()
         if isinstance(other, QGateImpl):
             other = new.wrap_gate(other)
@@ -1009,8 +1009,7 @@ class Moment(QCircuit):
                     result._min_n_qubits += len(other.qubits)
                 except:
                     result = self.as_circuit() + QCircuit.wrap_gate(other)
-                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits,
-                                               QCircuit.wrap_gate(other)._min_n_qubits)
+                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
 
         else:
             if isinstance(other, QGateImpl):
@@ -1019,12 +1018,13 @@ class Moment(QCircuit):
                     result._min_n_qubits += len(other.qubits)
                 except:
                     result = self.as_circuit() + QCircuit.wrap_gate(other)
-                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits,
-                                               QCircuit.wrap_gate(other)._min_n_qubits)
+                    result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
             else:
                 raise TequilaException(
-                    'cannot add moments to types other than QCircuit,Moment,or Gate; recieved summand of type {}'.format(
-                        str(type(other))))
+                    "cannot add moments to types other than QCircuit,Moment,or Gate; recieved summand of type {}".format(
+                        str(type(other))
+                    )
+                )
         return result
 
     @staticmethod
@@ -1053,12 +1053,12 @@ class Moment(QCircuit):
         TequilaException
         """
         raise TequilaException(
-            'this method should never be called from Moment. Call from the QCircuit class itself instead.')
+            "this method should never be called from Moment. Call from the QCircuit class itself instead."
+        )
 
 
-
-def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None)->int:
-    '''
+def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None) -> int:
+    """
     Function that checks which are the active qubits of two circuits and
     provides an unused qubit that is not among them. If all qubits are used
     it adds a new one.
@@ -1073,13 +1073,13 @@ def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None)->int:
     -------
     control_qubit : int
 
-    '''
+    """
 
-    active_qubits = list(set(U0.qubits+U1.qubits))
+    active_qubits = list(set(U0.qubits + U1.qubits))
     # default
     free_qubit = max(active_qubits) + 1
     # see if we can use another one
-    for n in range(max(active_qubits)+1):
+    for n in range(max(active_qubits) + 1):
         if n not in active_qubits:
             free_qubit = n
             break

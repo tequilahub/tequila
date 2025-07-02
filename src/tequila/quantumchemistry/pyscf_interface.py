@@ -36,12 +36,10 @@ class OpenVQEEPySCFException(TequilaException):
 
 
 class QuantumChemistryPySCF(QuantumChemistryBase):
-    def __init__(self, parameters: ParametersQC,
-                 transformation: typing.Union[str, typing.Callable] = None,
-                 *args, **kwargs):
-
+    def __init__(
+        self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None, *args, **kwargs
+    ):
         if "one_body_integrals" not in kwargs:
-
             geometry = parameters.get_geometry()
             pyscf_geomstring = ""
             for atom in geometry:
@@ -83,13 +81,13 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                 self.irreps = mf.get_irrep_nelec()
             else:
                 self.irreps = None
-                
+
             orbital_energies = mf.mo_energy
 
             # compute mo integrals
             mo_coeff = mf.mo_coeff
-            h_ao = mol.intor('int1e_kin') + mol.intor('int1e_nuc')
-            g_ao = mol.intor('int2e', aosym='s1')
+            h_ao = mol.intor("int1e_kin") + mol.intor("int1e_nuc")
+            g_ao = mol.intor("int2e", aosym="s1")
             S = mol.intor_symmetric("int1e_ovlp")
             g_ao = NBodyTensor(elems=g_ao, ordering="mulliken")
 
@@ -109,6 +107,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
     def compute_fci(self, get_wfn=False, **kwargs):
         from pyscf import fci
+
         c, h1, h2 = self.get_integrals(ordering="chem")
         norb = self.n_orbitals
         nelec = self.n_electrons
@@ -121,9 +120,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             wfn = numpy.zeros(wfn_dim)
             for i, alpha_str in enumerate(alpha_strs):
                 for j, beta_str in enumerate(beta_strs):
-                    merged_str, phase = _merge_alpha_beta_strs(
-                        alpha_str, beta_str, norb
-                    )
+                    merged_str, phase = _merge_alpha_beta_strs(alpha_str, beta_str, norb)
                     wfn[merged_str] = phase * fcivec[i, j]
             return e + c, QubitWaveFunction.from_array(wfn)
 
@@ -156,7 +153,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
         mo_coeff = numpy.eye(norb)
         mo_occ = numpy.zeros(norb)
-        mo_occ[:nelec // 2] = 2
+        mo_occ[: nelec // 2] = 2
 
         pyscf_mol = pyscf.gto.M(verbose=0, parse_arg=False)
         pyscf_mol.nelectron = nelec
@@ -178,6 +175,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
     def _run_ccsd(self, hf=None, **kwargs):
         from pyscf import cc
+
         if hf is None:
             hf = self._get_hf()
         ccsd = cc.RCCSD(hf)
@@ -192,6 +190,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
     def _run_cisd(self, hf=None, **kwargs):
         from pyscf import ci
+
         if hf is None:
             hf = self._get_hf(**kwargs)
         cisd = ci.RCISD(hf)
@@ -200,6 +199,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
     def _run_mp2(self, hf=None, **kwargs):
         from pyscf import mp
+
         if hf is None:
             hf = self._get_hf(**kwargs)
         mp2 = mp.MP2(hf)
@@ -210,8 +210,9 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         base = super().__str__()
         try:
             if hasattr(self, "pyscf_molecule"):
-                base += "{:15} : {} ({})\n".format("point_group", self.pyscf_molecule.groupname,
-                                                   self.pyscf_molecule.topgroup)
+                base += "{:15} : {} ({})\n".format(
+                    "point_group", self.pyscf_molecule.groupname, self.pyscf_molecule.topgroup
+                )
             if hasattr(self, "irreps"):
                 base += "{:15} : {}\n".format("irreps", self.irreps)
         except:

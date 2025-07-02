@@ -1,6 +1,7 @@
 """
 Base class for Optimizers.
 """
+
 import typing, numbers, copy, warnings
 
 from tequila.utils.exceptions import TequilaException, TequilaWarning
@@ -39,15 +40,16 @@ class OptimizerHistory:
     energy_calls: typing.List[numbers.Real] = field(default_factory=list)
     gradient_calls: typing.List[typing.Dict[str, numbers.Real]] = field(default_factory=list)
     angles_calls: typing.List[typing.Dict[str, numbers.Number]] = field(default_factory=list)
-    
+
     # backward comp.
     @property
     def energies_calls(self):
         return self.energy_calls
+
     @property
     def energies_evaluations(self):
         return self.energy_calls
-    
+
     def __add__(self, other):
         """
         magic method for convenient combination of history objects.
@@ -112,13 +114,15 @@ class OptimizerHistory:
                 angles[i] = d[assign_variable(key)]
         return angles
 
-    def plot(self,
-             property: typing.Union[str, typing.List[str]] = 'energies',
-             key: str = None,
-             filename=None,
-             baselines: typing.Dict[str, float] = None,
-             *args, **kwargs):
-
+    def plot(
+        self,
+        property: typing.Union[str, typing.List[str]] = "energies",
+        key: str = None,
+        filename=None,
+        baselines: typing.Dict[str, float] = None,
+        *args,
+        **kwargs,
+    ):
         """
         Convenience function to plot the progress of the optimizer over time.
         Parameters
@@ -148,6 +152,7 @@ class OptimizerHistory:
 
         from matplotlib import pyplot as plt
         from matplotlib.ticker import MaxNLocator
+
         fig = plt.figure()
         fig.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
         import pickle
@@ -162,10 +167,10 @@ class OptimizerHistory:
             properties = property
 
         labels = None
-        if 'labels' in kwargs:
-            labels = kwargs['labels']
-        elif 'label' in kwargs:
-            labels = kwargs['label']
+        if "labels" in kwargs:
+            labels = kwargs["labels"]
+        elif "label" in kwargs:
+            labels = kwargs["label"]
 
         if hasattr(labels, "lower"):
             labels = [labels] * len(properties)
@@ -194,16 +199,21 @@ class OptimizerHistory:
 
             if p == "energies":
                 data = getattr(self, "extract_" + p)()
-                plt.plot(list(data.keys()), list(data.values()), label=str(label), marker='o', linestyle='--')
+                plt.plot(list(data.keys()), list(data.values()), label=str(label), marker="o", linestyle="--")
             else:
                 for k in keys[i]:
                     data = getattr(self, "extract_" + p)(key=k)
-                    plt.plot(list(data.keys()), list(data.values()), label=str(label) + " " + str(k), marker='o',
-                             linestyle='--')
+                    plt.plot(
+                        list(data.keys()),
+                        list(data.values()),
+                        label=str(label) + " " + str(k),
+                        marker="o",
+                        linestyle="--",
+                    )
 
-        loc = 'best'
-        if 'loc' in kwargs:
-            loc = kwargs['loc']
+        loc = "best"
+        if "loc" in kwargs:
+            loc = kwargs["loc"]
         plt.legend(loc=loc)
         if filename is None:
             plt.show()
@@ -211,13 +221,12 @@ class OptimizerHistory:
             pickle.dump(fig, open(filename + ".pickle", "wb"))
             plt.savefig(fname=filename + ".pdf", **kwargs)
 
+
 @dataclass
 class OptimizerResults:
-
     energy: float = None
     history: OptimizerHistory = None
     variables: dict = None
-
 
     @property
     def angles(self):
@@ -226,7 +235,6 @@ class OptimizerResults:
 
 
 class Optimizer:
-
     """
     The base optimizer class, from which other optimizers inherit.
 
@@ -268,15 +276,20 @@ class Optimizer:
         convenience: build and compile (i.e render callable) the hessian of an objective.
 
     """
-    def __init__(self, backend: str = None,
-                 maxiter: int = None,
-                 samples: int = None,
-                 device: str= None,
-                 noise=None,
-                 save_history: bool = True,
-                 silent: typing.Union[bool, int] = False,
-                 print_level: int = 99, *args, **kwargs):
 
+    def __init__(
+        self,
+        backend: str = None,
+        maxiter: int = None,
+        samples: int = None,
+        device: str = None,
+        noise=None,
+        save_history: bool = True,
+        silent: typing.Union[bool, int] = False,
+        print_level: int = 99,
+        *args,
+        **kwargs,
+    ):
         """
         initialize an optimizer.
 
@@ -308,7 +321,7 @@ class Optimizer:
         kwargs
         """
         if backend is None:
-            self.backend = pick_backend(backend, samples=samples, noise=noise,device=device)
+            self.backend = pick_backend(backend, samples=samples, noise=noise, device=device)
         else:
             self.backend = backend
 
@@ -352,11 +365,14 @@ class Optimizer:
         """
         self.history = OptimizerHistory()
 
-    def __call__(self, objective: Objective,
-                 variables: typing.List[Variable],
-                 initial_values: typing.Dict[Variable, numbers.Real] = None,
-                 *args,
-                 **kwargs) -> OptimizerResults:
+    def __call__(
+        self,
+        objective: Objective,
+        variables: typing.List[Variable],
+        initial_values: typing.Dict[Variable, numbers.Real] = None,
+        *args,
+        **kwargs,
+    ) -> OptimizerResults:
         """
         Optimize some objective with the optimizer.
 
@@ -410,18 +426,18 @@ class Optimizer:
             initial_values = {k: numpy.random.uniform(0, 2 * numpy.pi) for k in all_variables}
         elif hasattr(initial_values, "lower"):
             if initial_values.lower() == "zero":
-                initial_values = {k:0.0 for k in all_variables}
+                initial_values = {k: 0.0 for k in all_variables}
             elif "zero" in initial_values.lower():
-                scale=0.1
+                scale = 0.1
                 if "scale" in initial_values.lower():
                     # pass as: near_zero_scale=0.1_...
                     scale = float(initial_values.split("scale")[1].split("_")[0].split("=")[1])
                 initial_values = {k: numpy.random.normal(loc=0.0, scale=scale) for k in all_variables}
             elif initial_values.lower() == "random":
-                initial_values = {k: numpy.random.uniform(0.0, 4*numpy.pi) for k in all_variables}
+                initial_values = {k: numpy.random.uniform(0.0, 4 * numpy.pi) for k in all_variables}
             elif "random" in initial_values.lower():
-                scale=2*numpy.pi
-                loc=0.0
+                scale = 2 * numpy.pi
+                loc = 0.0
                 if "scale" in initial_values.lower():
                     scale = float(initial_values.split("scale")[1].split("_")[0].split("=")[1])
                 if "loc" in initial_values.lower():
@@ -469,18 +485,19 @@ class Optimizer:
         Objective:
             a compiled Objective. Types vary.
         """
-        return compile(objective=objective,
-                       samples=self.samples,
-                       backend=self.backend,
-                       device=self.device,
-                       noise=self.noise,
-                       *args, **kwargs)
+        return compile(
+            objective=objective,
+            samples=self.samples,
+            backend=self.backend,
+            device=self.device,
+            noise=self.noise,
+            *args,
+            **kwargs,
+        )
 
-    def compile_gradient(self, objective: Objective,
-                         variables: typing.List[Variable],
-                         gradient=None,
-                         *args, **kwargs) -> typing.Tuple[
-        typing.Dict, typing.Dict]:
+    def compile_gradient(
+        self, objective: Objective, variables: typing.List[Variable], gradient=None, *args, **kwargs
+    ) -> typing.Tuple[typing.Dict, typing.Dict]:
         """
         convenience function to compile gradient objects and relavant types. For use by inheritors.
 
@@ -509,7 +526,7 @@ class Optimizer:
             if all([isinstance(x, Objective) for x in gradient.values()]):
                 dO = gradient
                 compiled_grad = {k: self.compile_objective(objective=dO[k], *args, **kwargs) for k in variables}
-            elif 'method' in gradient and gradient['method'] == 'standard_spsa':
+            elif "method" in gradient and gradient["method"] == "standard_spsa":
                 dO = None
                 compiled = self.compile_objective(objective=objective)
                 compiled_grad = _SPSAGrad(objective=compiled, variables=variables, **gradient)
@@ -519,17 +536,20 @@ class Optimizer:
                 compiled_grad = {k: _NumGrad(objective=compiled, variable=k, **gradient) for k in variables}
         else:
             raise TequilaOptimizerException(
-                "unknown gradient instruction of type {} : {}".format(type(gradient), gradient))
+                "unknown gradient instruction of type {} : {}".format(type(gradient), gradient)
+            )
 
         return dO, compiled_grad
 
-    def compile_hessian(self,
-                        variables: typing.List[Variable],
-                        grad_obj: typing.Dict[Variable, Objective],
-                        comp_grad_obj: typing.Dict[Variable, Objective],
-                        hessian: dict = None,
-                        *args,
-                        **kwargs) -> tuple:
+    def compile_hessian(
+        self,
+        variables: typing.List[Variable],
+        grad_obj: typing.Dict[Variable, Objective],
+        comp_grad_obj: typing.Dict[Variable, Objective],
+        hessian: dict = None,
+        *args,
+        **kwargs,
+    ) -> tuple:
         """
         convenience function to compile hessians for optimizers which require it.
         Parameters
@@ -555,8 +575,11 @@ class Optimizer:
 
         if hessian is None:
             if dO is None:
-                raise TequilaOptimizerException("Can not combine analytical Hessian with numerical Gradient\n"
-                                                "hessian instruction was: {}".format(hessian))
+                raise TequilaOptimizerException(
+                    "Can not combine analytical Hessian with numerical Gradient\nhessian instruction was: {}".format(
+                        hessian
+                    )
+                )
 
             compiled_hessian = {}
             ddO = {}
@@ -571,8 +594,9 @@ class Optimizer:
         elif isinstance(hessian, dict):
             if all([isinstance(x, Objective) for x in hessian.values()]):
                 ddO = hessian
-                compiled_hessian = {k: self.compile_objective(objective=ddO[k], *args, **kwargs) for k in
-                                    hessian.keys()}
+                compiled_hessian = {
+                    k: self.compile_objective(objective=ddO[k], *args, **kwargs) for k in hessian.keys()
+                }
             else:
                 ddO = None
                 compiled_hessian = {}
@@ -596,7 +620,7 @@ class Optimizer:
 
 
 class _NumGrad:
-    """ Numerical Gradient object.
+    """Numerical Gradient object.
 
     Should not be used outside of optimizers.
     Can't interact with other tequila structures.
@@ -771,8 +795,9 @@ class _NumGrad:
         """
         return self.objective.count_expectationvalues(*args, **kwargs)
 
+
 class _SPSAGrad(_NumGrad):
-    """ Simultaneous Perturbation Stochastic Approximation Gradient object.
+    """Simultaneous Perturbation Stochastic Approximation Gradient object.
 
     Should not be used outside of optimizers.
     Can't interact with other tequila structures.
@@ -789,7 +814,7 @@ class _SPSAGrad(_NumGrad):
 
     """
 
-    def __init__(self, objective, variables, stepsize, gamma=None,method=None):
+    def __init__(self, objective, variables, stepsize, gamma=None, method=None):
         """
 
         Parameters
@@ -843,7 +868,7 @@ class _SPSAGrad(_NumGrad):
 
         """
         dim = len(keys)
-        perturbation_vector = choices([-1,1],k = dim)
+        perturbation_vector = choices([-1, 1], k=dim)
         left = copy.deepcopy(vars)
         right = copy.deepcopy(vars)
         for i, key in enumerate(keys):
@@ -872,15 +897,15 @@ class _SPSAGrad(_NumGrad):
         type:
             generally, float, the result of the numerical gradient.
         """
-        if(self.nextIndex != -1 and self.nextIndex != "adjust"):
+        if self.nextIndex != -1 and self.nextIndex != "adjust":
             stepsize = self.stepsize[self.nextIndex]
-            if(self.nextIndex != len(self.stepsize) - 1):
+            if self.nextIndex != len(self.stepsize) - 1:
                 self.nextIndex += 1
-        elif(self.nextIndex == -1):
+        elif self.nextIndex == -1:
             stepsize = self.stepsize
         else:
-            stepsize = self.stepsize / (iteration ** self.gamma)
-   
+            stepsize = self.stepsize / (iteration**self.gamma)
+
         return self.method(self.objective, variables, self.variables, stepsize, *args, **kwargs)
 
     def calibrated_lr(self, lr, initial_value, max_iter, *args, **kwargs):
@@ -904,19 +929,19 @@ class _SPSAGrad(_NumGrad):
         """
         dim = len(initial_value)
         delta = 0
-        if(self.nextIndex != -1 and self.nextIndex != "adjust"):
+        if self.nextIndex != -1 and self.nextIndex != "adjust":
             stepsize = self.stepsize[0]
         else:
             stepsize = self.stepsize
- 
+
         for i in range(max_iter):
-            perturbation_vector = choices([-1,1],k = dim)
+            perturbation_vector = choices([-1, 1], k=dim)
             left = copy.deepcopy(initial_value)
             right = copy.deepcopy(initial_value)
             for j, v in enumerate(initial_value):
                 left[v] += perturbation_vector[j] * stepsize
                 right[v] -= perturbation_vector[j] * stepsize
-            numeratorLeft = self.objective(left, *args, **kwargs) 
+            numeratorLeft = self.objective(left, *args, **kwargs)
             numeratorRight = self.objective(right, *args, **kwargs)
             delta += numpy.absolute(numeratorRight - numeratorLeft) / max_iter
-        return lr * 2 * stepsize / delta 
+        return lr * 2 * stepsize / delta

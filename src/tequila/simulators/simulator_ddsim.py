@@ -26,7 +26,6 @@ def set_computational_basis(state: int, n_qubits: int) -> QuantumComputation:
 
 
 class TequilaDDSimException(TequilaException):
-
     def __str__(self):
         return "Error in DDSim backend:" + self.message
 
@@ -56,8 +55,7 @@ class BackendCircuitDDSim(BackendCircuit):
     supports_sampling_initialization = False
     supports_generic_initialization = False
 
-    def __init__(self, abstract_circuit: QCircuit, variables: dict, *args,
-                 **kwargs):
+    def __init__(self, abstract_circuit: QCircuit, variables: dict, *args, **kwargs):
         """
 
         Parameters
@@ -83,19 +81,13 @@ class BackendCircuitDDSim(BackendCircuit):
 
         self.counter = 0
         self.tq_to_ddsim = {}
-        
+
         self.resolver = None
         qubit_map = {q: i for i, q in enumerate(abstract_circuit.qubits)}
 
-        super().__init__(abstract_circuit=abstract_circuit,
-                         variables=variables,
-                         qubit_map=qubit_map,
-                         *args,
-                         **kwargs)
+        super().__init__(abstract_circuit=abstract_circuit, variables=variables, qubit_map=qubit_map, *args, **kwargs)
 
-    def initialize_state(self,
-                         n_qubits: int = None,
-                         initial_state: Union[int, QubitWaveFunction] = None):
+    def initialize_state(self, n_qubits: int = None, initial_state: Union[int, QubitWaveFunction] = None):
         if n_qubits is None:
             n_qubits = self.n_qubits
 
@@ -104,8 +96,7 @@ class BackendCircuitDDSim(BackendCircuit):
         if isinstance(initial_state, int):
             state = set_computational_basis(initial_state, n_qubits)
         elif isinstance(initial_state, QubitWaveFunction):
-            raise TequilaDDSimException(
-                "backend does not support arbitrary initial states")
+            raise TequilaDDSimException("backend does not support arbitrary initial states")
 
         return state
 
@@ -125,14 +116,9 @@ class BackendCircuitDDSim(BackendCircuit):
             variables = {k: to_float(v) for k, v in variables.items()}
 
         if len(self.tq_to_ddsim.keys()) > 0:
-            self.resolver = {
-                k: v(variables)
-                for v, k in self.tq_to_ddsim.items()
-            }
+            self.resolver = {k: v(variables) for v, k in self.tq_to_ddsim.items()}
 
-    def do_simulate(self, variables, initial_state: Union[int,
-                                                          QubitWaveFunction],
-                    *args, **kwargs):
+    def do_simulate(self, variables, initial_state: Union[int, QubitWaveFunction], *args, **kwargs):
         """
         Helper function to perform simulation.
 
@@ -150,19 +136,14 @@ class BackendCircuitDDSim(BackendCircuit):
         QubitWaveFunction:
             QubitWaveFunction representing result of the simulation.
         """
-        state = self.initialize_state(self.n_qubits,
-                                      initial_state).to_operation()
+        state = self.initialize_state(self.n_qubits, initial_state).to_operation()
         if state is not None:
             self.circuit.insert(idx=0, op=state)
         sim_kwargs = {
-            "approximation_step_fidelity":
-            kwargs.get("approximation_step_fidelity", 1),
-            "approximation_steps":
-            kwargs.get("approximation_steps", 1),
-            "approximation_strategy":
-            kwargs.get("approximation_strategy", "fidelity"),
-            "seed":
-            kwargs.get("seed", -1),
+            "approximation_step_fidelity": kwargs.get("approximation_step_fidelity", 1),
+            "approximation_steps": kwargs.get("approximation_steps", 1),
+            "approximation_strategy": kwargs.get("approximation_strategy", "fidelity"),
+            "seed": kwargs.get("seed", -1),
         }
         if self.resolver is not None:
             circuit = self.circuit.instantiate(self.resolver)
@@ -171,13 +152,10 @@ class BackendCircuitDDSim(BackendCircuit):
         sim = CircuitSimulator(circuit, **sim_kwargs)
         sim.simulate(shots=0)
         vec = sim.get_constructed_dd().get_vector()
-        wfn = QubitWaveFunction.from_array(array=np.array(vec, copy=False),
-                                           numbering=self.numbering)
+        wfn = QubitWaveFunction.from_array(array=np.array(vec, copy=False), numbering=self.numbering)
         return wfn
 
-    def convert_measurements(self,
-                             backend_result,
-                             target_qubits=None) -> QubitWaveFunction:
+    def convert_measurements(self, backend_result, target_qubits=None) -> QubitWaveFunction:
         """
         Transform backend evaluation results into QubitWaveFunction
         Parameters
@@ -199,23 +177,13 @@ class BackendCircuitDDSim(BackendCircuit):
 
         if target_qubits is not None:
             mapped_target = [self.qubit_map[q].number for q in target_qubits]
-            mapped_full = [
-                self.qubit_map[q].number for q in self.abstract_qubits
-            ]
-            keymap = KeyMapRegisterToSubregister(subregister=mapped_target,
-                                                 register=mapped_full)
-            result = QubitWaveFunction.from_wavefunction(
-                result, keymap, n_qubits=len(target_qubits))
+            mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
+            keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
+            result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(target_qubits))
 
         return result
 
-    def do_sample(self,
-                  samples,
-                  circuit,
-                  read_out_qubits,
-                  initial_state=0,
-                  *args,
-                  **kwargs) -> QubitWaveFunction:
+    def do_sample(self, samples, circuit, read_out_qubits, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         """
         Helper function for performing sampling.
 
@@ -226,7 +194,7 @@ class BackendCircuitDDSim(BackendCircuit):
         circuit:
             the circuit to sample from.
         initial_state:
-            initial state to apply the circuit to. 
+            initial state to apply the circuit to.
         args
         kwargs
 
@@ -235,14 +203,12 @@ class BackendCircuitDDSim(BackendCircuit):
         QubitWaveFunction:
             the results of sampling, as a Qubit Wave Function.
         """
-        state = self.initialize_state(self.n_qubits,
-                                      initial_state).to_operation()
+        state = self.initialize_state(self.n_qubits, initial_state).to_operation()
         if state is not None:
             circuit.insert(idx=0, op=state)
         sim = CircuitSimulator(circuit)
         sampled = sim.simulate(samples)
-        return self.convert_measurements(backend_result=sampled,
-                                         target_qubits=read_out_qubits)
+        return self.convert_measurements(backend_result=sampled, target_qubits=read_out_qubits)
 
     def initialize_circuit(self, *args, **kwargs) -> QuantumComputation:
         """
@@ -283,10 +249,12 @@ class BackendCircuitDDSim(BackendCircuit):
             try:
                 par = self.tq_to_ddsim[parameter]
             except:
-                var = Variable("{}_{}".format(
-                    self._name_variable_objective(parameter),
-                    str(self.counter),
-                ))
+                var = Variable(
+                    "{}_{}".format(
+                        self._name_variable_objective(parameter),
+                        str(self.counter),
+                    )
+                )
                 par = Expression([Term(var, 1)])
                 self.tq_to_ddsim[parameter] = var
                 self.counter += 1
@@ -317,8 +285,7 @@ class BackendCircuitDDSim(BackendCircuit):
         """
         op = self.op_lookup[gate.name]
         ddsim_gate = StandardOperation(
-            controls={Control(self.qubit(c))
-                      for c in gate.control},
+            controls={Control(self.qubit(c)) for c in gate.control},
             targets=[self.qubit(t) for t in gate.target],
             op_type=op,
         )
@@ -348,13 +315,9 @@ class BackendCircuitDDSim(BackendCircuit):
 
     # Overwriting `sample_paulistring` since mqt.ir QuantumComputation object is not pickable:
     # copy.deepcopy fails.
-    def sample_paulistring(self,
-                           samples: int,
-                           paulistring,
-                           variables,
-                           initial_state: Union[int, QubitWaveFunction] = 0,
-                           *args,
-                           **kwargs) -> numbers.Real:
+    def sample_paulistring(
+        self, samples: int, paulistring, variables, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs
+    ) -> numbers.Real:
         """
         Sample an individual pauli word (pauli string) and return the average result thereof.
         Parameters
@@ -371,9 +334,7 @@ class BackendCircuitDDSim(BackendCircuit):
         float:
             the average result of sampling the chosen paulistring
         """
-        not_in_u = [
-            q for q in paulistring.qubits if q not in self.abstract_qubits
-        ]
+        not_in_u = [q for q in paulistring.qubits if q not in self.abstract_qubits]
         reduced_ps = paulistring.trace_out_qubits(qubits=not_in_u)
         if reduced_ps.coeff == 0.0:
             return 0.0
@@ -397,22 +358,23 @@ class BackendCircuitDDSim(BackendCircuit):
         # add basis change to the circuit
         # can be circumvented by optimizing the measurements
         # on construction: tq.ExpectationValue(H=H, U=U, optimize_measurements=True)
-        circuit = self.create_circuit(circuit=_circuit,
-                                      abstract_circuit=basis_change)
+        circuit = self.create_circuit(circuit=_circuit, abstract_circuit=basis_change)
         # run simulators
-        counts = self.sample(samples=samples,
-                             circuit=circuit,
-                             read_out_qubits=qubits,
-                             variables=variables,
-                             initial_state=initial_state,
-                             *args,
-                             **kwargs)
+        counts = self.sample(
+            samples=samples,
+            circuit=circuit,
+            read_out_qubits=qubits,
+            variables=variables,
+            initial_state=initial_state,
+            *args,
+            **kwargs,
+        )
         # compute energy
         E = 0.0
         n_samples = 0
         for key, count in counts.items():
             parity = key.array.count(1)
-            sign = (-1)**parity
+            sign = (-1) ** parity
             E += sign * count
             n_samples += count
         assert n_samples == samples
@@ -424,4 +386,5 @@ class BackendExpectationValueDDSim(BackendExpectationValue):
     """
     Class representing Expectation Values compiled for DDSim.
     """
+
     BackendCircuitType = BackendCircuitDDSim

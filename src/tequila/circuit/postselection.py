@@ -56,11 +56,11 @@ class PostselectionCircuit:
             self._fragments = [circuit]
 
     def simulate(
-            self,
-            backend: str = None,
-            initial_wfn: Union[QubitWaveFunction, int] = 0,
-            repetitions: int = 1,
-            optimize_circuit: bool = True,
+        self,
+        backend: str = None,
+        initial_wfn: Union[QubitWaveFunction, int] = 0,
+        repetitions: int = 1,
+        optimize_circuit: bool = True,
     ):
         backend = tq.pick_backend(backend=backend)
         numbering = tq.INSTALLED_SIMULATORS[tq.pick_backend(backend)].CircType.numbering
@@ -82,7 +82,7 @@ class PostselectionCircuit:
                 elif isinstance(fragment, Postselection):
                     amplitudes = wfn.to_array(numbering, copy=False)
                     mask = fragment.mask(self.n_qubits, numbering)
-                    indices = np.arange(2 ** self.n_qubits) & mask != 0
+                    indices = np.arange(2**self.n_qubits) & mask != 0
                     amplitudes[indices] = 0
                     wfn = QubitWaveFunction.from_array(amplitudes, numbering, copy=False)
         norm = np.linalg.norm(wfn.to_array(numbering))

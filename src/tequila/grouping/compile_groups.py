@@ -8,6 +8,7 @@ import numpy as np
 import numpy.linalg as npl
 import copy
 
+
 def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
     """
     Compile the commuting parts of a QubitHamiltonian
@@ -20,7 +21,7 @@ def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
     -------
         A list of tuples containing all-Z Hamiltonian and corresponding Rotations
     """
-    if "options" in kwargs and not(kwargs["options"] is None) and "method" in kwargs["options"]:
+    if "options" in kwargs and not (kwargs["options"] is None) and "method" in kwargs["options"]:
         method = kwargs["options"]["method"]
     else:
         method = "rlf"
@@ -30,8 +31,8 @@ def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
             return "qubit"
         elif method == "lr" or method == "fff-lr":
             return "fermionic"
-    
-    if method_class(method) == 'qubit':
+
+    if method_class(method) == "qubit":
         if unitary_circuit is None or unitary_circuit.lower() == "improved":
             # @ Zack
             result, suggested_samples = _compile_commuting_parts_zb(H, *args, **kwargs)
@@ -41,45 +42,50 @@ def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
             commuting_parts, suggested_samples = binary_H.commuting_groups(*args, **kwargs)
             result = [cH.get_qubit_wise() for cH in commuting_parts]
         return result, suggested_samples
-    
-    elif method_class(method) == 'fermionic':
+
+    elif method_class(method) == "fermionic":
         options = kwargs["options"]
         if "n_el" in options:
             n_el = int(options["n_el"])
-        elif "mol_name" in options: 
+        elif "mol_name" in options:
             n_el = n_elec(options["mol_name"])
         else:
-            raise TequilaException("Please specify either {mol_name:} or {n_el:} in the dictionary provided as the keyward argument (optimize_measurements) to function (ExpectationValue).")
+            raise TequilaException(
+                "Please specify either {mol_name:} or {n_el:} in the dictionary provided as the keyward argument (optimize_measurements) to function (ExpectationValue)."
+            )
 
         if "reverse_H_transf" in options:
             reverse_H_transf = options["reverse_H_transf"]
         else:
             print("Using default reverse_H_transf, i.e., reverse_jordan_wigner.")
             reverse_H_transf = _reverse_jordan_wigner
-        
+
         h_ferm = reverse_H_transf(H)
 
-        if method == 'lr':
+        if method == "lr":
             u_ops, cartan_obt, cartan_tbt, suggested_samples = do_svd(h_ferm, n_el)
             result = [get_fermion_wise(cartan_obt, u_ops[0])]
             for i in range(len(cartan_tbt)):
-                result.append(get_fermion_wise(cartan_tbt[i], u_ops[i+1]))
+                result.append(get_fermion_wise(cartan_tbt[i], u_ops[i + 1]))
             return result, suggested_samples
-        elif method == 'fff-lr':
-            
-            all_ops, u_ops, cartan_obt, cartan_tbt, suggested_samples = do_fff(h_ferm, n_el, options=options, metric_estim=False)
+        elif method == "fff-lr":
+            all_ops, u_ops, cartan_obt, cartan_tbt, suggested_samples = do_fff(
+                h_ferm, n_el, options=options, metric_estim=False
+            )
             result = [get_fermion_wise(cartan_obt, u_ops[0])]
             for i in range(len(cartan_tbt)):
-                result.append(get_fermion_wise(cartan_tbt[i], u_ops[i+1]))
+                result.append(get_fermion_wise(cartan_tbt[i], u_ops[i + 1]))
             return result, suggested_samples
 
+
 def _reverse_jordan_wigner(H):
-    '''
+    """
     Default funcion used by fermionic methods to obtain the H in the second quantized form.
-    The user can specify a different reverse function if H was obtained from the fermionic 
+    The user can specify a different reverse function if H was obtained from the fermionic
     Hamiltonian using a mapping different than the JordanWigner transformation.
-    '''
+    """
     return reverse_jordan_wigner(H.to_openfermion())
+
 
 def _compile_commuting_parts_zb(H, *args, **kwargs):
     # @ Zack add main function here and rest in this file
@@ -132,28 +138,39 @@ def Tableau_algorithm(circuits):
             num_qubits = U.n_qubits
             Tableau, Phase_stabilizer, Phase_destabilizer, Circuit = initial_tableau(U, U.n_qubits)
 
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q0 = first_round_hadamard(Tableau, Phase_stabilizer,
-                                                                                     Phase_destabilizer)  # H
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q1 = first_round_cnot(Tableau, Phase_stabilizer,
-                                                                                 Phase_destabilizer)  # C
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q2 = first_round_phase(Tableau, Phase_stabilizer,
-                                                                                  Phase_destabilizer)  # P
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q3 = second_round_cnot(Tableau, Phase_stabilizer,
-                                                                                  Phase_destabilizer)  # C
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q4 = second_round_phase(Tableau, Phase_stabilizer,
-                                                                                   Phase_destabilizer)  # P
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q5 = third_round_cnot(Tableau, Phase_stabilizer,
-                                                                                 Phase_destabilizer)  # C
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q6 = second_round_hadamard(Tableau, Phase_stabilizer,
-                                                                                      Phase_destabilizer)  # H
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q7 = third_round_phase(Tableau, Phase_stabilizer,
-                                                                                  Phase_destabilizer)  # P
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q8 = fourth_round_cnot(Tableau, Phase_stabilizer,
-                                                                                  Phase_destabilizer)  # C
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q9 = fourth_round_phase(Tableau, Phase_stabilizer,
-                                                                                   Phase_destabilizer)  # P
-            Tableau, Phase_stabilizer, Phase_destabilizer, Q10 = final_round_cnot(Tableau, Phase_stabilizer,
-                                                                                  Phase_destabilizer)  # C
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q0 = first_round_hadamard(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # H
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q1 = first_round_cnot(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # C
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q2 = first_round_phase(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # P
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q3 = second_round_cnot(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # C
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q4 = second_round_phase(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # P
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q5 = third_round_cnot(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # C
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q6 = second_round_hadamard(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # H
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q7 = third_round_phase(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # P
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q8 = fourth_round_cnot(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # C
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q9 = fourth_round_phase(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # P
+            Tableau, Phase_stabilizer, Phase_destabilizer, Q10 = final_round_cnot(
+                Tableau, Phase_stabilizer, Phase_destabilizer
+            )  # C
             # now the code will optimize the CNOT segments
             # as put forth in https://arxiv.org/abs/quant-ph/0302002
 
@@ -268,7 +285,7 @@ def CNOT_matrix(list_of_gates, num_qubits):
         else:
             C_NOT_matrix = np.matmul(C_NOT_matrix, j) % 2
 
-    return (C_NOT_matrix)
+    return C_NOT_matrix
 
 
 def optimize_circuit(CNOT_matrix):
@@ -281,7 +298,7 @@ def optimize_circuit(CNOT_matrix):
     ## putting together the two circuits
 
     # the CNOT gates in circuit two have the control and target qubits swapped
-    for U in (circuit2):
+    for U in circuit2:
         control_qubit = U[1]
         target_qubit = U[0]
         optimized_circuit += tq.gates.CNOT(control_qubit, target_qubit)
@@ -292,7 +309,7 @@ def optimize_circuit(CNOT_matrix):
         target_qubit = U[1]
         optimized_circuit += tq.gates.CNOT(control_qubit, target_qubit)
 
-    return (optimized_circuit)
+    return optimized_circuit
 
 
 def Lwr_CNOT_Synth(C_NOT_matrix):
@@ -306,12 +323,12 @@ def Lwr_CNOT_Synth(C_NOT_matrix):
     for sec in range(len(partitions)):
         # eliminate duplicate rows
         for j in range(m, m + iter):
-            if np.all(C_NOT_matrix[j, m:m + iter] == 0):
+            if np.all(C_NOT_matrix[j, m : m + iter] == 0):
                 break
             for k in range(0, num_qubits):
                 if k < m + iter:
                     continue
-                if np.array_equal(C_NOT_matrix[j, m:m + iter], C_NOT_matrix[k, m:m + iter]):
+                if np.array_equal(C_NOT_matrix[j, m : m + iter], C_NOT_matrix[k, m : m + iter]):
                     target_qubit = k
                     control_qubit = j
                     C_NOT_matrix[target_qubit, :] = (C_NOT_matrix[control_qubit, :] + C_NOT_matrix[target_qubit, :]) % 2
@@ -326,8 +343,9 @@ def Lwr_CNOT_Synth(C_NOT_matrix):
                     if diag_one == 0:
                         target_qubit = j
                         control_qubit = row
-                        C_NOT_matrix[target_qubit, :] = (C_NOT_matrix[target_qubit, :] + C_NOT_matrix[control_qubit,
-                                                                                         :]) % 2
+                        C_NOT_matrix[target_qubit, :] = (
+                            C_NOT_matrix[target_qubit, :] + C_NOT_matrix[control_qubit, :]
+                        ) % 2
                         circ.append([control_qubit, target_qubit])
                         diag_one = 1
                     target_qubit = row
@@ -338,6 +356,7 @@ def Lwr_CNOT_Synth(C_NOT_matrix):
         m += iter
     return (C_NOT_matrix, circ)
 
+
 def is_canonical(tableau, phase_stab, phase_destab):
     dim = len(tableau)
     eye = np.identity(dim)
@@ -346,71 +365,85 @@ def is_canonical(tableau, phase_stab, phase_destab):
     else:
         return False
 
+
 def initial_tableau(circuit, number_of_qubits):
     """Goes through Thomsons circuit (expressed only in H,CNOT and S gates) to update the standard initial tableau
     as a 2*n X 2*n binary matrix. The final tableau is a binary representation of the circuit"""
     n = number_of_qubits
     a = np.identity(2 * n)
     x_destab = a[0:n, 0:n]
-    z_destab = a[0:n, n:2 * n]
-    x_stab = a[n:2 * n, 0:n]
-    z_stab = a[n:2 * n, n:2 * n]
+    z_destab = a[0:n, n : 2 * n]
+    x_stab = a[n : 2 * n, 0:n]
+    z_stab = a[n : 2 * n, n : 2 * n]
     phase_destabilizer = np.zeros(n)
     phase_stabilizer = np.zeros(n)
     test_circuit = tq.circuit.QCircuit()
 
-    for U in (circuit.gates):
-
-        if U.name == 'Ry':
+    for U in circuit.gates:
+        if U.name == "Ry":
             if U.parameter > 0:
                 # decomposing Ry as S^+ * H * S* H * S (we can only use clifford gates S,H,CNOT)
                 target_qubit = U.target[0]
                 test_circuit += tq.gates.S(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
                     z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                     z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
                 test_circuit += tq.gates.H(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
                     z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
                 for k in range(3):
                     test_circuit += tq.gates.S(target_qubit)
                     for i in range(0, n):
                         phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                                int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                        )
                         phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                                int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                        )
                         z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                         z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
                 test_circuit += tq.gates.H(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
                     z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
                 for k in range(3):
                     test_circuit += tq.gates.S(target_qubit)
                     for i in range(0, n):
                         phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                                int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                        )
                         phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                                int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                        )
                         z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                         z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
@@ -419,95 +452,119 @@ def initial_tableau(circuit, number_of_qubits):
                 test_circuit += tq.gates.S(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
                     z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                     z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
                 test_circuit += tq.gates.H(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
                     z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
                 test_circuit += tq.gates.S(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
                     z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                     z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
                 test_circuit += tq.gates.H(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
-                    z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
+                    z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
                 for k in range(3):
                     test_circuit += tq.gates.S(target_qubit)
                     for i in range(0, n):
                         phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                                int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                        )
                         phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                                int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                        )
                         z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                         z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
-        if U.name == 'Phase':
+        if U.name == "Phase":
             target_qubit = U.target[0]
             test_circuit += tq.gates.S(target_qubit)
             for i in range(0, n):
                 phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                    int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                )
                 phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                    int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                )
                 z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                 z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
         # decomposing Rx as H*S^3*H, (we can only use clifford gates S,H,CNOT)
-        if U.name == 'Rx':
+        if U.name == "Rx":
             if U.parameter > 0:
-
                 target_qubit = U.target[0]
                 test_circuit += tq.gates.H(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
                     z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
                 test_circuit += tq.gates.S(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
                     z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                     z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
                 test_circuit += tq.gates.H(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
                     z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
             else:
@@ -515,42 +572,54 @@ def initial_tableau(circuit, number_of_qubits):
                 test_circuit += tq.gates.H(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
                     z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
                 for j in range(3):
                     test_circuit += tq.gates.S(target_qubit)
                     for i in range(0, n):
                         phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                                int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                        )
                         phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                                int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                        )
                         z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                         z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
                 test_circuit += tq.gates.H(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
                     z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
-        if U.name == 'Rz':
+        if U.name == "Rz":
             if U.parameter > 0:
                 target_qubit = U.target[0]
                 test_circuit += tq.gates.S(target_qubit)
                 for i in range(0, n):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
                     z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                     z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
             else:
@@ -559,36 +628,43 @@ def initial_tableau(circuit, number_of_qubits):
                     test_circuit += tq.gates.S(target_qubit)
                     for i in range(0, n):
                         phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                                int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                        )
                         phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                                int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                        )
                         z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                         z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
-        if U.name == 'H':
-
+        if U.name == "H":
             target_qubit = U.target[0]
             test_circuit += tq.gates.H(target_qubit)
             for i in range(0, n):
                 phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                    int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                )
                 phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                    i, target_qubit]
+                    int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                )
+                x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                    z_destab[i, target_qubit],
+                    x_destab[i, target_qubit],
+                )
                 z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
 
-        if U.name == 'X':
+        if U.name == "X":
             target_qubit = U.target[0]
             control_qubit = U.control[0]
             test_circuit += tq.gates.CNOT(control_qubit, target_qubit)
             for i in range(0, n):
                 phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                        (int(x_destab[i, control_qubit]) * int(z_destab[i, target_qubit]))
-                        * (int(x_destab[i, target_qubit]) ^ int(z_destab[i, control_qubit]) ^ 1))
+                    (int(x_destab[i, control_qubit]) * int(z_destab[i, target_qubit]))
+                    * (int(x_destab[i, target_qubit]) ^ int(z_destab[i, control_qubit]) ^ 1)
+                )
                 phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                        (int(x_stab[i, control_qubit]) * int(z_stab[i, target_qubit]))
-                        * (int(x_stab[i, target_qubit]) ^ int(z_stab[i, control_qubit]) ^ 1))
+                    (int(x_stab[i, control_qubit]) * int(z_stab[i, target_qubit]))
+                    * (int(x_stab[i, target_qubit]) ^ int(z_stab[i, control_qubit]) ^ 1)
+                )
                 x_stab[i, target_qubit] = int(x_stab[i, target_qubit]) ^ int(x_stab[i, control_qubit])
                 x_destab[i, target_qubit] = int(x_destab[i, target_qubit]) ^ int(x_destab[i, control_qubit])
                 z_stab[i, control_qubit] = int(z_stab[i, control_qubit]) ^ int(z_stab[i, target_qubit])
@@ -601,13 +677,13 @@ def initial_tableau(circuit, number_of_qubits):
 
 
 def first_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
-    """Hadamard gates makes the X stabilizer matrix of the tableau have full rank """
+    """Hadamard gates makes the X stabilizer matrix of the tableau have full rank"""
     num_qubits = int(len(tableau[0, :]) / 2)
     circ = []
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     rank = npl.matrix_rank(x_stab)
 
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
@@ -633,11 +709,15 @@ def first_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
                 circ.append(tq.gates.H(target=target_qubit))
                 for i in range(0, num_qubits):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                    x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                        i, target_qubit]
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
+                    x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                        z_destab[i, target_qubit],
+                        x_destab[i, target_qubit],
+                    )
                     z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
                 destabilizer = np.concatenate((x_destab, z_destab), axis=1)
                 stabilizer = np.concatenate((x_stab, z_stab), axis=1)
@@ -654,9 +734,9 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     """CNOT gates make the X stabilizer matrix the identity matrix"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     circ = []
 
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
@@ -676,16 +756,19 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                         circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                         for k in range(0, num_qubits):
                             phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                                    (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit])) \
-                                    * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1))
+                                (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit]))
+                                * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1)
+                            )
                             phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                                    (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit])) \
-                                    * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1))
+                                (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit]))
+                                * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1)
+                            )
                             x_stab[k, target_qubit] = int(x_stab[k, target_qubit]) ^ int(x_stab[k, control_qubit])
                             x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                             z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
                             z_destab[k, control_qubit] = int(z_destab[k, control_qubit]) ^ int(
-                                z_destab[k, target_qubit])
+                                z_destab[k, target_qubit]
+                            )
 
                         # if one on diagnal guassian elimination on rows below
                         diag_one = 1
@@ -697,16 +780,17 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                     circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                     for k in range(0, num_qubits):
                         phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                                (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit])) \
-                                * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1))
+                            (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit]))
+                            * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1)
+                        )
                         phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                                (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit])) \
-                                * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1))
+                            (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit]))
+                            * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1)
+                        )
                         x_stab[k, target_qubit] = int(x_stab[k, target_qubit]) ^ int(x_stab[k, control_qubit])
                         x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                         z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
                         z_destab[k, control_qubit] = int(z_destab[k, control_qubit]) ^ int(z_destab[k, target_qubit])
-
 
         # making matrix identity
         for i in reversed(range(num_qubits)):
@@ -717,11 +801,13 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                     circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                     for k in range(num_qubits):
                         phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                                (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit])) \
-                                * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1))
+                            (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit]))
+                            * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1)
+                        )
                         phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                                (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit])) \
-                                * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1))
+                            (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit]))
+                            * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1)
+                        )
                         x_stab[k, target_qubit] = int(x_stab[k, target_qubit]) ^ int(x_stab[k, control_qubit])
                         x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                         z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
@@ -733,15 +819,14 @@ def first_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
-
 def first_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     """This phase round adds a diagonal matrix D to the Z stabilizer matrix such that Z + D = M*M' for some
     invertible M"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     matrix = copy.deepcopy(z_stab)
     M = np.identity(num_qubits)
     circ = []
@@ -773,9 +858,11 @@ def first_round_phase(tableau, phase_stabilizer, phase_destabilizer):
             circ.append(tq.gates.S(target=target_qubit))
             for i in range(0, num_qubits):
                 phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                    int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                )
                 phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                    int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                )
                 z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                 z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
         destabilizer = np.concatenate((x_destab, z_destab), axis=1)
@@ -784,14 +871,13 @@ def first_round_phase(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
-
 def second_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
-    """performs a cholesky decompostion of the symmetric Z = D + M*M' stabilizer matrix """
+    """performs a cholesky decompostion of the symmetric Z = D + M*M' stabilizer matrix"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     matrix = copy.deepcopy(z_stab)
     circ = []
 
@@ -820,11 +906,13 @@ def second_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                 if control_qubit != target_qubit:
                     for l in range(0, num_qubits):
                         phase_destabilizer[l] = int(phase_destabilizer[l]) ^ (
-                                (int(x_destab[l, control_qubit]) * int(z_destab[l, target_qubit])) \
-                                * (int(x_destab[l, target_qubit]) ^ int(z_destab[l, control_qubit]) ^ 1))
+                            (int(x_destab[l, control_qubit]) * int(z_destab[l, target_qubit]))
+                            * (int(x_destab[l, target_qubit]) ^ int(z_destab[l, control_qubit]) ^ 1)
+                        )
                         phase_stabilizer[l] = int(phase_stabilizer[l]) ^ (
-                                (int(x_stab[l, control_qubit]) * int(z_stab[l, target_qubit])) \
-                                * (int(x_stab[l, target_qubit]) ^ int(z_stab[l, control_qubit]) ^ 1))
+                            (int(x_stab[l, control_qubit]) * int(z_stab[l, target_qubit]))
+                            * (int(x_stab[l, target_qubit]) ^ int(z_stab[l, control_qubit]) ^ 1)
+                        )
                         x_stab[l, target_qubit] = int(x_stab[l, target_qubit]) ^ int(x_stab[l, control_qubit])
                         x_destab[l, target_qubit] = int(x_destab[l, target_qubit]) ^ int(x_destab[l, control_qubit])
                         z_stab[l, control_qubit] = int(z_stab[l, control_qubit]) ^ int(z_stab[l, target_qubit])
@@ -838,15 +926,14 @@ def second_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
-
 def second_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     """phase on all the qubits eliminates the Z_stabilizer to the Zero Matrix, additional phases set all the stabilizer
     phase bits to zero"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     bits_to_flip = []
     circ = []
 
@@ -859,9 +946,11 @@ def second_round_phase(tableau, phase_stabilizer, phase_destabilizer):
             circ.append(tq.gates.S(target_qubit))
             for i in range(num_qubits):
                 phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                    int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                )
                 phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                    int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                )
                 z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                 z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
         # zeroing out remaining stabilizer phase bits
@@ -876,9 +965,11 @@ def second_round_phase(tableau, phase_stabilizer, phase_destabilizer):
                     circ.append(tq.gates.S(target_qubit))
                     for k in range(num_qubits):
                         phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                                int(x_destab[k, target_qubit]) * int(z_destab[k, target_qubit]))
+                            int(x_destab[k, target_qubit]) * int(z_destab[k, target_qubit])
+                        )
                         phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                                int(x_stab[k, target_qubit]) * int(z_stab[k, target_qubit]))
+                            int(x_stab[k, target_qubit]) * int(z_stab[k, target_qubit])
+                        )
                         z_stab[k, target_qubit] = int(z_stab[k, target_qubit]) ^ int(x_stab[k, target_qubit])
                         z_destab[k, target_qubit] = int(z_destab[k, target_qubit]) ^ int(x_destab[k, target_qubit])
         destabilizer = np.concatenate((x_destab, z_destab), axis=1)
@@ -891,9 +982,9 @@ def third_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     """CNOT gates make the X stabilizer matrix the identity matrix"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     circ = []
 
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
@@ -909,11 +1000,13 @@ def third_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                     circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                     for k in range(0, num_qubits):
                         phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                                (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit])) \
-                                * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1))
+                            (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit]))
+                            * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1)
+                        )
                         phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                                (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit])) \
-                                * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1))
+                            (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit]))
+                            * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1)
+                        )
                         x_stab[k, target_qubit] = int(x_stab[k, target_qubit]) ^ int(x_stab[k, control_qubit])
                         x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                         z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
@@ -925,14 +1018,13 @@ def third_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
-
 def second_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
-    """"Apply Hadmard on all the bits puts the stabilizer matrix into canonical form"""
+    """ "Apply Hadmard on all the bits puts the stabilizer matrix into canonical form"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     bits_to_flip = []
     circ = []
 
@@ -945,11 +1037,15 @@ def second_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
             circ.append(tq.gates.H(target=target_qubit))
             for i in range(0, num_qubits):
                 phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                    int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                )
                 phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
-                x_destab[i, target_qubit], z_destab[i, target_qubit] = z_destab[i, target_qubit], x_destab[
-                    i, target_qubit]
+                    int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                )
+                x_destab[i, target_qubit], z_destab[i, target_qubit] = (
+                    z_destab[i, target_qubit],
+                    x_destab[i, target_qubit],
+                )
                 z_stab[i, target_qubit], x_stab[i, target_qubit] = x_stab[i, target_qubit], z_stab[i, target_qubit]
         destabilizer = np.concatenate((x_destab, z_destab), axis=1)
         stabilizer = np.concatenate((x_stab, z_stab), axis=1)
@@ -957,14 +1053,13 @@ def second_round_hadamard(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
-
 def third_round_phase(tableau, phase_stabilizer, phase_destabilizer):
     """Adds a diagonal matrix to the Z destabilizer matrix such that Zd + D = M*M' for some invertible M"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     matrix = copy.deepcopy(z_destab)
     M = np.identity(num_qubits)
     circ = []
@@ -995,9 +1090,11 @@ def third_round_phase(tableau, phase_stabilizer, phase_destabilizer):
             circ.append(tq.gates.S(target=target_qubit))
             for i in range(0, num_qubits):
                 phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                    int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                )
                 phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                    int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                )
                 z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                 z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
         destabilizer = np.concatenate((x_destab, z_destab), axis=1)
@@ -1006,14 +1103,13 @@ def third_round_phase(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
-
 def fourth_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
-    """"Performs a binary cholesky decomposition on the Z destabilizer matrix"""
+    """ "Performs a binary cholesky decomposition on the Z destabilizer matrix"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     matrix = copy.deepcopy(z_destab)
     M = np.identity(num_qubits)
     circ = []
@@ -1041,11 +1137,13 @@ def fourth_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                 if control_qubit != target_qubit:
                     for l in range(0, num_qubits):
                         phase_destabilizer[l] = int(phase_destabilizer[l]) ^ (
-                                (int(x_destab[l, control_qubit]) * int(z_destab[l, target_qubit])) \
-                                * (int(x_destab[l, target_qubit]) ^ int(z_destab[l, control_qubit]) ^ 1))
+                            (int(x_destab[l, control_qubit]) * int(z_destab[l, target_qubit]))
+                            * (int(x_destab[l, target_qubit]) ^ int(z_destab[l, control_qubit]) ^ 1)
+                        )
                         phase_stabilizer[l] = int(phase_stabilizer[l]) ^ (
-                                (int(x_stab[l, control_qubit]) * int(z_stab[l, target_qubit])) \
-                                * (int(x_stab[l, target_qubit]) ^ int(z_stab[l, control_qubit]) ^ 1))
+                            (int(x_stab[l, control_qubit]) * int(z_stab[l, target_qubit]))
+                            * (int(x_stab[l, target_qubit]) ^ int(z_stab[l, control_qubit]) ^ 1)
+                        )
                         x_stab[l, target_qubit] = int(x_stab[l, target_qubit]) ^ int(x_stab[l, control_qubit])
                         x_destab[l, target_qubit] = int(x_destab[l, target_qubit]) ^ int(x_destab[l, control_qubit])
                         z_stab[l, control_qubit] = int(z_stab[l, control_qubit]) ^ int(z_stab[l, target_qubit])
@@ -1059,15 +1157,14 @@ def fourth_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
-
 def fourth_round_phase(tableau, phase_stabilizer, phase_destabilizer):
-    """"Phase gates make the Z destabilizer the Zero matrix, additional phases set all the destabilizer
+    """ "Phase gates make the Z destabilizer the Zero matrix, additional phases set all the destabilizer
     phase bits to 0"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     bits_to_flip = []
     circ = []
 
@@ -1081,9 +1178,11 @@ def fourth_round_phase(tableau, phase_stabilizer, phase_destabilizer):
                 circ.append(tq.gates.S(target_qubit))
                 for i in range(num_qubits):
                     phase_destabilizer[i] = int(phase_destabilizer[i]) ^ (
-                            int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit]))
+                        int(x_destab[i, target_qubit]) * int(z_destab[i, target_qubit])
+                    )
                     phase_stabilizer[i] = int(phase_stabilizer[i]) ^ (
-                            int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit]))
+                        int(x_stab[i, target_qubit]) * int(z_stab[i, target_qubit])
+                    )
                     z_stab[i, target_qubit] = int(z_stab[i, target_qubit]) ^ int(x_stab[i, target_qubit])
                     z_destab[i, target_qubit] = int(z_destab[i, target_qubit]) ^ int(x_destab[i, target_qubit])
 
@@ -1098,9 +1197,11 @@ def fourth_round_phase(tableau, phase_stabilizer, phase_destabilizer):
                     circ.append(tq.gates.S(target_qubit))
                     for k in range(num_qubits):
                         phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                                int(x_destab[k, target_qubit]) * int(z_destab[k, target_qubit]))
+                            int(x_destab[k, target_qubit]) * int(z_destab[k, target_qubit])
+                        )
                         phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                                int(x_stab[k, target_qubit]) * int(z_stab[k, target_qubit]))
+                            int(x_stab[k, target_qubit]) * int(z_stab[k, target_qubit])
+                        )
                         z_stab[k, target_qubit] = int(z_stab[k, target_qubit]) ^ int(x_stab[k, target_qubit])
                         z_destab[k, target_qubit] = int(z_destab[k, target_qubit]) ^ int(x_destab[k, target_qubit])
 
@@ -1110,15 +1211,14 @@ def fourth_round_phase(tableau, phase_stabilizer, phase_destabilizer):
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
 
 
-
 def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
     """Final round of CNOT gates puts the Tableau into canonical form: a 2n X 2n identity matrix with all phase
     bits zero"""
     num_qubits = int(len(tableau[0, :]) / 2)
     x_destab = tableau[0:num_qubits, 0:num_qubits]
-    z_destab = tableau[0:num_qubits, num_qubits:2 * num_qubits]
-    z_stab = tableau[num_qubits:2 * num_qubits, num_qubits:2 * num_qubits]
-    x_stab = tableau[num_qubits:2 * num_qubits, 0:num_qubits]
+    z_destab = tableau[0:num_qubits, num_qubits : 2 * num_qubits]
+    z_stab = tableau[num_qubits : 2 * num_qubits, num_qubits : 2 * num_qubits]
+    x_stab = tableau[num_qubits : 2 * num_qubits, 0:num_qubits]
     circ = []
 
     if is_canonical(tableau, phase_stabilizer, phase_destabilizer):
@@ -1132,11 +1232,13 @@ def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                 circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                 for k in range(0, num_qubits):
                     phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                            (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit])) \
-                            * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1))
+                        (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit]))
+                        * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1)
+                    )
                     phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                            (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit])) \
-                            * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1))
+                        (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit]))
+                        * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1)
+                    )
                     x_stab[k, target_qubit] = int(x_stab[k, target_qubit]) ^ int(x_stab[k, control_qubit])
                     x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                     z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
@@ -1147,16 +1249,17 @@ def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                 circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                 for k in range(0, num_qubits):
                     phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                            (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit])) \
-                            * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1))
+                        (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit]))
+                        * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1)
+                    )
                     phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                            (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit])) \
-                            * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1))
+                        (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit]))
+                        * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1)
+                    )
                     x_stab[k, target_qubit] = int(x_stab[k, target_qubit]) ^ int(x_stab[k, control_qubit])
                     x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                     z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
                     z_destab[k, control_qubit] = int(z_destab[k, control_qubit]) ^ int(z_destab[k, target_qubit])
-
 
             if x_destab[i, i] == 1:
                 ones = np.where(x_destab[i, :] == 1)[0]
@@ -1167,11 +1270,13 @@ def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
                     circ.append(tq.gates.CNOT(control_qubit, target_qubit))
                     for k in range(0, num_qubits):
                         phase_destabilizer[k] = int(phase_destabilizer[k]) ^ (
-                                (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit])) \
-                                * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1))
+                            (int(x_destab[k, control_qubit]) * int(z_destab[k, target_qubit]))
+                            * (int(x_destab[k, target_qubit]) ^ int(z_destab[k, control_qubit]) ^ 1)
+                        )
                         phase_stabilizer[k] = int(phase_stabilizer[k]) ^ (
-                                (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit])) \
-                                * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1))
+                            (int(x_stab[k, control_qubit]) * int(z_stab[k, target_qubit]))
+                            * (int(x_stab[k, target_qubit]) ^ int(z_stab[k, control_qubit]) ^ 1)
+                        )
                         x_stab[k, target_qubit] = int(x_stab[k, target_qubit]) ^ int(x_stab[k, control_qubit])
                         x_destab[k, target_qubit] = int(x_destab[k, target_qubit]) ^ int(x_destab[k, control_qubit])
                         z_stab[k, control_qubit] = int(z_stab[k, control_qubit]) ^ int(z_stab[k, target_qubit])
@@ -1180,7 +1285,6 @@ def final_round_cnot(tableau, phase_stabilizer, phase_destabilizer):
         stabilizer = np.concatenate((x_stab, z_stab), axis=1)
         tableau = np.concatenate((destabilizer, stabilizer), axis=0)
         return (tableau, phase_stabilizer, phase_destabilizer, circ)
-
 
 
 #
@@ -1210,7 +1314,7 @@ def REF_binary(matrix):
         for i in range(current_row, n_rows):
             if A[i, j] == 1:
                 A[i] = (A[i] + A[pivot_row]) % 2
-    return (A)
+    return A
 
 
 #

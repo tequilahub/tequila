@@ -2,10 +2,10 @@ import numpy
 from tequila.objective import format_variable_dictionary
 from tequila.tools.qng import evaluate_qng
 import sys
+
 """
 Define Containers for SciPy usage
 """
-
 
 
 class _EvalContainer:
@@ -35,8 +35,9 @@ class _EvalContainer:
 
     """
 
-    def __init__(self, objective, param_keys, passive_angles=None, samples=None, save_history=True,
-                 print_level: int = 3):
+    def __init__(
+        self, objective, param_keys, passive_angles=None, samples=None, save_history=True, print_level: int = 3
+    ):
         self.objective = objective
         self.samples = samples
         self.param_keys = param_keys
@@ -135,11 +136,14 @@ class _QngContainer(_EvalContainer):
         evaluate the qng.
     """
 
-
     def __init__(self, combos, param_keys, passive_angles=None, samples=None, save_history=True):
-
-        super().__init__(objective=None, param_keys=param_keys, passive_angles=passive_angles,
-                         samples=samples, save_history=save_history)
+        super().__init__(
+            objective=None,
+            param_keys=param_keys,
+            passive_angles=passive_angles,
+            samples=samples,
+            save_history=save_history,
+        )
 
         self.combos = combos
 

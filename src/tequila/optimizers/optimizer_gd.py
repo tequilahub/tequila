@@ -6,12 +6,13 @@ from tequila.circuit.noise import NoiseModel
 from tequila.tools.qng import get_qng_combos, CallableVector, QNGVector
 from tequila.utils import TequilaException
 
+
 @dataclass
 class GDResults(OptimizerResults):
-
     moments: dict = None
     num_iteration: int = 0
-    
+
+
 class OptimizerGD(Optimizer):
     """
     The gradient descent optimizer for tequila.
@@ -85,36 +86,49 @@ class OptimizerGD(Optimizer):
 
 
     """
+
     @classmethod
     def available_methods(cls):
         """:return: All tested available methods"""
-        return ['adam', 'adagrad', 'adamax', 'nadam', 'sgd', 'momentum', 'nesterov', 'rmsprop', 'rmsprop-nesterov', 'spsa']
-
+        return [
+            "adam",
+            "adagrad",
+            "adamax",
+            "nadam",
+            "sgd",
+            "momentum",
+            "nesterov",
+            "rmsprop",
+            "rmsprop-nesterov",
+            "spsa",
+        ]
 
     @classmethod
     def available_diis(cls):
         """:return: All tested methods that can be diis accelerated"""
-        return ['sgd']
+        return ["sgd"]
 
-    def __init__(self, maxiter=100,
-                 method='sgd',
-                 tol: numbers.Real = None,
-                 lr: typing.Union[numbers.Real, typing.List[numbers.Real]] = 0.1,
-                 alpha: numbers.Real = None,
-                 gamma: numbers.Real = None,
-                 beta: numbers.Real = 0.9,
-                 rho: numbers.Real = 0.999,
-                 c: typing.Union[numbers.Real, typing.List[numbers.Real]] = 0.2,
-                 epsilon: numbers.Real = 1.0 * 10 ** (-7),
-                 diis: typing.Optional[dict] = None,
-                 backend=None,
-                 samples=None,
-                 device=None,
-                 noise=None,
-                 silent=True,
-                 calibrate_lr: bool = False,
-                 **kwargs):
-
+    def __init__(
+        self,
+        maxiter=100,
+        method="sgd",
+        tol: numbers.Real = None,
+        lr: typing.Union[numbers.Real, typing.List[numbers.Real]] = 0.1,
+        alpha: numbers.Real = None,
+        gamma: numbers.Real = None,
+        beta: numbers.Real = 0.9,
+        rho: numbers.Real = 0.999,
+        c: typing.Union[numbers.Real, typing.List[numbers.Real]] = 0.2,
+        epsilon: numbers.Real = 1.0 * 10 ** (-7),
+        diis: typing.Optional[dict] = None,
+        backend=None,
+        samples=None,
+        device=None,
+        noise=None,
+        silent=True,
+        calibrate_lr: bool = False,
+        **kwargs,
+    ):
         """
 
         Parameters
@@ -169,22 +183,21 @@ class OptimizerGD(Optimizer):
         kwargs
         """
 
-        super().__init__(maxiter=maxiter, samples=samples,device=device,
-                         backend=backend,silent=silent,
-                         noise=noise,
-                         **kwargs)
+        super().__init__(
+            maxiter=maxiter, samples=samples, device=device, backend=backend, silent=silent, noise=noise, **kwargs
+        )
         method_dict = {
-            'adam': self._adam,
-            'adagrad': self._adagrad,
-            'adamax': self._adamax,
-            'nadam': self._nadam,
-            'sgd': self._sgd,
-            'momentum': self._momentum,
-            'nesterov': self._nesterov,
-            'rmsprop': self._rms,
-            'rmsprop-nesterov': self._rms_nesterov,
-            'spsa': self._spsa
-            }
+            "adam": self._adam,
+            "adagrad": self._adagrad,
+            "adamax": self._adamax,
+            "nadam": self._nadam,
+            "sgd": self._sgd,
+            "momentum": self._momentum,
+            "nesterov": self._nesterov,
+            "rmsprop": self._rms,
+            "rmsprop-nesterov": self._rms_nesterov,
+            "spsa": self._spsa,
+        }
 
         self.f = method_dict[method.lower()]
         self.gradient_lookup = {}
@@ -219,28 +232,31 @@ class OptimizerGD(Optimizer):
         else:
             raise TypeError("Type of DIIS is not dict")
 
-        if(isinstance(lr, list)):
+        if isinstance(lr, list):
             self.nextLRIndex = 0
             for i in lr:
-                assert(i > .0)
+                assert i > 0.0
         else:
             self.nextLRIndex = -1
-            assert(lr > .0)
+            assert lr > 0.0
 
-        assert all([k > .0 for k in [beta, rho, epsilon]])
+        assert all([k > 0.0 for k in [beta, rho, epsilon]])
         self.tol = tol
         if self.tol is not None:
             self.tol = abs(float(tol))
 
-    def __call__(self, objective: Objective,
-                 maxiter: int = None,
-                 initial_values: typing.Dict[Variable, numbers.Real] = None,
-                 variables: typing.List[Variable] = None,
-                 reset_history: bool = True,
-                 method_options: dict = None,
-                 gradient=None,
-                 *args, **kwargs) -> GDResults:
-
+    def __call__(
+        self,
+        objective: Objective,
+        maxiter: int = None,
+        initial_values: typing.Dict[Variable, numbers.Real] = None,
+        variables: typing.List[Variable] = None,
+        reset_history: bool = True,
+        method_options: dict = None,
+        gradient=None,
+        *args,
+        **kwargs,
+    ) -> GDResults:
         """
         perform a gradient descent optimization of an objective.
 
@@ -272,7 +288,6 @@ class OptimizerGD(Optimizer):
         GDResults
             all the results of optimization.
         """
-
 
         if self.save_history and reset_history:
             self.reset_history()
@@ -313,7 +328,7 @@ class OptimizerGD(Optimizer):
             if self.tol != None:
                 if numpy.abs(e - last) <= self.tol:
                     if not self.silent:
-                        print('delta f smaller than tolerance {}. Stopping optimization.'.format(str(self.tol)))
+                        print("delta f smaller than tolerance {}. Stopping optimization.".format(str(self.tol)))
                     break
 
             ### get new parameters with self.step!
@@ -322,37 +337,43 @@ class OptimizerGD(Optimizer):
             # From http://vergil.chemistry.gatech.edu/notes/diis/node3.html
             if self.__diis:
                 self.__diis.push(
-                    numpy.array([vn[k] for k in active_angles]),
-                    numpy.array([vn[k]-v[k] for k in active_angles]))
+                    numpy.array([vn[k] for k in active_angles]), numpy.array([vn[k] - v[k] for k in active_angles])
+                )
 
                 new = self.__diis.update()
                 if new is not None:
                     self.reset_momenta()
                     comment = "DIIS"
-                    for i,k in enumerate(active_angles):
+                    for i, k in enumerate(active_angles):
                         vn[k] = new[i]
-
 
             if not self.silent:
                 self.__dx = numpy.asarray(self.__dx)
-                print("%3i   %+15.8f   %+7.2e   %7.3e   %7.3e    %s"
-                      % (step,
-                         e,
-                         e-last,
-                         numpy.max([abs(x) for x in self.__dx]),
-                         numpy.sqrt(numpy.average(self.__dx**2)),
-                         comment))
-
+                print(
+                    "%3i   %+15.8f   %+7.2e   %7.3e   %7.3e    %s"
+                    % (
+                        step,
+                        e,
+                        e - last,
+                        numpy.max([abs(x) for x in self.__dx]),
+                        numpy.sqrt(numpy.average(self.__dx**2)),
+                        comment,
+                    )
+                )
 
             last = e
             v = vn
             self.iteration += 1
         E_final, angles_final = best, best_angles
-        return GDResults(energy=E_final, variables=format_variable_dictionary(angles_final), history=self.history,
-                            moments=self.moments_trajectory[id(comp)], num_iteration=self.iteration)
+        return GDResults(
+            energy=E_final,
+            variables=format_variable_dictionary(angles_final),
+            history=self.history,
+            moments=self.moments_trajectory[id(comp)],
+            num_iteration=self.iteration,
+        )
 
-    def prepare(self, objective: Objective, initial_values: dict = None,
-                variables: list = None, gradient=None):
+    def prepare(self, objective: Objective, initial_values: dict = None, variables: list = None, gradient=None):
         """
         perform all initialization for an objective, register it with lookup tables, and return it compiled.
         MUST be called before step is used.
@@ -380,45 +401,60 @@ class OptimizerGD(Optimizer):
         active_angles, passive_angles, variables = self.initialize_variables(objective, initial_values, variables)
         comp = self.compile_objective(objective=objective)
         for arg in comp.args:
-            if hasattr(arg,'U'):
+            if hasattr(arg, "U"):
                 if arg.U.device is not None:
                     # don't retrieve computer 100 times; pyquil errors out if this happens!
                     self.device = arg.U.device
                     break
 
-        if(self.f == self._spsa):
+        if self.f == self._spsa:
             gradient = {"method": "standard_spsa", "stepsize": self.c, "gamma": self.gamma}
 
         compile_gradient = True
         dE = None
         if isinstance(gradient, str):
-            if gradient.lower() == 'qng':
+            if gradient.lower() == "qng":
                 compile_gradient = False
 
-                combos = get_qng_combos(objective, initial_values=initial_values, backend=self.backend,
-                                        device=self.device,
-                                        samples=self.samples, noise=self.noise,
-                                        )
+                combos = get_qng_combos(
+                    objective,
+                    initial_values=initial_values,
+                    backend=self.backend,
+                    device=self.device,
+                    samples=self.samples,
+                    noise=self.noise,
+                )
                 dE = QNGVector(combos)
             else:
-                gradient = {"method": gradient, "stepsize": 1.e-4}
+                gradient = {"method": gradient, "stepsize": 1.0e-4}
 
-        elif isinstance(gradient,dict):
-            if gradient['method'] == 'qng':
-                func = gradient['function']
+        elif isinstance(gradient, dict):
+            if gradient["method"] == "qng":
+                func = gradient["function"]
                 compile_gradient = False
-                combos = get_qng_combos(objective, func=func, initial_values=initial_values, backend=self.backend,
-                                        device=self.device,
-                                        samples=self.samples, noise=self.noise)
+                combos = get_qng_combos(
+                    objective,
+                    func=func,
+                    initial_values=initial_values,
+                    backend=self.backend,
+                    device=self.device,
+                    samples=self.samples,
+                    noise=self.noise,
+                )
                 dE = QNGVector(combos)
 
         if compile_gradient:
             grad_obj, comp_grad_obj = self.compile_gradient(objective=objective, variables=variables, gradient=gradient)
-            spsa = isinstance(gradient, dict) and "method" in gradient and isinstance(gradient["method"], str) and "spsa" in gradient["method"].lower()
+            spsa = (
+                isinstance(gradient, dict)
+                and "method" in gradient
+                and isinstance(gradient["method"], str)
+                and "spsa" in gradient["method"].lower()
+            )
             if spsa:
                 dE = comp_grad_obj
-                if(self.calibrate_lr):
-                    self.lr = dE.calibrated_lr(self.lr,initial_values, 50, samples=self.samples)
+                if self.calibrate_lr:
+                    self.lr = dE.calibrated_lr(self.lr, initial_values, 50, samples=self.samples)
             else:
                 dE = CallableVector([comp_grad_obj[k] for k in comp_grad_obj.keys()])
 
@@ -444,8 +480,9 @@ class OptimizerGD(Optimizer):
         self.step_lookup[ostring] = 0
         return comp
 
-    def step(self, objective: Objective, parameters: typing.Dict[Variable, numbers.Real]) -> \
-            typing.Dict[Variable, numbers.Real]:
+    def step(
+        self, objective: Objective, parameters: typing.Dict[Variable, numbers.Real]
+    ) -> typing.Dict[Variable, numbers.Real]:
         """
         perform a single optimization step and return suggested parameters.
         Parameters
@@ -468,13 +505,16 @@ class OptimizerGD(Optimizer):
             adam_step = self.step_lookup[s]
         except:
             raise TequilaException(
-                'Could not retrieve necessary information. Please use the prepare function before optimizing!')
-        new, moments, grads = self.f(step=adam_step,
-                                     gradients=gradients,
-                                     active_keys=active_keys,
-                                     moments=last_moment,
-                                     v=parameters,
-                                     iteration=self.iteration)
+                "Could not retrieve necessary information. Please use the prepare function before optimizing!"
+            )
+        new, moments, grads = self.f(
+            step=adam_step,
+            gradients=gradients,
+            active_keys=active_keys,
+            moments=last_moment,
+            v=parameters,
+            iteration=self.iteration,
+        )
         back = {**parameters}
         for k in new.keys():
             back[k] = new[k]
@@ -486,7 +526,7 @@ class OptimizerGD(Optimizer):
                 save_grad[k] = grads[i]
             self.history.gradients.append(save_grad)
         self.step_lookup[s] += 1
-        self.__dx = grads       # most recent gradient
+        self.__dx = grads  # most recent gradient
         return back
 
     def reset_stepper(self):
@@ -540,12 +580,9 @@ class OptimizerGD(Optimizer):
             self.moments_trajectory[k] = [(first, second)]
             self.step_lookup[k] = 0
         except:
-            print('found no compiled objective with id {} in lookup. Did you pass the correct object?'.format(k))
+            print("found no compiled objective with id {} in lookup. Did you pass the correct object?".format(k))
 
-    def _adam(self, gradients, step,
-              v, moments, active_keys,
-              **kwargs):
-
+    def _adam(self, gradients, step, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         t = step + 1
         s = moments[0]
@@ -553,11 +590,11 @@ class OptimizerGD(Optimizer):
         grads = gradients(v, samples=self.samples)
         s = self.beta * s + (1 - self.beta) * grads
         r = self.rho * r + (1 - self.rho) * numpy.square(grads)
-        s_hat = s / (1 - self.beta ** t)
-        r_hat = r / (1 - self.rho ** t)
+        s_hat = s / (1 - self.beta**t)
+        r_hat = r / (1 - self.rho**t)
         updates = []
         for i in range(len(grads)):
-            rule = - learningRate * s_hat[i] / (numpy.sqrt(r_hat[i]) + self.epsilon)
+            rule = -learningRate * s_hat[i] / (numpy.sqrt(r_hat[i]) + self.epsilon)
             updates.append(rule)
         new = {}
         for i, k in enumerate(active_keys):
@@ -565,9 +602,7 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def _adagrad(self, gradients,
-                 v, moments, active_keys, **kwargs):
-
+    def _adagrad(self, gradients, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         r = moments[1]
         grads = gradients(v, self.samples)
@@ -580,9 +615,7 @@ class OptimizerGD(Optimizer):
         back_moments = [moments[0], r]
         return new, back_moments, grads
 
-    def _adamax(self, gradients,
-                v, moments, active_keys, **kwargs):
-
+    def _adamax(self, gradients, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         s = moments[0]
         r = moments[1]
@@ -591,7 +624,7 @@ class OptimizerGD(Optimizer):
         r = self.rho * r + (1 - self.rho) * numpy.linalg.norm(grads, numpy.inf)
         updates = []
         for i in range(len(grads)):
-            rule = - learningRate * s[i] / r[i]
+            rule = -learningRate * s[i] / r[i]
             updates.append(rule)
         new = {}
         for i, k in enumerate(active_keys):
@@ -599,10 +632,7 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def _nadam(self, step, gradients,
-               v, moments, active_keys,
-               **kwargs):
-
+    def _nadam(self, step, gradients, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         s = moments[0]
         r = moments[1]
@@ -610,12 +640,15 @@ class OptimizerGD(Optimizer):
         grads = gradients(v, samples=self.samples)
         s = self.beta * s + (1 - self.beta) * grads
         r = self.rho * r + (1 - self.rho) * numpy.square(grads)
-        s_hat = s / (1 - self.beta ** t)
-        r_hat = r / (1 - self.rho ** t)
+        s_hat = s / (1 - self.beta**t)
+        r_hat = r / (1 - self.rho**t)
         updates = []
         for i in range(len(grads)):
-            rule = - learningRate * (self.beta * s_hat[i] + (1 - self.beta) * grads[i] / (1 - self.beta ** t)) / (
-                        numpy.sqrt(r_hat[i]) + self.epsilon)
+            rule = (
+                -learningRate
+                * (self.beta * s_hat[i] + (1 - self.beta) * grads[i] / (1 - self.beta**t))
+                / (numpy.sqrt(r_hat[i]) + self.epsilon)
+            )
             updates.append(rule)
         new = {}
         for i, k in enumerate(active_keys):
@@ -623,9 +656,7 @@ class OptimizerGD(Optimizer):
         back_moment = [s, r]
         return new, back_moment, grads
 
-    def _sgd(self, gradients,
-             v, moments, active_keys, **kwargs):
-
+    def _sgd(self, gradients, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         grads = gradients(v, samples=self.samples)
         new = {}
@@ -634,7 +665,6 @@ class OptimizerGD(Optimizer):
         return new, moments, grads
 
     def _spsa(self, gradients, v, moments, active_keys, **kwargs):
-
         learningRate = self.nextLearningRate()
         grads = gradients(v, samples=self.samples, iteration=self.iteration)
         new = {}
@@ -642,9 +672,7 @@ class OptimizerGD(Optimizer):
             new[k] = v[k] - learningRate * grads[i]
         return new, moments, grads
 
-    def _momentum(self, gradients,
-                  v, moments, active_keys, **kwargs):
-
+    def _momentum(self, gradients, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         m = moments[0]
         grads = gradients(v, samples=self.samples)
@@ -657,9 +685,7 @@ class OptimizerGD(Optimizer):
         back_moments = [m, moments[1]]
         return new, back_moments, grads
 
-    def _nesterov(self, gradients,
-                  v, moments, active_keys, **kwargs):
-
+    def _nesterov(self, gradients, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         m = moments[0]
 
@@ -681,10 +707,7 @@ class OptimizerGD(Optimizer):
         back_moments = [m, moments[1]]
         return new, back_moments, grads
 
-    def _rms(self, gradients,
-             v, moments, active_keys,
-             **kwargs):
-
+    def _rms(self, gradients, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         r = moments[1]
         grads = gradients(v, samples=self.samples)
@@ -696,10 +719,7 @@ class OptimizerGD(Optimizer):
         back_moments = [moments[0], r]
         return new, back_moments, grads
 
-    def _rms_nesterov(self, gradients,
-                      v, moments, active_keys,
-                      **kwargs):
-
+    def _rms_nesterov(self, gradients, v, moments, active_keys, **kwargs):
         learningRate = self.nextLearningRate()
         m = moments[0]
         r = moments[1]
@@ -725,30 +745,32 @@ class OptimizerGD(Optimizer):
         return new, back_moments, grads
 
     def nextLearningRate(self):
-        """ Return the learning rate to use
+        """Return the learning rate to use
 
         Returns
         -------
             float representing the learning rate to use
         """
-        if(self.nextLRIndex == -1):
-            if(self.alpha != None):
-                return self.lr/(self.iteration ** self.alpha)
+        if self.nextLRIndex == -1:
+            if self.alpha != None:
+                return self.lr / (self.iteration**self.alpha)
             return self.lr
         else:
-            if(self.nextLRIndex != len(self.lr) - 1):
+            if self.nextLRIndex != len(self.lr) - 1:
                 self.nextLRIndex += 1
-                return self.lr[self.nextLRIndex-1]
+                return self.lr[self.nextLRIndex - 1]
             else:
                 return self.lr[self.nextLRIndex]
 
+
 class DIIS:
-    def __init__(self: 'DIIS',
-                 ndiis: int =8,
-                 min_vectors: int = 3,
-                 tol: float = 5e-2,
-                 drop: str='error',
-                 ) -> None:
+    def __init__(
+        self: "DIIS",
+        ndiis: int = 8,
+        min_vectors: int = 3,
+        tol: float = 5e-2,
+        drop: str = "error",
+    ) -> None:
         """DIIS accelerator for gradient descent methods.
 
         Setup a DIIS accelerator. Every gradient step, the optimizer should
@@ -793,37 +815,32 @@ class DIIS:
         self.error = []
         self.P = []
 
-        if drop == 'error':
+        if drop == "error":
             self.drop = self.drop_error
-        elif drop == 'first':
+        elif drop == "first":
             self.drop = self.drop_first
         else:
             raise NotImplementedError("Drop type %s not implemented" % drop)
 
-    def reset(self: 'DIIS') -> None:
+    def reset(self: "DIIS") -> None:
         """Reset containers."""
         self.P = []
         self.error = []
 
-    def drop_first(self: 'DIIS',
-                   p: typing.Sequence[numpy.ndarray],
-                   e: typing.Sequence[numpy.ndarray]
-                   ) -> typing.Tuple[typing.List[numpy.ndarray], typing.List[numpy.ndarray]]:
+    def drop_first(
+        self: "DIIS", p: typing.Sequence[numpy.ndarray], e: typing.Sequence[numpy.ndarray]
+    ) -> typing.Tuple[typing.List[numpy.ndarray], typing.List[numpy.ndarray]]:
         """Return P,E with the first element removed."""
         return p[1:], e[1:]
 
-    def drop_error(self: 'DIIS',
-                   p: typing.Sequence[numpy.ndarray],
-                   e: typing.Sequence[numpy.ndarray]
-                   ) -> typing.Tuple[typing.List[numpy.ndarray], typing.List[numpy.ndarray]]:
+    def drop_error(
+        self: "DIIS", p: typing.Sequence[numpy.ndarray], e: typing.Sequence[numpy.ndarray]
+    ) -> typing.Tuple[typing.List[numpy.ndarray], typing.List[numpy.ndarray]]:
         """Return P,E with the largest magnitude error vector removed."""
         i = numpy.argmax([v.dot(v) for v in e])
-        return p[:i] + p[i+1:], e[:i] + e[i+1:]
+        return p[:i] + p[i + 1 :], e[:i] + e[i + 1 :]
 
-    def push(self: 'DIIS',
-             param_vector: numpy.ndarray,
-             error_vector: numpy.ndarray
-             ) -> None:
+    def push(self: "DIIS", param_vector: numpy.ndarray, error_vector: numpy.ndarray) -> None:
         """Update DIIS calculator with parameter and error vectors."""
         if len(self.error) == self.ndiis:
             self.drop(self.P, self.error)
@@ -831,7 +848,7 @@ class DIIS:
         self.error += [error_vector]
         self.P += [param_vector]
 
-    def do_diis(self: 'DIIS') -> bool:
+    def do_diis(self: "DIIS") -> bool:
         """Return with DIIS should be performed."""
         if len(self.error) < self.min_vectors:
             # No point in DIIS with less than 2 vectors!
@@ -842,7 +859,7 @@ class DIIS:
 
         return True
 
-    def update(self:'DIIS') -> typing.Optional[numpy.ndarray]:
+    def update(self: "DIIS") -> typing.Optional[numpy.ndarray]:
         """Get update parameter from DIIS iteration, or None if DIIS is not doable."""
         # Check if we should do DIIS
         if not self.do_diis():
@@ -850,23 +867,23 @@ class DIIS:
 
         # Making the B matrix
         N = len(self.error)
-        B = numpy.zeros((N+1, N+1))
+        B = numpy.zeros((N + 1, N + 1))
         for i in range(N):
-            for j in range(i,N):
-                B[i,j] = self.error[i].dot(self.error[j])
-                B[j,i] = B[i,j]
+            for j in range(i, N):
+                B[i, j] = self.error[i].dot(self.error[j])
+                B[j, i] = B[i, j]
 
-        B[N,:] = -1
-        B[:,N] = -1
-        B[N,N] = 0
+        B[N, :] = -1
+        B[:, N] = -1
+        B[N, N] = 0
 
         # Making the K vector
-        K = numpy.zeros((N+1,))
+        K = numpy.zeros((N + 1,))
         K[-1] = -1.0
 
         # Solve DIIS for great convergence!
         try:
-            diis_v, res, rank, s = numpy.linalg.lstsq(B,K,rcond=None)
+            diis_v, res, rank, s = numpy.linalg.lstsq(B, K, rcond=None)
         except numpy.linalg.LinAlgError:
             self.reset()
             return None
@@ -875,32 +892,33 @@ class DIIS:
         return new
 
 
-def minimize(objective: Objective,
-             lr: typing.Union[float, typing.List[float]] = 0.1,
-             method='sgd',
-             initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
-             variables: typing.List[typing.Hashable] = None,
-             gradient: str = None,
-             samples: int = None,
-             maxiter: int = 100,
-             diis: int = None,
-             backend: str = None,
-             noise: NoiseModel = None,
-             device: str = None,
-             tol: float = None,
-             silent: bool = False,
-             save_history: bool = True,
-             alpha: float = None,
-             gamma: float = None,
-             beta: float = 0.9,
-             rho: float = 0.999,
-             c: typing.Union[float, typing.List[float]] = 0.2,
-             epsilon: float = 1. * 10 ** (-7),
-             calibrate_lr: bool = False,
-             *args,
-             **kwargs) -> GDResults:
-
-    """ Initialize and call the GD optimizer.
+def minimize(
+    objective: Objective,
+    lr: typing.Union[float, typing.List[float]] = 0.1,
+    method="sgd",
+    initial_values: typing.Dict[typing.Hashable, numbers.Real] = None,
+    variables: typing.List[typing.Hashable] = None,
+    gradient: str = None,
+    samples: int = None,
+    maxiter: int = 100,
+    diis: int = None,
+    backend: str = None,
+    noise: NoiseModel = None,
+    device: str = None,
+    tol: float = None,
+    silent: bool = False,
+    save_history: bool = True,
+    alpha: float = None,
+    gamma: float = None,
+    beta: float = 0.9,
+    rho: float = 0.999,
+    c: typing.Union[float, typing.List[float]] = 0.2,
+    epsilon: float = 1.0 * 10 ** (-7),
+    calibrate_lr: bool = False,
+    *args,
+    **kwargs,
+) -> GDResults:
+    """Initialize and call the GD optimizer.
     Parameters
     ----------
     objective: Objective :
@@ -966,25 +984,32 @@ def minimize(objective: Objective,
     if isinstance(gradient, dict) or hasattr(gradient, "items"):
         if all([isinstance(x, Objective) for x in gradient.values()]):
             gradient = format_variable_dictionary(gradient)
-    optimizer = OptimizerGD(save_history=save_history,
-                            method=method,
-                            lr=lr,
-                            alpha=alpha,
-                            gamma=gamma,
-                            beta=beta,
-                            rho=rho,
-                            c=c,
-                            tol=tol,
-                            diis=diis,
-                            epsilon=epsilon,
-                            samples=samples, backend=backend,
-                            device=device,
-                            noise=noise,
-                            maxiter=maxiter,
-                            silent=silent,
-                            calibrate_lr=calibrate_lr)
-    return optimizer(objective=objective,
-                     maxiter=maxiter,
-                     gradient=gradient,
-                     initial_values=initial_values,
-                     variables=variables, *args, **kwargs)
+    optimizer = OptimizerGD(
+        save_history=save_history,
+        method=method,
+        lr=lr,
+        alpha=alpha,
+        gamma=gamma,
+        beta=beta,
+        rho=rho,
+        c=c,
+        tol=tol,
+        diis=diis,
+        epsilon=epsilon,
+        samples=samples,
+        backend=backend,
+        device=device,
+        noise=noise,
+        maxiter=maxiter,
+        silent=silent,
+        calibrate_lr=calibrate_lr,
+    )
+    return optimizer(
+        objective=objective,
+        maxiter=maxiter,
+        gradient=gradient,
+        initial_values=initial_values,
+        variables=variables,
+        *args,
+        **kwargs,
+    )

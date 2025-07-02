@@ -15,9 +15,12 @@ import gc
 
 numbering = BitNumbering.MSB
 
+
 class TequilaSpexException(TequilaException):
     """Custom exception for SPEX simulator errors"""
+
     pass
+
 
 def extract_pauli_dict(ps):
     """
@@ -34,6 +37,7 @@ def extract_pauli_dict(ps):
         return dict(ps.paulistrings[0].items())
     raise TequilaSpexException("Unsupported generator type")
 
+
 def circuit_hash(abstract_circuit, variables=None):
     """
     Create MD5 hash for circuit caching
@@ -44,20 +48,22 @@ def circuit_hash(abstract_circuit, variables=None):
         return None
     for g in abstract_circuit.gates:
         gate_str = f"{type(g).__name__}:{g.name}:{g.target}:{g.control}:{g.generator}:{getattr(g, 'parameter', None)}\n"
-        sha.update(gate_str.encode('utf-8'))
+        sha.update(gate_str.encode("utf-8"))
     if variables:
         for key, value in sorted(variables.items()):
-            sha.update(f"{key}:{value}\n".encode('utf-8'))
+            sha.update(f"{key}:{value}\n".encode("utf-8"))
     return sha.hexdigest()
+
 
 def copy_exp_pauli_term(term):
     """Create a copy of a ExpPauliTerm."""
     new_term = spex_tequila.ExpPauliTerm()
-    if hasattr(term, 'pauli_map'):
+    if hasattr(term, "pauli_map"):
         new_term.pauli_map = dict(term.pauli_map)
-    if hasattr(term, 'angle'):
+    if hasattr(term, "angle"):
         new_term.angle = term.angle
     return new_term
+
 
 class BackendCircuitSpex(BackendCircuit):
     """SPEX circuit implementation using sparse state representation"""
@@ -82,18 +88,20 @@ class BackendCircuitSpex(BackendCircuit):
         "cc_max": True,
         "ry_gate": True,
         "y_gate": True,
-        "ch_gate": True
+        "ch_gate": True,
     }
 
-    def __init__(self, 
-                 abstract_circuit=None, 
-                 variables=None, 
-                 num_threads=-1, 
-                 amplitude_threshold=1e-14, 
-                 angle_threshold=1e-14,
-                 compress_qubits=True,
-                 *args, **kwargs):
-        
+    def __init__(
+        self,
+        abstract_circuit=None,
+        variables=None,
+        num_threads=-1,
+        amplitude_threshold=1e-14,
+        angle_threshold=1e-14,
+        compress_qubits=True,
+        *args,
+        **kwargs,
+    ):
         # Circuit chaching
         self.circuit_cache = {}
 
@@ -106,7 +114,7 @@ class BackendCircuitSpex(BackendCircuit):
         self.compress_qubits = compress_qubits
         self.n_qubits_compressed = None
         self.hamiltonians = None
-        
+
         super().__init__(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
 
     @property
@@ -116,7 +124,7 @@ class BackendCircuitSpex(BackendCircuit):
         if hasattr(self, "circuit") and self.circuit:
             for term in self.circuit:
                 used.update(term.pauli_map.keys())
-        
+
         if self.abstract_circuit is not None and hasattr(self.abstract_circuit, "gates"):
             for gate in self.abstract_circuit.gates:
                 if hasattr(gate, "target"):
@@ -134,7 +142,7 @@ class BackendCircuitSpex(BackendCircuit):
 
     def initialize_circuit(self, *args, **kwargs):
         return []
-    
+
     def create_circuit(self, abstract_circuit=None, variables=None, *args, **kwargs):
         """Compile circuit with caching using MD5 hash"""
         if abstract_circuit is None:
@@ -144,13 +152,13 @@ class BackendCircuitSpex(BackendCircuit):
 
         if key in self.circuit_cache:
             return self.circuit_cache[key]
-        
+
         circuit = super().create_circuit(abstract_circuit=abstract_circuit, variables=variables, *args, **kwargs)
 
         self.circuit_cache[key] = circuit
 
         return circuit
-    
+
     def compress_qubit_indices(self):
         """
         Optimize qubit indices by mapping used qubits to contiguous range
@@ -158,7 +166,7 @@ class BackendCircuitSpex(BackendCircuit):
         """
         if not self.compress_qubits or not (hasattr(self, "circuit") and self.circuit):
             return self.circuit, self.hamiltonians, self.n_qubits
-        
+
         new_circuit = [copy_exp_pauli_term(term) for term in self.circuit]
         for term in new_circuit:
             if hasattr(term, "pauli_map"):
@@ -190,11 +198,11 @@ class BackendCircuitSpex(BackendCircuit):
 
         # Create qubit mapping and remap all terms
         qubit_map = {old: new for new, old in enumerate(sorted(used_qubits))}
-        
+
         for term in new_circuit:
             term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
 
-        if new_hamiltonians is not None:    
+        if new_hamiltonians is not None:
             for ham in new_hamiltonians:
                 for term, _ in ham:
                     term.pauli_map = {qubit_map[old]: op for old, op in term.pauli_map.items()}
@@ -203,7 +211,6 @@ class BackendCircuitSpex(BackendCircuit):
 
         return new_circuit, new_hamiltonians, self.n_qubits_compressed
 
-      
     def update_variables(self, variables, *args, **kwargs):
         if variables is None:
             variables = {}
@@ -221,9 +228,8 @@ class BackendCircuitSpex(BackendCircuit):
         if callable(param):
             result = param(variables)
             return float(result)
-        
-        raise TequilaSpexException(f"Can't assign parameter '{param}'.")
 
+        raise TequilaSpexException(f"Can't assign parameter '{param}'.")
 
     def add_basic_gate(self, gate, circuit, *args, **kwargs):
         """Convert Tequila gates to SPEX exponential Pauli terms"""
@@ -248,7 +254,7 @@ class BackendCircuitSpex(BackendCircuit):
                 self.add_basic_gate(sub_gate, circuit, *args, **kwargs)
 
         elif isinstance(gate, QGateImpl):
-            if gate.name.lower() in ["x","y","z"]:
+            if gate.name.lower() in ["x", "y", "z"]:
                 # Convert standard gates to Pauli rotations
                 for ps in gate.make_generator(include_controls=True).paulistrings:
                     angle = numpy.pi * ps.coeff
@@ -259,7 +265,7 @@ class BackendCircuitSpex(BackendCircuit):
                     exp_term.angle = angle
                     circuit.append(exp_term)
             elif gate.name.lower() in ["h", "hadamard"]:
-                assert len(gate.target)==1
+                assert len(gate.target) == 1
                 target = gate.target[0]
                 for ps in ["-0.25*Y({q})", "Z({q})", "0.25*Y({q})"]:
                     ps = QubitHamiltonian(ps.format(q=gate.target[0])).paulistrings[0]
@@ -272,9 +278,10 @@ class BackendCircuitSpex(BackendCircuit):
                 raise TequilaSpexException("{} not supported. Only x,y,z,h".format(gate.name.lower()))
 
         else:
-            raise TequilaSpexException(f"Unsupported gate object type: {type(gate)}. "
-                                       "All gates should be compiled to exponential pauli or rotation gates.")
-
+            raise TequilaSpexException(
+                f"Unsupported gate object type: {type(gate)}. "
+                "All gates should be compiled to exponential pauli or rotation gates."
+            )
 
     def add_parametrized_gate(self, gate, circuit, *args, **kwargs):
         """Convert Tequila parametrized gates to SPEX exponential Pauli terms"""
@@ -299,7 +306,7 @@ class BackendCircuitSpex(BackendCircuit):
             compiled_gate = gate.compile(exponential_pauli=True)
             for sub_gate in compiled_gate.abstract_circuit.gates:
                 self.add_parametrized_gate(sub_gate, circuit, *args, **kwargs)
-        
+
         elif isinstance(gate, QGateImpl):
             for ps in gate.make_generator(include_controls=True).paulistrings:
                 if self.angle_threshold is not None and abs(gate.parameter) < self.angle_threshold:
@@ -310,9 +317,10 @@ class BackendCircuitSpex(BackendCircuit):
                 circuit.append(exp_term)
 
         else:
-            raise TequilaSpexException(f"Unsupported gate type: {type(gate)}. "
-                                       "Only Exponential Pauli and Rotation gates are allowed after compilation.")
-
+            raise TequilaSpexException(
+                f"Unsupported gate type: {type(gate)}. "
+                "Only Exponential Pauli and Rotation gates are allowed after compilation."
+            )
 
     def do_simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         """
@@ -350,7 +358,7 @@ class BackendCircuitSpex(BackendCircuit):
         gc.collect()
 
         return wfn_MSB
-    
+
     def simulate(self, variables, initial_state=0, *args, **kwargs) -> QubitWaveFunction:
         """Override simulate to avoid automatic mapping by KeyMapSubregisterToRegister"""
         self.update_variables(variables)
@@ -360,20 +368,18 @@ class BackendCircuitSpex(BackendCircuit):
 
 class BackendExpectationValueSpex(BackendExpectationValue):
     """SPEX expectation value calculator using sparse simulations"""
+
     BackendCircuitType = BackendCircuitSpex
 
-    def __init__(self, *args,
-                 num_threads=-1,
-                 amplitude_threshold=1e-14, 
-                 angle_threshold=1e-14,
-                 compress_qubits=True,
-                 **kwargs):
+    def __init__(
+        self, *args, num_threads=-1, amplitude_threshold=1e-14, angle_threshold=1e-14, compress_qubits=True, **kwargs
+    ):
         super().__init__(*args, **kwargs)
 
         self.num_threads = num_threads
         self.amplitude_threshold = amplitude_threshold
         self.angle_threshold = angle_threshold
-    
+
         # Configure circuit parameters
         if isinstance(self.U, BackendCircuitSpex):
             self.U.num_threads = num_threads
@@ -395,17 +401,16 @@ class BackendExpectationValueSpex(BackendExpectationValue):
             terms = []
             for ps in H.paulistrings:
                 # Construct Pauli string like "X(0)Y(1)"
-                pauli_map = dict(ps.items()) 
+                pauli_map = dict(ps.items())
                 term = spex_tequila.ExpPauliTerm()
-                term.pauli_map = pauli_map 
-                terms.append((term, ps.coeff))                    
+                term.pauli_map = pauli_map
+                terms.append((term, ps.coeff))
             converted.append(terms)
 
         if isinstance(self.U, BackendCircuitSpex):
             self.U.hamiltonians = converted
 
         return tuple(converted)
-
 
     def simulate(self, variables, initial_state=0, *args, **kwargs):
         """
@@ -452,8 +457,8 @@ class BackendExpectationValueSpex(BackendExpectationValue):
         for H_terms in comp_hams:
             val = spex_tequila.expectation_value_parallel(final_state, final_state, H_terms, n_qubits, num_threads=-1)
             results.append(val.real)
-        
+
         del final_state
         gc.collect()
-        
+
         return numpy.array(results)

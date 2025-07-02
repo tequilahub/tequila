@@ -3,6 +3,7 @@ import pytest, numpy
 
 # Backends
 import select_backends
+
 backends = select_backends.get()
 
 
@@ -14,8 +15,9 @@ def test_array_computation(backend):
     result = tq.simulate(E, backend=backend)
     assert all(result == numpy.asarray([1.0, 0.0, 0.0, -1.0]))
 
+
 @pytest.mark.parametrize("backend", backends)
-@pytest.mark.parametrize("shape", [(4,),(2,2)])
+@pytest.mark.parametrize("shape", [(4,), (2, 2)])
 def test_array_shape(backend, shape):
     expected = numpy.asarray([1.0, 0.0, 0.0, -1.0]).reshape(shape)
     U = tq.gates.X(target=0)
@@ -24,8 +26,9 @@ def test_array_shape(backend, shape):
     result = tq.simulate(E, backend=backend)
     assert (result == expected).all()
 
+
 @pytest.mark.parametrize("backend", backends)
-@pytest.mark.parametrize("shape", [(2,2)])
+@pytest.mark.parametrize("shape", [(2, 2)])
 def test_array_contraction(backend, shape):
     def contraction(array):
         bra = numpy.asarray([1.0, 1.0, 1.0, -1.0]).reshape(shape)
