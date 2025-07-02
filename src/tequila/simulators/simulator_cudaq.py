@@ -694,10 +694,13 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
                     for op in ops[1:]:
                         term *= op
                     term *= paulistring._coeff
-                    if hamiltonian_as_spin is None:
-                        hamiltonian_as_spin = term
-                    else:
-                        hamiltonian_as_spin += term
+                else:
+                    # If no operators, create a "zero operator" (identity with zero coefficient)
+                    term = spin.z(0) * 0.0 + paulistring._coeff  
+                if hamiltonian_as_spin is None:
+                    hamiltonian_as_spin = term
+                else:
+                    hamiltonian_as_spin += term
             # If no paulistrings, set to "zero operator" (not float)
             if hamiltonian_as_spin is None:
                 hamiltonian_as_spin = spin.z(0) * 0.0
