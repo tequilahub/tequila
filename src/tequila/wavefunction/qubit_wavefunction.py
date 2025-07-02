@@ -259,13 +259,16 @@ class QubitWaveFunction:
     def isclose(self: QubitWaveFunction,
                 other: QubitWaveFunction,
                 rtol: float = 1e-5,
-                atol: float = 1e-8) -> bool:
+                atol: float = 1e-8, 
+                ignore_global_phase: bool = True
+    ) -> bool:
         """
         Check if two wavefunctions are close, up to a global phase.
 
         :param other: The other wavefunction.
         :param rtol: Relative tolerance.
         :param atol: Absolute tolerance.
+        :param ignore_global_phase: Whether to ignore global phase differences.
         :return: Whether the wavefunctions are close.
         """
         inner = self.inner(other)
@@ -273,7 +276,10 @@ class QubitWaveFunction:
         other_norm = other.norm()
         cosine_similarity = inner / (self_norm * other_norm)
 
-        return (np.isclose(abs(cosine_similarity), 1.0, rtol, atol)
+        if ignore_global_phase:
+            cosine_similarity = abs(cosine_similarity)
+
+        return (np.isclose(cosine_similarity, 1.0, rtol, atol)
                 and np.isclose(self_norm, other_norm, rtol, atol))
 
     def __add__(self, other: QubitWaveFunction) -> QubitWaveFunction:

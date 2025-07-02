@@ -4,14 +4,13 @@ from numbers import Real as RealNumber
 from typing import Dict, Union, Hashable
 import pkg_resources
 from pkg_resources import DistributionNotFound
-
 from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, QTensor
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 
-SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm", "spex", "cudaq"]
+SUPPORTED_BACKENDS = ["qulacs", "qulacs_gpu", "qibo", "qiskit", "qiskit_gpu", "cirq", "pyquil", "symbolic", "qlm", "spex", "aqt", "mqp", "ddsim", "cudaq"]
 
 # TODO: Reenable noise for Qiskit
 SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
@@ -50,6 +49,21 @@ try:
     INSTALLED_SIMULATORS["spex"] = BackendTypes(BackendCircuitSpex, BackendExpectationValueSpex)
 except ImportError:
     HAS_SPEX = False
+
+# mqp and aqt are samplers, not simulators
+HAS_AQT = True
+try:
+    from tequila.simulators.simulator_aqt import BackendCircuitAQT, BackendExpectationValueAQT
+    INSTALLED_SAMPLERS["aqt"] = BackendTypes(BackendCircuitAQT, BackendExpectationValueAQT)
+except ImportError:
+    HAS_AQT = False
+    
+HAS_MQP = True
+try:
+    from tequila.simulators.simulator_mqp import BackendCircuitMQP, BackendExpectationValueMQP
+    INSTALLED_SAMPLERS["mqp"] = BackendTypes(BackendCircuitMQP, BackendExpectationValueMQP)
+except ImportError:
+    HAS_MQP = False
 
 
 HAS_QISKIT = True
@@ -160,6 +174,14 @@ INSTALLED_SIMULATORS["symbolic"] = BackendTypes(CircType=BackendCircuitSymbolic,
                                                 ExpValueType=BackendExpectationValueSymbolic)
 HAS_SYMBOLIC = True
 
+HAS_DDSIM = True
+try:
+    from tequila.simulators.simulator_ddsim import BackendCircuitDDSim, BackendExpectationValueDDSim
+
+    INSTALLED_SIMULATORS["ddsim"] = BackendTypes(BackendCircuitDDSim, BackendExpectationValueDDSim)
+    INSTALLED_SAMPLERS["ddsim"] = BackendTypes(BackendCircuitDDSim, BackendExpectationValueDDSim)
+except ImportError:
+    HAS_DDSIM = False
 
 def show_available_simulators():
     """ """
@@ -200,7 +222,7 @@ def pick_backend(backend: str = None, samples: int = None, noise: NoiseModel = N
         the name of the chosen (or verified) backend.
     """
 
-    if len(INSTALLED_SIMULATORS) == 0:
+    if len(INSTALLED_SIMULATORS) == 0 and len(INSTALLED_SAMPLERS) == 0:
         raise TequilaException("No simulators installed on your system")
 
     if backend is None and device is not None:
@@ -297,7 +319,10 @@ def compile_objective(objective: typing.Union['Objective'],
     if variables is None:
         variables = {k: 0.0 for k in objective.extract_variables()}
 
-    ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
+    if samples is None:
+        ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
+    else:
+        ExpValueType = INSTALLED_SAMPLERS[pick_backend(backend=backend, samples=samples)].ExpValueType
     all_compiled = True
     # check if compiling is necessary
     for arg in objective.args:
@@ -365,9 +390,14 @@ def compile_circuit(abstract_circuit: 'QCircuit',
     BackendCircuit:
         the compiled circuit.
     """
-
-    CircType = INSTALLED_SIMULATORS[
+    
+    if samples is None:
+        CircType = INSTALLED_SIMULATORS[
         pick_backend(backend=backend, samples=samples, noise=noise, device=device)].CircType
+    else:    
+        CircType = INSTALLED_SAMPLERS[
+        pick_backend(backend=backend, samples=samples, noise=noise, device=device)].CircType
+
 
     # dummy variables
     if variables is None:

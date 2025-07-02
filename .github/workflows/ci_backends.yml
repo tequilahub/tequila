@@ -68,6 +68,7 @@ jobs:
         # TODO: Update to Qiskit 2.0
         pip install "qulacs" "qiskit==1.*" "qiskit-aer"
         # pip install cirq # installs too much stuff currently
+        pip install "mqt.ddsim==2.0.0b2" # requires qiskit<2
         pip install -e . 
     - name: Lint with flake8
       run: |
