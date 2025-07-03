@@ -515,7 +515,7 @@ class BackendCircuitPyquil(BackendCircuit):
         for b in backend_result:
             try:
                 bit_dict[str(b)] += 1
-            except:
+            except Exception:
                 bit_dict[str(b)] = 1
 
         for k, v in bit_dict.items():
@@ -565,7 +565,7 @@ class BackendCircuitPyquil(BackendCircuit):
         else:
             try:
                 par = self.match_par_to_dummy[gate.parameter]
-            except:
+            except Exception:
                 par = circuit.declare("theta_{}".format(str(self.counter)), "REAL")
                 self.match_par_to_dummy[gate.parameter] = par
                 self.counter += 1
@@ -621,7 +621,7 @@ class BackendCircuitPyquil(BackendCircuit):
                 pyquil_gate = g(*[self.qubit(q) for q in gate.control + gate.target])
             else:
                 pyquil_gate = g(*[self.qubit(t) for t in gate.target])
-        except:
+        except Exception:
             g = op[0]
             for c in gate.control:
                 pyquil_gate = g(*[self.qubit(t) for t in gate.target]).controlled(self.qubit(c))
@@ -651,7 +651,7 @@ class BackendCircuitPyquil(BackendCircuit):
                 collected[str(noise.level)] = combine_kraus_maps(
                     self.noise_lookup[noise.name](*noise.probs), collected[str(noise.level)]
                 )
-            except:
+            except Exception:
                 collected[str(noise.level)] = self.noise_lookup[noise.name](*noise.probs)
         done = []
         for gate in prog:
@@ -724,18 +724,18 @@ class BackendCircuitPyquil(BackendCircuit):
                 try:
                     get_qc(d)
                     return
-                except:
+                except Exception:
                     try:
                         get_qc(d, as_qvm=True)
                         return
-                    except:
+                    except Exception:
                         raise TequilaException("could not obtain device from string; received {}".format(device))
 
         elif isinstance(device, dict):
             try:
                 get_qc(**device)
                 return
-            except:
+            except Exception:
                 raise TequilaException("could not initialize device from dict; received {}".format(device))
         elif isinstance(device, pyquil.api.QuantumComputer):
             return
@@ -765,18 +765,18 @@ class BackendCircuitPyquil(BackendCircuit):
             try:
                 back = get_qc(device, noisy=use_device_noise)
                 return back
-            except:
+            except Exception:
                 try:
                     back = get_qc(device, as_qvm=True, noisy=use_device_noise)
                     return back
-                except:
+                except Exception:
                     raise TequilaException("could not obtain device from string; received {}".format(device))
         elif isinstance(device, pyquil.api.QuantumComputer):
             return device
         elif isinstance(device, dict):
             try:
                 return get_qc(**device)
-            except:
+            except Exception:
                 raise TequilaException("could not initialize device from dict; received {}".format(device))
         else:
             raise TequilaException(

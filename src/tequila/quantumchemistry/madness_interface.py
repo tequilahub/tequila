@@ -74,7 +74,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         try:
             with open("plot2cube_{}.log".format(orbital), "w") as logfile:
                 subprocess.call(callist, stdout=logfile)
-        except:
+        except Exception:
             print("plotting failed ....")
             print("see plot2cube_{}.log".format(orbital))
 
@@ -190,7 +190,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
                 if pairinfo is not None:
                     break
-            except:
+            except Exception:
                 continue
 
         if pairinfo is None:
@@ -310,12 +310,12 @@ class QuantumChemistryMadness(QuantumChemistryBase):
 
         try:
             h = numpy.load("{}_htensor.{}".format(path, filetype))
-        except:
+        except Exception:
             h = "failed"
 
         try:
             g = numpy.load("{}_gtensor.{}".format(path, filetype))
-        except:
+        except Exception:
             g = "failed"
 
         return h, g
@@ -449,7 +449,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
         # check if the used qubit encoding has a hcb transformation
         try:
             have_hcb_trafo = self.transformation.hcb_to_me() is not None
-        except:
+        except Exception:
             have_hcb_trafo = False
         name = name.upper()
 
@@ -502,7 +502,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
                     order = int(name.split("-")[0])
                 else:
                     order = 1
-            except:
+            except Exception:
                 order = 1
 
         # first layer

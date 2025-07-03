@@ -707,7 +707,7 @@ def test_spa_consistency(geometry, name, optimize, transformation):
     # if not, HCB is not used in  circuit optimization anyways
     try:
         mol.transformation.hcb_to_me()
-    except:
+    except Exception:
         return
 
     # doesn't need to make physical sense for the test

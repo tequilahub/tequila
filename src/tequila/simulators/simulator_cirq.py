@@ -275,7 +275,7 @@ class BackendCircuitCirq(BackendCircuit):
         else:
             try:
                 par = self.tq_to_sympy[parameter]
-            except:
+            except Exception:
                 par = sympy.Symbol("{}_{}".format(self._name_variable_objective(parameter), str(self.counter)))
                 self.tq_to_sympy[parameter] = par
                 self.counter += 1

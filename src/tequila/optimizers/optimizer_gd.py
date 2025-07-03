@@ -505,7 +505,7 @@ class OptimizerGD(Optimizer):
             active_keys = self.active_key_lookup[s]
             last_moment = self.moments_lookup[s]
             adam_step = self.step_lookup[s]
-        except:
+        except Exception:
             raise TequilaException(
                 "Could not retrieve necessary information. Please use the prepare function before optimizing!"
             )
@@ -581,7 +581,7 @@ class OptimizerGD(Optimizer):
             self.moments_lookup[k] = (first, second)
             self.moments_trajectory[k] = [(first, second)]
             self.step_lookup[k] = 0
-        except:
+        except Exception:
             print("found no compiled objective with id {} in lookup. Did you pass the correct object?".format(k))
 
     def _adam(self, gradients, step, v, moments, active_keys, **kwargs):

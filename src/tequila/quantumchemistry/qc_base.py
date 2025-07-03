@@ -37,7 +37,7 @@ try:
     # otherwise replace with from openfermion.hamiltonians import MolecularData
     import openfermion
     from openfermion.chem import MolecularData
-except:
+except Exception:
     try:
         from openfermion.hamiltonians import MolecularData
     except Exception as E:
@@ -1363,7 +1363,7 @@ class QuantumChemistryBase:
         if optimize is None:
             try:
                 have_hcb_to_me = self.hcb_to_me() is not None
-            except:
+            except Exception:
                 have_hcb_to_me = False
             if have_hcb_to_me:
                 optimize = True
@@ -1535,7 +1535,7 @@ class QuantumChemistryBase:
                     order = int(name.split("-")[0])
                 else:
                     order = 1
-            except:
+            except Exception:
                 order = 1
 
         indices = self.make_upccgsd_indices(key=name)
@@ -1545,7 +1545,7 @@ class QuantumChemistryBase:
         try:
             if self.transformation.hcb_to_me() is None:
                 have_hcb_trafo = False
-        except:
+        except Exception:
             have_hcb_trafo = False
 
         # consistency checks for optimization

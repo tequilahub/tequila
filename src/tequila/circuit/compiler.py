@@ -50,7 +50,7 @@ class CircuitCompiler:
         for k in c.__dict__.keys():
             try:
                 c.__dict__[k] = True
-            except:
+            except Exception:
                 pass
         for k, v in kwargs.items():
             if k in c.__dict__:

@@ -1052,7 +1052,7 @@ def QubitExcitation(
     """
     try:
         assert len(target) % 2 == 0
-    except:
+    except Exception:
         raise Exception("QubitExcitation: Needs an even number of targets")
 
     return QCircuit.wrap_gate(

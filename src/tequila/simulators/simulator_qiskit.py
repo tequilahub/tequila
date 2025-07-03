@@ -16,13 +16,13 @@ from qiskit import QuantumCircuit, transpile
 HAS_NOISE = True
 try:
     from qiskit_aer import noise as qiskitnoise, AerSimulator
-except:
+except Exception:
     HAS_NOISE = False
 
 HAS_IBMQ = True
 try:
     from qiskit_ibm_runtime import IBMBackend
-except:
+except Exception:
     HAS_IBMQ = False
 
 
@@ -482,7 +482,7 @@ class BackendCircuitQiskit(BackendCircuit):
         if len(gate.extract_variables()) > 0:
             try:
                 par = self.tq_to_pars[gate.parameter]
-            except:
+            except Exception:
                 par = qiskit.circuit.parameter.Parameter(
                     "{}_{}".format(self._name_variable_objective(gate.parameter), str(self.counter))
                 )
@@ -642,7 +642,7 @@ class BackendCircuitQiskit(BackendCircuit):
                 d = device["name"].lower()
                 qiskit_provider.get_backend(name=d)
                 return
-            except:
+            except Exception:
                 raise TequilaQiskitException("dictionary initialization with device = {} failed.".format(str(device)))
 
         elif isinstance(device, str):

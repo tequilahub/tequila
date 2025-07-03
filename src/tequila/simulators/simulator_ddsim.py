@@ -248,7 +248,7 @@ class BackendCircuitDDSim(BackendCircuit):
         else:
             try:
                 par = self.tq_to_ddsim[parameter]
-            except:
+            except Exception:
                 var = Variable(
                     "{}_{}".format(
                         self._name_variable_objective(parameter),

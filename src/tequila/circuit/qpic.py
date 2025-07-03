@@ -31,7 +31,7 @@ def assign_name(parameter):
 
     try:
         return repr(parameter)
-    except:
+    except Exception:
         return str(parameter)
 
 

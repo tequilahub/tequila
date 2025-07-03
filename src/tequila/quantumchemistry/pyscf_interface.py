@@ -216,7 +216,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                 )
             if hasattr(self, "irreps"):
                 base += "{:15} : {}\n".format("irreps", self.irreps)
-        except:
+        except Exception:
             return base
         return base
 

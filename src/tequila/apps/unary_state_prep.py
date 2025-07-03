@@ -159,7 +159,7 @@ class UnaryStatePrep:
                     guess = numpy.random.uniform(0.1, 0.9 * 2 * numpy.pi, len(self._abstract_angles))
                     solutions = sympy.nsolve(equations, self._abstract_angles, guess)
                     count += 1
-                except:
+                except Exception:
                     count += 1
 
             if len(solutions) == 0:

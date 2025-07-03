@@ -82,7 +82,7 @@ class QngMatrix:
                         # if its an objective, call it. Else, it is a float.
                         try:
                             output[i + d_v][j + d_v] = term(variables=variables, samples=samples)
-                        except:
+                        except Exception:
                             output[i + d_v][j + d_v] = term
                     else:
                         output[i + d_v][j + d_v] = output[j + d_v][i + d_v]

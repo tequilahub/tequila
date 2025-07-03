@@ -32,7 +32,7 @@ class PauliClique:
             for d in ps.keys():
                 try:
                     paulis[d] = [1, -1]
-                except:
+                except Exception:
                     raise Exception("weird {} with len={} with d={}".format(paulis, len(paulis), d))
             for i in range(2**n_qubits):
                 binary_array = BitString.from_int(integer=i, nbits=n_qubits).array

@@ -197,7 +197,7 @@ class OptimizerHistory:
         for i, p in enumerate(properties):
             try:
                 label = labels[i]
-            except:
+            except Exception:
                 label = p
 
             if p == "energies":
