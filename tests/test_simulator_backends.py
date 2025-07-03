@@ -12,9 +12,7 @@ import tequila as tq
 import tequila.simulators.simulator_api
 from tequila import BitString, QubitWaveFunction
 
-"""
-Warn if Simulators are not installed
-"""
+# Warn if simulators are not installed
 import warnings
 import os
 import glob

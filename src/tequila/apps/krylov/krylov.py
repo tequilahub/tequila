@@ -1,6 +1,6 @@
 import copy
 import scipy
-from tequila import braket, QTensor, simulate
+from tequila import BraKet, QTensor, simulate
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 
 
@@ -37,13 +37,13 @@ def krylov_method(
     for i in range(n_krylov_states):
         for j in range(i, n_krylov_states):
             if assume_real:
-                h_real = braket(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H)[0]
+                h_real = BraKet(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H)[0]
                 h_im = 0
             else:
-                h_real, h_im = braket(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H)
+                h_real, h_im = BraKet(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H)
             HM[i, j] = h_real + 1j * h_im
             HM[j, i] = h_real - 1j * h_im
-            s_real, s_im = braket(bra=krylov_circs_x[i], ket=krylov_circs_x[j])
+            s_real, s_im = BraKet(bra=krylov_circs_x[i], ket=krylov_circs_x[j])
             SM[i, j] = s_real + 1j * s_im
             SM[j, i] = s_real - 1j * s_im
 

@@ -4,6 +4,11 @@ Add to tequila the ability to make ZX-Calculus
 Using the pyzx library: https://github.com/Quantomatic/pyzx
 """
 
+from tequila import TequilaException
+from tequila import export_open_qasm, import_open_qasm
+from tequila.circuit import QCircuit
+
+
 HAS_PYZX = True
 try:
     import pyzx
@@ -11,10 +16,6 @@ try:
     HAS_PYZX = True
 except ImportError:
     HAS_PYZX = False
-
-from tequila import TequilaException
-from tequila import export_open_qasm, import_open_qasm
-from tequila.circuit import QCircuit
 
 
 def convert_to_pyzx(circuit: QCircuit, variables=None):

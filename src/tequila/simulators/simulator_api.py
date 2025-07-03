@@ -11,6 +11,7 @@ from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.circuit.noise import NoiseModel
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
+from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
 
 SUPPORTED_BACKENDS = [
     "qulacs",
@@ -187,8 +188,6 @@ try:
     INSTALLED_SAMPLERS["qlm"] = BackendTypes(BackendCircuitQLM, BackendExpectationValueQLM)
 except ImportError:
     HAS_QLM = False
-
-from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
 
 INSTALLED_SIMULATORS["symbolic"] = BackendTypes(
     CircType=BackendCircuitSymbolic, ExpValueType=BackendExpectationValueSymbolic

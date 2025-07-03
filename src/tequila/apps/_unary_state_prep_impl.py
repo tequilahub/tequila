@@ -1,4 +1,4 @@
-f"""
+"""
 A program that can generate an arbitrary quantum state.
 
 Some conditions: if the number of states exceed the total number of bits,
@@ -8,7 +8,6 @@ Code by Maha Kesebi, Toronto 2019
 Implemented with OpenVQE structures
 
 Needs complete re-implementation at some point
-
 """
 
 from tequila.circuit import QCircuit

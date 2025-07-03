@@ -13,9 +13,6 @@ from tequila.objective import (
 from tequila.objective import QTensor
 from tequila.objective.braket import BraKet, make_transition, make_overlap, Overlap, Fidelity
 
-# backward compatibility
-braket = BraKet
-
 from tequila.optimizers import INSTALLED_OPTIMIZERS, show_available_optimizers
 from tequila.optimizers import minimize, minimize_scipy, minimize_gd, optimizer_scipy
 
@@ -47,11 +44,14 @@ from tequila.tools.random_generators import make_random_circuit, make_random_ham
 # get rid of the jax GPU/CPU warnings
 import warnings
 
-warnings.filterwarnings("ignore", module="jax")
-warnings.filterwarnings("ignore", module="absl")
-warnings.filterwarnings("default", category=TequilaWarning)
-
 # load applications and helpers
 from tequila.apps import adapt
 
 from .version import __version__, __author__
+
+# backward compatibility
+braket = BraKet
+
+warnings.filterwarnings("ignore", module="jax")
+warnings.filterwarnings("ignore", module="absl")
+warnings.filterwarnings("default", category=TequilaWarning)

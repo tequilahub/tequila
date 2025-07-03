@@ -1,3 +1,9 @@
+"""
+Explicit matrix forms for the Pauli operators for the tomatrix method
+For sparse matrices use the openfermion tool
+get the openfermion object with hamiltonian.hamiltonian
+"""
+
 import numbers
 import typing
 
@@ -10,14 +16,9 @@ from functools import reduce
 
 from collections import namedtuple
 
-BinaryPauli = namedtuple("BinaryPauli", "coeff, binary")
-
-"""
-Explicit matrix forms for the Pauli operators for the tomatrix method
-For sparse matrices use the openfermion tool
-get the openfermion object with hamiltonian.hamiltonian
-"""
 import numpy as np
+
+BinaryPauli = namedtuple("BinaryPauli", "coeff, binary")
 
 pauli_matrices = {
     "I": np.array([[1, 0], [0, 1]], dtype=complex),
@@ -165,7 +166,7 @@ class PauliString:
                 break
             pauli_dim = part.split("(")
             string = pauli_dim[0].upper()
-            if not string in ["X", "Y", "Z"]:
+            if string not in ["X", "Y", "Z"]:
                 raise TequilaException("PauliString.from_string initialization failed, unknown pauliterm: " + string)
             data[int(pauli_dim[1])] = string
 
@@ -427,7 +428,7 @@ class QubitHamiltonian:
                     if "@" in coeff:
                         coeff = coeff.replace("@", "e-")
                     coeff = complex(coeff)
-                except Exception as E:
+                except Exception:
                     raise Exception("failed to convert coefficient : {}".format(coeff))
 
                 if coeff.imag == 0.0:
