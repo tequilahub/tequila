@@ -327,7 +327,7 @@ class OptimizerGD(Optimizer):
                 best = e
                 best_angles = v
 
-            if self.tol != None:
+            if self.tol is not None:
                 if numpy.abs(e - last) <= self.tol:
                     if not self.silent:
                         print("delta f smaller than tolerance {}. Stopping optimization.".format(str(self.tol)))
@@ -754,7 +754,7 @@ class OptimizerGD(Optimizer):
             float representing the learning rate to use
         """
         if self.nextLRIndex == -1:
-            if self.alpha != None:
+            if self.alpha is not None:
                 return self.lr / (self.iteration**self.alpha)
             return self.lr
         else:

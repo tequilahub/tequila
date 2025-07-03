@@ -505,7 +505,7 @@ class UnaryStatePrepImpl:
 
                 control_bit_index = self.get_CNOT_move_non_opt(strings, index1, index2, target_bit_index)
 
-                if control_bit_index == None:
+                if control_bit_index is None:
                     # must be something with a rotation
                     string_to_rotate = self.left_compressed[0]
                     possible_rot_controls = self.get_0_rotation(strings, strings.index(string_to_rotate))

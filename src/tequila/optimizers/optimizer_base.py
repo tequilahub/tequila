@@ -838,7 +838,7 @@ class _SPSAGrad(_NumGrad):
 
         if isinstance(stepsize, list):
             self.nextIndex = 0
-        elif gamma != None:
+        elif gamma is not None:
             self.nextIndex = "adjust"
         else:
             self.nextIndex = -1
