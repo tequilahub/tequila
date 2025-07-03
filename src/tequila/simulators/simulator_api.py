@@ -34,7 +34,6 @@ INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
 
 
-
 HAS_QULACS = True
 INSTALLED_NOISE_SAMPLERS = {}
 if typing.TYPE_CHECKING:
@@ -49,8 +48,9 @@ We are distinguishing two classes of simulators: Samplers and full wavefunction 
 
 # a check block for cudaq
 HAS_CUDAQ = True
-try: 
+try:
     from tequila.simulators.simulator_cudaq import BackendCircuitCudaq, BackendExpectationValueCudaq
+
     INSTALLED_SIMULATORS["cudaq"] = BackendTypes(BackendCircuitCudaq, BackendExpectationValueCudaq)
 except ImportError:
     HAS_CUDAQ = False
