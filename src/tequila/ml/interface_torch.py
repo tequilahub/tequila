@@ -24,11 +24,12 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
         the requisite pytorch autograd function, alongside necessary information for higher level classes.
     """
 
-    if isinstance(objective,tuple) or isinstance(objective,list) or isinstance(objective,Objective):
+    if isinstance(objective, tuple) or isinstance(objective, list) or isinstance(objective, Objective):
         objective = vectorize(list_assignment(objective))
-    comped_objective, compile_args, input_vars, weight_vars, i_grads, w_grads, first, second \
-        = preamble(objective, compile_args, input_vars)
-    samples = compile_args['samples']
+    comped_objective, compile_args, input_vars, weight_vars, i_grads, w_grads, first, second = preamble(
+        objective, compile_args, input_vars
+    )
+    samples = compile_args["samples"]
 
     def tensor_fix(tensor, angles, first, second):
         """
@@ -94,6 +95,7 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
                 takes a tensor and an (int: Variable) dict and returns a (Variable: float) dict.
 
         """
+
         @staticmethod
         def forward(ctx, inputs, angles):
             """
@@ -106,8 +108,8 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
             if not isinstance(result, np.ndarray):
                 # this happens if the Objective is a scalar since that's usually more convenient for pure quantum stuff.
                 result = np.array(result)
-            if hasattr(inputs,'device'):
-                if inputs.device == 'cuda':
+            if hasattr(inputs, "device"):
+                if inputs.device == "cuda":
                     r = torch.from_numpy(result).to(inputs.device)
                 else:
                     r = torch.from_numpy(result)
@@ -122,7 +124,7 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
             call_args = tensor_fix(inputs, angles, first, second)
             back_d = grad_backward.get_device()
             # build up weight and input gradient matrices... see what needs to be done to them.
-            grad_outs = [None,None]
+            grad_outs = [None, None]
             for i, grads in enumerate([i_grads, w_grads]):
                 if grads != {}:
                     g_keys = [j for j in grads.keys()]
@@ -138,7 +140,7 @@ def get_torch_function(objective: Objective, compile_args: dict = None, input_va
                     else:
                         g_tensor = torch.as_tensor(arr, dtype=grad_backward.dtype)
 
-                    b = grad_backward.reshape(-1,1)
+                    b = grad_backward.reshape(-1, 1)
                     jvp = torch.matmul(g_tensor, b)
                     jvp_out = jvp.flatten()
                     jvp_out.requires_grad_(True)
@@ -186,9 +188,9 @@ class TorchLayer(torch.nn.Module):
         super().__init__()
 
         self._objective = objective
-        self.function,  weight_vars, compile_args = get_torch_function(objective, compile_args, input_vars)
+        self.function, weight_vars, compile_args = get_torch_function(objective, compile_args, input_vars)
         self._input_len = len(objective.extract_variables()) - len(weight_vars)
-        inits = compile_args['initial_values']
+        inits = compile_args["initial_values"]
         self.weights = {}
         if inits is not None:
             for v in weight_vars:
@@ -197,7 +199,7 @@ class TorchLayer(torch.nn.Module):
                 self.register_parameter(str(v), self.weights[str(v)])
         else:
             for v in weight_vars:
-                self.weights[str(v)] = torch.nn.Parameter(torch.nn.init.uniform(torch.Tensor(1), a=0.0, b=2*np.pi)[0])
+                self.weights[str(v)] = torch.nn.Parameter(torch.nn.init.uniform(torch.Tensor(1), a=0.0, b=2 * np.pi)[0])
                 self.register_parameter(str(v), self.weights[str(v)])
 
     def forward(self, x=None):
@@ -231,7 +233,9 @@ class TorchLayer(torch.nn.Module):
             f = None
         if x is not None:
             if len(x) != self._input_len:
-                raise TequilaMLException('Received input of len {} when Objective takes {} inputs.'.format(len(x),self._input_len))
+                raise TequilaMLException(
+                    "Received input of len {} when Objective takes {} inputs.".format(len(x), self._input_len)
+                )
         return self.function.apply(x, f)
 
     def extra_repr(self) -> str:
@@ -241,8 +245,7 @@ class TorchLayer(torch.nn.Module):
         str:
             Information used by print(TorchLayer).
         """
-        string = 'Tequila TorchLayer. Represents: \n'
-        string += '{} \n'.format(str(self._objective))
-        string += 'Current Weights: {}'.format(self.weights)
+        string = "Tequila TorchLayer. Represents: \n"
+        string += "{} \n".format(str(self._objective))
+        string += "Current Weights: {}".format(self.weights)
         return string
-

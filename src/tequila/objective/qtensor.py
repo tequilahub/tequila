@@ -2,6 +2,7 @@ import numpy, typing
 from .objective import Objective, ExpectationValueImpl, format_variable_dictionary
 from tequila import TequilaException
 
+
 class QTensor(numpy.ndarray):
     # see here: https://numpy.org/devdocs/user/basics.subclassing.html
 
@@ -15,17 +16,17 @@ class QTensor(numpy.ndarray):
         # do all-zero initialization
         shape = self.shape
         if objective_list is None:
-            with numpy.nditer(self, flags =["refs_ok"], op_flags=['readwrite']) as it:
+            with numpy.nditer(self, flags=["refs_ok"], op_flags=["readwrite"]) as it:
                 for x in it:
                     x[...] = Objective()
         else:
-            j=0
-            with numpy.nditer(self, flags =["refs_ok"], op_flags=['readwrite']) as it:
+            j = 0
+            with numpy.nditer(self, flags=["refs_ok"], op_flags=["readwrite"]) as it:
                 for x in it:
                     x[...] = objective_list[j]
-                    j=j+1
+                    j = j + 1
 
-    def __call__(self,variables=None, *args, **kwargs):
+    def __call__(self, variables=None, *args, **kwargs):
         """
         Return the output of the calculation the objective represents.
 
@@ -45,13 +46,15 @@ class QTensor(numpy.ndarray):
         # failsafe
         check_variables = {k: k in variables for k in self.extract_variables()}
         if not all(list(check_variables.values())):
-            raise TequilaException("Objective did not receive all variables:\n"
-                                   "You gave\n"
-                                   " {}\n"
-                                   " but the objective depends on\n"
-                                   " {}\n"
-                                   " missing values for\n"
-                                   " {}".format(variables, self.extract_variables(), [k for k,v in check_variables.items() if not v]))
+            raise TequilaException(
+                "Objective did not receive all variables:\n"
+                "You gave\n"
+                " {}\n"
+                " but the objective depends on\n"
+                " {}\n"
+                " missing values for\n"
+                " {}".format(variables, self.extract_variables(), [k for k, v in check_variables.items() if not v])
+            )
 
         # avoid multiple evaluations
         evaluated = {}
@@ -60,7 +63,7 @@ class QTensor(numpy.ndarray):
         for obj in newtensor:
             a = obj(variables=variables, *args, **kwargs)
             ev_array.append(a)
-        ev_array = numpy.reshape(ev_array,self.shape)
+        ev_array = numpy.reshape(ev_array, self.shape)
         if ev_array.shape == ():
             return float(ev_array)
         elif len(ev_array) == 1:
@@ -73,11 +76,11 @@ class QTensor(numpy.ndarray):
         _fn = numpy.vectorize(_f)
         return _fn(self)
 
-    def extract_variables(self)->list:
+    def extract_variables(self) -> list:
         newtensor = self.flatten()
         unique = []
         for obj in newtensor:
-            if hasattr(obj, 'extract_variables'):
+            if hasattr(obj, "extract_variables"):
                 var_list = obj.extract_variables()
                 for j in var_list:
                     if j not in unique:
@@ -94,7 +97,7 @@ class QTensor(numpy.ndarray):
         newtensor = self.flatten()
         expvals = []
         for obj in newtensor:
-            if hasattr(obj, 'get_expectationvalues'):
+            if hasattr(obj, "get_expectationvalues"):
                 expvals += obj.get_expectationvalues()
         return expvals
 
@@ -129,7 +132,7 @@ class QTensor(numpy.ndarray):
             return len(self.get_expectationvalues())
 
     def __repr__(self):
-        _repmat = numpy.empty(self.shape,dtype = object)
+        _repmat = numpy.empty(self.shape, dtype=object)
         _repmat = _repmat.flatten()
         newtensor = self.flatten()
         for i in range(len(newtensor)):
@@ -144,7 +147,7 @@ class QTensor(numpy.ndarray):
         newtensor = self.flatten()
         types = []
         for obj in newtensor:
-            if hasattr(obj, 'get_expectationvalues'):
+            if hasattr(obj, "get_expectationvalues"):
                 _types = [type(E) for E in obj.get_expectationvalues()]
                 for tt in _types:
                     types.append(tt)
@@ -157,19 +160,20 @@ class QTensor(numpy.ndarray):
 
         unique = self.count_expectationvalues(unique=True)
         measurements = self.count_measurements()
-        return "QTensor of shape {} with {} unique expectation values\n" \
-              "total measurements = {}\n" \
-              "variables          = {}\n" \
-              "types              = {}".format(self.shape, unique, measurements, variables, types)
+        return (
+            "QTensor of shape {} with {} unique expectation values\n"
+            "total measurements = {}\n"
+            "variables          = {}\n"
+            "types              = {}".format(self.shape, unique, measurements, variables, types)
+        )
 
     def contract(self):
         newtensor = self.flatten()
-        out_array=[obj for obj in newtensor]
+        out_array = [obj for obj in newtensor]
         summed = out_array[0]
         for entry in out_array[1:]:
             summed += entry
         return summed
-
 
     class HelperObject:
         """
@@ -178,16 +182,20 @@ class QTensor(numpy.ndarray):
         create if like this:
             ff = HelperObject(func=f) where f is the function you want to apply later (e.g. numpy.sin)
         use if like this with tequila objectives
-            f_on_objective = ff(objective) 
+            f_on_objective = ff(objective)
         """
+
         def __init__(self, func):
             self.func = func
+
         def __call__(self, objective):
             return objective.apply(self.func)
+
 
 # ------------------------------------------------------
 # backward compatibility with old VectorObjective class
 # ------------------------------------------------------
+
 
 def vectorize(objectives):
     """
@@ -206,6 +214,7 @@ def vectorize(objectives):
     """
     return QTensor(objective_list=objectives, shape=(len(objectives),))
 
+
 def VectorObjective(argsets: typing.Iterable = None, transformations: typing.Iterable[callable] = None):
     if argsets is None:
         return QTensor()
@@ -219,4 +228,3 @@ def VectorObjective(argsets: typing.Iterable = None, transformations: typing.Ite
             objective_list.append(Objective(args=argsets[i], transformation=transformations[i]))
 
     return vectorize(objectives=objective_list)
-

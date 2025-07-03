@@ -31,9 +31,16 @@ class TequilaParameterError(TequilaException):
     """
 
     def __init__(self, parameter_name, parameter_class, parameter_value, called_from=""):
-        self.message = "OpenVQE ParameterError:" + called_from + " unknown parameter value: " + str(
-            parameter_name) + "=" + str(
-            parameter_value) + " for " + str(parameter_class)
+        self.message = (
+            "OpenVQE ParameterError:"
+            + called_from
+            + " unknown parameter value: "
+            + str(parameter_name)
+            + "="
+            + str(parameter_value)
+            + " for "
+            + str(parameter_class)
+        )
 
 
 class TequilaTypeError(TequilaException):
@@ -42,5 +49,12 @@ class TequilaTypeError(TequilaException):
     """
 
     def __init__(self, attr, type, expected):
-        self.message = "OpenVQE TypeError: " + "excpected type: " + str(expected) + " but got type " + str(
-            type) + " for attribute " + str(attr)
+        self.message = (
+            "OpenVQE TypeError: "
+            + "excpected type: "
+            + str(expected)
+            + " but got type "
+            + str(type)
+            + " for attribute "
+            + str(attr)
+        )

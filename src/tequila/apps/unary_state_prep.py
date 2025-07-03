@@ -26,8 +26,8 @@ class TequilaUnaryStateException(TequilaException):
 
     pass
 
-class UnaryStatePrep:
 
+class UnaryStatePrep:
     @property
     def n_qubits(self) -> int:
         return self._n_qubits
@@ -40,8 +40,9 @@ class UnaryStatePrep:
     def circuit(self) -> QCircuit:
         return self._abstract_circuit
 
-    def __init__(self, target_space: typing.List[BitString], max_repeat: int = 100,
-                 use_symbolic_solution: bool = False):
+    def __init__(
+        self, target_space: typing.List[BitString], max_repeat: int = 100, use_symbolic_solution: bool = False
+    ):
         """
         :param target_space: Give the target space by its basis functions
         e.g. target_space = ['00', '11']
@@ -70,7 +71,7 @@ class UnaryStatePrep:
         count = 0
         success = False
 
-        while (not success and count < self.max_repeat):
+        while not success and count < self.max_repeat:
             try:
                 count += 1
                 IMPL = UnaryStatePrepImpl()
@@ -81,13 +82,13 @@ class UnaryStatePrep:
             except NotImplementedError:
                 numpy.random.shuffle(target_space)
 
-        if not success: raise TequilaUnaryStateException(
-            "Could not disentangle the given state after " + str(count) + " restarts")
+        if not success:
+            raise TequilaUnaryStateException("Could not disentangle the given state after " + str(count) + " restarts")
 
         # get the equations to determine the angles
         simulator = BackendCircuitSymbolic(abstract_circuit=self._abstract_circuit, variables={})
         simulator.convert_to_numpy = False
-        variables = None # {k:k.name.evalf() for k in self._abstract_circuit.extract_variables()}
+        variables = None  # {k:k.name.evalf() for k in self._abstract_circuit.extract_variables()}
         wfn = simulator.simulate(initial_state=BitString.from_int(0, nbits=self.n_qubits), variables=variables)
         equations = []
         for k in target_space:
@@ -95,11 +96,11 @@ class UnaryStatePrep:
 
         normeq = -sympy.Integer(1)
         for c in abstract_coefficients.values():
-            normeq += c ** 2
+            normeq += c**2
         equations.append(normeq)
 
         # this gives back multiple solutions and some of them sometimes have sign errors ...
-        if (self._use_symbolic_solver):
+        if self._use_symbolic_solver:
             solutions = sympy.solve(equations, *tuple(abstract_angles), check=True, dict=True)[1]
             if len(abstract_angles) != len(solutions):
                 raise TequilaUnaryStateException("Could definetely not solve for the angles in UnaryStatePrep!")
@@ -137,7 +138,7 @@ class UnaryStatePrep:
                 raise TequilaException("UnaryStatePrep currently only possible for real coefficients")
             subs[ac] = sympy.Float(float(coeff.real))
         result = dict()
-        if (self._use_symbolic_solver):
+        if self._use_symbolic_solver:
             # fails a lot of times
             # better don't use
             # get the angle variables from the symbolic equations for the angles
@@ -148,7 +149,7 @@ class UnaryStatePrep:
             # integrated repeat loop for the case that the randomly generated guess is especially bad
             count = 0
             solutions = []
-            while (count < self.max_repeat and len(solutions) == 0):
+            while count < self.max_repeat and len(solutions) == 0:
                 try:
                     # same substitution map as before, but initialized as list of tuples
                     subsx = [x for x in subs.items()]
@@ -159,7 +160,7 @@ class UnaryStatePrep:
                 except:
                     count += 1
 
-            if (len(solutions) == 0):
+            if len(solutions) == 0:
                 raise TequilaUnaryStateException("Failed to numerically solve for angles")
 
             for i, symbol in enumerate(self._abstract_angles):
@@ -176,14 +177,15 @@ class UnaryStatePrep:
             assert wfn.length() == len(self._target_space)
             for key in wfn.keys():
                 try:
-                    assert (key in self._target_space)
+                    assert key in self._target_space
                 except AssertionError:
                     print("key=", key.binary, " not found in target space")
         except AssertionError:
-            raise TequilaException("UnaryStatePrep was not initialized for the basis states in your wavefunction\n"
-                                   "You gave:\n" + str(wfn) + "\n"
-                                                              "But the target_space is " + str(
-                [k.binary for k in self._target_space]) + "\n")
+            raise TequilaException(
+                "UnaryStatePrep was not initialized for the basis states in your wavefunction\n"
+                "You gave:\n" + str(wfn) + "\n"
+                "But the target_space is " + str([k.binary for k in self._target_space]) + "\n"
+            )
 
         angles = self._evaluate_angles(wfn=wfn)
 
@@ -194,7 +196,9 @@ class UnaryStatePrep:
             if hasattr(g, "parameter"):
                 symbol = g.parameter
                 # the module needs repairing ....
-                g2._parameter = assign_variable(-angles[-symbol()])  # the minus follows mahas convention since the circuits are daggered in the end
+                g2._parameter = assign_variable(
+                    -angles[-symbol()]
+                )  # the minus follows mahas convention since the circuits are daggered in the end
             result += g2
 
         return result
@@ -208,7 +212,7 @@ class UnaryStatePrep:
             g2 = copy.deepcopy(g)
             if hasattr(g, "parameter"):
                 symbol = g.parameter
-                name = str(-symbol) # kill the minus from the dagger
+                name = str(-symbol)  # kill the minus from the dagger
                 g2._parameter = assign_variable(name)
             result += g2
 
@@ -216,5 +220,5 @@ class UnaryStatePrep:
 
     def angles(self, wfn: QubitWaveFunction) -> typing.Dict[typing.Hashable, float]:
         sympy_angles = self._evaluate_angles(wfn=wfn)
-        angles = {assign_variable(str(key)):value for key, value in sympy_angles.items()}
+        angles = {assign_variable(str(key)): value for key, value in sympy_angles.items()}
         return angles

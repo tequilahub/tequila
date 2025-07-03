@@ -29,13 +29,13 @@ class OpenVQEEPySCFException(TequilaException):
 class Psi4Results:
     variables: dict = None  # psi4 variables dictionary, storing all computed values
     filename: str = None  # psi4 output file
-    wfn: typing.Union[
-        psi4.core.Wavefunction, psi4.core.CCWavefunction, psi4.core.CIWavefunction] = None  # psi4 wavefunction
+    wfn: typing.Union[psi4.core.Wavefunction, psi4.core.CCWavefunction, psi4.core.CIWavefunction] = (
+        None  # psi4 wavefunction
+    )
     mol: psi4.core.Molecule = None
 
 
 class QuantumChemistryPsi4(QuantumChemistryBase):
-
     def _make_psi4_active_space_data(self, active_orbitals, reference=None):
         """
         Small helper function
@@ -66,7 +66,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         @dataclass
         class ActiveSpaceDataPsi4(ActiveSpaceData):
-
             frozen_docc: list = None  # frozen reference orbitals grouped by irrep (psi4 option, if None then the active space can not be represented by psi4)
             frozen_uocc: list = None  # frozen virtual orbtials grouped by irrep (psi4 option, if None then the active space can not be represented by psi4)
 
@@ -79,8 +78,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             @property
             def psi4_representable(self):
                 standard_ref = [self.reference_orbitals[0] == 0] + [
-                    self.reference_orbitals[i] == self.reference_orbitals[i + 1] - 1 for i in
-                    range(len(self.reference_orbitals) - 1)]
+                    self.reference_orbitals[i] == self.reference_orbitals[i + 1] - 1
+                    for i in range(len(self.reference_orbitals) - 1)
+                ]
                 return self.frozen_docc is not None and self.frozen_uocc is not None and all(standard_ref)
 
         # transform irrep notation to absolute ints
@@ -101,7 +101,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 ref_idx += [x.idx_total for x in orbitals]
                 ref_idx = sorted(ref_idx)
         elif reference is None:
-            assert (self.n_electrons % 2 == 0)
+            assert self.n_electrons % 2 == 0
             ref_idx = standard_ref
 
         # determine if the active space can be represented by psi4
@@ -131,23 +131,28 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 frozen_uocc[i] = len(sorted_array)
                 last = self.orbitals_by_irrep[irrep][-1]
                 if len(sorted_array) > 0 and (
-                        sorted_array[-1] != last.idx_irrep or sorted_array[-1] != sorted_array[0] + len(
-                    sorted_array) - 1):
+                    sorted_array[-1] != last.idx_irrep or sorted_array[-1] != sorted_array[0] + len(sorted_array) - 1
+                ):
                     frozen_uocc = None
                     break
 
-        return ActiveSpaceDataPsi4(active_orbitals=sorted(active_idx),
-                                   reference_orbitals=sorted(ref_idx),
-                                   frozen_docc=frozen_docc,
-                                   frozen_uocc=frozen_uocc)
+        return ActiveSpaceDataPsi4(
+            active_orbitals=sorted(active_idx),
+            reference_orbitals=sorted(ref_idx),
+            frozen_docc=frozen_docc,
+            frozen_uocc=frozen_uocc,
+        )
 
-    def __init__(self, parameters: ParametersQC,
-                 transformation: typing.Union[str, typing.Callable] = None,
-                 active_orbitals=None,
-                 reference_orbitals=None,
-                 frozen_orbitals=None,
-                 *args,
-                 **kwargs):
+    def __init__(
+        self,
+        parameters: ParametersQC,
+        transformation: typing.Union[str, typing.Callable] = None,
+        active_orbitals=None,
+        reference_orbitals=None,
+        frozen_orbitals=None,
+        *args,
+        **kwargs,
+    ):
         """
 
         Parameters
@@ -187,9 +192,15 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         self.logs = {}  # store full psi4 output
 
         # psi4 active space will be formed later
-        super().__init__(parameters=parameters, transformation=transformation, active_orbitals=None,
-                         reference_orbitals=reference_orbitals,frozen_orbitals=[],
-                         *args, **kwargs)
+        super().__init__(
+            parameters=parameters,
+            transformation=transformation,
+            active_orbitals=None,
+            reference_orbitals=reference_orbitals,
+            frozen_orbitals=[],
+            *args,
+            **kwargs,
+        )
 
         oenergies = []
         for i in self.irreps:
@@ -214,7 +225,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             active_orbitals = [i for i in range(self.n_orbitals)]
 
         if frozen_orbitals is None and self.parameters.frozen_core:
-            frozen_orbitals = [i for i in range(self.parameters.get_number_of_core_electrons()//2)]
+            frozen_orbitals = [i for i in range(self.parameters.get_number_of_core_electrons() // 2)]
 
         def list_to_irrep_dict(orbital_list):
             # assume we have been given a list of orbitals with their total indices instead of a dictionary with irreps
@@ -231,21 +242,22 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         if not hasattr(active_orbitals, "keys"):
             active_orbitals = list_to_irrep_dict(active_orbitals)
-            
+
         if not hasattr(reference_orbitals, "keys"):
             reference_orbitals = list_to_irrep_dict(reference_orbitals)
 
         if not hasattr(frozen_orbitals, "keys"):
             frozen_orbitals = list_to_irrep_dict(frozen_orbitals)
-        
+
         # remove frozen-orbitals from active orbitals
-        for k,v in frozen_orbitals.items():
+        for k, v in frozen_orbitals.items():
             for x in v:
                 if k in active_orbitals and x in active_orbitals[k]:
                     active_orbitals[k].remove(x)
 
-        self.integral_manager.active_space = self._make_psi4_active_space_data(active_orbitals=active_orbitals,
-                                                                               reference=reference_orbitals)
+        self.integral_manager.active_space = self._make_psi4_active_space_data(
+            active_orbitals=active_orbitals, reference=reference_orbitals
+        )
         # need to recompute
         # (psi4 won't take over active space information otherwise)
         self.compute_energy(method="hf", recompute=True, *args, **kwargs)
@@ -308,9 +320,13 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             ref_wfn = kwargs["ref_wfn"]
             hf_energy = 0.0
         else:
-            hf_energy = self.compute_energy(method="hf", ignore_active_space=True,
-                                            options={"RHF__FAIL_ON_MAXITER": False}, point_group=self.point_group)
-            ref_wfn = self.logs['hf'].wfn
+            hf_energy = self.compute_energy(
+                method="hf",
+                ignore_active_space=True,
+                options={"RHF__FAIL_ON_MAXITER": False},
+                point_group=self.point_group,
+            )
+            ref_wfn = self.logs["hf"].wfn
 
         if ref_wfn.nirrep() != 1:
             wfn = ref_wfn.c1_deep_copy(ref_wfn.basisset())
@@ -325,9 +341,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         S = numpy.asarray(mints.ao_overlap())
         h = numpy.asarray(wfn.H())
         g = numpy.asarray(mints.ao_eri())
-        c = float(wfn.variables()['NUCLEAR REPULSION ENERGY'])
+        c = float(wfn.variables()["NUCLEAR REPULSION ENERGY"])
 
-        g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
+        g = NBodyTensor(elems=numpy.asarray(g), ordering="chem")
 
         kwargs["overlap_integrals"] = S
         kwargs["two_body_integrals"] = g
@@ -364,16 +380,27 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
 
         # set some psi4 specific features
         self.ref_energy = hf_energy
-        self.ref_wfn = self.logs['hf'].wfn
+        self.ref_wfn = self.logs["hf"].wfn
         self.irreps = irreps
 
         return super().initialize_integral_manager(*args, **kwargs)
 
     def compute_ccsd_amplitudes(self):
-        return self.compute_amplitudes(method='ccsd')
+        return self.compute_amplitudes(method="ccsd")
 
-    def _run_psi4(self, options: dict, method=None, return_wfn=True, point_group=None, filename: str = None,
-                  guess_wfn=None, ref_wfn=None, ignore_active_space=False, *args, **kwargs):
+    def _run_psi4(
+        self,
+        options: dict,
+        method=None,
+        return_wfn=True,
+        point_group=None,
+        filename: str = None,
+        guess_wfn=None,
+        ref_wfn=None,
+        ignore_active_space=False,
+        *args,
+        **kwargs,
+    ):
         psi4.core.clean()
         psi4.core.clean_variables()
         psi4.core.clean_options()
@@ -425,11 +452,13 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if ref_wfn is None or method.lower() == "hf":
             energy, wfn = psi4.energy(name=method.lower(), return_wfn=return_wfn, molecule=mol)
         else:
-            energy, wfn = psi4.energy(name=method.lower(), ref_wfn=ref_wfn, return_wfn=return_wfn, molecule=mol,
-                                      guess_wfn=guess_wfn)
+            energy, wfn = psi4.energy(
+                name=method.lower(), ref_wfn=ref_wfn, return_wfn=return_wfn, molecule=mol, guess_wfn=guess_wfn
+            )
         self.energies[method.lower()] = energy
-        self.logs[method.lower()] = Psi4Results(filename=filename, variables=copy.deepcopy(psi4.core.variables()),
-                                                wfn=wfn, mol=mol)
+        self.logs[method.lower()] = Psi4Results(
+            filename=filename, variables=copy.deepcopy(psi4.core.variables()), wfn=wfn, mol=mol
+        )
         return energy, wfn
 
     def _extract_active_space(self, arr):
@@ -438,8 +467,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         """
         if self.integral_manager.active_space is None:
             return arr
-        elif len(self.integral_manager.active_space.active_orbitals) == self.integral_manager.one_body_integrals.shape[
-            0]:
+        elif (
+            len(self.integral_manager.active_space.active_orbitals) == self.integral_manager.one_body_integrals.shape[0]
+        ):
             return arr
 
         if isinstance(arr, ClosedShellAmplitudes):
@@ -487,82 +517,96 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 result *= args[i] in active_sets[i]
             return result
 
-        c = numpy.fromfunction(
-            function=numpy.vectorize(func),
-            shape=arr_shape, dtype=numpy.int)
+        c = numpy.fromfunction(function=numpy.vectorize(func), shape=arr_shape, dtype=numpy.int)
 
         return numpy.extract(condition=c, arr=arr).reshape(final_shape)
 
-    #def compute_mp2_amplitudes(self, active_orbitals=None, *args, **kwargs) -> ClosedShellAmplitudes:
+    # def compute_mp2_amplitudes(self, active_orbitals=None, *args, **kwargs) -> ClosedShellAmplitudes:
     #    return self._extract_active_space(super().compute_mp2_amplitudes(*args, **kwargs))
 
-    def compute_amplitudes(self, method: str,
-                           options: dict = None,
-                           filename: str = None,
-                           *args,
-                           **kwargs) -> typing.Union[
-        Amplitudes, ClosedShellAmplitudes]:
-
+    def compute_amplitudes(
+        self, method: str, options: dict = None, filename: str = None, *args, **kwargs
+    ) -> typing.Union[Amplitudes, ClosedShellAmplitudes]:
         if options is None:
             options = {}
 
-        options['basis'] = self.parameters.basis_set
+        options["basis"] = self.parameters.basis_set
 
         if method.lower() == "mp2":
             return self.compute_mp2_amplitudes()
         try:
             psi4.core.clean_options()
             psi4.core.clean_variables()
-            energy, wfn = self._run_psi4(method=method,
-                                         options=options,
-                                         point_group='c1',
-                                         ref_wfn=self.ref_wfn.c1_deep_copy(self.ref_wfn.basisset()),
-                                         filename=filename,
-                                         *args,
-                                         **kwargs)
+            energy, wfn = self._run_psi4(
+                method=method,
+                options=options,
+                point_group="c1",
+                ref_wfn=self.ref_wfn.c1_deep_copy(self.ref_wfn.basisset()),
+                filename=filename,
+                *args,
+                **kwargs,
+            )
             all_amplitudes = wfn.get_amplitudes()
             closed_shell = isinstance(wfn.reference_wavefunction(), psi4.core.RHF)
             if closed_shell:
                 return self._extract_active_space(
-                    ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()}))
+                    ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
+                )
             else:
-                assert (self.integral_manager.trivial_active_space())  # only for closed-shell currently
+                assert self.integral_manager.trivial_active_space()  # only for closed-shell currently
                 return Amplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
         except Exception as err:
-            raise TequilaPsi4Exception("\nFailed to compute {} amplitudes.\n" \
-                                       "Make sure that you don't read in previous wavefunctions."
-                                       "Active spaces might get you in trouble.".format(method))
+            raise TequilaPsi4Exception(
+                "\nFailed to compute {} amplitudes.\n"
+                "Make sure that you don't read in previous wavefunctions."
+                "Active spaces might get you in trouble.".format(method)
+            )
 
-    def compute_energy(self, method: str = "fci", options=None, recompute: bool = True, ignore_active_space=False,
-                       *args, **kwargs):
+    def compute_energy(
+        self, method: str = "fci", options=None, recompute: bool = True, ignore_active_space=False, *args, **kwargs
+    ):
         if not recompute and method.lower() in self.energies and not "point_group" in kwargs:
             return self.energies[method.lower()]
 
         if options is None:
             options = {}
 
-        options['basis'] = self.parameters.basis_set
-        if not ignore_active_space and not self.integral_manager.active_space_is_trivial() and self.active_space.psi4_representable:
-            options['frozen_docc'] = self.active_space.frozen_docc
+        options["basis"] = self.parameters.basis_set
+        if (
+            not ignore_active_space
+            and not self.integral_manager.active_space_is_trivial()
+            and self.active_space.psi4_representable
+        ):
+            options["frozen_docc"] = self.active_space.frozen_docc
             if sum(self.active_space.frozen_uocc) > 0 and method.lower() not in ["hf", "fci", "detci"]:
                 print(
                     "There are known issues with some psi4 methods and frozen virtual orbitals. Proceed with fingers crossed for {}.".format(
-                        method))
-            options['frozen_uocc'] = self.active_space.frozen_uocc
-        if not ignore_active_space and not self.active_space.psi4_representable and not self.integral_manager.active_space_is_trivial():
+                        method
+                    )
+                )
+            options["frozen_uocc"] = self.active_space.frozen_uocc
+        if (
+            not ignore_active_space
+            and not self.active_space.psi4_representable
+            and not self.integral_manager.active_space_is_trivial()
+        ):
             warnings.warn("Warning: Active space is not Psi4 representable", TequilaWarning)
         return self._run_psi4(method=method, options=options, ignore_active_space=ignore_active_space, *args, **kwargs)[
-            0]
+            0
+        ]
 
     def __str__(self):
         result = super().__str__()
         result += "\nPsi4 Data\n"
-        result += "{key:15} : {value:15} \n".format(key="Point Group (full)",
-                                                    value=self.psi4_mol.get_full_point_group().lower())
+        result += "{key:15} : {value:15} \n".format(
+            key="Point Group (full)", value=self.psi4_mol.get_full_point_group().lower()
+        )
         result += "{key:15} : {value:15} \n".format(key="Point Group (used)", value=self.point_group)
         result += "{key:15} : {value} \n".format(key="nirrep", value=self.nirrep)
         result += "{key:15} : {value} \n".format(key="irreps", value=self.irreps)
-        result += "{key:15} : {value:15} \n".format(key="mos per irrep", value=str([len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)]))
+        result += "{key:15} : {value:15} \n".format(
+            key="mos per irrep", value=str([len(self.orbital_energies(irrep=i)) for i in range(self.nirrep)])
+        )
 
         return result
 
@@ -574,9 +618,18 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
     def rdm2(self) -> tuple:
         return super().rdm2
 
-    def compute_rdms(self, U: QCircuit = None, variables: Variables = None, spin_free: bool = True,
-                     get_rdm1: bool = True, get_rdm2: bool = True, psi4_method: str = None,
-                     psi4_options: dict = {}, *args, **kwargs):
+    def compute_rdms(
+        self,
+        U: QCircuit = None,
+        variables: Variables = None,
+        spin_free: bool = True,
+        get_rdm1: bool = True,
+        get_rdm2: bool = True,
+        psi4_method: str = None,
+        psi4_options: dict = {},
+        *args,
+        **kwargs,
+    ):
         """
         Same functionality as qc_base.compute_rdms (look there for more information),
         plus the additional option to compute 1- and 2-RDM using psi4 by the keyword psi4_rdms
@@ -605,8 +658,9 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         -------
         """
         if not psi4_method:
-            return super().compute_rdms(U=U, variables=variables, spin_free=spin_free,
-                                 get_rdm1=get_rdm1, get_rdm2=get_rdm2, *args, **kwargs)
+            return super().compute_rdms(
+                U=U, variables=variables, spin_free=spin_free, get_rdm1=get_rdm1, get_rdm2=get_rdm2, *args, **kwargs
+            )
         else:
             # Get 1- and 2-particle reduced density matrix via Psi4 CISD computation
             # If "cisd" is chosen, change to "detci" (default is excitation level 2 anyhow) to obtain a CIWavefunction
@@ -631,14 +685,21 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 self._rdm1 = rdm1
             if psi4_options["detci__tpdm"]:
                 rdm2 = psi4.driver.p4util.numpy_helper._to_array(wfn.get_tpdm("SUM", False), dense=True)
-                rdm2 = NBodyTensor(elems=rdm2, ordering='chem')
-                rdm2.reorder(to='phys')  # RDMs in physics ordering (cp. to NBodyTensor in qc_base.py)
+                rdm2 = NBodyTensor(elems=rdm2, ordering="chem")
+                rdm2.reorder(to="phys")  # RDMs in physics ordering (cp. to NBodyTensor in qc_base.py)
                 rdm2 = 2 * rdm2.elems  # Factor 2 since psi4 normalizes 2-rdm by 1/2
                 self._rdm2 = rdm2
 
-    def perturbative_f12_correction(self, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, gamma: float = 1.4,
-                                    n_ri: int = None, cabs_type: str = "active", cabs_options: dict = None,
-                                    **kwargs) -> float:
+    def perturbative_f12_correction(
+        self,
+        rdm1: numpy.ndarray = None,
+        rdm2: numpy.ndarray = None,
+        gamma: float = 1.4,
+        n_ri: int = None,
+        cabs_type: str = "active",
+        cabs_options: dict = None,
+        **kwargs,
+    ) -> float:
         """
         Computes the spin-free [2]_R12 correction, needing only the 1- and 2-RDM of a reference method
         Requires either 1-RDM, 2-RDM or information to compute them in kwargs
@@ -673,8 +734,16 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             the f12 correction for the energy
         """
         from .f12_corrections._f12_correction_psi4 import ExplicitCorrelationCorrectionPsi4
-        correction = ExplicitCorrelationCorrectionPsi4(mol=self, rdm1=rdm1, rdm2=rdm2, gamma=gamma,
-                                                       n_ri=n_ri, cabs_type=cabs_type, cabs_options=cabs_options,
-                                                       **kwargs)
+
+        correction = ExplicitCorrelationCorrectionPsi4(
+            mol=self,
+            rdm1=rdm1,
+            rdm2=rdm2,
+            gamma=gamma,
+            n_ri=n_ri,
+            cabs_type=cabs_type,
+            cabs_options=cabs_options,
+            **kwargs,
+        )
 
         return correction.compute()

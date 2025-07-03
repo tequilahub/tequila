@@ -19,7 +19,7 @@ print("Test: Circuit und Hamiltonian mit Variablen (SPEX vs. Qulacs)")
 a = tq.Variable("a")
 b = tq.Variable("b")
 c = tq.Variable("c")
-variables = {"a": np.pi/3, "b": np.pi/4, "c": np.pi/6}
+variables = {"a": np.pi / 3, "b": np.pi / 4, "c": np.pi / 6}
 
 # --- Circuitaufbau ---
 # Erzeuge einen Circuit, der auf 3 Qubits operiert:
@@ -27,9 +27,7 @@ variables = {"a": np.pi/3, "b": np.pi/4, "c": np.pi/6}
 # - Eine Ry-Rotation auf Qubit 1 (Winkel "b")
 # - Eine Rz-Rotation auf Qubit 2 (Winkel "c")
 # - Zusätzlich eine parametrische exponentielle Pauli-Rotation (ExpPauli) auf Qubit 0 und 2 (Pauli-String "X(0)Z(2)")
-U = tq.gates.Rx(angle="a", target=(0,)) \
-    + tq.gates.Ry(angle="b", target=(1,)) \
-    + tq.gates.Rz(angle="c", target=(2,))
+U = tq.gates.Rx(angle="a", target=(0,)) + tq.gates.Ry(angle="b", target=(1,)) + tq.gates.Rz(angle="c", target=(2,))
 U += tq.gates.ExpPauli(angle="a", paulistring="X(0)Z(2)")
 
 print("\nCircuit U:")
@@ -47,15 +45,15 @@ E = tq.ExpectationValue(U=U, H=H)
 
 # --- Simulation mit SPEX ---
 start = time.time()
-wfn_spex = tq.simulate(U, variables, backend='spex')
-exp_spex = tq.simulate(E, variables, backend='spex')
+wfn_spex = tq.simulate(U, variables, backend="spex")
+exp_spex = tq.simulate(E, variables, backend="spex")
 end = time.time()
 time_spex = end - start
 
 # --- Simulation mit Qulacs ---
 start = time.time()
-wfn_qulacs = tq.simulate(U, variables, backend='qulacs')
-exp_qulacs = tq.simulate(E, variables, backend='qulacs')
+wfn_qulacs = tq.simulate(U, variables, backend="qulacs")
+exp_qulacs = tq.simulate(E, variables, backend="qulacs")
 end = time.time()
 time_qulacs = end - start
 
@@ -70,9 +68,8 @@ print("\nErwartungswert (SPEX backend):", exp_spex, f"(Simulationszeit: {time_sp
 print("Erwartungswert (Qulacs backend):", exp_qulacs, f"(Simulationszeit: {time_qulacs:.3f}s)")
 
 # Optional: Vergleiche das innere Produkt der beiden Wavefunctions (Quadrat des Betrags)
-inner_prod = np.abs(wfn_spex.inner(wfn_qulacs))**2
+inner_prod = np.abs(wfn_spex.inner(wfn_qulacs)) ** 2
 print("\nInneres Produkt (Quadrat) zwischen SPEX und Qulacs:", inner_prod)
-
 
 
 """

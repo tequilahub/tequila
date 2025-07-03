@@ -1,4 +1,5 @@
 """Simulators for parametrized testing."""
+
 import pytest
 from typing import Sequence, List, Any
 import tequila.simulators.simulator_api
@@ -26,4 +27,3 @@ def get(sampler: bool = False, skip: Sequence[str] = ["symbolic"]) -> List[Any]:
             simulators.append(pytest.param(k, marks=pytest.mark.slow))
 
     return simulators
-

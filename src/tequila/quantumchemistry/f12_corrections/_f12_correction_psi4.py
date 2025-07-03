@@ -16,8 +16,17 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
     Class for computation of explicitly correlated correction using integrals from psi4
     """
 
-    def __init__(self, mol=None, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, gamma: float = 1.4,
-                 n_ri: int = None, cabs_type: str = "active", cabs_options: dict = None, **kwargs):
+    def __init__(
+        self,
+        mol=None,
+        rdm1: numpy.ndarray = None,
+        rdm2: numpy.ndarray = None,
+        gamma: float = 1.4,
+        n_ri: int = None,
+        cabs_type: str = "active",
+        cabs_options: dict = None,
+        **kwargs,
+    ):
         """
 
         Parameters
@@ -52,14 +61,15 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
 
         # If cabs_type == "cabs+", need C1-symmetry
         if self.cabs_type == "cabs+":
-            if not self.mol._point_group.lower() == 'c1':
+            if not self.mol._point_group.lower() == "c1":
                 raise TequilaException("CABS+ approach currently requires C1 symmetry!")
 
         if (self.rdm1 is None) or (self.rdm2 is None):
             if "rdm__psi4_method" in kwargs:
                 if "rdm__psi4_options" in kwargs:
-                    self.mol.compute_rdms(psi4_method=kwargs["rdm__psi4_method"],
-                                          psi4_options=kwargs["rdm__psi4_options"])
+                    self.mol.compute_rdms(
+                        psi4_method=kwargs["rdm__psi4_method"], psi4_options=kwargs["rdm__psi4_options"]
+                    )
                 else:
                     self.mol.compute_rdms(psi4_method=kwargs["rdm__psi4_method"])
                 self.rdm1, self.rdm2 = self.mol.rdm1, self.mol.rdm2
@@ -109,8 +119,12 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
             ordering = self.mol.kwargs["two_body_ordering"]
         else:
             ordering = "openfermion"
-        g = NBodyTensor(elems=self.mol.molecule.two_body_integrals, ordering=ordering, active_indices=self.active,
-                        size_full=self.n_ri)
+        g = NBodyTensor(
+            elems=self.mol.molecule.two_body_integrals,
+            ordering=ordering,
+            active_indices=self.active,
+            size_full=self.n_ri,
+        )
         g.reorder(to="phys")
 
         h = NBodyTensor(elems=self.mol.molecule.one_body_integrals, active_indices=self.active, size_full=self.n_ri)
@@ -158,10 +172,13 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
         aux_key = cabs_name
         # This function is commented in psi4-github (the following procedure is a lousy way to get a working
         # variant of psi4.core.BasisSet.build_ri_space
-        ri_basis_dict = psi4.driver.qcdb.BasisSet.pyconstruct_combined(psi4.driver.qcdb.Molecule(ri_mol.to_dict()),
-                                                                       [obs_key, aux_key],
-                                                                       [obs_key, aux_key],
-                                                                       ["ORBITAL", "F12"], [obs_key, aux_key])
+        ri_basis_dict = psi4.driver.qcdb.BasisSet.pyconstruct_combined(
+            psi4.driver.qcdb.Molecule(ri_mol.to_dict()),
+            [obs_key, aux_key],
+            [obs_key, aux_key],
+            ["ORBITAL", "F12"],
+            [obs_key, aux_key],
+        )
         # Augment libints-basis-dict by key and blend for psi4
         ri_basis_dict["key"] = "RI-BASIS"
         ri_basis_dict["blend"] = "RI-BASIS"
@@ -186,7 +203,7 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
         # psi4_cabsplus needs customary treatment of active, a specification from outside is not necessary
         # active corresponds to size of "OBS"-summands in correction ~ dim(rdm1)
         if self.active is None:
-            if self.rdm1.shape[0] < C_OBS.shape[1]:     # this case distinction is semantically pointless, but there to
+            if self.rdm1.shape[0] < C_OBS.shape[1]:  # this case distinction is semantically pointless, but there to
                 self.active = list(range(self.rdm1.shape[0]))  # emphasize the meaning of active here
             else:
                 self.active = list(range(C_OBS.shape[1]))
@@ -217,7 +234,7 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
         # Compute and assemble tensors
         # Helper functions
         def get_irange(i: int):
-            """ Returns indexing range for OBS and CABS part """
+            """Returns indexing range for OBS and CABS part"""
             irange = None
             if i == 0:  # OBS
                 irange = range(self.n_obs)
@@ -226,7 +243,7 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
             return irange
 
         def ind(i: int, p: int):
-            """ Translates CBS to CABS indices for CABS-integrals """
+            """Translates CBS to CABS indices for CABS-integrals"""
             if i == 0:  # OBS -> leave as is
                 return p
             elif i == 1:  # CABS -> translate to range [0,...,|CABS|]
@@ -303,9 +320,11 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
             try:
                 h, g, r = self.setup_tensors_psi4_cabsplus()
             except:
-                raise TequilaException("Something went wrong. Probably the psi4 version you have installed\
+                raise TequilaException(
+                    "Something went wrong. Probably the psi4 version you have installed\
                                         does not support the CABS-functionality.\
-                                        See preamble to setup_tensors_psi4_cabsplus.")
+                                        See preamble to setup_tensors_psi4_cabsplus."
+                )
         else:
             raise TequilaException("No cabs_method to specify integrals provided.")
         fock = super().build_fock_operator(h=h, g=g)

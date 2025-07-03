@@ -1,7 +1,14 @@
 import tequila.simulators.simulator_api
 from tequila.circuit import gates
-from tequila.circuit.compiler import compile_controlled_rotation, change_basis, compile_phase, compile_swap, \
-                                     compile_ry, compile_y, compile_ch
+from tequila.circuit.compiler import (
+    compile_controlled_rotation,
+    change_basis,
+    compile_phase,
+    compile_swap,
+    compile_ry,
+    compile_y,
+    compile_ch,
+)
 from numpy.random import uniform, randint
 from numpy import pi, isclose
 from tequila.hamiltonian import paulis
@@ -13,6 +20,7 @@ import numpy
 
 # Get QC backends for parametrized testing
 import select_backends
+
 simulators = select_backends.get()
 samplers = select_backends.get(sampler=True)
 
@@ -22,9 +30,9 @@ PZ = paulis.Z
 
 
 @pytest.mark.parametrize("simulator", simulators)
-@pytest.mark.parametrize('angle', numpy.random.uniform(0, 2 * numpy.pi, 1))
-@pytest.mark.parametrize('axis', ['X', 'Y', 'Z'])
-@pytest.mark.parametrize('control', [None, 1])
+@pytest.mark.parametrize("angle", numpy.random.uniform(0, 2 * numpy.pi, 1))
+@pytest.mark.parametrize("axis", ["X", "Y", "Z"])
+@pytest.mark.parametrize("control", [None, 1])
 def test_exponential_pauli_wfn(simulator, angle, axis, control):
     U1 = gates.RotationGate(axis=axis, angle=angle, target=0, control=control)
     U2 = gates.ExpPauli(paulistring=axis + "(0)", angle=angle, control=control)
@@ -33,8 +41,9 @@ def test_exponential_pauli_wfn(simulator, angle, axis, control):
     wfn2 = simulate(U2, backend=simulator)
     wfn3 = simulate(U2, backend=None)
 
-    assert (isclose(numpy.abs(wfn1.inner(wfn2))**2, 1.0, atol=1.e-4))
-    assert (isclose(numpy.abs(wfn2.inner(wfn3))**2, 1.0, atol=1.e-4))
+    assert isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.0e-4)
+    assert isclose(numpy.abs(wfn2.inner(wfn3)) ** 2, 1.0, atol=1.0e-4)
+
 
 @pytest.mark.parametrize("simulator", simulators)
 def test_controlled_rotations(simulator):
@@ -48,7 +57,8 @@ def test_controlled_rotations(simulator):
             RCU = compile_controlled_rotation(gate=U)
             wfn1 = simulate(U, initial_state=0, backend=simulator)
             wfn2 = simulate(RCU, initial_state=0, backend=simulator)
-            assert (isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+            assert isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.0e-4)
+
 
 @pytest.mark.parametrize("simulator", simulators)
 def test_basis_change(simulator):
@@ -57,31 +67,40 @@ def test_basis_change(simulator):
         EY = simulate(ExpectationValue(U=gates.Rx(target=0, angle=angle), H=PY(0)), backend=simulator)
         EZ = simulate(ExpectationValue(U=gates.Rx(target=0, angle=angle), H=PZ(0)), backend=simulator)
 
-        EXX = simulate(ExpectationValue(U=gates.Rx(target=0, angle=angle) + change_basis(target=0, axis=0),
-                                   H=PZ(0)), backend=simulator)
-        EYY = simulate(ExpectationValue(U=gates.Rx(target=0, angle=angle) + change_basis(target=0, axis=1),
-                                   H=PZ(0)), backend=simulator)
-        EZZ = simulate(ExpectationValue(U=gates.Rx(target=0, angle=angle) + change_basis(target=0, axis=2),
-                                   H=PZ(0)), backend=simulator)
+        EXX = simulate(
+            ExpectationValue(U=gates.Rx(target=0, angle=angle) + change_basis(target=0, axis=0), H=PZ(0)),
+            backend=simulator,
+        )
+        EYY = simulate(
+            ExpectationValue(U=gates.Rx(target=0, angle=angle) + change_basis(target=0, axis=1), H=PZ(0)),
+            backend=simulator,
+        )
+        EZZ = simulate(
+            ExpectationValue(U=gates.Rx(target=0, angle=angle) + change_basis(target=0, axis=2), H=PZ(0)),
+            backend=simulator,
+        )
 
-        assert (isclose(EX, EXX, atol=1.e-4))
-        assert (isclose(EY, EYY, atol=1.e-4))
-        assert (isclose(EZ, EZZ, atol=1.e-4))
+        assert isclose(EX, EXX, atol=1.0e-4)
+        assert isclose(EY, EYY, atol=1.0e-4)
+        assert isclose(EZ, EZZ, atol=1.0e-4)
 
     for i, gate in enumerate([gates.Rx, gates.Ry, gates.Rz]):
         angle = uniform(0, 2 * pi)
         U1 = gate(target=0, angle=angle)
-        U2 = change_basis(target=0, axis=i) + gates.Rz(target=0, angle=angle) + change_basis(target=0, axis=i,
-                                                                                             daggered=True)
+        U2 = (
+            change_basis(target=0, axis=i)
+            + gates.Rz(target=0, angle=angle)
+            + change_basis(target=0, axis=i, daggered=True)
+        )
         wfn1 = simulate(U1, backend=simulator)
         wfn2 = simulate(U2, backend=simulator)
-        assert (isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+        assert isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.0e-4)
 
         if simulator == "qiskit":
-            return # initial state not yet supported
+            return  # initial state not yet supported
         wfn1 = simulate(U1, initial_state=1, backend=simulator)
         wfn2 = simulate(U2, initial_state=1, backend=simulator)
-        assert (isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.e-4))
+        assert isclose(numpy.abs(wfn1.inner(wfn2)) ** 2, 1.0, atol=1.0e-4)
 
 
 def test_compile_swap():
@@ -90,77 +109,59 @@ def test_compile_swap():
 
     equivalent_swap = gates.X(target=0, control=3) + gates.X(target=3, control=0) + gates.X(target=0, control=3)
 
-    assert (equivalent_circuit == equivalent_swap)
+    assert equivalent_circuit == equivalent_swap
 
 
 @pytest.mark.parametrize(
-    "target,control,angle",
-    [
-        (2, 4, 3.14),
-        (1, 0, numpy.pi / 7),
-        (1, None, numpy.pi / 5),
-        (5, None, 1.093)
-    ]
+    "target,control,angle", [(2, 4, 3.14), (1, 0, numpy.pi / 7), (1, None, numpy.pi / 5), (5, None, 1.093)]
 )
 def test_compile_ry(target, control, angle):
-
     circuit = gates.Ry(target=target, control=control, angle=angle)
     equivalent_circuit = compile_ry(circuit)
 
-    equivalent_ry = gates.Rz(target=target, control=None, angle=-numpy.pi / 2) + \
-                    gates.Rx(target=target, control=control, angle=angle) + \
-                    gates.Rz(target=target, control=None, angle=numpy.pi / 2)
+    equivalent_ry = (
+        gates.Rz(target=target, control=None, angle=-numpy.pi / 2)
+        + gates.Rx(target=target, control=control, angle=angle)
+        + gates.Rz(target=target, control=None, angle=numpy.pi / 2)
+    )
 
-    assert (equivalent_circuit == equivalent_ry)
+    assert equivalent_circuit == equivalent_ry
 
 
 @pytest.mark.parametrize(
-    "target,control,power",
-    [
-        (2, 4, 1.5),
-        (4, 0, 1.0),
-        (0, 5, 2.9),
-        (1, None, 4.2),
-        (5, None, 3.9)
-    ]
+    "target,control,power", [(2, 4, 1.5), (4, 0, 1.0), (0, 5, 2.9), (1, None, 4.2), (5, None, 3.9)]
 )
 def test_compile_y(target, control, power):
-
     circuit = gates.Y(target=target, control=control, power=power)
     equivalent_circuit_y = compile_y(circuit)
 
-    equivalent_y = gates.Rz(target=target, control=None, angle=-numpy.pi / 2) + \
-                   gates.X(target=target, control=control, power=power) + \
-                   gates.Rz(target=target, control=None, angle=numpy.pi / 2)
+    equivalent_y = (
+        gates.Rz(target=target, control=None, angle=-numpy.pi / 2)
+        + gates.X(target=target, control=control, power=power)
+        + gates.Rz(target=target, control=None, angle=numpy.pi / 2)
+    )
 
-    assert (equivalent_circuit_y == equivalent_y)
+    assert equivalent_circuit_y == equivalent_y
 
 
 @pytest.mark.parametrize(
-    "target,control,power",
-    [
-        (2, 4, 1.5),
-        (4, 2, 1.0),
-        (0, 5, 2.9),
-        (1, None, 4.2),
-        (5, None, 3.9)
-    ]
+    "target,control,power", [(2, 4, 1.5), (4, 2, 1.0), (0, 5, 2.9), (1, None, 4.2), (5, None, 3.9)]
 )
 def test_compile_ch(target, control, power):
-
     circuit = gates.H(target=target, control=control, power=power)
     equivalent_circuit = compile_ch(circuit)
 
-    equivalent_ch = gates.Ry(target=target, control=None, angle=-numpy.pi / 4) + \
-                    gates.Z(target=target, control=control, power=power) + \
-                    gates.Ry(target=target, control=None, angle=numpy.pi / 4)
+    equivalent_ch = (
+        gates.Ry(target=target, control=None, angle=-numpy.pi / 4)
+        + gates.Z(target=target, control=control, power=power)
+        + gates.Ry(target=target, control=None, angle=numpy.pi / 4)
+    )
 
     if control is not None:
-        assert (equivalent_circuit == equivalent_ch)
+        assert equivalent_circuit == equivalent_ch
 
 
 def test_compile_qubit_excitations():
-
     # Test 3-qubit excitation
 
     q = [5, 3, 7, 8, 2, 9, 2, 4]
@@ -168,9 +169,7 @@ def test_compile_qubit_excitations():
     state_circ = gates.X([q[0], q[1], q[2]])
 
     # optimized decomposition
-    circuit = state_circ + gates.QubitExcitation(
-        angle=numpy.pi / 2, target=[q[0], q[3], q[1], q[4], q[2], q[5]]
-    )
+    circuit = state_circ + gates.QubitExcitation(angle=numpy.pi / 2, target=[q[0], q[3], q[1], q[4], q[2], q[5]])
     U1 = compile_circuit(circuit)
 
     # non-optimized decomposition
@@ -193,8 +192,8 @@ def test_compile_qubit_excitations():
     state = QubitWaveFunction.from_array(state).normalize()
     angle = numpy.pi * numpy.random.randn()
 
-    U1 = compile_circuit(gates.QubitExcitation(angle=angle,target=q)) # optimized
-    U2 = compile_circuit(gates.QubitExcitation(angle=angle,target=q, compile_options="pauli"))
+    U1 = compile_circuit(gates.QubitExcitation(angle=angle, target=q))  # optimized
+    U2 = compile_circuit(gates.QubitExcitation(angle=angle, target=q, compile_options="pauli"))
 
     wfn1 = simulate(U1, initial_state=state)
     wfn2 = simulate(U2, initial_state=state)

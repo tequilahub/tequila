@@ -312,9 +312,10 @@ Here is how that works:
 1. Make a fork of `tequila` to your own github account.
 2. Checkout the `devel` branch and make sure it is up to date with the main [github repository](https://github.com/aspuru-guzik-group/tequila).
 3. Create and checkout a new branch from `devel` via `git branch pr-my-branch-name` followed by `git checkout pr-my-branch-name`. By typing `git branch` afterwards you can check which branch is currently checked out on your computer.
-4. Introduce changes to the code and commit them with git.
-5. Push the changes to *your* github account
-6. Log into github and create a pull request to the main [github repository](https://github.com/aspuru-guzik-group/tequila). The pull-request should be directed to the `devel` branch (but we can also change that afterwards).
+4. Introduce changes to the code.
+5. Format your code using [Ruff](https://github.com/astral-sh/ruff). You can install Ruff with `pip install ruff` and then run the formatter with `ruff format` (most IDEs also provide a way of integrating Ruff and doing this automatically).
+6. Commit them with git and push the changes to *your* github account
+7. Log into github and create a pull request to the main [github repository](https://github.com/aspuru-guzik-group/tequila). The pull-request should be directed to the `devel` branch (but we can also change that afterwards).
 
 If you plan to introduce major changes to the base library it can be beneficial to contact us first.
 This way we might be able to avoid conflicts before they arise.

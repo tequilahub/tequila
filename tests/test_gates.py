@@ -59,9 +59,9 @@ def test_only_hadamard_and_global_phase(angles):
         simulation_with_gp = tq.simulate(U)
 
         simulation_without_phase *= expected_phase
-        assert simulation_with_gp.isclose(
-            simulation_without_phase, ignore_global_phase=False
-        ), f"Failed at angle {angle_name}"
+        assert simulation_with_gp.isclose(simulation_without_phase, ignore_global_phase=False), (
+            f"Failed at angle {angle_name}"
+        )
 
 
 @pytest.mark.parametrize("angles", [get_fixed_angles(), get_random_angles()])
@@ -79,9 +79,9 @@ def test_bell_circuit_and_global_phase(angles):
         simulation_with_gp = tq.simulate(U)
 
         simulation_without_phase *= expected_phase
-        assert simulation_with_gp.isclose(
-            simulation_without_phase, ignore_global_phase=False
-        ), f"Failed at angle {angle_name}"
+        assert simulation_with_gp.isclose(simulation_without_phase, ignore_global_phase=False), (
+            f"Failed at angle {angle_name}"
+        )
 
 
 @pytest.mark.parametrize("angles", [get_fixed_angles(), get_random_angles()])
@@ -117,9 +117,7 @@ def test_mixed_gates_with_global_phase_in_between(angles):
         wf_without_phase *= expected_global_phase_factor**4
 
         # Assertion
-        assert wf_with_phase.isclose(
-            wf_without_phase, ignore_global_phase=False
-        ), f"Failed at angle {angle_name}"
+        assert wf_with_phase.isclose(wf_without_phase, ignore_global_phase=False), f"Failed at angle {angle_name}"
 
 
 # ------------------ tests for identity phase gate

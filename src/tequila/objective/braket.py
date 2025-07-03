@@ -7,7 +7,8 @@ from tequila.hamiltonian import paulis
 
 import numpy as np
 
-def Fidelity(bra,ket,*args,**kwargs):
+
+def Fidelity(bra, ket, *args, **kwargs):
     """
 
     Convenience initialization of an tq.Objective that corresponds to the fidelity |<bra|ket>|^2 between two quantum states
@@ -41,9 +42,10 @@ def Fidelity(bra,ket,*args,**kwargs):
     P0 = paulis.Qp(qubits)
     return ExpectationValue(H=P0, U=U, *args, **kwargs)
 
-def Overlap(bra,ket,*args,**kwargs):
+
+def Overlap(bra, ket, *args, **kwargs):
     """
-    
+
     Convenience initialization of an tq.Objective that corresponds to the overlap <bra|ket>
     initialized by the circuits bra and ket
 
@@ -55,7 +57,7 @@ def Overlap(bra,ket,*args,**kwargs):
     ----------
     bra: QCircuit
     ket: QCircuit
-    
+
     Returns:
     ----------
     A tuple of tq.Objective that evaluates to the real and imaginary part of the overlap between the two states
@@ -64,8 +66,9 @@ def Overlap(bra,ket,*args,**kwargs):
 
     return BraKet(ket=ket, bra=bra, operator=None, *args, **kwargs)
 
+
 def BraKet(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = None, *args, **kwargs) -> ExpectationValue:
-    """Function that allows to calculate different quantities 
+    """Function that allows to calculate different quantities
        depending on the passed parameters:
        1) If only ket is passed, returns the overlap with itself (1).
        2) If ket and bra are passed, returns the overlap between the two states.
@@ -75,23 +78,25 @@ def BraKet(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = Non
        returns an instance of tq.Objective
 
     Args:
-        ket (QCircuit): QCircuit corresponding to a state. 
+        ket (QCircuit): QCircuit corresponding to a state.
         bra (QCircuit, optional): QCircuit corresponding to a second state.
                                   Defaults to None.
-        operator (QubitHamiltonian, optional): Operator of which we want to 
-                                               calculate the transition element. 
+        operator (QubitHamiltonian, optional): Operator of which we want to
+                                               calculate the transition element.
                                                Defaults to None.
 
     Returns:
         a tuple of tq.Objective representing the real and imaginary part of the BraKet
     """
-    
+
     # allow for some convenience
     if "H" in kwargs:
         if operator is None:
-            operator=kwargs["H"]
+            operator = kwargs["H"]
         else:
-            raise TequilaException("BraKet inconsistency between operator and kwargs[\"H\"] do not given H= ... and operator= ... in the same call")
+            raise TequilaException(
+                'BraKet inconsistency between operator and kwargs["H"] do not given H= ... and operator= ... in the same call'
+            )
         kwargs.pop("H")
 
     if bra is None:
@@ -99,86 +104,89 @@ def BraKet(ket: QCircuit, bra: QCircuit = None, operator: QubitHamiltonian = Non
 
     if id(ket) == id(bra):
         if operator is None:
-            return Objective()+1.0 , Objective() 
-        return ExpectationValue(H=operator, U=ket, *args, **kwargs) , Objective()
+            return Objective() + 1.0, Objective()
+        return ExpectationValue(H=operator, U=ket, *args, **kwargs), Objective()
     else:
         if operator is None:
-            return make_overlap(U0 = bra, U1 = ket, *args, **kwargs)
-        
-        return make_transition(U0 = bra, U1 = ket, H = operator, *args, **kwargs)
+            return make_overlap(U0=bra, U1=ket, *args, **kwargs)
 
-def make_overlap(U0:QCircuit = None, U1:QCircuit = None, *args, **kwargs) -> ExpectationValue:
-    '''
+        return make_transition(U0=bra, U1=ket, H=operator, *args, **kwargs)
+
+
+def make_overlap(U0: QCircuit = None, U1: QCircuit = None, *args, **kwargs) -> ExpectationValue:
+    """
     Function that calculates the overlap between two quantum states.
 
     Parameters
     ----------
     U0 : QCircuit tequila object, corresponding to the first state (will be the bra).
-         
+
     U1 : QCircuit tequila object, corresponding to the second state (will be the ket).
 
     Returns
     -------
     Real and imaginary Tequila objectives to be simulated or compiled.
 
-    '''
-    
+    """
+
     ctrl = find_unused_qubit(U0=U0, U1=U1)
-    
-    #print('Control qubit:',ctrl)
-    
-    U_a = U0.add_controls([ctrl]) #this add the control by modifying the previous circuit
-    U_b = U1.add_controls([ctrl]) #NonType object
-    
-    #bulding the circuit for the overlap evaluation
+
+    # print('Control qubit:',ctrl)
+
+    U_a = U0.add_controls([ctrl])  # this add the control by modifying the previous circuit
+    U_b = U1.add_controls([ctrl])  # NonType object
+
+    # bulding the circuit for the overlap evaluation
     circuit = H(target=ctrl)
     circuit += X(target=ctrl)
     circuit += U_a
     circuit += X(target=ctrl)
     circuit += U_b
-    
+
     x = paulis.X(ctrl)
     y = paulis.Y(ctrl)
     Ex = ExpectationValue(H=x, U=circuit, *args, **kwargs)
     Ey = ExpectationValue(H=y, U=circuit, *args, **kwargs)
-    
+
     return Ex, Ey
 
 
-def make_transition(U0:QCircuit = None, U1:QCircuit = None, H: QubitHamiltonian = None, *args, **kwargs) -> ExpectationValue:
-    '''
+def make_transition(
+    U0: QCircuit = None, U1: QCircuit = None, H: QubitHamiltonian = None, *args, **kwargs
+) -> ExpectationValue:
+    """
     Function that calculates the transition elements of an Hamiltonian operator
     between two different quantum states.
 
     Parameters
     ----------
     U0 : QCircuit tequila object, corresponding to the first state (will be the bra).
-         
+
     U1 : QCircuit tequila object, corresponding to the second state (will be the ket).
-    
+
     H : QubitHamiltonian tequila object
-        
+
     Returns
     -------
     Real and imaginary Tequila objectives to be simulated or compiled.
 
-    '''
-    
+    """
+
     # want to measure: <U1|H|U0> -> \sum_k c_k <U1|U_k|U0>
-    
+
     trans_real = 0
     trans_im = 0
-    
-    for ps in H.paulistrings:
-        #print('string',ps)
-        c_k = ps.coeff
-        #print('coeff', c_k)
-        U_k = PauliGate(ps)
-        objective_real, objective_im = make_overlap(U0=U0, U1=U1+U_k, *args, **kwargs)
-        
-        trans_real += c_k*objective_real
-        trans_im += c_k*objective_im
 
-        #print('contribution', trans_real+trans_im)
-        
+    for ps in H.paulistrings:
+        # print('string',ps)
+        c_k = ps.coeff
+        # print('coeff', c_k)
+        U_k = PauliGate(ps)
+        objective_real, objective_im = make_overlap(U0=U0, U1=U1 + U_k, *args, **kwargs)
+
+        trans_real += c_k * objective_real
+        trans_im += c_k * objective_im
+
+        # print('contribution', trans_real+trans_im)
+
     return trans_real, trans_im

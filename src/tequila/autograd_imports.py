@@ -6,7 +6,8 @@ __AUTOGRAD__BACKEND__ = None
 try:
     import jax
     from jax import numpy
-    jax.config.update('jax_platform_name', 'cpu')
+
+    jax.config.update("jax_platform_name", "cpu")
     __AUTOGRAD__BACKEND__ = "jax"
 except:
     # will pick autograd if jax is not installed
@@ -19,7 +20,8 @@ except:
     except ImportError:
         raise TequilaException("Neither jax nor autograd found on your system")
 
-def change_classical_differentiation_backend(name:str):
+
+def change_classical_differentiation_backend(name: str):
     if name.lower() == "jax":
         try:
             import jax
@@ -37,6 +39,7 @@ def change_classical_differentiation_backend(name:str):
         raise TequilaException("unknown differentiation backend: {}, try jax or autograd".format(name))
 
     return True
+
 
 def status():
     print("currently loaded autodiff numpy: {}, {}".format(numpy.__name__, numpy))

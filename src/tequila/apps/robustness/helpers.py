@@ -25,16 +25,16 @@ class PauliClique:
         -------
         """
         n_qubits = self.n_qubits
-        eig = np.asarray([0.0 for n in range(2 ** n_qubits)], dtype=float)
+        eig = np.asarray([0.0 for n in range(2**n_qubits)], dtype=float)
         for ps in self.paulistrings:
-            x = np.asarray([1.0 for n in range(2 ** n_qubits)], dtype=int)
+            x = np.asarray([1.0 for n in range(2**n_qubits)], dtype=int)
             paulis = [[1, 1]] * n_qubits
             for d in ps.keys():
                 try:
                     paulis[d] = [1, -1]
                 except:
                     raise Exception("weird {} with len={} with d={}".format(paulis, len(paulis), d))
-            for i in range(2 ** n_qubits):
+            for i in range(2**n_qubits):
                 binary_array = BitString.from_int(integer=i, nbits=n_qubits).array
                 for j, k in enumerate(binary_array):
                     x[i] *= paulis[j][k]
@@ -60,8 +60,12 @@ class PauliClique:
         for ps in self.paulistrings:
             normalized_ps.append(PauliString(coeff=ps.coeff / highest_abs, data=ps._data))
 
-        return PauliClique(coeff=self.coeff * highest_abs, H=QubitHamiltonian.from_paulistrings(normalized_ps),
-                           U=self.U, n_qubits=self.n_qubits)
+        return PauliClique(
+            coeff=self.coeff * highest_abs,
+            H=QubitHamiltonian.from_paulistrings(normalized_ps),
+            U=self.U,
+            n_qubits=self.n_qubits,
+        )
 
     def naked(self):
         return PauliClique(coeff=1.0, H=self.H, U=self.U, n_qubits=self.n_qubits)
