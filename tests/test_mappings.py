@@ -7,7 +7,8 @@ from tequila.simulators.simulator_api import simulate
 from tequila import INSTALLED_SAMPLERS
 from tequila.hamiltonian import QubitHamiltonian, PauliString
 
-import pytest, numpy
+import pytest
+import numpy
 from numpy import isclose
 
 

@@ -565,7 +565,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
     def compute_energy(
         self, method: str = "fci", options=None, recompute: bool = True, ignore_active_space=False, *args, **kwargs
     ):
-        if not recompute and method.lower() in self.energies and not "point_group" in kwargs:
+        if not recompute and method.lower() in self.energies and "point_group" not in kwargs:
             return self.energies[method.lower()]
 
         if options is None:

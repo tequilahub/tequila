@@ -34,7 +34,7 @@ requirements = read_requirements("requirements.txt")
 try:
     with open("README.md", "r") as f:
         long_description = f.read()
-except:
+except Exception:
     long_description = ""
 
 setup(

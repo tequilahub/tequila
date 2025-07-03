@@ -9,7 +9,7 @@ try:
 
     jax.config.update("jax_platform_name", "cpu")
     __AUTOGRAD__BACKEND__ = "jax"
-except:
+except Exception:
     # will pick autograd if jax is not installed
     # or if there are errors on import (like on M2 chips or when jax/jaxlib are not matching
     try:
@@ -26,13 +26,13 @@ def change_classical_differentiation_backend(name: str):
         try:
             import jax
             from jax import numpy
-        except:
+        except Exception:
             raise TequilaException("failed to load jax as classical differentiation backend")
     elif name.lower() == "autograd":
         try:
             import autograd as jax
             from autograd import numpy
-        except:
+        except Exception:
             raise TequilaException("failed to load autograd as classical differentiation backend")
 
     else:

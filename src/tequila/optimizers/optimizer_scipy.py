@@ -1,4 +1,7 @@
-import scipy, numpy, typing, numbers
+import scipy
+import numpy
+import typing
+import numbers
 from tequila.objective import Objective
 from tequila.objective.objective import assign_variable, Variable, format_variable_dictionary, format_variable_list
 from .optimizer_base import Optimizer, OptimizerResults

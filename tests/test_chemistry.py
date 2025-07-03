@@ -1,8 +1,10 @@
 import pytest
 import tequila.quantumchemistry as qc
 import numpy
-import os, glob
+import os
+import glob
 
+import tequila as tq
 import tequila.quantumchemistry.chemistry_tools
 import tequila.simulators.simulator_api
 from tequila.objective import ExpectationValue
@@ -11,13 +13,12 @@ from tequila.simulators.simulator_api import simulate
 import tequila.quantumchemistry.qc_base as qcb
 import tequila.tools.random_generators as rg
 
-HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
-HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
-
-import tequila as tq
-
 # Get QC backends for parametrized testing
 import select_backends
+
+
+HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
+HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 backends = select_backends.get()
 
@@ -706,7 +707,7 @@ def test_spa_consistency(geometry, name, optimize, transformation):
     # if not, HCB is not used in  circuit optimization anyways
     try:
         mol.transformation.hcb_to_me()
-    except:
+    except Exception:
         return
 
     # doesn't need to make physical sense for the test

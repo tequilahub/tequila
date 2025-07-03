@@ -1,4 +1,5 @@
-import os, glob
+import os
+import glob
 
 
 def teardown_function(function):

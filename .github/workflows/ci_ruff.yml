@@ -1,5 +1,5 @@
-name: Check Formatting
-on: [push, pull_request]
+name: Formatter and Linter
+on: [ push, pull_request ]
 
 jobs:
   ruff:
@@ -8,4 +8,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v3
         with:
-          args: "format --check --diff"
+          version: "0.12.1"
+      - run: "ruff format --check --diff"
+      - run: "ruff check"

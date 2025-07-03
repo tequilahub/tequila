@@ -932,7 +932,7 @@ class Moment(QCircuit):
         new.extend(self.gates[(position + 1) :])
         try:
             return Moment(gates=new)
-        except:
+        except Exception:
             return QCircuit(gates=new)
 
     def as_circuit(self):
@@ -1007,7 +1007,7 @@ class Moment(QCircuit):
                 try:
                     result = self.add_gate(other.gates[0])
                     result._min_n_qubits += len(other.qubits)
-                except:
+                except Exception:
                     result = self.as_circuit() + QCircuit.wrap_gate(other)
                     result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
 
@@ -1016,7 +1016,7 @@ class Moment(QCircuit):
                 try:
                     result = self.add_gate(other)
                     result._min_n_qubits += len(other.qubits)
-                except:
+                except Exception:
                     result = self.as_circuit() + QCircuit.wrap_gate(other)
                     result._min_n_qubits = max(self.as_circuit()._min_n_qubits, QCircuit.wrap_gate(other)._min_n_qubits)
             else:

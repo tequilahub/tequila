@@ -8,7 +8,9 @@ The whole thing is currently not very stable
 
 from tequila.circuit import QCircuit
 from tequila import BitString
-import typing, numpy, copy
+import typing
+import numpy
+import copy
 from tequila import TequilaException
 from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic
@@ -157,7 +159,7 @@ class UnaryStatePrep:
                     guess = numpy.random.uniform(0.1, 0.9 * 2 * numpy.pi, len(self._abstract_angles))
                     solutions = sympy.nsolve(equations, self._abstract_angles, guess)
                     count += 1
-                except:
+                except Exception:
                     count += 1
 
             if len(solutions) == 0:

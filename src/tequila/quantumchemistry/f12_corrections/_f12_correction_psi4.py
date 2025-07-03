@@ -319,7 +319,7 @@ class ExplicitCorrelationCorrectionPsi4(ExplicitCorrelationCorrection):
             print("Set up universal f12-correction using the CABS+ approach.")
             try:
                 h, g, r = self.setup_tensors_psi4_cabsplus()
-            except:
+            except Exception:
                 raise TequilaException(
                     "Something went wrong. Probably the psi4 version you have installed\
                                         does not support the CABS-functionality.\

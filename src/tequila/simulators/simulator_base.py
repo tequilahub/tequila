@@ -12,7 +12,11 @@ from typing import Union
 import numpy as np
 
 
-import numbers, typing, numpy, copy, warnings
+import numbers
+import typing
+import numpy
+import copy
+import warnings
 
 from dataclasses import dataclass
 

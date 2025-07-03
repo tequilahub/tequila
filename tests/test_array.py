@@ -1,5 +1,6 @@
 import tequila as tq
-import pytest, numpy
+import pytest
+import numpy
 
 # Backends
 import select_backends

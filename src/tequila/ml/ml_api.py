@@ -1,5 +1,4 @@
 from .utils_ml import TequilaMLException
-from shutil import which
 from tequila.objective import Objective
 
 SUPPORTED_PLATFORMS = ["pytorch"]
@@ -9,7 +8,7 @@ CONVERTERS = {}
 HAS_TORCH = True
 try:
     import torch
-except:
+except Exception:
     HAS_TORCH = False
 
 if HAS_TORCH:

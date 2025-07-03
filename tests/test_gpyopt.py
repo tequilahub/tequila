@@ -1,11 +1,13 @@
-import pytest, numpy
+import pytest
+import numpy
 import tequila as tq
 from tequila.simulators.simulator_api import simulate
 
-has_gpyopt = "gpyopt" in tq.INSTALLED_OPTIMIZERS
-
 # Get QC backends for parametrized testing
 import select_backends
+
+has_gpyopt = "gpyopt" in tq.INSTALLED_OPTIMIZERS
+
 
 simulators = select_backends.get()
 samplers = select_backends.get(sampler=True)

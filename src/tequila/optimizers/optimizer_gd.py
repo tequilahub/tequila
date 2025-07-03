@@ -1,4 +1,6 @@
-import numpy, typing, numbers
+import numpy
+import typing
+import numbers
 from tequila.objective import Objective
 from tequila.objective.objective import Variable, format_variable_dictionary
 from .optimizer_base import Optimizer, OptimizerResults, dataclass
@@ -325,7 +327,7 @@ class OptimizerGD(Optimizer):
                 best = e
                 best_angles = v
 
-            if self.tol != None:
+            if self.tol is not None:
                 if numpy.abs(e - last) <= self.tol:
                     if not self.silent:
                         print("delta f smaller than tolerance {}. Stopping optimization.".format(str(self.tol)))
@@ -503,7 +505,7 @@ class OptimizerGD(Optimizer):
             active_keys = self.active_key_lookup[s]
             last_moment = self.moments_lookup[s]
             adam_step = self.step_lookup[s]
-        except:
+        except Exception:
             raise TequilaException(
                 "Could not retrieve necessary information. Please use the prepare function before optimizing!"
             )
@@ -579,7 +581,7 @@ class OptimizerGD(Optimizer):
             self.moments_lookup[k] = (first, second)
             self.moments_trajectory[k] = [(first, second)]
             self.step_lookup[k] = 0
-        except:
+        except Exception:
             print("found no compiled objective with id {} in lookup. Did you pass the correct object?".format(k))
 
     def _adam(self, gradients, step, v, moments, active_keys, **kwargs):
@@ -752,7 +754,7 @@ class OptimizerGD(Optimizer):
             float representing the learning rate to use
         """
         if self.nextLRIndex == -1:
-            if self.alpha != None:
+            if self.alpha is not None:
                 return self.lr / (self.iteration**self.alpha)
             return self.lr
         else:

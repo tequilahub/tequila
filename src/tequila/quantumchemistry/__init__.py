@@ -6,6 +6,9 @@ from .qc_base import QuantumChemistryBase
 from .chemistry_tools import ParametersQC, NBodyTensor
 from .madness_interface import QuantumChemistryMadness
 
+# needs pyscf (handeled in call)
+from .orbital_optimizer import optimize_orbitals
+
 
 SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness", "pyscf"]
 INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase, "madness": QuantumChemistryMadness}
@@ -209,7 +212,3 @@ def MoleculeFromOpenFermion(
         INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(
             molecule=molecule, transformation=transformation, *args, **kwargs
         )
-
-
-# needs pyscf (handeled in call)
-from .orbital_optimizer import optimize_orbitals

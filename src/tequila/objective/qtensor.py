@@ -1,4 +1,5 @@
-import numpy, typing
+import numpy
+import typing
 from .objective import Objective, ExpectationValueImpl, format_variable_dictionary
 from tequila import TequilaException
 

@@ -20,7 +20,7 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
 
     Comm = 1j * (SpOp1 * SpOp2 - SpOp2 * SpOp1)
 
-    if Projector != None:
+    if Projector is not None:
         Comm = Projector * Comm
 
     spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", return_eigenvectors=False)

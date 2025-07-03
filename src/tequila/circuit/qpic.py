@@ -5,7 +5,8 @@ https://github.com/qpic/qpic/blob/master/doc/qpic_doc.pdf
 
 from tequila.objective.objective import FixedVariable
 
-import subprocess, numpy
+import subprocess
+import numpy
 from shutil import which
 
 import numbers
@@ -30,7 +31,7 @@ def assign_name(parameter):
 
     try:
         return repr(parameter)
-    except:
+    except Exception:
         return str(parameter)
 
 
