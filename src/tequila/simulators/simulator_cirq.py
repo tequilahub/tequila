@@ -7,7 +7,8 @@ from tequila.utils import to_float
 
 import importlib
 import numpy as np
-import typing, numbers
+import typing
+import numbers
 
 import cirq
 import cirq_google

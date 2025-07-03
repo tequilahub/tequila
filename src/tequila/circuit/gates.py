@@ -1,7 +1,8 @@
 from tequila.circuit.circuit import QCircuit
 from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit import _gates_impl as impl
-import typing, numbers
+import typing
+import numbers
 from tequila.hamiltonian import PauliString, QubitHamiltonian, paulis
 from tequila.tools import list_assignment
 import numpy as np

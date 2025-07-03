@@ -16,7 +16,8 @@ from tequila.objective.objective import ExpectationValueImpl
 import numpy
 from numpy import pi as pi
 
-import copy, typing
+import copy
+import typing
 
 
 class TequilaCompilerException(TequilaException):

@@ -8,7 +8,9 @@ from tequila.utils import to_float
 from typing import Union
 import warnings
 import numpy as np
-import qiskit, qiskit_aer, qiskit.providers.fake_provider
+import qiskit
+import qiskit_aer
+import qiskit.providers.fake_provider
 from qiskit import QuantumCircuit, transpile
 
 HAS_NOISE = True

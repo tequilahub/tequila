@@ -2,7 +2,10 @@
 Base class for Optimizers.
 """
 
-import typing, numbers, copy, warnings
+import typing
+import numbers
+import copy
+import warnings
 
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_api import compile, pick_backend

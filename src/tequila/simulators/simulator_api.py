@@ -1,5 +1,7 @@
 from collections import namedtuple
-import typing, warnings, numpy
+import typing
+import warnings
+import numpy
 from numbers import Real as RealNumber
 from typing import Dict, Union, Hashable
 import pkg_resources

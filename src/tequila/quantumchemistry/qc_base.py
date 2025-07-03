@@ -24,7 +24,9 @@ from .chemistry_tools import (
 
 from .encodings import known_encodings
 
-import typing, numpy, numbers
+import typing
+import numpy
+import numbers
 from itertools import product
 import tequila.grouping.fermionic_functions as ff
 

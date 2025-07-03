@@ -1,7 +1,8 @@
 import pytest
 import tequila.quantumchemistry as qc
 import numpy
-import os, glob
+import os
+import glob
 
 import tequila.quantumchemistry.chemistry_tools
 import tequila.simulators.simulator_api

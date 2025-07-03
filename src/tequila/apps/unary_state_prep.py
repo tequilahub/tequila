@@ -8,7 +8,9 @@ The whole thing is currently not very stable
 
 from tequila.circuit import QCircuit
 from tequila import BitString
-import typing, numpy, copy
+import typing
+import numpy
+import copy
 from tequila import TequilaException
 from tequila.apps._unary_state_prep_impl import UnaryStatePrepImpl, sympy
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic
