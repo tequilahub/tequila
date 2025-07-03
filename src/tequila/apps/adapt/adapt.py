@@ -146,7 +146,7 @@ class Adapt:
         self.parameters = AdaptParameters(*args, **filtered)
         if (
             self.parameters.silent
-            and not self.parameters.optimizer_args is None
+            and self.parameters.optimizer_args is not None
             and "silent" not in self.parameters.optimizer_args
         ):
             self.parameters.optimizer_args["silent"] = True
