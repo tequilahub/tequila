@@ -488,7 +488,7 @@ class QuantumChemistryMadness(QuantumChemistryBase):
             if "spin_adapt_singles" not in kwargs:
                 kwargs["spin_adapt_singles"] = True
 
-        if direct_compiling and not have_hcb_trafo and not "HCB" in name:
+        if direct_compiling and not have_hcb_trafo and "HCB" not in name:
             raise TequilaMadnessException(
                 "direct_compiling={} demanded but no hcb_to_me in transformation={}\ntry transformation='ReorderedJordanWigner' ".format(
                     direct_compiling, self.transformation

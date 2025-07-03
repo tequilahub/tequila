@@ -373,7 +373,7 @@ class MolecularPool(AdaptPoolBase):
         self.molecule = molecule
 
         if isinstance(indices, str):
-            if not "CC" in indices.upper():
+            if "CC" not in indices.upper():
                 raise TequilaException(
                     "Pool of type {} not yet supported.\nCreate your own by passing the initialized indices".format(
                         indices
