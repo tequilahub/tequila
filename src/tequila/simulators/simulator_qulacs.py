@@ -17,9 +17,11 @@ Developer Note:
     The angles are scaled with -1.0 to keep things consistent with the rest of tequila
 """
 
+
 class TequilaQulacsException(TequilaException):
     def __str__(self):
         return "Error in qulacs backend:" + self.message
+
 
 class BackendCircuitQulacs(BackendCircuit):
     """
@@ -49,7 +51,7 @@ class BackendCircuitQulacs(BackendCircuit):
         "trotterized": True,
         "swap": False,
         "multitarget": True,
-        "controlled_rotation": True, # needed for gates depending on variables
+        "controlled_rotation": True,  # needed for gates depending on variables
         "generalized_rotation": True,
         "exponential_pauli": False,
         "controlled_exponential_pauli": True,
@@ -60,7 +62,7 @@ class BackendCircuitQulacs(BackendCircuit):
         "controlled_phase": True,
         "toffoli": False,
         "phase_to_z": True,
-        "cc_max": False
+        "cc_max": False,
     }
 
     numbering = BitNumbering.LSB
@@ -83,41 +85,48 @@ class BackendCircuitQulacs(BackendCircuit):
         kwargs
         """
         self.op_lookup = {
-            'I': qulacs.gate.Identity,
-            'X': qulacs.gate.X,
-            'Y': qulacs.gate.Y,
-            'Z': qulacs.gate.Z,
-            'H': qulacs.gate.H,
-            'Rx': (lambda c: c.add_parametric_RX_gate, qulacs.gate.RX),
-            'Ry': (lambda c: c.add_parametric_RY_gate, qulacs.gate.RY),
-            'Rz': (lambda c: c.add_parametric_RZ_gate, qulacs.gate.RZ),
-            'SWAP': qulacs.gate.SWAP,
-            'Measure': qulacs.gate.Measurement,
-            'Exp-Pauli': None
+            "I": qulacs.gate.Identity,
+            "X": qulacs.gate.X,
+            "Y": qulacs.gate.Y,
+            "Z": qulacs.gate.Z,
+            "H": qulacs.gate.H,
+            "Rx": (lambda c: c.add_parametric_RX_gate, qulacs.gate.RX),
+            "Ry": (lambda c: c.add_parametric_RY_gate, qulacs.gate.RY),
+            "Rz": (lambda c: c.add_parametric_RZ_gate, qulacs.gate.RZ),
+            "SWAP": qulacs.gate.SWAP,
+            "Measure": qulacs.gate.Measurement,
+            "Exp-Pauli": None,
         }
         self.measurements = None
         self.variables = []
         super().__init__(abstract_circuit=abstract_circuit, noise=noise, *args, **kwargs)
-        self.has_noise=False
+        self.has_noise = False
         if noise is not None:
+            warnings.warn(
+                "Warning: noise in qulacs module will be dropped. Currently only works for qulacs version 0.5 or lower",
+                TequilaWarning,
+            )
 
-            warnings.warn("Warning: noise in qulacs module will be dropped. Currently only works for qulacs version 0.5 or lower", TequilaWarning)
-
-            self.has_noise=True
+            self.has_noise = True
             self.noise_lookup = {
-                'bit flip': [qulacs.gate.BitFlipNoise],
-                'phase flip': [lambda target, prob: qulacs.gate.Probabilistic([prob],[qulacs.gate.Z(target)])],
-                'phase damp': [lambda target, prob: qulacs.gate.DephasingNoise(target,(1/2)*(1-numpy.sqrt(1-prob)))],
-                'amplitude damp': [qulacs.gate.AmplitudeDampingNoise],
-                'phase-amplitude damp': [qulacs.gate.AmplitudeDampingNoise,
-                                         lambda target, prob: qulacs.gate.DephasingNoise(target,(1/2)*(1-numpy.sqrt(1-prob)))
-                                         ],
-                'depolarizing': [lambda target,prob: qulacs.gate.DepolarizingNoise(target,3*prob/4)]
+                "bit flip": [qulacs.gate.BitFlipNoise],
+                "phase flip": [lambda target, prob: qulacs.gate.Probabilistic([prob], [qulacs.gate.Z(target)])],
+                "phase damp": [
+                    lambda target, prob: qulacs.gate.DephasingNoise(target, (1 / 2) * (1 - numpy.sqrt(1 - prob)))
+                ],
+                "amplitude damp": [qulacs.gate.AmplitudeDampingNoise],
+                "phase-amplitude damp": [
+                    qulacs.gate.AmplitudeDampingNoise,
+                    lambda target, prob: qulacs.gate.DephasingNoise(target, (1 / 2) * (1 - numpy.sqrt(1 - prob))),
+                ],
+                "depolarizing": [lambda target, prob: qulacs.gate.DepolarizingNoise(target, 3 * prob / 4)],
             }
 
-            self.circuit=self.add_noise_to_circuit(noise)
+            self.circuit = self.add_noise_to_circuit(noise)
 
-    def initialize_state(self, n_qubits: int = None, initial_state: Union[int, QubitWaveFunction] = None) -> qulacs.QuantumState:
+    def initialize_state(
+        self, n_qubits: int = None, initial_state: Union[int, QubitWaveFunction] = None
+    ) -> qulacs.QuantumState:
         if n_qubits is None:
             n_qubits = self.n_qubits
 
@@ -269,13 +278,14 @@ class BackendCircuitQulacs(BackendCircuit):
         None
         """
         assert not gate.is_controlled()
-        convert = {'x': 1, 'y': 2, 'z': 3}
+        convert = {"x": 1, "y": 2, "z": 3}
         pind = [convert[x.lower()] for x in gate.paulistring.values()]
         qind = [self.qubit(x) for x in gate.paulistring.keys()]
         if len(gate.extract_variables()) > 0:
             self.variables.append(-gate.parameter * gate.paulistring.coeff)
-            circuit.add_parametric_multi_Pauli_rotation_gate(qind, pind,
-                                                             -gate.parameter(variables) * gate.paulistring.coeff)
+            circuit.add_parametric_multi_Pauli_rotation_gate(
+                qind, pind, -gate.parameter(variables) * gate.paulistring.coeff
+            )
         else:
             circuit.add_multi_Pauli_rotation_gate(qind, pind, -gate.parameter(variables) * gate.paulistring.coeff)
 
@@ -298,7 +308,7 @@ class BackendCircuitQulacs(BackendCircuit):
         None
         """
         op = self.op_lookup[gate.name]
-        if gate.name == 'Exp-Pauli':
+        if gate.name == "Exp-Pauli":
             self.add_exponential_pauli_gate(gate, circuit, variables)
             return
         else:
@@ -307,7 +317,9 @@ class BackendCircuitQulacs(BackendCircuit):
                 self.variables.append(-gate.parameter)
                 op(circuit)(self.qubit(gate.target[0]), -gate.parameter(variables=variables))
                 if gate.is_controlled():
-                    raise TequilaQulacsException("Gates which depend on variables can not be controlled! Gate was:\n{}".format(gate))
+                    raise TequilaQulacsException(
+                        "Gates which depend on variables can not be controlled! Gate was:\n{}".format(gate)
+                    )
                 return
             else:
                 op = op[1]
@@ -362,8 +374,7 @@ class BackendCircuitQulacs(BackendCircuit):
         self.measurements = sorted(target_qubits)
         return circuit
 
-
-    def add_noise_to_circuit(self,noise_model):
+    def add_noise_to_circuit(self, noise_model):
         """
         Apply noise from a NoiseModel to a circuit.
         Parameters
@@ -376,19 +387,19 @@ class BackendCircuitQulacs(BackendCircuit):
         qulacs.ParametrizedQuantumCircuit:
             self.circuit, with noise added on.
         """
-        c=self.circuit
-        n=noise_model
-        g_count=c.get_gate_count()
-        new=self.initialize_circuit()
+        c = self.circuit
+        n = noise_model
+        g_count = c.get_gate_count()
+        new = self.initialize_circuit()
         for i in range(g_count):
-            g=c.get_gate(i)
+            g = c.get_gate(i)
             new.add_gate(g)
-            qubits=g.get_target_index_list() + g.get_control_index_list()
+            qubits = g.get_target_index_list() + g.get_control_index_list()
             for noise in n.noises:
                 if len(qubits) == noise.level:
-                    for j,channel in enumerate(self.noise_lookup[noise.name]):
+                    for j, channel in enumerate(self.noise_lookup[noise.name]):
                         for q in qubits:
-                            chan=channel(q,noise.probs[j])
+                            chan = channel(q, noise.probs[j])
                             new.add_gate(chan)
         return new
 
@@ -415,10 +426,13 @@ class BackendCircuitQulacs(BackendCircuit):
         opt = qulacs.circuit.QuantumCircuitOptimizer()
         opt.optimize(circuit, max_block_size)
         if not silent:
-            print("qulacs: optimized circuit depth from {} to {} with max_block_size {}".format(old,
-                                                                                                circuit.calculate_depth(),
-                                                                                                max_block_size))
+            print(
+                "qulacs: optimized circuit depth from {} to {} with max_block_size {}".format(
+                    old, circuit.calculate_depth(), max_block_size
+                )
+            )
         return circuit
+
 
 class BackendExpectationValueQulacs(BackendExpectationValue):
     """
@@ -426,6 +440,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
 
     Ovverrides some methods of BackendExpectationValue, which should be seen for details.
     """
+
     use_mapping = True
     BackendCircuitType = BackendCircuitQulacs
 
@@ -460,7 +475,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         result = []
         for H in self.H:
             if isinstance(H, numbers.Number):
-                result.append(H) # those are accumulated unit strings, e.g 0.1*X(3) in wfn on qubits 0,1
+                result.append(H)  # those are accumulated unit strings, e.g 0.1*X(3) in wfn on qubits 0,1
             else:
                 result.append(H.get_expectation_value(state))
 
@@ -483,7 +498,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
 
         # map the reduced operators to the potentially smaller qubit system
         qubit_map = {}
-        for i,q in enumerate(self.U.abstract_circuit.qubits):
+        for i, q in enumerate(self.U.abstract_circuit.qubits):
             qubit_map[q] = i
 
         result = []
@@ -497,7 +512,9 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
             result.append(qulacs_H)
         return result
 
-    def sample(self, variables, samples, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs) -> numpy.array:
+    def sample(
+        self, variables, samples, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs
+    ) -> numpy.array:
         """
         Sample this Expectation Value.
         Parameters
@@ -520,7 +537,9 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
         state = self.U.initialize_state(self.n_qubits, initial_state)
         self.U.circuit.update_quantum_state(state)
         result = []
-        for H in self._reduced_hamiltonians:  # those are the hamiltonians which where non-used qubits are already traced out
+        for H in (
+            self._reduced_hamiltonians
+        ):  # those are the hamiltonians which where non-used qubits are already traced out
             E = 0.0
             if H.is_all_z() and not self.U.has_noise:
                 E = super().sample(samples=samples, variables=variables, initial_state=initial_state, *args, **kwargs)
@@ -540,7 +559,9 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                             state_tmp = state
                         else:
                             state_tmp = state.copy()
-                        if len(bc.gates) > 0:  # otherwise there is no basis change (empty qulacs circuit does not work out)
+                        if (
+                            len(bc.gates) > 0
+                        ):  # otherwise there is no basis change (empty qulacs circuit does not work out)
                             qbc.update_quantum_state(state_tmp)
                         ps_measure = 1.0
                         for idx in ps.keys():
@@ -548,7 +569,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                             M = qulacs.gate.Measurement(self.U.qubit(idx), self.U.qubit(idx))
                             M.update_quantum_state(state_tmp)
                             measured = state_tmp.get_classical_value(self.U.qubit(idx))
-                            ps_measure *= (-2.0 * measured + 1.0)  # 0 becomes 1 and 1 becomes -1
+                            ps_measure *= -2.0 * measured + 1.0  # 0 becomes 1 and 1 becomes -1
                         Esamples.append(ps_measure)
                     E += ps.coeff * sum(Esamples) / len(Esamples)
             result.append(E)

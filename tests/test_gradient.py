@@ -17,27 +17,29 @@ import select_backends
 simulators = select_backends.get()
 samplers = select_backends.get(sampler=True)
 
+
 # special tests
 def test_gradient_swap():
-    U1 = tq.gates.X(2) + tq.gates.SWAP(1,2,angle="a")
+    U1 = tq.gates.X(2) + tq.gates.SWAP(1, 2, angle="a")
     U2 = tq.compile_circuit(U1)
-    H = tq.paulis.Z(1) - tq.paulis.Z(2) 
+    H = tq.paulis.Z(1) - tq.paulis.Z(2)
     E1 = tq.ExpectationValue(H=H, U=U1)
     E2 = tq.ExpectationValue(H=H, U=U2)
     dE1 = tq.grad(E1, "a")
     dE2 = tq.grad(E1, "a")
-    for angle in numpy.random.uniform(0.0,numpy.pi*4,10):
-        g1 = tq.simulate(dE1, variables={"a":angle})
-        g2 = tq.simulate(dE2, variables={"a":angle})
-        assert numpy.isclose(g1,g2,atol=1.e-5)
+    for angle in numpy.random.uniform(0.0, numpy.pi * 4, 10):
+        g1 = tq.simulate(dE1, variables={"a": angle})
+        g2 = tq.simulate(dE2, variables={"a": angle})
+        assert numpy.isclose(g1, g2, atol=1.0e-5)
+
 
 # special tests
 def test_gradient_genrot():
     G = tq.paulis.KetBra(ket="|101>", bra="|010>")
     G = G + G.dagger()
     P0 = 1.0 - tq.paulis.Projector("|101>") - tq.paulis.Projector("|010>")
-    U1 = tq.gates.X([0,2]) + tq.gates.GeneralizedRotation(generator=G, p0=P0 ,angle="a")
-    U2 = tq.gates.X([0,2]) + tq.gates.GeneralizedRotation(generator=G, p0=P0 ,angle="a", assume_real=True)
+    U1 = tq.gates.X([0, 2]) + tq.gates.GeneralizedRotation(generator=G, p0=P0, angle="a")
+    U2 = tq.gates.X([0, 2]) + tq.gates.GeneralizedRotation(generator=G, p0=P0, angle="a", assume_real=True)
     U3 = tq.compile_circuit(U1)
     H = tq.paulis.Z(1) - tq.paulis.Z(2)
     E1 = tq.ExpectationValue(H=H, U=U1)
@@ -46,12 +48,13 @@ def test_gradient_genrot():
     dE1 = tq.grad(E1, "a")
     dE2 = tq.grad(E2, "a")
     dE3 = tq.grad(E3, "a")
-    for angle in numpy.random.uniform(0.0,numpy.pi*4,10):
-        g1 = tq.simulate(dE1, variables={"a":angle})
-        g2 = tq.simulate(dE2, variables={"a":angle})
-        g3 = tq.simulate(dE3, variables={"a":angle})
-        assert numpy.isclose(g1,g2,atol=1.e-5)
-        assert numpy.isclose(g1,g3,atol=1.e-5)
+    for angle in numpy.random.uniform(0.0, numpy.pi * 4, 10):
+        g1 = tq.simulate(dE1, variables={"a": angle})
+        g2 = tq.simulate(dE2, variables={"a": angle})
+        g3 = tq.simulate(dE3, variables={"a": angle})
+        assert numpy.isclose(g1, g2, atol=1.0e-5)
+        assert numpy.isclose(g1, g3, atol=1.0e-5)
+
 
 @pytest.mark.parametrize("simulator", simulators)
 @pytest.mark.parametrize("controlled", [False, True])
@@ -83,8 +86,8 @@ def test_gradient_UY_HX(simulator, angle_value, controlled, assume_real, silent=
     print("O={type}".format(type=type(O)))
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, numpy.sin(angle(variables)), atol=1.e-4))
-    assert (numpy.isclose(dE, numpy.cos(angle(variables)), atol=1.e-4))
+    assert numpy.isclose(E, numpy.sin(angle(variables)), atol=1.0e-4)
+    assert numpy.isclose(dE, numpy.cos(angle(variables)), atol=1.0e-4)
     if not silent:
         print("E         =", E)
         print("sin(angle)=", numpy.sin(angle()))
@@ -122,8 +125,8 @@ def test_gradient_UY_HX_sample(simulator, angle_value, controlled, assume_real, 
     print("O={type}".format(type=type(O)))
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator, samples=10000)
-    assert (numpy.isclose(E, numpy.sin(angle(variables)), atol=3.e-2))
-    assert (numpy.isclose(dE, numpy.cos(angle(variables)), atol=3.e-2))
+    assert numpy.isclose(E, numpy.sin(angle(variables)), atol=3.0e-2)
+    assert numpy.isclose(dE, numpy.cos(angle(variables)), atol=3.0e-2)
     if not silent:
         print("E         =", E)
         print("sin(angle)=", numpy.sin(angle()))
@@ -154,10 +157,10 @@ def test_gradient_UX_HY(simulator, angle_value, controlled, assume_real, silent=
         U = gates.Rx(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
     E = simulate(O, variables=variables, backend=simulator)
-    dO = grad(objective=O, variable='angle')
+    dO = grad(objective=O, variable="angle")
     dE = simulate(dO, variables=variables)
-    assert (numpy.isclose(E, -numpy.sin(angle(variables)), atol=1.e-4))
-    assert (numpy.isclose(dE, -numpy.cos(angle(variables)), atol=1.e-4))
+    assert numpy.isclose(E, -numpy.sin(angle(variables)), atol=1.0e-4)
+    assert numpy.isclose(dE, -numpy.cos(angle(variables)), atol=1.0e-4)
     if not silent:
         print("E         =", E)
         print("-sin(angle)=", -numpy.sin(angle(variables)))
@@ -177,17 +180,20 @@ def test_gradient_UHZH_HY(simulator, angle_value, controlled, assume_real, silen
     H = paulis.Y(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control) + gates.H(target=qubit) + gates.Rz(target=qubit, control=control,
-                                                                       assume_real=assume_real,
-                                                                       angle=angle) + gates.H(target=qubit)
+        U = (
+            gates.X(target=control)
+            + gates.H(target=qubit)
+            + gates.Rz(target=qubit, control=control, assume_real=assume_real, angle=angle)
+            + gates.H(target=qubit)
+        )
     else:
         U = gates.H(target=qubit) + gates.Rz(target=qubit, angle=angle) + gates.H(target=qubit)
     O = ExpectationValue(U=U, H=H)
     E = simulate(O, variables=variables, backend=simulator)
-    dO = grad(objective=O, variable='angle')
+    dO = grad(objective=O, variable="angle")
     dE = simulate(dO, variables=variables)
-    assert (numpy.isclose(E, -numpy.sin(angle(variables)), atol=1.e-4))
-    assert (numpy.isclose(dE, -numpy.cos(angle(variables)), atol=1.e-4))
+    assert numpy.isclose(E, -numpy.sin(angle(variables)), atol=1.0e-4)
+    assert numpy.isclose(dE, -numpy.cos(angle(variables)), atol=1.0e-4)
     if not silent:
         print("E         =", E)
         print("-sin(angle)=", -numpy.sin(angle(variables)))
@@ -207,18 +213,21 @@ def test_gradient_PHASE_HY(simulator, angle_value, controlled, assume_real, sile
     H = paulis.Y(qubit=qubit)
     if controlled:
         control = 1
-        U = gates.X(target=control) + gates.H(target=qubit) + gates.Phase(target=qubit, control=control,
-                                                                          assume_real=assume_real,
-                                                                          phi=angle) + gates.H(target=qubit)
+        U = (
+            gates.X(target=control)
+            + gates.H(target=qubit)
+            + gates.Phase(target=qubit, control=control, assume_real=assume_real, phi=angle)
+            + gates.H(target=qubit)
+        )
     else:
         U = gates.H(target=qubit) + gates.Phase(target=qubit, phi=angle) + gates.H(target=qubit)
 
     O = ExpectationValue(U=U, H=H)
     E = simulate(O, variables=variables, backend=simulator)
-    dO = grad(objective=O, variable='angle')
+    dO = grad(objective=O, variable="angle")
     dE = simulate(dO, variables=variables)
-    assert (numpy.isclose(E, -numpy.sin(angle(variables)), atol=1.e-4))
-    assert (numpy.isclose(dE, -numpy.cos(angle(variables)), atol=1.e-4))
+    assert numpy.isclose(E, -numpy.sin(angle(variables)), atol=1.0e-4)
+    assert numpy.isclose(dE, -numpy.cos(angle(variables)), atol=1.0e-4)
     if not silent:
         print("E         =", E)
         print("-sin(angle)=", -numpy.sin(angle(variables)))
@@ -255,12 +264,12 @@ def test_gradient_UY_HX_wfnsim(simulator, angle_value, controlled, assume_real, 
         U = gates.Ry(target=qubit, angle=angle)
     O = ExpectationValue(U=U, H=H)
     E = simulate(O, variables=variables, backend=simulator)
-    dO = grad(objective=O, variable='angle')
+    dO = grad(objective=O, variable="angle")
     dE = simulate(dO, variables=variables, backend=simulator)
     E = float(E)  # for isclose
     dE = float(dE)  # for isclose
-    assert (numpy.isclose(E, numpy.sin(angle(variables)), atol=0.0001))
-    assert (numpy.isclose(dE, numpy.cos(angle(variables)), atol=0.0001))
+    assert numpy.isclose(E, numpy.sin(angle(variables)), atol=0.0001)
+    assert numpy.isclose(dE, numpy.cos(angle(variables)), atol=0.0001)
     if not silent:
         print("E         =", E)
         print("sin(angle)=", numpy.sin(angle(variables)))
@@ -296,8 +305,8 @@ def test_gradient_UX_HY_wfnsim(simulator, angle, controlled, assume_real, silent
     E = simulate(O, variables=variables, backend=simulator)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables)
-    assert (numpy.isclose(E, -numpy.sin(angle(variables)), atol=0.0001))
-    assert (numpy.isclose(dE, -numpy.cos(angle(variables)), atol=0.0001))
+    assert numpy.isclose(E, -numpy.sin(angle(variables)), atol=0.0001)
+    assert numpy.isclose(dE, -numpy.cos(angle(variables)), atol=0.0001)
     if not silent:
         print("E         =", E)
         print("-sin(angle)=", -numpy.sin(angle(variables)))
@@ -323,8 +332,8 @@ def test_gradient_X(simulator, power, controlled):
     E = simulate(O, variables=variables, backend=simulator)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
-    assert (numpy.isclose(dE, -numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
+    assert numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.0e-4)
+    assert numpy.isclose(dE, -numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.0e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -345,8 +354,8 @@ def test_gradient_deep_controlled_X(simulator, power, controls):
     E = simulate(O, variables=variables, backend=simulator)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
-    assert (numpy.isclose(dE, -numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
+    assert numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.0e-4)
+    assert numpy.isclose(dE, -numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.0e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -369,8 +378,8 @@ def test_gradient_Y(simulator, power, controlled):
     E = simulate(O, variables=variables, backend=simulator)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
-    assert (numpy.isclose(dE, numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
+    assert numpy.isclose(E, numpy.sin(angle(variables) * (numpy.pi)), atol=1.0e-4)
+    assert numpy.isclose(dE, numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.0e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -391,8 +400,8 @@ def test_gradient_deep_controlled_Y(simulator, power, controls):
     E = simulate(O, variables=variables, backend=simulator)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
-    assert (numpy.isclose(dE, numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
+    assert numpy.isclose(E, numpy.sin(angle(variables) * (numpy.pi)), atol=1.0e-4)
+    assert numpy.isclose(dE, numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.0e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -403,8 +412,12 @@ def test_gradient_Z(simulator, power, controlled):
     control = 1
     angle = Variable(name="angle")
     if controlled:
-        U = gates.X(target=control) + gates.H(target=qubit) + gates.Z(target=qubit, power=angle,
-                                                                      control=control) + gates.H(target=qubit)
+        U = (
+            gates.X(target=control)
+            + gates.H(target=qubit)
+            + gates.Z(target=qubit, power=angle, control=control)
+            + gates.H(target=qubit)
+        )
     else:
         U = gates.H(target=qubit) + gates.Z(target=qubit, power=angle) + gates.H(target=qubit)
     angle = Variable(name="angle")
@@ -414,8 +427,8 @@ def test_gradient_Z(simulator, power, controlled):
     E = simulate(O, variables=variables, backend=simulator)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
-    assert (numpy.isclose(dE, -numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
+    assert numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.0e-4)
+    assert numpy.isclose(dE, -numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.0e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -428,8 +441,12 @@ def test_gradient_deep_controlled_Z(simulator, power, controls):
     qubit = 0
     control = [i for i in range(1, controls + 1)]
     angle = Variable(name="angle")
-    U = gates.X(target=control) + gates.H(target=qubit) + gates.Z(target=qubit, power=angle, control=control) + gates.H(
-        target=qubit)
+    U = (
+        gates.X(target=control)
+        + gates.H(target=qubit)
+        + gates.Z(target=qubit, power=angle, control=control)
+        + gates.H(target=qubit)
+    )
     angle = Variable(name="angle")
     variables = {angle: power}
     H = paulis.Y(qubit=qubit)
@@ -437,8 +454,8 @@ def test_gradient_deep_controlled_Z(simulator, power, controls):
     E = simulate(O, variables=variables, backend=simulator)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.e-4))
-    assert (numpy.isclose(dE, -numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.e-4))
+    assert numpy.isclose(E, -numpy.sin(angle(variables) * (numpy.pi)), atol=1.0e-4)
+    assert numpy.isclose(dE, -numpy.pi * numpy.cos(angle(variables) * (numpy.pi)), atol=1.0e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -458,11 +475,11 @@ def test_gradient_H(simulator, power, controlled):
 
     O = ExpectationValue(U=U, H=H)
     E = simulate(O, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, -numpy.cos(angle(variables) * (numpy.pi)) / 2 + 0.5, atol=1.e-4))
+    assert numpy.isclose(E, -numpy.cos(angle(variables) * (numpy.pi)) / 2 + 0.5, atol=1.0e-4)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
 
-    assert (numpy.isclose(dE, numpy.pi * numpy.sin(angle(variables) * (numpy.pi)) / 2, atol=1.e-4))
+    assert numpy.isclose(dE, numpy.pi * numpy.sin(angle(variables) * (numpy.pi)) / 2, atol=1.0e-4)
 
 
 @pytest.mark.parametrize("simulator", simulators)
@@ -482,11 +499,11 @@ def test_gradient_deep_H(simulator, power, controls):
 
     O = ExpectationValue(U=U, H=H)
     E = simulate(O, variables=variables, backend=simulator)
-    assert (numpy.isclose(E, -numpy.cos(angle(variables) * (numpy.pi)) / 2 + 0.5, atol=1.e-4))
+    assert numpy.isclose(E, -numpy.cos(angle(variables) * (numpy.pi)) / 2 + 0.5, atol=1.0e-4)
     dO = grad(objective=O, variable=angle)
     dE = simulate(dO, variables=variables, backend=simulator)
 
-    assert (numpy.isclose(dE, numpy.pi * numpy.sin(angle(variables) * (numpy.pi)) / 2, atol=1.e-4))
+    assert numpy.isclose(dE, numpy.pi * numpy.sin(angle(variables) * (numpy.pi)) / 2, atol=1.0e-4)
 
 
 def test_qubit_excitations():
@@ -504,10 +521,10 @@ def test_qubit_excitations():
         wfn1 = simulate(U1, variables=variables)
         wfn2 = simulate(U2, variables=variables)
         F = numpy.abs(wfn1.inner(wfn2)) ** 2
-        assert numpy.isclose(F, 1.0, 1.e-4)
+        assert numpy.isclose(F, 1.0, 1.0e-4)
         eval1 = simulate(dE1, variables=variables)
         eval2 = simulate(dE2, variables=variables)
-        assert numpy.isclose(eval1, eval2, 1.e-4)
+        assert numpy.isclose(eval1, eval2, 1.0e-4)
 
     H = paulis.Projector("1.0*|0110>")
     U1 = gates.X([1, 2]) + gates.QubitExcitation(target=[0, 1, 2, 3], angle="a", assume_real=True)
@@ -523,10 +540,10 @@ def test_qubit_excitations():
         wfn1 = simulate(U1, variables=variables)
         wfn2 = simulate(U2, variables=variables)
         F = numpy.abs(wfn1.inner(wfn2)) ** 2
-        assert numpy.isclose(F, 1.0, 1.e-4)
+        assert numpy.isclose(F, 1.0, 1.0e-4)
         eval1 = simulate(dE1, variables=variables)
         eval2 = simulate(dE2, variables=variables)
         print(dE1.get_expectationvalues()[1].U)
         print(eval1)
         print(eval2)
-        assert numpy.isclose(eval1, eval2, atol=1.e-4)
+        assert numpy.isclose(eval1, eval2, atol=1.0e-4)

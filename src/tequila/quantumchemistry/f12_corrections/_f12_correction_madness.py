@@ -13,8 +13,16 @@ class ExplicitCorrelationCorrectionMadness(ExplicitCorrelationCorrection):
     Class for computation of explicitly correlated correction, using PNO-orbitals from madness
     """
 
-    def __init__(self, mol=None, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, n_ri: int = None,
-                 gamma: int = 1.4, f12_filename: str = "molecule_f12tensor.bin", **kwargs):
+    def __init__(
+        self,
+        mol=None,
+        rdm1: numpy.ndarray = None,
+        rdm2: numpy.ndarray = None,
+        n_ri: int = None,
+        gamma: int = 1.4,
+        f12_filename: str = "molecule_f12tensor.bin",
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -40,7 +48,7 @@ class ExplicitCorrelationCorrectionMadness(ExplicitCorrelationCorrection):
             try:
                 f12_data = numpy.fromfile(f12_filename)
                 sd = int(numpy.power(f12_data.size, 0.25))
-                assert (sd ** 4 == f12_data.size)
+                assert sd**4 == f12_data.size
                 sds = [sd] * 4
                 f12 = f12_data.reshape(sds)
                 f12_filename = f12_filename[:-3] + "npy"
@@ -50,8 +58,7 @@ class ExplicitCorrelationCorrectionMadness(ExplicitCorrelationCorrection):
         elif not f12_filename.endswith(".npy"):
             raise TequilaException
         external_info = {"f12_filename": f12_filename, "ordering": "chem"}
-        super().__init__(mol=mol, rdm1=rdm1, rdm2=rdm2, n_ri=n_ri, gamma=gamma,
-                         external_info=external_info, **kwargs)
+        super().__init__(mol=mol, rdm1=rdm1, rdm2=rdm2, n_ri=n_ri, gamma=gamma, external_info=external_info, **kwargs)
 
     def setup_tensors_madness(self):
         """

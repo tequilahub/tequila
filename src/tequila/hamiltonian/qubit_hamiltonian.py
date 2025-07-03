@@ -20,10 +20,10 @@ get the openfermion object with hamiltonian.hamiltonian
 import numpy as np
 
 pauli_matrices = {
-    'I': np.array([[1, 0], [0, 1]], dtype=complex),
-    'Z': np.array([[1, 0], [0, -1]], dtype=complex),
-    'X': np.array([[0, 1], [1, 0]], dtype=complex),
-    'Y': np.array([[0, -1j], [1j, 0]], dtype=complex)
+    "I": np.array([[1, 0], [0, 1]], dtype=complex),
+    "Z": np.array([[1, 0], [0, -1]], dtype=complex),
+    "X": np.array([[0, 1], [1, 0]], dtype=complex),
+    "Y": np.array([[0, -1j], [1j, 0]], dtype=complex),
 }
 
 
@@ -98,12 +98,19 @@ class PauliString:
         # <psi|op|psi> = |a|**2<0|op|0> + (a*)*b<1|op|0> + (b*)*a<0|op|1> + |b|**2<1|op|1>
 
         if states is None:
-            states = [(1.0, 0.0)]*len(qubits)
+            states = [(1.0, 0.0)] * len(qubits)
 
         def make_coeff_vec(state_tuple):
-            return np.asarray([np.abs(state_tuple[0])**2, state_tuple[0].conjugate()*state_tuple[1], state_tuple[1].conjugate()*state_tuple[0] ,np.abs(state_tuple[1])**2])
+            return np.asarray(
+                [
+                    np.abs(state_tuple[0]) ** 2,
+                    state_tuple[0].conjugate() * state_tuple[1],
+                    state_tuple[1].conjugate() * state_tuple[0],
+                    np.abs(state_tuple[1]) ** 2,
+                ]
+            )
 
-        factor=1.0
+        factor = 1.0
         for q, state in zip(qubits, states):
             if q in self.keys():
                 matrix = pauli_matrices[self[q].upper()].reshape([4])
@@ -112,9 +119,8 @@ class PauliString:
                 if factor == 0.0:
                     break
 
-        new_data = {k:v for k,v in self.items() if k not in qubits}
-        return PauliString(data=new_data, coeff=self.coeff*factor)
-
+        new_data = {k: v for k, v in self.items() if k not in qubits}
+        return PauliString(data=new_data, coeff=self.coeff * factor)
 
     def map_qubits(self, qubit_map: dict):
         """
@@ -153,13 +159,13 @@ class PauliString:
         """
         data = dict()
         string = string.strip()
-        for part in string.split(')'):
+        for part in string.split(")"):
             part = part.strip()
             if part == "":
                 break
-            pauli_dim = part.split('(')
+            pauli_dim = part.split("(")
             string = pauli_dim[0].upper()
-            if not string in ['X', 'Y', 'Z']:
+            if not string in ["X", "Y", "Z"]:
                 raise TequilaException("PauliString.from_string initialization failed, unknown pauliterm: " + string)
             data[int(pauli_dim[1])] = string
 
@@ -223,8 +229,11 @@ class PauliString:
 
         if n_qubits < maxq:
             raise TequilaException(
-                "PauliString acts on qubit number larger than n_qubits given\n PauliString=" + self.__repr__() + ", n_qubits=" + str(
-                    n_qubits))
+                "PauliString acts on qubit number larger than n_qubits given\n PauliString="
+                + self.__repr__()
+                + ", n_qubits="
+                + str(n_qubits)
+            )
 
         binary = np.zeros(2 * n_qubits)
         for k, v in self._data.items():
@@ -310,9 +319,9 @@ class QubitHamiltonian:
         else:
             self._qubit_operator = qubit_operator
 
-        assert (isinstance(self._qubit_operator, QubitOperator))
+        assert isinstance(self._qubit_operator, QubitOperator)
 
-    def trace_out_qubits(self, qubits, states: list=None, *args, **kwargs):
+    def trace_out_qubits(self, qubits, states: list = None, *args, **kwargs):
         """
         Tracing out qubits with the assumption that they are in the |0> (default) or |1> state
 
@@ -328,7 +337,7 @@ class QubitHamiltonian:
         """
 
         if states is None:
-            states = [(1.0,0.0)]*len(qubits)
+            states = [(1.0, 0.0)] * len(qubits)
         else:
             assert len(states) == len(qubits)
             # states should be given as list of individual tq.QubitWaveFunctions
@@ -400,14 +409,14 @@ class QubitHamiltonian:
             string = string.replace("Y", " Y")
             string = string.replace("Z", " Z")
             string += " "
-            terms = string.split('+')
+            terms = string.split("+")
             for term in terms:
                 if term.strip() == "":
                     continue
 
                 coeff = term.split(" ")[0]
                 if coeff.strip() == "" or coeff[0] in ["X", "Y", "Z"]:
-                    coeff = '1.0'
+                    coeff = "1.0"
                     ps = term
                 else:
                     ps = term.replace(coeff, " ").replace(" ", "")
@@ -490,7 +499,7 @@ class QubitHamiltonian:
         return self.__neg__().__add__(other=other)
 
     def __pow__(self, power):
-        return QubitHamiltonian(qubit_operator=self.qubit_operator ** power)
+        return QubitHamiltonian(qubit_operator=self.qubit_operator**power)
 
     def __neg__(self):
         return self.__mul__(other=-1.0)
@@ -524,7 +533,7 @@ class QubitHamiltonian:
         anti_hermitian = QubitHamiltonian.zero()
         for k, v in self.qubit_operator.terms.items():
             hermitian.qubit_operator.terms[k] = v.real
-            anti_hermitian.qubit_operator.terms[k] = 1.j * v.imag
+            anti_hermitian.qubit_operator.terms[k] = 1.0j * v.imag
 
         return hermitian.simplify(), anti_hermitian.simplify()
 
@@ -575,10 +584,10 @@ class QubitHamiltonian:
 
         Returns a dense 2**N x 2**N matrix representation of this
         QubitHamiltonian. Watch for memory usage when N is >12!
-        
+
         Args:
             ignore_unused_qubits: If no non-trivial operator is defined on a qubits this qubit will be ignored in the matrix construction.
-                Take for example X(1). 
+                Take for example X(1).
                 If False the operator X(1) will get mapped to X(0)
                 and the function will return the matrix for X(0)
                 otherwise the function will return the matrix 1 \otimes X(1)
@@ -590,10 +599,10 @@ class QubitHamiltonian:
         if ignore_unused_qubits:
             nq = len(qubits)
         else:
-            nq = max(qubits)+1
+            nq = max(qubits) + 1
 
         I = np.eye(2, dtype=complex)
-        Hm = np.zeros((2 ** nq, 2 ** nq), dtype=complex)
+        Hm = np.zeros((2**nq, 2**nq), dtype=complex)
 
         for key, val in self.items():
             term = [I] * nq

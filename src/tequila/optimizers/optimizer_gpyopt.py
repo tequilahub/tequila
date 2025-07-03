@@ -65,12 +65,11 @@ class OptimizerGPyOpt(Optimizer):
 
     @classmethod
     def available_methods(cls):
-        return ['gpyopt-lbfgs', 'gpyopt-direct', 'gpyopt-cma']
+        return ["gpyopt-lbfgs", "gpyopt-direct", "gpyopt-cma"]
 
-    def __init__(self, maxiter=100, backend=None,
-                 samples=None, noise=None, device=None,
-                 save_history=True, silent=False):
-
+    def __init__(
+        self, maxiter=100, backend=None, samples=None, noise=None, device=None, save_history=True, silent=False
+    ):
         """
 
         Parameters
@@ -94,8 +93,15 @@ class OptimizerGPyOpt(Optimizer):
         silent: bool: Default = False:
             suppresses printouts if true.
         """
-        super().__init__(backend=backend, maxiter=maxiter, samples=samples, save_history=save_history, device=device,
-                         noise=noise, silent=silent)
+        super().__init__(
+            backend=backend,
+            maxiter=maxiter,
+            samples=samples,
+            save_history=save_history,
+            device=device,
+            noise=noise,
+            silent=silent,
+        )
 
     def get_domain(self, objective: Objective, passive_angles: dict = None) -> typing.List[typing.Dict]:
         """
@@ -125,7 +131,7 @@ class OptimizerGPyOpt(Optimizer):
             for i, thing in enumerate(op):
                 if thing in passive_angles.keys():
                     op.remove(thing)
-        return [{'name': v, 'type': 'continuous', 'domain': (0, 2 * np.pi)} for v in op]
+        return [{"name": v, "type": "continuous", "domain": (0, 2 * np.pi)} for v in op]
 
     def get_object(self, func, domain, method) -> GPyOpt.methods.BayesianOptimization:
         """
@@ -160,10 +166,12 @@ class OptimizerGPyOpt(Optimizer):
         -------
         callable.
         """
-        return lambda arr: objective(backend=self.backend,
-                                     variables=array_to_objective_dict(objective, arr, passive_angles),
-                                     samples=self.samples,
-                                     noise=self.noise)
+        return lambda arr: objective(
+            backend=self.backend,
+            variables=array_to_objective_dict(objective, arr, passive_angles),
+            samples=self.samples,
+            noise=self.noise,
+        )
 
     def redictify(self, arr, objective, passive_angles=None) -> typing.Dict:
         """
@@ -192,11 +200,15 @@ class OptimizerGPyOpt(Optimizer):
                 back[k] = v
         return back
 
-    def __call__(self, objective: Objective,
-                 initial_values: typing.Dict[Variable, numbers.Real] = None,
-                 variables: typing.List[typing.Hashable] = None,
-                 method: str = 'lbfgs', *args, **kwargs) -> GPyOptResults:
-
+    def __call__(
+        self,
+        objective: Objective,
+        initial_values: typing.Dict[Variable, numbers.Real] = None,
+        variables: typing.List[typing.Hashable] = None,
+        method: str = "lbfgs",
+        *args,
+        **kwargs,
+    ) -> GPyOptResults:
         """
         perform optimization of an objective via GPyOpt.
 
@@ -235,7 +247,7 @@ class OptimizerGPyOpt(Optimizer):
         f = self.construct_function(O, passive_angles)
         opt = self.get_object(f, dom, method)
 
-        method_options = {"max_iter": self.maxiter, "verbosity": not self.silent, "eps": 1.e-4}
+        method_options = {"max_iter": self.maxiter, "verbosity": not self.silent, "eps": 1.0e-4}
 
         if "method_options" in kwargs:
             tmp = {**method_options, **kwargs["method_options"]}
@@ -244,23 +256,28 @@ class OptimizerGPyOpt(Optimizer):
         if self.save_history:
             self.history.energies = opt.get_evaluations()[1].flatten()
             self.history.angles = [self.redictify(v, objective, passive_angles) for v in opt.get_evaluations()[0]]
-        return GPyOptResults(energy=opt.fx_opt, variables=self.redictify(opt.x_opt, objective, passive_angles),
-                             history=self.history, gpyopt_instance=opt)
+        return GPyOptResults(
+            energy=opt.fx_opt,
+            variables=self.redictify(opt.x_opt, objective, passive_angles),
+            history=self.history,
+            gpyopt_instance=opt,
+        )
 
 
-def minimize(objective: Objective,
-             maxiter: int,
-             variables: typing.List = None,
-             initial_values: typing.Dict = None,
-             samples: int = None,
-             backend: str = None,
-             noise=None,
-             device: str = None,
-             method: str = 'lbfgs',
-             silent: bool = False,
-             *args,
-             **kwargs
-             ) -> GPyOptResults:
+def minimize(
+    objective: Objective,
+    maxiter: int,
+    variables: typing.List = None,
+    initial_values: typing.Dict = None,
+    samples: int = None,
+    backend: str = None,
+    noise=None,
+    device: str = None,
+    method: str = "lbfgs",
+    silent: bool = False,
+    *args,
+    **kwargs,
+) -> GPyOptResults:
     """
     Minimize an objective using GPyOpt.
     Parameters
@@ -291,10 +308,7 @@ def minimize(objective: Objective,
         the results of an optimization.
     """
 
-    optimizer = OptimizerGPyOpt(samples=samples, backend=backend, maxiter=maxiter,
-                                device=device,
-                                noise=noise, silent=silent)
-    return optimizer(objective=objective, initial_values=initial_values,
-                     variables=variables,
-                     method=method
-                     )
+    optimizer = OptimizerGPyOpt(
+        samples=samples, backend=backend, maxiter=maxiter, device=device, noise=noise, silent=silent
+    )
+    return optimizer(objective=objective, initial_values=initial_values, variables=variables, method=method)

@@ -6,12 +6,14 @@ from copy import deepcopy
 from numbers import Real
 import numpy
 
-from tequila import BitString, QCircuit, TequilaException,Variable,compile_circuit
+from tequila import BitString, QCircuit, TequilaException, Variable, compile_circuit
 from tequila.circuit import gates
+
 try:
     from openfermion.ops.representations import get_active_space_integrals  # needs openfermion 1.3
 except ImportError as E:
     raise TequilaException("{}\nplease update openfermion to version 1.3 or higher".format(str(E)))
+
 
 @dataclass
 class ActiveSpaceData:
@@ -19,15 +21,17 @@ class ActiveSpaceData:
     Small dataclass to keep the overview in active spaces
     Class is used internally
     """
-    active_orbitals: list = None # active orbitals (spatial, c1)
+
+    active_orbitals: list = None  # active orbitals (spatial, c1)
     reference_orbitals: list = None  # reference orbitals (spatial, c1)
 
     def __str__(self):
         result = "Active Space Data:\n"
         result += "{key:15} : {value:15} \n".format(key="active_orbitals", value=str(self.active_orbitals))
         result += "{key:15} : {value:15} \n".format(key="reference_orbitals", value=str(self.reference_orbitals))
-        result += "{key:15} : {value:15} \n".format(key="active_reference_orbitals",
-                                                    value=str(self.active_reference_orbitals))
+        result += "{key:15} : {value:15} \n".format(
+            key="active_reference_orbitals", value=str(self.active_reference_orbitals)
+        )
         return result
 
     @property
@@ -50,10 +54,11 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self._name = "FermionicExcitation"
         self.transformation = transformation
         self.indices = indices
-        if not hasattr(indices[0],"__len__"):
-            self.indices = [(indices[2 * i], indices[2 * i+1]) for i in range(len(indices) // 2)]
+        if not hasattr(indices[0], "__len__"):
+            self.indices = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
         self.sign = self.format_excitation_variables(self.indices)
         self.indices = self.format_excitation_indices(self.indices)
+
     def compile(self, *args, **kwargs):
         if self.is_convertable_to_qubit_excitation():
             target = []
@@ -63,9 +68,12 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
             return gates.QubitExcitation(target=target, angle=self.parameter, control=self.control)
         else:
             if self.transformation.lower().strip("_") == "jordanwigner":
-                return self.fermionic_excitation(angle=self.sign*self.parameter, indices=self.indices, control=self.control,opt=False)
+                return self.fermionic_excitation(
+                    angle=self.sign * self.parameter, indices=self.indices, control=self.control, opt=False
+                )
             else:
                 return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
+
     def format_excitation_indices(self, idx):
         """
         Consistent formatting of excitation indices
@@ -78,6 +86,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         idx = [tuple(sorted(x)) for x in idx]
         idx = sorted(idx, key=lambda x: x[0])
         return list(idx)
+
     def format_excitation_variables(self, idx):
         """
         Consistent formatting of excitation variable
@@ -88,21 +97,28 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         """
         sig = 1
         for pair in idx:
-            if pair[1]>pair[0]:
+            if pair[1] > pair[0]:
                 sig *= -1
-        for pair in range(len(idx)-1):
-            if idx[pair+1][0]>idx[pair][0]:
+        for pair in range(len(idx) - 1):
+            if idx[pair + 1][0] > idx[pair][0]:
                 sig *= -1
         return sig
-    def cCRy(self, target: int, dcontrol: typing.Union[list, int], control: typing.Union[list, int],
-             angle: typing.Union[Real, Variable, typing.Hashable], case: int = 1) -> QCircuit:
-        '''
+
+    def cCRy(
+        self,
+        target: int,
+        dcontrol: typing.Union[list, int],
+        control: typing.Union[list, int],
+        angle: typing.Union[Real, Variable, typing.Hashable],
+        case: int = 1,
+    ) -> QCircuit:
+        """
         Compilation of CRy as on https://doi.org/10.1103/PhysRevA.102.062612
         If not control passed, Ry returned
         Parameters
         ----------
         case: if 1 employs eq. 12 from the paper, if 0 eq. 13
-        '''
+        """
         if control is not None and not len(control):
             control = None
         if isinstance(dcontrol, int):
@@ -117,26 +133,43 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
             ctr = deepcopy(dcontrol)
             ctr.pop(0)
             if case:
-                U += self.cCRy(target=target, dcontrol=ctr, angle=angle / 2, case=1, control=control) + gates.H(
-                    aux) + gates.CNOT(target, aux)
-                U += self.cCRy(target=target, dcontrol=ctr, angle=-angle / 2, case=0, control=control) + gates.CNOT(
-                    target, aux) + gates.H(aux)
+                U += (
+                    self.cCRy(target=target, dcontrol=ctr, angle=angle / 2, case=1, control=control)
+                    + gates.H(aux)
+                    + gates.CNOT(target, aux)
+                )
+                U += (
+                    self.cCRy(target=target, dcontrol=ctr, angle=-angle / 2, case=0, control=control)
+                    + gates.CNOT(target, aux)
+                    + gates.H(aux)
+                )
             else:
-                U += gates.H(aux) + gates.CNOT(target, aux) + self.cCRy(target=target, dcontrol=ctr, angle=-angle / 2,
-                                                                        case=0, control=control)
-                U += gates.CNOT(target, aux) + gates.H(aux) + self.cCRy(target=target, dcontrol=ctr, angle=angle / 2,
-                                                                        case=1, control=control)
+                U += (
+                    gates.H(aux)
+                    + gates.CNOT(target, aux)
+                    + self.cCRy(target=target, dcontrol=ctr, angle=-angle / 2, case=0, control=control)
+                )
+                U += (
+                    gates.CNOT(target, aux)
+                    + gates.H(aux)
+                    + self.cCRy(target=target, dcontrol=ctr, angle=angle / 2, case=1, control=control)
+                )
             return U
 
-    def fermionic_excitation(self, angle: typing.Union[Real, Variable, typing.Hashable], indices: typing.List,
-                             control: typing.Union[int, typing.List] = None, opt: bool = True) -> QCircuit:
-        '''
-            Excitation [(i,j),(k,l)],... compiled following https://doi.org/10.1103/PhysRevA.102.062612
-            opt: whether to optimized CNOT H CNOT --> Rz Rz CNOT Rz
-        '''
+    def fermionic_excitation(
+        self,
+        angle: typing.Union[Real, Variable, typing.Hashable],
+        indices: typing.List,
+        control: typing.Union[int, typing.List] = None,
+        opt: bool = True,
+    ) -> QCircuit:
+        """
+        Excitation [(i,j),(k,l)],... compiled following https://doi.org/10.1103/PhysRevA.102.062612
+        opt: whether to optimized CNOT H CNOT --> Rz Rz CNOT Rz
+        """
         lto = []
         lfrom = []
-        if isinstance(indices,tuple) and not hasattr(indices[0],"__len__"):
+        if isinstance(indices, tuple) and not hasattr(indices[0], "__len__"):
             indices = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
         for pair in indices:
             lfrom.append(pair[0])
@@ -195,11 +228,16 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
 
         """
         return False
-        if not self.transformation.lower().strip("_") == "jordanwigner": return False
-        if not len(self.indices) == 2: return False
-        if not self.indices[0][0] // 2 == self.indices[1][0] // 2: return False
-        if not self.indices[0][1] // 2 == self.indices[1][1] // 2: return False
+        if not self.transformation.lower().strip("_") == "jordanwigner":
+            return False
+        if not len(self.indices) == 2:
+            return False
+        if not self.indices[0][0] // 2 == self.indices[1][0] // 2:
+            return False
+        if not self.indices[0][1] // 2 == self.indices[1][1] // 2:
+            return False
         return True
+
     def map_qubits(self, qubit_map: dict):
         mapped = deepcopy(self)
         mapped._target = tuple([qubit_map[i] for i in self.target])
@@ -213,7 +251,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         if hasattr(self, "generator"):
             mapped.generator = self.generator.map_qubits(qubit_map=qubit_map)
         if hasattr(self, "indices"):
-            mapped.indices = [(qubit_map[t[0]],qubit_map[t[1]]) for t in self.indices]
+            mapped.indices = [(qubit_map[t[0]], qubit_map[t[1]]) for t in self.indices]
         return mapped
 
 
@@ -243,6 +281,7 @@ def prepare_product_state(state: BitString) -> QCircuit:
 @dataclass
 class ParametersQC:
     """Specialization of ParametersHamiltonian"""
+
     basis_set: str = None  # Quantum chemistry basis set
     geometry: str = None  # geometry of the underlying molecule (units: Angstrom!),
     # this can be a filename leading to an .xyz file or the geometry given as a string
@@ -251,23 +290,23 @@ class ParametersQC:
     charge: int = 0
     name: str = None
     frozen_core: bool = True
-    
+
     def get_number_of_core_electrons(self):
         result = 0
         for atom in self.get_atoms():
-            n=self.get_atom_number(atom)
-            if n>2:
-                result += 2 
-            if n>10:
-                result += 10-2
-            if n>18:
-                result += 18-10-2
-            if n>36:
-                result += 36-18-10-2
-            if n>54:
-                result += 54-36-18-10-2
-            if n>86:
-                result += 86-54-36-18-10-2
+            n = self.get_atom_number(atom)
+            if n > 2:
+                result += 2
+            if n > 10:
+                result += 10 - 2
+            if n > 18:
+                result += 18 - 10 - 2
+            if n > 36:
+                result += 36 - 18 - 10 - 2
+            if n > 54:
+                result += 54 - 36 - 18 - 10 - 2
+            if n > 86:
+                result += 86 - 54 - 36 - 18 - 10 - 2
         return result
 
     @property
@@ -278,29 +317,49 @@ class ParametersQC:
         return sum(self.get_atom_number(name=atom) for atom in self.get_atoms())
 
     def get_atom_number(self, name):
-        atom_numbers = {"h": 1, "he": 2, "li": 3, "be": 4, "b": 5, "c": 6, "n": 7, "o": 8, "f": 9, "ne": 10, "na": 11,
-                        "mg": 12, "al": 13, "si": 14, "ph": 15, "s": 16, "cl": 17, "ar": 18}
+        atom_numbers = {
+            "h": 1,
+            "he": 2,
+            "li": 3,
+            "be": 4,
+            "b": 5,
+            "c": 6,
+            "n": 7,
+            "o": 8,
+            "f": 9,
+            "ne": 10,
+            "na": 11,
+            "mg": 12,
+            "al": 13,
+            "si": 14,
+            "ph": 15,
+            "s": 16,
+            "cl": 17,
+            "ar": 18,
+        }
         if name.lower() in atom_numbers:
             return atom_numbers[name.lower()]
         try:
             import periodictable as pt
+
             atom = list(name.lower())
             atom[0] = atom[0].upper()
-            atom = ''.join(atom)
+            atom = "".join(atom)
             element = pt.elements.symbol(atom)
             return element.number
         except:
             raise TequilaException(
-                "can not assign atomic number to element {}\npip install periodictable will fix it".format(atom))
+                "can not assign atomic number to element {}\npip install periodictable will fix it".format(atom)
+            )
 
     def get_atoms(self):
         return [x[0] for x in self.get_geometry()]
 
     def __post_init__(self, *args, **kwargs):
-
         if self.name is None and self.geometry is None:
             raise TequilaException(
-                "no geometry or name given to molecule\nprovide geometry=filename.xyz or geometry=`h 0.0 0.0 0.0\\n...`\nor name=whatever with file whatever.xyz being present")
+                "no geometry or name given to molecule\nprovide geometry=filename.xyz or geometry=`h 0.0 0.0 0.0\\n...`\nor name=whatever with file whatever.xyz being present"
+            )
         # auto naming
         if self.name is None:
             if ".xyz" in self.geometry:
@@ -330,9 +389,14 @@ class ParametersQC:
     @property
     def molecular_data_param(self) -> dict:
         """:return: Give back all parameters for the MolecularData format from openfermion as dictionary"""
-        return {'basis': self.basis_set, 'geometry': self.get_geometry(), 'description': self.description,
-                'charge': self.charge, 'multiplicity': self.multiplicity, 'filename': self.filename
-                }
+        return {
+            "basis": self.basis_set,
+            "geometry": self.get_geometry(),
+            "description": self.description,
+            "charge": self.charge,
+            "multiplicity": self.multiplicity,
+            "filename": self.filename,
+        }
 
     @staticmethod
     def format_element_name(string):
@@ -350,8 +414,8 @@ class ParametersQC:
         -------
 
         """
-        assert (len(string) > 0)
-        assert (isinstance(string, str))
+        assert len(string) > 0
+        assert isinstance(string, str)
         fstring = string[0].upper() + string[1:].lower()
         return fstring
 
@@ -382,8 +446,7 @@ class ParametersQC:
                 words += [0.0] * (4 - len(words))
 
             try:
-                tmp = (ParametersQC.format_element_name(words[0]),
-                       (float(words[1]), float(words[2]), float(words[3])))
+                tmp = (ParametersQC.format_element_name(words[0]), (float(words[1]), float(words[2]), float(words[3])))
                 result.append(tmp)
             except ValueError:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
@@ -400,7 +463,7 @@ class ParametersQC:
         -------
 
         """
-        if self.geometry.split('.')[-1] == 'xyz':
+        if self.geometry.split(".")[-1] == "xyz":
             geomstring, comment = self.read_xyz_from_file(self.geometry)
             if comment is not None:
                 self.description = comment
@@ -424,9 +487,9 @@ class ParametersQC:
         -------
 
         """
-        if self.geometry.split('.')[-1] == 'xyz':
+        if self.geometry.split(".")[-1] == "xyz":
             geomstring, comment = self.read_xyz_from_file(self.geometry)
-            if self.description == '':
+            if self.description == "":
                 self.description = comment
             return self.convert_to_list(geomstring)
         elif self.geometry is not None:
@@ -449,22 +512,24 @@ class ParametersQC:
         -------
 
         """
-        with open(filename, 'r') as file:
+        with open(filename, "r") as file:
             content = file.readlines()
             natoms = int(content[0])
-            comment = str(content[1]).strip('\n')
-            coord = ''
+            comment = str(content[1]).strip("\n")
+            coord = ""
             for i in range(natoms):
                 coord += content[2 + i]
             return coord, comment
-    def get_xyz(self)->str:
+
+    def get_xyz(self) -> str:
         geom = self.parameters.get_geometry()
-        f = ''
-        f += f'{len(geom)}\n'
-        f += f'{self.parameters.name}\n'
+        f = ""
+        f += f"{len(geom)}\n"
+        f += f"{self.parameters.name}\n"
         for at in geom:
-            f += f'{at[0]} {at[1][0]} {at[1][1]} {at[1][2]}\n'
+            f += f"{at[0]} {at[1][0]} {at[1][1]} {at[1][2]}\n"
         return f
+
 
 @dataclass
 class ClosedShellAmplitudes:
@@ -472,10 +537,11 @@ class ClosedShellAmplitudes:
     Helper Class for clasical amplitudes
     used internally
     """
+
     tIjAb: numpy.ndarray = None
     tIA: numpy.ndarray = None
 
-    def make_parameter_dictionary(self, threshold=1.e-8, screening=True):
+    def make_parameter_dictionary(self, threshold=1.0e-8, screening=True):
         """
 
         Parameters
@@ -491,13 +557,16 @@ class ClosedShellAmplitudes:
         if self.tIjAb is not None:
             nvirt = self.tIjAb.shape[2]
             nocc = self.tIjAb.shape[0]
-            assert (self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt)
+            assert self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt
             for (I, J, A, B), value in numpy.ndenumerate(self.tIjAb):
                 if not numpy.isclose(value, 0.0, atol=threshold) or not screening:
                     variables[(nocc + A, I, nocc + B, J)] = value
         if self.tIA is not None:
             nocc = self.tIA.shape[0]
-            for (I, A), value, in numpy.ndenumerate(self.tIA):
+            for (
+                (I, A),
+                value,
+            ) in numpy.ndenumerate(self.tIA):
                 if not numpy.isclose(value, 0.0, atol=threshold) or not screening:
                     variables[(A + nocc, I)] = value
         return dict(sorted(variables.items(), key=lambda x: numpy.abs(x[1]), reverse=True))
@@ -533,7 +602,7 @@ class Amplitudes:
         -------
 
         """
-        tijab = cs.tIjAb - numpy.einsum("ijab -> ijba", cs.tIjAb, optimize='greedy')
+        tijab = cs.tIjAb - numpy.einsum("ijab -> ijba", cs.tIjAb, optimize="greedy")
         return cls(tIjAb=cs.tIjAb, tIA=cs.tIA, tiJaB=cs.tIjAb, tia=cs.tIA, tijab=tijab, tIJAB=tijab)
 
     tIjAb: numpy.ndarray = None
@@ -543,7 +612,7 @@ class Amplitudes:
     tIJAB: numpy.ndarray = None
     tia: numpy.ndarray = None
 
-    def make_parameter_dictionary(self, threshold=1.e-8):
+    def make_parameter_dictionary(self, threshold=1.0e-8):
         """
 
         Parameters
@@ -561,7 +630,7 @@ class Amplitudes:
         if self.tIjAb is not None:
             nvirt = self.tIjAb.shape[2]
             nocc = self.tIjAb.shape[0]
-            assert (self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt)
+            assert self.tIjAb.shape[1] == nocc and self.tIjAb.shape[3] == nvirt
 
             for (I, j, A, b), value in numpy.ndenumerate(self.tIjAb):
                 if not numpy.isclose(value, 0.0, atol=threshold):
@@ -578,11 +647,17 @@ class Amplitudes:
 
         if self.tIA is not None:
             nocc = self.tIjAb.shape[0]
-            assert (self.tia.shape[0] == nocc)
-            for (I, A), value, in numpy.ndenumerate(self.tIA):
+            assert self.tia.shape[0] == nocc
+            for (
+                (I, A),
+                value,
+            ) in numpy.ndenumerate(self.tIA):
                 if not numpy.isclose(value, 0.0, atol=threshold):
                     variables[(2 * (A + nocc), 2 * I)] = value
-            for (i, a), value, in numpy.ndenumerate(self.tIA):
+            for (
+                (i, a),
+                value,
+            ) in numpy.ndenumerate(self.tIA):
                 if not numpy.isclose(value, 0.0, atol=threshold):
                     variables[(2 * (a + nocc) + 1, 2 * i + 1)] = value
 
@@ -590,7 +665,7 @@ class Amplitudes:
 
 
 class NBodyTensor:
-    """ Convenience class for handling N-body tensors """
+    """Convenience class for handling N-body tensors"""
 
     class Ordering:
         """
@@ -621,7 +696,8 @@ class NBodyTensor:
                 return "of"
             else:
                 raise TequilaException(
-                    "Unknown two-body tensor scheme {}. Supported are dirac, mulliken, and openfermion".format(scheme))
+                    "Unknown two-body tensor scheme {}. Supported are dirac, mulliken, and openfermion".format(scheme)
+                )
 
         def is_phys(self):
             return self._scheme == "phys"
@@ -638,22 +714,25 @@ class NBodyTensor:
     def identify_ordering(self, trials=25):
         if len(self.shape) != 4:
             return None
-        chem=False
-        phys=False
-        of=False
+        chem = False
+        phys = False
+        of = False
         if self._verify_ordering_mulliken(trials=trials):
-            chem=self.Ordering(scheme="mulliken")
+            chem = self.Ordering(scheme="mulliken")
         if self._verify_ordering_dirac(trials=trials):
-            phys=self.Ordering(scheme="dirac")
+            phys = self.Ordering(scheme="dirac")
         if self._verify_ordering_of(trials=trials):
-            of=self.Ordering(scheme="openfermion")
+            of = self.Ordering(scheme="openfermion")
 
-        uniqueness = (chem,phys,of)
-        if not uniqueness.count(False) == 2 and trials<100:
-            return self.identify_ordering(trials=trials*2)
-        if chem: return self.Ordering(scheme="chem")
-        elif phys: return self.Ordering(scheme="phys")
-        elif of: return self.Ordering(scheme="openfermion")
+        uniqueness = (chem, phys, of)
+        if not uniqueness.count(False) == 2 and trials < 100:
+            return self.identify_ordering(trials=trials * 2)
+        if chem:
+            return self.Ordering(scheme="chem")
+        elif phys:
+            return self.Ordering(scheme="phys")
+        elif of:
+            return self.Ordering(scheme="openfermion")
         else:
             raise Exception("NBTensor ordering could not be identified")
 
@@ -665,10 +744,16 @@ class NBodyTensor:
         elems = self.elems
         n = self.shape[0]
         for _ in range(trials):
-            idx = numpy.random.randint(0,n,4)
-            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[1],idx[0],idx[3]], atol=1.e-4)
-            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[3],idx[2],idx[1]], atol=1.e-4)
-            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[2],idx[3],idx[0],idx[1]], atol=1.e-4)
+            idx = numpy.random.randint(0, n, 4)
+            test1 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[2], idx[1], idx[0], idx[3]], atol=1.0e-4
+            )
+            test2 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[0], idx[3], idx[2], idx[1]], atol=1.0e-4
+            )
+            test3 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[2], idx[3], idx[0], idx[1]], atol=1.0e-4
+            )
             if not (test1 and test2 and test3):
                 return False
 
@@ -681,10 +766,16 @@ class NBodyTensor:
         elems = self.elems
         n = self.shape[0]
         for _ in range(trials):
-            idx = numpy.random.randint(0,n,4)
-            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[2],idx[3]], atol=1.e-4)
-            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[1],idx[3],idx[2]], atol=1.e-4)
-            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[1],idx[0],idx[3],idx[2]], atol=1.e-4)
+            idx = numpy.random.randint(0, n, 4)
+            test1 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[1], idx[0], idx[2], idx[3]], atol=1.0e-4
+            )
+            test2 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[0], idx[1], idx[3], idx[2]], atol=1.0e-4
+            )
+            test3 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[1], idx[0], idx[3], idx[2]], atol=1.0e-4
+            )
             if not (test1 and test2 and test3):
                 return False
 
@@ -697,17 +788,29 @@ class NBodyTensor:
         elems = self.elems
         n = self.shape[0]
         for _ in range(trials):
-            idx = numpy.random.randint(0,n,4)
-            test1 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[1],idx[2],idx[0]], atol=1.e-4)
-            test2 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[0],idx[2],idx[1],idx[3]], atol=1.e-4)
-            test3 = numpy.isclose(elems[idx[0],idx[1],idx[2],idx[3]],elems[idx[3],idx[2],idx[1],idx[0]], atol=1.e-4)
+            idx = numpy.random.randint(0, n, 4)
+            test1 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[3], idx[1], idx[2], idx[0]], atol=1.0e-4
+            )
+            test2 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[0], idx[2], idx[1], idx[3]], atol=1.0e-4
+            )
+            test3 = numpy.isclose(
+                elems[idx[0], idx[1], idx[2], idx[3]], elems[idx[3], idx[2], idx[1], idx[0]], atol=1.0e-4
+            )
             if not (test1 and test2 and test3):
                 return False
 
         return True
 
-    def __init__(self, elems: numpy.ndarray = None, active_indices: list = None, ordering: str = None,
-                 size_full: int = None, verify=False):
+    def __init__(
+        self,
+        elems: numpy.ndarray = None,
+        active_indices: list = None,
+        ordering: str = None,
+        size_full: int = None,
+        verify=False,
+    ):
         """
         Parameters
         ----------
@@ -750,10 +853,14 @@ class NBodyTensor:
             if ordering is None:
                 ordering = self.identify_ordering()
             elif verify:
-                try: # some RDMs are really sloppy (depends on backend)
-                    auto_ordering=self.identify_ordering()
+                try:  # some RDMs are really sloppy (depends on backend)
+                    auto_ordering = self.identify_ordering()
                     if auto_ordering is not ordering:
-                        warnings.warn("Auto identified ordering of NBTensor does not match given ordering: {} vs {}".format(auto_ordering, ordering))
+                        warnings.warn(
+                            "Auto identified ordering of NBTensor does not match given ordering: {} vs {}".format(
+                                auto_ordering, ordering
+                            )
+                        )
                 except Exception as E:
                     warnings.warn("could not verify odering {}".format(ordering))
             self.ordering = self.Ordering(ordering)
@@ -786,8 +893,10 @@ class NBodyTensor:
         """
         # Check if index list has correct size
         if len(idx_lists) != self.order:
-            raise Exception("Need to pass an index list for each dimension!" +
-                            " Length of idx_lists needs to match order of tensor.")
+            raise Exception(
+                "Need to pass an index list for each dimension!"
+                + " Length of idx_lists needs to match order of tensor."
+            )
 
         # Perform slicing via numpy.take
         out = self.elems
@@ -798,13 +907,12 @@ class NBodyTensor:
         return out
 
     def set_index_lists(self):
-        """ Set passive and full index lists based on class inputs """
+        """Set passive and full index lists based on class inputs"""
         tmp_size = self._size_full
         if self._size_full is None:
             tmp_size = self.elems.shape[0]
 
-        self._passive_indices = [i for i in range(tmp_size)
-                                 if i not in self.active_indices]
+        self._passive_indices = [i for i in range(tmp_size) if i not in self.active_indices]
         self._full_indices = [i for i in range(tmp_size)]
 
     def sub_str(self, name: str) -> numpy.ndarray:
@@ -843,11 +951,11 @@ class NBodyTensor:
         idx_lists = []
         # Parse name as string of space indices
         for char in name:
-            if char.lower() == 'a':
+            if char.lower() == "a":
                 idx_lists.append(self.active_indices)
-            elif char.lower() == 'p':
+            elif char.lower() == "p":
                 idx_lists.append(self._passive_indices)
-            elif char.lower() == 'f':
+            elif char.lower() == "f":
                 if self._size_full is None:
                     idx_lists.append(None)
                 else:
@@ -859,7 +967,7 @@ class NBodyTensor:
 
         return out
 
-    def reorder(self, to: str = 'of'):
+    def reorder(self, to: str = "of"):
         """
         Function to reorder tensors according to some convention.
 
@@ -886,7 +994,7 @@ class NBodyTensor:
             -------
         """
         if self.order != 4:
-            warnings.warn('Reordering currently only implemented for two-body tensors.')
+            warnings.warn("Reordering currently only implemented for two-body tensors.")
             return self
 
         to = self.Ordering(scheme=to)
@@ -895,21 +1003,21 @@ class NBodyTensor:
             return self
         elif self.ordering.is_chem():
             if to.is_of():
-                self.elems = numpy.einsum("psqr -> pqrs", self.elems, optimize='greedy')
+                self.elems = numpy.einsum("psqr -> pqrs", self.elems, optimize="greedy")
             elif to.is_phys():
-                self.elems = numpy.einsum("prqs -> pqrs", self.elems, optimize='greedy')
+                self.elems = numpy.einsum("prqs -> pqrs", self.elems, optimize="greedy")
         elif self.ordering.is_of():
             if to.is_chem():
-                self.elems = numpy.einsum("pqrs -> psqr", self.elems, optimize='greedy')
+                self.elems = numpy.einsum("pqrs -> psqr", self.elems, optimize="greedy")
             elif to.is_phys():
-                self.elems = numpy.einsum("pqrs -> pqsr", self.elems, optimize='greedy')
+                self.elems = numpy.einsum("pqrs -> pqsr", self.elems, optimize="greedy")
         elif self.ordering.is_phys():
             if to.is_chem():
-                self.elems = numpy.einsum("pqrs -> prqs", self.elems, optimize='greedy')
+                self.elems = numpy.einsum("pqrs -> prqs", self.elems, optimize="greedy")
             elif to.is_of():
-                self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize='greedy')
+                self.elems = numpy.einsum("pqsr -> pqrs", self.elems, optimize="greedy")
 
-        self.ordering=to
+        self.ordering = to
         return self
 
 
@@ -930,7 +1038,14 @@ class OrbitalData:
             self.occ = 2.0  # mark as reference
 
     def __str__(self):
-        return "{"+"{}".format("".join(["{}:{}, ".format(k,v) for k,v in self.__dict__.items() if v is not None])).rstrip().rstrip(",")+"}"
+        return (
+            "{"
+            + "{}".format("".join(["{}:{}, ".format(k, v) for k, v in self.__dict__.items() if v is not None]))
+            .rstrip()
+            .rstrip(",")
+            + "}"
+        )
+
 
 class IntegralManager:
     """
@@ -938,19 +1053,31 @@ class IntegralManager:
     All integrals are held in their original basis, the corresponding mo-coefficients have to be passed down
     and are usually held by the QuantumChemistryBaseClass
     """
+
     _overlap_integrals: numpy.ndarray = None
     _one_body_integrals: numpy.ndarray = None
     _two_body_integrals: NBodyTensor = None
     _constant_term: float = None
     _basis_name: str = "unknown"
-    _orbital_type: str = "unknown" # e.g. "HF", "PNO", "native"
+    _orbital_type: str = "unknown"  # e.g. "HF", "PNO", "native"
     _orbital_coefficients: numpy.ndarray = None
     _active_space: ActiveSpaceData = None
     _orbitals: typing.List[OrbitalData] = None
 
-    def __init__(self, one_body_integrals, two_body_integrals,
-                 basis_name="unknown", orbital_type="unknown",
-                 constant_term=0.0, orbital_coefficients=None, active_space=None, overlap_integrals=None, orbitals=None, *args, **kwargs):
+    def __init__(
+        self,
+        one_body_integrals,
+        two_body_integrals,
+        basis_name="unknown",
+        orbital_type="unknown",
+        constant_term=0.0,
+        orbital_coefficients=None,
+        active_space=None,
+        overlap_integrals=None,
+        orbitals=None,
+        *args,
+        **kwargs,
+    ):
         self._one_body_integrals = one_body_integrals
         self._two_body_integrals = two_body_integrals
         self._constant_term = constant_term
@@ -964,7 +1091,9 @@ class IntegralManager:
         except Exception as E:
             raise TequilaException(
                 "{}\ntwo_body_integrals given in wrong format. Needs to be a tq.chemistry.NBodyTensor in chem ordering.\n{} with ordering={}".format(
-                    str(E), str(type(two_body_integrals)), str(two_body_integrals.ordering)))
+                    str(E), str(type(two_body_integrals)), str(two_body_integrals.ordering)
+                )
+            )
 
         for i in range(4):
             assert self._one_body_integrals.shape[0] == self._two_body_integrals.elems.shape[i]
@@ -985,7 +1114,7 @@ class IntegralManager:
 
         self._orbitals = orbitals
         self.active_space = active_space
-    
+
     def get_orthonormalized_orbital_coefficients(self):
         """
         Computes orbitals in this basis that are orthonormal (through loewdin orthonormalization)
@@ -1020,7 +1149,7 @@ class IntegralManager:
         self._active_space = other
         for x in self._orbitals:
             x.idx = None
-        for ii,i in enumerate(other.active_orbitals):
+        for ii, i in enumerate(other.active_orbitals):
             self._orbitals[i].idx = ii
 
     @property
@@ -1029,7 +1158,9 @@ class IntegralManager:
 
     @property
     def active_reference_orbitals(self):
-        return [self._orbitals[i] for i in self.active_space.active_orbitals if i in self.active_space.reference_orbitals]
+        return [
+            self._orbitals[i] for i in self.active_space.active_orbitals if i in self.active_space.reference_orbitals
+        ]
 
     @property
     def overlap_integrals(self):
@@ -1082,23 +1213,26 @@ class IntegralManager:
     def orbital_coefficients(self, other):
         self.verify_orbital_coefficients(orbital_coefficients=other)
         self._orbital_coefficients = other
-        for i,x in enumerate(self._orbitals):
+        for i, x in enumerate(self._orbitals):
             y = OrbitalData(idx=x.idx, idx_total=x.idx_total)
             self._orbitals[i] = y
-    
+
     def transform_to_native_orbitals(self):
         """
         Transform orbitals to orthonormal functions closest to the native basis
         """
         c = self.get_orthonormalized_orbital_coefficients()
-        self.orbital_coefficients=c
-        self._orbital_type="orthonormalized-{}-basis".format(self._basis_name)
+        self.orbital_coefficients = c
+        self._orbital_type = "orthonormalized-{}-basis".format(self._basis_name)
 
     def is_unitary(self, U):
-        if len(U.shape) != 2: return False
-        if U.shape[0] != U.shape[1]: return False
+        if len(U.shape) != 2:
+            return False
+        if U.shape[0] != U.shape[1]:
+            return False
         test = (U.conj().T).dot(U) - numpy.eye(U.shape[0])
-        if not numpy.isclose(numpy.linalg.norm(test), 0.0): return False
+        if not numpy.isclose(numpy.linalg.norm(test), 0.0):
+            return False
         return True
 
     def transform_orbitals(self, U, name=None):
@@ -1119,7 +1253,9 @@ class IntegralManager:
         else:
             self._orbital_type = name
 
-    def get_integrals(self, orbital_coefficients=None, ordering="openfermion", ignore_active_space=False, *args, **kwargs):
+    def get_integrals(
+        self, orbital_coefficients=None, ordering="openfermion", ignore_active_space=False, *args, **kwargs
+    ):
         """
         Get all molecular integrals in given orbital basis (determined by orbital_coefficients in self or the ones passed here)
         active space is considered if not explicitly ignored
@@ -1140,12 +1276,14 @@ class IntegralManager:
         h = self._get_transformed_one_body_integrals(orbital_coefficients=orbital_coefficients)
         g = self._get_transformed_two_body_integrals(orbital_coefficients=orbital_coefficients, ordering=ordering)
         if not ignore_active_space and self._active_space is not None:
-
             g = g.reorder(to="openfermion").elems
 
-            active_integrals = get_active_space_integrals(one_body_integrals=h, two_body_integrals=g,
-                                                          occupied_indices=self._active_space.frozen_reference_orbitals,
-                                                          active_indices=self._active_space.active_orbitals)
+            active_integrals = get_active_space_integrals(
+                one_body_integrals=h,
+                two_body_integrals=g,
+                occupied_indices=self._active_space.frozen_reference_orbitals,
+                active_indices=self._active_space.active_orbitals,
+            )
 
             c = active_integrals[0] + c
 
@@ -1160,8 +1298,8 @@ class IntegralManager:
         elif verify:
             assert self.verify_orbital_coefficients(orbital_coefficients=orbital_coefficients)
         h = self.one_body_integrals
-        h = numpy.einsum("ix, xj -> ij", h, orbital_coefficients, optimize='greedy')
-        h = numpy.einsum("xj, xi -> ij", h, orbital_coefficients, optimize='greedy')
+        h = numpy.einsum("ix, xj -> ij", h, orbital_coefficients, optimize="greedy")
+        h = numpy.einsum("xj, xi -> ij", h, orbital_coefficients, optimize="greedy")
 
         return h
 
@@ -1173,16 +1311,16 @@ class IntegralManager:
 
         g = self.two_body_integrals
         g = g.reorder("chem").elems
-        g = numpy.einsum("ijkx, xl -> ijkl", g, orbital_coefficients, optimize='greedy')
-        g = numpy.einsum("ijxl, xk -> ijkl", g, orbital_coefficients, optimize='greedy')
-        g = numpy.einsum("ixkl, xj -> ijkl", g, orbital_coefficients, optimize='greedy')
-        g = numpy.einsum("xjkl, xi -> ijkl", g, orbital_coefficients, optimize='greedy')
-        g = NBodyTensor(elems=numpy.asarray(g), ordering='chem')
+        g = numpy.einsum("ijkx, xl -> ijkl", g, orbital_coefficients, optimize="greedy")
+        g = numpy.einsum("ijxl, xk -> ijkl", g, orbital_coefficients, optimize="greedy")
+        g = numpy.einsum("ixkl, xj -> ijkl", g, orbital_coefficients, optimize="greedy")
+        g = numpy.einsum("xjkl, xi -> ijkl", g, orbital_coefficients, optimize="greedy")
+        g = NBodyTensor(elems=numpy.asarray(g), ordering="chem")
         g = g.reorder(to=ordering)
 
         return g
 
-    def verify_orbital_coefficients(self, orbital_coefficients, tolerance=1.e-5):
+    def verify_orbital_coefficients(self, orbital_coefficients, tolerance=1.0e-5):
         """
         Verify if orbital coefficients are valid (i.e. if they define a orthonormal set of orbitals)
         Parameters
@@ -1196,11 +1334,11 @@ class IntegralManager:
 
         """
         S = self.overlap_integrals
-        St = numpy.einsum("ix, xj -> ij", S, orbital_coefficients, optimize='greedy')
-        St = numpy.einsum("xj, xi -> ij", St, orbital_coefficients, optimize='greedy')
+        St = numpy.einsum("ix, xj -> ij", S, orbital_coefficients, optimize="greedy")
+        St = numpy.einsum("xj, xi -> ij", St, orbital_coefficients, optimize="greedy")
         return numpy.linalg.norm(St - numpy.eye(S.shape[0])) < tolerance
 
-    def basis_is_orthogonal(self, tolerance=1.e-5):
+    def basis_is_orthogonal(self, tolerance=1.0e-5):
         S = self.overlap_integrals
         return numpy.linalg.norm(S - numpy.eye(S.shape[0])) < tolerance
 
@@ -1209,9 +1347,9 @@ class IntegralManager:
 
     def __str__(self):
         result = "\nIntegralManager:\n"
-        result+= "ActiveSpace:\n"
-        result+= str(self.active_space)
-        result+= "Orbitals:\n"
+        result += "ActiveSpace:\n"
+        result += str(self.active_space)
+        result += "Orbitals:\n"
         for x in self.orbitals:
             result += str(x) + "\n"
         return result
@@ -1224,9 +1362,10 @@ class IntegralManager:
         print("{:15} : {}".format("active orbitals", [o.idx_total for o in self.active_orbitals]), *args, **kwargs)
         print("{:15} : {}".format("reference", [x.idx_total for x in self.reference_orbitals]), *args, **kwargs)
 
-        if not print_coefficients: return
+        if not print_coefficients:
+            return
 
         print("Current Orbitals", *args, **kwargs)
-        for i,x in enumerate(self.orbitals):
+        for i, x in enumerate(self.orbitals):
             print(x, *args, **kwargs)
-            print("coefficients: ", self.orbital_coefficients[:,i], *args, **kwargs)
+            print("coefficients: ", self.orbital_coefficients[:, i], *args, **kwargs)

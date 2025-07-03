@@ -12,8 +12,8 @@ import typing, numbers
 import cirq
 import cirq_google
 
-map_1 = lambda x: {'exponent': x}
-map_2 = lambda x: {'exponent': x / np.pi, 'global_shift': -0.5}
+map_1 = lambda x: {"exponent": x}
+map_2 = lambda x: {"exponent": x / np.pi, "global_shift": -0.5}
 
 
 def qubit_satisfier(op, level):
@@ -85,7 +85,7 @@ class BackendCircuitCirq(BackendCircuit):
         "controlled_phase": True,
         "toffoli": False,
         "phase_to_z": False,
-        "cc_max": False
+        "cc_max": False,
     }
 
     numbering: BitNumbering = BitNumbering.MSB
@@ -113,23 +113,30 @@ class BackendCircuitCirq(BackendCircuit):
         """
 
         self.op_lookup = {
-            'I': (cirq.ops.IdentityGate, None),
-            'X': (cirq.ops.common_gates.XPowGate, map_1),
-            'Y': (cirq.ops.common_gates.YPowGate, map_1),
-            'Z': (cirq.ops.common_gates.ZPowGate, map_1),
-            'H': (cirq.ops.common_gates.HPowGate, map_1),
-            'Rx': (cirq.ops.common_gates.XPowGate, map_2),
-            'Ry': (cirq.ops.common_gates.YPowGate, map_2),
-            'Rz': (cirq.ops.common_gates.ZPowGate, map_2),
-            'SWAP': (cirq.ops.SwapPowGate, None),
+            "I": (cirq.ops.IdentityGate, None),
+            "X": (cirq.ops.common_gates.XPowGate, map_1),
+            "Y": (cirq.ops.common_gates.YPowGate, map_1),
+            "Z": (cirq.ops.common_gates.ZPowGate, map_1),
+            "H": (cirq.ops.common_gates.HPowGate, map_1),
+            "Rx": (cirq.ops.common_gates.XPowGate, map_2),
+            "Ry": (cirq.ops.common_gates.YPowGate, map_2),
+            "Rz": (cirq.ops.common_gates.ZPowGate, map_2),
+            "SWAP": (cirq.ops.SwapPowGate, None),
         }
 
         self.tq_to_sympy = {}
         self.counter = 0
         if device is not None:
-            self.compiler_arguments['cc_max'] = True
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables,
-                         noise=noise, qubit_map=qubit_map, device=device, *args, **kwargs)
+            self.compiler_arguments["cc_max"] = True
+        super().__init__(
+            abstract_circuit=abstract_circuit,
+            variables=variables,
+            noise=noise,
+            qubit_map=qubit_map,
+            device=device,
+            *args,
+            **kwargs,
+        )
         if len(self.tq_to_sympy.keys()) is None:
             self.sympy_to_tq = None
             self.resolver = None
@@ -139,15 +146,15 @@ class BackendCircuitCirq(BackendCircuit):
         if self.device is not None:
             self.circuit = self.build_device_circuit()
         if self.noise is not None:
-            if self.noise == 'device':
-                raise TequilaException('cannot get device noise for cirq yet, sorry!')
+            if self.noise == "device":
+                raise TequilaException("cannot get device noise for cirq yet, sorry!")
             self.noise_lookup = {
-                'bit flip': [lambda x: cirq.bit_flip(x)],
-                'phase flip': [lambda x: cirq.phase_flip(x)],
-                'phase damp': [cirq.phase_damp],
-                'amplitude damp': [cirq.amplitude_damp],
-                'phase-amplitude damp': [cirq.amplitude_damp, cirq.phase_damp],
-                'depolarizing': [lambda x: cirq.depolarize(p=(3 / 4) * x)]
+                "bit flip": [lambda x: cirq.bit_flip(x)],
+                "phase flip": [lambda x: cirq.phase_flip(x)],
+                "phase damp": [cirq.phase_damp],
+                "amplitude damp": [cirq.amplitude_damp],
+                "phase-amplitude damp": [cirq.amplitude_damp, cirq.phase_damp],
+                "depolarizing": [lambda x: cirq.depolarize(p=(3 / 4) * x)],
             }
             self.circuit = self.build_noisy_circuit(self.noise)
 
@@ -171,8 +178,9 @@ class BackendCircuitCirq(BackendCircuit):
 
         """
         simulator = cirq.Simulator()
-        backend_result = simulator.simulate(program=self.circuit, param_resolver=self.resolver,
-                                            initial_state=initial_state)
+        backend_result = simulator.simulate(
+            program=self.circuit, param_resolver=self.resolver, initial_state=initial_state
+        )
         return QubitWaveFunction.from_array(array=backend_result.final_state_vector, numbering=self.numbering)
 
     def convert_measurements(self, backend_result: cirq.Result) -> QubitWaveFunction:
@@ -189,7 +197,7 @@ class BackendCircuitCirq(BackendCircuit):
             the result of sampling, as a tequila QubitWaveFunction.
 
         """
-        assert (len(backend_result.measurements) == 1)
+        assert len(backend_result.measurements) == 1
         for key, value in backend_result.measurements.items():
             counter = QubitWaveFunction(self.n_qubits, self.numbering)
             for sample in value:
@@ -218,7 +226,9 @@ class BackendCircuitCirq(BackendCircuit):
         QubitWaveFunction:
             the result of sampled measurement, as a tequila wavefunction.
         """
-        return self.convert_measurements(cirq.sample(program=circuit, param_resolver=self.resolver, repetitions=samples))
+        return self.convert_measurements(
+            cirq.sample(program=circuit, param_resolver=self.resolver, repetitions=samples)
+        )
 
     def no_translation(self, abstract_circuit):
         return isinstance(abstract_circuit, cirq.Circuit)
@@ -257,7 +267,7 @@ class BackendCircuitCirq(BackendCircuit):
         """
         op, mapping = self.op_lookup[gate.name]
         parameter = gate.parameter
-        if hasattr(gate, 'power'):
+        if hasattr(gate, "power"):
             parameter = gate.power
         if isinstance(parameter, float):
             par = parameter
@@ -265,7 +275,7 @@ class BackendCircuitCirq(BackendCircuit):
             try:
                 par = self.tq_to_sympy[parameter]
             except:
-                par = sympy.Symbol('{}_{}'.format(self._name_variable_objective(parameter), str(self.counter)))
+                par = sympy.Symbol("{}_{}".format(self._name_variable_objective(parameter), str(self.counter)))
                 self.tq_to_sympy[parameter] = par
                 self.counter += 1
         cirq_gate = op(**mapping(par)).on(*[self.qubit(t) for t in gate.target])
@@ -314,7 +324,7 @@ class BackendCircuitCirq(BackendCircuit):
         """
         target_qubits = sorted(target_qubits)
         cirq_gate = cirq.MeasurementGate(len(target_qubits)).on(*[self.qubit(t) for t in target_qubits])
-        return circuit + cirq_gate # avoid inplace operations for measurements
+        return circuit + cirq_gate  # avoid inplace operations for measurements
 
     def make_qubit_map(self, qubits) -> typing.Dict[numbers.Integral, cirq.LineQubit]:
         """
@@ -358,23 +368,27 @@ class BackendCircuitCirq(BackendCircuit):
         line = None
         circuit = None
         if isinstance(device, cirq.Device):
-            HAS_GOOGLE = importlib.util.find_spec('cirq_google')
-            assert HAS_GOOGLE, TequilaCirqException(' cirq_google package is not installed.')
-            
+            HAS_GOOGLE = importlib.util.find_spec("cirq_google")
+            assert HAS_GOOGLE, TequilaCirqException(" cirq_google package is not installed.")
+
             if device in [cirq_google.Sycamore, cirq_google.Sycamore23]:
                 try:
                     circuit = cirq.optimize_for_target_gateset(circuit=c, gateset=cirq_google.SycamoreTargetGateset())
                 except ValueError as E:
                     original_message = str(E)
-                    raise TequilaCirqException('original message:\n{}\n\ncould not optimize for device={}'.format(original_message,device))
+                    raise TequilaCirqException(
+                        "original message:\n{}\n\ncould not optimize for device={}".format(original_message, device)
+                    )
             else:
                 ### under construction (potentially on other branches)
-                raise TequilaException('Only Sycamore and Sycamore23 devices currently functional. Sorry!')
+                raise TequilaException("Only Sycamore and Sycamore23 devices currently functional. Sorry!")
 
         else:
             raise TequilaException(
-                'build_device_circuit demands a cirq.Device object; received {}, of type {}'.format(str(device),
-                                                                                                    type(device)))
+                "build_device_circuit demands a cirq.Device object; received {}, of type {}".format(
+                    str(device), type(device)
+                )
+            )
         return circuit
 
     def build_noisy_circuit(self, noise):
@@ -444,7 +458,7 @@ class BackendCircuitCirq(BackendCircuit):
             if isinstance(device, cirq.Device):
                 return device
             else:
-                raise TequilaException('Unable to retrieve requested device, {}, in cirq'.format(str(device)))
+                raise TequilaException("Unable to retrieve requested device, {}, in cirq".format(str(device)))
 
     def check_device(self, device):
         """
@@ -464,14 +478,15 @@ class BackendCircuitCirq(BackendCircuit):
             return
         else:
             assert isinstance(device, str)
-            if device.lower() in ['sycamore', 'sycamore23']:
+            if device.lower() in ["sycamore", "sycamore23"]:
                 pass
             else:
-                raise TequilaException('requested device {} could not be found!'.format(device))
+                raise TequilaException("requested device {} could not be found!".format(device))
 
 
 class BackendExpectationValueCirq(BackendExpectationValue):
     """
     See BackendExpectationValue for details.
     """
+
     BackendCircuitType = BackendCircuitCirq

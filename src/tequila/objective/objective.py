@@ -11,6 +11,7 @@ import collections
 
 # convenience
 
+
 class ExpectationValueImpl:
     """
     Implements the (uncompiled) Expectation Value as a class. Should not be called directly.
@@ -114,9 +115,12 @@ class ExpectationValueImpl:
         the ExpectationValueImpl structure with mapped qubits
 
         """
-        return ExpectationValueImpl(H=tuple([H.map_qubits(qubit_map=qubit_map) for H in self.H]),
-                                    U=self.U.map_qubits(qubit_map=qubit_map), contraction=self._contraction,
-                                    shape=self._shape)
+        return ExpectationValueImpl(
+            H=tuple([H.map_qubits(qubit_map=qubit_map) for H in self.H]),
+            U=self.U.map_qubits(qubit_map=qubit_map),
+            contraction=self._contraction,
+            shape=self._shape,
+        )
 
     def map_variables(self, variables: dict, *args, **kwargs):
         """
@@ -130,17 +134,25 @@ class ExpectationValueImpl:
         Circuit with changed variables
 
         """
-        return ExpectationValueImpl(H=self.H, U=self.U.map_variables(variables=variables, *args, **kwargs),
-                                    contraction=self._contraction, shape=self._shape)
+        return ExpectationValueImpl(
+            H=self.H,
+            U=self.U.map_variables(variables=variables, *args, **kwargs),
+            contraction=self._contraction,
+            shape=self._shape,
+        )
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
-            "Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)")
+            "Tried to call uncompiled ExpectationValueImpl, compile your objective before calling with tq.compile(objective) or evaluate with tq.simulate(objective)"
+        )
 
     def info(self, short=True, *args, **kwargs):
         if short:
-            print("Expectation Value with {qubits} active qubits and {paulis} paulistrings".format(
-                qubits=len(self.U.qubits), paulis=len(self.H)))
+            print(
+                "Expectation Value with {qubits} active qubits and {paulis} paulistrings".format(
+                    qubits=len(self.U.qubits), paulis=len(self.H)
+                )
+            )
         else:
             print("Hamiltonian:\n", str(self.H))
             print("\n", str(self.U))
@@ -257,7 +269,7 @@ class Objective:
         """
         variables = []
         for arg in self.args:
-            if hasattr(arg, 'extract_variables'):
+            if hasattr(arg, "extract_variables"):
                 variables += arg.extract_variables()
             else:
                 variables += []
@@ -304,7 +316,6 @@ class Objective:
 
     @property
     def args(self) -> typing.Tuple:
-
         if self._args is None:
             return tuple()
         else:
@@ -397,7 +408,7 @@ class Objective:
 
     def __invert__(self):
         new = Objective(args=[self])
-        return new ** -1
+        return new**-1
 
     @classmethod
     def unary_operator(cls, left, op):
@@ -418,8 +429,7 @@ class Objective:
             Objective representing op applied to objective left.
 
         """
-        return Objective(args=left.args,
-                         transformation=lambda *args: op(left.transformation(*args)))
+        return Objective(args=left.args, transformation=lambda *args: op(left.transformation(*args)))
 
     @classmethod
     def binary_operator(cls, left, right, op):
@@ -451,18 +461,23 @@ class Objective:
                 return cls.unary_operator(left=left, op=lambda E: op(E, right))
             else:
                 raise TequilaException(
-                    'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
+                    "BinaryOperator method called on types " + str(type(left)) + "," + str(type(right))
+                )
         elif isinstance(left, numbers.Number):
             if isinstance(right, Objective):
                 return cls.unary_operator(left=right, op=lambda E: op(left, E))
             else:
                 raise TequilaException(
-                    'BinaryOperator method called on types ' + str(type(left)) + ',' + str(type(right)))
+                    "BinaryOperator method called on types " + str(type(left)) + "," + str(type(right))
+                )
         else:
             split_at = len(left.args)
-            return Objective(args=left.args + right.args,
-                             transformation=JoinedTransformation(left=left.transformation, right=right.transformation,
-                                                                 split=split_at, op=op))
+            return Objective(
+                args=left.args + right.args,
+                transformation=JoinedTransformation(
+                    left=left.transformation, right=right.transformation, split=split_at, op=op
+                ),
+            )
 
     def wrap(self, op):
         """
@@ -541,12 +556,14 @@ class Objective:
 
         unique = self.count_expectationvalues(unique=True)
         measurements = self.count_measurements()
-        return "Objective with {} unique expectation values\n" \
-               "total measurements = {}\n" \
-               "variables          = {}\n" \
-               "types              = {}".format(unique, measurements, variables, types)
+        return (
+            "Objective with {} unique expectation values\n"
+            "total measurements = {}\n"
+            "variables          = {}\n"
+            "types              = {}".format(unique, measurements, variables, types)
+        )
 
-    def __call__(self, variables=None, initial_state = 0, *args, **kwargs):
+    def __call__(self, variables=None, initial_state=0, *args, **kwargs):
         """
         Return the output of the calculation the objective represents.
 
@@ -568,14 +585,15 @@ class Objective:
         # failsafe
         check_variables = {k: k in variables for k in self.extract_variables()}
         if not all(list(check_variables.values())):
-            raise TequilaException("Objective did not receive all variables:\n"
-                                   "You gave\n"
-                                   " {}\n"
-                                   " but the objective depends on\n"
-                                   " {}\n"
-                                   " missing values for\n"
-                                   " {}".format(variables, self.extract_variables(),
-                                                [k for k, v in check_variables.items() if not v]))
+            raise TequilaException(
+                "Objective did not receive all variables:\n"
+                "You gave\n"
+                " {}\n"
+                " but the objective depends on\n"
+                " {}\n"
+                " missing values for\n"
+                " {}".format(variables, self.extract_variables(), [k for k, v in check_variables.items() if not v])
+            )
 
         # avoid multiple evaluations
         evaluated = {}
@@ -598,7 +616,7 @@ class Objective:
             return float(result[0])
         else:
             return result
-    
+
     def contract(self):
         """
         Exists only to be convient in optimizers, which all contract over VectrObjectives.
@@ -611,19 +629,20 @@ class Objective:
 
     def __len__(self):
         return 1
-    
+
     def is_translated(self):
         """
         check if the objective was already translated to a quantum backend
         """
         types = [type(E) for E in self.get_expectationvalues()]
         types = list(set(types))
-        if len(types)==0 or (ExpectationValueImpl in types and len(types)==1):
+        if len(types) == 0 or (ExpectationValueImpl in types and len(types) == 1):
             return False
         else:
             return True
 
-def ExpectationValue(U, H, optimize_measurements = False, *args, **kwargs) -> Objective:
+
+def ExpectationValue(U, H, optimize_measurements=False, *args, **kwargs) -> Objective:
     """
     Initialize an Objective which is just a single expectationvalue
     """
@@ -761,8 +780,10 @@ class Variable:
             new = Objective(args=[self, other], transformation=op)
         else:
             raise TequilaException(
-                "unknown type in left_helper of objective arithmetics with operation {}: {}".format(type(op),
-                                                                                                    type(other)))
+                "unknown type in left_helper of objective arithmetics with operation {}: {}".format(
+                    type(op), type(other)
+                )
+            )
         return new
 
     def _right_helper(self, op, other):
@@ -782,8 +803,10 @@ class Variable:
             new = Objective(args=[other, self], transformation=op)
         else:
             raise TequilaException(
-                "unknown type in left_helper of objective arithmetics with operation {}: {}".format(type(op),
-                                                                                                    type(other)))
+                "unknown type in left_helper of objective arithmetics with operation {}: {}".format(
+                    type(op), type(other)
+                )
+            )
         return new
 
     def __mul__(self, other):
@@ -799,7 +822,7 @@ class Variable:
         return self._left_helper(numpy.true_divide, other)
 
     def __neg__(self):
-        return Objective(args=[self], transformation=lambda v: numpy.multiply(v, -1.))
+        return Objective(args=[self], transformation=lambda v: numpy.multiply(v, -1.0))
 
     def __pow__(self, other):
         return self._left_helper(numpy.power, other)
@@ -818,7 +841,7 @@ class Variable:
 
     def __invert__(self):
         new = Objective(args=[self])
-        return new ** -1.0
+        return new**-1.0
 
     def __len__(self):
         return 1
@@ -830,7 +853,7 @@ class Variable:
             return True
 
     def apply(self, other):
-        assert (callable(other))
+        assert callable(other)
         return Objective(args=[self], transformation=other)
 
     def wrap(self, other):
@@ -841,6 +864,7 @@ class Variable:
 
     def toJson(self):
         import json
+
         return json.dumps(self, default=lambda o: o.__dict__)
 
 
@@ -860,14 +884,15 @@ class FixedVariable(float):
         return self
 
     def apply(self, other):
-        assert (callable(other))
+        assert callable(other)
         return Objective(args=[self], transformation=other)
 
     def wrap(self, other):
         return self.apply(other)
-    
+
     def map_variables(self, *args, **kwargs):
         return self
+
 
 def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List[Variable]:
     """
@@ -888,8 +913,9 @@ def format_variable_list(variables: typing.List[typing.Hashable]) -> typing.List
         return [assign_variable(k) for k in variables]
 
 
-def format_variable_dictionary(variables: typing.Dict[typing.Hashable, typing.Any]) -> typing.Dict[
-    Variable, typing.Any]:
+def format_variable_dictionary(
+    variables: typing.Dict[typing.Hashable, typing.Any],
+) -> typing.Dict[Variable, typing.Any]:
     """
     Convenience function to assign tequila variables.
     Parameters
@@ -908,8 +934,9 @@ def format_variable_dictionary(variables: typing.Dict[typing.Hashable, typing.An
         return Variables(variables)
 
 
-def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable]) -> typing.Union[
-    Variable, FixedVariable]:
+def assign_variable(
+    variable: typing.Union[typing.Hashable, numbers.Real, Variable, FixedVariable],
+) -> typing.Union[Variable, FixedVariable]:
     """
     Convenience function; maps various objects into Variable, FixedVariable, or Variables, for easy duck-typing.
 
@@ -920,7 +947,7 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
 
     Raises
     ------
-    
+
     TequilaVariableException
 
 
@@ -945,8 +972,11 @@ def assign_variable(variable: typing.Union[typing.Hashable, numbers.Real, Variab
         return Variable(name=variable)
     else:
         raise TequilaVariableException(
-            "Only hashable types can be assigned to Variables. You passed down " + str(variable) + " type=" + str(
-                type(variable)))
+            "Only hashable types can be assigned to Variables. You passed down "
+            + str(variable)
+            + " type="
+            + str(type(variable))
+        )
 
 
 class Variables(collections.abc.MutableMapping):
@@ -988,5 +1018,5 @@ class Variables(collections.abc.MutableMapping):
         return result
 
     def __repr__(self):
-        xdict = {k:v for k,v in self.items()}
+        xdict = {k: v for k, v in self.items()}
         return xdict.__repr__()

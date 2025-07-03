@@ -28,8 +28,9 @@ class QubitWaveFunction:
     Does not enforce normalization.
     """
 
-    def __init__(self, n_qubits: int, numbering: BitNumbering = BitNumbering.MSB, dense: bool = False,
-                 init_state: bool = True) -> None:
+    def __init__(
+        self, n_qubits: int, numbering: BitNumbering = BitNumbering.MSB, dense: bool = False, init_state: bool = True
+    ) -> None:
         """
         Initialize a QubitWaveFunction with all amplitudes set to zero.
 
@@ -43,13 +44,14 @@ class QubitWaveFunction:
         self._numbering = numbering
         self._dense = dense
         if init_state:
-            self._state = np.zeros(2 ** self._n_qubits, dtype=complex) if dense else dict()
+            self._state = np.zeros(2**self._n_qubits, dtype=complex) if dense else dict()
         else:
             self._state = None
 
     @classmethod
-    def from_wavefunction(cls, wfn: QubitWaveFunction, keymap: KeyMapABC = None, n_qubits: int = None,
-                          initial_state: BitString = None) -> QubitWaveFunction:
+    def from_wavefunction(
+        cls, wfn: QubitWaveFunction, keymap: KeyMapABC = None, n_qubits: int = None, initial_state: BitString = None
+    ) -> QubitWaveFunction:
         """
         Create a copy of a wavefunction.
 
@@ -66,7 +68,9 @@ class QubitWaveFunction:
             if wfn._dense and wfn._state.dtype == object:
                 result = sympy.Integer(1) * result
             for index, coeff in wfn.raw_items():
-                key = initialize_bitstring(index, wfn._n_qubits, numbering_in=wfn._numbering, numbering_out=keymap.numbering)
+                key = initialize_bitstring(
+                    index, wfn._n_qubits, numbering_in=wfn._numbering, numbering_out=keymap.numbering
+                )
                 key = keymap(key, initial_state)
                 result[key] += coeff
             return result
@@ -74,8 +78,9 @@ class QubitWaveFunction:
             return deepcopy(wfn)
 
     @classmethod
-    def from_array(cls, array: npt.NDArray[complex], numbering: BitNumbering = BitNumbering.MSB,
-                   copy: bool = True) -> QubitWaveFunction:
+    def from_array(
+        cls, array: npt.NDArray[complex], numbering: BitNumbering = BitNumbering.MSB, copy: bool = True
+    ) -> QubitWaveFunction:
         """
         Create a dense wavefunction from a Numpy array.
 
@@ -93,8 +98,9 @@ class QubitWaveFunction:
         return result
 
     @classmethod
-    def from_basis_state(cls, n_qubits: int, basis_state: Union[int, BitString],
-                         numbering: BitNumbering = BitNumbering.MSB) -> QubitWaveFunction:
+    def from_basis_state(
+        cls, n_qubits: int, basis_state: Union[int, BitString], numbering: BitNumbering = BitNumbering.MSB
+    ) -> QubitWaveFunction:
         """
         Create a sparse wavefunction that is a basis state.
 
@@ -103,11 +109,14 @@ class QubitWaveFunction:
         :param numbering: Whether the first qubit is the most or least significant.
         :return: The created wavefunction.
         """
-        if 2 ** n_qubits <= basis_state:
+        if 2**n_qubits <= basis_state:
             raise ValueError(f"Number of qubits {n_qubits} insufficient for basis state {basis_state}")
         if isinstance(basis_state, BitString):
-            basis_state = reverse_int_bits(basis_state.integer,
-                                           basis_state.nbits) if numbering != basis_state.numbering else basis_state.integer
+            basis_state = (
+                reverse_int_bits(basis_state.integer, basis_state.nbits)
+                if numbering != basis_state.numbering
+                else basis_state.integer
+            )
         result = QubitWaveFunction(n_qubits, numbering)
         result[basis_state] = 1.0
         return result
@@ -134,7 +143,7 @@ class QubitWaveFunction:
                 result[index] = coeff
             return result
         except ValueError:
-            raise TequilaException(f"Failed to initialize QubitWaveFunction from string:\n\"{string}\"\n")
+            raise TequilaException(f'Failed to initialize QubitWaveFunction from string:\n"{string}"\n')
 
     @classmethod
     def convert_from(cls, n_qubits: int, val: Union[QubitWaveFunction, int, str, numpy.ndarray]):
@@ -192,7 +201,7 @@ class QubitWaveFunction:
         if self._dense and self._numbering == out_numbering:
             return self._state.copy() if copy else self._state
         else:
-            result = np.zeros(2 ** self._n_qubits, dtype=complex)
+            result = np.zeros(2**self._n_qubits, dtype=complex)
             for k, v in self.raw_items():
                 if self._numbering != out_numbering:
                     k = reverse_int_bits(k, self._n_qubits)
@@ -208,9 +217,11 @@ class QubitWaveFunction:
         :param copy: Whether to copy the array or use it directly.
             If False, changes to the array or wavefunction will affect each other.
         """
-        if len(value) != 2 ** self._n_qubits:
-            raise ValueError(f"Wavefunction of {self._n_qubits} qubits must have {2 ** self._n_qubits} amplitudes, "
-                             f"received {len(value)}")
+        if len(value) != 2**self._n_qubits:
+            raise ValueError(
+                f"Wavefunction of {self._n_qubits} qubits must have {2**self._n_qubits} amplitudes, "
+                f"received {len(value)}"
+            )
         self._dense = True
         if copy:
             self._state = value.copy()
@@ -238,9 +249,11 @@ class QubitWaveFunction:
 
     def items(self) -> Generator[tuple[BitString, complex]]:
         """Returns a generator of non-zero amplitudes with BitString indices."""
-        return ((initialize_bitstring(k, self._n_qubits, self._numbering), v)
-                for k, v in self.raw_items()
-                if isinstance(v, sympy.Basic) or abs(v) > 1e-6)
+        return (
+            (initialize_bitstring(k, self._n_qubits, self._numbering), v)
+            for k, v in self.raw_items()
+            if isinstance(v, sympy.Basic) or abs(v) > 1e-6
+        )
 
     def keys(self) -> Generator[BitString]:
         """Returns a generator of BitString indices of non-zero amplitudes."""
@@ -256,11 +269,12 @@ class QubitWaveFunction:
 
         raise TequilaException("Wavefunction equality is not well-defined. Consider using isclose.")
 
-    def isclose(self: QubitWaveFunction,
-                other: QubitWaveFunction,
-                rtol: float = 1e-5,
-                atol: float = 1e-8, 
-                ignore_global_phase: bool = True
+    def isclose(
+        self: QubitWaveFunction,
+        other: QubitWaveFunction,
+        rtol: float = 1e-5,
+        atol: float = 1e-8,
+        ignore_global_phase: bool = True,
     ) -> bool:
         """
         Check if two wavefunctions are close, up to a global phase.
@@ -279,8 +293,7 @@ class QubitWaveFunction:
         if ignore_global_phase:
             cosine_similarity = abs(cosine_similarity)
 
-        return (np.isclose(cosine_similarity, 1.0, rtol, atol)
-                and np.isclose(self_norm, other_norm, rtol, atol))
+        return np.isclose(cosine_similarity, 1.0, rtol, atol) and np.isclose(self_norm, other_norm, rtol, atol)
 
     def __add__(self, other: QubitWaveFunction) -> QubitWaveFunction:
         if self._dense and other._dense and self._numbering == other._numbering:
@@ -391,7 +404,7 @@ class QubitWaveFunction:
     def compute_expectationvalue(self, operator: QubitHamiltonian) -> numbers.Real:
         tmp = self.apply_qubitoperator(operator=operator)
         E = self.inner(other=tmp)
-        if hasattr(E, "imag") and np.isclose(E.imag, 0.0, atol=1.e-6):
+        if hasattr(E, "imag") and np.isclose(E.imag, 0.0, atol=1.0e-6):
             return float(E.real)
         else:
             return E

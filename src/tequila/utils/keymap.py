@@ -4,7 +4,6 @@ from tequila import BitNumbering, BitString, BitStringLSB
 
 
 class KeyMapABC:
-
     @property
     def n_qubits(self):
         return None
@@ -18,7 +17,6 @@ class KeyMapABC:
 
 
 class KeyMapLSB2MSB(KeyMapABC):
-
     def __call__(self, input_state: BitStringLSB, initial_state: int = None) -> BitString:
         if isinstance(input_state, numbers.Integral):
             return BitString.from_int(integer=input_state)
@@ -27,7 +25,6 @@ class KeyMapLSB2MSB(KeyMapABC):
 
 
 class KeyMapMSB2LSB(KeyMapABC):
-
     @property
     def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
@@ -40,7 +37,6 @@ class KeyMapMSB2LSB(KeyMapABC):
 
 
 class KeyMapSubregisterToRegister(KeyMapABC):
-
     @property
     def n_qubits(self):
         return len(self.register)
@@ -93,7 +89,6 @@ class KeyMapSubregisterToRegister(KeyMapABC):
 
 
 class KeyMapRegisterToSubregister(KeyMapSubregisterToRegister):
-
     def __call__(self, input_state: BitString, initial_state: BitString = None) -> BitString:
         """
         Map from register to subregister
