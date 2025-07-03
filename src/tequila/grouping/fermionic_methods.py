@@ -205,12 +205,12 @@ def do_svd(h_ferm, n_elec):
     obt = obtb[0]
     tbt_ham_opt = obtb[1]
     n_qubit = ferm.qubit_number(h_ferm)
-    if spin_orb != True:
+    if not spin_orb:
         obt = ferm.obt_orb_to_so(obt)
 
     n = obt.shape[0]
     CARTAN_TBTS_tmp, TBTS_tmp, OPS_tmp, U_OPS_tmp = ferm.lr_decomp(tbt_ham_opt, spin_orb=spin_orb)
-    if spin_orb != True:
+    if not spin_orb:
         U_OPS = ferm.convert_u_to_so(U_OPS_tmp)
         tbts = np.zeros([len(OPS_tmp), n, n, n, n])
         cartan_tbts = np.zeros([len(OPS_tmp), n, n, n, n])
@@ -295,7 +295,7 @@ def get_init_ops(h_ferm, mol_name, calc_type, spin_orb, save=True):
 
     n_qubit = ferm.qubit_number(h_ferm)
 
-    if spin_orb != True:
+    if not spin_orb:
         obt = ferm.obt_orb_to_so(obt)
         tbt = ferm.tbt_orb_to_so(tbt_ham_opt)
     else:
@@ -321,7 +321,7 @@ def get_init_ops(h_ferm, mol_name, calc_type, spin_orb, save=True):
                     pickle.dump([CARTAN_TBTS_tmp, TBTS_tmp, U_OPS_tmp], file)
         OPS = ferm.convert_tbts_to_frags(TBTS_tmp, spin_orb)
 
-    if spin_orb != True:
+    if not spin_orb:
         U_OPS = ferm.convert_u_to_so(U_OPS_tmp)
         tbts = np.zeros([len(OPS), n, n, n, n])
         cartan_tbts = np.zeros([len(OPS), n, n, n, n])

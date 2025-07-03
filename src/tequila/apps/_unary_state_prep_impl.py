@@ -181,28 +181,28 @@ class UnaryStatePrepImpl:
                 ):  # control != target & != other string & != 'a'
                     i = 0  # use i to loop through strings to check for control
                     flag = True
-                    while i < len(s_to_check) and flag == True:
+                    while i < len(s_to_check) and flag:
                         if s[i1][index] == s_to_check[i][index] or not (
                             s_to_check[i][index] == "0" or s_to_check[i][index] == "1"
                         ):  # making sure its a 1 or 0
                             flag = False  # can't be used for control
                         i += 1
 
-                    if flag == True:
+                    if flag:
                         poss_moves[target].append((index, s[i1][index]))
 
                     ##check with s[i2]
                     flag = True
                     i = 0  # loop through strings and check for control
 
-                    while i < len(s_to_check) and flag == True:
+                    while i < len(s_to_check) and flag:
                         if s[i2][index] == s_to_check[i][index] or not (
                             s_to_check[i][index] == "0" or s_to_check[i][index] == "1"
                         ):
                             flag = False
                         i += 1
 
-                    if flag == True:
+                    if flag:
                         poss_moves[target].append((index, s[i2][index]))
 
         return poss_moves  # type  is  dict{key = int(taget bit's index):  value = list[ tuple( int(control bit index), str(control type)),  .. ] }
@@ -277,7 +277,7 @@ class UnaryStatePrepImpl:
                     if string[index] == s[i][index]:
                         flag = False  # not a possible control
 
-                if flag == True:
+                if flag:
                     c_type = s[i][index]
 
                     possible_indicies.append([index, c_type])  # tpye  is a list[ int(index of control, str(c_type)]
@@ -399,7 +399,7 @@ class UnaryStatePrepImpl:
         keys = list(d.keys())
         first_key = keys[i]
 
-        while found == False and i < len(keys) - 1:
+        while not found and i < len(keys) - 1:
             if len(d[first_key]) != 0:
                 found = True
             else:
