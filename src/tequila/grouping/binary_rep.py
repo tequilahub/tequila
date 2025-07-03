@@ -315,7 +315,7 @@ class BinaryHamiltonian:
             if method == "si":
                 groups = sorted_insertion_grouping(terms, condition)
             if method == "ics":
-                if overlap_aux == None:
+                if overlap_aux is None:
                     raise TequilaException(
                         "Overlapping SI grouping requires a dictionary of covariances, call with options={cov_dict:X}, where X is the dictionary."
                     )

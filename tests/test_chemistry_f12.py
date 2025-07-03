@@ -1,7 +1,8 @@
 import pytest
 import tequila as tq
 import numpy
-import os, glob
+import os
+import glob
 
 HAS_PSI4 = "psi4" in tq.quantumchemistry.INSTALLED_QCHEMISTRY_BACKENDS
 

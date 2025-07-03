@@ -2,7 +2,10 @@
 Base class for Optimizers.
 """
 
-import typing, numbers, copy, warnings
+import typing
+import numbers
+import copy
+import warnings
 
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_api import compile, pick_backend
@@ -194,7 +197,7 @@ class OptimizerHistory:
         for i, p in enumerate(properties):
             try:
                 label = labels[i]
-            except:
+            except Exception:
                 label = p
 
             if p == "energies":
@@ -835,7 +838,7 @@ class _SPSAGrad(_NumGrad):
 
         if isinstance(stepsize, list):
             self.nextIndex = 0
-        elif gamma != None:
+        elif gamma is not None:
             self.nextIndex = "adjust"
         else:
             self.nextIndex = -1

@@ -6,7 +6,9 @@ from tequila.optimizers.optimizer_gd import minimize as minimize_gd
 from tequila.simulators.simulator_api import simulate
 from dataclasses import dataclass
 
-import typing, numbers, numpy
+import typing
+import numbers
+import numpy
 
 
 @dataclass

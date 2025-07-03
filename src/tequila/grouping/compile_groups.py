@@ -21,7 +21,7 @@ def compile_commuting_parts(H, unitary_circuit="improved", *args, **kwargs):
     -------
         A list of tuples containing all-Z Hamiltonian and corresponding Rotations
     """
-    if "options" in kwargs and not (kwargs["options"] is None) and "method" in kwargs["options"]:
+    if "options" in kwargs and kwargs["options"] is not None and "method" in kwargs["options"]:
         method = kwargs["options"]["method"]
     else:
         method = "rlf"

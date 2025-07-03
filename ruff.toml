@@ -1,1 +1,22 @@
 line-length = 120
+
+[lint]
+select = [
+    # E: pycodestyle errors
+    "E"
+]
+ignore = [
+    # E501: Line too long
+    # Mostly taken care of by the formatter, remaining issues are string literals and comments which is not a priority
+    # at the moment
+    "E501",
+    # E731: Do not assign a `lambda` expression, use a `def`
+    # Annoying because it will split a one line lambda into a two line def, and then add empty lines before and after
+    # the def, so now the code is four times as long.
+    "E731",
+    # E741/E742/E743: Ambiguous variable/class/function name
+    # Not a significant issue when using a good font, and clashes with some conventions, e.g. I for identity
+    "E741",
+    "E742",
+    "E743",
+]

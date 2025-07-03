@@ -1,4 +1,5 @@
-import pytest, numpy
+import pytest
+import numpy
 import tequila as tq
 import multiprocessing as mp
 from tequila.simulators.simulator_api import simulate

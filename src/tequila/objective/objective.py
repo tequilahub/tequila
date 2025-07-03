@@ -1,4 +1,6 @@
-import typing, copy, numbers
+import typing
+import copy
+import numbers
 from typing import Union
 from tequila.grouping.compile_groups import compile_commuting_parts
 from tequila import TequilaException
@@ -606,7 +608,7 @@ class Objective:
                 expval_result = evaluated[E]
             try:
                 expval_result = float(expval_result)
-            except:
+            except Exception:
                 pass  # allow array evaluation (non-standard operation)
             ev_array.append(expval_result)
         result = onp.asarray(self.transformation(*ev_array), dtype=float)

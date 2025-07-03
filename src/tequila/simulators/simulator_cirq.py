@@ -7,7 +7,8 @@ from tequila.utils import to_float
 
 import importlib
 import numpy as np
-import typing, numbers
+import typing
+import numbers
 
 import cirq
 import cirq_google
@@ -274,7 +275,7 @@ class BackendCircuitCirq(BackendCircuit):
         else:
             try:
                 par = self.tq_to_sympy[parameter]
-            except:
+            except Exception:
                 par = sympy.Symbol("{}_{}".format(self._name_variable_objective(parameter), str(self.counter)))
                 self.tq_to_sympy[parameter] = par
                 self.counter += 1

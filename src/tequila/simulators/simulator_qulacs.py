@@ -1,7 +1,8 @@
 from typing import Union
 
 import qulacs
-import numbers, numpy
+import numbers
+import numpy
 import warnings
 
 from tequila import TequilaException, TequilaWarning

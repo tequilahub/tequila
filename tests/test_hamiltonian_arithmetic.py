@@ -2,7 +2,8 @@ from tequila.hamiltonian import QubitHamiltonian, PauliString, paulis
 from numpy import random, kron, eye, allclose
 from tequila import BitString, QubitWaveFunction
 from tequila import paulis
-import numpy, pytest
+import numpy
+import pytest
 
 
 def test_convenience():

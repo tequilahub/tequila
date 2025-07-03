@@ -226,7 +226,7 @@ def tbt_to_ferm(tbt: np.array, spin_orb, norm_ord=False):
     """
     Converts two body tensor into Fermion Operator.
     """
-    if norm_ord == True:
+    if norm_ord:
         return normal_ordered(get_ferm_op(tbt, spin_orb))
     else:
         return get_ferm_op(tbt, spin_orb)
@@ -236,7 +236,7 @@ def cartan_tbt_to_ferm(ctbt: np.array, spin_orb, norm_ord=False):
     """
     Converts two body tensor into Fermion Operator.
     """
-    if norm_ord == True:
+    if norm_ord:
         return normal_ordered(get_cartan_ferm_op(ctbt, spin_orb))
     else:
         return get_cartan_ferm_op(ctbt, spin_orb)
@@ -246,7 +246,7 @@ def obt_to_ferm(obt: np.array, spin_orb=False, norm_ord=False):
     """
     Converts one body tensor into Fermion Operator.
     """
-    if norm_ord == True:
+    if norm_ord:
         return of.normal_ordered(get_ferm_op(obt, spin_orb))
     else:
         return get_ferm_op(obt, spin_orb)
@@ -309,7 +309,7 @@ def symmetric(M, tol=1e-8, ret_op=False):
     if ret_op = True, returns the symmetrc form of the given matrix.
     """
     M_res = np.tril(M) + np.triu(M.T, 1)
-    if ret_op == False:
+    if not ret_op:
         if np.sum(np.abs(M - M_res)) > tol:
             return False
         return True

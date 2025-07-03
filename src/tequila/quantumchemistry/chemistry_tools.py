@@ -347,7 +347,7 @@ class ParametersQC:
             atom = "".join(atom)
             element = pt.elements.symbol(atom)
             return element.number
-        except:
+        except Exception:
             raise TequilaException(
                 "can not assign atomic number to element {}\npip install periodictable will fix it".format(atom)
             )

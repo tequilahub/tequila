@@ -3,7 +3,8 @@ from tequila.quantumchemistry.qc_base import QuantumChemistryBase
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
 import pyscf
 
-import numpy, typing
+import numpy
+import typing
 
 
 def _merge_alpha_beta_strs(alpha_str, beta_str, norb):
@@ -215,7 +216,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                 )
             if hasattr(self, "irreps"):
                 base += "{:15} : {}\n".format("irreps", self.irreps)
-        except:
+        except Exception:
             return base
         return base
 

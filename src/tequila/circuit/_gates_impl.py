@@ -422,7 +422,7 @@ class GeneralizedRotationImpl(DifferentiableGateImpl):
         name="GenRot",
         assume_real=False,
     ):
-        if target == None:
+        if target is None:
             target = self.extract_targets(generator)
         super().__init__(
             eigenvalues_magnitude=eigenvalues_magnitude,
