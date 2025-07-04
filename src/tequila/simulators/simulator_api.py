@@ -27,6 +27,7 @@ SUPPORTED_BACKENDS = [
     "aqt",
     "mqp",
     "ddsim",
+    "cudaq"
 ]
 
 # TODO: Reenable noise for Qiskit
