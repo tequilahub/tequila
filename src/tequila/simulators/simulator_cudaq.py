@@ -1,6 +1,7 @@
 import cudaq
 from cudaq import spin
-import numbers, numpy
+import numbers
+import numpy
 from tequila import TequilaException, TequilaWarning
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
@@ -327,7 +328,7 @@ class BackendCircuitCudaq(BackendCircuit):
         else:
             raise ValueError("length of params lists in prepare_circuit_for_modifier has sto match")
 
-        if iteration_length == None:
+        if iteration_length is None:
             raise ValueError("iter length from prepare_circuit shall not be None")
 
         return (number_of_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length)
