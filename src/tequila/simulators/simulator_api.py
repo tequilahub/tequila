@@ -27,6 +27,7 @@ SUPPORTED_BACKENDS = [
     "aqt",
     "mqp",
     "ddsim",
+    "cudaq",
 ]
 
 # TODO: Reenable noise for Qiskit
@@ -35,6 +36,7 @@ SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
 BackendTypes = namedtuple("BackendTypes", "CircType ExpValueType")
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
+
 
 HAS_QULACS = True
 INSTALLED_NOISE_SAMPLERS = {}
@@ -47,6 +49,15 @@ if typing.TYPE_CHECKING:
 Check which simulators are installed
 We are distinguishing two classes of simulators: Samplers and full wavefunction simulators
 """
+
+# a check block for cudaq
+HAS_CUDAQ = True
+try:
+    from tequila.simulators.simulator_cudaq import BackendCircuitCudaq, BackendExpectationValueCudaq
+
+    INSTALLED_SIMULATORS["cudaq"] = BackendTypes(BackendCircuitCudaq, BackendExpectationValueCudaq)
+except ImportError:
+    HAS_CUDAQ = False
 
 
 HAS_SPEX = True

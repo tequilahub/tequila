@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10']
+        python-version: ['3.11']
         include:
           - os: ubuntu-latest
             cxx: /usr/bin/g++-14
@@ -26,6 +26,37 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-activate-base: false
+                
+    - name: Install CUDA-Q
+      run: |
+          cuda_version=12.4.0
+          conda create -y -n cudaq-env python=3.11 pip
+          conda install -y -n cudaq-env -c "nvidia/label/cuda-${cuda_version}" cuda
+          conda install -y -n cudaq-env -c conda-forge mpi4py "openmpi>=5.0.3" cxx-compiler
+          conda env config vars set -n cudaq-env LD_LIBRARY_PATH="$CONDA_PREFIX/envs/cudaq-env/lib:$LD_LIBRARY_PATH"
+          conda env config vars set -n cudaq-env MPI_PATH="$CONDA_PREFIX/envs/cudaq-env"
+          
+          source $(conda info --base)/etc/profile.d/conda.sh
+          conda activate cudaq-env
+
+          # install dependencies inside cudaq-env so tequila is recognized 
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "qulacs" "qiskit==1.*" "qiskit-aer"
+          pip install -e .
+
+          # Export MPI_PATH manually into the shell for the build
+          export MPI_PATH="$CONDA_PREFIX"
+          
+          pip install cudaq
+          
+          # Now it can find mpi.h
+          source $CONDA_PREFIX/lib/python3.11/site-packages/distributed_interfaces/activate_custom_mpi.sh
+                    
     - name: Install spex
       run: |
         python -m pip install --upgrade pip
@@ -43,11 +74,19 @@ jobs:
       run: |
         pip install flake8
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exclude simulator_cudaq.py due to its unique syntax - gates in kernel would otherwise be recognized as undeclared variables 
+        flake8 . --exclude=simulator_cudaq.py --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 . --exclude=simulator_cudaq.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test quantum backends
-      run: | 
+      run: |
+        echo "import tequila as tq" > test_ci_installation.py
+        # re initialise conda env for cudaq before running tests 
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate cudaq-env
+        echo "assert ('qulacs' in tq.INSTALLED_SIMULATORS)" >> test_ci_installation.py
+        echo "assert ('cudaq' in tq.INSTALLED_SIMULATORS)" >> test_ci_installation.py
+        python test_ci_installation.py
         pytest -m "not dependencies" tests/test_simulator_backends.py --slow
         pytest -m "not dependencies" tests/test_recompilation_routines.py --slow
         pytest -m "not dependencies" tests/test_noise.py --slow
