@@ -260,4 +260,4 @@ def export_to(circuit, filename: str, style="tequila", qubit_names: list = None,
 
     export_to_qpic(circuit=circuit, filename=fname, filepath=fpath, qubit_names=qubit_names, **style, **kwargs)
     if ftype != "qpic":
-        subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype], cwd=fpath)
+        subprocess.call(["qpic", "{}.qpic".format(fname), "-f", ftype], cwd=fpath, stdout=subprocess.DEVNULL)
