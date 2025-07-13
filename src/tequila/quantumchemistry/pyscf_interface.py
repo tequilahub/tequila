@@ -75,13 +75,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
             mf.kernel()
 
-            # only works if point_group is not C1
-            # otherwise PySCF uses a different SCF object
-            # irrep information is however not critical to tequila
-            if hasattr(mf, "get_irrep_nelec"):
-                self.irreps = mf.get_irrep_nelec()
-            else:
-                self.irreps = None
+            self.irreps = pyscf.symm.label_orb_symm(mol, mol.irrep_name, mol.symm_orb, mf.mo_coeff)
 
             orbital_energies = mf.mo_energy
 
