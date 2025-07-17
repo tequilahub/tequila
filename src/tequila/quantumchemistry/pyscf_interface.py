@@ -81,12 +81,14 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
             orbital_energies = mf.mo_energy
 
-            orbitals = [OrbitalData(idx_total=idx, irrep=irr, energy=energy) for idx, (irr, energy) in enumerate(zip(self.irreps, orbital_energies))]
+            orbitals = [
+                OrbitalData(idx_total=idx, irrep=irr, energy=energy)
+                for idx, (irr, energy) in enumerate(zip(self.irreps, orbital_energies))
+            ]
 
-            for irr in { o.irrep for o in orbitals }:
+            for irr in {o.irrep for o in orbitals}:
                 for i, o in enumerate([o for o in orbitals if o.irrep == irr]):
                     o.idx_irrep = i
-
 
             # compute mo integrals
             mo_coeff = mf.mo_coeff
