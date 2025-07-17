@@ -42,6 +42,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
     def __init__(
         self, parameters: ParametersQC, transformation: typing.Union[str, typing.Callable] = None, *args, **kwargs
     ):
+        orbitals = None
         if "one_body_integrals" not in kwargs:
             geometry = parameters.get_geometry()
             pyscf_geomstring = ""
