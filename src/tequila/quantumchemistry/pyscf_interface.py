@@ -3,6 +3,8 @@ from tequila.quantumchemistry.qc_base import QuantumChemistryBase
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
 import pyscf
 
+from .chemistry_tools import OrbitalData
+
 import numpy
 import typing
 
@@ -75,9 +77,16 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
             mf.kernel()
 
-            self.irreps = pyscf.symm.label_orb_symm(mol, mol.irrep_name, mol.symm_orb, mf.mo_coeff)
+            self.irreps = pyscf.symm.label_orb_symm(mol, mol.irrep_name, mol.symm_orb, mf.mo_coeff).tolist()
 
             orbital_energies = mf.mo_energy
+
+            orbitals = [OrbitalData(idx_total=idx, irrep=irr, energy=energy) for idx, (irr, energy) in enumerate(zip(self.irreps, orbital_energies))]
+
+            for irr in { o.irrep for o in orbitals }:
+                for i, o in enumerate([o for o in orbitals if o.irrep == irr]):
+                    o.idx_irrep = i
+
 
             # compute mo integrals
             mo_coeff = mf.mo_coeff
@@ -98,7 +107,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             if "nuclear_repulsion" not in kwargs:
                 kwargs["nuclear_repulsion"] = mol.energy_nuc()
 
-        super().__init__(parameters=parameters, transformation=transformation, *args, **kwargs)
+        super().__init__(parameters=parameters, transformation=transformation, orbitals=orbitals, *args, **kwargs)
 
     def compute_fci(self, get_wfn=False, **kwargs):
         from pyscf import fci
