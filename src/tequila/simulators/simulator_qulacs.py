@@ -499,7 +499,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
 
         # map the reduced operators to the potentially smaller qubit system
         qubit_map = {}
-        for i, q in enumerate(self.U.abstract_circuit.qubits):
+        for i, q in enumerate(self.U.abstract_qubits):
             qubit_map[q] = i
 
         result = []
