@@ -416,20 +416,25 @@ def test_initial_state_from_integer(simulator, initial_state):
 def test_initial_state_from_wavefunction(simulator):
     if not tequila.simulators.simulator_api.INSTALLED_SIMULATORS[simulator][0].supports_generic_initialization:
         return
+    supports_sampling = tequila.simulators.simulator_api.INSTALLED_SIMULATORS[simulator][
+        0
+    ].supports_sampling_initialization
 
     U = tq.gates.H(target=0)
 
     state = QubitWaveFunction.from_array(np.array([1.0, 1.0])).normalize()
     result = tq.simulate(U, initial_state=state, backend=simulator)
     assert result.isclose(QubitWaveFunction.from_basis_state(n_qubits=1, basis_state=0))
-    result = tq.simulate(U, initial_state=state, backend=simulator, samples=100)
-    assert result.isclose(QubitWaveFunction.from_array(np.array([100.0, 0.0])))
+    if supports_sampling:
+        result = tq.simulate(U, initial_state=state, backend=simulator, samples=100)
+        assert result.isclose(QubitWaveFunction.from_array(np.array([100.0, 0.0])))
 
     state = QubitWaveFunction.from_array(np.array([1.0, -1.0])).normalize()
     result = tq.simulate(U, initial_state=state, backend=simulator)
     assert result.isclose(QubitWaveFunction.from_basis_state(n_qubits=1, basis_state=1))
-    result = tq.simulate(U, initial_state=state, backend=simulator, samples=100)
-    assert result.isclose(QubitWaveFunction.from_array(np.array([0.0, 100.0])))
+    if supports_sampling:
+        result = tq.simulate(U, initial_state=state, backend=simulator, samples=100)
+        assert result.isclose(QubitWaveFunction.from_array(np.array([0.0, 100.0])))
 
     U = tq.gates.X(target=0)
     H = tq.paulis.Z(qubit=0)
@@ -437,8 +442,9 @@ def test_initial_state_from_wavefunction(simulator):
     state = QubitWaveFunction.from_array(np.array([0.0, 1.0])).normalize()
     result = tq.simulate(E, initial_state=state, backend=simulator)
     assert numpy.isclose(result, 1.0)
-    result = tq.simulate(E, initial_state=state, backend=simulator, samples=100)
-    assert numpy.isclose(result, 1.0)
+    if supports_sampling:
+        result = tq.simulate(E, initial_state=state, backend=simulator, samples=100)
+        assert numpy.isclose(result, 1.0)
 
 
 @pytest.mark.parametrize("backend", tequila.simulators.simulator_api.INSTALLED_SIMULATORS.keys())
