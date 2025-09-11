@@ -1,12 +1,13 @@
 import cudaq
+import numpy as np
 from cudaq import spin
 import numbers
 import numpy
-from tequila import TequilaException, TequilaWarning
-from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB
+from tequila import TequilaException
+from tequila.utils.bitstrings import BitNumbering, reverse_int_bits
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, QCircuit, change_basis
-from tequila.utils.keymap import KeyMapRegisterToSubregister
+from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
+from typing import Union
 
 """
 Developer Note:
@@ -62,8 +63,8 @@ class BackendCircuitCudaq(BackendCircuit):
         "phase_to_z": True,
         "cc_max": True,
     }
-    # set convention of numbering to LSB
     numbering = BitNumbering.LSB
+    supports_generic_initialization = True
 
     def __init__(self, abstract_circuit, noise=None, *args, **kwargs):
         """
@@ -333,35 +334,20 @@ class BackendCircuitCudaq(BackendCircuit):
 
         return (number_of_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length)
 
-    def prepare_state_from_integer(state_index: int, num_qubits: int):
-        """Prepare gate encodings to initialize the quantum state |state_index⟩.
-
-        Args:
-            state_index (int): The integer index of the basis state (e.g. 4 for |100⟩).
-            num_qubits (int): Total number of qubits in the system.
-
-        Returns:
-            tuple: (number_of_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length)
-        """
-        # Binary representation of state_index, padded to match number of qubits
-        binary = format(state_index, f"0{num_qubits}b")
-
-        gate_encodings = []
-        target_qubits = []
-        angles = []
-        control_qubits = []
-
-        # We apply an X gate to every qubit that needs to be 1
-        for i, bit in enumerate(binary):  # Qubit 0 is least significant
-            if bit == "1":
-                gate_encodings.append(1)  # encoding 1 = X gate
-                target_qubits.append(i)
-                angles.append(0.0)  # not used for X
-                control_qubits.append(-1)  # no control
-
-        iteration_length = len(gate_encodings)
-
-        return (num_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length)
+    def initialize_state(self, state: Union[int, QubitWaveFunction]) -> cudaq.State:
+        if isinstance(state, int):
+            amplitudes = np.zeros(2**self.n_qubits, dtype=cudaq.complex())
+            # Reverse because Tequila uses MSB bit ordering by default, while CudaQ uses LSB
+            # TODO: It would be better to handle this somewhere else, e.g. by passing a BitString object
+            #   in simulator_api (which stores its ordering), and then convert to the backend specific
+            #   bit-ordering before passing this to the backends.
+            index = reverse_int_bits(state, self.n_qubits)
+            amplitudes[index] = 1
+            return cudaq.State.from_data(amplitudes)
+        elif isinstance(state, QubitWaveFunction):
+            return cudaq.State.from_data(state.to_array(out_numbering=self.numbering).astype(cudaq.complex()))
+        else:
+            raise TypeError("State must be an int or QubitWaveFunction")
 
     def do_simulate(self, variables, initial_state, *args, **kwargs):
         """
@@ -389,12 +375,6 @@ class BackendCircuitCudaq(BackendCircuit):
             QubitWaveFunction representing result of the simulation.
         """
 
-        # given an input integer get the parameters to create a quantum state from
-        params = BackendCircuitCudaq.prepare_state_from_integer(initial_state, self.n_qubits)
-
-        # get the quantum state created based on a given initial state for applying the circuit on it
-        quantum_state_from_integer = cudaq.get_state(self.state_modifier, *params)
-
         # prepare the circuit to apply onto the state made from an integer
         (number_of_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length) = (
             BackendCircuitCudaq.prepare_circuit_for_state_modifier(self)
@@ -409,10 +389,10 @@ class BackendCircuitCudaq(BackendCircuit):
             angles,
             control_qubits,
             iteration_length,
-            quantum_state_from_integer,
+            self.initialize_state(initial_state),
         )
 
-        wfn = QubitWaveFunction.from_array(array=numpy.array(vector), numbering=self.numbering)
+        wfn = QubitWaveFunction.from_array(array=np.array(vector), numbering=self.numbering)
 
         return wfn
 
@@ -555,7 +535,7 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
     use_mapping = True
     BackendCircuitType = BackendCircuitCudaq
 
-    def simulate(self, variables, *args, **kwargs) -> numpy.array:
+    def simulate(self, variables, *args, **kwargs) -> np.array:
         """
         Perform simulation of this expectationvalue.
         Parameters
@@ -572,11 +552,11 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
         """
         # fast return if possible
         if self.H is None:
-            return numpy.asarray([0.0])
+            return np.asarray([0.0])
         elif len(self.H) == 0:
-            return numpy.asarray([0.0])
+            return np.asarray([0.0])
         elif isinstance(self.H, numbers.Number):
-            return numpy.asarray[self.H]
+            return np.asarray[self.H]
 
         # update the variables for correct expectation value evaluation
         self.U.update_variables(variables)
@@ -617,7 +597,7 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
             # store exp. val in results array
             resulting_expectation_values.append(expectation_value)
 
-        return numpy.asarray(resulting_expectation_values)
+        return np.asarray(resulting_expectation_values)
 
     def XX__XX__initialize_hamiltonian_old_implementation(self, hamiltonians):
         """
