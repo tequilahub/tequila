@@ -11,7 +11,6 @@ from tequila.circuit import compiler
 from typing import Union
 import numpy as np
 
-
 import numbers
 import typing
 import numpy
@@ -1000,7 +999,7 @@ class BackendExpectationValue:
             result.append(to_float(E))
         return numpy.asarray(result)
 
-    def simulate(self, variables, initial_state: Union[int, QubitWaveFunction], *args, **kwargs):
+    def simulate(self, variables, initial_state: Union[int, QubitWaveFunction], *args, **kwargs) -> numpy.array:
         """
         Simulate the expectationvalue.
 

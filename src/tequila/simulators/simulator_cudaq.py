@@ -7,7 +7,7 @@ from tequila import TequilaException
 from tequila.utils.bitstrings import BitNumbering, reverse_int_bits
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
-from typing import Union
+from typing import Union, Optional
 
 """
 Developer Note:
@@ -115,91 +115,6 @@ class BackendCircuitCudaq(BackendCircuit):
         self.variables = []
         super().__init__(abstract_circuit=abstract_circuit, noise=noise, *args, **kwargs)
         self.has_noise = False
-
-    @cudaq.kernel
-    def state_modifier(  ## create a state based on an empty state like |000..00>
-        number_of_qubits: int,
-        gate_encodings: list[int],
-        target_qubits: list[int],
-        angles: list[float],
-        control_qubits: list[int],
-        iteration_length: int,
-    ):
-        """
-        This function applies a circuit to an EMPTY QUANTUM STATE with a given number of qubits,
-        i.e. |00> for a two-qubit state.
-        The function collects the gates to apply, which are stored in a list (cudaq's circuit "object")
-        applies them in the given order to the state.
-
-        These circuits support:
-            1. single-qubit gates like: X, Y, Z, H, S, T as well as controlled variantes of them with up
-            to one control-qubit
-            2. parametrized single qubit gates like: Rx, Ry, Rz with a given angle
-        """
-        # create an empty state with given number of qubits
-        s = cudaq.qvector(number_of_qubits)
-
-        for index in range(iteration_length):
-            encoding = gate_encodings[index]
-            target = target_qubits[index]
-            angle = angles[index]
-            control = control_qubits[index]
-
-            # x gate
-            if encoding == 1:
-                if control != -1:
-                    x.ctrl(s[control], s[target])
-                else:
-                    x(s[target])
-            # y gate
-            elif encoding == 2:
-                if control != -1:
-                    y.ctrl(s[control], s[target])
-                else:
-                    y(s[target])
-            # z gate
-            elif encoding == 3:
-                if control != -1:
-                    z.ctrl(s[control], s[target])
-                else:
-                    z(s[target])
-            # h gate
-            elif encoding == 4:
-                if control != -1:
-                    h.ctrl(s[control], s[target])
-                else:
-                    h(s[target])
-            # Rx gate
-            elif encoding == 5:
-                if control != -1:
-                    pass
-                else:
-                    rx(angle, s[target])
-            # Rx gate
-            elif encoding == 6:
-                # support only parametrized rotations but without controls
-                if control != -1:
-                    pass
-                else:
-                    ry(angle, s[target])
-            # Rx gate
-            elif encoding == 7:
-                if control != -1:
-                    pass
-                else:
-                    rz(angle, s[target])
-            # S gate
-            elif encoding == 8:
-                if control != -1:
-                    s.ctrl(s[control], s[target])
-                else:
-                    s(s[target])
-            # T gate
-            elif encoding == 9:
-                if control != -1:
-                    t.ctrl(s[control], s[target])
-                else:
-                    t(s[target])
 
     @cudaq.kernel
     def state_modifier_from_initial_state(  ## create a state based on an EXISTING PREVIOUS STATE i.e. |1010010>
@@ -334,21 +249,6 @@ class BackendCircuitCudaq(BackendCircuit):
 
         return (number_of_qubits, gate_encodings, target_qubits, angles, control_qubits, iteration_length)
 
-    def initialize_state(self, state: Union[int, QubitWaveFunction]) -> cudaq.State:
-        if isinstance(state, int):
-            amplitudes = np.zeros(2**self.n_qubits, dtype=cudaq.complex())
-            # Reverse because Tequila uses MSB bit ordering by default, while CudaQ uses LSB
-            # TODO: It would be better to handle this somewhere else, e.g. by passing a BitString object
-            #   in simulator_api (which stores its ordering), and then convert to the backend specific
-            #   bit-ordering before passing this to the backends.
-            index = reverse_int_bits(state, self.n_qubits)
-            amplitudes[index] = 1
-            return cudaq.State.from_data(amplitudes)
-        elif isinstance(state, QubitWaveFunction):
-            return cudaq.State.from_data(state.to_array(out_numbering=self.numbering).astype(cudaq.complex()))
-        else:
-            raise TypeError("State must be an int or QubitWaveFunction")
-
     def do_simulate(self, variables, initial_state, *args, **kwargs):
         """
         Helper function to perform simulation.
@@ -389,7 +289,7 @@ class BackendCircuitCudaq(BackendCircuit):
             angles,
             control_qubits,
             iteration_length,
-            self.initialize_state(initial_state),
+            initialize_state(initial_state, n_qubits=self.n_qubits),
         )
 
         wfn = QubitWaveFunction.from_array(array=np.array(vector), numbering=self.numbering)
@@ -535,7 +435,7 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
     use_mapping = True
     BackendCircuitType = BackendCircuitCudaq
 
-    def simulate(self, variables, *args, **kwargs) -> np.array:
+    def simulate(self, variables, initial_state: Union[int, QubitWaveFunction], *args, **kwargs) -> np.array:
         """
         Perform simulation of this expectationvalue.
         Parameters
@@ -573,7 +473,7 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
         for hamiltonian in self.H:
             # compute expectation value between hamiltonian and state
             expectation_value = cudaq.observe(
-                BackendCircuitCudaq.state_modifier,
+                BackendCircuitCudaq.state_modifier_from_initial_state,
                 hamiltonian,
                 number_of_qubits,
                 gate_encodings,
@@ -581,18 +481,8 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
                 angles,
                 control_qubits,
                 iteration_length,
+                initialize_state(initial_state, n_qubits=self.n_qubits),
             ).expectation()
-
-            # get the amplitudes after applying simulation
-            amplitudes = cudaq.get_state(
-                BackendCircuitCudaq.state_modifier,
-                number_of_qubits,
-                gate_encodings,
-                target_qubits,
-                angles,
-                control_qubits,
-                iteration_length,
-            )
 
             # store exp. val in results array
             resulting_expectation_values.append(expectation_value)
@@ -691,3 +581,24 @@ class BackendExpectationValueCudaq(BackendExpectationValue):
                 hamiltonian_as_spin = spin.z(0) * 0.0
             list_of_initialized_hamiltonians.append(hamiltonian_as_spin)
         return list_of_initialized_hamiltonians
+
+
+def initialize_state(
+    state: Union[int, QubitWaveFunction], n_qubits: Optional[int] = None, numbering: BitNumbering = BitNumbering.LSB
+) -> cudaq.State:
+    if isinstance(state, int):
+        if n_qubits is None:
+            raise ValueError("Need to specify n_qubits for initializing CudaQ basis state")
+        amplitudes = np.zeros(2**n_qubits, dtype=cudaq.complex())
+        # Reverse because Tequila uses MSB bit ordering by default, while CudaQ uses LSB
+        # TODO: It would be better to handle this somewhere else, e.g. by passing a BitString object
+        #   in simulator_api (which stores its ordering), and then convert to the backend specific
+        #   bit-ordering before passing this to the backends.
+        if numbering == BitNumbering.LSB:
+            index = reverse_int_bits(state, n_qubits)
+        amplitudes[index] = 1
+        return cudaq.State.from_data(amplitudes)
+    elif isinstance(state, QubitWaveFunction):
+        return cudaq.State.from_data(state.to_array(out_numbering=numbering).astype(cudaq.complex()))
+    else:
+        raise TypeError("State must be an int or QubitWaveFunction")
