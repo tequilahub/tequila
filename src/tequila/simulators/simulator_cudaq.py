@@ -226,15 +226,11 @@ class BackendCircuitCudaq(BackendCircuit):
         if circuit is None:
             raise ValueError("wrong attribute access in function - prepare_circuit_for_state_modifier")
 
-        gate_encodings = []
-        target_qubits = []
-        angles = []
-        control_qubits = []
-
         # get single lists from dict
         gate_encodings = circuit["gate_encodings"]
         target_qubits = circuit["target_qubits"]
-        angles = circuit["angles"]
+        # Cast from FixedVariable to float to avoid CudaQ MLIR type conversion problems
+        angles = [float(angle) for angle in circuit["angles"]]
         control_qubits = circuit["control_qubits"]
 
         iteration_length = None
