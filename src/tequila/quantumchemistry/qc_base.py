@@ -786,22 +786,23 @@ class QuantumChemistryBase:
             return co
 
         active = None
-        if not self.integral_manager.active_space_is_trivial() and core is None:
-            core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
         if "active" in kwargs:
             active = kwargs["active"]
             kwargs.pop("active")
             if core is None:
                 core = get_core(active)
         else:
-            if active is None:
-                if core is None:
+            if core is None:
+                if not self.integral_manager.active_space_is_trivial():
+                    core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
+                    active = get_active(core)
+                else:
                     core = []
                     active = [i for i in range(len(self.integral_manager.orbitals))]
-                else:
-                    if isinstance(core, int):
-                        core = [core]
-                    active = get_active(core)
+            else:
+                if isinstance(core, int):
+                    core = [core]
+                active = get_active(core)
         assert len(active) + len(core) == len(self.integral_manager.orbitals)
         to_active = [i for i in range(len(self.integral_manager.orbitals)) if i not in core]
         to_active = {active[i]: to_active[i] for i in range(len(active))}
