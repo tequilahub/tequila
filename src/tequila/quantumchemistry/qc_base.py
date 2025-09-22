@@ -769,7 +769,7 @@ class QuantumChemistryBase:
             while len(act)<(len(self.integral_manager.orbitals) - len(core)):
                 idx = numpy.argmin(ov[i])
                 act.append(idx)
-                ov[i,idx] = 1 * len(core)
+                ov[:,idx] = 1 * len(core)
                 i = (i+1)%len(core)
             act.sort() 
             return act
@@ -784,7 +784,7 @@ class QuantumChemistryBase:
             while len(co) < (len(self.integral_manager.orbitals) - len(active)):
                 idx = numpy.argmin(ov[i])
                 co.append(idx)
-                ov[i,idx] = 1 * len(active)
+                ov[:,idx] = 1 * len(active)
                 i = (i+1)%len(core)
             co.sort()
             return co
