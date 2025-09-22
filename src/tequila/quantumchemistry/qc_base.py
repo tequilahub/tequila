@@ -760,48 +760,53 @@ class QuantumChemistryBase:
             return symm_orthog.dot(c).T
 
         def get_active(core):
-            ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
-            for i in core:
+            ov = numpy.zeros(shape=(len(core),len(self.integral_manager.orbitals)))
+            for i,idx in enumerate(core):
                 for j in range(len(d)):
-                    ov[j] += numpy.abs(inner(c.T[i], d.T[j], s))
+                    ov[i,j] += numpy.abs(inner(c.T[idx], d.T[j], s)) 
             act = []
-            for i in range(len(self.integral_manager.orbitals) - len(core)):
-                idx = numpy.argmin(ov)
+            i = 0
+            while len(act)<(len(self.integral_manager.orbitals) - len(core)):
+                idx = numpy.argmin(ov[i])
                 act.append(idx)
-                ov[idx] = 1 * len(core)
-            act.sort()
+                ov[i,idx] = 1 * len(core)
+                i = (i+1)%len(core)
+            act.sort() 
             return act
 
         def get_core(active):
-            ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
-            for i in active:
+            ov = numpy.zeros(shape=(len(active),len(self.integral_manager.orbitals)))
+            for i,idx in enumerate(active):
                 for j in range(len(d)):
-                    ov[j] += numpy.abs(inner(d.T[i], c.T[j], s))
+                    ov[i,j] += numpy.abs(inner(d.T[idx], c.T[j], s))
             co = []
-            for i in range(len(self.integral_manager.orbitals) - len(active)):
-                idx = numpy.argmin(ov)
+            i = 0
+            while len(co) < (len(self.integral_manager.orbitals) - len(active)):
+                idx = numpy.argmin(ov[i])
                 co.append(idx)
-                ov[idx] = 1 * len(active)
+                ov[i,idx] = 1 * len(active)
+                i = (i+1)%len(core)
             co.sort()
             return co
 
         active = None
-        if not self.integral_manager.active_space_is_trivial() and core is None:
-            core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
         if "active" in kwargs:
             active = kwargs["active"]
             kwargs.pop("active")
             if core is None:
                 core = get_core(active)
         else:
-            if active is None:
-                if core is None:
+            if core is None:
+                if not self.integral_manager.active_space_is_trivial():
+                    core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
+                    active = get_active(core)
+                else:
                     core = []
                     active = [i for i in range(len(self.integral_manager.orbitals))]
-                else:
-                    if isinstance(core, int):
-                        core = [core]
-                    active = get_active(core)
+            else:
+                if isinstance(core, int):
+                    core = [core]
+                active = get_active(core)
         assert len(active) + len(core) == len(self.integral_manager.orbitals)
         to_active = [i for i in range(len(self.integral_manager.orbitals)) if i not in core]
         to_active = {active[i]: to_active[i] for i in range(len(active))}
