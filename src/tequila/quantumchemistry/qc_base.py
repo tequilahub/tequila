@@ -683,7 +683,7 @@ class QuantumChemistryBase:
         # backward compatibility
         return self.use_native_orbitals()
 
-    def use_native_orbitals(self, inplace=False, core: list = None, *args, **kwargs):
+    def use_native_orbitals(self, inplace=False, core: list = [], *args, **kwargs):
         """
         Parameters
         ----------
@@ -793,10 +793,10 @@ class QuantumChemistryBase:
         if "active" in kwargs:
             active = kwargs["active"]
             kwargs.pop("active")
-            if core is None:
+            if core not len(core):
                 core = get_core(active)
         else:
-            if core is None:
+            if not len(core):
                 if not self.integral_manager.active_space_is_trivial():
                     core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
                     active = get_active(core)
@@ -804,8 +804,6 @@ class QuantumChemistryBase:
                     core = []
                     active = [i for i in range(len(self.integral_manager.orbitals))]
             else:
-                if isinstance(core, int):
-                    core = [core]
                 active = get_active(core)
         assert len(active) + len(core) == len(self.integral_manager.orbitals)
         to_active = [i for i in range(len(self.integral_manager.orbitals)) if i not in core]
