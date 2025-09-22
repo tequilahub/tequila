@@ -785,6 +785,22 @@ class QuantumChemistryBase:
             co.sort()
             return co
 
+        def active_to_active(active):
+            '''
+            translates active indices from canonical/the original basis to the native coeffs
+            '''
+            ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
+            for i in active:
+                for j in range(len(d)):
+                    ov[j] += numpy.abs(inner(c.T[i], d.T[j], s))
+            act = []
+            for i in range(len(active)):
+                idx = numpy.argmax(ov)
+                act.append(idx)
+                ov[idx] = 0.
+            act.sort()
+            return act
+        
         active = None
         if "active" in kwargs:
             active = kwargs["active"]
@@ -794,8 +810,9 @@ class QuantumChemistryBase:
         else:
             if not len(core):
                 if not self.integral_manager.active_space_is_trivial():
+                    active = [i.idx_total for i in self.integral_manager.orbitals if i.idx is not None]
+                    active = active_to_active(active)
                     core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
-                    active = get_active(core)
                 else:
                     core = []
                     active = [i for i in range(len(self.integral_manager.orbitals))]
