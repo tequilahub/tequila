@@ -793,7 +793,7 @@ class QuantumChemistryBase:
         if "active" in kwargs:
             active = kwargs["active"]
             kwargs.pop("active")
-            if core not len(core):
+            if not len(core):
                 core = get_core(active)
         else:
             if not len(core):
