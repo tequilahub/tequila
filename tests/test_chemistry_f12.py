@@ -11,7 +11,9 @@ HAS_PSI4 = "psi4" in tq.quantumchemistry.INSTALLED_QCHEMISTRY_BACKENDS
 def test_correction_psi4_active():
     geomstring = "He 0.0 0.0 0.0"
     # This active space does not need to make sense
-    mol = tq.Molecule(geometry=geomstring, basis_set="cc-pvqz", active_orbitals={"AG": [0, 1], "B1U": [0, 1]})
+    mol = tq.Molecule(
+        geometry=geomstring, units="angstrom", basis_set="cc-pvqz", active_orbitals={"AG": [0, 1], "B1U": [0, 1]}
+    )
     rdminfo = {"rdm__psi4_method": "detci"}
     dE = mol.perturbative_f12_correction(cabs_type="active", **rdminfo)
 
@@ -34,7 +36,13 @@ def test_correction_psi4_cabsplus():
     # Try to run CABS+, which as of now is only available via direct installation of personal fork
     # Choice of CABS also not sensible here
     geomstring = "He 0.0 0.0 0.0"
-    mol = tq.Molecule(geometry=geomstring, basis_set="cc-pvdz", active_orbitals=[i for i in range(2)], point_group="c1")
+    mol = tq.Molecule(
+        geometry=geomstring,
+        units="angstrom",
+        basis_set="cc-pvdz",
+        active_orbitals=[i for i in range(2)],
+        point_group="c1",
+    )
     rdminfo = {"rdm__psi4_method": "detci"}
     cabs_options = {"cabs_name": "cc-pvqz"}
     dE = mol.perturbative_f12_correction(cabs_type="cabs+", cabs_options=cabs_options, **rdminfo)
@@ -59,6 +67,7 @@ def test_correction_madness(trafo):
     mol = tq.Molecule(
         name="data/f12/he-f12",
         geometry=geomstring,
+        units="angstrom",
         basis_set="madness",
         n_pno="read",
         active_orbitals=[0, 1],

@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from copy import deepcopy
 from numbers import Real
 import numpy
+from scipy.constants import physical_constants
 
-from tequila import BitString, QCircuit, TequilaException, Variable, compile_circuit
+from tequila import BitString, QCircuit, TequilaException, TequilaWarning, Variable, compile_circuit
 from tequila.circuit import gates
 
 try:
@@ -283,8 +284,9 @@ class ParametersQC:
     """Specialization of ParametersHamiltonian"""
 
     basis_set: str = None  # Quantum chemistry basis set
-    geometry: str = None  # geometry of the underlying molecule (units: Angstrom!),
+    geometry: str = None  # geometry of the underlying molecule,
     # this can be a filename leading to an .xyz file or the geometry given as a string
+    units: str = None  # units of the geometry, if nothing is passed it will be set to Angstrom!
     description: str = ""
     multiplicity: int = 1
     charge: int = 0
@@ -360,6 +362,22 @@ class ParametersQC:
             raise TequilaException(
                 "no geometry or name given to molecule\nprovide geometry=filename.xyz or geometry=`h 0.0 0.0 0.0\\n...`\nor name=whatever with file whatever.xyz being present"
             )
+        # determine units, default Angstrom
+        if self.units is None:
+            warnings.warn("Warning: No units passed with geometry, assuming units are angstrom.", TequilaWarning)
+            self.units = "angstrom"
+        else:
+            self.units = self.units.lower()
+            if self.units in ["angstrom", "ang", "a", "å"]:
+                self.units = "angstrom"
+            elif self.units in ["bohr", "atomic units", "au", "a.u."]:
+                self.units = "bohr"
+            else:
+                warnings.warn(
+                    "Warning: Units passed with geometry not recognized (available units are angstrom or bohr), assuming units are angstrom.",
+                    TequilaWarning,
+                )
+                self.units = "angstrom"
         # auto naming
         if self.name is None:
             if ".xyz" in self.geometry:
@@ -391,7 +409,7 @@ class ParametersQC:
         """:return: Give back all parameters for the MolecularData format from openfermion as dictionary"""
         return {
             "basis": self.basis_set,
-            "geometry": self.get_geometry(),
+            "geometry": self.get_geometry(desired_units="angstrom"),
             "description": self.description,
             "charge": self.charge,
             "multiplicity": self.multiplicity,
@@ -420,20 +438,24 @@ class ParametersQC:
         return fstring
 
     @staticmethod
-    def convert_to_list(geometry):
+    def convert_to_list(geometry, initial_units, desired_units):
         """Convert a molecular structure given as a string into a list suitable for openfermion
 
         Parameters
         ----------
         geometry :
-            a string specifying a mol. structure. E.g. geometry="h 0.0 0.0 0.0\n h 0.0 0.0 1.0"
-
+            a string specifying a mol. structure. E.g. geometry="h 0.0 0.0 0.0\n h 0.0 0.0 1.0",
+        initial_units :
+            the units of the input geometry
+        desired_units :
+            the units of the output coordinates
         Returns
         -------
         type
-            A list with the correct format for openfermion E.g return [ ['h',[0.0,0.0,0.0], [..]]
-
+            A list with the correct format for openfermion E.g return [ ('h',(0.0,0.0,0.0)), (..)], coordinates are in "desired_units",
+            note that openfermion requires coordinates in angstrom
         """
+        c_bohrtoang = physical_constants["Bohr radius"][0] * 10**10
         result = []
         # Remove blank lines
         lines = [l for l in geometry.split("\n") if l]
@@ -446,54 +468,65 @@ class ParametersQC:
                 words += [0.0] * (4 - len(words))
 
             try:
-                tmp = (ParametersQC.format_element_name(words[0]), (float(words[1]), float(words[2]), float(words[3])))
+                if initial_units == desired_units:
+                    tmp = (
+                        ParametersQC.format_element_name(words[0]),
+                        (float(words[1]), float(words[2]), float(words[3])),
+                    )
+                elif initial_units == "angstrom":
+                    tmp = (
+                        ParametersQC.format_element_name(words[0]),
+                        (float(words[1]) / c_bohrtoang, float(words[2]) / c_bohrtoang, float(words[3]) / c_bohrtoang),
+                    )
+                elif initial_units == "bohr":
+                    tmp = (
+                        ParametersQC.format_element_name(words[0]),
+                        (float(words[1]) * c_bohrtoang, float(words[2]) * c_bohrtoang, float(words[3]) * c_bohrtoang),
+                    )
                 result.append(tmp)
             except ValueError:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
         return result
 
-    def get_geometry_string(self) -> str:
+    def get_geometry_string(self, desired_units="angstrom") -> str:
         """returns the geometry as a string
-        :return: geometry string
-
-        Parameters
-        ----------
-
-        Returns
-        -------
+        :return: geometry string, if desired_units is not equal to self.units, the coordinates will be transformed to "desired_units"
 
         """
-        if self.geometry.split(".")[-1] == "xyz":
-            geomstring, comment = self.read_xyz_from_file(self.geometry)
-            if comment is not None:
-                self.description = comment
-            return geomstring
-        else:
-            return self.geometry
+        geom = self.get_geometry(desired_units=desired_units)
+        f = ""
+        for at in geom:
+            f += f"{at[0]} {at[1][0]} {at[1][1]} {at[1][2]}\n"
+        return f
 
-    def get_geometry(self):
+    def get_geometry(self, desired_units="angstrom"):
         """Returns the geometry
         If a xyz filename was given the file is read out
         otherwise it is assumed that the geometry was given as string
         which is then reformatted as a list usable as input for openfermion
         :return: geometry as list
         e.g. [(h,(0.0,0.0,0.35)),(h,(0.0,0.0,-0.35))]
-        Units: Angstrom!
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
+        Coordinates are transformed into the "desired_units", note that openfermion requires coordinates in Angstrom!
         """
+        desired_units = desired_units.lower()
+        if desired_units in ["angstrom", "ang", "a", "å"]:
+            desired_units = "angstrom"
+        elif desired_units in ["bohr", "atomic units", "au", "a.u."]:
+            desired_units = "bohr"
+        else:
+            warnings.warn(
+                "Warning: Desired units not recognized (available units are angstrom or bohr), defaulting to angstrom.",
+                TequilaWarning,
+            )
+            desired_units = "angstrom"
+
         if self.geometry.split(".")[-1] == "xyz":
             geomstring, comment = self.read_xyz_from_file(self.geometry)
             if self.description == "":
                 self.description = comment
-            return self.convert_to_list(geomstring)
+            return self.convert_to_list(geomstring, initial_units=self.units, desired_units=desired_units)
         elif self.geometry is not None:
-            return self.convert_to_list(self.geometry)
+            return self.convert_to_list(self.geometry, initial_units=self.units, desired_units=desired_units)
         else:
             raise Exception("Parameters.qc.geometry is None")
 
@@ -501,15 +534,11 @@ class ParametersQC:
     def read_xyz_from_file(filename):
         """Read XYZ filetype for molecular structures
         https://en.wikipedia.org/wiki/XYZ_file_format
-        Units: Angstrom!
+        Units of the geometry in the file have to be equal to self.units, default for self.units is angstrom.
 
         Parameters
         ----------
-        filename :
-            return:
-
-        Returns
-        -------
+        filename of the .xyz file
 
         """
         with open(filename, "r") as file:
@@ -521,11 +550,12 @@ class ParametersQC:
                 coord += content[2 + i]
             return coord, comment
 
-    def get_xyz(self) -> str:
-        geom = self.parameters.get_geometry()
+    def get_xyz(self, desired_units="angstrom") -> str:
+        """Returns string for a .xyz file with the coordinates in the "desired_units" """
+        geom = self.get_geometry(desired_units=desired_units)
         f = ""
         f += f"{len(geom)}\n"
-        f += f"{self.parameters.name}\n"
+        f += f"{self.name}\n"
         for at in geom:
             f += f"{at[0]} {at[1][0]} {at[1][1]} {at[1][2]}\n"
         return f
@@ -534,7 +564,7 @@ class ParametersQC:
 @dataclass
 class ClosedShellAmplitudes:
     """
-    Helper Class for clasical amplitudes
+    Helper Class for classical amplitudes
     used internally
     """
 

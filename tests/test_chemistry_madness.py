@@ -30,7 +30,7 @@ def test_executable():
 def test_madness_he_data():
     # relies that he_xtensor.npy are present (x=g,h)
     geomstring = "He 0.0 0.0 0.0"
-    molecule = tq.Molecule(name="he", geometry=geomstring)
+    molecule = tq.Molecule(name="he", geometry=geomstring, units="angstrom")
     H = molecule.make_hamiltonian()
     UHF = molecule.prepare_reference()
     EHF = tq.simulate(tq.ExpectationValue(H=H, U=UHF))
@@ -44,7 +44,7 @@ def test_madness_he_data():
 
 @pytest.mark.skipif(executable is None, reason="madness was not found")
 def test_madness_frozen_core():
-    molecule = tq.Molecule(geometry="Li 0.0 0.0 0.0\nLi 0.0 0.0 1.6")
+    molecule = tq.Molecule(geometry="Li 0.0 0.0 0.0\nLi 0.0 0.0 1.6", units="angstrom")
     assert molecule.n_orbitals == 2
     assert molecule.parameters.get_number_of_core_electrons() == 4
 
@@ -54,7 +54,7 @@ def test_madness_full_he():
     # relies on madness being compiled and MAD_ROOT_DIR exported
     # or pno_integrals in the path
     geomstring = "He 0.0 0.0 0.0"
-    molecule = tq.Molecule(geometry=geomstring, n_pno=1)
+    molecule = tq.Molecule(geometry=geomstring, n_pno=1, units="angstrom")
     H = molecule.make_hamiltonian()
     UHF = molecule.prepare_reference()
     EHF = tq.simulate(tq.ExpectationValue(H=H, U=UHF))
@@ -67,14 +67,14 @@ def test_madness_full_he():
 
 @pytest.mark.skipif(executable is None, reason="madness was not found")
 def test_madness_data_io():
-    mol = tq.Molecule(geometry="he 0.0 0.0 0.0")
-    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", n_pno="read")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", units="angstrom")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", n_pno="read", units="angstrom")
 
-    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3")
-    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", n_pno="read")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", units="angstrom")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", n_pno="read", units="angstrom")
 
-    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", name="asd")
-    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", name="asd", n_pno="read")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", name="asd", units="angstrom")
+    mol = tq.Molecule(geometry="he 0.0 0.0 0.0", datadir="1/2/3", name="asd", n_pno="read", units="angstrom")
 
 
 @pytest.mark.skipif(executable is None, reason="madness was not found")
@@ -83,7 +83,7 @@ def test_madness_full_li_plus():
     # or pno_integrals in the path
     geomstring = "Li 0.0 0.0 0.0"
     molecule = tq.Molecule(
-        name="li+", geometry=geomstring, n_pno=1, charge=1, frozen_core=False
+        name="li+", geometry=geomstring, units="angstrom", n_pno=1, charge=1, frozen_core=False
     )  # need to deactivate frozen_core, otherwise there is no active orbital
     H = molecule.make_hamiltonian()
     UHF = molecule.prepare_reference()
@@ -100,7 +100,7 @@ def test_madness_full_be():
     # relies on madness being compiled and MAD_ROOT_DIR exported
     # or pno_integrals in the path
     geomstring = "Be 0.0 0.0 0.0"
-    molecule = tq.Molecule(name="be", geometry=geomstring, n_pno=3, frozen_core=True)
+    molecule = tq.Molecule(name="be", geometry=geomstring, units="angstrom", n_pno=3, frozen_core=True)
     H = molecule.make_hamiltonian()
     UHF = molecule.prepare_reference()
     EHF = tq.simulate(tq.ExpectationValue(H=H, U=UHF))
@@ -125,6 +125,7 @@ def test_madness_upccgsd(trafo):
         name="balanced_be",
         frozen_core=False,
         geometry="Be 0.0 0.0 0.0",
+        units="angstrom",
         n_pno=n_pno,
         pno={"diagonal": True, "maxrank": 1},
         transformation=trafo,
@@ -205,6 +206,7 @@ def test_madness_pyscf_bridge():
     mol = tq.Molecule(
         name="balanced_be",
         geometry="Be 0.0 0.0 0.0",
+        units="angstrom",
         n_pno=2,
         pno={"diagonal": True, "maxrank": 1},
     )
