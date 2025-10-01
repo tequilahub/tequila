@@ -224,6 +224,7 @@ class QuantumChemistryBase:
         parameters = ParametersQC(
             basis_set=molecule.basis,
             geometry=molecule.geometry,
+            units="angstrom",
             description=molecule.description,
             multiplicity=molecule.multiplicity,
             charge=molecule.charge,
