@@ -1956,7 +1956,7 @@ class QuantumChemistryBase:
                 from tequila.quantumchemistry import QuantumChemistryPySCF
 
                 molx = QuantumChemistryPySCF.from_tequila(self)
-                return molx.compute_energy(method=method)
+                return molx.compute_energy(method=method, **kwargs)
 
     def compute_fci(self, *args, **kwargs):
         raise NotImplementedError("compute_fci only implemented for the 'pyscf' backend")
