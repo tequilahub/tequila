@@ -83,7 +83,7 @@ class OptimizerExcitationSolve(Optimizer):
         initial_values: typing.Dict[Variable, numbers.Real] = None,
         *args,
         **kwargs,
-    ) -> scipy.optimize.OptimizeResult:
+    ) -> SciPyResults:
         objective = objective.contract()
         infostring = "{:15} : {}\n".format("Method", "ExcitationSolve")
         infostring += "{:15} : {} expectationvalues\n".format("Objective", objective.count_expectationvalues())
