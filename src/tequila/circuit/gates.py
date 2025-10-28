@@ -89,13 +89,12 @@ def I(
     target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None, *args, **kwargs
 ) -> QCircuit:
     """
-    This function provides a primitive implementation of the identity gate as a place
-    holder gate with no physical effect.
-    The user can add this gate into the circuit and get it also when
-    calling functions regarding the circuit's stats (i.e. gates included)
+    A gate that has no effect, but can be used to mark a qubit as being used.
+    This can for example be useful if a qubit is only being used in some variants
+    of a circuit, but you want to prevent the output format from changing.
     """
-    # zero generator for a no-operation gate
-    generator = lambda q: 0
+    # Ugly workaround, we can't simply use paulis.Zero() because this wouldn't mark the qubit as being used.
+    generator = lambda q: 0 * paulis.X(q)
     return _initialize_power_gate(
         name="I", power=power, angle=angle, target=target, control=control, generator=generator, *args, **kwargs
     )

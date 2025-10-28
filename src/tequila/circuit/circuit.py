@@ -63,6 +63,9 @@ class QCircuit:
         moms = []
         moms.append(Moment())
         for g in self.gates:
+            if not g.qubits:
+                continue
+
             qus = g.qubits
             spots = [table[q] for q in qus]
 
