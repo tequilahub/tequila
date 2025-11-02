@@ -111,7 +111,9 @@ class OptimizerExcitationSolve(Optimizer):
         res = self.opt.minimize(E, param_values, *args, **kwargs)
 
         if self.save_history:
-            self.history.energy_calls = self.opt.energies
+            self.history.energies = self.opt.energies
+            self.history.angles = self.opt.params
+            # self.history.gradients = self.opt.energies_shiftste
 
         return SciPyResults(energy=res.fun, history=self.history, variables=res.x, scipy_result=res)
 
@@ -127,6 +129,7 @@ def minimize(
 ):
     optimize = OptimizerExcitationSolve(
         maxiter=maxiter,
+        save_parameters=True,
         *args,
         **kwargs,
     )

@@ -26,9 +26,6 @@ INSTALLED_OPTIMIZERS["scipy"] = _Optimizers(
     cls=OptimizerSciPy, minimize=minimize_scipy, methods=OptimizerSciPy.available_methods()
 )
 INSTALLED_OPTIMIZERS["gd"] = _Optimizers(cls=OptimizerGD, minimize=minimize_gd, methods=OptimizerGD.available_methods())
-INSTALLED_OPTIMIZERS["excitationsolve"] = _Optimizers(
-    cls=OptimizerExcitationSolve, minimize=minimize_excsolve, methods=OptimizerExcitationSolve.available_methods()
-)
 
 
 has_gpyopt = False
@@ -42,6 +39,18 @@ try:
     has_gpyopt = True
 except ImportError:
     has_gpyopt = False
+
+has_excsolve = False
+try:
+    from tequila.optimizers.optimizer_excsolve import OptimizerExcitationSolve
+    from tequila.optimizers.optimizer_excsolve import minimize as minimize_excsolve
+
+    INSTALLED_OPTIMIZERS["excitationsolve"] = _Optimizers(
+        cls=OptimizerExcitationSolve, minimize=minimize_excsolve, methods=OptimizerExcitationSolve.available_methods()
+    )
+    has_excsolve = True
+except ImportError:
+    has_excsolve = False
 
 
 def show_available_optimizers(module=None):

@@ -30,6 +30,7 @@ jobs:
         pip install -r requirements.txt
         # test default simulator against in-house simulator
         pip install git+https://github.com/Mikel-Ma/spex@devel
+        pip install excitationsolve
     - name: Lint with flake8
       run: |
         pip install flake8
