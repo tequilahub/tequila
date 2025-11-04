@@ -126,11 +126,11 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         e, fcivecs = fci.direct_spin1.kernel(
             h1, h2.elems, norb, nelec, max_cycle=2000, max_space=100, ci0=ci0, **kwargs
         )
-        if not ("nroots" in kwargs and kwargs["nroots"] > 1):
-            fcivecs = [fcivecs]
-            e = [e]
 
         if get_wfn:
+            if not ("nroots" in kwargs and kwargs["nroots"] > 1):
+                fcivecs = [fcivecs]
+                e = [e]
             wfns = []
             energies = [x + c for x in e]
             for fcivec in fcivecs:
@@ -143,6 +143,8 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                         merged_str, phase = _merge_alpha_beta_strs(alpha_str, beta_str, norb)
                         wfn[merged_str] = phase * fcivec[i, j]
                 wfns.append(QubitWaveFunction.from_array(wfn))
+            if not ("nroots" in kwargs and kwargs["nroots"] > 1):
+                return energies[0], wfns[0]
             return energies, wfns
 
         return e + c
