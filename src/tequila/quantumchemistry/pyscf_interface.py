@@ -206,7 +206,10 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
                 # Compute the phase as in _merge_alpha_beta_strs(alpha_str, beta_str, norb)
                 set_bits_beta = [i for i in range(norb) if (beta_int >> i) & 1]
-                phase = (-1) ** sum([(alpha_int & 2**i - 1).bit_count() for i in set_bits_beta])
+                try:
+                    phase = (-1) ** sum([(alpha_int & 2**i - 1).bit_count() for i in set_bits_beta])
+                except AttributeError as error:
+                    phase = (-1) ** sum([bin(alpha_int & 2**i - 1).count("1") for i in set_bits_beta])
 
                 coeff = wfn[i]
                 row_idx = fci.cistring.str2addr(norb, neleca, alpha_int)
