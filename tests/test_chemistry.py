@@ -584,6 +584,57 @@ def test_wfn_fci(geometry):
 
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+def test_fci_guess_wfn():
+    geometry = """H 0.0 0.0 0.0\nH 0.0 0.0 1.5\nH 0.0 0.0 3.0\nH 0.0 0.0 4.5"""
+    mol = tq.Molecule(geometry=geometry, units="angstrom", basis_set="sto-3g", backend="pyscf").use_native_orbitals()
+
+    H = mol.make_hamiltonian()
+    v, vv = numpy.linalg.eigh(H.to_matrix())
+    wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
+    energy = v[0]
+
+    U = mol.make_ansatz(name="SPA", edges=[(0, 1), (2, 3)])
+    E = tq.ExpectationValue(H=H, U=U)
+    spa_energy = tq.minimize(E, silent=True)
+    spa_wfn = tq.simulate(U, spa_energy.variables)
+    fci_energy, fci_wfn = mol.compute_energy("fci", get_wfn=True, ci0=spa_wfn)
+
+    fidelity = abs(fci_wfn.inner(wfn)) ** 2
+    assert numpy.isclose(fidelity, 1.0)
+    assert numpy.isclose(fci_energy, energy)
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+def test_fci_nroots():
+    geometry = """H 0.0 0.0 0.0\nH 0.0 0.0 1.5\nH 0.0 0.0 3.0\nH 0.0 0.0 4.5"""
+    mol = tq.Molecule(geometry=geometry, units="angstrom", basis_set="sto-3g", backend="pyscf")
+
+    nroots = 7
+    H = mol.make_hamiltonian()
+    v, vv = numpy.linalg.eigh(H.to_matrix())
+    wfns = [tq.QubitWaveFunction.from_array(vv[:, i]) for i in range(nroots)]
+    energies = [v[0], v[1], v[4]]
+
+    fci_energies, fci_wfns = mol.compute_energy("fci", get_wfn=True, nroots=nroots)
+
+    fidelity = []
+    fidelity.append(abs(fci_wfns[0].inner(wfns[0])) ** 2)
+    fidelity.append(
+        abs(fci_wfns[1].inner(wfns[1])) ** 2
+        + abs(fci_wfns[1].inner(wfns[2])) ** 2
+        + abs(fci_wfns[1].inner(wfns[3])) ** 2
+    )
+    fidelity.append(
+        abs(fci_wfns[2].inner(wfns[4])) ** 2
+        + abs(fci_wfns[2].inner(wfns[5])) ** 2
+        + abs(fci_wfns[2].inner(wfns[6])) ** 2
+    )
+
+    assert numpy.allclose(fidelity, 1.0)
+    assert numpy.allclose(fci_energies[:3], energies[:3])
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 def test_orbital_optimization():
     from tequila.quantumchemistry import optimize_orbitals
 
