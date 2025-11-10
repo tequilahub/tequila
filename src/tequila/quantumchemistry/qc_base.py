@@ -140,6 +140,7 @@ class QuantumChemistryBase:
         if transformation is None:
             transformation = molecule.transformation
         parameters = molecule.parameters
+        parameters.frozen_core=False
         return cls(
             nuclear_repulsion=c,
             one_body_integrals=h1,
