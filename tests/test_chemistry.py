@@ -20,21 +20,9 @@ HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 backends = select_backends.get()
-trafos = [
-        "JordanWigner",
-        "ReorderedJordanWigner",
-        "BravyiKitaev",
-        "BravyiKitaevTree" # ,
-        # "TaperedBinary",
-        # "REORDEREDTAPEREDBINARY", # currently there is an issue with openfermion (see PR https://github.com/quantumlib/OpenFermion/pull/1171)
-    ]
-
-standard_trafos = [
-        "JordanWigner",
-        "ReorderedJordanWigner",
-        "BravyiKitaev"
-    ]
-
+standard_trafos = ["JordanWigner", "ReorderedJordanWigner", "BravyiKitaev"]
+trafos = standard_trafos
+# trafos = list(known_encodings().keys() # currently issues with openfermion
 
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
@@ -61,7 +49,7 @@ def test_UR_and_UC():
     assert numpy.isclose(result.energy, fci)
 
 
-@pytest.mark.parametrize("trafo", list(known_encodings().keys()))
+@pytest.mark.parametrize("trafo", trafos)
 def test_base(trafo):
     obt = numpy.asarray([[-1.94102524, -0.31651552], [-0.31651552, -0.0887454]])
     tbt = numpy.asarray(
@@ -386,7 +374,7 @@ def test_rdms_psi4():
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize("geometry", ["H 0.0 0.0 0.0\nH 0.0 0.0 0.7"])
-@pytest.mark.parametrize("trafo", tq.quantumchemistry.encodings.known_encodings())
+@pytest.mark.parametrize("trafo", trafos)
 def test_upccgsd(geometry, trafo):
     molecule = tq.chemistry.Molecule(geometry=geometry, units="angstrom", basis_set="sto-3g", transformation=trafo)
     if not molecule.supports_ucc():
@@ -785,7 +773,7 @@ def test_spa_ansatz_be():
     "geometry",
     ["H 0.0 0.0 0.0\nH 0.0 0.0 4.5", "Li 0.0 0.0 0.0\nH 0.0 0.0 3.0", "Be 0.0 0.0 0.0\nH 0.0 0.0 3.0\nH 0.0 0.0 -3.0"],
 )
-@pytest.mark.parametrize("transformation", tq.quantumchemistry.encodings.known_encodings())
+@pytest.mark.parametrize("transformation", trafos)
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 def test_spa_consistency(geometry, name, optimize, transformation):
     mol = tq.Molecule(
