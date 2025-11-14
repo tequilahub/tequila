@@ -948,9 +948,9 @@ def test_orbital_optimization_hcb(geometry):
         "JordanWigner",
         "ReorderedJordanWigner",
         "BravyiKitaev",
-        "BravyiKitaevTree",
-        "TaperedBinary",
-        "REORDEREDTAPEREDBINARY",
+        "BravyiKitaevTree"#,
+        #"TaperedBinary",
+        #"REORDEREDTAPEREDBINARY", # currently there is an issue with openfermion (see PR https://github.com/quantumlib/OpenFermion/pull/1171)
     ],
 )
 @pytest.mark.parametrize("size", [2, 8])
