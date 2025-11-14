@@ -16,11 +16,24 @@ import tequila.tools.random_generators as rg
 # Get QC backends for parametrized testing
 import select_backends
 
-
 HAS_PYSCF = "pyscf" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 HAS_PSI4 = "psi4" in qc.INSTALLED_QCHEMISTRY_BACKENDS
 
 backends = select_backends.get()
+trafos = [
+        "JordanWigner",
+        "ReorderedJordanWigner",
+        "BravyiKitaev",
+        "BravyiKitaevTree" # ,
+        # "TaperedBinary",
+        # "REORDEREDTAPEREDBINARY", # currently there is an issue with openfermion (see PR https://github.com/quantumlib/OpenFermion/pull/1171)
+    ]
+
+standard_trafos = [
+        "JordanWigner",
+        "ReorderedJordanWigner",
+        "BravyiKitaev"
+    ]
 
 
 def teardown_function(function):
@@ -79,18 +92,13 @@ def test_base(trafo):
     H = molecule.make_hamiltonian()
     eigvals = numpy.linalg.eigvalsh(H.to_matrix())
     assert numpy.isclose(eigvals[0], -2.87016214e00)
-    if "trafo" in [
-        "JordanWigner",
-        "BravyiKitaev",
-        "bravyi_kitaev_fast",
-        "BravyiKitaevTree",
-    ]:  # others change spectrum outside of the groundstate
+    if "trafo" in standard_trafos:  # others change spectrum outside of the groundstate
         assert numpy.isclose(eigvals[-1], 7.10921141e-01)
         assert len(eigvals) == 16
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="you don't have psi4 or pyscf")
-@pytest.mark.parametrize("trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "TaperedBinary"])
+@pytest.mark.parametrize("trafo", trafos)
 def test_prepare_reference(trafo):
     geometry = "Li 0.0 0.0 0.0\nH 0.0 0.0 1.5"
     basis_set = "sto-3g"
@@ -191,8 +199,8 @@ def do_test_h2_hamiltonian(qc_interface):
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
 @pytest.mark.parametrize(
-    "trafo", ["JordanWigner", "BravyiKitaev", "BravyiKitaevTree", "TaperedBinary"]
-)  # bravyi_kitaev_fast not yet supported for ucc
+    "trafo", trafos
+)  
 @pytest.mark.parametrize("backend", backends)
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
@@ -491,16 +499,7 @@ def test_fermionic_gates(assume_real, trafo):
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
 @pytest.mark.parametrize(
-    "trafo",
-    [
-        "JordanWigner",
-        "BravyiKitaev",
-        "BravyiKitaevTree",
-        "ReorderedJordanWigner",
-        "ReorderedBravyiKitaev",
-        "TaperedBinary",
-        "REORDEREDTAPEREDBINARY",
-    ],
+    "trafo", trafos
 )
 def test_hcb(trafo):
     geomstring = "Be 0.0 0.0 0.0\n H 0.0 0.0 1.6\n H 0.0 0.0 -1.6"
@@ -943,15 +942,7 @@ def test_orbital_optimization_hcb(geometry):
 
 
 @pytest.mark.parametrize(
-    "transformation",
-    [
-        "JordanWigner",
-        "ReorderedJordanWigner",
-        "BravyiKitaev",
-        "BravyiKitaevTree"#,
-        #"TaperedBinary",
-        #"REORDEREDTAPEREDBINARY", # currently there is an issue with openfermion (see PR https://github.com/quantumlib/OpenFermion/pull/1171)
-    ],
+    "transformation", trafos
 )
 @pytest.mark.parametrize("size", [2, 8])
 def test_givens_on_molecule(size, transformation):
