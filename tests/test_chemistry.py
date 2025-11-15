@@ -187,7 +187,7 @@ def do_test_h2_hamiltonian(qc_interface):
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
-@pytest.mark.parametrize("trafo", trafos)  
+@pytest.mark.parametrize("trafo", trafos)
 @pytest.mark.parametrize("backend", backends)
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
