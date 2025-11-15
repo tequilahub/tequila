@@ -24,6 +24,7 @@ standard_trafos = ["JordanWigner", "ReorderedJordanWigner", "BravyiKitaev"]
 trafos = standard_trafos
 # trafos = list(known_encodings().keys() # currently issues with openfermion
 
+
 def teardown_function(function):
     [os.remove(x) for x in glob.glob("data/*.pickle")]
     [os.remove(x) for x in glob.glob("data/*.out")]
@@ -186,9 +187,7 @@ def do_test_h2_hamiltonian(qc_interface):
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4, reason="you don't have psi4")
-@pytest.mark.parametrize(
-    "trafo", trafos
-)  
+@pytest.mark.parametrize("trafo", trafos)  
 @pytest.mark.parametrize("backend", backends)
 def test_ucc_psi4(trafo, backend):
     if backend == "symbolic":
@@ -486,9 +485,7 @@ def test_fermionic_gates(assume_real, trafo):
 
 
 @pytest.mark.skipif(condition=not HAS_PSI4 and not HAS_PYSCF, reason="psi4/pyscf not found")
-@pytest.mark.parametrize(
-    "trafo", trafos
-)
+@pytest.mark.parametrize("trafo", trafos)
 def test_hcb(trafo):
     geomstring = "Be 0.0 0.0 0.0\n H 0.0 0.0 1.6\n H 0.0 0.0 -1.6"
     mol1 = tq.Molecule(
@@ -929,9 +926,7 @@ def test_orbital_optimization_hcb(geometry):
     assert (numpy.isclose(opt1.mo_coeff, opt2.mo_coeff, atol=1.0e-5)).all()
 
 
-@pytest.mark.parametrize(
-    "transformation", trafos
-)
+@pytest.mark.parametrize("transformation", trafos)
 @pytest.mark.parametrize("size", [2, 8])
 def test_givens_on_molecule(size, transformation):
     # dummy one-electron integrals
