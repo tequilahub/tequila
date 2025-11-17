@@ -23,7 +23,7 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
     if Projector is not None:
         Comm = Projector * Comm
 
-    spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", return_eigenvectors=False)
+    spNorm = sparse.linalg.eigsh(Comm, k=4, which="LM", return_eigenvectors=False)
 
     return np.abs(spNorm[0])
 
