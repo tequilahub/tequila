@@ -23,6 +23,10 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
     if Projector is not None:
         Comm = Projector * Comm
 
+    # some issues with new scipy ... keep this for now
+    if np.isclose(sparse.linalg.norm(Comm),0.0):
+        return 0.0
+        
     try:
         spNorm = sparse.linalg.eigsh(Comm, k=4, which="LM", return_eigenvectors=False)
     except Exception as E:
