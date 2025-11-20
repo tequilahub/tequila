@@ -25,6 +25,12 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
 
     # some issues with new scipy ... keep this for now
     if np.isclose(sparse.linalg.norm(Comm),0.0):
+        print("XXX")
+        print(Comm)
+        print(Op1)
+        print(Op1)
+        print(1j*(Op1*Op2 - Op2*Op1))
+        print(Projector)
         return 0.0
         
     try:
