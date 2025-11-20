@@ -20,8 +20,9 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
 
     Comm = 1j * (SpOp1 * SpOp2 - SpOp2 * SpOp1)
     # some issues with openfermion ... keep this for now
-    if np.isclose(sparse.linalg.norm(Comm),0.0):
+    if np.isclose(sparse.linalg.norm(Comm), 0.0):
         Comm = 1j * (Op1 * Op2 - Op2 * Op1)
+        Comm = Comm.split()[0]
         if Projector is not None:
             Comm = openfermion.get_sparse_operator(Comm, n_qubits=nqubs)
 
@@ -29,9 +30,13 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
         Comm = Projector * Comm
         
     try:
-        spNorm = sparse.linalg.eigsh(Comm, k=4, which="LM", return_eigenvectors=False)
+        spNorm = sparse.linalg.eigs(Comm, k=4, which="LM", return_eigenvectors=False)
     except Exception as E:
         print("comm=", Comm)
+        print("Op1=", Op1)
+        print("Op2=", Op2)
+        print("SpOp1=", Op1)
+        print("Projector=", Projector)
         raise E
     return np.abs(spNorm[0])
 
