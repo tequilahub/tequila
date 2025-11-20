@@ -19,19 +19,14 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
     SpOp2 = openfermion.get_sparse_operator(Op2, n_qubits=nqubs)
 
     Comm = 1j * (SpOp1 * SpOp2 - SpOp2 * SpOp1)
+    # some issues with openfermion ... keep this for now
+    if np.isclose(sparse.linalg.norm(Comm),0.0):
+        Comm = 1j * (Op1 * Op2 - Op2 * Op1)
+        if Projector is not None:
+            Comm = openfermion.get_sparse_operator(Comm, n_qubits=nqubs)
 
     if Projector is not None:
         Comm = Projector * Comm
-
-    # some issues with new scipy ... keep this for now
-    if np.isclose(sparse.linalg.norm(Comm),0.0):
-        print("XXX")
-        print(Comm)
-        print(Op1)
-        print(Op1)
-        print(1j*(Op1*Op2 - Op2*Op1))
-        print(Projector)
-        return 0.0
         
     try:
         spNorm = sparse.linalg.eigsh(Comm, k=4, which="LM", return_eigenvectors=False)
