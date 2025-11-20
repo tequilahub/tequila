@@ -22,7 +22,6 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
     # some issues with openfermion ... keep this for now
     if np.isclose(sparse.linalg.norm(Comm), 0.0):
         Comm = 1j * (Op1 * Op2 - Op2 * Op1)
-        Comm = Comm.split()[0]
         if Projector is not None:
             Comm = openfermion.get_sparse_operator(Comm, n_qubits=nqubs)
 
