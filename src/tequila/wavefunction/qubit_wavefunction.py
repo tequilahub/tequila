@@ -449,14 +449,10 @@ class QubitWaveFunction:
 
     def increase_qubits(self,n_qubits:int,inplace:bool=True) -> typing.Optional[QubitWaveFunction]:
         """
-        Increases the number of qubits in the wavefunction by adding qubits in the |0> state.
+        Increases the number of qubits in the wavefunction by adding qubits in the n_qubits*|0> state.
         After this call, the wavefunction will be dense.
         :param n_qubits: New number of qubits.
         """
-        if n_qubits < self.n_qubits:
-            raise TequilaException("Cannot decrease number of qubits in wavefunction.")
-        if n_qubits == self.n_qubits:
-            return
         zero = QubitWaveFunction.from_basis_state(n_qubits, 0, numbering=self._numbering)
         own = self.to_array()
         zero = zero.to_array()
