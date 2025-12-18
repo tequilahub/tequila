@@ -447,7 +447,7 @@ class QubitWaveFunction:
             result[BitString.from_array(array=arr)] = c
         return paulistring.coeff * result
 
-    def increase_qubits(self,n_qubits:int,inplace:bool=True) -> Optional[QubitWaveFunction]:
+    def increase_qubits(self,n_qubits:int,inplace:bool=True) -> typing.Optional[QubitWaveFunction]:
         """
         Increases the number of qubits in the wavefunction by adding qubits in the |0> state.
         After this call, the wavefunction will be dense.
