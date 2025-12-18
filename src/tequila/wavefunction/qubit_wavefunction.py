@@ -349,6 +349,10 @@ class QubitWaveFunction:
 
     def inner(self, other: QubitWaveFunction) -> complex:
         """Returns the inner product with another wavefunction."""
+        if self._n_qubits > other._n_qubits:
+            other.increase_qubits(self._n_qubits-other._n_qubits, inplace=True)
+        elif other._n_qubits > self._n_qubits:
+            self.increase_qubits(other._n_qubits - self._n_qubits, inplace=True)
         if self._dense and other._dense and self._numbering == other._numbering:
             return np.inner(self._state.conjugate(), other._state)
         else:
@@ -442,3 +446,28 @@ class QubitWaveFunction:
                     raise TequilaException("unknown pauli: " + str(p))
             result[BitString.from_array(array=arr)] = c
         return paulistring.coeff * result
+
+    def increase_qubits(self,n_qubits:int,inplace:bool=True) -> Optional[QubitWaveFunction]:
+        """
+        Increases the number of qubits in the wavefunction by adding qubits in the |0> state.
+        After this call, the wavefunction will be dense.
+        :param n_qubits: New number of qubits.
+        """
+        if n_qubits < self.n_qubits:
+            raise TequilaException("Cannot decrease number of qubits in wavefunction.")
+        if n_qubits == self.n_qubits:
+            return
+        zero = QubitWaveFunction.from_basis_state(n_qubits, 0, numbering=self._numbering)
+        own = self.to_array()
+        zero = zero.to_array()
+        if self.numbering == BitNumbering.LSB:
+            new = np.kron(zero, own)
+        else:
+            new = np.kron(own, zero)
+        if inplace:
+            self._n_qubits = n_qubits+self.n_qubits
+            self.set_state(new)
+        else:
+            return QubitWaveFunction.from_array(new, n_qubits+self.n_qubits, numbering=self.numbering)
+
+
