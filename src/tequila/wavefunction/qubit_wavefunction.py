@@ -13,7 +13,7 @@ import numbers
 import sympy
 
 from tequila.utils.bitstrings import BitString, reverse_int_bits
-from tequila import TequilaException, BitNumbering, initialize_bitstring
+from tequila import TequilaException, BitNumbering, initialize_bitstring,TequilaWarning
 from tequila.utils.keymap import KeyMapABC
 
 if typing.TYPE_CHECKING:
@@ -172,6 +172,20 @@ class QubitWaveFunction:
         Returns number of qubits in the wavefunction.
         """
         return self._n_qubits
+
+    @n_qubits.setter
+    def n_qubits(self, n_qubits: int):
+        '''
+        Modifies the number of qubits in the wavefunction.
+        ONLY if it is bigger than the current number of qubits.
+        :param n_qubits: New number of qubits.
+        '''
+        if n_qubits < self._n_qubits:
+            raise TequilaWarning("Cannot reduce number of qubits in wavefunction. Left unchanged.")
+        elif n_qubits == self._n_qubits:
+            pass
+        else:
+            self.increase_qubits(n_qubits-self._n_qubits,inplace=True)
 
     @property
     def numbering(self) -> BitNumbering:
