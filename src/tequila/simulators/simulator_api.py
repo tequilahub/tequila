@@ -538,7 +538,7 @@ def simulate(
 
     return compiled_objective(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
 
-def simulate_density(objective: typing.Union['Objective', 'QCircuit','QTensor'],
+def simulate_density(objective: typing.Union["Objective", "QCircuit","QTensor"],
              variables: Dict[Union[Variable, Hashable], RealNumber] = None,
              backend: str = None,
              noise: NoiseModel = None,
@@ -553,9 +553,9 @@ def simulate_density(objective: typing.Union['Objective', 'QCircuit','QTensor'],
             "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
                 objective.extract_variables()))
     
-    if backend == None:
-        backend = 'qiskit' #currently only permissible backend!
-    elif backend.lower() != 'qiskit':
+    if backend is None:
+        backend = "qiskit" #currently only permissible backend!
+    elif backend.lower() != "qiskit":
         TequilaException("Density matrix simulation currently works with only qiskit backend!")
 
     compiled_objective = compile(objective=objective, samples=None, simulate_density=True, variables=variables, backend=backend,
