@@ -242,7 +242,14 @@ class BackendCircuit:
         if optimize_circuit and noise is None:
             self.circuit = self.optimize_circuit(circuit=self.circuit)
 
-    def __call__(self, variables: typing.Dict[Variable, numbers.Real] = None, samples: int = None, simulate_density: bool = False, *args, **kwargs):
+    def __call__(
+        self,
+        variables: typing.Dict[Variable, numbers.Real] = None,
+        samples: int = None,
+        simulate_density: bool = False,
+        *args,
+        **kwargs,
+    ):
         """
         Simulate or sample the backend circuit.
 
@@ -273,7 +280,7 @@ class BackendCircuit:
         self.update_variables(variables)
         if simulate_density:
             return self.simulate_density(variables=variables, noise=self.noise, *args, **kwargs)
-        
+
         if samples is None:
             return self.simulate(variables=variables, noise=self.noise, *args, **kwargs)
         else:
@@ -460,7 +467,9 @@ class BackendCircuit:
             initial_state = initial_state.integer
         if isinstance(initial_state, QubitWaveFunction):
             if len(initial_state.keys()) != 1:
-                raise TequilaException("only product states as initial states accepted as of now") # TODO: add initial density state for simulation. Can use qiskit quantum info .DensityMatrix.evolve
+                raise TequilaException(
+                    "only product states as initial states accepted as of now"
+                )  # TODO: add initial density state for simulation. Can use qiskit quantum info .DensityMatrix.evolve
             initial_state = list(initial_state.keys())[0].integer
 
         all_qubits = [i for i in range(self.abstract_circuit.n_qubits)]
@@ -469,8 +478,9 @@ class BackendCircuit:
         # maps from reduced register to full register
         keymap = KeyMapSubregisterToRegister(subregister=active_qubits, register=all_qubits)
 
-        result = self.do_simulate_density(variables=variables, initial_state=keymap.inverted(initial_state).integer, *args,
-                                  **kwargs)
+        result = self.do_simulate_density(
+            variables=variables, initial_state=keymap.inverted(initial_state).integer, *args, **kwargs
+        )
         result.apply_keymap(keymap=keymap, initial_state=initial_state)
         return result
 
@@ -910,7 +920,13 @@ class BackendExpectationValue:
         return type(self)(self.abstract_expectationvalue, **self._input_args)
 
     def __call__(
-        self, variables, samples: int = None, simulate_density: bool = False, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs
+        self,
+        variables,
+        samples: int = None,
+        simulate_density: bool = False,
+        initial_state: Union[int, QubitWaveFunction] = 0,
+        *args,
+        **kwargs,
     ):
         variables = format_variable_dictionary(variables=variables)
         if self._variables is not None and len(self._variables) > 0:
@@ -920,10 +936,10 @@ class BackendExpectationValue:
                         self._variables, variables
                     )
                 )
-        
+
         if simulate_density:
             data = self.simulate_density(variables=variables, *args, **kwargs)
-     
+
         elif samples is None:
             data = self.simulate(variables=variables, initial_state=initial_state, *args, **kwargs)
         else:
@@ -1076,7 +1092,7 @@ class BackendExpectationValue:
             result.append(to_float(final_E))
         return numpy.asarray(result)
 
-    def simulate_density(self, variables, noise_model = None, *args, **kwargs):
+    def simulate_density(self, variables, noise_model=None, *args, **kwargs):
         """
         Simulate the expectationvalue, using densities with noise
 

@@ -235,9 +235,14 @@ def show_available_simulators():
         print("missing qiskit_aer: no noisy simulation")
 
 
-def pick_backend(backend: str = None, samples: int = None, simulate_density: bool = False, noise: NoiseModel = None, device=None,
-                 exclude_symbolic: bool = True) -> str:
-
+def pick_backend(
+    backend: str = None,
+    samples: int = None,
+    simulate_density: bool = False,
+    noise: NoiseModel = None,
+    device=None,
+    exclude_symbolic: bool = True,
+) -> str:
     """
     choose, or verify, a backend for the user.
     Parameters
@@ -271,8 +276,7 @@ def pick_backend(backend: str = None, samples: int = None, simulate_density: boo
             for f in SUPPORTED_DENSITY_BACKENDS:
                 if f in INSTALLED_SIMULATORS:
                     return f
-            raise TequilaException(
-                "Density simulators unavailable!")
+            raise TequilaException("Density simulators unavailable!")
 
         if noise is None:
             if samples is None:
@@ -360,7 +364,9 @@ def compile_objective(
         the compiled objective.
     """
 
-    backend = pick_backend(backend=backend, samples=samples, simulate_density=simulate_density, noise=noise, device=device)
+    backend = pick_backend(
+        backend=backend, samples=samples, simulate_density=simulate_density, noise=noise, device=device
+    )
 
     # dummy variables
     if variables is None:
@@ -527,7 +533,7 @@ def simulate(
     compiled_objective = compile(
         objective=objective,
         samples=samples,
-        simulate_density=False, 
+        simulate_density=False,
         variables=variables,
         backend=backend,
         noise=noise,
@@ -538,29 +544,43 @@ def simulate(
 
     return compiled_objective(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
 
-def simulate_density(objective: typing.Union["Objective", "QCircuit","QTensor"],
-             variables: Dict[Union[Variable, Hashable], RealNumber] = None,
-             backend: str = None,
-             noise: NoiseModel = None,
-             device: str = None,
-             *args,
-             **kwargs) -> Union[RealNumber, DensityMatrix]:
-    
+
+def simulate_density(
+    objective: typing.Union["Objective", "QCircuit", "QTensor"],
+    variables: Dict[Union[Variable, Hashable], RealNumber] = None,
+    backend: str = None,
+    noise: NoiseModel = None,
+    device: str = None,
+    *args,
+    **kwargs,
+) -> Union[RealNumber, DensityMatrix]:
     variables = format_variable_dictionary(variables)
 
     if variables is None and not (len(objective.extract_variables()) == 0):
         raise TequilaException(
             "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
-                objective.extract_variables()))
-    
+                objective.extract_variables()
+            )
+        )
+
     if backend is None:
-        backend = "qiskit" #currently only permissible backend!
+        backend = "qiskit"  # currently only permissible backend!
     elif backend.lower() != "qiskit":
         TequilaException("Density matrix simulation currently works with only qiskit backend!")
 
-    compiled_objective = compile(objective=objective, samples=None, simulate_density=True, variables=variables, backend=backend,
-                                 noise=noise,device=device, *args, **kwargs)
+    compiled_objective = compile(
+        objective=objective,
+        samples=None,
+        simulate_density=True,
+        variables=variables,
+        backend=backend,
+        noise=noise,
+        device=device,
+        *args,
+        **kwargs,
+    )
     return compiled_objective(variables=variables, samples=None, simulate_density=True, *args, **kwargs)
+
 
 def draw(objective, variables=None, backend: str = None, name=None, *args, **kwargs):
     """
@@ -691,7 +711,9 @@ def compile(
 
     """
 
-    backend = pick_backend(backend=backend, noise=noise, samples=samples, simulate_density=simulate_density, device=device)
+    backend = pick_backend(
+        backend=backend, noise=noise, samples=samples, simulate_density=simulate_density, device=device
+    )
 
     if variables is not None:
         # allow hashable types as keys without casting it to variables
