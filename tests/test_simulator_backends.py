@@ -42,15 +42,13 @@ HAS_GOOGLE = importlib.util.find_spec("cirq_google")
 def test_cirq_google_devices():
     import cirq_google
 
-    U = tq.paulis.X(0)
+    U = tq.gates.X(target=0)
     U += tq.gates.Givens(
         0, 1, angle=numpy.pi / 4
-    )  # Givens rotation with angle = pi/4 gives 1/sqrt(2)|01> + 1/sqrt(2)|10> (up to a phase factor).
+    )  # Givens rotation with angle = pi/4 gives 1/sqrt(2)|01> - 1/sqrt(2)|10> (up to a phase factor).
     wfn = tq.simulate(U, device="Sycamore", backend="cirq")
-    wfnx0 = tq.simulate(tq.paulis.X(0))
-    assert numpy.isclose(numpy.abs(wfn.inner(wfnx0)) ** 2, 0.5)
-    wfnx1 = tq.simulate(tq.paulis.X(1))
-    assert numpy.isclose(numpy.abs(wfn.inner(wfnx1)) ** 2, 0.5)
+    wfn_comp = tq.QubitWaveFunction.from_array([0, -1/numpy.sqrt(2), 1/numpy.sqrt(2), 0])
+    assert numpy.isclose(numpy.abs(wfn.inner(wfn_comp)) ** 2, 1)
 
 
 def teardown_function(function):
@@ -63,7 +61,7 @@ def teardown_function(function):
 def test_dependencies():
     for package in tequila.simulators.simulator_api.SUPPORTED_BACKENDS:
         if package not in ["qulacs_gpu", "qiskit_gpu"]:
-            assert package in tq.simulators.simulator_api.INSTALLED_BACKENDS
+            assert package in tq.simulators.simulator_api.INSTALLED_BACKENDS, '{}'.format(package)
 
 
 # make one test for the samplers and one for the simulators?

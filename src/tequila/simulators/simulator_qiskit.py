@@ -312,7 +312,7 @@ class BackendCircuitQiskit(BackendCircuit):
         QubitWaveFunction:
             the result of simulation.
         """
-        circuit = self.circuit.bind_parameters(self.resolver)
+        circuit = self.circuit.assign_parameters(self.resolver)
 
         if self.noise_model is None:
             if self.device is None:
@@ -367,7 +367,7 @@ class BackendCircuitQiskit(BackendCircuit):
         DensityMatrix:
             the result of simulation.
         """
-        circuit = self.circuit.bind_parameters(self.resolver)
+        circuit = self.circuit.assign_parameters(self.resolver)
 
         if self.device is None:
             qiskit_backend = self.retrieve_device("aer_simulator_density_matrix")
