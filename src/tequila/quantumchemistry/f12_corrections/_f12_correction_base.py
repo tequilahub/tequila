@@ -22,8 +22,17 @@ class ExplicitCorrelationCorrection:
         upper case ~ covariant/creation indices,
         lower case ~ contravariant/annihilation indices
     """
-    def __init__(self, mol=None, rdm1: numpy.ndarray = None, rdm2: numpy.ndarray = None, gamma: int = 1.4,
-                 n_ri: int = None, external_info: dict = None, **kwargs):
+
+    def __init__(
+        self,
+        mol=None,
+        rdm1: numpy.ndarray = None,
+        rdm2: numpy.ndarray = None,
+        gamma: int = 1.4,
+        n_ri: int = None,
+        external_info: dict = None,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -82,7 +91,7 @@ class ExplicitCorrelationCorrection:
 
         # External info to read data from external files
         self.external_info = external_info
-       
+
         # Set silent if in kwargs
         self.silent = False
         if "silent" in kwargs:
@@ -105,8 +114,9 @@ class ExplicitCorrelationCorrection:
         amplitudes t_PQrs according to SP-ansatz
         """
         kron_d = numpy.eye(len(self.active))
-        t_PQrs = 3 / 8 * numpy.einsum("pr,qs -> pqrs", kron_d, kron_d, optimize="greedy") \
-                 + 1 / 8 * numpy.einsum("pr,qs -> qprs", kron_d, kron_d, optimize="greedy")
+        t_PQrs = 3 / 8 * numpy.einsum("pr,qs -> pqrs", kron_d, kron_d, optimize="greedy") + 1 / 8 * numpy.einsum(
+            "pr,qs -> qprs", kron_d, kron_d, optimize="greedy"
+        )
         return t_PQrs
 
     def build_fock_operator(self, h: NBodyTensor, g: NBodyTensor) -> NBodyTensor:
@@ -122,8 +132,12 @@ class ExplicitCorrelationCorrection:
             spin-free, generalized fock operator
         """
         g_1 = numpy.einsum("sr, krls -> kl", self.rdm1, g.sub_str("fafa"), optimize="greedy")
-        g_2 = numpy.einsum("sr, krsl -> kl", self.rdm1,
-                           numpy.einsum("krls->krsl", g.sub_str("fafa"), optimize="greedy"), optimize="greedy")
+        g_2 = numpy.einsum(
+            "sr, krsl -> kl",
+            self.rdm1,
+            numpy.einsum("krls->krsl", g.sub_str("fafa"), optimize="greedy"),
+            optimize="greedy",
+        )
         fock = NBodyTensor(elems=h.sub_str("ff") + g_1 - 1 / 2 * g_2, active_indices=self.active, size_full=self.n_ri)
 
         return fock
@@ -163,8 +177,10 @@ class ExplicitCorrelationCorrection:
         """
 
         if not self.active:
-            raise TequilaException("Need to use an active space ~ subset of integrals for OBS"
-                                   " in order to compute correction using external integrals.")
+            raise TequilaException(
+                "Need to use an active space ~ subset of integrals for OBS"
+                " in order to compute correction using external integrals."
+            )
 
         # Load f12-tensor
         if ("f12_filename" not in self.external_info) and ("ordering" not in self.external_info):
@@ -176,7 +192,9 @@ class ExplicitCorrelationCorrection:
             self.n_ri = n_ri_max
         self.size_check(n_ri_max=n_ri_max)
         # This assumes a f12-operator of the kind -1/gamma*exp(-gamma*r12), adjust your integrals if necessary
-        r = NBodyTensor(elems=r_elems, ordering=self.external_info["ordering"], active_indices=self.active, size_full=self.n_ri)
+        r = NBodyTensor(
+            elems=r_elems, ordering=self.external_info["ordering"], active_indices=self.active, size_full=self.n_ri
+        )
         r.reorder(to="phys")
 
         # # Load coulomb-tensor elements
@@ -186,7 +204,7 @@ class ExplicitCorrelationCorrection:
         #     ordering = "openfermion"
         # g = NBodyTensor(elems=self.mol.molecule.two_body_integrals, ordering=ordering,
         #                 active_indices=self.active, size_full=self.n_ri)
-        c,h,g = self.mol.integral_manager.get_integrals(ignore_active_space=True)
+        c, h, g = self.mol.integral_manager.get_integrals(ignore_active_space=True)
         g = NBodyTensor(elems=g.elems, ordering=g.ordering, active_indices=self.active, size_full=self.n_ri)
         g.reorder(to="phys")
 
@@ -196,15 +214,14 @@ class ExplicitCorrelationCorrection:
         return h, g, r
 
     def _compute_intermediate_V(self, g: NBodyTensor, r: NBodyTensor):
-        """ computes intermediate V, mixed geminal-reference block """
+        """computes intermediate V, mixed geminal-reference block"""
         rdm1, rdm2 = self.rdm1, self.rdm2
-        gKLxy_rRSkl = numpy.einsum("klxy, rskl -> rsxy", g.sub_str("ffaa"),
-                                   r.sub_str("aaff"), optimize="greedy")
-        gTUxy_rRStu = numpy.einsum("tuxy, rstu -> rsxy", g.sub_str("aaaa"),
-                                   r.sub_str("aaaa"), optimize="greedy")
+        gKLxy_rRSkl = numpy.einsum("klxy, rskl -> rsxy", g.sub_str("ffaa"), r.sub_str("aaff"), optimize="greedy")
+        gTUxy_rRStu = numpy.einsum("tuxy, rstu -> rsxy", g.sub_str("aaaa"), r.sub_str("aaaa"), optimize="greedy")
 
-        gATxy_rdm1Ut_rRSau = numpy.einsum("atxy,ut,rsau -> rsxy", g.sub_str("paaa"), rdm1,
-                                          r.sub_str("aapa"), optimize="greedy")
+        gATxy_rdm1Ut_rRSau = numpy.einsum(
+            "atxy,ut,rsau -> rsxy", g.sub_str("paaa"), rdm1, r.sub_str("aapa"), optimize="greedy"
+        )
         V_mid = gKLxy_rRSkl - gTUxy_rRStu - gATxy_rdm1Ut_rRSau
 
         V = numpy.einsum("pqrs, xypq, rsxy", self.t_PQrs, rdm2, V_mid, optimize="greedy")
@@ -212,122 +229,272 @@ class ExplicitCorrelationCorrection:
         return V
 
     def _compute_intermediate_B(self, r: NBodyTensor, fock: NBodyTensor):
-        """ computes intermediate B, geminal-geminal block with Fock operator """
+        """computes intermediate B, geminal-geminal block with Fock operator"""
         rdm1, rdm2 = self.rdm1, self.rdm2
-        rZYpq_fockXy_rTUzx = numpy.einsum("zypq, xy, tuzx -> tupq", r.sub_str("aaaa"), fock.sub_str("aa"),
-                                          r.sub_str("aaaa"), optimize="greedy")
-        rAYpq_fockXa_rTUxy = numpy.einsum("aypq, xa, tuxy -> tupq", r.sub_str("paaa"),
-                                          fock.sub_str("ap"), r.sub_str("aaaa"), optimize="greedy")
-        rYXpq_fockAx_rTUya = numpy.einsum("yxpq, ax, tuya -> tupq", r.sub_str("aaaa"), fock.sub_str("pa"),
-                                          r.sub_str("aaap"), optimize="greedy")
-        rMLpq_fockKl_rTUmk = numpy.einsum("mlpq, kl, tumk -> tupq", r.sub_str("ffaa"), fock.sub_str("ff"),
-                                          r.sub_str("aaff"), optimize="greedy")
+        rZYpq_fockXy_rTUzx = numpy.einsum(
+            "zypq, xy, tuzx -> tupq", r.sub_str("aaaa"), fock.sub_str("aa"), r.sub_str("aaaa"), optimize="greedy"
+        )
+        rAYpq_fockXa_rTUxy = numpy.einsum(
+            "aypq, xa, tuxy -> tupq", r.sub_str("paaa"), fock.sub_str("ap"), r.sub_str("aaaa"), optimize="greedy"
+        )
+        rYXpq_fockAx_rTUya = numpy.einsum(
+            "yxpq, ax, tuya -> tupq", r.sub_str("aaaa"), fock.sub_str("pa"), r.sub_str("aaap"), optimize="greedy"
+        )
+        rMLpq_fockKl_rTUmk = numpy.einsum(
+            "mlpq, kl, tumk -> tupq", r.sub_str("ffaa"), fock.sub_str("ff"), r.sub_str("aaff"), optimize="greedy"
+        )
 
-        rBYpq_rdm1Xy_fockAb_rTUax = numpy.einsum("bypq, xy, ab, tuax -> tupq", r.sub_str("paaa"),
-                                                 rdm1, fock.sub_str("pp"),
-                                                 r.sub_str("aapa"), optimize="greedy")
-        rAYpq_rdm1Xy_fockKx_rTUak = numpy.einsum("aypq, xy, kx, tuak -> tupq", r.sub_str("paaa"),
-                                                 rdm1, fock.sub_str("fa"),
-                                                 r.sub_str("aapf"), optimize="greedy")
+        rBYpq_rdm1Xy_fockAb_rTUax = numpy.einsum(
+            "bypq, xy, ab, tuax -> tupq",
+            r.sub_str("paaa"),
+            rdm1,
+            fock.sub_str("pp"),
+            r.sub_str("aapa"),
+            optimize="greedy",
+        )
+        rAYpq_rdm1Xy_fockKx_rTUak = numpy.einsum(
+            "aypq, xy, kx, tuak -> tupq",
+            r.sub_str("paaa"),
+            rdm1,
+            fock.sub_str("fa"),
+            r.sub_str("aapf"),
+            optimize="greedy",
+        )
 
-        B_mid = rMLpq_fockKl_rTUmk - rZYpq_fockXy_rTUzx - rAYpq_fockXa_rTUxy - rYXpq_fockAx_rTUya \
-                - 1 / 2 * rBYpq_rdm1Xy_fockAb_rTUax - 1 / 2 * rAYpq_rdm1Xy_fockKx_rTUak
+        B_mid = (
+            rMLpq_fockKl_rTUmk
+            - rZYpq_fockXy_rTUzx
+            - rAYpq_fockXa_rTUxy
+            - rYXpq_fockAx_rTUya
+            - 1 / 2 * rBYpq_rdm1Xy_fockAb_rTUax
+            - 1 / 2 * rAYpq_rdm1Xy_fockKx_rTUak
+        )
         B = numpy.einsum("pqrs, vwtu, rsvw, tupq", self.t_PQrs, self.t_PQrs, rdm2, B_mid, optimize="greedy")
 
         return B
 
     def _compute_intermediate_X(self, r: NBodyTensor, fock: NBodyTensor):
-        """ computes intermediate X, geminal-geminal overlap """
+        """computes intermediate X, geminal-geminal overlap"""
         rdm1, rdm2 = self.rdm1, self.rdm2
 
-        rTUkl_rKLpq = numpy.einsum("tukl, klpq -> tupq", r.sub_str("aaff"),
-                                   r.sub_str("ffaa"), optimize="greedy")
-        rTUyz_rYZpq = numpy.einsum("tuyz, yzpq -> tupq", r.sub_str("aaaa"),
-                                   r.sub_str("aaaa"), optimize="greedy")
+        rTUkl_rKLpq = numpy.einsum("tukl, klpq -> tupq", r.sub_str("aaff"), r.sub_str("ffaa"), optimize="greedy")
+        rTUyz_rYZpq = numpy.einsum("tuyz, yzpq -> tupq", r.sub_str("aaaa"), r.sub_str("aaaa"), optimize="greedy")
 
         # rTUya_rdm1Yz_rZApq = numpy.einsum("tuya, yz, zapq -> tupq", r.sub_str("aaap"), rdm1,\
         # r.sub_str("apaa"), optimize="greedy")
-        rUTya_rdm1Yz_rAZpq = numpy.einsum("utya, yz, azpq -> tupq", r.sub_str("aaap"), rdm1,
-                                          r.sub_str("paaa"), optimize="greedy")
-        rTUay_rdm1Yz_rAZqp = numpy.einsum("tuay, yz, azqp -> tupq", r.sub_str("aapa"), rdm1,
-                                          r.sub_str("paaa"), optimize="greedy")
+        rUTya_rdm1Yz_rAZpq = numpy.einsum(
+            "utya, yz, azpq -> tupq", r.sub_str("aaap"), rdm1, r.sub_str("paaa"), optimize="greedy"
+        )
+        rTUay_rdm1Yz_rAZqp = numpy.einsum(
+            "tuay, yz, azqp -> tupq", r.sub_str("aapa"), rdm1, r.sub_str("paaa"), optimize="greedy"
+        )
 
         # X_mid = rTUkl_rKLpq - rTUyz_rYZpq - 1/2*rTUya_rdm1Yz_rZApq # in paper
-        X_mid = rTUkl_rKLpq - rTUyz_rYZpq - 1 / 2 * rUTya_rdm1Yz_rAZpq - 1 / 2 * rTUay_rdm1Yz_rAZqp  # adjusted to python script
-        X = -1 * numpy.einsum("pqrs, vwtu, rsvx, xw, tupq", self.t_PQrs, self.t_PQrs, rdm2,
-                              fock.sub_str("aa"), X_mid, optimize="greedy")
+        X_mid = (
+            rTUkl_rKLpq - rTUyz_rYZpq - 1 / 2 * rUTya_rdm1Yz_rAZpq - 1 / 2 * rTUay_rdm1Yz_rAZqp
+        )  # adjusted to python script
+        X = -1 * numpy.einsum(
+            "pqrs, vwtu, rsvx, xw, tupq", self.t_PQrs, self.t_PQrs, rdm2, fock.sub_str("aa"), X_mid, optimize="greedy"
+        )
 
         return X
 
     def _compute_intermediate_Delta_paper(self, r: NBodyTensor, fock: NBodyTensor):
-        """ computes Delta intermediate according to formulas in the SF-[2]_R12 paper """
+        """computes Delta intermediate according to formulas in the SF-[2]_R12 paper"""
         # Delta intermediate
         # Delta from paper:
         rdm1, rdm2 = self.rdm1, self.rdm2
         tPQrs_rAYpq = numpy.einsum("pqrs, aypq -> ayrs", self.t_PQrs, r.sub_str("paaa"), optimize="greedy")
         # build cumulant-like terms (call such bcs look a little bit alike, but are not same)
-        cum_like_1 = numpy.einsum("sv, xrwy -> sxrvwy", rdm1,
-                                  (-1 / 2 * rdm2
-                                   + 1 / 2 * numpy.einsum("xw, ry -> xrwy", rdm1, rdm1, optimize="greedy")
-                                   - 1 / 2 * numpy.einsum("rw, xy -> xrwy", rdm1, rdm1, optimize="greedy")),
-                                  optimize="greedy")
+        cum_like_1 = numpy.einsum(
+            "sv, xrwy -> sxrvwy",
+            rdm1,
+            (
+                -1 / 2 * rdm2
+                + 1 / 2 * numpy.einsum("xw, ry -> xrwy", rdm1, rdm1, optimize="greedy")
+                - 1 / 2 * numpy.einsum("rw, xy -> xrwy", rdm1, rdm1, optimize="greedy")
+            ),
+            optimize="greedy",
+        )
 
-        cum_like_2 = numpy.einsum("sw, xryv -> sxrvwy", rdm1,
-                                  (-1 / 2 * rdm2
-                                   + numpy.einsum("rv, xy -> xryv", rdm1, rdm1, optimize="greedy")
-                                   - 1 / 4 * numpy.einsum("ry, xv -> xryv", rdm1, rdm1)),
-                                  optimize="greedy")
+        cum_like_2 = numpy.einsum(
+            "sw, xryv -> sxrvwy",
+            rdm1,
+            (
+                -1 / 2 * rdm2
+                + numpy.einsum("rv, xy -> xryv", rdm1, rdm1, optimize="greedy")
+                - 1 / 4 * numpy.einsum("ry, xv -> xryv", rdm1, rdm1)
+            ),
+            optimize="greedy",
+        )
 
-        cum_like_3 = numpy.einsum("rv, xswy -> sxrvwy", rdm1,
-                                  (rdm2
-                                   - numpy.einsum("sy, xw -> xswy", rdm1, rdm1, optimize="greedy")),
-                                  optimize="greedy")
+        cum_like_3 = numpy.einsum(
+            "rv, xswy -> sxrvwy",
+            rdm1,
+            (rdm2 - numpy.einsum("sy, xw -> xswy", rdm1, rdm1, optimize="greedy")),
+            optimize="greedy",
+        )
 
-        cum_like_4 = numpy.einsum("rw, xsvy -> sxrvwy", rdm1,
-                                  (-1 / 2 * rdm2
-                                   + 1 / 2 * numpy.einsum("sy, xv -> xsvy", rdm1, rdm1, optimize="greedy")),
-                                  optimize="greedy")
+        cum_like_4 = numpy.einsum(
+            "rw, xsvy -> sxrvwy",
+            rdm1,
+            (-1 / 2 * rdm2 + 1 / 2 * numpy.einsum("sy, xv -> xsvy", rdm1, rdm1, optimize="greedy")),
+            optimize="greedy",
+        )
 
-        Delta_mid = numpy.einsum("ayrs, sxrvwy -> axvw", tPQrs_rAYpq,
-                                 (cum_like_1 + cum_like_2 + cum_like_3 + cum_like_4),
-                                 optimize="greedy")
+        Delta_mid = numpy.einsum(
+            "ayrs, sxrvwy -> axvw", tPQrs_rAYpq, (cum_like_1 + cum_like_2 + cum_like_3 + cum_like_4), optimize="greedy"
+        )
 
-        Delta = -1 * numpy.einsum("tuak, kx, vwtu, axvw", r.sub_str("aapf"), fock.sub_str("fa"),
-                                  self.t_PQrs, Delta_mid, optimize="greedy")
+        Delta = -1 * numpy.einsum(
+            "tuak, kx, vwtu, axvw", r.sub_str("aapf"), fock.sub_str("fa"), self.t_PQrs, Delta_mid, optimize="greedy"
+        )
         return Delta
 
     def _compute_intermediate_Delta_MBeq(self, r: NBodyTensor, fock: NBodyTensor):
-        """ computes Delta intermediate according to formulas generated by MBEq-tool of Valeev group"""
+        """computes Delta intermediate according to formulas generated by MBEq-tool of Valeev group"""
         rdm1, rdm2, t_PQrs = self.rdm1, self.rdm2, self.t_PQrs
         # Delta from MBeq-tool
-        Delta1 = -1 / 2 * numpy.einsum("pqrs, aypq, vwtu, xrvy, kx, sw, utak", t_PQrs, r.sub_str("paaa"), t_PQrs, rdm2,
-                                       fock.sub_str("fa"), rdm1, r.sub_str("aapf"), optimize="greedy") \
-                 - 1 / 2 * numpy.einsum("pqrs, aypq, vwtu, xryv, kx, sw, tuak", t_PQrs, r.sub_str("paaa"), t_PQrs, rdm2,
-                                        fock.sub_str("fa"), rdm1, r.sub_str("aapf"), optimize="greedy") \
-                 - 1 / 2 * numpy.einsum("pqrs, aypq, vwtu, kx, rv, sw, xy, utak", t_PQrs, r.sub_str("paaa"), t_PQrs,
-                                        fock.sub_str("fa"), rdm1, rdm1, rdm1, r.sub_str("aapf"), optimize="greedy") \
-                 + numpy.einsum("pqrs, aypq, vwtu, kx, rv, sw, xy, tuak", t_PQrs, r.sub_str("paaa"), t_PQrs,
-                                fock.sub_str("fa"), rdm1, rdm1, rdm1, r.sub_str("aapf"), optimize="greedy") \
-                 + 1 / 2 * numpy.einsum("pqrs, aypq, vwtu, kx, ry, sv, xw, tuak", t_PQrs, r.sub_str("paaa"), t_PQrs,
-                                        fock.sub_str("fa"), rdm1, rdm1, rdm1, r.sub_str("aapf"), optimize="greedy") \
-                 - 1 / 4 * numpy.einsum("pqrs, aypq, vwtu, kx, ry, sv, xw, utak", t_PQrs, r.sub_str("paaa"), t_PQrs,
-                                        fock.sub_str("fa"), rdm1, rdm1, rdm1, r.sub_str("aapf"), optimize="greedy")
-        Delta2 = numpy.einsum("pqrs, ayqp, vwtu, xrvy, kx, sw, utak", self.t_PQrs, r.sub_str("paaa"), self.t_PQrs, rdm2,
-                              fock.sub_str("fa"), rdm1, r.sub_str("aapf"), optimize="greedy") \
-                 - 1 / 2 * numpy.einsum("pqrs, ayqp, vwtu, xrvy, kx, sw, tuak", self.t_PQrs, r.sub_str("paaa"),
-                                        self.t_PQrs, rdm2,
-                                        fock.sub_str("fa"), rdm1, r.sub_str("aapf"), optimize="greedy") \
-                 - numpy.einsum("pqrs, ayqp, vwtu, kx, ry, sv, xw, tuak", self.t_PQrs, r.sub_str("paaa"), self.t_PQrs,
-                                fock.sub_str("fa"), rdm1, rdm1, rdm1, r.sub_str("aapf"), optimize="greedy") \
-                 + 1 / 2 * numpy.einsum("pqrs, ayqp, vwtu, kx, ry, sv, xw, utak", self.t_PQrs, r.sub_str("paaa"),
-                                        self.t_PQrs,
-                                        fock.sub_str("fa"), rdm1, rdm1, rdm1, r.sub_str("aapf"), optimize="greedy")
+        Delta1 = (
+            -1
+            / 2
+            * numpy.einsum(
+                "pqrs, aypq, vwtu, xrvy, kx, sw, utak",
+                t_PQrs,
+                r.sub_str("paaa"),
+                t_PQrs,
+                rdm2,
+                fock.sub_str("fa"),
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+            - 1
+            / 2
+            * numpy.einsum(
+                "pqrs, aypq, vwtu, xryv, kx, sw, tuak",
+                t_PQrs,
+                r.sub_str("paaa"),
+                t_PQrs,
+                rdm2,
+                fock.sub_str("fa"),
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+            - 1
+            / 2
+            * numpy.einsum(
+                "pqrs, aypq, vwtu, kx, rv, sw, xy, utak",
+                t_PQrs,
+                r.sub_str("paaa"),
+                t_PQrs,
+                fock.sub_str("fa"),
+                rdm1,
+                rdm1,
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+            + numpy.einsum(
+                "pqrs, aypq, vwtu, kx, rv, sw, xy, tuak",
+                t_PQrs,
+                r.sub_str("paaa"),
+                t_PQrs,
+                fock.sub_str("fa"),
+                rdm1,
+                rdm1,
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+            + 1
+            / 2
+            * numpy.einsum(
+                "pqrs, aypq, vwtu, kx, ry, sv, xw, tuak",
+                t_PQrs,
+                r.sub_str("paaa"),
+                t_PQrs,
+                fock.sub_str("fa"),
+                rdm1,
+                rdm1,
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+            - 1
+            / 4
+            * numpy.einsum(
+                "pqrs, aypq, vwtu, kx, ry, sv, xw, utak",
+                t_PQrs,
+                r.sub_str("paaa"),
+                t_PQrs,
+                fock.sub_str("fa"),
+                rdm1,
+                rdm1,
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+        )
+        Delta2 = (
+            numpy.einsum(
+                "pqrs, ayqp, vwtu, xrvy, kx, sw, utak",
+                self.t_PQrs,
+                r.sub_str("paaa"),
+                self.t_PQrs,
+                rdm2,
+                fock.sub_str("fa"),
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+            - 1
+            / 2
+            * numpy.einsum(
+                "pqrs, ayqp, vwtu, xrvy, kx, sw, tuak",
+                self.t_PQrs,
+                r.sub_str("paaa"),
+                self.t_PQrs,
+                rdm2,
+                fock.sub_str("fa"),
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+            - numpy.einsum(
+                "pqrs, ayqp, vwtu, kx, ry, sv, xw, tuak",
+                self.t_PQrs,
+                r.sub_str("paaa"),
+                self.t_PQrs,
+                fock.sub_str("fa"),
+                rdm1,
+                rdm1,
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+            + 1
+            / 2
+            * numpy.einsum(
+                "pqrs, ayqp, vwtu, kx, ry, sv, xw, utak",
+                self.t_PQrs,
+                r.sub_str("paaa"),
+                self.t_PQrs,
+                fock.sub_str("fa"),
+                rdm1,
+                rdm1,
+                rdm1,
+                r.sub_str("aapf"),
+                optimize="greedy",
+            )
+        )
         Delta = Delta1 + Delta2
 
         return Delta
 
     def _compute_intermediates(self, g: NBodyTensor, r: NBodyTensor, fock: NBodyTensor) -> list:
-        """ calls computation of intermediates and returns them as list """
+        """calls computation of intermediates and returns them as list"""
         V = self._compute_intermediate_V(g, r)
         B = self._compute_intermediate_B(r, fock)
         X = self._compute_intermediate_X(r, fock)
@@ -349,10 +516,21 @@ class ExplicitCorrelationCorrection:
         """
 
         # Here, if len(active_!=n_obs, then active is effective OBS, and n_ri-len(active) is effective CABS
-        print("Computing with dim(OBS): " + str(self.n_obs) + ", of which " + str(len(self.active))
-              + " active and dim(RI): " + str(self.n_ri) + ".")
-        print("Therefore effective OBS: " + str(len(self.active)) +
-              " and effective CABS: " + str(self.n_ri-len(self.active)))
+        print(
+            "Computing with dim(OBS): "
+            + str(self.n_obs)
+            + ", of which "
+            + str(len(self.active))
+            + " active and dim(RI): "
+            + str(self.n_ri)
+            + "."
+        )
+        print(
+            "Therefore effective OBS: "
+            + str(len(self.active))
+            + " and effective CABS: "
+            + str(self.n_ri - len(self.active))
+        )
 
         # Set amplitudes via SP-ansatz by Ten-No (fix s.th. cusp condition is fulfilled)
         self.t_PQrs = self._sp_ansatz()

@@ -12,7 +12,7 @@ def list_assignment(o):
     """
     if o is None:
         return []
-    elif isinstance(o,tuple):
+    elif isinstance(o, tuple):
         return o
     elif hasattr(o, "__get_item__"):
         return list(o)
@@ -22,14 +22,14 @@ def list_assignment(o):
         return [o]
 
 
-def number_to_string(number: complex, precision: int = 4, threshold: float = 1.e-6) -> str:
+def number_to_string(number: complex, precision: int = 4, threshold: float = 1.0e-6) -> str:
     if not isinstance(number, numbers.Number):
         return str(number)
 
     number = complex(number)
     real = number.real
     imag = number.imag
-    prec = '{:+.' + str(precision) + 'f}'
+    prec = "{:+." + str(precision) + "f}"
 
     if isclose(real, 0.0, atol=threshold):
         return prec.format(imag) + "i"
@@ -37,7 +37,7 @@ def number_to_string(number: complex, precision: int = 4, threshold: float = 1.e
         return prec.format(real)
     else:
         r, theta = polar(number)
-        return prec.format(r) + ('e^(' + prec).format(theta / pi) + 'πi)'
+        return prec.format(r) + ("e^(" + prec).format(theta / pi) + "πi)"
 
 
 if __name__ == "__main__":

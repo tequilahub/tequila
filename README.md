@@ -9,7 +9,7 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 # Getting Started
 
 Get started with our collection of  
-- *[Tutorials](https://thuytr18.github.io/tequila-tutorials-beta/tutorials.html)*  
+- *[Tutorials](https://tequilahub.github.io/tequila-tutorials/)*  
 
 Further sources:
 - [overview article](https://arxiv.org/abs/2011.03057)   
@@ -17,8 +17,8 @@ Further sources:
 - [talks and slides](https://kottmanj.github.io/talks_and_material/)  
 
 # Installation
-Recommended Python version is 3.9 (3.10).   
-Tequila supports linux, osx and windows. However, not all optional dependencies are supported on windows.  
+Recommended Python version is 3.10 (3.11).   
+Tequila supports linux, osx and windows. However, not all optional dependencies (especially chemistry) are supported on windows.  
 
 ## Install from PyPi
 **Do not** install like this: (Minecraft lovers excluded)
@@ -29,7 +29,7 @@ You can install tequila from PyPi as:
 pip install tequila-basic
 ```
 this will install tequila with all essential dependencies.
-We recommend to install some fast quantum backends, like qulacs or qibo, as well.
+We recommend to install some fast quantum backends, like qulacs, as well.
 Those can be installed before or after you install tequila.
 ```bash
 # install basic tequila
@@ -130,7 +130,7 @@ print("VQE : {:+2.8}f".format(result.energy))
 print("FCI : {:+2.8}f".format(fci))
 ```
 
-Do you want to create your own methods? Check out the [tutorials](https://github.com/tequilahub/tequila-tutorials)!
+Do you want to create your own methods? Check out the [tutorials]([https://github.com/tequilahub/tequila-tutorials](https://tequilahub.github.io/tequila-tutorials/))!
 
 # Some Research projects using Tequila
 J.S. Kottmann, A. Anand, A. Aspuru-Guzik.  
@@ -312,9 +312,11 @@ Here is how that works:
 1. Make a fork of `tequila` to your own github account.
 2. Checkout the `devel` branch and make sure it is up to date with the main [github repository](https://github.com/aspuru-guzik-group/tequila).
 3. Create and checkout a new branch from `devel` via `git branch pr-my-branch-name` followed by `git checkout pr-my-branch-name`. By typing `git branch` afterwards you can check which branch is currently checked out on your computer.
-4. Introduce changes to the code and commit them with git.
-5. Push the changes to *your* github account
-6. Log into github and create a pull request to the main [github repository](https://github.com/aspuru-guzik-group/tequila). The pull-request should be directed to the `devel` branch (but we can also change that afterwards).
+4. Introduce changes to the code.
+5. Format your code using [Ruff](https://github.com/astral-sh/ruff).
+  You can install Ruff with `pip install ruff`, then run the formatter with `ruff format` and the linter with `ruff check` (most IDEs also provide a way of integrating Ruff and doing this automatically).
+6. Commit them with git and push the changes to *your* github account
+7. Log into github and create a pull request to the main [github repository](https://github.com/aspuru-guzik-group/tequila). The pull-request should be directed to the `devel` branch (but we can also change that afterwards).
 
 If you plan to introduce major changes to the base library it can be beneficial to contact us first.
 This way we might be able to avoid conflicts before they arise.
@@ -382,4 +384,3 @@ They can be installed for example over visual studio.
 Tequila runs on Mac OSX.
 You might get in trouble with installing qulacs since it currently does not work with Apple's clang compiler.
 You need to install latest GNU compile (at least gcc-7 and g++7) and set them as default before installing qulacs over pip.
-

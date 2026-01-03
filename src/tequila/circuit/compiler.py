@@ -1,8 +1,14 @@
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z
-from tequila.circuit._gates_impl import RotationGateImpl, PhaseGateImpl, QGateImpl, \
-    ExponentialPauliGateImpl, TrotterizedGateImpl, PowerGateImpl
+from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, GlobalPhase
+from tequila.circuit._gates_impl import (
+    RotationGateImpl,
+    PhaseGateImpl,
+    QGateImpl,
+    ExponentialPauliGateImpl,
+    TrotterizedGateImpl,
+    PowerGateImpl,
+)
 from tequila.utils import to_float
 from tequila.objective.objective import Variable, FixedVariable
 from tequila.objective.objective import Objective
@@ -10,7 +16,8 @@ from tequila.objective.objective import ExpectationValueImpl
 import numpy
 from numpy import pi as pi
 
-import copy, typing
+import copy
+import typing
 
 
 class TequilaCompilerException(TequilaException):
@@ -42,13 +49,13 @@ class CircuitCompiler:
         c = cls()
         for k in c.__dict__.keys():
             try:
-                c.__dict__[k]=True
-            except:
+                c.__dict__[k] = True
+            except Exception:
                 pass
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             if k in c.__dict__:
-                c.__dict__[k]=v
-        c.gradient_mode=False
+                c.__dict__[k] = v
+        c.gradient_mode = False
 
         if not c.multicontrol:
             c.cc_max = False
@@ -60,42 +67,42 @@ class CircuitCompiler:
         # but not for standard gates like ry
         # set exceptions in kwargs
         c = cls.all_flags_true()
-        c.gradient_mode=False
-        c.y_gate=False
-        c.ry_gate=False
+        c.gradient_mode = False
+        c.y_gate = False
+        c.ry_gate = False
 
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             if k in c.__dict__:
-                c.__dict__[k]=v
+                c.__dict__[k] = v
 
         if not c.multicontrol:
             c.cc_max = False
         return c
 
-    def __init__(self,
-                 multitarget=False,
-                 multicontrol=False,
-                 trotterized=False,
-                 generalized_rotation=False,
-                 exponential_pauli=False,
-                 controlled_exponential_pauli=False,
-                 hadamard_power=False,
-                 controlled_power=False,
-                 power=False,
-                 toffoli=False,
-                 controlled_phase=False,
-                 phase=False,
-                 phase_to_z=False,
-                 controlled_rotation=False,
-                 swap=False,
-                 cc_max=False,
-                 gradient_mode=False,
-                 ry_gate=False,
-                 y_gate=False,
-                 ch_gate=False,
-                 hadamard=False
-                 ):
-
+    def __init__(
+        self,
+        multitarget=False,
+        multicontrol=False,
+        trotterized=False,
+        generalized_rotation=False,
+        exponential_pauli=False,
+        controlled_exponential_pauli=False,
+        hadamard_power=False,
+        controlled_power=False,
+        power=False,
+        toffoli=False,
+        controlled_phase=False,
+        phase=False,
+        phase_to_z=False,
+        controlled_rotation=False,
+        swap=False,
+        cc_max=False,
+        gradient_mode=False,
+        ry_gate=False,
+        y_gate=False,
+        ch_gate=False,
+        hadamard=False,
+    ):
         """
         all parameters are booleans.
         Parameters
@@ -161,9 +168,9 @@ class CircuitCompiler:
         self.y_gate = y_gate
         self.ch_gate = ch_gate
 
-    def __call__(self, objective: typing.Union[Objective, QCircuit, ExpectationValueImpl], variables=None, *args,
-                 **kwargs):
-
+    def __call__(
+        self, objective: typing.Union[Objective, QCircuit, ExpectationValueImpl], variables=None, *args, **kwargs
+    ):
         """
         Perform compilation
         Parameters
@@ -206,8 +213,8 @@ class CircuitCompiler:
         the objective, compiled
         """
 
-        argsets=objective.argsets
-        compiled_sets=[]
+        argsets = objective.argsets
+        compiled_sets = []
         for argset in argsets:
             compiled_args = []
             already_processed = {}
@@ -223,9 +230,8 @@ class CircuitCompiler:
                     # nothing to process for non-expectation-value types, but acts as sanity check
                     compiled_args.append(self.compile_objective_argument(arg, *args, **kwargs))
             compiled_sets.append(compiled_args)
-        if isinstance(objective,Objective):
-            return type(objective)(args=compiled_sets[0],transformation=objective.transformation)
-
+        if isinstance(objective, Objective):
+            return type(objective)(args=compiled_sets[0], transformation=objective.transformation)
 
     def compile_objective_argument(self, arg, *args, **kwargs):
         """
@@ -243,11 +249,8 @@ class CircuitCompiler:
         the arg, compiled
         """
 
-
         if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
-            return ExpectationValueImpl(H=arg.H,
-                                        U=self.compile_circuit(abstract_circuit=arg.U, *args,
-                                                               **kwargs))
+            return ExpectationValueImpl(H=arg.H, U=self.compile_circuit(abstract_circuit=arg.U, *args, **kwargs))
         elif hasattr(arg, "abstract_expectationvalue"):
             E = arg.abstract_expectationvalue
             E._U = self.compile_circuit(abstract_circuit=E.U, *args, **kwargs)
@@ -256,7 +259,8 @@ class CircuitCompiler:
             return arg
         else:
             raise TequilaCompilerException(
-                "Unknown argument type for objectives: {arg} or type {type}".format(arg=arg, type=type(arg)))
+                "Unknown argument type for objectives: {arg} or type {type}".format(arg=arg, type=type(arg))
+            )
 
     def compile_circuit(self, abstract_circuit: QCircuit, variables=None, *args, **kwargs) -> QCircuit:
         """
@@ -293,7 +297,6 @@ class CircuitCompiler:
         compiled_gates = []
 
         for idx, gate in gatelist:
-
             cg = gate
             controlled = gate.is_controlled()
 
@@ -306,7 +309,6 @@ class CircuitCompiler:
                     for g in cg.gates:
                         if g.is_controlled():
                             controlled = True
-
 
             # order matters
             # first the real multi-target gates
@@ -374,17 +376,17 @@ def compiler(f):
                 result += f(gate=g, **kwargs)
             return result
 
-        elif hasattr(gate, 'U'):
+        elif hasattr(gate, "U"):
             cU = QCircuit()
             for g in gate.U.gates:
                 cU += f(gate=g, **kwargs)
             return type(gate)(U=cU, H=gate.H)
-        elif hasattr(gate, 'transformations'):
-            outer=[]
+        elif hasattr(gate, "transformations"):
+            outer = []
             for args in gate.argsets:
                 compiled = []
                 for E in args:
-                    if hasattr(E, 'name'):
+                    if hasattr(E, "name"):
                         compiled.append(E)
                     else:
                         cU = QCircuit()
@@ -418,16 +420,16 @@ def change_basis(target, axis=None, name=None, daggered=False):
 
     """
     if axis is None and name is None:
-        raise TequilaException('axis or name must be given.')
+        raise TequilaException("axis or name must be given.")
 
     if name:
         name = name.lower()
-        if name in ['h', 'hadamard'] and daggered:
+        if name in ["h", "hadamard"] and daggered:
             return Ry(angle=numpy.pi / 4, target=target)
-        elif name in ['h', 'hadamard']:
+        elif name in ["h", "hadamard"]:
             return Ry(angle=-numpy.pi / 4, target=target)
         else:
-            name_to_axis = {'rx': 0, 'ry': 1, 'rz': 2}
+            name_to_axis = {"rx": 0, "ry": 1, "rz": 2}
             axis = name_to_axis.get(name, name)
 
     if isinstance(axis, str):
@@ -443,6 +445,7 @@ def change_basis(target, axis=None, name=None, daggered=False):
         return Rx(angle=numpy.pi / 2, target=target)
     else:
         return QCircuit()
+
 
 @compiler
 def compile_multitarget(gate, *args, **kwargs) -> QCircuit:
@@ -515,7 +518,7 @@ def compile_controlled_rotation(gate: RotationGateImpl) -> QCircuit:
 
     result = QCircuit()
     result += change_basis(target=target, axis=gate._axis)
-    coeff = - 1 / pow(2, k)
+    coeff = -1 / pow(2, k)
     for i, ci in enumerate(cind):
         coeff *= -1
 
@@ -549,7 +552,7 @@ def compile_to_single_control(gate) -> QCircuit:
         return QCircuit.wrap_gate(gate)
     name = gate.name
     back = QCircuit()
-    if name in ['X', 'x', 'Y', 'y', 'Z', 'z', 'H', 'h']:
+    if name in ["X", "x", "Y", "y", "Z", "z", "H", "h"]:
         if isinstance(gate, PowerGateImpl):
             power = gate.parameter
         else:
@@ -565,7 +568,7 @@ def compile_to_single_control(gate) -> QCircuit:
         back += compile_to_single_control(gate=partial)
     else:
         print(gate)
-        raise TequilaException('frankly, what the fuck is this gate?')
+        raise TequilaException("frankly, what the fuck is this gate?")
     return back
 
 
@@ -583,7 +586,7 @@ def compile_toffoli(gate) -> QCircuit:
         A QCircuit; the result of compilation.
     """
 
-    if gate.name.lower != 'x':
+    if gate.name.lower != "x":
         return QCircuit.wrap_gate(gate)
     control = gate.control
     c1 = control[1]
@@ -606,7 +609,7 @@ def compile_toffoli(gate) -> QCircuit:
     result += T(c1).dagger()
     result += CNOT(c0, c1)
 
-    return (result)
+    return result
 
 
 @compiler
@@ -650,17 +653,16 @@ def compile_power_base(gate):
         return QCircuit.wrap_gate(gate)
 
     power = gate.power
-    if gate.name.lower() in ['h', 'hadamard']:
-        ### off by global phase of Exp[ pi power /2]
+    if gate.name.lower() in ["h", "hadamard"]:
         theta = power * numpy.pi
 
         result = QCircuit()
         result += Ry(angle=-numpy.pi / 4, target=gate.target)
         result += Rz(angle=theta, target=gate.target)
         result += Ry(angle=numpy.pi / 4, target=gate.target)
-    elif gate.name == 'X':
-        ### off by global phase of Exp[ pi power /2]
-        '''
+        result += GlobalPhase(angle=theta * pi / 2)
+    elif gate.name == "X":
+        """
         if we wanted to do it formally we would use the following
         a=-numpy.pi/2
         b=numpy.pi/2
@@ -670,23 +672,24 @@ def compile_power_base(gate):
         result+= Rz(angle=b,target=gate.target)
         result+= Ry(angle=theta,target=gate.target)
         result+= Rz(angle=a,target=gate.target)
-        '''
+        """
         result = Rx(angle=power * numpy.pi, target=gate.target)
-    elif gate.name == 'Y':
-        ### off by global phase of Exp[ pi power /2]
+        result += GlobalPhase(angle=power * numpy.pi / 2)
+    elif gate.name == "Y":
         theta = power * numpy.pi
 
         result = QCircuit()
         result += Ry(angle=theta, target=gate.target)
-    elif gate.name == 'Z':
-        ### off by global phase of Exp[ pi power /2]
+        result += GlobalPhase(angle=theta / 2)
+    elif gate.name == "Z":
         a = 0
         b = power * numpy.pi
         theta = 0
         result = QCircuit()
         result += Rz(angle=b, target=gate.target)
+        result += GlobalPhase(angle=b / 2)
     else:
-        raise TequilaException('passed a gate with name ' + gate.name + ', which cannot be handled!')
+        raise TequilaException("passed a gate with name " + gate.name + ", which cannot be handled!")
     return result
 
 
@@ -737,9 +740,8 @@ def compile_phase(gate) -> QCircuit:
     if not isinstance(gate, PhaseGateImpl):
         return QCircuit.wrap_gate(gate)
     phase = gate.parameter
-    result = QCircuit()
     if len(gate.control) == 0:
-        return Rz(angle=phase, target=gate.target)
+        return Rz(angle=phase, target=gate.target) + GlobalPhase(angle=phase / 2)
 
     result = compile_controlled_phase(gate)
     result = compile_phase(result)
@@ -814,14 +816,18 @@ def compile_swap(gate) -> QCircuit:
             if power is None or power in [1, 1.0]:
                 pass
             else:
-                raise TequilaCompilerException("Parametrized SWAPs should be decomposed on top level! Something went wrong")
+                raise TequilaCompilerException(
+                    "Parametrized SWAPs should be decomposed on top level! Something went wrong"
+                )
 
         c = []
         if gate.control is not None:
             c = gate.control
-        return X(target=gate.target[0], control=[gate.target[1]]) \
-               + X(target=gate.target[1], control=[gate.target[0]] + list(c), power=power) \
-               + X(target=gate.target[0], control=[gate.target[1]])
+        return (
+            X(target=gate.target[0], control=[gate.target[1]])
+            + X(target=gate.target[1], control=[gate.target[0]] + list(c), power=power)
+            + X(target=gate.target[0], control=[gate.target[1]])
+        )
 
     else:
         return QCircuit.wrap_gate(gate)
@@ -839,7 +845,6 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
     """
 
     if hasattr(gate, "paulistring"):
-
         angle = gate.paulistring.coeff * gate.parameter
 
         circuit = QCircuit()
@@ -890,8 +895,7 @@ def compile_exponential_pauli_gate(gate) -> QCircuit:
 
 
 def do_compile_trotterized_gate(generator, steps, factor, randomize, control):
-
-    assert (generator.is_hermitian())
+    assert generator.is_hermitian()
     circuit = QCircuit()
     factor = factor / steps
     for index in range(steps):
@@ -922,15 +926,16 @@ def compile_generalized_rotation_gate(gate, compile_exponential_pauli: bool = Fa
     -------
 
     """
-    if gate.generator is None or gate.name.lower() in ['phase', 'rx', 'ry', 'rz']:
+    if gate.generator is None or gate.name.lower() in ["phase", "globalphase", "rx", "ry", "rz"]:
         return QCircuit.wrap_gate(gate)
     if not hasattr(gate, "eigenvalues_magnitude"):
         return QCircuit.wrap_gate(gate)
 
     steps = 1 if not hasattr(gate, "steps") else gate.steps
 
-    return do_compile_trotterized_gate(generator=gate.generator, steps=steps, randomize=False,
-                                       factor=gate.parameter, control=gate.control)
+    return do_compile_trotterized_gate(
+        generator=gate.generator, steps=steps, randomize=False, factor=gate.parameter, control=gate.control
+    )
 
 
 @compiler
@@ -948,10 +953,12 @@ def compile_trotterized_gate(gate, compile_exponential_pauli: bool = False):
     if not hasattr(gate, "steps") or hasattr(gate, "eigenvalues_magnitude"):
         return QCircuit.wrap_gate(gate)
 
-    randomize=False
+    randomize = False
     if hasattr(gate, "randomize"):
-        randomize=gate.randomize
-    result = do_compile_trotterized_gate(generator=gate.generator, steps=gate.steps, factor=gate.parameter, randomize=randomize, control=gate.control)
+        randomize = gate.randomize
+    result = do_compile_trotterized_gate(
+        generator=gate.generator, steps=gate.steps, factor=gate.parameter, randomize=randomize, control=gate.control
+    )
 
     if compile_exponential_pauli:
         return compile_exponential_pauli_gate(result)
@@ -976,12 +983,12 @@ def compile_ry(gate: RotationGateImpl, controlled_rotation: bool = False) -> QCi
     QCircuit, the result of compilation.
     """
     if gate.name.lower() == "ry":
-
         if not (gate.is_controlled() and controlled_rotation):
-
-            return Rz(target=gate.target, control=None, angle=-numpy.pi / 2) \
-                   + Rx(target=gate.target, control=gate.control, angle=gate.parameter) \
-                   + Rz(target=gate.target, control=None, angle=numpy.pi / 2)
+            return (
+                Rz(target=gate.target, control=None, angle=-numpy.pi / 2)
+                + Rx(target=gate.target, control=gate.control, angle=gate.parameter)
+                + Rz(target=gate.target, control=None, angle=numpy.pi / 2)
+            )
 
     return QCircuit.wrap_gate(gate)
 
@@ -1000,10 +1007,11 @@ def compile_y(gate) -> QCircuit:
     QCircuit, the result of compilation.
     """
     if gate.name.lower() == "y":
-
-        return Rz(target=gate.target, control=None, angle=-numpy.pi / 2) \
-               + X(target=gate.target, control=gate.control, power=gate.power if gate.is_parametrized() else None) \
-               + Rz(target=gate.target, control=None, angle=numpy.pi / 2)
+        return (
+            Rz(target=gate.target, control=None, angle=-numpy.pi / 2)
+            + X(target=gate.target, control=gate.control, power=gate.power if gate.is_parameterized() else None)
+            + Rz(target=gate.target, control=None, angle=numpy.pi / 2)
+        )
 
     else:
         return QCircuit.wrap_gate(gate)
@@ -1024,9 +1032,10 @@ def compile_ch(gate: QGateImpl) -> QCircuit:
     QCircuit, the result of compilation.
     """
     if gate.name.lower() == "h" and gate.is_controlled():
-
-        return Ry(target=gate.target, control=None, angle=-numpy.pi / 4) \
-               + Z(target=gate.target, control=gate.control, power=gate.power if gate.is_parametrized() else None) \
-               + Ry(target=gate.target, control=None, angle=numpy.pi / 4)
+        return (
+            Ry(target=gate.target, control=None, angle=-numpy.pi / 4)
+            + Z(target=gate.target, control=gate.control, power=gate.power if gate.is_parameterized() else None)
+            + Ry(target=gate.target, control=None, angle=numpy.pi / 4)
+        )
     else:
         return QCircuit.wrap_gate(gate)

@@ -3,6 +3,7 @@ Convenience initialization
 of Pauli Operators. Resulting structures can be added and multiplied together.
 Currently uses OpenFermion as backend (QubitOperators)
 """
+
 import typing
 from tequila.hamiltonian import QubitHamiltonian
 from tequila import BitString, TequilaException
@@ -10,8 +11,10 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.tools import list_assignment
 import numpy
 
+
 def from_string(string, openfermion_format=False):
     return QubitHamiltonian.from_string(string=string, openfermion_format=openfermion_format)
+
 
 def pauli(qubit, type) -> QubitHamiltonian:
     """
@@ -198,7 +201,7 @@ def Sp(qubit) -> QubitHamiltonian:
     qubit = list_assignment(qubit)
     result = I()
     for q in qubit:
-        result *= 0.5 * (X(qubit=q) + 1.j * Y(qubit=q))
+        result *= 0.5 * (X(qubit=q) + 1.0j * Y(qubit=q))
     return result
 
 
@@ -224,7 +227,7 @@ def Sm(qubit) -> QubitHamiltonian:
     qubit = list_assignment(qubit)
     result = I()
     for q in qubit:
-        result *= 0.5 * (X(qubit=q) - 1.j * Y(qubit=q))
+        result *= 0.5 * (X(qubit=q) - 1.0j * Y(qubit=q))
     return result
 
 
@@ -264,12 +267,13 @@ def Projector(wfn, threshold=0.0, n_qubits=None) -> QubitHamiltonian:
             c = v1.conjugate() * v2
             if not numpy.isclose(c, 0.0, atol=threshold):
                 H += c * decompose_transfer_operator(bra=k1, ket=k2)
-    assert (H.is_hermitian())
+    assert H.is_hermitian()
     return H
 
 
-def KetBra(ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.e-6,
-           n_qubits=None):
+def KetBra(
+    ket: QubitWaveFunction, bra: QubitWaveFunction, hermitian: bool = False, threshold: float = 1.0e-6, n_qubits=None
+):
     """
     Notes
     ----------
@@ -348,12 +352,7 @@ def decompose_transfer_operator(ket: BitString, bra: BitString, qubits: typing.L
 
     """
 
-    opmap = {
-        (0, 0): Qp,
-        (0, 1): Sp,
-        (1, 0): Sm,
-        (1, 1): Qm
-    }
+    opmap = {(0, 0): Qp, (0, 1): Sp, (1, 0): Sm, (1, 1): Qm}
 
     nbits = None
     if qubits is not None:
@@ -366,13 +365,13 @@ def decompose_transfer_operator(ket: BitString, bra: BitString, qubits: typing.L
 
     b_arr = bra.array
     k_arr = ket.array
-    assert (len(b_arr) == len(k_arr))
+    assert len(b_arr) == len(k_arr)
     n_qubits = len(k_arr)
 
     if qubits is None:
         qubits = range(n_qubits)
 
-    assert (n_qubits <= len(qubits))
+    assert n_qubits <= len(qubits)
 
     result = QubitHamiltonian.unit()
     for q, b in enumerate(b_arr):

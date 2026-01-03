@@ -2,13 +2,11 @@ import typing
 from dataclasses import dataclass
 
 import numpy as np
-from qat.lang.AQASM import (PH, RX, RY, RZ, SWAP, AbstractGate, H, I, Program,
-                            QRoutine, X, Y, Z, build_gate)
+from qat.lang.AQASM import PH, RX, RY, RZ, SWAP, AbstractGate, H, I, Program, QRoutine, X, Y, Z, build_gate
 from qat.lang.AQASM.qint import QInt
 from tequila.circuit._gates_impl import QGateImpl
 from tequila.circuit.circuit import QCircuit
-from tequila.simulators.simulator_base import (BackendCircuit,
-                                               BackendExpectationValue)
+from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
 from tequila.utils.bitstrings import BitNumbering, BitString
 from tequila.utils.exceptions import TequilaException
 from tequila.utils.misc import to_float
@@ -18,6 +16,7 @@ from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 MY_QLM = True
 try:
     from qat.qpus import LinAlg
+
     MY_QLM = False
 except ImportError:
     from qat.qpus import PyLinalg
@@ -42,7 +41,7 @@ def get_statevector(result) -> np.ndarray:
     if result.statevector:
         return result.statevector
     qubits = result[0].qregs[0].length
-    statevector = np.zeros((2 ** qubits,), dtype=complex)
+    statevector = np.zeros((2**qubits,), dtype=complex)
     for sample in result:
         statevector[sample._state] = sample.amplitude
     return statevector
@@ -62,12 +61,14 @@ def initialize_state(initial_state: int, n_qubits: int):
     ----------
         an abstract gate that uses X gates to create the wanted initial state.
     """
+
     @build_gate("INIT", [])
     def initialize():
         routine = QRoutine()
         qints = routine.new_wires(n_qubits, QInt)
         qints.set_value(initial_state)
         return routine
+
     return initialize
 
 
@@ -76,6 +77,7 @@ class RawCircuit:
     """
     A helper class to use the qlm program object more like circuits of other simulators.
     """
+
     program: str
     qubits: float
     measure: typing.List[int] = None
@@ -123,6 +125,7 @@ class BackendCircuitQLM(BackendCircuit):
     Methods
     -------
     """
+
     compiler_arguments = {
         "multitarget": True,
         "multicontrol": False,
@@ -142,14 +145,24 @@ class BackendCircuitQLM(BackendCircuit):
         "cc_max": False,
         "ry_gate": False,
         "y_gate": False,
-        "ch_gate": False
+        "ch_gate": False,
     }
 
     numbering = BitNumbering.MSB
 
-    def __init__(self, abstract_circuit: QCircuit, variables, noise=None, device=None,
-                 qubit_map=None, optimize_circuit=True, qpu=None, map_exact_qubits=False,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        abstract_circuit: QCircuit,
+        variables,
+        noise=None,
+        device=None,
+        qubit_map=None,
+        optimize_circuit=True,
+        qpu=None,
+        map_exact_qubits=False,
+        *args,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -177,16 +190,16 @@ class BackendCircuitQLM(BackendCircuit):
         """
 
         self.op_lookup = {
-            'I': I,
-            'X': X,
-            'Y': Y,
-            'Z': Z,
-            'H': H,
-            'Rx': RX,
-            'Ry': RY,
-            'Rz': RZ,
-            'Phase': PH,
-            'SWAP': SWAP
+            "I": I,
+            "X": X,
+            "Y": Y,
+            "Z": Z,
+            "H": H,
+            "Rx": RX,
+            "Ry": RY,
+            "Rz": RZ,
+            "Phase": PH,
+            "SWAP": SWAP,
         }
 
         self.tq_to_pars = {}
@@ -204,15 +217,25 @@ class BackendCircuitQLM(BackendCircuit):
                 "Use of device not suppoted. Device can be imitated by giving a QPu from QLM as parameter 'qpu'."
             )
 
-        super().__init__(abstract_circuit=abstract_circuit, variables=variables, noise=noise, device=device,
-                         qubit_map=qubit_map, optimize_circuit=optimize_circuit, *args, **kwargs)
+        super().__init__(
+            abstract_circuit=abstract_circuit,
+            variables=variables,
+            noise=noise,
+            device=device,
+            qubit_map=qubit_map,
+            optimize_circuit=optimize_circuit,
+            *args,
+            **kwargs,
+        )
 
         if len(self.tq_to_pars.keys()) is None:
             self.pars_to_tq = None
             self.pars_for_job = None
         else:
             self.pars_to_tq = {v: k for k, v in self.tq_to_pars.items()}
-            self.pars_for_job = {next(iter(k.get_variables())): to_float(v(variables)) for k, v in self.pars_to_tq.items()}
+            self.pars_for_job = {
+                next(iter(k.get_variables())): to_float(v(variables)) for k, v in self.pars_to_tq.items()
+            }
             print(self.pars_for_job)
 
     def initialize_circuit(self, *args, **kwargs) -> RawCircuit:
@@ -258,7 +281,7 @@ class BackendCircuitQLM(BackendCircuit):
             try:
                 parameter = self.tq_to_pars[gate.parameter]
             except KeyError:
-                parameter_name = f'{self._name_variable_objective(gate.parameter)}_{self.counter}'.replace(" ", "$")
+                parameter_name = f"{self._name_variable_objective(gate.parameter)}_{self.counter}".replace(" ", "$")
                 parameter = circuit.new_var(parameter_name)
                 self.tq_to_pars[gate.parameter] = parameter
                 self.counter += 1
@@ -318,8 +341,9 @@ class BackendCircuitQLM(BackendCircuit):
         circuit.measure = target_qubits
         return circuit
 
-    def do_sample(self, samples, circuit: RawCircuit, noise=None, abstract_qubits=None,
-                  initial_state=0, *args, **kwargs) -> QubitWaveFunction:
+    def do_sample(
+        self, samples, circuit: RawCircuit, noise=None, abstract_qubits=None, initial_state=0, *args, **kwargs
+    ) -> QubitWaveFunction:
         """
         Helper function for performing sampling.
 
@@ -414,7 +438,9 @@ class BackendCircuitQLM(BackendCircuit):
         None
         """
         if self.pars_to_tq is not None:
-            self.pars_for_job = {next(iter(k.get_variables())): to_float(v(variables)) for k, v in self.pars_to_tq.items()}
+            self.pars_for_job = {
+                next(iter(k.get_variables())): to_float(v(variables)) for k, v in self.pars_to_tq.items()
+            }
         else:
             self.pars_for_job = None
 

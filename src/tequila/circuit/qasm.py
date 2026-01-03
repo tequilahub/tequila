@@ -5,6 +5,7 @@ OPENQASM version 2.0 specification from:
 A. W. Cross, L. S. Bishop, J. A. Smolin, and J. M. Gambetta, e-print arXiv:1707.03429v2 [quant-ph] (2017).
 https://arxiv.org/pdf/1707.03429v2.pdf
 """
+
 from tequila import TequilaException
 from tequila.circuit import QCircuit
 from tequila.circuit.compiler import CircuitCompiler
@@ -14,7 +15,9 @@ from typing import Dict
 import typing
 
 
-def export_open_qasm(circuit: QCircuit, variables=None, version: str = "2.0", filename: str = None, zx_calculus: bool = False) -> str:
+def export_open_qasm(
+    circuit: QCircuit, variables=None, version: str = "2.0", filename: str = None, zx_calculus: bool = False
+) -> str:
     """
     Allow export to different versions of OpenQASM
 
@@ -31,9 +34,10 @@ def export_open_qasm(circuit: QCircuit, variables=None, version: str = "2.0", fi
 
     if version == "2.0":
         result = convert_to_open_qasm_2(circuit=circuit, variables=variables, zx_calculus=zx_calculus)
+    elif version.startswith("3"):
+        result = convert_to_open_qasm_3(circuit=circuit, variables=variables, zx_calculus=zx_calculus)
     else:
         return "Unsupported OpenQASM version : " + version
-    # TODO: export to version 3
 
     if filename is not None:
         with open(filename, "w") as file:
@@ -58,11 +62,110 @@ def import_open_qasm(qasm_code: str, version: str = "2.0", rigorous: bool = True
 
     if version == "2.0":
         result = parse_from_open_qasm_2(qasm_code=qasm_code, rigorous=rigorous)
+    elif version.startswith("3"):
+        result = parse_from_open_qasm_3(qasm_code=qasm_code, rigorous=rigorous)
     else:
         return "Unsupported OpenQASM version : " + version
-    # TODO: export to version 3
 
     return result
+
+
+# --- QASM 3 support skeletons ---
+def convert_to_open_qasm_3(circuit: QCircuit, variables=None, zx_calculus: bool = False) -> str:
+    """
+    Allow export to OpenQASM version 3.0 (minimal, symbolic variables supported)
+    Args:
+        circuit: to be exported to OpenQASM
+        variables: optional dictionary with values for variables
+        zx_calculus: indicate if y-gates must be transformed to xz equivalents
+    Returns:
+        str: OpenQASM 3 string
+    """
+    # Compile circuit (do not resolve variables)
+    compiler = CircuitCompiler(
+        multitarget=True,
+        multicontrol=False,
+        trotterized=True,
+        generalized_rotation=True,
+        exponential_pauli=True,
+        controlled_exponential_pauli=True,
+        hadamard_power=True,
+        controlled_power=True,
+        power=True,
+        toffoli=True,
+        controlled_phase=True,
+        phase=True,
+        phase_to_z=True,
+        controlled_rotation=True,
+        swap=True,
+        cc_max=True,
+        gradient_mode=False,
+        ry_gate=zx_calculus,
+        y_gate=zx_calculus,
+        ch_gate=zx_calculus,
+    )
+
+    compiled = compiler(circuit, variables=None)
+
+    # QASM 3 header
+    result = "OPENQASM 3;\n"
+    result += "qubit[{}] q;\n".format(compiled.n_qubits)
+
+    # Export symbolic variables as QASM 3 let statements
+    # Only primitive variables (no functions) for now
+    variables_in_circuit = circuit.extract_variables()
+    if variables_in_circuit:
+        for v in sorted(variables_in_circuit):
+            result += f"let {v}: float;\n"
+
+    # Export gates
+    for g in compiled.gates:
+        # Controls
+        control_str = ""
+        if g.is_controlled():
+            if len(g.control) > 1:
+                raise TequilaException(
+                    "Multi-controls beyond 1 not yet supported for QASM 3 export. Gate was:\n{}".format(g)
+                )
+            control_str = f"ctrl @ "
+
+        # Gate name and parameter
+        gate_name = g.name.lower()
+        param_str = ""
+        if hasattr(g, "parameter") and g.parameter is not None:
+            # Try to get symbolic expression as string
+            try:
+                param = g.parameter(None)
+                if hasattr(param, "name"):
+                    param_str = f"({param.name})"
+                else:
+                    param_str = f"({param})"
+            except Exception:
+                # fallback: use str(g.parameter)
+                param_str = f"({g.parameter})"
+
+        # Targets
+        for t in g.target:
+            if control_str:
+                # QASM 3 control syntax: ctrl @ gate ...
+                result += f"{control_str}{gate_name}{param_str} q[{t}];\n"
+            else:
+                result += f"{gate_name}{param_str} q[{t}];\n"
+
+    return result
+
+
+def parse_from_open_qasm_3(qasm_code: str, rigorous: bool = True) -> QCircuit:
+    """
+    Parse OpenQASM 3.0 code into a QCircuit (skeleton)
+    Args:
+        qasm_code: string with the OpenQASM 3 code
+        rigorous: indicates whether the QASM code should be read rigorously
+    Returns:
+        QCircuit: equivalent to the OpenQASM code received
+    """
+    # TODO: Implement full QASM 3 import with symbolic variable support
+    raise NotImplementedError("OpenQASM 3 import is not yet implemented.")
 
 
 def import_open_qasm_from_file(filename: str, version: str = "2.0", rigorous: bool = True) -> QCircuit:
@@ -102,32 +205,36 @@ def convert_to_open_qasm_2(circuit: QCircuit, variables=None, zx_calculus: bool 
     if variables is None and not (len(circuit.extract_variables()) == 0):
         raise TequilaException(
             "You called export_open_qasm for a parametrized type but forgot to pass down the variables: {}".format(
-                circuit.extract_variables()))
+                circuit.extract_variables()
+            )
+        )
 
-    compiler = CircuitCompiler(multitarget=True,
-                               multicontrol=False,
-                               trotterized=True,
-                               generalized_rotation=True,
-                               exponential_pauli=True,
-                               controlled_exponential_pauli=True,
-                               hadamard_power=True,
-                               controlled_power=True,
-                               power=True,
-                               toffoli=True,
-                               controlled_phase=True,
-                               phase=True,
-                               phase_to_z=True,
-                               controlled_rotation=True,
-                               swap=True,
-                               cc_max=True,
-                               gradient_mode=False,
-                               ry_gate=zx_calculus,
-                               y_gate=zx_calculus,
-                               ch_gate=zx_calculus)
+    compiler = CircuitCompiler(
+        multitarget=True,
+        multicontrol=False,
+        trotterized=True,
+        generalized_rotation=True,
+        exponential_pauli=True,
+        controlled_exponential_pauli=True,
+        hadamard_power=True,
+        controlled_power=True,
+        power=True,
+        toffoli=True,
+        controlled_phase=True,
+        phase=True,
+        phase_to_z=True,
+        controlled_rotation=True,
+        swap=True,
+        cc_max=True,
+        gradient_mode=False,
+        ry_gate=zx_calculus,
+        y_gate=zx_calculus,
+        ch_gate=zx_calculus,
+    )
 
     compiled = compiler(circuit, variables=None)
 
-    result = "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n"
+    result = 'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
 
     qubits_names: Dict[int, str] = {}
     for q in compiled.qubits:
@@ -138,16 +245,15 @@ def convert_to_open_qasm_2(circuit: QCircuit, variables=None, zx_calculus: bool 
     result += "creg c[" + str(compiled.n_qubits) + "];\n"
 
     for g in compiled.gates:
-
-        control_str = ''
+        control_str = ""
         if g.is_controlled():
-
             if len(g.control) > 2:
                 raise TequilaException(
-                    "Multi-controls beyond 2 not yet supported for OpenQASM 2.0. Gate was:\n{}".format(g))
+                    "Multi-controls beyond 2 not yet supported for OpenQASM 2.0. Gate was:\n{}".format(g)
+                )
 
             controls = list(map(lambda c: qubits_names[c], g.control))
-            control_str = ','.join(controls) + ','
+            control_str = ",".join(controls) + ","
 
         gate_name = name_and_params(g, variables)
         for t in g.target:
@@ -187,13 +293,12 @@ def name_and_params(g, variables):
 
 
 def parse_from_open_qasm_2(qasm_code: str, rigorous: bool = True) -> QCircuit:
-
     lines = qasm_code.splitlines()
     clean_code = []
     # ignore comments
     for line in lines:
         if line.find("//") != -1:
-            clean_line = line[0:line.find("//")].strip()
+            clean_line = line[0 : line.find("//")].strip()
         else:
             clean_line = line.strip()
         if clean_line:
@@ -217,9 +322,9 @@ def parse_from_open_qasm_2(qasm_code: str, rigorous: bool = True) -> QCircuit:
         if i == -1:
             break
         j = code_circuit.find("}", i)
-        custom_name, custom_circuit = parse_custom_gate(code_circuit[i:j + 1], custom_gates_map=custom_gates_map)
+        custom_name, custom_circuit = parse_custom_gate(code_circuit[i : j + 1], custom_gates_map=custom_gates_map)
         custom_gates_map[custom_name] = custom_circuit
-        code_circuit = code_circuit[:i] + code_circuit[j + 1:]
+        code_circuit = code_circuit[:i] + code_circuit[j + 1 :]
 
     # parse regular commands
     commands = [s.strip() for s in code_circuit.split(";") if s.strip()]
@@ -234,7 +339,7 @@ def parse_from_open_qasm_2(qasm_code: str, rigorous: bool = True) -> QCircuit:
     return circuit
 
 
-def parse_custom_gate(gate_custom: str, custom_gates_map: Dict[str, QCircuit]) -> (str, QCircuit):
+def parse_custom_gate(gate_custom: str, custom_gates_map: Dict[str, QCircuit]) -> tuple[str, QCircuit]:
     """
     Parse custom gates code
 
@@ -247,9 +352,9 @@ def parse_custom_gate(gate_custom: str, custom_gates_map: Dict[str, QCircuit]) -
     if "(" in spec:
         i = spec.find("(")
         j = spec.find(")")
-        if spec[i + 1:j].strip():
+        if spec[i + 1 : j].strip():
             raise TequilaException("Parameters for custom gates not supported: {}".format(spec))
-        spec = spec[:i] + spec[j + 1:]
+        spec = spec[:i] + spec[j + 1 :]
 
     spec = spec.strip()
 
@@ -261,7 +366,7 @@ def parse_custom_gate(gate_custom: str, custom_gates_map: Dict[str, QCircuit]) -
         raise TequilaException("Custom gate specification doesn't have any arguments: {}".format(spec))
 
     custom_qregisters: Dict[str, int] = {}
-    for qarg in qargs.split(','):
+    for qarg in qargs.split(","):
         custom_qregisters[qarg] = len(custom_qregisters)
 
     body = body[:-1].strip()
@@ -302,7 +407,7 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
         return None
 
     for arg in args:
-        if not (arg in qregisters or arg in [key.split("[",1)[0] for key in qregisters.keys()]):
+        if not (arg in qregisters or arg in [key.split("[", 1)[0] for key in qregisters.keys()]):
             raise TequilaException("Invalid register {}".format(arg))
 
     if name in custom_gates_map:
@@ -315,7 +420,7 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
     if name in ("x", "y", "z", "h", "cx", "cy", "cz", "ch"):
         target = get_qregister(args[0], qregisters)
         control = None
-        if name[0].lower() == 'c':
+        if name[0].lower() == "c":
             control = get_qregister(args[0], qregisters)
             target = get_qregister(args[1], qregisters)
             name = name[1]
@@ -328,57 +433,70 @@ def parse_command(command: str, custom_gates_map: Dict[str, QCircuit], qregister
         target = get_qregister(args[2], qregisters)
         return G(control=control, target=target)
 
-    if name.startswith("rx(") or name.startswith("ry(") or name.startswith("rz(") or \
-        name.startswith("crx(") or name.startswith("cry(") or name.startswith("crz("):
+    if (
+        name.startswith("rx(")
+        or name.startswith("ry(")
+        or name.startswith("rz(")
+        or name.startswith("crx(")
+        or name.startswith("cry(")
+        or name.startswith("crz(")
+    ):
         angle = get_angle(name)[0]
-        i = name.find('(')
+        i = name.find("(")
         name = name[0:i]
         name = name.upper()
         name = [x for x in name]
         name[-1] = name[-1].lower()
         name = "".join(name)
         G = getattr(gates, name)
-        return G(angle=angle,control=get_qregister(args[0], qregisters) if name[0] == 'C' else None,target=get_qregister(args[1 if name[0] == 'C' else 0], qregisters))
-            
+        return G(
+            angle=angle,
+            control=get_qregister(args[0], qregisters) if name[0] == "C" else None,
+            target=get_qregister(args[1 if name[0] == "C" else 0], qregisters),
+        )
+
     if name.startswith("U("):
         angles = get_angle(name)
-        return gates.U(theta=angles[0], phi=angles[1], lambd=angles[2],
-                 control=None,
-                 target=get_qregister(args[0], qregisters))
+        return gates.U(
+            theta=angles[0], phi=angles[1], lambd=angles[2], control=None, target=get_qregister(args[0], qregisters)
+        )
     if name.startswith("u1("):
         angles = get_angle(name)
-        return gates.u1(lambd=angles[0],
-                  control=None,
-                  target=get_qregister(args[0], qregisters))
+        return gates.u1(lambd=angles[0], control=None, target=get_qregister(args[0], qregisters))
     if name.startswith("u2("):
         angles = get_angle(name)
-        return gates.u2(phi=angles[0], lambd=angles[1],
-                  control=None,
-                  target=get_qregister(args[0], qregisters))
+        return gates.u2(phi=angles[0], lambd=angles[1], control=None, target=get_qregister(args[0], qregisters))
     if name.startswith("u3("):
         angles = get_angle(name)
-        return gates.u3(theta=angles[0], phi=angles[1], lambd=angles[2],
-                  control=None,
-                  target=get_qregister(args[0], qregisters))
+        return gates.u3(
+            theta=angles[0], phi=angles[1], lambd=angles[2], control=None, target=get_qregister(args[0], qregisters)
+        )
     if name.startswith("cu1("):
         angles = get_angle(name)
-        return gates.u1(lambd=angles[0],
-                  control=get_qregister(args[0], qregisters),
-                  target=get_qregister(args[1], qregisters))
+        return gates.u1(
+            lambd=angles[0], control=get_qregister(args[0], qregisters), target=get_qregister(args[1], qregisters)
+        )
     if name.startswith("cu2("):
         angles = get_angle(name)
-        return gates.u2(phi=angles[0], lambd=angles[1],
-                  control=get_qregister(args[0], qregisters),
-                  target=get_qregister(args[1], qregisters))
+        return gates.u2(
+            phi=angles[0],
+            lambd=angles[1],
+            control=get_qregister(args[0], qregisters),
+            target=get_qregister(args[1], qregisters),
+        )
     if name.startswith("cu3("):
         angles = get_angle(name)
-        return gates.u3(theta=angles[0], phi=angles[1], lambd=angles[2],
-                  control=get_qregister(args[0], qregisters),
-                  target=get_qregister(args[1], qregisters))
+        return gates.u3(
+            theta=angles[0],
+            phi=angles[1],
+            lambd=angles[2],
+            control=get_qregister(args[0], qregisters),
+            target=get_qregister(args[1], qregisters),
+        )
     if name in ("s", "t", "sdg", "tdg"):
-        g = gates.Phase(angle=pi / (2 if name.startswith("s") else 4),
-                     control=None,
-                     target=get_qregister(args[0], qregisters))
+        g = gates.Phase(
+            angle=pi / (2 if name.startswith("s") else 4), control=None, target=get_qregister(args[0], qregisters)
+        )
         if name.find("dg") != -1:
             g = g.dagger()
         return g
@@ -401,31 +519,32 @@ def get_qregister(qreg: str, qregisters: Dict[str, int]) -> typing.Union[list, i
         qreg_tequila = qregisters[qreg]
     return qreg_tequila
 
+
 def get_angle(name: str) -> list:
-    i = name.find('(')
-    j = name.find(')')
+    i = name.find("(")
+    j = name.find(")")
     if j == -1:
         raise TequilaException("Invalid specification {}".format(name))
-    angles_str = name[i+1:j].split(',')
+    angles_str = name[i + 1 : j].split(",")
     angles = []
     for angle in angles_str:
         try:
             phase = float(angle)
         except ValueError:
-            if angle.find('pi') == -1:
+            if angle.find("pi") == -1:
                 raise TequilaException("Invalid specification {}".format(name))
-            angle = angle.replace('pi', '')
+            angle = angle.replace("pi", "")
             try:
                 sign = 1
                 div = 1
-                if angle.find('-') != -1:
-                    angle = angle.replace('-', '')
+                if angle.find("-") != -1:
+                    angle = angle.replace("-", "")
                     sign = -1
-                if angle.find('/') != -1:
-                    div = float(angle[angle.index('/')+1:])
-                    angle = angle[:angle.index('/')]
-                if angle.find('*') != -1:
-                    angle = angle.replace('*', '')
+                if angle.find("/") != -1:
+                    div = float(angle[angle.index("/") + 1 :])
+                    angle = angle[: angle.index("/")]
+                if angle.find("*") != -1:
+                    angle = angle.replace("*", "")
                     phase = sign * float(angle) * pi / div
                 elif len(angle) == 0:
                     phase = sign * pi / div
@@ -435,4 +554,3 @@ def get_angle(name: str) -> list:
                 raise TequilaException("Invalid specification {}".format(name))
         angles.append(phase)
     return angles
-

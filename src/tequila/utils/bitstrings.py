@@ -43,14 +43,14 @@ class BitString:
     @property
     def binary(self):
         if self.numbering is BitNumbering.MSB:
-            return format(self._value, 'b').zfill(self.nbits)
+            return format(self._value, "b").zfill(self.nbits)
         else:
-            return format(self._value, 'b').zfill(self.nbits)[::-1]
+            return format(self._value, "b").zfill(self.nbits)[::-1]
 
     @binary.setter
     def binary(self, other: str):
-        assert (isinstance(other, str))
-        if other.startswith('0b'):
+        assert isinstance(other, str)
+        if other.startswith("0b"):
             other = other[2:]
         if self.numbering == BitNumbering.LSB:
             self._value = int(other[::-1], 2)
@@ -178,7 +178,6 @@ class BitString:
 
 
 class BitStringLSB(BitString):
-
     @property
     def numbering(self) -> BitNumbering:
         return BitNumbering.LSB
@@ -197,8 +196,9 @@ def reverse_int_bits(x: int, nbits: int) -> int:
     return x >> (32 - nbits)
 
 
-def initialize_bitstring(integer: int, nbits: int = None, numbering_in: BitNumbering = BitNumbering.MSB,
-                         numbering_out: BitNumbering = None):
+def initialize_bitstring(
+    integer: int, nbits: int = None, numbering_in: BitNumbering = BitNumbering.MSB, numbering_out: BitNumbering = None
+):
     if numbering_out is None:
         numbering_out = numbering_in
 

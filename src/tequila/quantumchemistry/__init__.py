@@ -6,6 +6,9 @@ from .qc_base import QuantumChemistryBase
 from .chemistry_tools import ParametersQC, NBodyTensor
 from .madness_interface import QuantumChemistryMadness
 
+# needs pyscf (handeled in call)
+from .orbital_optimizer import optimize_orbitals
+
 
 SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness", "pyscf"]
 INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase, "madness": QuantumChemistryMadness}
@@ -35,15 +38,17 @@ def show_supported_modules():
     print(SUPPORTED_QCHEMISTRY_BACKENDS)
 
 
-def Molecule(geometry: str = None,
-             basis_set: str = None,
-             transformation: typing.Union[str, typing.Callable] = None,
-             orbital_type: str = None,
-             backend: str = None,
-             guess_wfn=None,
-             name: str = None,
-             *args,
-             **kwargs) -> QuantumChemistryBase:
+def Molecule(
+    geometry: str = None,
+    basis_set: str = None,
+    transformation: typing.Union[str, typing.Callable] = None,
+    orbital_type: str = None,
+    backend: str = None,
+    guess_wfn=None,
+    name: str = None,
+    *args,
+    **kwargs,
+) -> QuantumChemistryBase:
     """
 
     Parameters
@@ -72,11 +77,14 @@ def Molecule(geometry: str = None,
 
     # failsafe for common mistake
     if "basis" in kwargs:
-        warnings.warn("called molecule with keyword \"basis={0}\" converting it to \"basis_set={0}\"".format(kwargs["basis"]), TequilaWarning)
+        warnings.warn(
+            'called molecule with keyword "basis={0}" converting it to "basis_set={0}"'.format(kwargs["basis"]),
+            TequilaWarning,
+        )
         if basis_set is not None:
-            warnings.warn("did not convert as \"basis_set={}\" was already given".format(basis_set), TequilaWarning)
-        basis_set=kwargs["basis"]
-    
+            warnings.warn('did not convert as "basis_set={}" was already given'.format(basis_set), TequilaWarning)
+        basis_set = kwargs["basis"]
+
     keyvals = {}
     for k, v in kwargs.items():
         if k in ParametersQC.__dict__.keys():
@@ -98,11 +106,21 @@ def Molecule(geometry: str = None,
             basis_set = "mra"
             parameters.basis_set = basis_set
             if orbital_type is not None and orbital_type.lower() not in ["pno", "mra-pno"]:
-                warnings.warn("only PNOs supported as orbital_type without basis set. Setting to pno - You gave={}".format(orbital_type), TequilaWarning)
+                warnings.warn(
+                    "only PNOs supported as orbital_type without basis set. Setting to pno - You gave={}".format(
+                        orbital_type
+                    ),
+                    TequilaWarning,
+                )
             orbital_type = "pno"
         else:
             if orbital_type is not None and orbital_type.lower() not in ["hf", "native"]:
-                warnings.warn("only hf and native supported as orbital_type with basis-set. Setting to hf - You gave={}".format(orbital_type), TequilaWarning)
+                warnings.warn(
+                    "only hf and native supported as orbital_type with basis-set. Setting to hf - You gave={}".format(
+                        orbital_type
+                    ),
+                    TequilaWarning,
+                )
                 orbital_type = "hf"
             if orbital_type is None:
                 orbital_type = "hf"
@@ -113,12 +131,14 @@ def Molecule(geometry: str = None,
                 backend = "pyscf"
             else:
                 raise Exception("No quantum chemistry backends installed on your system")
-    
+
     elif backend == "base":
         if not integrals_provided:
-            raise Exception("No quantum chemistry backends installed on your system\n"
-                            "To use the base functionality you need to pass the following tensors via keyword\n"
-                            "one_body_integrals, two_body_integrals\n")
+            raise Exception(
+                "No quantum chemistry backends installed on your system\n"
+                "To use the base functionality you need to pass the following tensors via keyword\n"
+                "one_body_integrals, two_body_integrals\n"
+            )
         else:
             backend = "base"
 
@@ -128,7 +148,7 @@ def Molecule(geometry: str = None,
     if backend not in INSTALLED_QCHEMISTRY_BACKENDS:
         raise Exception(str(backend) + " was not found on your system")
 
-    if guess_wfn is not None and backend != 'psi4':
+    if guess_wfn is not None and backend != "psi4":
         raise Exception("guess_wfn only works for psi4")
 
     if basis_set is None and backend.lower() not in ["base", "madness"] and not integrals_provided:
@@ -137,8 +157,14 @@ def Molecule(geometry: str = None,
         basis_set = "custom"
         parameters.basis_set = basis_set
 
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation, orbital_type=orbital_type,
-                                                          guess_wfn=guess_wfn, *args, **kwargs)
+    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](
+        parameters=parameters,
+        transformation=transformation,
+        orbital_type=orbital_type,
+        guess_wfn=guess_wfn,
+        *args,
+        **kwargs,
+    )
 
 
 def MoleculeFromTequila(mol, transformation=None, backend=None, *args, **kwargs):
@@ -151,16 +177,21 @@ def MoleculeFromTequila(mol, transformation=None, backend=None, *args, **kwargs)
             backend = "base"
     if transformation is None:
         transformation = mol.transformation
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](parameters=parameters, transformation=transformation,
-                                                          n_electrons=mol.n_electrons, one_body_integrals=h,
-                                                          two_body_integrals=g, nuclear_repulsion=c, *args, **kwargs)
+    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](
+        parameters=parameters,
+        transformation=transformation,
+        n_electrons=mol.n_electrons,
+        one_body_integrals=h,
+        two_body_integrals=g,
+        nuclear_repulsion=c,
+        *args,
+        **kwargs,
+    )
 
 
-def MoleculeFromOpenFermion(molecule,
-                            transformation: typing.Union[str, typing.Callable] = None,
-                            backend: str = None,
-                            *args,
-                            **kwargs) -> QuantumChemistryBase:
+def MoleculeFromOpenFermion(
+    molecule, transformation: typing.Union[str, typing.Callable] = None, backend: str = None, *args, **kwargs
+) -> QuantumChemistryBase:
     """
     Initialize a tequila Molecule directly from an openfermion molecule object
     Parameters
@@ -178,9 +209,6 @@ def MoleculeFromOpenFermion(molecule,
     if backend is None:
         return QuantumChemistryBase.from_openfermion(molecule=molecule, transformation=transformation, *args, **kwargs)
     else:
-        INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(molecule=molecule, transformation=transformation, *args,
-                                                                **kwargs)
-
-
-# needs pyscf (handeled in call)
-from .orbital_optimizer import optimize_orbitals
+        INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(
+            molecule=molecule, transformation=transformation, *args, **kwargs
+        )

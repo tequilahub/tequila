@@ -4,31 +4,32 @@ from tequila.utils import TequilaException
 import copy
 
 names_dict = {
-    'x': 'x',
-    'y': 'y',
-    'z': 'z',
-    'h': 'h',
-    'rx': 'r',
-    'ry': 'r',
-    'rz': 'r',
-    'r': 'r',
-    'phase': 'r',
-    'single': 'single',
-    'swap': 'control',
-    'cx': 'control',
-    'cy': 'control',
-    'cz': 'control',
-    'crx': 'control',
-    'cry': 'control',
-    'crz': 'control',
-    'control': 'control',
-    'cnot': 'control',
-    'ccnot': 'multicontrol',
-    'multicontrol': 'multicontrol'
+    "x": "x",
+    "y": "y",
+    "z": "z",
+    "h": "h",
+    "rx": "r",
+    "ry": "r",
+    "rz": "r",
+    "r": "r",
+    "phase": "r",
+    "single": "single",
+    "swap": "control",
+    "cx": "control",
+    "cy": "control",
+    "cz": "control",
+    "crx": "control",
+    "cry": "control",
+    "crz": "control",
+    "control": "control",
+    "cnot": "control",
+    "ccnot": "multicontrol",
+    "multicontrol": "multicontrol",
 }
 
-noises_available=['bit flip','phase flip','phase damp','amplitude damp','phase-amplitude damp','depolarizing']
-krausses=['bit flip','phase flip','phase damp','amplitude damp','phase-amplitude damp','depolarizing']
+noises_available = ["bit flip", "phase flip", "phase damp", "amplitude damp", "phase-amplitude damp", "depolarizing"]
+krausses = ["bit flip", "phase flip", "phase damp", "amplitude damp", "phase-amplitude damp", "depolarizing"]
+
 
 class QuantumNoise:
     """
@@ -48,13 +49,14 @@ class QuantumNoise:
     from_dict:
         initialize from a dictionary.
     """
-    prob_length={
-        'bit flip':1,
-        'phase flip':1,
-        'phase damp':1,
-        'amplitude damp':1,
-        'phase-amplitude damp':2,
-        'depolarizing':1
+
+    prob_length = {
+        "bit flip": 1,
+        "phase flip": 1,
+        "phase damp": 1,
+        "amplitude damp": 1,
+        "phase-amplitude damp": 2,
+        "depolarizing": 1,
     }
 
     @property
@@ -65,7 +67,7 @@ class QuantumNoise:
     def level(self):
         return self._level
 
-    def __init__(self,name:str,probs:typing.List[float],level:int):
+    def __init__(self, name: str, probs: typing.List[float], level: int):
         """
 
         Parameters
@@ -77,22 +79,24 @@ class QuantumNoise:
         level: int:
             the number of qubits in the gates this noise acts upon.
         """
-        probs=list_assignment(probs)
+        probs = list_assignment(probs)
         if name not in noises_available:
-            raise TequilaException('The name you asked for, {}, is not recognized'.format(name))
-        self._name=name
-        self._level=int(level)
+            raise TequilaException("The name you asked for, {}, is not recognized".format(name))
+        self._name = name
+        self._level = int(level)
 
         if len(probs) != self.prob_length[name]:
-            raise TequilaException('{} noise requires {} probabilities; recieved {}'.format(name, self.prob_length[name], len(probs)))
+            raise TequilaException(
+                "{} noise requires {} probabilities; recieved {}".format(name, self.prob_length[name], len(probs))
+            )
         if name in krausses:
-            assert sum(probs)<=1.
-        self.probs=list_assignment(probs)
+            assert sum(probs) <= 1.0
+        self.probs = list_assignment(probs)
 
     def __str__(self):
-        back=self.name
-        back+=' on ' + str(self._level) + ' qubit gates'
-        back+=', probs = ' +str(self.probs)
+        back = self.name
+        back += " on " + str(self._level) + " qubit gates"
+        back += ", probs = " + str(self.probs)
         return back
 
     @staticmethod
@@ -102,10 +106,10 @@ class QuantumNoise:
         elif type(d) is QuantumNoise:
             return d
         else:
-            raise TequilaException('object provided is neither a dictionary nor a QuantumNoise.')
+            raise TequilaException("object provided is neither a dictionary nor a QuantumNoise.")
 
 
-class NoiseModel():
+class NoiseModel:
     """
     class representing noises to apply to a quantum circuit during simulation.
 
@@ -122,34 +126,35 @@ class NoiseModel():
         remove all noise of a given type, I.E get rid of all bit flips.
 
     """
-    def __init__(self, noises: typing.List[typing.Union[dict, QuantumNoise]]=None):
+
+    def __init__(self, noises: typing.List[typing.Union[dict, QuantumNoise]] = None):
         if noises is None:
             self.noises = []
         else:
-            self.noises=[QuantumNoise.from_dict(d) for d in list_assignment(noises)]
+            self.noises = [QuantumNoise.from_dict(d) for d in list_assignment(noises)]
 
     def __str__(self):
-        back='NoiseModel with: \n'
+        back = "NoiseModel with: \n"
         for noise in self.noises:
             back += str(noise)
-            back += ',\n'
+            back += ",\n"
         return back
 
     def __add__(self, other):
-        new=NoiseModel()
-        new.noises+=self.noises
+        new = NoiseModel()
+        new.noises += self.noises
         if type(other) is dict:
             new.noises.append(QuantumNoise.from_dict(other))
         elif type(other) is QuantumNoise:
             new.noises.append(other)
-        elif hasattr(other,'noises'):
+        elif hasattr(other, "noises"):
             new.noises.extend(copy.copy(other.noises))
         return new
 
     def __iadd__(self, other):
         if type(other) is dict:
-            self.noises+=QuantumNoise.from_dict(other)
-        elif hasattr(other,'noises'):
+            self.noises += QuantumNoise.from_dict(other)
+        elif hasattr(other, "noises"):
             self.noises.extend(copy.copy(other.noises))
         return self
 
@@ -175,7 +180,8 @@ class NoiseModel():
     def wrap_noise(other):
         return NoiseModel(noises=other)
 
-def BitFlip(p:float,level:int):
+
+def BitFlip(p: float, level: int):
     """
     Returns a NoiseModel with one QuantumNoise, having  a kraus map corresponding to applying pauli X with likelihood p.
 
@@ -191,11 +197,12 @@ def BitFlip(p:float,level:int):
     NoiseModel
     """
 
-    new=NoiseModel.wrap_noise(QuantumNoise(name='bit flip', probs=list_assignment(p), level=level))
+    new = NoiseModel.wrap_noise(QuantumNoise(name="bit flip", probs=list_assignment(p), level=level))
     return new
 
-def PhaseFlip(p:float,level:int):
-    '''
+
+def PhaseFlip(p: float, level: int):
+    """
     Returns a NoiseModel of one QuantumNoise, having a kraus map corresponding to applying  pauli Z with likelihood p.
 
     Parameters
@@ -208,14 +215,14 @@ def PhaseFlip(p:float,level:int):
     Returns
     -------
     NoiseModel
-    '''
+    """
 
-    new=NoiseModel.wrap_noise(QuantumNoise(name='phase flip', probs=list_assignment(p), level=level))
+    new = NoiseModel.wrap_noise(QuantumNoise(name="phase flip", probs=list_assignment(p), level=level))
     return new
 
 
-def PhaseDamp(p:float,level:int):
-    '''
+def PhaseDamp(p: float, level: int):
+    """
     Returns a NoiseModel of one QuantumNoise, having a kraus map corresponding to phase damping;
     Krauss map is defined following Nielsen and Chuang;
     E_0= [[1,0],
@@ -233,14 +240,14 @@ def PhaseDamp(p:float,level:int):
     Returns
     -------
     NoiseModel
-    '''
+    """
 
-    new=NoiseModel.wrap_noise(QuantumNoise(name='phase damp', probs=list_assignment(p), level=level))
+    new = NoiseModel.wrap_noise(QuantumNoise(name="phase damp", probs=list_assignment(p), level=level))
     return new
 
 
-def AmplitudeDamp(p:float,level:int):
-    '''
+def AmplitudeDamp(p: float, level: int):
+    """
     Returns a NoiseModel one QuantumNoise, corresponding to amplitude damping.
     this channel takes 1 to 0, but leaves 0 unaffected.
     kraus maps:
@@ -260,13 +267,14 @@ def AmplitudeDamp(p:float,level:int):
     Returns
     -------
     NoiseModel
-    '''
+    """
 
-    new=NoiseModel.wrap_noise(QuantumNoise(name='amplitude damp', probs=list_assignment(p), level=level))
+    new = NoiseModel.wrap_noise(QuantumNoise(name="amplitude damp", probs=list_assignment(p), level=level))
     return new
 
-def PhaseAmplitudeDamp(p1:float,p2:float,level:int):
-    '''
+
+def PhaseAmplitudeDamp(p1: float, p2: float, level: int):
+    """
     Returns a NoiseModel with one QuantumNoise, having a kraus map corresponding to phase and amplitude damping.
 
     Parameters
@@ -281,12 +289,13 @@ def PhaseAmplitudeDamp(p1:float,p2:float,level:int):
     Returns
     -------
     NoiseModel
-    '''
-    new=NoiseModel.wrap_noise(QuantumNoise(name='phase-amplitude damp', probs=list_assignment([p1, p2]), level=level))
+    """
+    new = NoiseModel.wrap_noise(QuantumNoise(name="phase-amplitude damp", probs=list_assignment([p1, p2]), level=level))
     return new
 
-def DepolarizingError(p:float,level:int):
-    '''
+
+def DepolarizingError(p: float, level: int):
+    """
     Returns a NoiseModel with one QuantumNoise, having a kraus map corresponding to equal
     probabilities of each of the three pauli matrices being applied.
 
@@ -300,6 +309,6 @@ def DepolarizingError(p:float,level:int):
     Returns
     -------
     NoiseModel
-    '''
-    new = NoiseModel.wrap_noise(QuantumNoise(name='depolarizing', probs=list_assignment(p), level=level))
+    """
+    new = NoiseModel.wrap_noise(QuantumNoise(name="depolarizing", probs=list_assignment(p), level=level))
     return new

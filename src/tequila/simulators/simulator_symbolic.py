@@ -11,8 +11,8 @@ import sympy
 Simple Symbolic Simulator for debugging purposes
 """
 
-class BackendCircuitSymbolic(BackendCircuit):
 
+class BackendCircuitSymbolic(BackendCircuit):
     # compiler instructions
     compiler_arguments = {
         "trotterized": True,
@@ -29,7 +29,7 @@ class BackendCircuitSymbolic(BackendCircuit):
         "controlled_phase": True,
         "toffoli": True,
         "phase_to_z": True,
-        "cc_max": True
+        "cc_max": True,
     }
 
     convert_to_numpy = True
@@ -49,7 +49,7 @@ class BackendCircuitSymbolic(BackendCircuit):
         return result
 
     @classmethod
-    def apply_on_standard_basis(cls, gate: QGate, basis_state: BitString, qubits:dict, variables) -> QubitWaveFunction:
+    def apply_on_standard_basis(cls, gate: QGate, basis_state: BitString, qubits: dict, variables) -> QubitWaveFunction:
         n_qubits = len(qubits.keys())
         basis_array = basis_state.array
         if gate.is_controlled() and not all(basis_array[qubits[c]] == 1 for c in gate.control):
@@ -70,8 +70,8 @@ class BackendCircuitSymbolic(BackendCircuit):
             fac1 = None
             fac2 = None
             if gate.name == "H":
-                fac1 = (sympy.Integer(-1) ** qt * sympy.sqrt(sympy.Rational(1 / 2)))
-                fac2 = (sympy.sqrt(sympy.Rational(1 / 2)))
+                fac1 = sympy.Integer(-1) ** qt * sympy.sqrt(sympy.Rational(1 / 2))
+                fac2 = sympy.sqrt(sympy.Rational(1 / 2))
             elif gate.name.upper() == "CNOT" or gate.name.upper() == "X":
                 fac2 = sympy.Integer(1)
             elif gate.name.upper() == "Y":
@@ -128,6 +128,7 @@ class BackendCircuitSymbolic(BackendCircuit):
             wfn = result
 
         return wfn
+
 
 class BackendExpectationValueSymbolic(BackendExpectationValue):
     BackendCircuitType = BackendCircuitSymbolic

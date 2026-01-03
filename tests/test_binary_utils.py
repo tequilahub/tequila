@@ -1,4 +1,13 @@
-from tequila.grouping.binary_utils import get_lagrangian_subspace, binary_null_space, binary_symplectic_gram_schmidt, binary_symplectic_inner_product, binary_symplectic_orthogonalization, pick_symplectic_pair, largest_first, recursive_largest_first
+from tequila.grouping.binary_utils import (
+    get_lagrangian_subspace,
+    binary_null_space,
+    binary_symplectic_gram_schmidt,
+    binary_symplectic_inner_product,
+    binary_symplectic_orthogonalization,
+    pick_symplectic_pair,
+    largest_first,
+    recursive_largest_first,
+)
 import numpy as np
 import itertools
 
@@ -18,9 +27,9 @@ def test_binary_symplectic_inner_product():
     b = np.array([1, 1, 1, 1])
     c = np.array([1, 1, 1, 0])
 
-    assert (binary_symplectic_inner_product(a, b) == 0)
-    assert (binary_symplectic_inner_product(a, c) == 1)
-    assert (binary_symplectic_inner_product(b, c) == 1)
+    assert binary_symplectic_inner_product(a, b) == 0
+    assert binary_symplectic_inner_product(a, c) == 1
+    assert binary_symplectic_inner_product(b, c) == 1
 
 
 def test_binary_symplectic_orthogonalization():
@@ -33,8 +42,8 @@ def test_binary_symplectic_orthogonalization():
 
     # if all elements are orthogonalized.
     for vec in matrix:
-        assert (binary_symplectic_inner_product(vec, x) == 0)
-        assert (binary_symplectic_inner_product(vec, y) == 0)
+        assert binary_symplectic_inner_product(vec, x) == 0
+        assert binary_symplectic_inner_product(vec, y) == 0
 
 
 def test_pick_symplectic_pair():
@@ -44,12 +53,12 @@ def test_pick_symplectic_pair():
     x, y = pick_symplectic_pair(matrix)
 
     # if is symplectic pair
-    assert (binary_symplectic_inner_product(x, y) == 1)
+    assert binary_symplectic_inner_product(x, y) == 1
     # if the symplectic pairs are picked out from the matrix
-    assert (len(matrix) == original_length - 2)
+    assert len(matrix) == original_length - 2
     for vec in matrix:
-        assert (not all(vec == x))
-        assert (not all(vec == y))
+        assert not all(vec == x)
+        assert not all(vec == y)
 
 
 def test_symplectic_gram_schmidt():
@@ -57,11 +66,11 @@ def test_symplectic_gram_schmidt():
     lagrangian_subspace = binary_symplectic_gram_schmidt(matrix)
 
     # if subspace is lagrangian
-    assert (len(lagrangian_subspace) == len(matrix[0]) // 2)
+    assert len(lagrangian_subspace) == len(matrix[0]) // 2
 
     for ivec in lagrangian_subspace:
         for jvec in lagrangian_subspace:
-            assert (binary_symplectic_inner_product(ivec, jvec) == 0)
+            assert binary_symplectic_inner_product(ivec, jvec) == 0
 
 
 def test_binary_null_space():
@@ -70,7 +79,7 @@ def test_binary_null_space():
 
     # if gets null basis
     for vec in null_basis:
-        assert (all((matrix @ vec.T) % 2 == 0))
+        assert all((matrix @ vec.T) % 2 == 0)
 
 
 def test_get_lagrangian_subspace():
@@ -82,13 +91,13 @@ def test_get_lagrangian_subspace():
     lagrangian_subspace = get_lagrangian_subspace(matrix)
 
     # if lagrangian subspace spans given vectors
-    assert (is_binary_basis(lagrangian_subspace, a))
-    assert (is_binary_basis(lagrangian_subspace, b))
+    assert is_binary_basis(lagrangian_subspace, a)
+    assert is_binary_basis(lagrangian_subspace, b)
 
     # if subspace is lagrangian
     for ivec in matrix:
         for jvec in matrix:
-            assert (binary_symplectic_inner_product(ivec, jvec) == 0)
+            assert binary_symplectic_inner_product(ivec, jvec) == 0
 
 
 def is_binary_basis(basis, vec):
@@ -127,7 +136,7 @@ def verify_graph_coloring(cg, grouping):
         cur_group = grouping[key]
         num_group = len(cur_group)
         for i in range(num_group):
-            for j in range(i+1, num_group):
+            for j in range(i + 1, num_group):
                 idx1, idx2 = cur_group[i], cur_group[j]
                 if cg[idx1][idx2] == 1:
                     return False

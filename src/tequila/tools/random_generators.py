@@ -4,8 +4,10 @@ from tequila.circuit.circuit import QCircuit
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 from scipy.stats import unitary_group, ortho_group
 
-def make_random_circuit(n_qubits: int, rotation_gates: list=['rx', 'ry', 'rz'], n_rotations: int=None,
-                        enable_controls: bool=None) -> QCircuit:
+
+def make_random_circuit(
+    n_qubits: int, rotation_gates: list = ["rx", "ry", "rz"], n_rotations: int = None, enable_controls: bool = None
+) -> QCircuit:
     """Function that creates a circuit with random rotations or random control rotations.
 
     Args:
@@ -15,37 +17,38 @@ def make_random_circuit(n_qubits: int, rotation_gates: list=['rx', 'ry', 'rz'], 
         enable_controls (bool): Boolean that switch on controls. Default to None.
 
     Returns:
-        QCircuit: Random quantum circuit consiting of the given rotations gates 
+        QCircuit: Random quantum circuit consiting of the given rotations gates
         and their controlled versions
     """
     if n_rotations is None:
-        n_rotations = np.random.randint(n_qubits, high=n_qubits*3)
+        n_rotations = np.random.randint(n_qubits, high=n_qubits * 3)
 
     gates_list = [np.random.choice(rotation_gates) for i in range(n_rotations)]
-    
-    angles = 2*np.pi * np.random.rand(n_rotations)
-    
+
+    angles = 2 * np.pi * np.random.rand(n_rotations)
+
     circ = QCircuit()
     for i, angle in enumerate(angles):
-        target = i%n_qubits
+        target = i % n_qubits
         if enable_controls:
             controls = [i for i in circ.qubits if i != target]
             control = np.random.choice(controls + [None])
-        else: 
+        else:
             control = None
 
-        if gates_list[i]=='rx':
+        if gates_list[i] == "rx":
             circ += gates.Rx(angle=angle, target=target, control=control)
-        
-        elif gates_list[i]=='ry':
+
+        elif gates_list[i] == "ry":
             circ += gates.Ry(angle=angle, target=target, control=control)
-            
-        elif gates_list[i]=='rz':
+
+        elif gates_list[i] == "rz":
             circ += gates.Rz(angle=angle, target=target, control=control)
-        
+
     return circ
 
-def make_random_hamiltonian(n_qubits: int , paulis: list=['X','Y','Z'], n_ps: int = None) -> QubitHamiltonian:
+
+def make_random_hamiltonian(n_qubits: int, paulis: list = ["X", "Y", "Z"], n_ps: int = None) -> QubitHamiltonian:
     """Function that creates a random Hamiltonian, given the list
        of Pauli ops. to use and the number of Pauli strings.
 
@@ -58,27 +61,28 @@ def make_random_hamiltonian(n_qubits: int , paulis: list=['X','Y','Z'], n_ps: in
         tq.QubitHamiltonian: Random Hamiltonian
     """
     if n_ps is None:
-        n_ps = np.random.randint(1, high=2*n_qubits+1)
-    
-    ham = ''
+        n_ps = np.random.randint(1, high=2 * n_qubits + 1)
+
+    ham = ""
     for ps in range(n_ps):
-        coeff = '{}*'.format(round(np.random.sample(),2))
-        pauli_str = ''
+        coeff = "{}*".format(round(np.random.sample(), 2))
+        pauli_str = ""
         for qb in range(n_qubits):
-            pauli_str += '{}({})'.format(np.random.choice(paulis), qb)
-        
-        if ps < n_ps-1:
-            pauli_str += '+'
-                
-        ham += coeff+pauli_str
-    
-    #print(ham)
-    
+            pauli_str += "{}({})".format(np.random.choice(paulis), qb)
+
+        if ps < n_ps - 1:
+            pauli_str += "+"
+
+        ham += coeff + pauli_str
+
+    # print(ham)
+
     H = QubitHamiltonian(ham)
     return H
 
-def generate_random_unitary(size, complex = False):
-    '''
+
+def generate_random_unitary(size, complex=False):
+    """
     Generates a random unitary (or furthermore orthogonal if complex is False) matrix of a specified size.
 
     Parameters:
@@ -87,7 +91,7 @@ def generate_random_unitary(size, complex = False):
 
     Returns:
     - numpy.ndarray: A randomly generated unitary matrix.
-    '''
+    """
     if complex:
         return unitary_group.rvs(size)
     else:
