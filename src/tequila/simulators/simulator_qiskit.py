@@ -515,7 +515,7 @@ class BackendCircuitQiskit(BackendCircuit):
             mapped_target = [self.qubit_map[q].number for q in target_qubits]
             mapped_full = [self.qubit_map[q].number for q in self.abstract_qubits]
             keymap = KeyMapRegisterToSubregister(subregister=mapped_target, register=mapped_full)
-            QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(target_qubits))
+            result = QubitWaveFunction.from_wavefunction(result, keymap, n_qubits=len(target_qubits))
             if save_runs:
                 # map results.runs
                 result.runs = [keymap(input_state=k, initial_state=None) for k in result.runs]

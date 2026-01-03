@@ -47,7 +47,7 @@ def test_cirq_google_devices():
         0, 1, angle=numpy.pi / 4
     )  # Givens rotation with angle = pi/4 gives 1/sqrt(2)|01> - 1/sqrt(2)|10> (up to a phase factor).
     wfn = tq.simulate(U, device="Sycamore", backend="cirq")
-    wfn_comp = tq.QubitWaveFunction.from_array([0, -1/numpy.sqrt(2), 1/numpy.sqrt(2), 0])
+    wfn_comp = tq.QubitWaveFunction.from_array([0, -1 / numpy.sqrt(2), 1 / numpy.sqrt(2), 0])
     assert numpy.isclose(numpy.abs(wfn.inner(wfn_comp)) ** 2, 1)
 
 
@@ -61,7 +61,7 @@ def teardown_function(function):
 def test_dependencies():
     for package in tequila.simulators.simulator_api.SUPPORTED_BACKENDS:
         if package not in ["qulacs_gpu", "qiskit_gpu"]:
-            assert package in tq.simulators.simulator_api.INSTALLED_BACKENDS, '{}'.format(package)
+            assert package in tq.simulators.simulator_api.INSTALLED_BACKENDS
 
 
 # make one test for the samplers and one for the simulators?
