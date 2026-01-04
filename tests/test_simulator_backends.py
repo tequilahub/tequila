@@ -42,15 +42,13 @@ HAS_GOOGLE = importlib.util.find_spec("cirq_google")
 def test_cirq_google_devices():
     import cirq_google
 
-    U = tq.paulis.X(0)
+    U = tq.gates.X(target=0)
     U += tq.gates.Givens(
         0, 1, angle=numpy.pi / 4
-    )  # Givens rotation with angle = pi/4 gives 1/sqrt(2)|01> + 1/sqrt(2)|10> (up to a phase factor).
+    )  # Givens rotation with angle = pi/4 gives 1/sqrt(2)|01> - 1/sqrt(2)|10> (up to a phase factor).
     wfn = tq.simulate(U, device="Sycamore", backend="cirq")
-    wfnx0 = tq.simulate(tq.paulis.X(0))
-    assert numpy.isclose(numpy.abs(wfn.inner(wfnx0)) ** 2, 0.5)
-    wfnx1 = tq.simulate(tq.paulis.X(1))
-    assert numpy.isclose(numpy.abs(wfn.inner(wfnx1)) ** 2, 0.5)
+    wfn_comp = tq.QubitWaveFunction.from_array([0, -1 / numpy.sqrt(2), 1 / numpy.sqrt(2), 0])
+    assert numpy.isclose(numpy.abs(wfn.inner(wfn_comp)) ** 2, 1)
 
 
 def teardown_function(function):
@@ -120,6 +118,17 @@ INSTALLED_SIMULATORS = tequila.simulators.simulator_api.INSTALLED_SIMULATORS.key
 INSTALLED_SAMPLERS = [l for l in tequila.simulators.simulator_api.INSTALLED_SAMPLERS.keys() if l != "mqp"]
 
 
+INSTALLED_DENSITY_SIMULATORS = []
+for installed_back in tq.simulators.simulator_api.INSTALLED_BACKENDS.keys():
+    if installed_back in tq.simulators.simulator_api.SUPPORTED_DENSITY_BACKENDS:
+        INSTALLED_DENSITY_SIMULATORS.append(installed_back)
+
+INSTALLED_DENSITY_SIMULATORS = []
+for installed_back in tq.simulators.simulator_api.INSTALLED_BACKENDS.keys():
+    if installed_back in tq.simulators.simulator_api.SUPPORTED_DENSITY_BACKENDS:
+        INSTALLED_DENSITY_SIMULATORS.append(installed_back)
+
+
 @pytest.mark.parametrize("backend", INSTALLED_SAMPLERS)
 def test_sampling_accumulation(backend):
     # minimal test that was added after a bug was discovered
@@ -155,7 +164,9 @@ def test_sampling_circuits(backend):
     assert d1[0] == 10
 
     d1 = tq.simulate(U, samples=10, backend=backend, read_out_qubits=[0, 2, 4, 6])
-    if 1 + 2 + 4 + 8 not in d1 or d1[1 + 2 + 4 + 8] != 10:
+    if (
+        1 + 2 + 4 + 8 not in d1 or d1[1 + 2 + 4 + 8] != 10
+    ):  # TODO readout is currently not functioning as intended by this test - the unread qubits are retained
         print("got this = ", d1)
     print("got this = ", d1)
     assert d1[1 + 2 + 4 + 8] == 10
@@ -533,3 +544,51 @@ def test_qubit_excitations(backend):
     F = numpy.abs(wfn1.inner(wfn2)) ** 2
 
     assert numpy.isclose(F, 1.0, 1.0e-4)
+
+
+@pytest.mark.parametrize("backend", INSTALLED_DENSITY_SIMULATORS)
+def test_density_simulation(backend):
+    # full density check, (circuit objective)
+    assert numpy.allclose(
+        tq.simulate_density(tq.gates.X(0) + tq.gates.X(0), backend=backend).density.toarray(),
+        numpy.array([[1, 0], [0, 0]]),
+    )
+    assert numpy.allclose(
+        tq.simulate_density(tq.gates.X(0), backend=backend).density.toarray(), numpy.array([[0, 0], [0, 1]])
+    )
+    assert numpy.allclose(
+        tq.simulate_density(tq.gates.H(0) + tq.gates.X(control=0, target=1), backend=backend).density.toarray(),
+        numpy.array([[0.5, 0, 0, 0.5], [0, 0, 0, 0], [0, 0, 0, 0], [0.5, 0, 0, 0.5]]),
+    )
+
+    # with noise
+    assert numpy.allclose(
+        tq.simulate_density(
+            tq.gates.H(0) + tq.gates.X(control=0, target=1),
+            noise=tq.circuit.noise.DepolarizingError(p=0.5, level=1),
+            backend=backend,
+        ).density.toarray(),
+        numpy.array([[0.5, 0, 0, 0.25], [0, 0, 0, 0], [0, 0, 0, 0], [0.25, 0, 0, 0.5]]),
+    )
+
+    # (expectation objective)
+    assert numpy.isclose(tq.simulate_density(tq.ExpectationValue(tq.gates.X(0), tq.paulis.Z(0)), backend=backend), -1.0)
+    noise = tq.circuit.noise.DepolarizingError(p=0.25, level=1)
+    assert numpy.isclose(
+        tq.simulate_density(
+            tq.ExpectationValue(tq.gates.H(0) + tq.gates.X(control=0, target=1), tq.paulis.X(qubit=[0, 1])),
+            noise=noise,
+            backend=backend,
+        ),
+        0.75,
+    )
+
+    # consistency of densities (currently trivial)
+    assert numpy.allclose(
+        tq.simulate_density(
+            tq.gates.H(0) + tq.gates.X(control=0, target=1), backend=backend, noise=noise
+        ).density.toarray(),
+        tq.simulate_density(
+            tq.gates.H(0) + tq.gates.X(control=0, target=1), backend=None, noise=noise
+        ).density.toarray(),
+    )

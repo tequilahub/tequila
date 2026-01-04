@@ -18,6 +18,7 @@ from tequila.optimizers import minimize, minimize_scipy, minimize_gd, optimizer_
 
 from tequila.simulators.simulator_api import (
     simulate,
+    simulate_density,
     compile,
     compile_to_function,
     draw,
