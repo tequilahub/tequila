@@ -404,7 +404,7 @@ class OptimizerGD(Optimizer):
         comp = self.compile_objective(objective=objective)
         for arg in comp.args:
             if hasattr(arg, "U"):
-                if arg.U.device is not None:
+                if hasattr(arg.U, "device") and arg.U.device is not None:
                     # don't retrieve computer 100 times; pyquil errors out if this happens!
                     self.device = arg.U.device
                     break
