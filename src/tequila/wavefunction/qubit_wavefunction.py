@@ -13,7 +13,7 @@ import numbers
 import sympy
 
 from tequila.utils.bitstrings import BitString, reverse_int_bits
-from tequila import TequilaException, BitNumbering, initialize_bitstring,TequilaWarning
+from tequila import TequilaException, BitNumbering, initialize_bitstring, TequilaWarning
 from tequila.utils.keymap import KeyMapABC
 
 if typing.TYPE_CHECKING:
@@ -185,7 +185,7 @@ class QubitWaveFunction:
         elif n_qubits == self._n_qubits:
             pass
         else:
-            self.increase_qubits(n_qubits - self._n_qubits,inplace=True)
+            self.increase_qubits(n_qubits - self._n_qubits, inplace=True)
 
     @property
     def numbering(self) -> BitNumbering:
@@ -467,9 +467,9 @@ class QubitWaveFunction:
         After this call, the wavefunction will be dense.
         :param n_qubits: New number of qubits.
         """
-        zero = QubitWaveFunction.from_basis_state(n_qubits, 0, numbering = self._numbering)
-        own = self.to_array(out_numbering = self.numbering)
-        zero = zero.to_array(out_numbering = self.numbering)
+        zero = QubitWaveFunction.from_basis_state(n_qubits, 0, numbering=self._numbering)
+        own = self.to_array(out_numbering=self.numbering)
+        zero = zero.to_array(out_numbering=self.numbering)
         if self.numbering == BitNumbering.LSB:
             new = np.kron(zero, own)
         else:
