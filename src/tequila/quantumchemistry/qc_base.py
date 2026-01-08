@@ -819,6 +819,7 @@ class QuantumChemistryBase:
                     frozen_orbitals=core,
                     orbital_coefficients=coeff,
                     overlap_integrals=s,
+                    orbital_type="orthonormalized-{}-basis".format(self.integral_manager._basis_name),
                 )
                 return self
             else:
@@ -831,6 +832,7 @@ class QuantumChemistryBase:
                     frozen_orbitals=core,
                     orbital_coefficients=coeff,
                     overlap_integrals=s,
+                    orbital_type="orthonormalized-{}-basis".format(self.integral_manager._basis_name),
                 )
                 parameters = copy.deepcopy(self.parameters)
                 result = QuantumChemistryBase(
