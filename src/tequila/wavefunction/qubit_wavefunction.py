@@ -479,5 +479,3 @@ class QubitWaveFunction:
             self.set_state(new)
         else:
             return QubitWaveFunction.from_array(new, n_qubits + self.n_qubits, numbering=self.numbering)
-
-
