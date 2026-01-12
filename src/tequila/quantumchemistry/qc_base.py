@@ -917,7 +917,7 @@ class QuantumChemistryBase:
         Compute annihilation operator on spin-orbital in qubit representation
         Spin-orbital order is always (up,down,up,down,...)
         """
-        assert orbital <= self.n_orbitals * 2
+        assert orbital < self.n_orbitals * 2
         aop = openfermion.ops.FermionOperator(f"{orbital}", coefficient)
         return self.transformation(aop)
 
@@ -926,7 +926,7 @@ class QuantumChemistryBase:
         Compute creation operator on spin-orbital in qubit representation
         Spin-orbital order is always (up,down,up,down,...)
         """
-        assert orbital <= self.n_orbitals * 2
+        assert orbital < self.n_orbitals * 2
         cop = openfermion.ops.FermionOperator(f"{orbital}^", coefficient)
         return self.transformation(cop)
 
