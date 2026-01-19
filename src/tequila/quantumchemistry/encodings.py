@@ -213,7 +213,7 @@ class JordanWigner(EncodingBase):
         return openfermion.jordan_wigner(fermion_operator, *args, **kwargs)
 
     def map_state(self, state: list, *args, **kwargs):
-        state = state + [0] * (self.n_orbitals - len(state))
+        state = state + [0] * (2 * self.n_orbitals - len(state))
         result = [0] * len(state)
         if self.up_then_down:
             return [state[2 * i] for i in range(self.n_orbitals)] + [state[2 * i + 1] for i in range(self.n_orbitals)]
