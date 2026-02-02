@@ -589,8 +589,12 @@ def find_index(basis_state):
     index = 0
     n_qubits = len(basis_state)
     for j in range(n_qubits):
-        index += int(basis_state[j]) * 2 ** (n_qubits - j - 1)
-
+        try:
+            index += int(basis_state[j]) * 2 ** (n_qubits - j - 1)
+        except E as Exception:
+            print("basis_state=", basis_state)
+            print(f"j={j}")
+            print(f"basis_state[j]={basis_state[j]}")
     return index
 
 
