@@ -50,8 +50,8 @@ def optimize_orbitals(
     molecule_factory=None,
     molecule_arguments=None,
     restrict_to_active_space=True,
-    read_chkfile:str=None,
-    save_chkfile:str=None,
+    read_chkfile: str = None,
+    save_chkfile: str = None,
     *args,
     **kwargs,
 ):
@@ -76,11 +76,10 @@ def optimize_orbitals(
                         initial_guess="random"
                         initial_guess="random_loc=X_scale=Y" with X and Y being floats
                         This initialized a random guess using numpy.random.normal(loc=X, scale=Y) with X=0.0 and Y=0.1 as defaults
-                    
     return_mcscf: return the PySCF MCSCF structure after optimization
     molecule_arguments: arguments to pass to molecule_factory or default molecule constructor | only change if you know what you are doing
     read_chkfile: checkpoint file to read the initial orbitals during the CASSCF optimization. For more info see https://pyscf.org/_modules/pyscf/mcscf/chkfile.html#load_mcscf
-    save_chkfile: checkpoint file to save the intermediate orbitals during the CASSCF optimization. 
+    save_chkfile: checkpoint file to save the intermediate orbitals during the CASSCF optimization.
     args: just here for convenience
     kwargs: just here for conveniece
 
@@ -90,7 +89,7 @@ def optimize_orbitals(
     """
 
     try:
-        from pyscf import mcscf,lib
+        from pyscf import mcscf, lib
         from . import QuantumChemistryPySCF
     except Exception as exception:
         raise Exception("{}\noptimize_orbitals: Need pyscf to run (pip install pyscf)".format(str(exception)))
@@ -178,9 +177,9 @@ def optimize_orbitals(
         initial_guess = mcscf.project_init_guess(mc, initial_guess)
         mc.kernel(mo_coeff=initial_guess)
     elif read_chkfile is not None:
-        chk = lib.chkfile.load(read_chkfile, 'mcscf')
-        mo_coeff = chk['mo_coeff']
-        ci0 = chk['ci'] if 'ci' in chk.keys() else None
+        chk = lib.chkfile.load(read_chkfile, "mcscf")
+        mo_coeff = chk["mo_coeff"]
+        ci0 = chk["ci"] if "ci" in chk.keys() else None
         mc.kernel(mo_coeff=mo_coeff, ci0=ci0)
     else:
         mc.kernel()
