@@ -29,7 +29,7 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
     n = Comm.shape[0]
     print(f"shape={n}")
     v0 = [1.0+1.0j]*n
-    v0 = np.to_array(v0)
+    v0 = np.asarray(v0)
     spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", v0=v0, return_eigenvectors=False)
 
     return np.abs(spNorm[0])
