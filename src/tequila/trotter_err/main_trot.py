@@ -26,6 +26,7 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
         Comm = Projector * Comm
      
     print(Comm)
+    n = Comm.shape[0]
     vec = sp.random(n, 1, density=0.2, format='csr')
     norm = la.norm(vec, ord=2)
     v0 = vec / norm
