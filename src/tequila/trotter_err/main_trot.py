@@ -24,12 +24,12 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
 
     if Projector is not None:
         Comm = Projector * Comm
-     
+
     print(Comm)
     n = Comm.shape[0]
-    vec = sp.random(n, 1, density=0.2, format='csr')
-    norm = la.norm(vec, ord=2)
-    v0 = vec / norm
+    print(f"shape={n}")
+    v0 = [1.0+1.0j]*n
+    v0 = np.to_array(v0)
     spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", v0=v0, return_eigenvectors=False)
 
     return np.abs(spNorm[0])
