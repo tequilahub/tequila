@@ -25,16 +25,16 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
     if Projector is not None:
         Comm = Projector * Comm
 
-    print(Comm)
     n = Comm.shape[0]
-    print(f"shape={n}")
     v0 = [1.0+1.0j]*n
     v0 = np.asarray(v0)
 
     try:
         spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", v0=v0, return_eigenvectors=False)
-    except:
+    except Exception as E:
         # should catch this better: ideally ArpackError -9 (if the matrix is zero)
+        print("---> spNorm claculation crashed ... assuming zero matrix issue in Arpack <----")
+        print("error was: ", E)
         return 0.0
     return np.abs(spNorm[0])
 
