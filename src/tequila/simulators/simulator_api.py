@@ -2,6 +2,7 @@ from collections import namedtuple
 import typing
 import warnings
 import numpy
+from importlib.metadata import version, PackageNotFoundError
 from numbers import Real as RealNumber
 from typing import Dict, Union, Hashable
 from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, QTensor
@@ -102,6 +103,7 @@ except ImportError:
     HAS_QISKIT_NOISE = False
 
 try:
+    version("qiskit-aer-gpu")
     from tequila.simulators.simulator_qiskit_gpu import BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu
 
     HAS_QISKIT_GPU = True
@@ -111,7 +113,7 @@ try:
 
     if HAS_QISKIT_GPU_NOISE:
         INSTALLED_NOISE_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
-except ImportError:
+except (ImportError, PackageNotFoundError):
     HAS_QISKIT_GPU = False
     HAS_QISKIT_GPU_NOISE = False
 
