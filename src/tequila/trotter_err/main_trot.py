@@ -30,8 +30,12 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
     print(f"shape={n}")
     v0 = [1.0+1.0j]*n
     v0 = np.asarray(v0)
-    spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", v0=v0, return_eigenvectors=False)
 
+    try:
+        spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", v0=v0, return_eigenvectors=False)
+    except:
+        # should catch this better: ideally ArpackError -9 (if the matrix is zero)
+        return 0.0
     return np.abs(spNorm[0])
 
 
