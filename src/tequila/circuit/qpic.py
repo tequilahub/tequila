@@ -63,6 +63,11 @@ def export_to_qpic(
     for color in colors:
         result += "COLOR {} {} {} {}\n".format(color["name"], *tuple(color["rgb"]))
 
+    colormap = {}
+    for i,k in enumerate(circuit.extract_variables()):
+        colormap[k] = gatecolor2
+
+
     if group_together is True:
         group_together = "TOUCH"
     # define wires
@@ -83,7 +88,7 @@ def export_to_qpic(
         if hasattr(g, "parameter"):
             if not isinstance(g.parameter, numbers.Number) and mark_parametrized_gates:
                 tcol = textcolor2
-                gcol = gatecolor2
+                gcol = colormap[g.parameter]
             param = g.parameter
 
         if isinstance(param, numbers.Number):

@@ -2,10 +2,9 @@ from collections import namedtuple
 import typing
 import warnings
 import numpy
+from importlib.metadata import version, PackageNotFoundError
 from numbers import Real as RealNumber
 from typing import Dict, Union, Hashable
-import pkg_resources
-from pkg_resources import DistributionNotFound
 from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, QTensor
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
@@ -104,7 +103,7 @@ except ImportError:
     HAS_QISKIT_NOISE = False
 
 try:
-    pkg_resources.require("qiskit-aer-gpu")
+    version("qiskit-aer-gpu")
     from tequila.simulators.simulator_qiskit_gpu import BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu
 
     HAS_QISKIT_GPU = True
@@ -114,7 +113,7 @@ try:
 
     if HAS_QISKIT_GPU_NOISE:
         INSTALLED_NOISE_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
-except (ImportError, DistributionNotFound):
+except (ImportError, PackageNotFoundError):
     HAS_QISKIT_GPU = False
     HAS_QISKIT_GPU_NOISE = False
 
@@ -144,7 +143,6 @@ except ImportError:
     HAS_CIRQ = False
 
 try:
-    pkg_resources.require("qulacs")
     import qulacs
     from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
 
@@ -158,11 +156,10 @@ try:
     INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(
         CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs
     )
-except (ImportError, DistributionNotFound):
+except ImportError:
     HAS_QULACS = False
 
 try:
-    # pkg_resources.require("qulacs-gpu")
     from qulacs import QuantumStateGpu
     from tequila.simulators.simulator_qulacs_gpu import BackendCircuitQulacsGpu, BackendExpectationValueQulacsGpu
 
@@ -176,7 +173,7 @@ try:
     INSTALLED_NOISE_SAMPLERS["qulacs_gpu"] = BackendTypes(
         CircType=BackendCircuitQulacsGpu, ExpValueType=BackendExpectationValueQulacsGpu
     )
-except (ImportError, DistributionNotFound):
+except ImportError:
     HAS_QULACS_GPU = False
 
 
