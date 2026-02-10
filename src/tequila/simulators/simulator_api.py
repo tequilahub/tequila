@@ -111,7 +111,7 @@ try:
 
     if HAS_QISKIT_GPU_NOISE:
         INSTALLED_NOISE_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
-except (ImportError):
+except ImportError:
     HAS_QISKIT_GPU = False
     HAS_QISKIT_GPU_NOISE = False
 
@@ -154,7 +154,7 @@ try:
     INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(
         CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs
     )
-except (ImportError):
+except ImportError:
     HAS_QULACS = False
 
 try:
@@ -171,7 +171,7 @@ try:
     INSTALLED_NOISE_SAMPLERS["qulacs_gpu"] = BackendTypes(
         CircType=BackendCircuitQulacsGpu, ExpValueType=BackendExpectationValueQulacsGpu
     )
-except (ImportError):
+except ImportError:
     HAS_QULACS_GPU = False
 
 
