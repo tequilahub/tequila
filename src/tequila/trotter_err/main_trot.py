@@ -26,7 +26,7 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
         Comm = Projector * Comm
 
     n = Comm.shape[0]
-    v0 = [1.0+1.0j]*n
+    v0 = [1.0 + 1.0j] * n
     v0 = np.asarray(v0)
 
     try:
