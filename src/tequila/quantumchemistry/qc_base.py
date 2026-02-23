@@ -2660,8 +2660,6 @@ class QuantumChemistryBase:
                     i=phi[1], phi=phi[0] + Variable(f"Ph({phi[1]}" + ("," + str(label)) * (label is not None) + ")")
                 )
 
-
-
         # Add all Givens rotations to the circuit.
         for theta in reversed(theta_list):
             if fix:
@@ -2673,7 +2671,6 @@ class QuantumChemistryBase:
                     angle=(theta[0] * 2)
                     + Variable(f"UR({theta[1]},{theta[2]}" + ("," + str(label)) * (label is not None) + ")"),
                 )
-
         
         return circuit
 
