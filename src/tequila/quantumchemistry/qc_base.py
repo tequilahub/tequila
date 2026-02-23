@@ -2626,7 +2626,7 @@ class QuantumChemistryBase:
         circuit += gates.GeneralizedRotation(generator=n_down, angle=-2 * phi)
         return circuit
 
-    def get_givens_circuit(self, unitary, tol=1e-12, ordering=OPTIMIZED_ORDERING,fix:bool=True):
+    def get_givens_circuit(self, unitary, tol=1e-12, ordering=OPTIMIZED_ORDERING,fix:bool=True, label = None) -> QCircuit:
         """
         Constructs a quantum circuit from a given real unitary matrix using Givens rotations.
 
@@ -2638,6 +2638,7 @@ class QuantumChemistryBase:
         - tol (float): A tolerance threshold below which matrix elements are considered zero.
         - ordering (list of tuples or 'Optimized'): Custom ordering of indices for Givens rotations or 'Optimized' to generate them automatically.
         - fix (bool): whether to set the angle as fixed or as inial value as: angle=tq.Variable(idx) + value. Useful to let further relaxation to the basis change
+        - label: can be passed instead of angle to have auto-naming with label ("R",i,j,label) useful for repreating gates with individual variables
 
         Returns:
         - QCircuit: A quantum circuit implementing the series of rotations decomposed from the unitary.
@@ -2653,7 +2654,7 @@ class QuantumChemistryBase:
             if fix:
                 circuit += self.n_rotation(i=phi[1], phi=phi[0])
             else:
-                circuit += self.n_rotation(i=phi[1], phi=phi[0] + Variable(f'Ph({phi[1]})'))
+                circuit += self.n_rotation(i=phi[1], phi=phi[0] + Variable(f'Ph({phi[1]}' + (',' + str(label))*(label is not None) + ')'))
 
 
         # Add all Givens rotations to the circuit.
@@ -2661,7 +2662,7 @@ class QuantumChemistryBase:
             if fix:
                 circuit += self.UR(i=theta[1], j=theta[2], angle=theta[0] * 2)
             else:
-                circuit += self.UR(i=theta[1], j=theta[2], angle= (theta[0] * 2) + Variable(f'UR({theta[1],theta[2]})'))
+                circuit += self.UR(i=theta[1], j=theta[2], angle= (theta[0] * 2) + Variable(f'UR({theta[1]},{theta[2]}'+(',' + str(label))*(label is not None) + ')'))
         
         return circuit
 
