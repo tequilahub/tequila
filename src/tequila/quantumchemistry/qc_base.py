@@ -2626,7 +2626,7 @@ class QuantumChemistryBase:
         circuit += gates.GeneralizedRotation(generator=n_down, angle=-2 * phi)
         return circuit
 
-    def get_givens_circuit(self, unitary, tol=1e-12, ordering=OPTIMIZED_ORDERING):
+    def get_givens_circuit(self, unitary, tol=1e-12, ordering=OPTIMIZED_ORDERING,fix:bool=True):
         """
         Constructs a quantum circuit from a given real unitary matrix using Givens rotations.
 
@@ -2637,6 +2637,7 @@ class QuantumChemistryBase:
         - unitary (numpy.array): A real unitary matrix representing the transformation to implement.
         - tol (float): A tolerance threshold below which matrix elements are considered zero.
         - ordering (list of tuples or 'Optimized'): Custom ordering of indices for Givens rotations or 'Optimized' to generate them automatically.
+        - fix (bool): whether to set the angle as fixed or as inial value as: angle=tq.Variable(idx) + value. Useful to let further relaxation to the basis change
 
         Returns:
         - QCircuit: A quantum circuit implementing the series of rotations decomposed from the unitary.
@@ -2649,12 +2650,19 @@ class QuantumChemistryBase:
 
         # Add all Rz (phase) rotations to the circuit.
         for phi in phi_list:
-            circuit += self.n_rotation(phi[1], phi[0])
+            if fix:
+                circuit += self.n_rotation(i=phi[1], phi=phi[0])
+            else:
+                circuit += self.n_rotation(i=phi[1], phi=phi[0] + Variable(f'Ph({phi[1]})'))
+
 
         # Add all Givens rotations to the circuit.
         for theta in reversed(theta_list):
-            circuit += self.UR(theta[1], theta[2], theta[0] * 2)
-
+            if fix:
+                circuit += self.UR(i=theta[1], j=theta[2], angle=theta[0] * 2)
+            else:
+                circuit += self.UR(i=theta[1], j=theta[2], angle= (theta[0] * 2) + Variable(f'UR({theta[1],theta[2]})'))
+        
         return circuit
 
     def print_basis_info(self):
