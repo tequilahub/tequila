@@ -2626,7 +2626,10 @@ class QuantumChemistryBase:
         circuit += gates.GeneralizedRotation(generator=n_down, angle=-2 * phi)
         return circuit
 
-    def get_givens_circuit(self, unitary, tol=1e-12, ordering=OPTIMIZED_ORDERING,fix:bool=True, label = None) -> QCircuit:
+    def get_givens_circuit(
+        self, unitary, tol=1e-12, ordering=OPTIMIZED_ORDERING, fix: bool = True, label=None
+    ) -> QCircuit:
+
         """
         Constructs a quantum circuit from a given real unitary matrix using Givens rotations.
 
@@ -2654,7 +2657,10 @@ class QuantumChemistryBase:
             if fix:
                 circuit += self.n_rotation(i=phi[1], phi=phi[0])
             else:
-                circuit += self.n_rotation(i=phi[1], phi=phi[0] + Variable(f'Ph({phi[1]}' + (',' + str(label))*(label is not None) + ')'))
+                circuit += self.n_rotation(
+                    i=phi[1], phi=phi[0] + Variable(f"Ph({phi[1]}" + ("," + str(label)) * (label is not None) + ")")
+                    )
+
 
 
         # Add all Givens rotations to the circuit.
@@ -2662,7 +2668,13 @@ class QuantumChemistryBase:
             if fix:
                 circuit += self.UR(i=theta[1], j=theta[2], angle=theta[0] * 2)
             else:
-                circuit += self.UR(i=theta[1], j=theta[2], angle= (theta[0] * 2) + Variable(f'UR({theta[1]},{theta[2]}'+(',' + str(label))*(label is not None) + ')'))
+                circuit += self.UR(
+                    i=theta[1],
+                    j=theta[2],
+                    angle=(theta[0] * 2)
+                    + Variable(f"UR({theta[1]},{theta[2]}" + ("," + str(label)) * (label is not None) + ")"),
+                    )
+
         
         return circuit
 
