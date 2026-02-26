@@ -136,11 +136,11 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             for fcivec in fcivecs:
                 if use_hcb:
                     alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
-                    wfn_dim = 2 ** norb
+                    wfn_dim = 2**norb
                     wfn = numpy.zeros(wfn_dim)
                     for i, alpha_str in enumerate(alpha_strs):
                         alpha_str_b = bin(alpha_str)[2:].zfill(norb)[::-1]
-                        merged_str = int(alpha_str_b,2)
+                        merged_str = int(alpha_str_b, 2)
                         wfn[merged_str] = fcivec[i, i]
                 else:
                     alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
@@ -156,8 +156,8 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                                 alpha_str_b = bin(alpha_str)[2:].zfill(norb)
                                 beta_str_b = bin(beta_str)[2:].zfill(norb)
                                 merged_str_b = (alpha_str_b + beta_str_b)[::-1]
-                                merged_str = int(merged_str_b,2)
-                                wfn[merged_str] = fcivec[i, j]  
+                                merged_str = int(merged_str_b, 2)
+                                wfn[merged_str] = fcivec[i, j]
                 wfns.append(QubitWaveFunction.from_array(wfn))
             if not ("nroots" in kwargs and kwargs["nroots"] > 1):
                 return energies[0], wfns[0]
