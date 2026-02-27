@@ -242,7 +242,7 @@ class DifferentiableGateImpl(ParametrizedGateImpl):
         -------
             List of Tuples: [(weight, shifted_gate), (weight, shifted_gate)]
             The gradient compiler will assemble this the following way
-            <H>_U with U = AU(a)B --> \sum weight <H>_V , with V=A shifted_gate
+            <H>_U with U = AU(a)B --> \\sum weight <H>_V , with V=A shifted_gate
 
             shifted_gate can also be a whole circuit (either as QCircuit object or a list of gates)
         """

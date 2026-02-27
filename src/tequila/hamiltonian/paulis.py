@@ -296,7 +296,7 @@ def KetBra(
          QubitWaveFunction which defines the bra element
          can also be given as string or array or integer
     hermitian: bool: (Default False)
-         if True the hermitian version H + H^\dagger is returned
+         if True the hermitian version H + H^\\dagger is returned
     threshold: float: (Default 1.e-6)
          elements smaller than the threshold will be ignored
     n_qubits: only needed if ket and/or bra are passed down as integers

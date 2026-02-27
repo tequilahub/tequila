@@ -203,7 +203,7 @@ class DensityMatrix:
     def trace_distance(self, other, tol=0):
         """
         Returns Trace distance (1 norm of difference) of two DensityMatrix objects, assumes hermiticity
-        d(\rho, \sigma) = Tr(\sqrt((\rho - \sigma)^ (\rho - \sigma))) = 0.5\sum_i |lambda_i| where \lambda_i is the eigen values obtained by svd
+        d(\\rho, \\sigma) = Tr(\\sqrt((\\rho - \\sigma)^ (\\rho - \\sigma))) = 0.5\\sum_i |\\lambda_i| where \\lambda_i is the eigen values obtained by svd
         """
         density_diff = self - other
         return 0.5 * (sum(abs(density_diff.spectrum(tol))))
