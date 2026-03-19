@@ -57,8 +57,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self.indices = indices
         if not hasattr(indices[0], "__len__"):
             self.indices = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
-        self.sign = self.format_excitation_variables(self.indices)
-        self.indices = self.format_excitation_indices(self.indices)
+        self.indices,self.sign = __get_perm_factor(self.indices)
 
     def compile(self, *args, **kwargs):
         if self.is_convertable_to_qubit_excitation():
@@ -74,36 +73,6 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
                 )
             else:
                 return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
-
-    def format_excitation_indices(self, idx):
-        """
-        Consistent formatting of excitation indices
-        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
-        sorted as: p0<p1<pn and pi<qi
-        :param idx: list of index tuples describing a single(!) fermionic excitation
-        :return: list of index tuples
-        """
-
-        idx = [tuple(sorted(x)) for x in idx]
-        idx = sorted(idx, key=lambda x: x[0])
-        return list(idx)
-
-    def format_excitation_variables(self, idx):
-        """
-        Consistent formatting of excitation variable
-        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
-        sorted as: pi<qi and p0 < p1 < p2
-        :param idx: list of index tuples describing a single(!) fermionic excitation
-        :return: sign of the variable with re-ordered indices
-        """
-        sig = 1
-        for pair in idx:
-            if pair[1] > pair[0]:
-                sig *= -1
-        for pair in range(len(idx) - 1):
-            if idx[pair + 1][0] > idx[pair][0]:
-                sig *= -1
-        return sig
 
     def cCRy(
         self,
@@ -1399,3 +1368,39 @@ class IntegralManager:
         for i, x in enumerate(self.orbitals):
             print(x, *args, **kwargs)
             print("coefficients: ", self.orbital_coefficients[:, i], *args, **kwargs)
+
+def __merge_and_count(arr):
+    # Base case: a list of 1 element has 0 inversions
+    if len(arr) <= 1:
+        return arr, 0
+    
+    mid = len(arr) // 2
+    left, left_inv = merge_and_count(arr[:mid])
+    right, right_inv = merge_and_count(arr[mid:])
+    
+    merged = []
+    i = j = 0
+    split_inv = 0
+    
+    # Merge step
+    while i < len(left) and j < len(right):
+        if left[i][0] <= right[j][0]:
+            merged.append(left[i])
+            i += 1
+        else:
+            # right[j] is smaller than left[i], 
+            # so it "swaps" past all remaining elements in left
+            merged.append(right[j])
+            split_inv += (len(left) - i)
+            j += 1
+            
+    merged.extend(left[i:])
+    merged.extend(right[j:])
+    
+    return merged, left_inv + right_inv + split_inv
+
+def __get_perm_factor(data):
+    sorted_list, total_swaps = merge_and_count(data)
+    # Factor is -1 if swaps are odd, 1 if even
+    factor = 1 if total_swaps % 2 == 0 else -1
+    return sorted_list, factor
