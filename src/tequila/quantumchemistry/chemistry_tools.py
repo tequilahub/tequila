@@ -57,7 +57,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self.indices = indices
         if not hasattr(indices[0], "__len__"):
             self.indices = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
-        self.indices, self.sign = __get_perm_factor(self.indices)
+        self.indices, self.sign = self.__get_perm_factor(self.indices)
 
     def compile(self, *args, **kwargs):
         if self.is_convertable_to_qubit_excitation():
@@ -74,6 +74,32 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
             else:
                 return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
 
+    def __merge_and_count(self, indices):
+        if len(indices) <= 1:
+            return indices, 0
+        mid = len(indices) // 2
+        left, left_inv = self.__merge_and_count(indices[:mid])
+        right, right_inv = self.__merge_and_count(indices[mid:])
+        merged = []
+        i = j = 0
+        split_inv = 0
+        while i < len(left) and j < len(right):
+            if left[i][0] <= right[j][0]:
+                merged.append(left[i])
+                i += 1
+            else:
+                merged.append(right[j])
+                split_inv += len(left) - i
+                j += 1
+        merged.extend(left[i:])
+        merged.extend(right[j:])
+        return merged, left_inv + right_inv + split_inv
+
+    def __get_perm_factor(self, indices):
+        sorted_indices, total_swaps = self.__merge_and_count(indices)
+        factor = 1 if total_swaps % 2 == 0 else -1
+        return sorted_indices, factor
+    
     def cCRy(
         self,
         target: int,
@@ -1369,29 +1395,3 @@ class IntegralManager:
             print(x, *args, **kwargs)
             print("coefficients: ", self.orbital_coefficients[:, i], *args, **kwargs)
 
-
-def __merge_and_count(arr):
-    if len(arr) <= 1:
-        return arr, 0
-    mid = len(arr) // 2
-    left, left_inv = __merge_and_count(arr[:mid])
-    right, right_inv = __merge_and_count(arr[mid:])
-    merged = []
-    i = j = 0
-    split_inv = 0
-    while i < len(left) and j < len(right):
-        if left[i][0] <= right[j][0]:
-            merged.append(left[i])
-            i += 1
-        else:
-            merged.append(right[j])
-            split_inv += len(left) - i
-            j += 1
-    merged.extend(left[i:])
-    merged.extend(right[j:]) 
-    return merged, left_inv + right_inv + split_inv
-    
-def __get_perm_factor(data):
-    sorted_list, total_swaps = __merge_and_count(data)
-    factor = 1 if total_swaps % 2 == 0 else -1
-    return sorted_list, factor
