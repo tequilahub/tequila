@@ -84,7 +84,6 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         :return: list of index tuples
         """
 
-        idx = [tuple(sorted(x)) for x in idx]
         idx = sorted(idx, key=lambda x: x[0])
         return list(idx)
 
@@ -97,9 +96,6 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         :return: sign of the variable with re-ordered indices
         """
         sig = 1
-        for pair in idx:
-            if pair[1] > pair[0]:
-                sig *= -1
         for pair in range(len(idx) - 1):
             if idx[pair + 1][0] > idx[pair][0]:
                 sig *= -1
