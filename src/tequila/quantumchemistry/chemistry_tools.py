@@ -97,9 +97,9 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
 
     def __get_perm_factor(self, indices):
         sorted_indices, total_swaps = self.__merge_and_count(indices)
-        factor = 1 if total_swaps % 2 == 0 else -1
+        factor = -1 if total_swaps % 2 == 0 else 1
         return sorted_indices, factor
-    
+
     def cCRy(
         self,
         target: int,
@@ -1394,4 +1394,3 @@ class IntegralManager:
         for i, x in enumerate(self.orbitals):
             print(x, *args, **kwargs)
             print("coefficients: ", self.orbital_coefficients[:, i], *args, **kwargs)
-
