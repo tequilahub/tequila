@@ -239,7 +239,7 @@ class QuantumChemistryBase:
         Notes
         ----------
         Creates the transformed hermitian generator of UCC type unitaries:
-              M(a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.)
+              M(a^\\dagger_{a_0} a_{i_0} a^\\dagger{a_1}a_{i_1} ... - h.c.)
               where the qubit map M depends is self.transformation
 
         Parameters
@@ -2193,7 +2193,7 @@ class QuantumChemistryBase:
             raise TequilaException("Need to specify a Quantum Circuit.")
 
         def _get_hcb_op(op_tuple):
-            """Build the hardcore boson operators: b^\dagger_ib_j + h.c. in qubit encoding"""
+            """Build the hardcore boson operators: b^\\dagger_ib_j + h.c. in qubit encoding"""
             if len(op_tuple) == 2:
                 return 2 * Sm(op_tuple[0][0]) * Sp(op_tuple[1][0])
             elif len(op_tuple) == 4:
@@ -2626,7 +2626,14 @@ class QuantumChemistryBase:
         circuit += gates.GeneralizedRotation(generator=n_down, angle=-2 * phi)
         return circuit
 
-    def get_givens_circuit(self, unitary, tol=1e-12, ordering=OPTIMIZED_ORDERING):
+    def get_givens_circuit(
+        self,
+        unitary,
+        tol=1e-12,
+        ordering=OPTIMIZED_ORDERING,
+        fix: bool = True,
+        label=None,
+    ) -> QCircuit:
         """
         Constructs a quantum circuit from a given real unitary matrix using Givens rotations.
 
@@ -2637,6 +2644,8 @@ class QuantumChemistryBase:
         - unitary (numpy.array): A real unitary matrix representing the transformation to implement.
         - tol (float): A tolerance threshold below which matrix elements are considered zero.
         - ordering (list of tuples or 'Optimized'): Custom ordering of indices for Givens rotations or 'Optimized' to generate them automatically.
+        - fix (bool): whether to set the angle as fixed or as inial value as: angle=tq.Variable(idx) + value. Useful to let further relaxation to the basis change
+        - label: can be passed instead of angle to have auto-naming with label ("R",i,j,label) useful for repreating gates with individual variables
 
         Returns:
         - QCircuit: A quantum circuit implementing the series of rotations decomposed from the unitary.
@@ -2649,11 +2658,25 @@ class QuantumChemistryBase:
 
         # Add all Rz (phase) rotations to the circuit.
         for phi in phi_list:
-            circuit += self.n_rotation(phi[1], phi[0])
+            if fix:
+                circuit += self.n_rotation(i=phi[1], phi=phi[0])
+            else:
+                circuit += self.n_rotation(
+                    i=phi[1],
+                    phi=phi[0] + Variable(f"Ph({phi[1]}" + ("," + str(label)) * (label is not None) + ")"),
+                )
 
         # Add all Givens rotations to the circuit.
         for theta in reversed(theta_list):
-            circuit += self.UR(theta[1], theta[2], theta[0] * 2)
+            if fix:
+                circuit += self.UR(i=theta[1], j=theta[2], angle=theta[0] * 2)
+            else:
+                circuit += self.UR(
+                    i=theta[1],
+                    j=theta[2],
+                    angle=(theta[0] * 2)
+                    + Variable(f"UR({theta[1]},{theta[2]}" + ("," + str(label)) * (label is not None) + ")"),
+                )
 
         return circuit
 
