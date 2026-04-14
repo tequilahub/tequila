@@ -823,10 +823,12 @@ class QuantumChemistryBase:
             else:
                 active = get_active(core)
         assert len(active) + len(core) == len(self.integral_manager.orbitals)
-        if 'reference_orbitals' in kwargs:
-            reference_orbitals = kwargs['reference_orbitals']
+        if "reference_orbitals" in kwargs:
+            reference_orbitals = kwargs["reference_orbitals"]
             kwargs.pop()
-            assert len(reference_orbitals) == len(self.parameters.total_n_electrons)//2,f'Number of  provided reference_orbitals incorrect. Expected {self.parameters.total_n_electrons//2}, received {len(reference_orbitals)}'
+            assert len(reference_orbitals) == len(self.parameters.total_n_electrons)//2, (
+                f'Number of  provided reference_orbitals incorrect. Expected {self.parameters.total_n_electrons//2}, received {len(reference_orbitals)}'
+            )
         else:
             reference_orbitals = [i.idx_total for i in self.integral_manager.reference_orbitals]
 
