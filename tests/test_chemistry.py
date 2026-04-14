@@ -584,6 +584,107 @@ def test_wfn_fci(geometry):
 
 
 @pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+def test_fci_guess_wfn():
+    geometry = """H 0.0 0.0 0.0\nH 0.0 0.0 1.5\nH 0.0 0.0 3.0\nH 0.0 0.0 4.5"""
+    mol = tq.Molecule(geometry=geometry, units="angstrom", basis_set="sto-3g", backend="pyscf").use_native_orbitals()
+
+    H = mol.make_hamiltonian()
+    v, vv = numpy.linalg.eigh(H.to_matrix())
+    wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
+    energy = v[0]
+
+    U = mol.make_ansatz(name="SPA", edges=[(0, 1), (2, 3)])
+    E = tq.ExpectationValue(H=H, U=U)
+    spa_energy = tq.minimize(E, silent=True)
+    spa_wfn = tq.simulate(U, spa_energy.variables)
+    fci_energy, fci_wfn = mol.compute_energy("fci", get_wfn=True, ci0=spa_wfn)
+
+    fidelity = abs(fci_wfn.inner(wfn)) ** 2
+    assert numpy.isclose(fidelity, 1.0)
+    assert numpy.isclose(fci_energy, energy)
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+def test_fci_nroots():
+    geometry = """H 0.0 0.0 0.0\nH 0.0 0.0 1.5\nH 0.0 0.0 3.0\nH 0.0 0.0 4.5"""
+    mol = tq.Molecule(geometry=geometry, units="angstrom", basis_set="sto-3g", backend="pyscf")
+
+    nroots = 7
+    H = mol.make_hamiltonian()
+    v, vv = numpy.linalg.eigh(H.to_matrix())
+    wfns = [tq.QubitWaveFunction.from_array(vv[:, i]) for i in range(nroots)]
+    energies = [v[0], v[1], v[4]]
+
+    fci_energies, fci_wfns = mol.compute_energy("fci", get_wfn=True, nroots=nroots)
+
+    fidelity = []
+    fidelity.append(abs(fci_wfns[0].inner(wfns[0])) ** 2)
+    fidelity.append(
+        abs(fci_wfns[1].inner(wfns[1])) ** 2
+        + abs(fci_wfns[1].inner(wfns[2])) ** 2
+        + abs(fci_wfns[1].inner(wfns[3])) ** 2
+    )
+    fidelity.append(
+        abs(fci_wfns[2].inner(wfns[4])) ** 2
+        + abs(fci_wfns[2].inner(wfns[5])) ** 2
+        + abs(fci_wfns[2].inner(wfns[6])) ** 2
+    )
+
+    assert numpy.allclose(fidelity, 1.0)
+    assert numpy.allclose(fci_energies[:3], energies[:3])
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
+def test_fci_hcb():
+    geometry = "H 0.0 0.0 0.0\nH 0.0 0.0 1.0\nH 0.0 0.0 2.0\nH 0.0 0.0 3.0\nH 0.0 0.0 4.0\nH 0.0 0.0 5.0"
+    mol = tq.Molecule(
+        geometry=geometry,
+        units="angstrom",
+        basis_set="sto-3g",
+        backend="pyscf",
+        transformation="reordered-jordan-wigner",
+    ).use_native_orbitals()
+
+    edges = [(0, 1), (2, 3), (4, 5)]
+    guess = numpy.eye(6)
+    guess[0][1] = 1
+    guess[1][0] = -1
+    guess[2][3] = 1
+    guess[3][2] = -1
+    guess[4][5] = 1
+    guess[5][4] = -1
+
+    # HCB SPA
+    U = mol.make_ansatz(name="HCB-SPA", edges=edges)
+    opt = tq.chemistry.optimize_orbitals(molecule=mol, circuit=U, initial_guess=guess.T, silent=True, use_hcb=True)
+    mol = opt.molecule
+    H = mol.make_hardcore_boson_hamiltonian()
+    E = tq.ExpectationValue(H=H, U=U)
+    spa = tq.minimize(E, silent=True)
+    spa_wfn = tq.simulate(U, spa.variables)
+
+    # FCI projected onto HCB space
+    e_hcb, wfn_hcb = mol.compute_energy("fci", get_wfn=True, use_hcb=True)
+    fidelity_hcb = abs(spa_wfn.inner(wfn_hcb)) ** 2
+
+    # Fermionic SPA
+    U = mol.make_ansatz(name="SPA", edges=edges)
+    opt = tq.chemistry.optimize_orbitals(molecule=mol, circuit=U, initial_guess=guess.T, silent=True)
+    mol = opt.molecule
+    H = mol.make_hamiltonian()
+    E = tq.ExpectationValue(H=H, U=U)
+    spa = tq.minimize(E, silent=True)
+    spa_wfn = tq.simulate(U, spa.variables)
+
+    # FCI in full fermionic space
+    e_full, wfn_full = mol.compute_energy("fci", get_wfn=True)
+    fidelity = abs(spa_wfn.inner(wfn_full)) ** 2
+    print(fidelity)
+
+    assert numpy.isclose(fidelity, fidelity_hcb)
+
+
+@pytest.mark.skipif(condition=not HAS_PYSCF, reason="pyscf not found")
 def test_orbital_optimization():
     from tequila.quantumchemistry import optimize_orbitals
 

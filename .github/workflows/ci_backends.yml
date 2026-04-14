@@ -33,7 +33,7 @@ jobs:
                 
     - name: Install CUDA-Q
       run: |
-          cuda_version=12.4.0
+          cuda_version=12.6.0
           conda create -y -n cudaq-env python=3.11 pip
           conda install -y -n cudaq-env -c "nvidia/label/cuda-${cuda_version}" cuda
           conda install -y -n cudaq-env -c conda-forge mpi4py "openmpi>=5.0.3" cxx-compiler

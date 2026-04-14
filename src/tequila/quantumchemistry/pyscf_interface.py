@@ -1,12 +1,15 @@
 from tequila import TequilaException, QubitWaveFunction
 from tequila.quantumchemistry.qc_base import QuantumChemistryBase
+from tequila.quantumchemistry.encodings import JordanWigner
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
 import pyscf
+from pyscf import fci
 
 from .chemistry_tools import OrbitalData
 
 import numpy
 import typing
+import warnings
 
 
 def _merge_alpha_beta_strs(alpha_str, beta_str, norb):
@@ -112,26 +115,127 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
         super().__init__(parameters=parameters, transformation=transformation, orbitals=orbitals, *args, **kwargs)
 
-    def compute_fci(self, get_wfn=False, **kwargs):
-        from pyscf import fci
-
+    def compute_fci(self, get_wfn=False, ci0=None, use_hcb=False, **kwargs):
         c, h1, h2 = self.get_integrals(ordering="chem")
         norb = self.n_orbitals
         nelec = self.n_electrons
-        e, fcivec = fci.direct_spin1.kernel(h1, h2.elems, norb, nelec, **kwargs)
+
+        if ci0 is not None:
+            ci0 = self.create_ci_vector(ci0, use_hcb=use_hcb)
+
+        e, fcivecs = fci.direct_spin1.kernel(
+            h1, h2.elems, norb, nelec, max_cycle=2000, max_space=100, ci0=ci0, **kwargs
+        )
 
         if get_wfn:
-            alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
-            beta_strs = alpha_strs.copy()
-            wfn_dim = 2 ** (2 * norb)
-            wfn = numpy.zeros(wfn_dim)
-            for i, alpha_str in enumerate(alpha_strs):
-                for j, beta_str in enumerate(beta_strs):
-                    merged_str, phase = _merge_alpha_beta_strs(alpha_str, beta_str, norb)
-                    wfn[merged_str] = phase * fcivec[i, j]
-            return e + c, QubitWaveFunction.from_array(wfn)
+            if not ("nroots" in kwargs and kwargs["nroots"] > 1):
+                fcivecs = [fcivecs]
+                e = [e]
+            wfns = []
+            energies = [x + c for x in e]
+            for fcivec in fcivecs:
+                if use_hcb:
+                    alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
+                    wfn_dim = 2**norb
+                    wfn = numpy.zeros(wfn_dim)
+                    for i, alpha_str in enumerate(alpha_strs):
+                        alpha_str_b = bin(alpha_str)[2:].zfill(norb)[::-1]
+                        merged_str = int(alpha_str_b, 2)
+                        wfn[merged_str] = fcivec[i, i]
+                else:
+                    alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
+                    beta_strs = alpha_strs.copy()
+                    wfn_dim = 2 ** (2 * norb)
+                    wfn = numpy.zeros(wfn_dim)
+                    for i, alpha_str in enumerate(alpha_strs):
+                        for j, beta_str in enumerate(beta_strs):
+                            if not self.transformation.up_then_down:
+                                merged_str, phase = _merge_alpha_beta_strs(alpha_str, beta_str, norb)
+                                wfn[merged_str] = phase * fcivec[i, j]
+                            else:
+                                alpha_str_b = bin(alpha_str)[2:].zfill(norb)
+                                beta_str_b = bin(beta_str)[2:].zfill(norb)
+                                merged_str_b = (alpha_str_b + beta_str_b)[::-1]
+                                merged_str = int(merged_str_b, 2)
+                                wfn[merged_str] = fcivec[i, j]
+                wfns.append(QubitWaveFunction.from_array(wfn))
+            if not ("nroots" in kwargs and kwargs["nroots"] > 1):
+                return energies[0], wfns[0]
+            return energies, wfns
 
         return e + c
+
+    def create_ci_vector(self, wfn, use_hcb=False):
+        """
+        Reduces a full Fock space CI vector to the (na, nb) vector
+        required by fci.direct_spin1.
+
+        Args:
+            wfn (np.ndarray): 1D vector of length 2**(2*norb).
+
+        Returns:
+            ci_vector (np.ndarray): 2D vector of shape (na, nb).
+        """
+        if not isinstance(wfn, numpy.ndarray):
+            if hasattr(wfn, "to_array"):
+                wfn = wfn.to_array()
+            else:
+                raise TequilaException(
+                    f"create_ci_vector received wfn object of type {type(wfn)} but needs numpy.ndarray or tq.QubitWaveFunction\nwfn={wfn}"
+                )
+
+        wfn = numpy.real_if_close(wfn).astype(numpy.float64)
+
+        if type(self.transformation).__name__ != "JordanWigner":
+            warnings.warn("!!!guess wavefunctions for pyscf need to be in JordanWigner encoding!!!")
+
+        norb = self.n_orbitals
+        nelec = self.n_electrons
+        neleca = (nelec + 1) // 2
+        nelecb = nelec // 2
+
+        expected_len = 2 ** (2 * norb) if not use_hcb else 2**norb
+        if wfn.size != expected_len:
+            raise ValueError(
+                f"Input vector has length {wfn.size}, "
+                f"but expected full Fock space length {expected_len} (for {norb} orbitals)."
+            )
+
+        na = fci.cistring.num_strings(norb, neleca)
+        nb = fci.cistring.num_strings(norb, nelecb)
+        ci_vector = numpy.zeros((na, nb), dtype=wfn.dtype)
+
+        for i in range(expected_len):
+            if use_hcb:
+                alpha_str = bin(i)[2:].zfill(norb)
+                beta_str = alpha_str
+            else:
+                state_binary_str = bin(i)[2:].zfill(2 * norb)
+                if not self.transformation.up_then_down:
+                    alpha_str = state_binary_str[0::2]
+                    beta_str = state_binary_str[1::2]
+                else:
+                    alpha_str = state_binary_str[0 : len(state_binary_str) // 2]
+                    beta_str = state_binary_str[len(state_binary_str) // 2 : len(state_binary_str)]
+
+            # Only keep states that are particle-number conserving
+            if alpha_str.count("1") == neleca and beta_str.count("1") == nelecb:
+                alpha_int = int(alpha_str, 2)
+                beta_int = int(beta_str, 2)
+
+                # Compute the phase as in _merge_alpha_beta_strs(alpha_str, beta_str, norb)
+                set_bits_beta = [i for i in range(norb) if (beta_int >> i) & 1]
+                try:
+                    phase = (-1) ** sum([(alpha_int & 2**i - 1).bit_count() for i in set_bits_beta])
+                except AttributeError as error:
+                    phase = (-1) ** sum([bin(alpha_int & 2**i - 1).count("1") for i in set_bits_beta])
+
+                coeff = wfn[i]
+                row_idx = fci.cistring.str2addr(norb, neleca, alpha_int)
+                col_idx = fci.cistring.str2addr(norb, nelecb, beta_int)
+                ci_vector[row_idx, col_idx] = phase * coeff
+
+        return ci_vector
 
     def compute_energy(self, method: str, *args, **kwargs) -> float:
         method = method.lower()

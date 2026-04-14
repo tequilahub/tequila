@@ -591,7 +591,7 @@ class QubitHamiltonian:
                 Take for example X(1).
                 If False the operator X(1) will get mapped to X(0)
                 and the function will return the matrix for X(0)
-                otherwise the function will return the matrix 1 \otimes X(1)
+                otherwise the function will return the matrix 1 \\otimes X(1)
 
         :return: np.ndarray(2**N, 2**N) with type complex
 
@@ -676,3 +676,6 @@ class QubitHamiltonian:
             if not p.is_all_z():
                 return False
         return True
+
+    def constant(self):
+        return self._qubit_operator.constant

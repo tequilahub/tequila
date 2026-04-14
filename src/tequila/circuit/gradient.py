@@ -206,6 +206,8 @@ def __grad_inner(arg, variable):
         E = arg.abstract_expectationvalue
         dE = __grad_expectationvalue(E, variable=variable)
         return compile(dE, **arg._input_args)
+    elif hasattr(arg, "grad"):
+        return arg.grad(variable)
     else:
         return __grad_objective(objective=arg, variable=variable)
 

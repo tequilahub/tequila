@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: ['3.10']
 
     steps:
     - uses: actions/checkout@v2
@@ -29,7 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install --upgrade pytest
         pip install -r requirements.txt
-        pip install "pyquil<3.0" # needs updates
+        pip install pyquil # <3.0 doesn't work for python 3.10 .... will most likely break
         pip install -e .
         pip install --upgrade pip 'urllib3<2' # issues with old pyquil version otherwise
         docker pull rigetti/qvm:edge

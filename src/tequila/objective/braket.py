@@ -18,7 +18,7 @@ def Fidelity(bra, ket, *args, **kwargs):
     -----
     Initializes an ancilla free implementation using:
     |<A|B>|^2 = <A|B><B|A><0|VAUB|0><0|VBUA|0> = <P0>_{VBAU}
-    VA = U^\dagger_A
+    VA = U^\\dagger_A
     P0 = |0..0><0..0|
     see: https://arxiv.org/abs/2006.03075 Eq.3-4
     or https://arxiv.org/abs/2011.05938 Eq.57
