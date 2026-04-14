@@ -142,7 +142,7 @@ class BackendCircuitCudaq(BackendCircuit):
         """
 
         # create a quantum state based on a given initial state
-        s = cudaq.qvector(inital_state)
+        state = cudaq.qvector(inital_state)
 
         for index in range(iteration_length):
             encoding = gate_encodings[index]
@@ -153,57 +153,57 @@ class BackendCircuitCudaq(BackendCircuit):
             # x gate
             if encoding == 1:
                 if control != -1:
-                    x.ctrl(s[control], s[target])
+                    x.ctrl(state[control], state[target])
                 else:
-                    x(s[target])
+                    x(state[target])
             # y gate
             elif encoding == 2:
                 if control != -1:
-                    y.ctrl(s[control], s[target])
+                    y.ctrl(state[control], state[target])
                 else:
-                    y(s[target])
+                    y(state[target])
             # z gate
             elif encoding == 3:
                 if control != -1:
-                    z.ctrl(s[control], s[target])
+                    z.ctrl(state[control], state[target])
                 else:
-                    z(s[target])
+                    z(state[target])
             # h gate
             elif encoding == 4:
                 if control != -1:
-                    h.ctrl(s[control], s[target])
+                    h.ctrl(state[control], state[target])
                 else:
-                    h(s[target])
+                    h(state[target])
             # Rx gate
             elif encoding == 5:
                 if control != -1:
                     pass
                 else:
-                    rx(angle, s[target])
+                    rx(angle, state[target])
             # Rx gate
             elif encoding == 6:
                 if control != -1:
                     pass
                 else:
-                    ry(angle, s[target])
+                    ry(angle, state[target])
             # Rx gate
             elif encoding == 7:
                 if control != -1:
                     pass
                 else:
-                    rz(angle, s[target])
+                    rz(angle, state[target])
             # S gate
             elif encoding == 8:
                 if control != -1:
-                    s.ctrl(s[control], s[target])
+                    s.ctrl(state[control], state[target])
                 else:
-                    s(s[target])
+                    s(state[target])
             # T gate
             elif encoding == 9:
                 if control != -1:
-                    t.ctrl(s[control], s[target])
+                    t.ctrl(state[control], state[target])
                 else:
-                    t(s[target])
+                    t(state[target])
 
     def prepare_circuit_for_state_modifier(self):
         """
