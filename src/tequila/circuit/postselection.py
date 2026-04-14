@@ -12,23 +12,47 @@ class Postselection:
     selected qubits are in the state |0>.
     """
 
-    def __init__(self, qubits: list[int]):
+    def __init__(self, qubits: list[int], controls=None):
         self._qubits = qubits
+        self._controls = controls if controls else []
 
     @property
     def qubits(self):
         return self._qubits
 
+    @property
+    def controls(self):
+        return self._controls
+
     @qubits.setter
     def qubits(self, qubits: list[int]):
         self._qubits = qubits
 
-    def mask(self, nbits: int, numbering: BitNumbering) -> int:
+    @controls.setter
+    def controls(self, controls: list[int]):
+        self._qubits = controls
+
+    def add_controls(self, new_controls: list[int]):
+        self._controls += new_controls
+
+    def postselection_mask(self, nbits: int, numbering: BitNumbering) -> int:
         """
         Returns a bitmask for the postselected qubits.
         """
         mask = 0
         for qubit in self.qubits:
+            if numbering == BitNumbering.LSB:
+                mask |= 1 << qubit
+            else:
+                mask |= 1 << (nbits - qubit - 1)
+        return mask
+
+    def controls_mask(self, nbits: int, numbering: BitNumbering) -> int:
+        """
+        Returns a bitmask for the control qubits.
+        """
+        mask = 0
+        for qubit in self.controls:
             if numbering == BitNumbering.LSB:
                 mask |= 1 << qubit
             else:
@@ -81,8 +105,11 @@ class PostselectionCircuit:
                     wfn = compiled[i](initial_state=wfn)
                 elif isinstance(fragment, Postselection):
                     amplitudes = wfn.to_array(numbering, copy=False)
-                    mask = fragment.mask(self.n_qubits, numbering)
-                    indices = np.arange(2**self.n_qubits) & mask != 0
+                    postselection_mask = fragment.postselection_mask(self.n_qubits, numbering)
+                    control_mask = fragment.controls_mask(self.n_qubits, numbering)
+                    indices = (np.arange(2**self.n_qubits) & postselection_mask != 0) & (
+                        np.arange(2**self.n_qubits) & control_mask == control_mask
+                    )
                     amplitudes[indices] = 0
                     wfn = QubitWaveFunction.from_array(amplitudes, numbering, copy=False)
         norm = np.linalg.norm(wfn.to_array(numbering))
@@ -112,9 +139,17 @@ class PostselectionCircuit:
             self._fragments.append(fragment)
         return self
 
+    def add_controls(self, controls: list[int]):
+        for fragment in self._fragments:
+            if isinstance(fragment, QCircuit):
+                fragment.add_controls(controls, inpl=True)
+            elif isinstance(fragment, Postselection):
+                fragment.add_controls(controls)
+        return self
+
     @property
     def n_qubits(self):
         if self._fragments:
-            return self._fragments[0].n_qubits
+            return max(f.n_qubits for f in self._fragments if isinstance(f, tq.QCircuit))
         else:
             return 0
