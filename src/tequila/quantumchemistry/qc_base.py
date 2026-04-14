@@ -788,9 +788,9 @@ class QuantumChemistryBase:
             return co
 
         def active_to_active(active):
-            '''
+            """
             translates active indices from canonical/the original basis to the native coeffs
-            '''
+            """
             ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
             for i in active:
                 for j in range(len(d)):
@@ -799,10 +799,10 @@ class QuantumChemistryBase:
             for i in range(len(active)):
                 idx = numpy.argmax(ov)
                 act.append(idx)
-                ov[idx] = 0.
+                ov[idx] = 0.0
             act.sort()
             return act
-        
+
         active = None
         if "active" in kwargs:
             active = kwargs["active"]
