@@ -703,6 +703,8 @@ class QuantumChemistryBase:
                 As an example, Assume the input geometry was H, He, H. active=[0,1,2] is selecting the (orthonormalized) atomic 1s (left H), 1s (He), 1s (right H).
                 If core=[0] and active is not set, then active=[0,2] will be selected automatically (as the 1s He atomic orbital will have the largest overlap
                 with the lowest energy HF orbital).
+            reference_orbitals(in kwargs): 
+                list of orbitals doubly occupied orbitals. Must be of len equal to number total electrons//2. Relevant for desired mol.n_electrons in active spaces.
         Returns
         -------
         New molecule in the native (orthonormalized) basis given
@@ -821,6 +823,13 @@ class QuantumChemistryBase:
             else:
                 active = get_active(core)
         assert len(active) + len(core) == len(self.integral_manager.orbitals)
+        if 'reference_orbitals' in kwargs:
+            reference_orbitals = kwargs['reference_orbitals']
+            kwargs.pop()
+            assert len(reference_orbitals) == len(self.parameters.total_n_electrons)//2,f'Number of  provided reference_orbitals incorrect. Expected {self.parameters.total_n_electrons//2}, received {len(reference_orbitals)}'
+        else:
+            reference_orbitals = [i.idx_total for i in self.integral_manager.reference_orbitals]
+
         to_active = [i for i in range(len(self.integral_manager.orbitals)) if i not in core]
         to_active = {active[i]: to_active[i] for i in range(len(active))}
         if len(core):
@@ -831,7 +840,7 @@ class QuantumChemistryBase:
                     two_body_integrals=self.integral_manager.two_body_integrals,
                     constant_term=self.integral_manager.constant_term,
                     active_orbitals=[*to_active.values()],
-                    reference_orbitals=[i.idx_total for i in self.integral_manager.reference_orbitals],
+                    reference_orbitals=reference_orbitals,
                     frozen_orbitals=core,
                     orbital_coefficients=coeff,
                     overlap_integrals=s,
@@ -844,7 +853,7 @@ class QuantumChemistryBase:
                     two_body_integrals=self.integral_manager.two_body_integrals,
                     constant_term=self.integral_manager.constant_term,
                     active_orbitals=[*to_active.values()],
-                    reference_orbitals=[i.idx_total for i in self.integral_manager.reference_orbitals],
+                    reference_orbitals=reference_orbitals,
                     frozen_orbitals=core,
                     orbital_coefficients=coeff,
                     overlap_integrals=s,
