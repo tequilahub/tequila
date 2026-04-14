@@ -703,7 +703,7 @@ class QuantumChemistryBase:
                 As an example, Assume the input geometry was H, He, H. active=[0,1,2] is selecting the (orthonormalized) atomic 1s (left H), 1s (He), 1s (right H).
                 If core=[0] and active is not set, then active=[0,2] will be selected automatically (as the 1s He atomic orbital will have the largest overlap
                 with the lowest energy HF orbital).
-            reference_orbitals(in kwargs): 
+            reference_orbitals(in kwargs):
                 list of orbitals doubly occupied orbitals. Must be of len equal to number total electrons//2. Relevant for desired mol.n_electrons in active spaces.
         Returns
         -------
@@ -826,8 +826,8 @@ class QuantumChemistryBase:
         if "reference_orbitals" in kwargs:
             reference_orbitals = kwargs["reference_orbitals"]
             kwargs.pop()
-            assert len(reference_orbitals) == len(self.parameters.total_n_electrons)//2, (
-                f'Number of  provided reference_orbitals incorrect. Expected {self.parameters.total_n_electrons//2}, received {len(reference_orbitals)}'
+            assert len(reference_orbitals) == len(self.parameters.total_n_electrons) // 2, (
+                f"Number of  provided reference_orbitals incorrect. Expected {self.parameters.total_n_electrons//2}, received {len(reference_orbitals)}"
             )
         else:
             reference_orbitals = [i.idx_total for i in self.integral_manager.reference_orbitals]
