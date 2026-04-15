@@ -9,7 +9,8 @@ Tequila can execute the underlying quantum expectation values on state of the ar
 # Getting Started
 
 Get started with our collection of  
-- *[Tutorials](https://tequilahub.github.io/tequila-tutorials/)*  
+- *[Tutorials](https://tequilahub.github.io/tequila-tutorials/)*
+- *[Documentation](https://tequilahub.github.io/tequila-tutorials/docs/sphinx/)*  
 
 Further sources:
 - [overview article](https://arxiv.org/abs/2011.03057)   
@@ -295,12 +296,7 @@ pip install pyscf
 Works similar as Psi4. Classical methods are also integrated in the madness interface allowing to use them in a basis-set-free representation.
 
 # Documentation
-You can build the documentation by navigating to `docs` and entering `make html`.
-Open the documentation with a browser over like `firefox docs/build/html/index.html`
-Note that you will need some additional python packages like `sphinx` and `mr2` that are not explicitly listed in the requirements.txt
-
-You can also visit our prebuild online [documentation](https://tequilahub.github.io/tequila/)
-that will correspond to the github master branch
+see [here](https://tequilahub.github.io/tequila-tutorials/docs/sphinx/)  
 
 # How to contribute
 If you find any bugs or inconveniences in `tequila` please don't be shy and let us know.
