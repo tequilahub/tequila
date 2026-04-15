@@ -124,7 +124,7 @@ class ExplicitCorrelationCorrection:
         Assemble generalized (spin-free) Fock operator,
         fock = core_hamiltonian + rdm1*( coulomb_matrix - 1/2*coulomb_matrix_permuted )
         .. math::
-                f^k_l = h^k_l + \Gamma^s_r ( g^{kr}_{ls} - 1/2*g^{kr}_{sl} ), k,l \in OBS \cup CABS, s,r \in CABS
+                f^k_l = h^k_l + \\Gamma^s_r ( g^{kr}_{ls} - 1/2*g^{kr}_{sl} ), k,l \\in OBS \\cup CABS, s,r \\in CABS
 
         Returns
         -------

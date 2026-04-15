@@ -115,13 +115,13 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
         super().__init__(parameters=parameters, transformation=transformation, orbitals=orbitals, *args, **kwargs)
 
-    def compute_fci(self, get_wfn=False, ci0=None, **kwargs):
+    def compute_fci(self, get_wfn=False, ci0=None, use_hcb=False, **kwargs):
         c, h1, h2 = self.get_integrals(ordering="chem")
         norb = self.n_orbitals
         nelec = self.n_electrons
 
         if ci0 is not None:
-            ci0 = self.create_ci_vector(ci0)
+            ci0 = self.create_ci_vector(ci0, use_hcb=use_hcb)
 
         e, fcivecs = fci.direct_spin1.kernel(
             h1, h2.elems, norb, nelec, max_cycle=2000, max_space=100, ci0=ci0, **kwargs
@@ -134,14 +134,30 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
             wfns = []
             energies = [x + c for x in e]
             for fcivec in fcivecs:
-                alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
-                beta_strs = alpha_strs.copy()
-                wfn_dim = 2 ** (2 * norb)
-                wfn = numpy.zeros(wfn_dim)
-                for i, alpha_str in enumerate(alpha_strs):
-                    for j, beta_str in enumerate(beta_strs):
-                        merged_str, phase = _merge_alpha_beta_strs(alpha_str, beta_str, norb)
-                        wfn[merged_str] = phase * fcivec[i, j]
+                if use_hcb:
+                    alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
+                    wfn_dim = 2**norb
+                    wfn = numpy.zeros(wfn_dim)
+                    for i, alpha_str in enumerate(alpha_strs):
+                        alpha_str_b = bin(alpha_str)[2:].zfill(norb)[::-1]
+                        merged_str = int(alpha_str_b, 2)
+                        wfn[merged_str] = fcivec[i, i]
+                else:
+                    alpha_strs = fci.cistring.make_strings(range(norb), nelec // 2)
+                    beta_strs = alpha_strs.copy()
+                    wfn_dim = 2 ** (2 * norb)
+                    wfn = numpy.zeros(wfn_dim)
+                    for i, alpha_str in enumerate(alpha_strs):
+                        for j, beta_str in enumerate(beta_strs):
+                            if not self.transformation.up_then_down:
+                                merged_str, phase = _merge_alpha_beta_strs(alpha_str, beta_str, norb)
+                                wfn[merged_str] = phase * fcivec[i, j]
+                            else:
+                                alpha_str_b = bin(alpha_str)[2:].zfill(norb)
+                                beta_str_b = bin(beta_str)[2:].zfill(norb)
+                                merged_str_b = (alpha_str_b + beta_str_b)[::-1]
+                                merged_str = int(merged_str_b, 2)
+                                wfn[merged_str] = fcivec[i, j]
                 wfns.append(QubitWaveFunction.from_array(wfn))
             if not ("nroots" in kwargs and kwargs["nroots"] > 1):
                 return energies[0], wfns[0]
@@ -149,7 +165,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
         return e + c
 
-    def create_ci_vector(self, wfn):
+    def create_ci_vector(self, wfn, use_hcb=False):
         """
         Reduces a full Fock space CI vector to the (na, nb) vector
         required by fci.direct_spin1.
@@ -170,7 +186,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
 
         wfn = numpy.real_if_close(wfn).astype(numpy.float64)
 
-        if not isinstance(self.transformation, JordanWigner):
+        if type(self.transformation).__name__ != "JordanWigner":
             warnings.warn("!!!guess wavefunctions for pyscf need to be in JordanWigner encoding!!!")
 
         norb = self.n_orbitals
@@ -178,7 +194,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         neleca = (nelec + 1) // 2
         nelecb = nelec // 2
 
-        expected_len = 2 ** (2 * norb)
+        expected_len = 2 ** (2 * norb) if not use_hcb else 2**norb
         if wfn.size != expected_len:
             raise ValueError(
                 f"Input vector has length {wfn.size}, "
@@ -190,14 +206,17 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
         ci_vector = numpy.zeros((na, nb), dtype=wfn.dtype)
 
         for i in range(expected_len):
-            state_binary_str = bin(i)[2:].zfill(2 * norb)
-
-            if not self.transformation.up_then_down:
-                alpha_str = state_binary_str[0::2]
-                beta_str = state_binary_str[1::2]
+            if use_hcb:
+                alpha_str = bin(i)[2:].zfill(norb)
+                beta_str = alpha_str
             else:
-                alpha_str = state_binary_str[0 : len(state_binary_str) // 2]
-                beta_str = state_binary_str[len(state_binary_str) // 2 : len(state_binary_str)]
+                state_binary_str = bin(i)[2:].zfill(2 * norb)
+                if not self.transformation.up_then_down:
+                    alpha_str = state_binary_str[0::2]
+                    beta_str = state_binary_str[1::2]
+                else:
+                    alpha_str = state_binary_str[0 : len(state_binary_str) // 2]
+                    beta_str = state_binary_str[len(state_binary_str) // 2 : len(state_binary_str)]
 
             # Only keep states that are particle-number conserving
             if alpha_str.count("1") == neleca and beta_str.count("1") == nelecb:
