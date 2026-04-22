@@ -1,4 +1,4 @@
-∂import numpy as np
+import numpy as np
 import tequila as tq
 import openfermion as of
 from openfermion import (
