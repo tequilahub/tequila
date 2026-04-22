@@ -1,4 +1,4 @@
-import numpy as np
+∂import numpy as np
 import tequila as tq
 import openfermion as of
 from openfermion import (
@@ -586,15 +586,11 @@ def find_index(basis_state):
     Returns:
         index (int): Index of the basis in total Qubit space.
     """
+    arr = np.asarray(basis_state, dtype=int).ravel()
+    n_qubits = arr.size
     index = 0
-    n_qubits = len(basis_state)
     for j in range(n_qubits):
-        try:
-            index += int(basis_state[j]) * 2 ** (n_qubits - j - 1)
-        except Exception as E:
-            print("basis_state=", basis_state)
-            print(f"j={j}")
-            print(f"basis_state[j]={basis_state[j]}")
+        index += int(arr[j].item()) * 2 ** (n_qubits - j - 1)
     return index
 
 
