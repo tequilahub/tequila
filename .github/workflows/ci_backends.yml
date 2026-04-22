@@ -52,7 +52,7 @@ jobs:
           # Export MPI_PATH manually into the shell for the build
           export MPI_PATH="$CONDA_PREFIX"
           
-          pip install "cudaq==0.13.0"
+          pip install "cudaq==0.14.0"
           
           # Now it can find mpi.h
           source $CONDA_PREFIX/lib/python3.11/site-packages/distributed_interfaces/activate_custom_mpi.sh
