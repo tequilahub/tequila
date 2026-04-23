@@ -1,8 +1,10 @@
 from tequila.optimizers.optimizer_base import OptimizerHistory, Optimizer, TequilaOptimizerException, OptimizerResults
 from tequila.optimizers.optimizer_scipy import OptimizerSciPy
 from tequila.optimizers.optimizer_gd import OptimizerGD
+from tequila.optimizers.optimizer_excsolve import OptimizerExcitationSolve
 from tequila.optimizers.optimizer_scipy import minimize as minimize_scipy
 from tequila.optimizers.optimizer_gd import minimize as minimize_gd
+from tequila.optimizers.optimizer_excsolve import minimize as minimize_excsolve
 from tequila.simulators.simulator_api import simulate
 from dataclasses import dataclass
 
@@ -18,12 +20,13 @@ class _Optimizers:
     methods: list = None
 
 
-SUPPORTED_OPTIMIZERS = ["scipy", "gpyopt", "gd"]
+SUPPORTED_OPTIMIZERS = ["scipy", "gpyopt", "gd", "excitationsolve"]
 INSTALLED_OPTIMIZERS = {}
 INSTALLED_OPTIMIZERS["scipy"] = _Optimizers(
     cls=OptimizerSciPy, minimize=minimize_scipy, methods=OptimizerSciPy.available_methods()
 )
 INSTALLED_OPTIMIZERS["gd"] = _Optimizers(cls=OptimizerGD, minimize=minimize_gd, methods=OptimizerGD.available_methods())
+
 
 has_gpyopt = False
 try:
@@ -36,6 +39,18 @@ try:
     has_gpyopt = True
 except ImportError:
     has_gpyopt = False
+
+has_excsolve = False
+try:
+    from tequila.optimizers.optimizer_excsolve import OptimizerExcitationSolve
+    from tequila.optimizers.optimizer_excsolve import minimize as minimize_excsolve
+
+    INSTALLED_OPTIMIZERS["excitationsolve"] = _Optimizers(
+        cls=OptimizerExcitationSolve, minimize=minimize_excsolve, methods=OptimizerExcitationSolve.available_methods()
+    )
+    has_excsolve = True
+except ImportError:
+    has_excsolve = False
 
 
 def show_available_optimizers(module=None):
@@ -138,5 +153,5 @@ def minimize(
             )
 
     raise TequilaOptimizerException(
-        "Could not find optimization method {} in tequila optimizers. You might miss dependencies"
+        f"Could not find optimization method {method} in tequila optimizers. You might miss dependencies"
     )
