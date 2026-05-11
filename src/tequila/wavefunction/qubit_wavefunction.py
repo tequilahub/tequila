@@ -13,7 +13,7 @@ import numbers
 import sympy
 
 from tequila.utils.bitstrings import BitString, reverse_int_bits
-from tequila import TequilaException, BitNumbering, initialize_bitstring
+from tequila import TequilaException, BitNumbering, initialize_bitstring, TequilaWarning
 from tequila.utils.keymap import KeyMapABC
 
 if typing.TYPE_CHECKING:
@@ -172,6 +172,20 @@ class QubitWaveFunction:
         Returns number of qubits in the wavefunction.
         """
         return self._n_qubits
+
+    @n_qubits.setter
+    def n_qubits(self, n_qubits: int):
+        """
+        Modifies the number of qubits in the wavefunction.
+        ONLY if it is bigger than the current number of qubits.
+        :param n_qubits: New number of qubits.
+        """
+        if n_qubits < self._n_qubits:
+            raise TequilaWarning("Cannot reduce number of qubits in wavefunction. Left unchanged.")
+        elif n_qubits == self._n_qubits:
+            pass
+        else:
+            self.increase_qubits(n_qubits - self._n_qubits, inplace=True)
 
     @property
     def numbering(self) -> BitNumbering:
@@ -349,6 +363,10 @@ class QubitWaveFunction:
 
     def inner(self, other: QubitWaveFunction) -> complex:
         """Returns the inner product with another wavefunction."""
+        if self._n_qubits > other._n_qubits:
+            other.increase_qubits(self._n_qubits - other._n_qubits, inplace=True)
+        elif other._n_qubits > self._n_qubits:
+            self.increase_qubits(other._n_qubits - self._n_qubits, inplace=True)
         if self._dense and other._dense and self._numbering == other._numbering:
             return np.inner(self._state.conjugate(), other._state)
         else:
@@ -442,3 +460,22 @@ class QubitWaveFunction:
                     raise TequilaException("unknown pauli: " + str(p))
             result[BitString.from_array(array=arr)] = c
         return paulistring.coeff * result
+
+    def increase_qubits(self, n_qubits: int, inplace: bool = True) -> typing.Optional[QubitWaveFunction]:
+        """
+        Increases the number of qubits in the wavefunction by adding qubits in the n_qubits*|0> state.
+        After this call, the wavefunction will be dense.
+        :param n_qubits: New number of qubits.
+        """
+        zero = QubitWaveFunction.from_basis_state(n_qubits, 0, numbering=self._numbering)
+        own = self.to_array(out_numbering=self.numbering)
+        zero = zero.to_array(out_numbering=self.numbering)
+        if self.numbering == BitNumbering.LSB:
+            new = np.kron(zero, own)
+        else:
+            new = np.kron(own, zero)
+        if inplace:
+            self._n_qubits = n_qubits + self.n_qubits
+            self.set_state(new)
+        else:
+            return QubitWaveFunction.from_array(new, n_qubits + self.n_qubits, numbering=self.numbering)

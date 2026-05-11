@@ -239,7 +239,7 @@ class QuantumChemistryBase:
         Notes
         ----------
         Creates the transformed hermitian generator of UCC type unitaries:
-              M(a^\dagger_{a_0} a_{i_0} a^\dagger{a_1}a_{i_1} ... - h.c.)
+              M(a^\\dagger_{a_0} a_{i_0} a^\\dagger{a_1}a_{i_1} ... - h.c.)
               where the qubit map M depends is self.transformation
 
         Parameters
@@ -685,7 +685,7 @@ class QuantumChemistryBase:
         # backward compatibility
         return self.use_native_orbitals()
 
-    def use_native_orbitals(self, inplace=False, core: list = None, *args, **kwargs):
+    def use_native_orbitals(self, inplace=False, core: list = [], *args, **kwargs):
         """
         Parameters
         ----------
@@ -703,6 +703,8 @@ class QuantumChemistryBase:
                 As an example, Assume the input geometry was H, He, H. active=[0,1,2] is selecting the (orthonormalized) atomic 1s (left H), 1s (He), 1s (right H).
                 If core=[0] and active is not set, then active=[0,2] will be selected automatically (as the 1s He atomic orbital will have the largest overlap
                 with the lowest energy HF orbital).
+            reference_orbitals(in kwargs):
+                list of orbitals doubly occupied orbitals. Must be of len equal to number total electrons//2. Relevant for desired mol.n_electrons in active spaces.
         Returns
         -------
         New molecule in the native (orthonormalized) basis given
@@ -787,24 +789,49 @@ class QuantumChemistryBase:
             co.sort()
             return co
 
+        def active_to_active(active):
+            """
+            translates active indices from canonical/the original basis to the native coeffs
+            """
+            ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
+            for i in active:
+                for j in range(len(d)):
+                    ov[j] += numpy.abs(inner(c.T[i], d.T[j], s))
+            act = []
+            for i in range(len(active)):
+                idx = numpy.argmax(ov)
+                act.append(idx)
+                ov[idx] = 0.0
+            act.sort()
+            return act
+
         active = None
-        if not self.integral_manager.active_space_is_trivial() and core is None:
-            core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
         if "active" in kwargs:
             active = kwargs["active"]
             kwargs.pop("active")
-            if core is None:
+            if not len(core):
                 core = get_core(active)
         else:
-            if active is None:
-                if core is None:
+            if not len(core):
+                if not self.integral_manager.active_space_is_trivial():
+                    active = [i.idx_total for i in self.integral_manager.orbitals if i.idx is not None]
+                    active = active_to_active(active)
+                    core = [i.idx_total for i in self.integral_manager.orbitals if i.idx is None]
+                else:
                     core = []
                     active = [i for i in range(len(self.integral_manager.orbitals))]
-                else:
-                    if isinstance(core, int):
-                        core = [core]
-                    active = get_active(core)
+            else:
+                active = get_active(core)
         assert len(active) + len(core) == len(self.integral_manager.orbitals)
+        if "reference_orbitals" in kwargs:
+            reference_orbitals = kwargs["reference_orbitals"]
+            kwargs.pop()
+            assert len(reference_orbitals) == len(self.parameters.total_n_electrons) // 2, (
+                f"Number of  provided reference_orbitals incorrect. Expected {self.parameters.total_n_electrons // 2}, received {len(reference_orbitals)}"
+            )
+        else:
+            reference_orbitals = [i.idx_total for i in self.integral_manager.reference_orbitals]
+
         to_active = [i for i in range(len(self.integral_manager.orbitals)) if i not in core]
         to_active = {active[i]: to_active[i] for i in range(len(active))}
         if len(core):
@@ -815,10 +842,11 @@ class QuantumChemistryBase:
                     two_body_integrals=self.integral_manager.two_body_integrals,
                     constant_term=self.integral_manager.constant_term,
                     active_orbitals=[*to_active.values()],
-                    reference_orbitals=[i.idx_total for i in self.integral_manager.reference_orbitals],
+                    reference_orbitals=reference_orbitals,
                     frozen_orbitals=core,
                     orbital_coefficients=coeff,
                     overlap_integrals=s,
+                    orbital_type="orthonormalized-{}-basis".format(self.integral_manager._basis_name),
                 )
                 return self
             else:
@@ -827,10 +855,11 @@ class QuantumChemistryBase:
                     two_body_integrals=self.integral_manager.two_body_integrals,
                     constant_term=self.integral_manager.constant_term,
                     active_orbitals=[*to_active.values()],
-                    reference_orbitals=[i.idx_total for i in self.integral_manager.reference_orbitals],
+                    reference_orbitals=reference_orbitals,
                     frozen_orbitals=core,
                     orbital_coefficients=coeff,
                     overlap_integrals=s,
+                    orbital_type="orthonormalized-{}-basis".format(self.integral_manager._basis_name),
                 )
                 parameters = copy.deepcopy(self.parameters)
                 result = QuantumChemistryBase(
@@ -915,7 +944,7 @@ class QuantumChemistryBase:
         Compute annihilation operator on spin-orbital in qubit representation
         Spin-orbital order is always (up,down,up,down,...)
         """
-        assert orbital <= self.n_orbitals * 2
+        assert orbital < self.n_orbitals * 2
         aop = openfermion.ops.FermionOperator(f"{orbital}", coefficient)
         return self.transformation(aop)
 
@@ -924,7 +953,7 @@ class QuantumChemistryBase:
         Compute creation operator on spin-orbital in qubit representation
         Spin-orbital order is always (up,down,up,down,...)
         """
-        assert orbital <= self.n_orbitals * 2
+        assert orbital < self.n_orbitals * 2
         cop = openfermion.ops.FermionOperator(f"{orbital}^", coefficient)
         return self.transformation(cop)
 
@@ -2191,7 +2220,7 @@ class QuantumChemistryBase:
             raise TequilaException("Need to specify a Quantum Circuit.")
 
         def _get_hcb_op(op_tuple):
-            """Build the hardcore boson operators: b^\dagger_ib_j + h.c. in qubit encoding"""
+            """Build the hardcore boson operators: b^\\dagger_ib_j + h.c. in qubit encoding"""
             if len(op_tuple) == 2:
                 return 2 * Sm(op_tuple[0][0]) * Sp(op_tuple[1][0])
             elif len(op_tuple) == 4:
@@ -2624,7 +2653,14 @@ class QuantumChemistryBase:
         circuit += gates.GeneralizedRotation(generator=n_down, angle=-2 * phi)
         return circuit
 
-    def get_givens_circuit(self, unitary, tol=1e-12, ordering=OPTIMIZED_ORDERING):
+    def get_givens_circuit(
+        self,
+        unitary,
+        tol=1e-12,
+        ordering=OPTIMIZED_ORDERING,
+        fix: bool = True,
+        label=None,
+    ) -> QCircuit:
         """
         Constructs a quantum circuit from a given real unitary matrix using Givens rotations.
 
@@ -2635,6 +2671,8 @@ class QuantumChemistryBase:
         - unitary (numpy.array): A real unitary matrix representing the transformation to implement.
         - tol (float): A tolerance threshold below which matrix elements are considered zero.
         - ordering (list of tuples or 'Optimized'): Custom ordering of indices for Givens rotations or 'Optimized' to generate them automatically.
+        - fix (bool): whether to set the angle as fixed or as inial value as: angle=tq.Variable(idx) + value. Useful to let further relaxation to the basis change
+        - label: can be passed instead of angle to have auto-naming with label ("R",i,j,label) useful for repreating gates with individual variables
 
         Returns:
         - QCircuit: A quantum circuit implementing the series of rotations decomposed from the unitary.
@@ -2647,11 +2685,25 @@ class QuantumChemistryBase:
 
         # Add all Rz (phase) rotations to the circuit.
         for phi in phi_list:
-            circuit += self.n_rotation(phi[1], phi[0])
+            if fix:
+                circuit += self.n_rotation(i=phi[1], phi=phi[0])
+            else:
+                circuit += self.n_rotation(
+                    i=phi[1],
+                    phi=phi[0] + Variable(f"Ph({phi[1]}" + ("," + str(label)) * (label is not None) + ")"),
+                )
 
         # Add all Givens rotations to the circuit.
         for theta in reversed(theta_list):
-            circuit += self.UR(theta[1], theta[2], theta[0] * 2)
+            if fix:
+                circuit += self.UR(i=theta[1], j=theta[2], angle=theta[0] * 2)
+            else:
+                circuit += self.UR(
+                    i=theta[1],
+                    j=theta[2],
+                    angle=(theta[0] * 2)
+                    + Variable(f"UR({theta[1]},{theta[2]}" + ("," + str(label)) * (label is not None) + ")"),
+                )
 
         return circuit
 

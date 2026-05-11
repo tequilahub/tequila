@@ -1,16 +1,16 @@
 import typing
 import warnings
 import numpy
+from importlib.metadata import version, PackageNotFoundError
 from numbers import Real as RealNumber
 from typing import Dict, Union, Hashable, Type, Optional, NamedTuple
-import pkg_resources
-from pkg_resources import DistributionNotFound
 from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, QTensor, BraKetImpl
 from tequila.utils.exceptions import TequilaException, TequilaWarning
 from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, BackendBraKet
 from tequila.circuit.noise import NoiseModel
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
+from tequila.wavefunction.density_matrix import DensityMatrix
 
 SUPPORTED_BACKENDS = [
     "qulacs",
@@ -29,6 +29,7 @@ SUPPORTED_BACKENDS = [
     "cudaq",
 ]
 
+SUPPORTED_DENSITY_BACKENDS = ["qiskit"]
 # TODO: Reenable noise for Qiskit
 SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
 
@@ -105,7 +106,7 @@ except ImportError:
     HAS_QISKIT_NOISE = False
 
 try:
-    pkg_resources.require("qiskit-aer-gpu")
+    version("qiskit-aer-gpu")
     from tequila.simulators.simulator_qiskit_gpu import BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu
 
     HAS_QISKIT_GPU = True
@@ -115,7 +116,7 @@ try:
 
     if HAS_QISKIT_GPU_NOISE:
         INSTALLED_NOISE_SAMPLERS["qiskit_gpu"] = BackendTypes(BackendCircuitQiskitGpu, BackendExpectationValueQiskitGpu)
-except (ImportError, DistributionNotFound):
+except (ImportError, PackageNotFoundError):
     HAS_QISKIT_GPU = False
     HAS_QISKIT_GPU_NOISE = False
 
@@ -145,7 +146,6 @@ except ImportError:
     HAS_CIRQ = False
 
 try:
-    pkg_resources.require("qulacs")
     import qulacs
     from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs, BackendBraKetQulacs
 
@@ -159,11 +159,10 @@ try:
     INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(
         CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs, BraKetType=BackendBraKetQulacs
     )
-except (ImportError, DistributionNotFound):
+except ImportError:
     HAS_QULACS = False
 
 try:
-    # pkg_resources.require("qulacs-gpu")
     from qulacs import QuantumStateGpu
     from tequila.simulators.simulator_qulacs_gpu import BackendCircuitQulacsGpu, BackendExpectationValueQulacsGpu
 
@@ -177,7 +176,7 @@ try:
     INSTALLED_NOISE_SAMPLERS["qulacs_gpu"] = BackendTypes(
         CircType=BackendCircuitQulacsGpu, ExpValueType=BackendExpectationValueQulacsGpu
     )
-except (ImportError, DistributionNotFound):
+except ImportError:
     HAS_QULACS_GPU = False
 
 
@@ -237,7 +236,12 @@ def show_available_simulators():
 
 
 def pick_backend(
-    backend: str = None, samples: int = None, noise: NoiseModel = None, device=None, exclude_symbolic: bool = True
+    backend: str = None,
+    samples: int = None,
+    simulate_density: bool = False,
+    noise: NoiseModel = None,
+    device=None,
+    exclude_symbolic: bool = True,
 ) -> str:
     """
     choose, or verify, a backend for the user.
@@ -268,6 +272,12 @@ def pick_backend(
         raise TequilaException("device use requires backend specification!")
 
     if backend is None:
+        if simulate_density:
+            for f in SUPPORTED_DENSITY_BACKENDS:
+                if f in INSTALLED_SIMULATORS:
+                    return f
+            raise TequilaException("Density simulators unavailable!")
+
         if noise is None:
             if samples is None:
                 for f in SUPPORTED_BACKENDS:
@@ -323,12 +333,15 @@ def compile_objective(
     variables=None,
     backend: str = None,
     samples: int = None,
+    simulate_density: bool = False,
     device: str = None,
     noise: NoiseModel = None,
     *args,
     **kwargs,
 ) -> Objective:
-    resolved = pick_backend(backend=backend, samples=samples, noise=noise, device=device)
+    resolved = pick_backend(
+        backend=backend, samples=samples, simulate_density=simulate_density, noise=noise, device=device
+    )
 
     if variables is None:
         variables = {k: 0.0 for k in objective.extract_variables()}
@@ -359,6 +372,7 @@ def compile_circuit(
     variables: typing.Dict["Variable", "RealNumber"] = None,
     backend: str = None,
     samples: int = None,
+    simulate_density: bool = False,
     noise: NoiseModel = None,
     device: str = None,
     *args,
@@ -470,6 +484,7 @@ def simulate(
     compiled_objective = compile(
         objective=objective,
         samples=samples,
+        simulate_density=False,
         variables=variables,
         backend=backend,
         noise=noise,
@@ -479,6 +494,43 @@ def simulate(
     )
 
     return compiled_objective(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
+
+
+def simulate_density(
+    objective: typing.Union["Objective", "QCircuit", "QTensor"],
+    variables: Dict[Union[Variable, Hashable], RealNumber] = None,
+    backend: str = None,
+    noise: NoiseModel = None,
+    device: str = None,
+    *args,
+    **kwargs,
+) -> Union[RealNumber, DensityMatrix]:
+    variables = format_variable_dictionary(variables)
+
+    if variables is None and not (len(objective.extract_variables()) == 0):
+        raise TequilaException(
+            "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
+                objective.extract_variables()
+            )
+        )
+
+    if backend is None:
+        backend = "qiskit"  # currently only permissible backend!
+    elif backend.lower() != "qiskit":
+        TequilaException("Density matrix simulation currently works with only qiskit backend!")
+
+    compiled_objective = compile(
+        objective=objective,
+        samples=None,
+        simulate_density=True,
+        variables=variables,
+        backend=backend,
+        noise=noise,
+        device=device,
+        *args,
+        **kwargs,
+    )
+    return compiled_objective(variables=variables, samples=None, simulate_density=True, *args, **kwargs)
 
 
 def draw(objective, variables=None, backend: str = None, name=None, *args, **kwargs):
@@ -620,6 +672,7 @@ def compile(
     objective: typing.Union["Objective", "QCircuit", "QTensor"],
     variables: Dict[Union["Variable", Hashable], RealNumber] = None,
     samples: int = None,
+    simulate_density: bool = False,
     backend: str = None,
     noise: NoiseModel = None,
     device: str = None,
@@ -650,7 +703,9 @@ def compile(
 
     """
 
-    backend = pick_backend(backend=backend, noise=noise, samples=samples, device=device)
+    backend = pick_backend(
+        backend=backend, noise=noise, samples=samples, simulate_density=simulate_density, device=device
+    )
 
     if variables is not None:
         # allow hashable types as keys without casting it to variables

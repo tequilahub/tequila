@@ -3,6 +3,8 @@ import tequila as tq
 import openfermion
 import multiprocessing as mp
 from scipy import sparse
+import scipy.sparse as sp
+import scipy.sparse.linalg as la
 
 
 def SpecNormComm(Op1, Op2, nqubs, Projector=None):
@@ -23,8 +25,17 @@ def SpecNormComm(Op1, Op2, nqubs, Projector=None):
     if Projector is not None:
         Comm = Projector * Comm
 
-    spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", return_eigenvectors=False)
+    n = Comm.shape[0]
+    v0 = [1.0 + 1.0j] * n
+    v0 = np.asarray(v0)
 
+    try:
+        spNorm = sparse.linalg.eigs(Comm, k=1, which="LM", v0=v0, return_eigenvectors=False)
+    except Exception as E:
+        # should catch this better: ideally ArpackError -9 (if the matrix is zero)
+        print("---> spNorm claculation crashed ... assuming zero matrix issue in Arpack <----")
+        print("error was: ", E)
+        return 0.0
     return np.abs(spNorm[0])
 
 

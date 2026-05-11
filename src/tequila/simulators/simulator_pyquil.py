@@ -512,7 +512,7 @@ class BackendCircuitPyquil(BackendCircuit):
 
         result = QubitWaveFunction(self.n_qubits, self.numbering)
         bit_dict = {}
-        for b in backend_result:
+        for b in backend_result.readout_data["ro"]:
             try:
                 bit_dict[str(b)] += 1
             except Exception:
