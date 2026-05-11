@@ -8,7 +8,7 @@ import warnings
 from tequila import TequilaException, TequilaWarning
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB, reverse_int_bits
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
-from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, QCircuit, change_basis
+from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, BackendBraKet, QCircuit, change_basis
 from tequila.utils.keymap import KeyMapRegisterToSubregister
 
 """
@@ -575,3 +575,106 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                     E += ps.coeff * sum(Esamples) / len(Esamples)
             result.append(E)
         return numpy.asarray(result)
+
+class BackendBraKetQulacs(BackendBraKet):
+    use_mapping = True
+    BackendCircuitType = BackendCircuitQulacs
+
+    def __init__(self, abstract_braket, *args, **kwargs):
+        super().__init__(abstract_braket, *args, **kwargs)
+
+        self._qulacs_observable = None
+
+        if self.operator is not None:
+            qubit_map = {q: i for i, q in enumerate(self.U_ket.abstract_qubits)}
+
+            obs = qulacs.Observable(self.U_ket.n_qubits)
+            added_any = False
+
+            for ps in self.operator.paulistrings:
+                if abs(ps.coeff) < 1e-14:
+                    continue
+
+                mapped_terms = []
+                skip_term = False
+                for k, v in ps.items():
+                    if k not in qubit_map:
+                        # if operator acts on qubits outside the circuit support,
+                        # tracing/reduction logic should ideally happen earlier
+                        skip_term = True
+                        break
+                    mapped_terms.append(v.upper() + " " + str(qubit_map[k]))
+
+                if skip_term:
+                    continue
+
+                string = " ".join(mapped_terms)
+                obs.add_operator(ps.coeff, string)
+                added_any = True
+
+            if added_any:
+                self._qulacs_observable = obs
+
+    def simulate(self, variables, initial_state=0, *args, **kwargs) -> complex:
+        self.update_variables(variables)
+
+        if self.operator is None:
+            if self.U_bra is self.U_ket:
+                return complex(1.0)
+
+            state_ket = self.U_ket.initialize_state(self.U_ket.n_qubits, initial_state)
+            self.U_ket.circuit.update_quantum_state(state_ket)
+
+            state_bra = self.U_bra.initialize_state(self.U_bra.n_qubits, initial_state)
+            self.U_bra.circuit.update_quantum_state(state_bra)
+
+            return complex(numpy.vdot(state_bra.get_vector(), state_ket.get_vector()))
+
+        if self._qulacs_observable is None:
+            return complex(0.0)
+
+        if self.U_bra is self.U_ket:
+            state = self.U_ket.initialize_state(self.U_ket.n_qubits, initial_state)
+            self.U_ket.circuit.update_quantum_state(state)
+            return complex(self._qulacs_observable.get_expectation_value(state))
+
+        state_ket = self.U_ket.initialize_state(self.U_ket.n_qubits, initial_state)
+        self.U_ket.circuit.update_quantum_state(state_ket)
+
+        state_bra = self.U_bra.initialize_state(self.U_bra.n_qubits, initial_state)
+        self.U_bra.circuit.update_quantum_state(state_bra)
+
+        return complex(self._qulacs_observable.get_transition_amplitude(state_bra, state_ket))
+
+    def simulate_wfn(self, backend_circuit: BackendCircuitQulacs, variables, initial_state: Union[int, QubitWaveFunction] = 0):
+        state = backend_circuit.initialize_state(backend_circuit.n_qubits, initial_state)
+        
+        backend_circuit.update_variables(variables)
+        backend_circuit.circuit.update_quantum_state(state)
+        
+        wfn = QubitWaveFunction.from_array(
+            array=state.get_vector(), numbering=backend_circuit.numbering
+        )
+        
+        return wfn
+
+    def sample(
+        self,
+        variables,
+        samples: int,
+        initial_state: Union[int, QubitWaveFunction] = 0,
+        *args,
+        **kwargs,
+    ) -> complex:
+        real_obj, imag_obj = self.abstract_braket.compile()
+ 
+        real_val = real_obj(
+            variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
+        imag_val = imag_obj(
+            variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
+ 
+        if imag_val == 0.0:
+            return float(real_val)
+        return complex(real_val, imag_val)

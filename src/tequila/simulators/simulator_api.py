@@ -1,14 +1,13 @@
-from collections import namedtuple
 import typing
 import warnings
 import numpy
 from numbers import Real as RealNumber
-from typing import Dict, Union, Hashable
+from typing import Dict, Union, Hashable, Type, Optional, NamedTuple
 import pkg_resources
 from pkg_resources import DistributionNotFound
-from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, QTensor
+from tequila.objective import Objective, Variable, assign_variable, format_variable_dictionary, QTensor, BraKetImpl
 from tequila.utils.exceptions import TequilaException, TequilaWarning
-from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue
+from tequila.simulators.simulator_base import BackendCircuit, BackendExpectationValue, BackendBraKet
 from tequila.circuit.noise import NoiseModel
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_symbolic import BackendCircuitSymbolic, BackendExpectationValueSymbolic
@@ -33,7 +32,11 @@ SUPPORTED_BACKENDS = [
 # TODO: Reenable noise for Qiskit
 SUPPORTED_NOISE_BACKENDS = ["cirq", "pyquil"]  # qulacs removed in v.1.9
 
-BackendTypes = namedtuple("BackendTypes", "CircType ExpValueType")
+class BackendTypes(NamedTuple):
+    CircType: Type 
+    ExpValueType: Type
+    BraKetType: Optional[type] = None
+
 INSTALLED_SIMULATORS = {}
 INSTALLED_SAMPLERS = {}
 
@@ -144,17 +147,17 @@ except ImportError:
 try:
     pkg_resources.require("qulacs")
     import qulacs
-    from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs
+    from tequila.simulators.simulator_qulacs import BackendCircuitQulacs, BackendExpectationValueQulacs, BackendBraKetQulacs
 
     HAS_QULACS = True
     INSTALLED_SIMULATORS["qulacs"] = BackendTypes(
-        CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs
+        CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs, BraKetType=BackendBraKetQulacs
     )
     INSTALLED_SAMPLERS["qulacs"] = BackendTypes(
-        CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs
+        CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs, BraKetType=BackendBraKetQulacs
     )
     INSTALLED_NOISE_SAMPLERS["qulacs"] = BackendTypes(
-        CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs
+        CircType=BackendCircuitQulacs, ExpValueType=BackendExpectationValueQulacs, BraKetType=BackendBraKetQulacs
     )
 except (ImportError, DistributionNotFound):
     HAS_QULACS = False
@@ -316,8 +319,8 @@ def pick_backend(
 
 
 def compile_objective(
-    objective: typing.Union["Objective"],
-    variables: typing.Dict["Variable", "RealNumber"] = None,
+    objective,
+    variables=None,
     backend: str = None,
     samples: int = None,
     device: str = None,
@@ -325,80 +328,31 @@ def compile_objective(
     *args,
     **kwargs,
 ) -> Objective:
-    """
-    compile an objective to render it callable and return it.
-    Parameters
-    ----------
-    objective: Objective:
-        the objective to compile
-    variables: dict, optional:
-        the variables to compile the objective with. Will autogenerate zeros for all variables if not supplied.
-    backend: str, optional:
-        the backend to compile the objective to.
-    samples: int, optional:
-        only matters if not None; compile the objective for sampling/verify backend can do so
-    device: optional:
-        the device on which the objective should (perhaps emulatedly) sample.
-    noise: str or NoiseModel, optional:
-        the noise to apply to all circuits in the objective.
-    args
-    kwargs
+    resolved = pick_backend(backend=backend, samples=samples, noise=noise, device=device)
 
-    Returns
-    -------
-    Objective:
-        the compiled objective.
-    """
-
-    backend = pick_backend(backend=backend, samples=samples, noise=noise, device=device)
-
-    # dummy variables
     if variables is None:
         variables = {k: 0.0 for k in objective.extract_variables()}
 
-    if samples is None:
-        ExpValueType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].ExpValueType
-    else:
-        ExpValueType = INSTALLED_SAMPLERS[pick_backend(backend=backend, samples=samples)].ExpValueType
-    all_compiled = True
-    # check if compiling is necessary
-    for arg in objective.args:
-        if hasattr(arg, "U") and isinstance(arg, BackendExpectationValue):
-            if not isinstance(arg, ExpValueType):
-                warnings.warn(
-                    "Looks like part the objective was already compiled for another backend.\nFound ExpectationValue of type {} and {}\n... proceeding with hybrid\n".format(
-                        type(arg), ExpValueType
-                    ),
-                    TequilaWarning,
-                )
-        elif hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
-            all_compiled = False
+    backend_registry = INSTALLED_SIMULATORS if samples is None else INSTALLED_SAMPLERS
+    backend_types = backend_registry[resolved]
+    ExpValueType = backend_types.ExpValueType
+    BraKetType = backend_types.BraKetType
 
+    all_compiled = all(
+        not (hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue))
+        for arg in objective.args
+    )
+    
     if all_compiled:
         return objective
 
-    argsets = objective.argsets
-    compiled_sets = []
-    for argset in argsets:
-        compiled_args = []
-        # avoid double compilations
-        expectationvalues = {}
-        for arg in argset:
-            if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
-                if arg not in expectationvalues:
-                    compiled_expval = ExpValueType(
-                        arg, variables=variables, noise=noise, device=device, *args, **kwargs
-                    )
-                    expectationvalues[arg] = compiled_expval
-                else:
-                    compiled_expval = expectationvalues[arg]
-                compiled_args.append(compiled_expval)
-            else:
-                compiled_args.append(arg)
-        compiled_sets.append(compiled_args)
-    if isinstance(objective, Objective):
-        return type(objective)(args=compiled_sets[0], transformation=objective.transformation)
+    cache = {}
+    new_args = [
+        _compile_arg(arg, ExpValueType, BraKetType, variables, noise, device, cache, *args, **kwargs)
+        for arg in objective.args
+    ]
 
+    return type(objective)(args=new_args, transformation=objective._transformation)
 
 def compile_circuit(
     abstract_circuit: "QCircuit",
@@ -512,7 +466,7 @@ def simulate(
                 objective.extract_variables()
             )
         )
-
+    
     compiled_objective = compile(
         objective=objective,
         samples=samples,
@@ -620,6 +574,47 @@ def draw(objective, variables=None, backend: str = None, name=None, *args, **kwa
                 print(compiled.circuit)
                 return ""
 
+def _compile_arg(arg, ExpValueType, BraKetType, variables, noise, device,
+                 cache, *args, **kwargs):
+    if id(arg) in cache:
+        return cache[id(arg)]
+ 
+    if isinstance(arg, BraKetImpl) and not isinstance(arg, BackendBraKet):
+        if BraKetType is None:
+            raise TequilaException(
+                "Backend does not support BraKet. "
+                "Use a backend with BraKetType (e.g. qulacs)."
+            )
+        compiled = BraKetType(
+            arg, variables=variables, noise=noise, device=device, *args, **kwargs
+        )
+        cache[id(arg)] = compiled
+        return compiled
+ 
+    if (hasattr(arg, "H") and hasattr(arg, "U")
+            and not isinstance(arg, BackendExpectationValue)):
+        compiled = ExpValueType(
+            arg, variables=variables, noise=noise, device=device, *args, **kwargs
+        )
+        cache[id(arg)] = compiled
+        return compiled
+ 
+    if isinstance(arg, Objective):
+        new_args = [
+            _compile_arg(a, ExpValueType, BraKetType, variables, noise,
+                         device, cache, *args, **kwargs)
+            for a in arg.args
+        ]
+
+        if any(new is old for new, old in zip(new_args, arg.args)):
+            pass
+
+        compiled = Objective(args=new_args, transformation=arg._transformation)
+        cache[id(arg)] = compiled
+        return compiled
+ 
+    cache[id(arg)] = arg
+    return arg
 
 def compile(
     objective: typing.Union["Objective", "QCircuit", "QTensor"],
@@ -673,6 +668,19 @@ def compile(
             *args,
             **kwargs,
         )
+
+    if isinstance(objective, BraKetImpl):
+        if samples is None:
+            BackendType = INSTALLED_SIMULATORS[pick_backend(backend=backend)].BraKetType
+        else:
+            BackendType = INSTALLED_SAMPLERS[pick_backend(backend=backend, samples=samples)].BraKetType
+
+        if BackendType is None:
+            raise TequilaException(
+                "Backend {} does not support BraKet compilation.".format(backend)
+            )
+
+        return BackendType(objective, variables=variables, noise=noise, device=device, *args, **kwargs)
 
     if isinstance(objective, Objective) or hasattr(objective, "args"):
         return compile_objective(

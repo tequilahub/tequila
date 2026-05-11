@@ -5,14 +5,19 @@ from tequila.objective import (
     Objective,
     VectorObjective,
     ExpectationValue,
+    BraKet,
+    RealBraKet,
+    ImagBraKet,
     Variable,
     assign_variable,
     format_variable_dictionary,
     vectorize,
+    make_transition,
+    make_overlap, 
+    Overlap, 
+    Fidelity
 )
 from tequila.objective import QTensor
-from tequila.objective.braket import BraKet, make_transition, make_overlap, Overlap, Fidelity
-
 from tequila.optimizers import INSTALLED_OPTIMIZERS, show_available_optimizers
 from tequila.optimizers import minimize, minimize_scipy, minimize_gd, optimizer_scipy
 

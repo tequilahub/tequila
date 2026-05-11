@@ -2,14 +2,15 @@ import operator
 import tequila as tq
 import numpy as np
 from tequila.circuit.gates import PauliGate
-from tequila.objective.braket import make_overlap, make_transition
+from tequila.objective.objective import make_overlap, make_transition
 from tequila.tools.random_generators import make_random_circuit, make_random_hamiltonian
+
 
 
 def test_simple_overlap():
     """
     Function that tests if make_overlap function is working correctly.
-    It creates a simple circuit in order to check that both real and imaginary
+    It creates a simple circuit in order to cwheck that both real and imaginary
     part are calculated in the right way.
 
     Returns
@@ -21,7 +22,7 @@ def test_simple_overlap():
     U0 = tq.gates.Rz(angle=1.0, target=1)  # tq.gates.H(target=1) + tq.gates.CNOT (1 ,2)
     U1 = tq.gates.Rz(angle=2, target=1)  # tq.gates.X(target=[1,2])#
 
-    objective_real, objective_im = make_overlap(U0, U1)
+    objective_real, objective_im = make_overlap(bra=U0, ket=U1)
 
     Ex = tq.simulate(objective_real)
     Ey = tq.simulate(objective_im)
@@ -36,7 +37,7 @@ def test_simple_overlap():
     wfn1 = tq.simulate(U1)
 
     test = wfn0.inner(wfn1)
-    # print('Correct overlap between the two states: {}'.format(test))
+    print('Correct overlap between the two states: {}'.format(test))
 
     # print('The two result are approximately the same?',np.isclose(test, exp_val, atol=1.e-4))
 
@@ -63,7 +64,7 @@ def test_random_overlap():
     n_qubits = np.random.randint(1, high=5)
     U = {k: tq.make_random_circuit(n_qubits) for k in range(2)}
 
-    objective_real, objective_im = make_overlap(U[0], U[1])
+    objective_real, objective_im = make_overlap(bra=U[0], ket=U[1])
 
     Ex = tq.simulate(objective_real)
     Ey = tq.simulate(objective_im)
@@ -105,7 +106,7 @@ def test_simple_transition():
     # print('Hamiltonian',H,'\n')
 
     # calculating the transition element
-    trans_real, trans_im = make_transition(U0=U0, U1=U1, H=H)
+    trans_real, trans_im = make_transition(bra=U0, ket=U1, H=H)
 
     tmp_real = tq.simulate(trans_real)
     tmp_im = tq.simulate(trans_im)
@@ -167,7 +168,7 @@ def test_random_transition():
 
     H = make_random_hamiltonian(n_qubits, paulis=paulis, n_ps=n_ps)
 
-    trans_real, trans_im = make_transition(U0=U[0], U1=U[1], H=H)
+    trans_real, trans_im = make_transition(bra=U[0], ket=U[1], H=H)
 
     tmp_real = tq.simulate(trans_real)
     tmp_im = tq.simulate(trans_im)
@@ -213,7 +214,7 @@ def test_braket():
     U = {k: tq.make_random_circuit(n_qubits) for k in range(2)}
 
     ######## Testing self overlap #########
-    self_overlap_real, self_overlap_im = tq.braket(ket=U[0])
+    self_overlap_real, self_overlap_im = tq.BraKet(ket=U[0]).to_expectation_value()
 
     assert np.isclose(self_overlap_real(), 1, atol=1.0e-4)
     assert np.isclose(self_overlap_im(), 0, atol=1.0e-4)
@@ -226,7 +227,7 @@ def test_braket():
     H = make_random_hamiltonian(n_qubits, paulis=paulis, n_ps=n_ps)
 
     exp_value_tmp = tq.ExpectationValue(H=H, U=U[0])
-    br_exp_value_real, br_exp_value_im = tq.braket(ket=U[0], operator=H)
+    br_exp_value_real, br_exp_value_im = tq.BraKet(ket=U[0], operator=H).to_expectation_value()
     br_exp_value_tmp = br_exp_value_real + 1.0j * br_exp_value_im
 
     exp_value = tq.simulate(exp_value_tmp)
@@ -244,7 +245,7 @@ def test_braket():
 
     overlap = Ex + 1.0j * Ey
 
-    br_objective_real, br_objective_im = tq.braket(ket=U[0], bra=U[1])
+    br_objective_real, br_objective_im = tq.BraKet(ket=U[0], bra=U[1]).to_expectation_value()
 
     br_Ex = tq.simulate(br_objective_real)
     br_Ey = tq.simulate(br_objective_im)
@@ -255,14 +256,14 @@ def test_braket():
 
     ######## Testing transition element #########
 
-    trans_real, trans_im = make_transition(U0=U[1], U1=U[0], H=H)
+    trans_real, trans_im = make_transition(bra=U[1], ket=U[0], H=H)
 
     tmp_real = tq.simulate(trans_real)
     tmp_im = tq.simulate(trans_im)
 
     trans_el = tmp_real + 1.0j * tmp_im
 
-    br_trans_real, br_trans_im = tq.braket(ket=U[0], bra=U[1], operator=H)
+    br_trans_real, br_trans_im = tq.BraKet(ket=U[0], bra=U[1], operator=H).to_expectation_value()
 
     br_tmp_real = tq.simulate(br_trans_real)
     br_tmp_im = tq.simulate(br_trans_im)
