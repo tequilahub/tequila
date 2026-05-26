@@ -131,7 +131,7 @@ class BraKetImpl(QuantumArg):
         return self.is_overlap and self.bra is self.ket
 
     @property
-    def qubits(self) -> list[int]:
+    def qubits(self):
         q = set(self.bra.qubits) | set(self.ket.qubits)
         if self.operator is not None:
             for ps in self.operator.paulistrings:
