@@ -12,7 +12,7 @@ from tequila.objective.objective import (
     make_overlap,
     make_transition,
     Overlap,
-    Fidelity
+    Fidelity,
 )
 
 from tequila.objective.qtensor import QTensor, VectorObjective, vectorize

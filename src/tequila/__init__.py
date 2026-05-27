@@ -13,9 +13,9 @@ from tequila.objective import (
     format_variable_dictionary,
     vectorize,
     make_transition,
-    make_overlap, 
-    Overlap, 
-    Fidelity
+    make_overlap,
+    Overlap,
+    Fidelity,
 )
 from tequila.objective import QTensor
 from tequila.optimizers import INSTALLED_OPTIMIZERS, show_available_optimizers

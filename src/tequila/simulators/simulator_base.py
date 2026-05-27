@@ -1120,48 +1120,34 @@ class BackendExpectationValue:
             result.append(to_float(final_E))
         return numpy.asarray(result)
 
+
 class BackendBraKet:
     BackendCircuitType = BackendCircuit
 
     @property
     def n_qubits(self) -> int:
         return self.U_ket.n_qubits
-    
+
     def __init__(self, braket, variables, noise=None, device=None, *args, **kwargs):
         self.abstract_braket = braket
         self._input_args = {"variables": variables, "noise": noise, "device": device, **kwargs}
         self._variables = braket.extract_variables()
 
         self.U_ket = self.BackendCircuitType(
-            abstract_circuit=braket.ket,
-            variables=variables,
-            noise=noise,
-            device=device,
-            *args,
-            **kwargs
+            abstract_circuit=braket.ket, variables=variables, noise=noise, device=device, *args, **kwargs
         )
 
         if braket.bra is braket.ket:
             self.U_bra = self.U_ket
         else:
             self.U_bra = self.BackendCircuitType(
-                abstract_circuit=braket.bra,
-                variables=variables,
-                noise=noise,
-                device=device,
-                *args,
-                **kwargs
+                abstract_circuit=braket.bra, variables=variables, noise=noise, device=device, *args, **kwargs
             )
 
         self.operator = braket.operator
 
     def __call__(
-        self,
-        variables,
-        samples: int = None,
-        initial_state: Union[int, QubitWaveFunction] = 0,
-        *args,
-        **kwargs
+        self, variables, samples: int = None, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs
     ) -> complex:
         variables = format_variable_dictionary(variables)
 
@@ -1169,25 +1155,22 @@ class BackendBraKet:
             missing = set(self._variables) - set(variables.keys())
             if missing:
                 raise TequilaException("BackendBraKet missing variables: {}".format(missing))
-            
+
         if samples is None:
             return self.simulate(variables=variables, initial_state=initial_state, *args, **kwargs)
         else:
             return self.sample(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
-        
+
     def update_variables(self, variables):
         self.U_ket.update_variables(variables)
         if self.U_bra is not self.U_ket:
             self.U_bra.update_variables(variables)
 
     def simulate_wfn(
-        self,
-        backend_circuit: BackendCircuit,
-        variables,
-        initial_state: Union[int, QubitWaveFunction] = 0
+        self, backend_circuit: BackendCircuit, variables, initial_state: Union[int, QubitWaveFunction] = 0
     ) -> QubitWaveFunction:
         return backend_circuit.simulate(variables=variables, initial_state=initial_state)
-    
+
     def simulate(self, variables, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs) -> complex:
         self.update_variables(variables)
 
@@ -1206,7 +1189,7 @@ class BackendBraKet:
             result += coeff * wfn_bra.inner(wfn_p_ket)
 
         return complex(result)
-    
+
     def sample(self, variables, samples: int, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
         real_obj, imag_obj = self.abstract_braket.compile()
 
@@ -1215,8 +1198,8 @@ class BackendBraKet:
 
         if imag_val == 0.0:
             return float(real_val)
-        
+
         return complex(real_val, imag_val)
-    
+
     def extract_variables(self) -> typing.List[Variable]:
         return list(self._variables)

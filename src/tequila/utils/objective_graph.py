@@ -134,7 +134,7 @@
 #     n_args = len(obj.args)
 #     arg_nodes = [_walk(a, depth + 1, id_map, counters) for a in obj.args]
 #     tf_node = _walk_transform(obj._transformation, obj.args, depth, id_map, counters)
-    
+
 #     expr_str = str(obj)
 
 #     if (
@@ -900,6 +900,7 @@ from tequila.utils import JoinedTransformation
 
 # ── Public graph API ──────────────────────────────────────────────────────────
 
+
 def walk_objectives(obj, _depth: int = 0, _id_map: dict | None = None) -> dict:
     if _id_map is None:
         _id_map = {}
@@ -931,6 +932,7 @@ def print_graph(node: dict, indent: int = 0) -> None:
 
 # ── Objective walker ──────────────────────────────────────────────────────────
 
+
 def _walk(obj, depth: int, id_map: dict, counters: dict) -> dict:
     from tequila.objective.objective import (
         Objective,
@@ -938,6 +940,7 @@ def _walk(obj, depth: int, id_map: dict, counters: dict) -> dict:
         Variable,
         FixedVariable,
     )
+
     try:
         from tequila.objective.objective import BraKetImpl
     except ImportError:
@@ -973,10 +976,16 @@ def _walk(obj, depth: int, id_map: dict, counters: dict) -> dict:
     elif isinstance(obj, BraKetImpl):
         counters["Bk"] += 1
         idx = counters["Bk"]
-        node.update({
-            "kind": "braket", "label": f"Bk{idx}", "expr": f"Bk{idx}",
-            "args": [], "transform": None, "meta": {"index": idx},
-        })
+        node.update(
+            {
+                "kind": "braket",
+                "label": f"Bk{idx}",
+                "expr": f"Bk{idx}",
+                "args": [],
+                "transform": None,
+                "meta": {"index": idx},
+            }
+        )
 
     elif isinstance(obj, ExpectationValueImpl):
         _fill_evimpl(node, obj, depth, counters)
@@ -995,14 +1004,16 @@ def _fill_objective(node: dict, obj, depth: int, id_map: dict, counters: dict) -
     arg_nodes = [_walk(a, depth + 1, id_map, counters) for a in obj.args]
     tf_node = _walk_transform(obj._transformation, obj.args, depth, id_map, counters)
 
-    node.update({
-        "kind": "objective",
-        "label": "Objective",
-        "expr": "",
-        "args": arg_nodes,
-        "transform": tf_node,
-        "meta": {"n_args": n_args, "is_leaf": n_args == 0},
-    })
+    node.update(
+        {
+            "kind": "objective",
+            "label": "Objective",
+            "expr": "",
+            "args": arg_nodes,
+            "transform": tf_node,
+            "meta": {"n_args": n_args, "is_leaf": n_args == 0},
+        }
+    )
 
 
 def _fill_evimpl(node: dict, obj, depth: int, counters: dict) -> None:
@@ -1014,8 +1025,17 @@ def _fill_evimpl(node: dict, obj, depth: int, counters: dict) -> None:
 # ── Transform walking ─────────────────────────────────────────────────────────
 
 _NUMPY_OPS = {
-    "multiply", "add", "subtract", "true_divide", "power",
-    "sin", "cos", "exp", "log", "sqrt", "abs",
+    "multiply",
+    "add",
+    "subtract",
+    "true_divide",
+    "power",
+    "sin",
+    "cos",
+    "exp",
+    "log",
+    "sqrt",
+    "abs",
 }
 
 _OPCODE_MAP = {
@@ -1031,10 +1051,25 @@ _OPCODE_MAP = {
 }
 
 OP_SYMBOL_MAP = {
-    "add": "+", "subtract": "-", "multiply": "*", "true_divide": "/", "power": "^",
-    "+": "+", "-": "-", "*": "*", "/": "/", "**": "^", "^": "^",
-    "sin": "sin", "cos": "cos", "exp": "exp", "log": "log", "sqrt": "√", "abs": "|x|",
+    "add": "+",
+    "subtract": "-",
+    "multiply": "*",
+    "true_divide": "/",
+    "power": "^",
+    "+": "+",
+    "-": "-",
+    "*": "*",
+    "/": "/",
+    "**": "^",
+    "^": "^",
+    "sin": "sin",
+    "cos": "cos",
+    "exp": "exp",
+    "log": "log",
+    "sqrt": "√",
+    "abs": "|x|",
 }
+
 
 def _detect_power_transform(tf, exponent: float | None) -> bool:
     if exponent is None:
@@ -1043,7 +1078,7 @@ def _detect_power_transform(tf, exponent: float | None) -> bool:
     try:
         x = 3.0
         y = tf(x)
-        return np.isclose(float(y), x ** exponent)
+        return np.isclose(float(y), x**exponent)
     except Exception:
         return False
 
@@ -1263,7 +1298,9 @@ def _walk_lambda(tf, args, depth: int, id_map: dict, counters: dict) -> dict:
         },
     }
 
+
 # ── Diff helpers ──────────────────────────────────────────────────────────────
+
 
 def _index_by_id(node: dict, acc: dict | None = None) -> dict:
     if acc is None:
@@ -1306,13 +1343,14 @@ def _diff_node(before_idx, after_idx, node):
 
 # ── String helpers ────────────────────────────────────────────────────────────
 
+
 def _expr_from_transform(tf, args) -> str:
     if tf is None:
         return _args_expr(args)
     if isinstance(tf, JoinedTransformation):
         op = _op_name(tf.op)
-        le = _expr_from_transform(tf.left, args[:tf.split])
-        re_ = _expr_from_transform(tf.right, args[tf.split:])
+        le = _expr_from_transform(tf.left, args[: tf.split])
+        re_ = _expr_from_transform(tf.right, args[tf.split :])
         return f"({le} {op} {re_})"
     op_symbol, _ = _extract_lambda_info(tf)
     name = OP_SYMBOL_MAP.get(op_symbol, op_symbol) if op_symbol else "λ"
@@ -1321,6 +1359,7 @@ def _expr_from_transform(tf, args) -> str:
 
 def _args_expr(args) -> str:
     from tequila.objective.objective import Variable, FixedVariable
+
     parts = []
     for i, a in enumerate(args):
         if isinstance(a, Variable):
@@ -1337,6 +1376,7 @@ def _args_expr(args) -> str:
 def _stable_id(obj) -> str:
     try:
         from tequila.simulators.simulator_base import BackendExpectationValue
+
         if isinstance(obj, BackendExpectationValue):
             return f"ExpectationValueImpl@{id(obj.abstract_expectationvalue):x}"
     except ImportError:
@@ -1357,7 +1397,7 @@ def _op_name(op) -> str:
 
 def _print_transform(node: dict, indent: int) -> None:
     prefix = " " * indent
-    print(f"{prefix}[{node.get('kind','?')}] {node.get('label','')} -> {node.get('expr','')}")
+    print(f"{prefix}[{node.get('kind', '?')}] {node.get('label', '')} -> {node.get('expr', '')}")
     if node.get("left"):
         _print_transform(node["left"], indent + 1)
     if node.get("right"):
@@ -1365,6 +1405,7 @@ def _print_transform(node: dict, indent: int) -> None:
 
 
 # ── Layout ────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class LayoutNode:
@@ -1402,18 +1443,26 @@ def _dict_to_layout(d: dict) -> LayoutNode | None:
         node.kind = "transform"
 
         # Build synthetic sub-nodes for each side and recurse
-        left_node = _dict_to_layout({
-            "kind": "objective", "label": "Objective", "expr": "",
-            "args": args[:split],
-            "transform": tf.get("left"),
-            "meta": {},
-        })
-        right_node = _dict_to_layout({
-            "kind": "objective", "label": "Objective", "expr": "",
-            "args": args[split:],
-            "transform": tf.get("right"),
-            "meta": {},
-        })
+        left_node = _dict_to_layout(
+            {
+                "kind": "objective",
+                "label": "Objective",
+                "expr": "",
+                "args": args[:split],
+                "transform": tf.get("left"),
+                "meta": {},
+            }
+        )
+        right_node = _dict_to_layout(
+            {
+                "kind": "objective",
+                "label": "Objective",
+                "expr": "",
+                "args": args[split:],
+                "transform": tf.get("right"),
+                "meta": {},
+            }
+        )
         node.children = [c for c in (left_node, right_node) if c is not None]
         return node
 
@@ -1439,17 +1488,17 @@ def _layout_from_tf_and_args(tf, args) -> LayoutNode | None:
                 kind="transform",
                 expr="",
                 children=(
-                    [nested_layout, LayoutNode(label=const_label, kind="fixed", expr="")]
-                    if nested_layout else []
+                    [nested_layout, LayoutNode(label=const_label, kind="fixed", expr="")] if nested_layout else []
                 ),
             )
         if pattern == "coeff_times":
             op = meta.get("op_symbol", "*")
             return LayoutNode(
-                label=op, kind="transform", expr="",
+                label=op,
+                kind="transform",
+                expr="",
                 children=(
-                    [LayoutNode(label=const_label, kind="fixed", expr=""), nested_layout]
-                    if nested_layout else []
+                    [LayoutNode(label=const_label, kind="fixed", expr=""), nested_layout] if nested_layout else []
                 ),
             )
         # Unknown pattern — just return the nested layout
@@ -1466,7 +1515,9 @@ def _layout_from_tf_and_args(tf, args) -> LayoutNode | None:
     if op in ("power", "**", "^"):
         exponent = consts[-1] if consts else 2.0
         return LayoutNode(
-            label="^", kind="transform", expr="",
+            label="^",
+            kind="transform",
+            expr="",
             children=[
                 children[0],
                 LayoutNode(label=f"{exponent:g}", kind="fixed", expr=""),
@@ -1476,7 +1527,9 @@ def _layout_from_tf_and_args(tf, args) -> LayoutNode | None:
     if op is None and len(children) == 1 and consts:
         coeff = float(consts[-1])
         return LayoutNode(
-            label="*", kind="transform", expr="",
+            label="*",
+            kind="transform",
+            expr="",
             children=[LayoutNode(label=f"{coeff:g}", kind="fixed", expr=""), children[0]],
         )
 
@@ -1494,18 +1547,18 @@ def _layout_from_tf_and_args(tf, args) -> LayoutNode | None:
 COLORS = {
     "objective": {"face": "#FFFFFF", "edge": "#000000", "text": "#000000"},
     "transform": {"face": "#FFFFFF", "edge": "#000000", "text": "#000000"},
-    "evimpl":   {"face": "#DFF4FF", "edge": "#000000", "text": "#000000"},
-    "braket":   {"face": "#DFF4FF", "edge": "#000000", "text": "#000000"},
+    "evimpl": {"face": "#DFF4FF", "edge": "#000000", "text": "#000000"},
+    "braket": {"face": "#DFF4FF", "edge": "#000000", "text": "#000000"},
     "variable": {"face": "#FFFFFF", "edge": "#000000", "text": "#000000"},
-    "fixed":    {"face": "#FFFFFF", "edge": "#000000", "text": "#000000"},
-    "unknown":  {"face": "#FFFFFF", "edge": "#000000", "text": "#000000"},
+    "fixed": {"face": "#FFFFFF", "edge": "#000000", "text": "#000000"},
+    "unknown": {"face": "#FFFFFF", "edge": "#000000", "text": "#000000"},
 }
 
-BOX_W  = 0.45
-BOX_H  = 0.25
+BOX_W = 0.45
+BOX_H = 0.25
 RADIUS = 0.05
-X_SEP  = 1.35
-Y_SEP  = 1.15
+X_SEP = 1.35
+Y_SEP = 1.15
 
 
 def _assign_xy(node: LayoutNode, depth: int, counter: list) -> None:
@@ -1523,21 +1576,37 @@ def _draw_edge(ax, parent: LayoutNode, child: LayoutNode) -> None:
     ax.plot(
         [parent.x, child.x],
         [parent.y + BOX_H, child.y - BOX_H],
-        color="black", lw=1.2, zorder=1,
+        color="black",
+        lw=1.2,
+        zorder=1,
     )
 
 
 def _draw_node(ax, node: LayoutNode) -> None:
     c = COLORS.get(node.kind, COLORS["unknown"])
-    ax.add_patch(FancyBboxPatch(
-        (node.x - BOX_W, node.y - BOX_H), 2 * BOX_W, 2 * BOX_H,
-        boxstyle=f"round,pad=0.03,rounding_size={RADIUS}",
-        linewidth=1.4, edgecolor=c["edge"], facecolor=c["face"], zorder=3,
-    ))
+    ax.add_patch(
+        FancyBboxPatch(
+            (node.x - BOX_W, node.y - BOX_H),
+            2 * BOX_W,
+            2 * BOX_H,
+            boxstyle=f"round,pad=0.03,rounding_size={RADIUS}",
+            linewidth=1.4,
+            edgecolor=c["edge"],
+            facecolor=c["face"],
+            zorder=3,
+        )
+    )
     ax.text(
-        node.x, node.y, node.label,
-        ha="center", va="center", fontsize=11, fontweight="bold",
-        color=c["text"], fontfamily="monospace", zorder=4,
+        node.x,
+        node.y,
+        node.label,
+        ha="center",
+        va="center",
+        fontsize=11,
+        fontweight="bold",
+        color=c["text"],
+        fontfamily="monospace",
+        zorder=4,
     )
 
 
@@ -1560,6 +1629,7 @@ def _all_nodes(root: LayoutNode) -> list[LayoutNode]:
 
 # ── Public plotting API ───────────────────────────────────────────────────────
 
+
 def plot_objective(obj, title: str | None = None, save_path: str | None = None, show: bool = True):
     graph = walk_objectives(obj)
     root = _dict_to_layout(graph)
@@ -1573,10 +1643,12 @@ def plot_objective(obj, title: str | None = None, save_path: str | None = None, 
     ys = [n.y for n in nodes]
     margin = 1.6
 
-    fig, ax = plt.subplots(figsize=(
-        max(5, (max(xs) - min(xs) + 4) * 0.9),
-        max(3, (max(ys) - min(ys) + 3) * 0.9),
-    ))
+    fig, ax = plt.subplots(
+        figsize=(
+            max(5, (max(xs) - min(xs) + 4) * 0.9),
+            max(3, (max(ys) - min(ys) + 3) * 0.9),
+        )
+    )
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     ax.set_xlim(min(xs) - margin, max(xs) + margin)
