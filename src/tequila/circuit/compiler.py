@@ -75,6 +75,7 @@ class CircuitCompiler:
         c.gradient_mode = False
         c.y_gate = False
         c.ry_gate = False
+        c.pauli_rotations = False
 
         for k, v in kwargs.items():
             if k in c.__dict__:
@@ -90,7 +91,6 @@ class CircuitCompiler:
         c.pauli_rotations = True
         c.epsilon = epsilon
         return c
-
 
     def __init__(
         self,
@@ -1114,11 +1114,7 @@ def compile_pauli_rotations(gate: QGateImpl, epsilon: float) -> QCircuit:
 
         if gate.name.lower() == "ry":
             result = (
-                S(target=gate.target)
-                + S(target=gate.target)
-                + S(target=gate.target)
-                + result
-                + S(target=gate.target)
+                S(target=gate.target) + S(target=gate.target) + S(target=gate.target) + result + S(target=gate.target)
             )
 
         return result
