@@ -1,7 +1,7 @@
 from __future__ import annotations
 from tequila.circuit._gates_impl import QGateImpl, assign_variable, list_assignment, GlobalPhaseGateImpl, PhaseGateImpl
 from tequila.utils.exceptions import TequilaException, TequilaWarning
-from tequila.utils.bitstrings import BitNumbering, reverse_int_bits
+from tequila.utils.bitstrings import BitNumbering
 import typing
 import copy
 from collections import defaultdict
@@ -449,7 +449,7 @@ class QCircuit:
         else:
             return QCircuit(gates=[gate])
 
-    def to_matrix(self, variables=None, numbering: BitNumbering = BitNumbering.MSB, backend: str = None):
+    def to_matrix(self, variables=None):
         """
         take the circuit and return the unitary matrix corresponding to it.
         Parameters
@@ -464,31 +464,60 @@ class QCircuit:
         np.ndarray:
             the unitary matrix corresponding to the circuit.
         """
-        from tequila import format_variable_dictionary
-        from tequila.simulators.simulator_api import compile_circuit
+        import quimb.gates
+        import quimb.tensor as qtn
+        from tequila import compile_circuit
 
-        variables = format_variable_dictionary(variables)
+        num_variables = len(self.extract_variables())
 
-        if variables is None and not (len(self.extract_variables()) == 0):
+        if num_variables == 0:
+            variables = {}
+        elif variables is None:
             raise TequilaException(
-                "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
-                    self.extract_variables()
-                )
+                f"QCircuit.to_matrix(): no variables provided, but the circuit has {num_variables} variables"
             )
 
-        compiled = compile_circuit(
-            abstract_circuit=self,
-            variables=variables,
-            backend=backend,
+        compiled_circuit = compile_circuit(
+            self,
         )
+        compiled_circuit = compiled_circuit.map_variables(variables)
 
-        columns = []
-        for i in range(2**self.n_qubits):
-            initial_state = reverse_int_bits(i, nbits=self.n_qubits) if numbering == BitNumbering.LSB else i
-            output = compiled.simulate(variables=variables, initial_state=initial_state).to_array(numbering, copy=False)
-            columns.append(output)
+        gate_mapping = {"Rx": "RX", "Ry": "RY", "Rz": "RZ", "H": "H", "X": "X"}
 
-        return np.column_stack(columns)
+        quimb_circuit = qtn.Circuit(self.n_qubits)
+
+        # quimb uses MSB convention, so we need to modify the qubit indices
+        # to LSB
+        for g in compiled_circuit.gates:
+            if g.name not in gate_mapping:
+                raise TequilaException(
+                    f"Gate {g.name} is not supported for conversion to matrix. "
+                    f"Supported gates: {list(gate_mapping.keys())}"
+                )
+
+            if g.is_parameterized():
+                quimb_circuit.apply_gate(
+                    gate_mapping[g.name],
+                    params=[float(g.parameter())],
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                    parameterize=True,
+                )
+            elif g.is_controlled():
+                quimb_circuit.apply_gate(
+                    gate_mapping[g.name],
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                    controls=[abs(c - self.n_qubits + 1) for c in list(g.control)],
+                )
+            else:
+                quimb_circuit.apply_gate(
+                    gate_mapping[g.name],
+                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                )
+
+        uni = quimb_circuit.get_uni()
+        unitary = np.array(uni.to_dense())
+
+        return unitary
 
     def to_networkx(self):
         """
