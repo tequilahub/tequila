@@ -1,8 +1,6 @@
 import numbers
 import warnings
 
-from pygridsynth import gridsynth_gates
-
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
 from tequila.circuit.gates import Rx, Ry, H, X, S, Rz, ExpPauli, CNOT, Phase, T, Z, GlobalPhase
@@ -1080,6 +1078,7 @@ def compile_pauli_rotations(gate: QGateImpl, epsilon: float) -> QCircuit:
     -------
     QCircuit, the result of compilation.
     """
+    from pygridsynth import gridsynth_gates
 
     # In principle, we could compile controlled Pauli rotations with the same method by making all
     # the resulting gates controlled, but then this compilation makes no sense, since its point is

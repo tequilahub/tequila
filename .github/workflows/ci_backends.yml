@@ -47,6 +47,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install "qulacs" "qiskit==1.*" "qiskit-aer"
+          pip install pygridsynth
           pip install -e .
 
           # Export MPI_PATH manually into the shell for the build
