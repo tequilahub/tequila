@@ -488,13 +488,11 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 **kwargs,
             )
             all_amplitudes = wfn.get_amplitudes()
-            all_amplitudes['tIA'].scale(-1)
-            all_amplitudes['tIjAb'].scale(-1)
+            all_amplitudes["tIA"].scale(-1)
+            all_amplitudes["tIjAb"].scale(-1)
             closed_shell = isinstance(wfn.reference_wavefunction(), psi4.core.RHF)
             if closed_shell:
-                return self._extract_active_space(
-                    ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
-                )
+                return ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
             else:
                 assert self.integral_manager.trivial_active_space()  # only for closed-shell currently
                 return Amplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
