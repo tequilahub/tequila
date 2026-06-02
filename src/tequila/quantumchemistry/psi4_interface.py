@@ -484,6 +484,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 point_group="c1",
                 ref_wfn=self.ref_wfn.c1_deep_copy(self.ref_wfn.basisset()),
                 filename=filename,
+                ignore_active_space=not self.integral_manager.active_space_is_trivial(),
                 *args,
                 **kwargs,
             )
