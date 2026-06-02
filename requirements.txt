@@ -19,7 +19,6 @@ excitationsolve
 #pyquil<3.0 # you also need to install the forest-sdk
 #qulacs-gpu # you can't have qulacs and qulacs-gpu at the same time
 #qibo <= 0.1.1 # can not be installed in the same environment as gpyopt
-#quimb
 #mqt.ddsim == 2.0.0b2  # requires qiskit < 2
 
 #optional optimizers
@@ -29,3 +28,4 @@ excitationsolve
 #pyzx
 #pyscf # if used also restrict h5py version untill the issue is fixed upstream in pyscf
 #h5py <= 3.1 # version 3.3.0 leads to crashes when pyscf is imported
+#pygridsynth # used to compile Pauli rotations into Clifford + T gates

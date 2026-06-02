@@ -1,5 +1,8 @@
+import numpy as np
+
 import tequila.simulators.simulator_api
 from tequila.circuit import gates
+from tequila.circuit._gates_impl import QGateImpl
 from tequila.circuit.compiler import (
     compile_controlled_rotation,
     change_basis,
@@ -8,11 +11,14 @@ from tequila.circuit.compiler import (
     compile_ry,
     compile_y,
     compile_ch,
+    CircuitCompiler,
 )
 from numpy.random import uniform, randint
 from numpy import pi, isclose
+
+from tequila.circuit.gates import RotationGate
 from tequila.hamiltonian import paulis
-from tequila import simulators, QubitWaveFunction, compile_circuit
+from tequila import simulators, QubitWaveFunction, compile_circuit, QCircuit
 from tequila.simulators.simulator_api import simulate
 from tequila.objective.objective import ExpectationValue
 import pytest
@@ -159,6 +165,50 @@ def test_compile_ch(target, control, power):
 
     if control is not None:
         assert equivalent_circuit == equivalent_ch
+
+
+@pytest.mark.parametrize("type", [gates.Rx, gates.Ry, gates.Rz])
+@pytest.mark.parametrize("angle", np.linspace(0, 2 * np.pi, 10))
+def test_compile_pauli_rotations(type, angle: float):
+    gate = type(target=0, angle=angle)
+    compiler = CircuitCompiler(pauli_rotations=True, epsilon=1e-6)
+    compiled = compiler.compile_circuit(gate)
+    assert np.allclose(gate.to_matrix(), compiled.to_matrix(), atol=1e-6)
+
+
+# Check if the gate is in the set {H, X, S, CNOT, T}
+def is_error_correctable_gate(gate: QGateImpl) -> bool:
+    if len(gate.control) > 1:
+        return False
+
+    if len(gate.control) == 1:
+        return gate.name.lower() == "x"
+
+    if gate.name.lower() in ["x", "h", "globalphase"]:
+        return True
+
+    if (gate.name.lower() == "rz" or gate.name.lower() == "phase") and (
+        isclose(gate.parameter, pi / 2) or isclose(gate.parameter, pi / 4)
+    ):
+        return True
+
+    return False
+
+
+def test_error_correctable_compilation():
+    U = QCircuit()
+    U += gates.Ry(target=1, angle=0.4)
+    U += gates.Toffoli(first=0, second=1, target=2)
+    U += gates.H(target=2, power=2.5, control=0)
+    U += gates.X(target=0)
+    U += gates.Rz(target=0, angle=1.2, control=1)
+    U += gates.CNOT(control=2, target=0)
+
+    compiler = CircuitCompiler.error_correctable_gate_set(1e-6)
+    compiled = compiler.compile_circuit(U)
+
+    assert all(is_error_correctable_gate(g) for g in compiled.gates)
+    assert np.allclose(U.to_matrix(), compiled.to_matrix(), atol=1e-5)
 
 
 def test_compile_qubit_excitations():
