@@ -408,7 +408,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if "threads" in kwargs:
             psi4.set_num_threads(nthread=kwargs["threads"])
 
-        psi4.set_options({'freeze_core':int(ignore_active_space)})
+        psi4.set_options({"freeze_core": int(ignore_active_space)})
 
         if filename is None:
             filename = "{}_{}.out".format(self.parameters.filename, method)
