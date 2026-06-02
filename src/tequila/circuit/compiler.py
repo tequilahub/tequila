@@ -352,6 +352,10 @@ class CircuitCompiler:
             if self.ry_gate:
                 cg = compile_ry(gate=cg, controlled_rotation=self.controlled_rotation)
             if controlled:
+                if self.toffoli:
+                    cg = compile_toffoli(gate=cg)
+                    if self.phase:
+                        cg = compile_phase(gate=cg)
                 if self.cc_max or self.multicontrol:
                     cg = compile_to_single_control(gate=cg)
                 if self.controlled_exponential_pauli:
@@ -360,10 +364,6 @@ class CircuitCompiler:
                     cg = compile_controlled_power(gate=cg)
                 if self.controlled_phase:
                     cg = compile_controlled_phase(gate=cg)
-                    if self.phase:
-                        cg = compile_phase(gate=cg)
-                if self.toffoli:
-                    cg = compile_toffoli(gate=cg)
                     if self.phase:
                         cg = compile_phase(gate=cg)
                 if self.controlled_rotation:
@@ -607,7 +607,7 @@ def compile_toffoli(gate) -> QCircuit:
         A QCircuit; the result of compilation.
     """
 
-    if gate.name.lower != "x":
+    if not (gate.name.lower() == "x" and len(gate.control) == 2):
         return QCircuit.wrap_gate(gate)
     control = gate.control
     c1 = control[1]
@@ -1085,28 +1085,38 @@ def compile_pauli_rotations(gate: QGateImpl, epsilon: float) -> QCircuit:
     # to compile to a Clifford + T gateset. Compiling controlled rotations to uncontrolled ones
     # should be handled by other compiler passes.
     if gate.name.lower() in ["rx", "ry", "rz"] and not gate.is_controlled():
+        if abs(gate.parameter) < epsilon:
+            return QCircuit()
         if not isinstance(gate.parameter, numbers.Number):
             raise TequilaCompilerException("Can't compile parametrized rotations to Clifford + T gates")
         with warnings.catch_warnings():
             # Silence warning about using floats
             warnings.simplefilter(action="ignore", category=UserWarning, lineno=362)
-            gates = gridsynth_gates(theta=gate.parameter, epsilon=epsilon)
+            gates = gridsynth_gates(theta=gate.parameter, epsilon=epsilon, up_to_phase=True)
 
         result = QCircuit()
+        v = numpy.array([1, 0], dtype=complex)
+        H_mat = numpy.array([[1, 1], [1, -1]]) / numpy.sqrt(2)
+        T_val = numpy.exp(pi / 4 * 1j)
         for g in reversed(gates):
             match g:
-                case "W":
-                    result += GlobalPhase(angle=pi / 4)
                 case "X":
                     result += X(target=gate.target)
+                    v = v[::-1]
                 case "H":
                     result += H(target=gate.target)
+                    v = H_mat @ v
                 case "S":
                     result += S(target=gate.target)
+                    v[1] *= 1j
                 case "T":
                     result += T(target=gate.target)
+                    v[1] *= T_val
                 case c:
                     raise ValueError(f"Got unexpected gate {c}")
+
+        global_phase = -gate.parameter / 2 - numpy.angle(v[0])
+        result += GlobalPhase(angle=global_phase)
 
         if gate.name.lower() in ["rx", "ry"]:
             result = H(target=gate.target) + result + H(target=gate.target)
