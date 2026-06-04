@@ -717,6 +717,48 @@ class QuantumChemistryBase:
         def inner(a, b, s):
             return numpy.sum(numpy.multiply(numpy.outer(a, b), s))
 
+        def __orthogonalize_active_space(c, s, active_indices):
+            """
+            Orthogonalize active orbitals while leaving frozen orbitals untouched.
+            c: array (basis_functions, orbitals)
+            s: array (basis_functions, basis_functions)
+            active_indices: list or array of column indices for the active orbitals
+            """
+            # 1. Separate frozen and active coefficients
+            n_orbitals = c.shape[1]
+            frozen_indices = numpy.setdiff1d(numpy.arange(n_orbitals), active_indices)
+            
+            c_froz = c[:, frozen_indices]
+            c_act = c[:, active_indices]
+            
+            # 2. Project the frozen space out of the active space
+            # Compute the overlap between frozen and active: S_{fa} = C_f^T * S * C_a
+            overlap_fa = c_froz.T @ s @ c_act
+            
+            # Subtract the frozen components from the active orbitals
+            c_act_proj = c_act - (c_froz @ overlap_fa)
+            
+            # 3. Symmetrically orthogonalize the projected active block
+            # Compute the overlap matrix of just the active block: S_{aa} = C_a'^T * S * C_a'
+            s_act = c_act_proj.T @ s @ c_act_proj
+            
+            lam, l_s = numpy.linalg.eigh(s_act)
+            
+            # Your safety clip is good practice!
+            lam = numpy.maximum(lam, 1e-12) 
+            
+            lam_sqrt_inv = numpy.diag(1.0 / numpy.sqrt(lam))
+            symm_orthog = l_s @ lam_sqrt_inv @ l_s.T
+            
+            # Transform only the active block
+            c_act_ortho = c_act_proj @ symm_orthog
+            
+            # 4. Recombine into the final matrix
+            c_new = c.copy()
+            c_new[:, active_indices] = c_act_ortho
+            
+            return c_new
+
         def orthogonalize(c, d, s):
             """
             :return: orthogonalized orbitals with core HF orbitals and active Orthongonalized Native orbitals.
@@ -750,18 +792,7 @@ class QuantumChemistryBase:
             ### Reintroducing the New Coeffs on the HF coeff matrix
             for j in to_active.values():
                 c[j] = dbar[j]
-            ### Compute new orbital overlap matrix:
-            sprima = numpy.eye(len(c))
-            for idx, i in enumerate(to_active.values()):
-                for j in [*to_active.values()][idx:]:
-                    sprima[i][j] = inner(c[i], c[j], s)
-                    sprima[j][i] = sprima[i][j]
-            ### Symmetric orthonormalization
-            lam_s, l_s = numpy.linalg.eigh(sprima)
-            lam_s = lam_s * numpy.eye(len(lam_s))
-            lam_sqrt_inv = numpy.sqrt(numpy.linalg.inv(lam_s))
-            symm_orthog = numpy.dot(l_s, numpy.dot(lam_sqrt_inv, l_s.T))
-            return symm_orthog.dot(c).T
+            return __orthogonalize_active_space(c.T, s, [*to_active.values()])
 
         def get_active(core):
             ov = numpy.zeros(shape=(len(self.integral_manager.orbitals)))
