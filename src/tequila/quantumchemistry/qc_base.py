@@ -743,7 +743,7 @@ class QuantumChemistryBase:
             s_act = c_act_proj.T @ s @ c_act_proj
 
             lam, l_s = numpy.linalg.eigh(s_act)
-            
+
             # Your safety clip is good practice!
             lam = numpy.maximum(lam, 1e-12)
 
