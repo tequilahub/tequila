@@ -727,36 +727,36 @@ class QuantumChemistryBase:
             # 1. Separate frozen and active coefficients
             n_orbitals = c.shape[1]
             frozen_indices = numpy.setdiff1d(numpy.arange(n_orbitals), active_indices)
-            
+
             c_froz = c[:, frozen_indices]
             c_act = c[:, active_indices]
-            
+
             # 2. Project the frozen space out of the active space
             # Compute the overlap between frozen and active: S_{fa} = C_f^T * S * C_a
             overlap_fa = c_froz.T @ s @ c_act
-            
+
             # Subtract the frozen components from the active orbitals
             c_act_proj = c_act - (c_froz @ overlap_fa)
-            
+
             # 3. Symmetrically orthogonalize the projected active block
             # Compute the overlap matrix of just the active block: S_{aa} = C_a'^T * S * C_a'
             s_act = c_act_proj.T @ s @ c_act_proj
-            
+
             lam, l_s = numpy.linalg.eigh(s_act)
             
             # Your safety clip is good practice!
-            lam = numpy.maximum(lam, 1e-12) 
-            
+            lam = numpy.maximum(lam, 1e-12)
+
             lam_sqrt_inv = numpy.diag(1.0 / numpy.sqrt(lam))
             symm_orthog = l_s @ lam_sqrt_inv @ l_s.T
-            
+
             # Transform only the active block
             c_act_ortho = c_act_proj @ symm_orthog
-            
+
             # 4. Recombine into the final matrix
             c_new = c.copy()
             c_new[:, active_indices] = c_act_ortho
-            
+
             return c_new
 
         def orthogonalize(c, d, s):
