@@ -714,7 +714,9 @@ class QuantumChemistryBase:
         s = self.integral_manager.overlap_integrals.copy()
         d = self.integral_manager.get_orthonormalized_orbital_coefficients().copy()
 
-        def orthogonalize_active_space(c:numpy.ndarray, s:numpy.ndarray, frozen_idx:list[int], active_idx:list[int]) -> numpy.ndarray:
+        def orthogonalize_active_space(
+            c: numpy.ndarray, s: numpy.ndarray, frozen_idx: list[int], active_idx: list[int]
+        ) -> numpy.ndarray:
             """
             Symmetrically orthogonalize orbital coefficients defined by colums with indices 'active_idx' while keeping untouched those defined by 'frozen_idx'.
             c: (basis_functions, orbitals)
@@ -740,7 +742,9 @@ class QuantumChemistryBase:
             c_new[:, active_idx] = c_a_proj @ X
             return c_new
 
-        def get_active(c_orig:numpy.ndarray, d_orig:numpy.ndarray, s:numpy.ndarray, active_idx_c:list[int]) -> list[int]:
+        def get_active(
+            c_orig: numpy.ndarray, d_orig: numpy.ndarray, s: numpy.ndarray, active_idx_c: list[int]
+        ) -> list[int]:
             """
             Safely identifies active orbitals in d_orig by projecting them into the entire active subspace of c_orig.
             c_orig: original orbital matrix which will be frozen (typicall HF)
@@ -751,27 +755,27 @@ class QuantumChemistryBase:
             n_fr = d_orig.shape[1] - len(active_idx_c)
             # 1. Extract the entire reference active space block from c_orig
             c_active = c_orig[:, active_idx_c]
-            
+
             # 2. Compute the full overlap matrix between reference active and all d_orig orbitals
             # Shape will be (n_active_ref, n_total_orbitals_d)
             overlap_matrix = c_active.T @ s @ d_orig
-            
+
             # 3. Sum of squares along the reference axis gives the total "active character"
             # Shape will be (n_total_orbitals_d,)
             active_weights = numpy.sum(overlap_matrix**2, axis=0)
-            
+
             # 4. Sort all orbital indices of d_orig by weight in descending order
             sorted_d_indices = numpy.argsort(active_weights)
-            
+
             # 5. Select the top N orbitals that match the active space best
-            chosen_active_idx = sorted_d_indices[: n_fr]
+            chosen_active_idx = sorted_d_indices[:n_fr]
 
             return sorted(chosen_active_idx)
 
-        def get_core(c_orig:numpy.ndarray, d_orig:numpy.ndarray, s:numpy.ndarray, active_idx_d:list[int]):
+        def get_core(c_orig: numpy.ndarray, d_orig: numpy.ndarray, s: numpy.ndarray, active_idx_d: list[int]):
             """
             Given the active space indices of d_orig, finds which occupied orbitals in c_orig should be frozen (core orbitals).
-            
+
             Parameters:
             -----------
             c_orig: original orbital matrix which will be frozen (typicall HF)
@@ -783,20 +787,20 @@ class QuantumChemistryBase:
 
             # 1. Extract the active subspace block from d_orig
             d_active = d_orig[:, active_idx_d]
-            
+
             # 2. Compute the overlap between all c_orig orbitals and the d_orig active subspace
             # Shape will be (n_total_orbitals_c, n_active_d)
             overlap_matrix = c_orig.T @ s @ d_active
-            
+
             # 3. Sum of squares along the d_active axis gives the "active character" of each c_orig orbital
             active_weights = numpy.sum(overlap_matrix**2, axis=1)
-            
+
             # 4. Sort the orbitals by their active weight in ASCENDING order
             # The orbitals with the LOWEST active weight are your core (frozen) orbitals!
             sorted_fr_indices = numpy.argsort(active_weights)
-            
-            chosen_fr_idx = sorted_fr_indices[: n_occ_c]
-                
+
+            chosen_fr_idx = sorted_fr_indices[:n_occ_c]
+
             return sorted(chosen_fr_idx)
 
         active = None
@@ -820,14 +824,16 @@ class QuantumChemistryBase:
         if "reference_orbitals" in kwargs:
             reference_orbitals = kwargs["reference_orbitals"]
             kwargs.pop()
-            assert len(reference_orbitals) == len(self.parameters.total_n_electrons)//2, f'Number of  provided reference_orbitals incorrect. Expected {self.parameters.total_n_electrons//2}, received {len(reference_orbitals)}'
+            assert len(reference_orbitals) == len(self.parameters.total_n_electrons)//2, (
+                f'Number of  provided reference_orbitals incorrect. Expected {self.parameters.total_n_electrons//2}, received {len(reference_orbitals)}'
+            )
         else:
             reference_orbitals = [i.idx_total for i in self.integral_manager.reference_orbitals]
         to_active = [i for i in range(len(self.integral_manager.orbitals)) if i not in core]
         to_active = {active[i]: to_active[i] for i in range(len(active))}
         if len(core):
             c_combined = numpy.zeros(shape=c.shape)
-            for i,idx in enumerate(core):
+            for i, idx in enumerate(core):
                 c_combined[:, i] = c[:, idx]
             for act_idx in active:
                 c_combined[:, to_active[act_idx]] = d[:, act_idx]
