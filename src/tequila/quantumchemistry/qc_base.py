@@ -748,6 +748,7 @@ class QuantumChemistryBase:
             s: overlap_integrals
             active_idx_c: subspace from c_orig to  look for the active indices for d_orig
             """
+            n_fr = d_orig.shape[1] - len(active_idx_c)
             # 1. Extract the entire reference active space block from c_orig
             c_active = c_orig[:, active_idx_c]
             
@@ -760,10 +761,10 @@ class QuantumChemistryBase:
             active_weights = numpy.sum(overlap_matrix**2, axis=0)
             
             # 4. Sort all orbital indices of d_orig by weight in descending order
-            sorted_d_indices = numpy.argsort(active_weights)[::-1]
+            sorted_d_indices = numpy.argsort(active_weights)
             
             # 5. Select the top N orbitals that match the active space best
-            chosen_active_idx = sorted_d_indices[:len(active_idx_c)]
+            chosen_active_idx = sorted_d_indices[: n_fr]
 
             return sorted(chosen_active_idx)
 
@@ -794,7 +795,7 @@ class QuantumChemistryBase:
             # The orbitals with the LOWEST active weight are your core (frozen) orbitals!
             sorted_fr_indices = numpy.argsort(active_weights)
             
-            chosen_fr_idx = sorted_fr_indices[:len(n_occ_c)]
+            chosen_fr_idx = sorted_fr_indices[: n_occ_c]
                 
             return sorted(chosen_fr_idx)
 
