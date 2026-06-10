@@ -315,6 +315,9 @@ class CircuitCompiler:
 
         compiled_gates = []
 
+        # Keep a dicitionary of compiled pauli_rotations
+        pauli_dict = {}
+
         for idx, gate in gatelist:
             cg = gate
             controlled = gate.is_controlled()
@@ -369,7 +372,7 @@ class CircuitCompiler:
                 if self.controlled_rotation:
                     cg = compile_controlled_rotation(gate=cg)
             if self.pauli_rotations:
-                cg = compile_pauli_rotations(gate=cg, epsilon=self.epsilon)
+                cg = compile_pauli_rotations(gate=cg, epsilon=self.epsilon, pauli_dict=pauli_dict)
 
             compiled_gates.append((idx, cg))
 
@@ -1063,7 +1066,7 @@ def compile_ch(gate: QGateImpl) -> QCircuit:
 
 
 @compiler
-def compile_pauli_rotations(gate: QGateImpl, epsilon: float) -> QCircuit:
+def compile_pauli_rotations(gate: QGateImpl, epsilon: float, pauli_dict: dict) -> QCircuit:
     """
     Compile uncontrolled Pauli rotations gates into Clifford + T gates.
 
@@ -1085,38 +1088,46 @@ def compile_pauli_rotations(gate: QGateImpl, epsilon: float) -> QCircuit:
     # to compile to a Clifford + T gateset. Compiling controlled rotations to uncontrolled ones
     # should be handled by other compiler passes.
     if gate.name.lower() in ["rx", "ry", "rz"] and not gate.is_controlled():
-        if abs(gate.parameter) < epsilon:
-            return QCircuit()
         if not isinstance(gate.parameter, numbers.Number):
             raise TequilaCompilerException("Can't compile parametrized rotations to Clifford + T gates")
-        with warnings.catch_warnings():
-            # Silence warning about using floats
-            warnings.simplefilter(action="ignore", category=UserWarning, lineno=362)
-            gates = gridsynth_gates(theta=gate.parameter, epsilon=epsilon, up_to_phase=True)
 
-        result = QCircuit()
-        v = numpy.array([1, 0], dtype=complex)
-        H_mat = numpy.array([[1, 1], [1, -1]]) / numpy.sqrt(2)
-        T_val = numpy.exp(pi / 4 * 1j)
-        for g in reversed(gates):
-            match g:
-                case "X":
-                    result += X(target=gate.target)
-                    v = v[::-1]
-                case "H":
-                    result += H(target=gate.target)
-                    v = H_mat @ v
-                case "S":
-                    result += S(target=gate.target)
-                    v[1] *= 1j
-                case "T":
-                    result += T(target=gate.target)
-                    v[1] *= T_val
-                case c:
-                    raise ValueError(f"Got unexpected gate {c}")
+        # Compute bucket by rounding to the next multiple of epsilon
+        bucket = int(numpy.round(gate.parameter / (2 * epsilon)))
+        rounded_parameter = bucket * (2 * epsilon)
+        if bucket in pauli_dict:
+            result = pauli_dict[bucket]
+        elif bucket == 0:
+            result = QCircuit()
+        else:
+            with warnings.catch_warnings():
+                # Silence warning about using floats
+                warnings.simplefilter(action="ignore", category=UserWarning, lineno=362)
+                gates = gridsynth_gates(theta=rounded_parameter, epsilon=epsilon, up_to_phase=True)
 
-        global_phase = -gate.parameter / 2 - numpy.angle(v[0])
-        result += GlobalPhase(angle=global_phase)
+            result = QCircuit()
+            v = numpy.array([1, 0], dtype=complex)
+            H_mat = numpy.array([[1, 1], [1, -1]]) / numpy.sqrt(2)
+            T_val = numpy.exp(pi / 4 * 1j)
+            for g in reversed(gates):
+                match g:
+                    case "X":
+                        result += X(target=gate.target)
+                        v = v[::-1]
+                    case "H":
+                        result += H(target=gate.target)
+                        v = H_mat @ v
+                    case "S":
+                        result += S(target=gate.target)
+                        v[1] *= 1j
+                    case "T":
+                        result += T(target=gate.target)
+                        v[1] *= T_val
+                    case c:
+                        raise ValueError(f"Got unexpected gate {c}")
+
+            global_phase = -rounded_parameter / 2 - numpy.angle(v[0])
+            result += GlobalPhase(angle=global_phase)
+            pauli_dict[bucket] = result
 
         if gate.name.lower() in ["rx", "ry"]:
             result = H(target=gate.target) + result + H(target=gate.target)
