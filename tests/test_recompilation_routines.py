@@ -208,7 +208,7 @@ def test_error_correctable_compilation():
     compiled = compiler.compile_circuit(U)
 
     assert all(is_error_correctable_gate(g) for g in compiled.gates)
-    assert np.allclose(U.to_matrix(), compiled.to_matrix(), atol=1e-5)
+    assert np.linalg.norm(U.to_matrix() - compiled.to_matrix(), ord=2) < 1e-5
 
 
 def test_compile_qubit_excitations():
