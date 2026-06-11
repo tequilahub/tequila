@@ -685,7 +685,7 @@ class QuantumChemistryBase:
         # backward compatibility
         return self.use_native_orbitals()
 
-    def use_native_orbitals(self, inplace=False, core: list = [], *args, **kwargs):
+    def use_native_orbitals(self, inplace=False, core: list = None, *args, **kwargs):
         """
         Parameters
         ----------
