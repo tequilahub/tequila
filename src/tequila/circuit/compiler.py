@@ -1111,16 +1111,16 @@ def compile_pauli_rotations(gate: QGateImpl, epsilon: float, pauli_dict: dict) -
             for g in reversed(gates):
                 match g:
                     case "X":
-                        result += X(target=gate.target)
+                        result += X(target=0)
                         v = v[::-1]
                     case "H":
-                        result += H(target=gate.target)
+                        result += H(target=0)
                         v = H_mat @ v
                     case "S":
-                        result += S(target=gate.target)
+                        result += S(target=0)
                         v[1] *= 1j
                     case "T":
-                        result += T(target=gate.target)
+                        result += T(target=0)
                         v[1] *= T_val
                     case c:
                         raise ValueError(f"Got unexpected gate {c}")
@@ -1128,6 +1128,8 @@ def compile_pauli_rotations(gate: QGateImpl, epsilon: float, pauli_dict: dict) -
             global_phase = -rounded_parameter / 2 - numpy.angle(v[0])
             result += GlobalPhase(angle=global_phase)
             pauli_dict[bucket] = result
+
+        result = result.map_qubits({0: gate.target[0]})
 
         if gate.name.lower() in ["rx", "ry"]:
             result = H(target=gate.target) + result + H(target=gate.target)
