@@ -38,9 +38,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
         python -m pip install -e .
-        python -m pip install pyscf
-        python -m pip uninstall openfermion
-        python -m pip install git+https://github.com/quantumlib/OpenFermion.git
+        python -m pip install "pyscf==3.12.0"
         cd tests
         ls
         pytest test_chemistry.py test_TrotErr.py  -m "not dependencies"
