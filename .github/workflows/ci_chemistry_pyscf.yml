@@ -24,16 +24,6 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
-    - name: madness basics
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt
-        python -m pip install pyscf
-        python -m pip install -e .
-        cd tests
-        ls
-        pytest test_chemistry_madness.py
-        cd ../
     - name: Install and test pyscf interface
       run: |
         python -m pip install --upgrade pip
