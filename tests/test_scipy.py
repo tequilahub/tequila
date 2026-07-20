@@ -27,7 +27,9 @@ def test_execution(simulator):
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
 
-    result = tq.optimizer_scipy.minimize(objective=O, options={"maxiter": 2}, method="TNC", backend=simulator, silent=True)
+    result = tq.optimizer_scipy.minimize(
+        objective=O, options={"maxiter": 2}, method="TNC", backend=simulator, silent=True
+    )
 
 
 @pytest.mark.parametrize("simulator", samplers)
