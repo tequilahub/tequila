@@ -28,7 +28,7 @@ def test_execution(simulator):
     O = tq.ExpectationValue(U=U, H=H)
 
     result = tq.optimizer_scipy.minimize(
-        objective=O, options={"maxiter": 2}, method="TNC", backend=simulator, silent=True
+        objective=O, options={"maxfun": 2}, method="TNC", backend=simulator, silent=True
     )
 
 
@@ -50,7 +50,7 @@ def test_execution_shot(simulator):
     O = tq.ExpectationValue(U=U, H=H)
 
     result = tq.optimizer_scipy.minimize(
-        objective=O, options={"maxiter": 2}, method="TNC", backend=simulator, samples=3, silent=True
+        objective=O, options={"maxfun": 2}, method="TNC", backend=simulator, samples=3, silent=True
     )
     assert len(result.history.energies) <= 3
 
