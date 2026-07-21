@@ -8,6 +8,7 @@ import select_backends
 simulators = select_backends.get()
 samplers = select_backends.get(sampler=True)
 
+
 @pytest.mark.parametrize("simulator", simulators)
 def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
