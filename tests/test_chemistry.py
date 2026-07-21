@@ -1105,3 +1105,19 @@ def test_givens_decomposition(size):
     reconstructed_matrix = reconstructed_matrix.astype(numpy.float64)
 
     assert numpy.allclose(unitary, reconstructed_matrix)
+
+def test_ghost_atom_far():
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nLi 0.0 0.0 1.", units="angstrom", basis_set="6-31G")
+    fci0 = mol.compute_energy('fci')
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nLi 0.0 0.0 1.\n ghost:H 0. 0. 20.", units="angstrom", basis_set="6-31G")
+    fci1 = mol.compute_energy('fci')
+    mol.make_molecule().get_molecular_hamiltonian() #ensure that openfermion doesn't break with the ghost atom
+    assert numpy.isclose(fci0, fci1, atol=1.0e-4)
+
+def test_ghost_atom():
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nLi 0.0 0.0 1.", units="angstrom", basis_set="6-31G")
+    fci0 = mol.compute_energy('fci')
+    mol = tq.chemistry.Molecule(geometry="H 0.0 0.0 0.0\nLi 0.0 0.0 1.\n ghost:Li 0. 0. .5", units="angstrom", basis_set="6-31G")
+    fci1 = mol.compute_energy('fci')
+    mol.make_molecule().get_molecular_hamiltonian() #ensure that openfermion doesn't break with the ghost atom
+    assert fci0 > fci1 

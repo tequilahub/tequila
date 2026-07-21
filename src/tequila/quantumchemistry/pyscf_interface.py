@@ -47,7 +47,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
     ):
         orbitals = None
         if "one_body_integrals" not in kwargs:
-            geometry = parameters.get_geometry()
+            geometry = parameters.get_geometry(ghost='pyscf')
             pyscf_geomstring = ""
             for atom in geometry:
                 pyscf_geomstring += "{} {} {} {};".format(atom[0], atom[1][0], atom[1][1], atom[1][2])
