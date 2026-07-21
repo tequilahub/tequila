@@ -542,9 +542,14 @@ class ParametersQC:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
         return result
 
-    def get_geometry_string(self, desired_units="angstrom", ghost="of") -> str:
+    def get_geometry_string(self, desired_units="angstrom", ghost ="of") -> str:
         """returns the geometry as a string
-        :return: geometry string, if desired_units is not equal to self.units, the coordinates will be transformed to "desired_un        for at in geom:
+        :return: geometry string, if desired_units is not equal to self.units, the coordinates will be transformed to "desired_units"
+                ghost atoms are formated acordingly to "ghost"
+        """
+        geom = self.get_geometry(desired_units=desired_units, ghost=ghost)
+        f = ""
+        for at in geom:
             f += f"{at[0]} {at[1][0]} {at[1][1]} {at[1][2]}\n"
         return f
 
