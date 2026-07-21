@@ -435,6 +435,7 @@ class ParametersQC:
         -------
 
         """
+
         def format_ghost(string: str, ghost: str = "of") -> str:
             prefixes = ["ghost:", "ghost-", "ghost_", "ghost", "x:", "x-", "x_", "gh(", "@"]
 
@@ -454,7 +455,7 @@ class ParametersQC:
             if ghost_backend in ["openfermion", "of"]:
                 # OpenFermion supports the pure atom name, since we provide the integrals it doesn't matter
                 if ")" in atom_name:
-                    atom_name = atom_name[:atom_name.find(")")]
+                    atom_name = atom_name[: atom_name.find(")")]
                 return atom_name
             elif ghost_backend == "pyscf":
                 pyscf_valid = ["ghost:", "ghost-", "ghost_", "ghost", "x:", "x-", "x_", "gh(", "@"]
@@ -467,7 +468,7 @@ class ParametersQC:
                     return f"ghost:{atom_name}"
 
             elif ghost_backend == "psi4":
-                psi4_valid = ["gh(", "@"] # gh(atom_name) or @atom_name
+                psi4_valid = ["gh(", "@"]  # gh(atom_name) or @atom_name
                 if detected_prefix in psi4_valid:
                     # Keep the original valid prefix
                     orig_prefix = string[: len(detected_prefix)]
@@ -542,7 +543,7 @@ class ParametersQC:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
         return result
 
-    def get_geometry_string(self, desired_units="angstrom", ghost ="of") -> str:
+    def get_geometry_string(self, desired_units="angstrom", ghost="of") -> str:
         """returns the geometry as a string
         :return: geometry string, if desired_units is not equal to self.units, the coordinates will be transformed to "desired_units"
                 ghost atoms are formated acordingly to "ghost"
