@@ -1,4 +1,4 @@
-from tequila import TequilaException, QubitWaveFunction
+from tequila import TequilaException, QubitWaveFunction, BitNumbering
 from tequila.quantumchemistry.qc_base import QuantumChemistryBase
 from tequila.quantumchemistry.encodings import JordanWigner
 from tequila.quantumchemistry import ParametersQC, NBodyTensor
@@ -29,7 +29,7 @@ def _merge_alpha_beta_strs(alpha_str, beta_str, norb):
     # Interleave the alpha and beta strings
     alpha_str_b = bin(alpha_str)[2:].zfill(norb)
     beta_str_b = bin(beta_str)[2:].zfill(norb)
-    merged_str = "".join([alpha_str_b[i] + beta_str_b[i] for i in range(norb)])[::-1]
+    merged_str = "".join([alpha_str_b[i] + beta_str_b[i] for i in range(norb)])
 
     # Position of filled orbitals
     set_bits_beta = [i for i in range(norb) if (beta_str >> i) & 1]
@@ -139,7 +139,7 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                     wfn_dim = 2**norb
                     wfn = numpy.zeros(wfn_dim)
                     for i, alpha_str in enumerate(alpha_strs):
-                        alpha_str_b = bin(alpha_str)[2:].zfill(norb)[::-1]
+                        alpha_str_b = bin(alpha_str)[2:].zfill(norb)
                         merged_str = int(alpha_str_b, 2)
                         wfn[merged_str] = fcivec[i, i]
                 else:
@@ -155,10 +155,10 @@ class QuantumChemistryPySCF(QuantumChemistryBase):
                             else:
                                 alpha_str_b = bin(alpha_str)[2:].zfill(norb)
                                 beta_str_b = bin(beta_str)[2:].zfill(norb)
-                                merged_str_b = (alpha_str_b + beta_str_b)[::-1]
+                                merged_str_b = alpha_str_b + beta_str_b
                                 merged_str = int(merged_str_b, 2)
                                 wfn[merged_str] = fcivec[i, j]
-                wfns.append(QubitWaveFunction.from_array(wfn))
+                wfns.append(QubitWaveFunction.from_array(wfn, numbering=BitNumbering.LSB))
             if not ("nroots" in kwargs and kwargs["nroots"] > 1):
                 return energies[0], wfns[0]
             return energies, wfns

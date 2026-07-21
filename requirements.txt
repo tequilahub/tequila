@@ -7,7 +7,7 @@ sympy
 autograd # autograd works better on OSX-ARM64 (M1 and M2) and Windows, feel free to try jax however (no big differences)
 setuptools
 pytest
-openfermion ~= 1.0 # can not be smaller than 1.0 
+openfermion >= 1.0 # can not be smaller than 1.0 
 #cmake # needed by qulacs, can be removed otherwise, now in qulacs requirements
 qulacs # default simulator (best integration), remove if the installation gives you trouble and just install one of the other supported backend. Version restriction only for noise models, otherwise the new version is fine
 excitationsolve
@@ -28,3 +28,4 @@ excitationsolve
 #pyzx
 #pyscf # if used also restrict h5py version untill the issue is fixed upstream in pyscf
 #h5py <= 3.1 # version 3.3.0 leads to crashes when pyscf is imported
+#pygridsynth # used to compile Pauli rotations into Clifford + T gates

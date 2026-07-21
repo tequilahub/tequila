@@ -31,6 +31,7 @@ jobs:
         # test default simulator against in-house simulator
         pip install git+https://github.com/Mikel-Ma/spex@devel
         pip install excitationsolve
+        pip install pygridsynth
     - name: Lint with flake8
       run: |
         pip install flake8
