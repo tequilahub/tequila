@@ -27,7 +27,9 @@ def test_execution(simulator):
     H = 1.0 * tq.paulis.X(0) + 2.0 * tq.paulis.Y(1) + 3.0 * tq.paulis.Z(2)
     O = tq.ExpectationValue(U=U, H=H)
 
-    result = tq.optimizer_scipy.minimize(objective=O, maxiter=2, method="TNC", backend=simulator, silent=True)
+    result = tq.optimizer_scipy.minimize(
+        objective=O, options={"maxiter": 2}, method="TNC", backend=simulator, silent=True
+    )
 
 
 @pytest.mark.parametrize("simulator", samplers)
@@ -48,7 +50,7 @@ def test_execution_shot(simulator):
     O = tq.ExpectationValue(U=U, H=H)
 
     result = tq.optimizer_scipy.minimize(
-        objective=O, maxiter=2, method="TNC", backend=simulator, samples=3, silent=True
+        objective=O, options={"maxiter": 2}, method="TNC", backend=simulator, samples=3, silent=True
     )
     assert len(result.history.energies) <= 3
 
@@ -58,7 +60,7 @@ def test_one_qubit_wfn(simulator):
     U = tq.gates.Trotterized(angles=["a"], steps=1, generators=[tq.paulis.Y(0)])
     H = tq.paulis.X(0)
     O = tq.ExpectationValue(U=U, H=H)
-    result = tq.optimizer_scipy.minimize(objective=O, maxiter=15, backend=simulator, silent=True)
+    result = tq.optimizer_scipy.minimize(objective=O, options={"maxiter": 15}, backend=simulator, silent=True)
     assert numpy.isclose(result.energy, -1.0)
 
 
