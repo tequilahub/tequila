@@ -906,7 +906,7 @@ class QuantumChemistryBase:
         molecule.n_orbitals = n_orbitals
         if "n_electrons" in kwargs:
             molecule.n_electrons = kwargs["n_electrons"]
-        molecule.save()
+        # molecule.save()
         return molecule
 
     @property
