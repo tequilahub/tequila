@@ -302,13 +302,13 @@ class ParametersQC:
             if n > 10:
                 result += 10 - 2
             if n > 18:
-                result += 18 - 10 - 2
+                result += 18 - 10
             if n > 36:
-                result += 36 - 18 - 10 - 2
+                result += 36 - 18
             if n > 54:
-                result += 54 - 36 - 18 - 10 - 2
+                result += 54 - 36
             if n > 86:
-                result += 86 - 54 - 36 - 18 - 10 - 2
+                result += 86 - 54
         return result
 
     @property
