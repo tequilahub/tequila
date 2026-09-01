@@ -1342,7 +1342,3 @@ def PauliGate(
             raise Exception("{}???".format(v))
 
     return U
-
-
-def cached_subcircuit(circuit: QCircuit) -> QCircuit:
-    return QCircuit.wrap_gate(SubcircuitGate(circuit))

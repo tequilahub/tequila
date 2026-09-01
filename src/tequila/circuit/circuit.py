@@ -718,6 +718,9 @@ class QCircuit:
 
         return QCircuit(gates=new_gates)
 
+    def as_subcircuit_gate(self) -> QCircuit:
+        return QCircuit.wrap_gate(SubcircuitGate(self))
+
 
 class Moment(QCircuit):
     """
