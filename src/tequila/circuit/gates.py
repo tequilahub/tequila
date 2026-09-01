@@ -1,4 +1,4 @@
-from tequila.circuit.circuit import QCircuit
+from tequila.circuit.circuit import QCircuit, SubcircuitGate
 from tequila.objective.objective import Variable, assign_variable
 from tequila.circuit import _gates_impl as impl
 import typing
@@ -1342,3 +1342,7 @@ def PauliGate(
             raise Exception("{}???".format(v))
 
     return U
+
+
+def cached_subcircuit(circuit: QCircuit) -> QCircuit:
+    return QCircuit.wrap_gate(SubcircuitGate(circuit))

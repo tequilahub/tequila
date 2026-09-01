@@ -1,6 +1,6 @@
 from tequila.circuit._gates_impl import GlobalPhaseGateImpl
 from tequila.utils import TequilaException, to_float, TequilaWarning
-from tequila.circuit.circuit import QCircuit
+from tequila.circuit.circuit import QCircuit, SubcircuitGate
 from tequila.utils.keymap import KeyMapSubregisterToRegister
 from tequila.utils.misc import to_float
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
@@ -314,7 +314,9 @@ class BackendCircuit:
             result = self.initialize_circuit(*args, **kwargs)
 
         for g in abstract_circuit.gates:
-            if g.is_parameterized():
+            if isinstance(g, SubcircuitGate):
+                self.create_circuit(g.circuit, result)
+            elif g.is_parameterized():
                 self.add_parametrized_gate(g, result, *args, **kwargs)
             else:
                 self.add_basic_gate(g, result, *args, **kwargs)
