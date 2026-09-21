@@ -180,3 +180,16 @@ def test_mixed_gates_with_identities_in_between():
     simulation_without_identity = tq.simulate(circuit_without_identity)
 
     assert simulation_with_identity.isclose(simulation_without_identity)
+
+
+def test_identity_only_circuit_equivalence():
+    for target_qubit in [0, 1, 2]:
+        circuit_identity = tq.gates.I(target=target_qubit)
+        circuit_rx_zero = tq.gates.Rx(target=target_qubit, angle=0)
+
+        assert circuit_identity.n_qubits == circuit_rx_zero.n_qubits
+
+        sim_identity = tq.simulate(circuit_identity)
+        sim_rx_zero = tq.simulate(circuit_rx_zero)
+
+        assert sim_identity.isclose(sim_rx_zero)
