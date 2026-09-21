@@ -1,20 +1,311 @@
 import typing
 import copy
 import numbers
-from typing import Union
 from tequila.grouping.compile_groups import compile_commuting_parts
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation
 from tequila.hamiltonian import paulis
 import numpy as onp
 from tequila.autograd_imports import numpy as numpy
-
+from tequila.objective.quantum_arg import QuantumArg, is_quantum_arg
 import collections
 
-# convenience
+
+def make_overlap(U0=None, U1=None, *args, **kwargs):
+    """
+    Function that calculates the overlap between two quantum states.
+
+    Parameters
+    ----------
+    U0 : QCircuit tequila object, corresponding to the first state (will be the bra).
+
+    U1 : QCircuit tequila object, corresponding to the second state (will be the ket).
+
+    Returns
+    -------
+    Real and imaginary Tequila objectives to be simulated or compiled.
+
+    """
+    from tequila.circuit.circuit import find_unused_qubit
+    from tequila.circuit.gates import H, X
+    from tequila.hamiltonian import paulis
+
+    ctrl = find_unused_qubit(U0=U0, U1=U1)
+
+    # print('Control qubit:',ctrl)
+
+    U_a = U0.add_controls([ctrl])  # this add the control by modifying the previous circuit
+    U_b = U1.add_controls([ctrl])  # NonType object
+
+    # bulding the circuit for the overlap evaluation
+    circuit = H(target=ctrl)
+    circuit += X(target=ctrl)
+    circuit += U_a
+    circuit += X(target=ctrl)
+    circuit += U_b
+
+    x = paulis.X(ctrl)
+    y = paulis.Y(ctrl)
+    Ex = ExpectationValue(H=x, U=circuit, *args, **kwargs)
+    Ey = ExpectationValue(H=y, U=circuit, *args, **kwargs)
+
+    return Ex, Ey
 
 
-class ExpectationValueImpl:
+def make_transition(U0=None, U1=None, H=None, *args, **kwargs):
+    """
+    Function that calculates the transition elements of an Hamiltonian operator
+    between two different quantum states.
+
+    Parameters
+    ----------
+    U0 : QCircuit tequila object, corresponding to the first state (will be the bra).
+
+    U1 : QCircuit tequila object, corresponding to the second state (will be the ket).
+
+    H : QubitHamiltonian tequila object
+
+    Returns
+    -------
+    Real and imaginary Tequila objectives to be simulated or compiled.
+
+    """
+    from tequila.circuit.gates import PauliGate
+
+    # want to measure: <U1|H|U0> -> \sum_k c_k <U1|U_k|U0>
+
+    trans_real = Objective()
+    trans_im = Objective()
+
+    for ps in H.paulistrings:
+        c_k = ps.coeff
+        U_k = PauliGate(ps)
+        objective_real, objective_im = make_overlap(U0=U0, U1=U1 + U_k, *args, **kwargs)
+
+        trans_real += c_k.real * objective_real - c_k.imag * objective_im
+        trans_im += c_k.real * objective_im + c_k.imag * objective_real
+
+    return trans_real, trans_im
+
+
+class BraKetImpl(QuantumArg):
+    def __init__(
+        self,
+        ket,
+        bra=None,
+        operator=None,
+        contraction: typing.Callable = None,
+        shape: tuple = None,
+        samples: int = None,
+        *args,
+        **kwargs,
+    ):
+        if ket is None:
+            raise TequilaException("BraKet requires a ket circuit")
+
+        self.ket = ket
+        self.bra = ket if bra is None else bra
+        self.operator = operator
+        self._contraction = contraction
+        self._shape = shape
+        self.samples = samples
+        self._args = args
+        self._kwargs = kwargs
+
+    @property
+    def U(self):
+        return self.ket
+
+    @property
+    def H(self) -> tuple:
+        if self.operator is None:
+            return tuple()
+        return (self.operator,)
+
+    @property
+    def is_overlap(self) -> bool:
+        return self.operator is None
+
+    @property
+    def is_self_overlap(self) -> bool:
+        return self.is_overlap and self.bra is self.ket
+
+    @property
+    def qubits(self):
+        q = set(self.bra.qubits) | set(self.ket.qubits)
+        if self.operator is not None:
+            for ps in self.operator.paulistrings:
+                q |= set(ps.qubits)
+        return sorted(q)
+
+    @property
+    def is_compiled(self):
+        return False
+
+    def extract_variables(self):
+        var = list(self.ket.extract_variables())
+        if self.bra is not self.ket:
+            var.extend(self.bra.extract_variables())
+
+        seen, unique = set(), []
+        for v in var:
+            if v not in seen:
+                seen.add(v)
+                unique.append(v)
+        return unique
+
+    def map_variables(self, variables: dict, *args, **kwargs) -> "BraKetImpl":
+        return BraKetImpl(
+            ket=self.ket.map_variables(variables, *args, **kwargs),
+            bra=self.bra.map_variables(variables, *args, **kwargs),
+            operator=self.operator,
+            contraction=self._contraction,
+            shape=self._shape,
+            samples=self.samples,
+            *self._args,
+            **self._kwargs,
+        )
+
+    def map_qubits(self, qubit_map: dict[int, int]) -> "BraKetImpl":
+        return BraKetImpl(
+            ket=self.ket.map_qubits(qubit_map),
+            bra=self.bra.map_qubits(qubit_map),
+            operator=self.operator.map_qubits(qubit_map) if self.operator else None,
+            contraction=self._contraction,
+            shape=self._shape,
+            samples=self.samples,
+            *self._args,
+            **self._kwargs,
+        )
+
+    def compile(self):
+        kwargs = dict(self._kwargs)
+
+        if self.samples is not None:
+            kwargs["samples"] = self.samples
+
+        if self.bra is self.ket and self.operator is None:
+            return Objective() + 1.0, Objective()
+
+        if self.bra is self.ket and self.operator is not None:
+            return (ExpectationValue(H=self.operator, U=self.ket, *self._args, **kwargs), Objective())
+
+        if self.operator is None:
+            return make_overlap(U0=self.bra, U1=self.ket, *self._args, **kwargs)
+
+        return make_transition(U0=self.bra, U1=self.ket, H=self.operator, *self._args, **kwargs)
+
+    def count_measurements(self) -> int:
+        if self.operator is None:
+            return 2
+        return sum(
+            ps.count_measurements() if hasattr(ps, "count_measurements") else 1 for ps in self.operator.paulistrings
+        )
+
+    def __call__(self, *args, **kwargs):
+        raise TequilaException(
+            "BraKetImpl is symbolic and should not be evaluated directly. "
+            "Use tq.simulate(BraKetImpl(...)) for backend execution or BraKet(...)[0/1] for symbolic objectives."
+        )
+
+    def __repr__(self) -> str:
+        if self.operator:
+            return f"BraKetImpl(<bra|H|ket>, qubits={self.qubits})"
+        return f"BraKetImpl(<bra|ket>, qubits={self.qubits})"
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+
+def Fidelity(bra, ket, *args, **kwargs):
+    """
+
+    Convenience initialization of an tq.Objective that corresponds to the fidelity |<bra|ket>|^2 between two quantum states
+    initialized by the circuits bra and ket
+
+    Notes
+    -----
+    Initializes an ancilla free implementation using:
+    |<A|B>|^2 = <A|B><B|A><0|VAUB|0><0|VBUA|0> = <P0>_{VBAU}
+    VA = U^\dagger_A
+    P0 = |0..0><0..0|
+    see: https://arxiv.org/abs/2006.03075 Eq.3-4
+    or https://arxiv.org/abs/2011.05938 Eq.57
+
+    note, that the fidelity is symmetric: F(a,b) = F(b,a)
+    so it does not matter what is bra and what is ket
+
+    Parameters:
+    ----------
+    bra: QCircuit
+    ket: QCircuit
+
+    Returns:
+    ----------
+    A tq.Objective that evaluated to the fidelity between the two states
+
+    """
+    from tequila.objective.objective import ExpectationValue
+
+    U = bra + ket.dagger()
+    qubits = U.qubits
+    P0 = paulis.Qp(qubits)
+    return ExpectationValue(H=P0, U=U, *args, **kwargs)
+
+
+def Overlap(bra, ket, *args, **kwargs):
+    """
+
+    Convenience initialization of an tq.Objective that corresponds to the overlap <bra|ket>
+    initialized by the circuits bra and ket
+
+    Notes
+    -----
+    the fidelity between two state |<bra|ket>|^2 can be computed more efficient with the function tq.Fidelity
+
+    Parameters:
+    ----------
+    bra: QCircuit
+    ket: QCircuit
+
+    Returns:
+    ----------
+    A tuple of tq.Objective that evaluates to the real and imaginary part of the overlap between the two states
+
+    """
+
+    return BraKet(ket=ket, bra=bra, operator=None, *args, **kwargs)
+
+
+def BraKet(ket, bra=None, operator=None, *args, **kwargs):
+    from tequila.objective.objective import Objective
+
+    if "H" in kwargs:
+        if operator is None:
+            operator = kwargs["H"]
+        else:
+            raise TequilaException(
+                'BraKet inconsistency between operator and kwargs["H"] do not given H= ... and operator= ... in the same call'
+            )
+        kwargs.pop("H")
+
+    if bra is None:
+        bra = ket
+
+    return Objective.BraKet(bra=bra, ket=ket, operator=operator, *args, **kwargs)
+
+
+def RealBraKet(ket, bra=None, operator=None, *args, **kwargs):
+    bk = BraKet(ket=ket, bra=bra, operator=operator, *args, **kwargs)
+    return Objective(args=[bk], transformation=lambda z: z.real)
+
+
+def ImagBraKet(ket, bra=None, operator=None, *args, **kwargs):
+    bk = BraKet(ket=ket, bra=bra, operator=operator, *args, **kwargs)
+    return Objective(args=[bk], transformation=lambda z: z.imag)
+
+
+class ExpectationValueImpl(QuantumArg):
     """
     Implements the (uncompiled) Expectation Value as a class. Should not be called directly.
 
@@ -60,6 +351,10 @@ class ExpectationValueImpl:
         else:
             return self._hamiltonian
 
+    @property
+    def is_compiled(self):
+        return self._compiled_cache is not None
+
     def count_measurements(self):
         return sum([H.count_measurements() for H in self.H])
 
@@ -101,6 +396,19 @@ class ExpectationValueImpl:
         self._contraction = contraction
         self._shape = shape
         self.samples = samples
+
+        self._compiled_cache: tuple | None = None
+
+    def compile(self) -> tuple["Objective", None]:
+        if self._compiled_cache is not None:
+            return self._compiled_cache
+
+        real_obj = Objective(args=[self])
+        self._compiled_cache = (real_obj, None)
+        return self._compiled_cache
+
+    def set_compiled(self, compiled_obj: "Objective"):
+        self._compiled_cache = (compiled_obj, None)
 
     def map_qubits(self, qubit_map: dict):
         """
@@ -220,8 +528,7 @@ class Objective:
             if hasattr(arg, "map_qubits"):
                 mapped_args.append(arg.map_qubits(qubit_map=qubit_map))
             else:
-                assert not hasattr(arg, "U")  # failsave
-                assert not hasattr(arg, "H")  # failsave
+                assert not is_quantum_arg(arg)  # failsave
                 mapped_args.append(arg)  # for purely variable dependend arguments
 
         return Objective(args=mapped_args, transformation=self.transformation)
@@ -261,8 +568,8 @@ class Objective:
             for arg in self.args:
                 if hasattr(arg, "U"):
                     return str(type(arg))
-        else:
-            return "free"
+
+        return "free"
 
     def extract_variables(self) -> list:
         """
@@ -288,14 +595,17 @@ class Objective:
         """
         :return: bool: whether or not this objective is just a wrapped ExpectationValue
         """
-        return len(self.args) == 1 and self._transformation is None and type(self.args[0]) is ExpectationValueImpl
+        return len(self.args) == 1 and self._transformation is None and is_quantum_arg(self.args[0])
 
     def has_expectationvalues(self):
         """
         :return: bool: wether or not this objective has expectationvalues or is just a function of the variables
         """
         # testing if all arguments are only variables and give back the negative
-        return not all([hasattr(arg, "name") for arg in self.args])
+        return any(is_quantum_arg(arg) for arg in self.args)
+
+    def get_expectationvalues(self):
+        return [arg for arg in self.args if is_quantum_arg(arg)]
 
     @classmethod
     def ExpectationValue(cls, U=None, H=None, samples=None, *args, **kwargs):
@@ -305,12 +615,16 @@ class Objective:
         E = ExpectationValueImpl(H=H, U=U, samples=samples, *args, **kwargs)
         return Objective(args=[E])
 
+    @classmethod
+    def BraKet(cls, bra=None, ket=None, operator=None, samples=None, *args, **kwargs):
+        BK = BraKetImpl(ket=ket, bra=bra, operator=operator, samples=samples, *args, **kwargs)
+        return Objective(args=[BK])
+
     @property
     def transformation(self) -> typing.Callable:
         if self._transformation is None:
             return lambda x: x
-        else:
-            return self._transformation
+        return self._transformation
 
     @property
     def transformations(self) -> typing.Callable:
@@ -320,8 +634,7 @@ class Objective:
     def args(self) -> typing.Tuple:
         if self._args is None:
             return tuple()
-        else:
-            return self._args
+        return self._args
 
     @property
     def argsets(self):
@@ -350,7 +663,7 @@ class Objective:
             new = self.unary_operator(left=self, op=t)
         elif isinstance(other, Objective):
             new = self.binary_operator(left=self, right=other, op=op)
-        elif isinstance(other, ExpectationValueImpl):
+        elif is_quantum_arg(other):
             new = self.binary_operator(left=self, right=Objective(args=[other]), op=op)
         else:
             t = op
@@ -367,7 +680,7 @@ class Objective:
             new = self.unary_operator(left=self, op=t)
         elif isinstance(other, Objective):
             new = self.binary_operator(left=other, right=self, op=op)
-        elif isinstance(other, ExpectationValueImpl):
+        elif is_quantum_arg(other):
             new = self.binary_operator(left=Objective(args=[other]), right=self, op=op)
         else:
             t = op
@@ -500,15 +813,6 @@ class Objective:
         """alias for wrap"""
         return self.wrap(op=op)
 
-    def get_expectationvalues(self):
-        """
-        Returns
-        -------
-        list:
-            all the expectation values that make up the objective.
-        """
-        return [arg for arg in self.args if hasattr(arg, "U")]
-
     def count_measurements(self):
         """
         Count all measurements necessary for this objective:
@@ -600,22 +904,29 @@ class Objective:
         # avoid multiple evaluations
         evaluated = {}
         ev_array = []
-        for E in self.args:
-            if E not in evaluated:  #
-                expval_result = E(variables=variables, initial_state=initial_state, *args, **kwargs)
-                evaluated[E] = expval_result
+
+        for arg in self.args:
+            if arg in evaluated:  #
+                ev_array.append(evaluated[arg])
+                continue
+
+            if is_quantum_arg(arg):
+                result = _evaluate_quantum_arg(arg, variables=variables, initial_state=initial_state, *args, **kwargs)
             else:
-                expval_result = evaluated[E]
-            try:
-                expval_result = float(expval_result)
-            except Exception:
-                pass  # allow array evaluation (non-standard operation)
-            ev_array.append(expval_result)
-        result = onp.asarray(self.transformation(*ev_array), dtype=float)
+                result = arg(variables=variables, initial_state=initial_state, *args, **kwargs)
+
+            evaluated[arg] = result
+            ev_array.append(result)
+
+        result = self.transformation(*ev_array)
+        result = onp.asarray(result)
         if result.shape == ():
-            return float(result)
+            val = result.item()
+            return val
+            # return float(result)
         elif len(result) == 1:
-            return float(result[0])
+            return result[0]
+            # return float(result[0])
         else:
             return result
 
@@ -636,12 +947,51 @@ class Objective:
         """
         check if the objective was already translated to a quantum backend
         """
-        types = [type(E) for E in self.get_expectationvalues()]
-        types = list(set(types))
-        if len(types) == 0 or (ExpectationValueImpl in types and len(types) == 1):
+
+        quantum_args = self.get_expectationvalues()
+        if not quantum_args:
             return False
         else:
-            return True
+            return all(getattr(a, "is_compiled", True) for a in quantum_args)
+
+    def print_tree(self, indent=0, label="root"):
+        prefix = "  " * indent
+        jt = self._transformation
+
+        # 1.  print the current node
+        if isinstance(jt, JoinedTransformation):
+            op_name = getattr(jt.op, "__name__", str(jt.op))
+            print(f"{prefix}[{label}] JoinedTransformation(op={op_name})")
+            left_args = self.args[: jt.split]
+            right_args = self.args[jt.split :]
+            left_obj = Objective(args=left_args, transformation=jt.left)
+            right_obj = Objective(args=right_args, transformation=jt.right)
+            left_obj.print_tree(indent + 1, "left")
+            right_obj.print_tree(indent + 1, "right")
+        else:
+            fn_name = getattr(jt, "__name__", repr(jt))
+            print(f"{prefix}[{label}] transform={fn_name}, args={len(self.args)}")
+
+        # 2.  *** always *** recurse into the arguments
+        for idx, arg in enumerate(self.args):
+            if isinstance(arg, Objective):
+                arg.print_tree(indent + 1, f"arg[{idx}]")
+            else:
+                arg_type = type(arg).__name__
+                arg_repr = repr(arg)[:50]
+                print(f"{'  ' * (indent + 1)}[arg[{idx}]] {arg_type}: {arg_repr}")
+
+
+def _evaluate_quantum_arg(quantum_arg, variables, initial_state, *args, **kwargs):
+    # result = quantum_arg(variables=variables, initial_state=initial_state, *args, **kwargs)
+
+    # if len(result)==2:
+    #     real_val = result[0]
+    #     imag_val = result[1]
+    #     return real_val, imag_val
+
+    # return result
+    return quantum_arg(variables=variables, initial_state=initial_state, *args, **kwargs)
 
 
 def ExpectationValue(U, H, optimize_measurements=False, *args, **kwargs) -> Objective:
@@ -778,8 +1128,10 @@ class Variable:
         elif isinstance(other, Objective):
             new = Objective(args=[self])
             new = new.binary_operator(left=new, right=other, op=op)
-        elif isinstance(other, ExpectationValueImpl):
+        elif is_quantum_arg(other):
             new = Objective(args=[self, other], transformation=op)
+        # elif isinstance(other, ExpectationValueImpl):
+        #     new = Objective(args=[self, other], transformation=op)
         else:
             raise TequilaException(
                 "unknown type in left_helper of objective arithmetics with operation {}: {}".format(
@@ -801,8 +1153,10 @@ class Variable:
         elif isinstance(other, Objective):
             new = Objective(args=[self])
             new = new.binary_operator(right=new, left=other, op=op)
-        elif isinstance(other, ExpectationValueImpl):
-            new = Objective(args=[other, self], transformation=op)
+        elif is_quantum_arg(other):
+            new = Objective(args=[self, other], transformation=op)
+        # elif isinstance(other, ExpectationValueImpl):
+        #     new = Objective(args=[other, self], transformation=op)
         else:
             raise TequilaException(
                 "unknown type in left_helper of objective arithmetics with operation {}: {}".format(
