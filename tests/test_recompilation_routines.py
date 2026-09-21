@@ -173,7 +173,7 @@ def test_compile_pauli_rotations(type, angle: float):
     gate = type(target=0, angle=angle)
     compiler = CircuitCompiler(pauli_rotations=True, epsilon=1e-6)
     compiled = compiler.compile_circuit(gate)
-    assert np.allclose(gate.to_matrix(), compiled.to_matrix(), atol=1e-6)
+    np.testing.assert_allclose(gate.to_matrix(), compiled.to_matrix(), atol=1e-6)
 
 
 # Check if the gate is in the set {H, X, S, CNOT, T}
@@ -208,7 +208,7 @@ def test_error_correctable_compilation():
     compiled = compiler.compile_circuit(U)
 
     assert all(is_error_correctable_gate(g) for g in compiled.gates)
-    assert np.allclose(U.to_matrix(), compiled.to_matrix(), atol=1e-5)
+    assert np.linalg.norm(U.to_matrix() - compiled.to_matrix(), ord=2) < 1e-5
 
 
 def test_compile_qubit_excitations():

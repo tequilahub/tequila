@@ -13,6 +13,8 @@ import qiskit
 import qiskit_aer
 import qiskit.providers.fake_provider
 from qiskit import QuantumCircuit, transpile
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit.primitives import PrimitiveResult
 
 HAS_NOISE = True
 try:
@@ -22,7 +24,7 @@ except Exception:
 
 HAS_IBMQ = True
 try:
-    from qiskit_ibm_runtime import IBMBackend
+    from qiskit_ibm_runtime import IBMBackend, Sampler
 except Exception:
     HAS_IBMQ = False
 
@@ -439,53 +441,36 @@ class BackendCircuitQiskit(BackendCircuit):
                     "Cannot combine backend {} with custom noise models.".format(str(qiskit_backend))
                 )
             circuit = circuit.assign_parameters(self.resolver)  # this is necessary in spite of qiskit "fixing" it
-            circuit = qiskit.transpile(circuit, qiskit_backend)
+            pm = generate_preset_pass_manager(optimization_level=optimization_level, backend=qiskit_backend)
+            circuit = pm.run(circuit)
+            sampler = Sampler(mode=qiskit_backend)
+            job = sampler.run([circuit], shots=samples)
             return self.convert_measurements(
-                qiskit_backend.run(circuit, shots=samples, optimization_level=optimization_level),
+                job,
                 target_qubits=read_out_qubits,
             )
         else:
-            if isinstance(qiskit_backend, qiskit.providers.fake_provider.FakeBackend):
-                circuit = circuit.assign_parameters(self.resolver)  # this is necessary in spite of qiskit "fixing" it
-                coupling_map = qiskit_backend.configuration().coupling_map
-                from_back = qiskitnoise.NoiseModel.from_backend(qiskit_backend)
-                if self.noise_model is not None:
-                    from_back = self.noise_model
-                basis = from_back.basis_gates
-                use_backend = self.retrieve_device(self.STATEVECTOR_DEVICE_NAME)
-                use_backend.set_options(noise_model=from_back)
-                circuit = qiskit.transpile(
-                    circuit,
-                    backend=use_backend,
-                    basis_gates=basis,
-                    coupling_map=coupling_map,
-                    optimization_level=optimization_level,
-                )
-
-                job = qiskit_backend.run(circuit, shots=samples, memory=save_runs)
-                return self.convert_measurements(job, target_qubits=read_out_qubits, save_runs=save_runs)
+            if self.noise_model is not None:
+                qiskit_backend.set_options(noise_model=self.noise_model)  # fits better with our methodology.
+                use_basis = full_basis
             else:
-                if self.noise_model is not None:
-                    qiskit_backend.set_options(noise_model=self.noise_model)  # fits better with our methodology.
-                    use_basis = full_basis
-                else:
-                    use_basis = qiskit_backend.configuration().basis_gates
-                circuit = circuit.assign_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
-                circuit = self.add_state_init(circuit, initial_state)
-                circuit = qiskit.transpile(
-                    circuit, backend=qiskit_backend, basis_gates=use_basis, optimization_level=optimization_level
-                )
+                use_basis = qiskit_backend.configuration().basis_gates
+            circuit = circuit.assign_parameters(self.resolver)  # this is necessary -- see qiskit-aer issue 1346
+            circuit = self.add_state_init(circuit, initial_state)
+            circuit = qiskit.transpile(
+                circuit, backend=qiskit_backend, basis_gates=use_basis, optimization_level=optimization_level
+            )
 
-                job = qiskit_backend.run(circuit, shots=samples, memory=save_runs)
-                return self.convert_measurements(job, target_qubits=read_out_qubits, save_runs=save_runs)
+            job = qiskit_backend.run(circuit, shots=samples, memory=save_runs)
+            return self.convert_measurements(job, target_qubits=read_out_qubits, save_runs=save_runs)
 
-    def convert_measurements(self, backend_result, target_qubits=None, save_runs=False) -> QubitWaveFunction:
+    def convert_measurements(self, backend_job, target_qubits=None, save_runs=False) -> QubitWaveFunction:
         """
         map backend results to QubitWaveFunction
         Parameters
         ----------
-        backend_result:
-            the result returned directly qiskit simulation.
+        backend_job:
+            the job for the qiskit simulation.
         Returns
         -------
         QubitWaveFunction:
@@ -499,10 +484,15 @@ class BackendCircuitQiskit(BackendCircuit):
             runs = [BitString.from_bitstring(other=BitStringLSB.from_binary(binary=k)) for k in memory]
             return runs
 
-        qiskit_counts = backend_result.result().get_counts()
+        qiskit_result = backend_job.result()
+        if isinstance(qiskit_result, PrimitiveResult):
+            # ClassicalRegister for measurement is always called "c"
+            qiskit_counts = qiskit_result[0].data.c.get_counts()
+        else:
+            qiskit_counts = qiskit_result.get_counts()
         result = QubitWaveFunction(self.n_qubits, self.numbering)
         if save_runs:
-            qiskit_memory = backend_result.result().get_memory()
+            qiskit_memory = qiskit_result.get_memory()
             qiskit_runs = process_qiskit_memory(qiskit_memory)
             result.runs = qiskit_runs  # todo bitstring!
 
