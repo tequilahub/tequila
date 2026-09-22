@@ -369,3 +369,52 @@ def test_braket_analytic_gradient():
 
     return
 
+
+def test_braket_different_qubits():
+    """
+    Function that tests a braket whose bra and ket act on different qubits.
+
+    Both circuits are simulated and combined by an inner product, so they have to be
+    evaluated in the same register. All other braket tests build bra and ket over the
+    same qubits, where a mismatch cannot show up.
+
+    Returns
+    -------
+    None.
+
+    """
+    a, b = 0.7, 1.3
+    U0 = tq.gates.Ry(angle=a, target=0)
+    U1 = tq.gates.Ry(angle=b, target=1)
+
+    # <U1|U0> = <0|Ry(a)|0> * <Ry(b)|0> = cos(a/2)*cos(b/2)
+    value = complex(tq.simulate(tq.BraKet(ket=U0, bra=U1)))
+
+    assert np.isclose(value.real, np.cos(a / 2) * np.cos(b / 2), atol=1.0e-4)
+    assert np.isclose(value, tq.simulate(U1).inner(tq.simulate(U0)), atol=1.0e-4)
+
+    return
+
+
+def test_braket_operator_outside_circuits():
+    """
+    Function that tests a braket whose operator acts on a qubit that neither circuit touches.
+
+    That qubit stays in |0>, so Z acting on it contributes a factor of one and the result
+    is the plain overlap.
+
+    Returns
+    -------
+    None.
+
+    """
+    a, b = 0.7, 1.3
+    U0 = tq.gates.Ry(angle=a, target=0)
+    U1 = tq.gates.Ry(angle=b, target=0)
+
+    value = complex(tq.simulate(tq.BraKet(ket=U0, bra=U1, operator=tq.paulis.Z(5))))
+
+    assert np.isclose(value.real, np.cos((a - b) / 2), atol=1.0e-4)
+
+    return
+
