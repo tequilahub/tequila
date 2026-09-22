@@ -294,13 +294,16 @@ def BraKet(ket, bra=None, operator=None, *args, **kwargs):
 
 
 def RealBraKet(ket, bra=None, operator=None, *args, **kwargs):
+    # the real part is an expectation value: take it from the decomposition instead of
+    # wrapping the complex braket, which would nest an objective inside the arguments
+    # and can neither be simulated nor differentiated
     bk = BraKet(ket=ket, bra=bra, operator=operator, *args, **kwargs)
-    return Objective(args=[bk], transformation=lambda z: z.real)
+    return bk.args[-1].compile()[0]
 
 
 def ImagBraKet(ket, bra=None, operator=None, *args, **kwargs):
     bk = BraKet(ket=ket, bra=bra, operator=operator, *args, **kwargs)
-    return Objective(args=[bk], transformation=lambda z: z.imag)
+    return bk.args[-1].compile()[1]
 
 
 class ExpectationValueImpl(QuantumArg):

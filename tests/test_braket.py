@@ -464,3 +464,37 @@ def test_braket_count_measurements():
 
     return
 
+
+def test_real_and_imag_braket():
+    """
+    Function that tests that RealBraKet and ImagBraKet are usable objectives.
+
+    Both are real valued, so unlike the complex braket they can be simulated,
+    differentiated and optimized directly.
+
+    Returns
+    -------
+    None.
+
+    """
+    a, b = tq.Variable("a"), tq.Variable("b")
+    U0 = tq.gates.Ry(angle=a, target=0)
+    U1 = tq.gates.Ry(angle=b, target=0)
+    H = tq.paulis.Z(0)
+    variables = {"a": 0.7, "b": 1.3}
+
+    real = tq.RealBraKet(ket=U0, bra=U1, operator=H)
+    imaginary = tq.ImagBraKet(ket=U0, bra=U1, operator=H)
+
+    # <U1|Z|U0> = cos((a+b)/2), which is real
+    assert np.isclose(tq.simulate(real, variables=variables), np.cos(1.0), atol=1.0e-4)
+    assert np.isclose(tq.simulate(imaginary, variables=variables), 0.0, atol=1.0e-4)
+
+    gradient = tq.simulate(tq.grad(real, a), variables=variables)
+    assert np.isclose(gradient, -0.5 * np.sin(1.0), atol=1.0e-4)
+
+    result = tq.minimize(real, initial_values=variables, silent=True)
+    assert np.isclose(result.energy, -1.0, atol=1.0e-4)
+
+    return
+
