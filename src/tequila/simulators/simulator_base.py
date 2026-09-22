@@ -1230,5 +1230,8 @@ class BackendBraKet:
 
         return complex(real_val, imag_val)
 
+    def count_measurements(self):
+        return self.abstract_braket.count_measurements()
+
     def extract_variables(self) -> typing.List[Variable]:
         return list(self._variables)

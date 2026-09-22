@@ -440,3 +440,27 @@ def test_braket_sampling():
 
     return
 
+
+def test_braket_count_measurements():
+    """
+    Function that tests that a braket reports the measurements its decomposition needs.
+
+    Real and imaginary part are measured separately, each with one Hadamard test per
+    Pauli string, so counting the Pauli strings alone underestimates the effort.
+
+    Returns
+    -------
+    None.
+
+    """
+    U0 = tq.gates.Ry(angle=0.7, target=0)
+    U1 = tq.gates.Ry(angle=1.3, target=0)
+    H = tq.paulis.Z(0) + tq.paulis.X(0)
+
+    braket = tq.BraKet(ket=U0, bra=U1, operator=H).args[-1]
+    real, imaginary = braket.compile()
+
+    assert braket.count_measurements() == real.count_measurements() + imaginary.count_measurements()
+
+    return
+

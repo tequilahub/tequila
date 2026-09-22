@@ -196,11 +196,9 @@ class BraKetImpl(QuantumArg):
         return make_transition(U0=self.bra, U1=self.ket, H=self.operator, *self._args, **kwargs)
 
     def count_measurements(self) -> int:
-        if self.operator is None:
-            return 2
-        return sum(
-            ps.count_measurements() if hasattr(ps, "count_measurements") else 1 for ps in self.operator.paulistrings
-        )
+        # a transition element is measured through its real and imaginary parts, each of which
+        # needs one Hadamard test per Pauli string, so count what compile() actually produces
+        return sum(part.count_measurements() for part in self.compile())
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
