@@ -623,7 +623,9 @@ class Objective:
     @property
     def transformation(self) -> typing.Callable:
         if self._transformation is None:
-            return lambda x: x
+            # the shared identity, not a fresh lambda: callers compare against it to skip
+            # building a derivative of the identity (see __grad_objective)
+            return identity
         return self._transformation
 
     @property

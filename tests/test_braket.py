@@ -342,3 +342,30 @@ def test_braket_complex_objective_not_optimizable():
 
     return
 
+
+def test_braket_analytic_gradient():
+    """
+    Function that tests that tq.grad over a transition element agrees with finite differences.
+
+    <U1|H|U0> = cos((a+b)/2) for the circuits below, so the derivative with respect to
+    both a and b is -0.5*sin((a+b)/2).
+
+    Returns
+    -------
+    None.
+
+    """
+    a, b = tq.Variable("a"), tq.Variable("b")
+    U0 = tq.gates.Ry(angle=a, target=0)
+    U1 = tq.gates.Ry(angle=b, target=0)
+    objective = tq.braket(ket=U0, bra=U1, operator=tq.paulis.Z(0))
+
+    variables = {"a": 0.7, "b": 1.3}
+    expected = -0.5 * np.sin((variables["a"] + variables["b"]) / 2.0)
+
+    for variable in [a, b]:
+        gradient = complex(tq.simulate(tq.grad(objective, variable), variables=variables)).real
+        assert np.isclose(gradient, expected, atol=1.0e-4)
+
+    return
+
