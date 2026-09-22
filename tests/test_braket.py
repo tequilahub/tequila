@@ -418,3 +418,25 @@ def test_braket_operator_outside_circuits():
 
     return
 
+
+def test_braket_sampling():
+    """
+    Function that tests that a braket can be evaluated with a finite number of samples.
+
+    Returns
+    -------
+    None.
+
+    """
+    a, b = 0.7, 1.3
+    U0 = tq.gates.Ry(angle=a, target=0)
+    U1 = tq.gates.Ry(angle=b, target=0)
+
+    objective = tq.BraKet(ket=U0, bra=U1, operator=tq.paulis.Z(0))
+
+    sampled = complex(tq.simulate(objective, samples=20000))
+
+    assert np.isclose(sampled.real, np.cos((a + b) / 2), atol=5.0e-2)
+
+    return
+

@@ -1213,10 +1213,17 @@ class BackendBraKet:
         return complex(result)
 
     def sample(self, variables, samples: int, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
+        # compile() hands back abstract objectives, which can not be called directly
+        from tequila.simulators.simulator_api import simulate
+
         real_obj, imag_obj = self.abstract_braket.compile()
 
-        real_val = real_obj(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
-        imag_val = imag_obj(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
+        real_val = simulate(
+            real_obj, variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
+        imag_val = simulate(
+            imag_obj, variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
 
         if imag_val == 0.0:
             return float(real_val)
