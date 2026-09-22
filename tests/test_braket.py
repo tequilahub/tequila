@@ -1,4 +1,5 @@
 import operator
+import pytest
 import tequila as tq
 import numpy as np
 from tequila.circuit.gates import PauliGate
@@ -266,3 +267,78 @@ def test_braket():
     assert np.isclose(br_trans_el, trans_el, atol=1.0e-4)
 
     return
+
+
+def test_braket_gradient_optimization():
+    """
+    Function that tests that an objective built from transition elements can be optimized.
+
+    The other braket tests only evaluate fixed circuits with tq.simulate, so nothing here
+    covered the optimizer path, where the objective has to be a real scalar.
+
+    A single transition element is complex, but a sum over both index orders is real by
+    construction. For the circuits below <U1|H|U0> = cos((a+b)/2), so the objective is
+    2*cos((a+b)/2) with a minimum of -2 wherever a+b = 2*pi.
+
+    Returns
+    -------
+    None.
+
+    """
+    a, b = tq.Variable("a"), tq.Variable("b")
+    U0 = tq.gates.Ry(angle=a, target=0)
+    U1 = tq.gates.Ry(angle=b, target=0)
+    H = tq.paulis.Z(0)
+
+    objective = tq.braket(ket=U0, bra=U1, operator=H) + tq.braket(ket=U1, bra=U0, operator=H)
+
+    # the imaginary parts of the two orders cancel, the objective is real
+    value = complex(tq.simulate(objective, variables={"a": 0.7, "b": 1.3}))
+    assert np.isclose(value.real, 2 * np.cos(1.0), atol=1.0e-4)
+    assert np.isclose(value.imag, 0.0, atol=1.0e-6)
+
+    for start_a, start_b in [(1.0, 1.0), (0.2, 0.4), (2.5, 0.1), (0.5, 2.8)]:
+        # the finite difference step is set explicitly: the default of scipy is smaller than
+        # the resolution of a float32 backend (jax without x64), where the objective then
+        # looks flat and the optimizer stops at the starting point
+        result = tq.minimize(
+            objective,
+            initial_values={"a": start_a, "b": start_b},
+            gradient="2-point",
+            method_options={"finite_diff_rel_step": 1.0e-4},
+            silent=True,
+        )
+
+        assert np.isclose(result.energy, -2.0, atol=1.0e-4)
+        assert np.isclose(np.cos((result.variables[a] + result.variables[b]) / 2.0), -1.0, atol=1.0e-4)
+
+    return
+
+
+def test_braket_complex_objective_not_optimizable():
+    """
+    Function that tests that a genuinely complex objective is rejected by the optimizer.
+
+    A transition element between two different states is complex and can not be ordered,
+    so optimizing it is not defined and has to be reported instead of silently discarding
+    the imaginary part. The error has to name the imaginary part: casting the value with
+    float() also raises a TypeError, but one that says nothing about the cause.
+
+    Returns
+    -------
+    None.
+
+    """
+    U0 = tq.gates.Ry(angle="a", target=0) + tq.gates.Rz(angle="p", target=0)
+    U1 = tq.gates.Ry(angle="b", target=0)
+    initial_values = {"a": 0.7, "b": 1.3, "p": 0.9}
+
+    objective = tq.braket(ket=U0, bra=U1)
+
+    assert abs(complex(tq.simulate(objective, variables=initial_values)).imag) > 1.0e-6
+
+    with pytest.raises(TypeError, match="imaginary part"):
+        tq.minimize(objective, initial_values=initial_values, silent=True)
+
+    return
+

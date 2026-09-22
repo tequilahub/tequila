@@ -3,7 +3,7 @@ import copy
 import numbers
 from tequila.grouping.compile_groups import compile_commuting_parts
 from tequila import TequilaException
-from tequila.utils import JoinedTransformation
+from tequila.utils import JoinedTransformation, to_float
 from tequila.hamiltonian import paulis
 import numpy as onp
 from tequila.autograd_imports import numpy as numpy
@@ -812,6 +812,23 @@ class Objective:
     def apply(self, op):
         """alias for wrap"""
         return self.wrap(op=op)
+
+    def to_float(self):
+        """
+        Cast to a real valued objective.
+
+        Objectives can be complex valued, e.g. when they hold transition elements made by
+        tq.BraKet. Optimizers need a real scalar, so they cast the objective before
+        optimizing: the cast succeeds where the imaginary part vanishes (a Hermitian
+        expectation value, or a sum of transition elements that is real by construction)
+        and raises otherwise.
+
+        Returns
+        -------
+        Objective:
+            an objective which is evaluated as to_float(self)
+        """
+        return self.wrap(to_float)
 
     def count_measurements(self):
         """
