@@ -6,6 +6,7 @@ import numpy
 import warnings
 
 from tequila import TequilaException, TequilaWarning
+from tequila.utils import to_float
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB, reverse_int_bits
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_base import (
@@ -515,7 +516,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                 string = ""
                 for k, v in ps.items():
                     string += v.upper() + " " + str(qubit_map[k])
-                qulacs_H.add_operator(ps.coeff, string)
+                qulacs_H.add_operator(to_float(ps.coeff), string)
             result.append(qulacs_H)
         return result
 
