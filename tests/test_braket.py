@@ -498,3 +498,27 @@ def test_real_and_imag_braket():
 
     return
 
+
+def test_braket_non_hermitian_operator():
+    """
+    Function that tests a transition element with a non Hermitian operator.
+
+    <bra|O|ket> is well defined for any O, so the backend must not restrict itself to
+    Hermitian operators the way an expectation value does.
+
+    Returns
+    -------
+    None.
+
+    """
+    a, b = 0.7, 1.3
+    U0 = tq.gates.Ry(angle=a, target=0)
+    U1 = tq.gates.Ry(angle=b, target=0)
+
+    # <U1|Z|U0> = cos((a+b)/2), so with the operator i*Z the result is purely imaginary
+    value = complex(tq.simulate(tq.BraKet(ket=U0, bra=U1, operator=tq.QubitHamiltonian("1.0j*Z(0)"))))
+
+    assert np.isclose(value.real, 0.0, atol=1.0e-4)
+    assert np.isclose(value.imag, np.cos((a + b) / 2), atol=1.0e-4)
+
+    return

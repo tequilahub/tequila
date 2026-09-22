@@ -596,7 +596,10 @@ class BackendBraKetQulacs(BackendBraKet):
         if self.operator is not None:
             qubit_map = {q: i for i, q in enumerate(self.U_ket.abstract_qubits)}
 
-            obs = qulacs.Observable(self.U_ket.n_qubits)
+            # a transition element <bra|O|ket> is well defined for a non Hermitian O, so this
+            # uses the general operator: qulacs.Observable is a HermitianQuantumOperator and
+            # rejects complex coefficients. (Expectation values still use Observable.)
+            obs = qulacs.GeneralQuantumOperator(self.U_ket.n_qubits)
             added_any = False
 
             for ps in self.operator.paulistrings:
@@ -617,7 +620,7 @@ class BackendBraKetQulacs(BackendBraKet):
                     continue
 
                 string = " ".join(mapped_terms)
-                obs.add_operator(ps.coeff, string)
+                obs.add_operator(complex(ps.coeff), string)
                 added_any = True
 
             if added_any:
