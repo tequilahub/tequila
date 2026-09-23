@@ -6,6 +6,7 @@ import numpy
 import warnings
 
 from tequila import TequilaException, TequilaWarning
+from tequila.utils import to_float
 from tequila.utils.bitstrings import BitNumbering, BitString, BitStringLSB, reverse_int_bits
 from tequila.wavefunction.qubit_wavefunction import QubitWaveFunction
 from tequila.simulators.simulator_base import (
@@ -515,7 +516,7 @@ class BackendExpectationValueQulacs(BackendExpectationValue):
                 string = ""
                 for k, v in ps.items():
                     string += v.upper() + " " + str(qubit_map[k])
-                qulacs_H.add_operator(ps.coeff, string)
+                qulacs_H.add_operator(to_float(ps.coeff), string)
             result.append(qulacs_H)
         return result
 
@@ -595,7 +596,10 @@ class BackendBraKetQulacs(BackendBraKet):
         if self.operator is not None:
             qubit_map = {q: i for i, q in enumerate(self.U_ket.abstract_qubits)}
 
-            obs = qulacs.Observable(self.U_ket.n_qubits)
+            # a transition element <bra|O|ket> is well defined for a non Hermitian O, so this
+            # uses the general operator: qulacs.Observable is a HermitianQuantumOperator and
+            # rejects complex coefficients. (Expectation values still use Observable.)
+            obs = qulacs.GeneralQuantumOperator(self.U_ket.n_qubits)
             added_any = False
 
             for ps in self.operator.paulistrings:
@@ -616,7 +620,7 @@ class BackendBraKetQulacs(BackendBraKet):
                     continue
 
                 string = " ".join(mapped_terms)
-                obs.add_operator(ps.coeff, string)
+                obs.add_operator(complex(ps.coeff), string)
                 added_any = True
 
             if added_any:
@@ -673,10 +677,17 @@ class BackendBraKetQulacs(BackendBraKet):
         *args,
         **kwargs,
     ) -> complex:
+        # compile() hands back abstract objectives, which can not be called directly
+        from tequila.simulators.simulator_api import simulate
+
         real_obj, imag_obj = self.abstract_braket.compile()
 
-        real_val = real_obj(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
-        imag_val = imag_obj(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
+        real_val = simulate(
+            real_obj, variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
+        imag_val = simulate(
+            imag_obj, variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
 
         if imag_val == 0.0:
             return float(real_val)

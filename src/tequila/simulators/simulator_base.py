@@ -1133,15 +1133,37 @@ class BackendBraKet:
         self._input_args = {"variables": variables, "noise": noise, "device": device, **kwargs}
         self._variables = braket.extract_variables()
 
-        self.U_ket = self.BackendCircuitType(
-            abstract_circuit=braket.ket, variables=variables, noise=noise, device=device, *args, **kwargs
-        )
+        # bra, ket and operator have to live in the same register: the two wavefunctions are
+        # combined by an inner product, and a backend circuit only spans the qubits it touches.
+        # circuits acting on different qubits would otherwise be simulated in registers that do
+        # not line up, and operator qubits outside both circuits would be dropped entirely.
+        # identity gates extend a circuit to the shared register without changing the state.
+        from tequila.circuit.gates import I
+
+        shared_qubits = set(braket.ket.qubits) | set(braket.bra.qubits)
+        if braket.operator is not None:
+            shared_qubits |= set(braket.operator.qubits)
+
+        ket = braket.ket
+        for q in sorted(shared_qubits - set(ket.qubits)):
+            ket = ket + I(target=q)
 
         if braket.bra is braket.ket:
+            bra = ket
+        else:
+            bra = braket.bra
+            for q in sorted(shared_qubits - set(bra.qubits)):
+                bra = bra + I(target=q)
+
+        self.U_ket = self.BackendCircuitType(
+            abstract_circuit=ket, variables=variables, noise=noise, device=device, *args, **kwargs
+        )
+
+        if bra is ket:
             self.U_bra = self.U_ket
         else:
             self.U_bra = self.BackendCircuitType(
-                abstract_circuit=braket.bra, variables=variables, noise=noise, device=device, *args, **kwargs
+                abstract_circuit=bra, variables=variables, noise=noise, device=device, *args, **kwargs
             )
 
         self.operator = braket.operator
@@ -1191,15 +1213,25 @@ class BackendBraKet:
         return complex(result)
 
     def sample(self, variables, samples: int, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
+        # compile() hands back abstract objectives, which can not be called directly
+        from tequila.simulators.simulator_api import simulate
+
         real_obj, imag_obj = self.abstract_braket.compile()
 
-        real_val = real_obj(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
-        imag_val = imag_obj(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
+        real_val = simulate(
+            real_obj, variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
+        imag_val = simulate(
+            imag_obj, variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
 
         if imag_val == 0.0:
             return float(real_val)
 
         return complex(real_val, imag_val)
+
+    def count_measurements(self):
+        return self.abstract_braket.count_measurements()
 
     def extract_variables(self) -> typing.List[Variable]:
         return list(self._variables)

@@ -1,6 +1,7 @@
 from tequila.circuit.compiler import CircuitCompiler
 from tequila.objective.objective import (
     Objective,
+    BraKetImpl,
     ExpectationValueImpl,
     Variable,
     assign_variable,
@@ -78,7 +79,9 @@ def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None,
 
     if isinstance(objective, ExpectationValueImpl):
         return __grad_expectationvalue(E=objective, variable=variable)
-    elif objective.is_expectationvalue():
+    elif objective.is_expectationvalue() and not isinstance(compiled.args[-1], BraKetImpl):
+        # is_expectationvalue() only tests for a quantum argument, and a braket is not an
+        # expectation value: let it fall through to __grad_objective/__grad_inner
         return __grad_expectationvalue(E=compiled.args[-1], variable=variable)
     elif isinstance(compiled, Objective) or (hasattr(compiled, "args") and hasattr(compiled, "transformation")):
         return __grad_objective(objective=compiled, variable=variable)
@@ -91,12 +94,20 @@ def __grad_objective(objective: Objective, variable: Variable):
     transformation = objective.transformation
     dO = None
 
+    # an objective holding a braket is complex valued, and the plain autograd gradient only
+    # accepts real output. the arithmetic combining the arguments (sums, products, quotients)
+    # is holomorphic, so the outer derivative is well defined and just has to be asked for
+    holomorphic = any(isinstance(arg, BraKetImpl) for arg in args)
+
     processed_expectationvalues = {}
     for i, arg in enumerate(args):
         if __AUTOGRAD__BACKEND__ == "jax":
-            df = jax.grad(transformation, argnums=i)
+            df = jax.grad(transformation, argnums=i, holomorphic=holomorphic)
         elif __AUTOGRAD__BACKEND__ == "autograd":
-            df = jax.grad(transformation, argnum=i)
+            if holomorphic:
+                df = jax.holomorphic_grad(transformation, i)
+            else:
+                df = jax.grad(transformation, argnum=i)
         else:
             raise TequilaException("Can't differentiate without autograd or jax")
 
@@ -206,6 +217,12 @@ def __grad_inner(arg, variable):
         E = arg.abstract_expectationvalue
         dE = __grad_expectationvalue(E, variable=variable)
         return compile(dE, **arg._input_args)
+    elif isinstance(arg, BraKetImpl):
+        # differentiating a braket as an expectation value would only see the ket. its real
+        # and imaginary parts are expectation values, which is also how they are measured,
+        # so differentiate the decomposition that compile() already provides
+        real, imaginary = arg.compile()
+        return grad(real, variable) + 1.0j * grad(imaginary, variable)
     elif hasattr(arg, "grad"):
         return arg.grad(variable)
     else:

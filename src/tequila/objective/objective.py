@@ -3,7 +3,7 @@ import copy
 import numbers
 from tequila.grouping.compile_groups import compile_commuting_parts
 from tequila import TequilaException
-from tequila.utils import JoinedTransformation
+from tequila.utils import JoinedTransformation, to_float
 from tequila.hamiltonian import paulis
 import numpy as onp
 from tequila.autograd_imports import numpy as numpy
@@ -196,11 +196,9 @@ class BraKetImpl(QuantumArg):
         return make_transition(U0=self.bra, U1=self.ket, H=self.operator, *self._args, **kwargs)
 
     def count_measurements(self) -> int:
-        if self.operator is None:
-            return 2
-        return sum(
-            ps.count_measurements() if hasattr(ps, "count_measurements") else 1 for ps in self.operator.paulistrings
-        )
+        # a transition element is measured through its real and imaginary parts, each of which
+        # needs one Hadamard test per Pauli string, so count what compile() actually produces
+        return sum(part.count_measurements() for part in self.compile())
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
@@ -296,13 +294,16 @@ def BraKet(ket, bra=None, operator=None, *args, **kwargs):
 
 
 def RealBraKet(ket, bra=None, operator=None, *args, **kwargs):
+    # the real part is an expectation value: take it from the decomposition instead of
+    # wrapping the complex braket, which would nest an objective inside the arguments
+    # and can neither be simulated nor differentiated
     bk = BraKet(ket=ket, bra=bra, operator=operator, *args, **kwargs)
-    return Objective(args=[bk], transformation=lambda z: z.real)
+    return bk.args[-1].compile()[0]
 
 
 def ImagBraKet(ket, bra=None, operator=None, *args, **kwargs):
     bk = BraKet(ket=ket, bra=bra, operator=operator, *args, **kwargs)
-    return Objective(args=[bk], transformation=lambda z: z.imag)
+    return bk.args[-1].compile()[1]
 
 
 class ExpectationValueImpl(QuantumArg):
@@ -623,7 +624,9 @@ class Objective:
     @property
     def transformation(self) -> typing.Callable:
         if self._transformation is None:
-            return lambda x: x
+            # the shared identity, not a fresh lambda: callers compare against it to skip
+            # building a derivative of the identity (see __grad_objective)
+            return identity
         return self._transformation
 
     @property
@@ -812,6 +815,23 @@ class Objective:
     def apply(self, op):
         """alias for wrap"""
         return self.wrap(op=op)
+
+    def to_float(self):
+        """
+        Cast to a real valued objective.
+
+        Objectives can be complex valued, e.g. when they hold transition elements made by
+        tq.BraKet. Optimizers need a real scalar, so they cast the objective before
+        optimizing: the cast succeeds where the imaginary part vanishes (a Hermitian
+        expectation value, or a sum of transition elements that is real by construction)
+        and raises otherwise.
+
+        Returns
+        -------
+        Objective:
+            an objective which is evaluated as to_float(self)
+        """
+        return self.wrap(to_float)
 
     def count_measurements(self):
         """
