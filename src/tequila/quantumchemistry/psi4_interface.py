@@ -408,9 +408,10 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         if "threads" in kwargs:
             psi4.set_num_threads(nthread=kwargs["threads"])
 
+        psi4.set_options({"freeze_core": int(ignore_active_space)})
+
         if filename is None:
             filename = "{}_{}.out".format(self.parameters.filename, method)
-
         psi4.core.set_output_file(filename)
 
         # easier guess read in
@@ -461,66 +462,6 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         )
         return energy, wfn
 
-    def _extract_active_space(self, arr):
-        """
-        Internal function that helps to convert CCSD amplitudes if an actice space was set
-        """
-        if self.integral_manager.active_space is None:
-            return arr
-        elif (
-            len(self.integral_manager.active_space.active_orbitals) == self.integral_manager.one_body_integrals.shape[0]
-        ):
-            return arr
-
-        if isinstance(arr, ClosedShellAmplitudes):
-            result = {}
-            for k, v in arr.__dict__.items():
-                if v is not None:
-                    result[k] = self._extract_active_space(arr=v)
-
-            return ClosedShellAmplitudes(**result)
-        asd = self.integral_manager.active_space
-        aocc = [i for i in asd.active_orbitals if i in asd.reference_orbitals]
-        avir = [i for i in asd.active_orbitals if i not in asd.reference_orbitals]
-        assert self.n_orbitals == len(aocc) + len(avir)
-        assert self.n_electrons == len(aocc) * 2
-
-        n_orb_total = len(self.orbitals)
-        n_electrons_total = self.n_electrons + 2 * len(asd.frozen_reference_orbitals)
-        nocc = n_electrons_total // 2
-        nvirt = n_orb_total - nocc
-        avir = [x - nocc for x in avir]
-        nav = len(avir)
-        nao = len(aocc)
-
-        arr_shape = arr.shape
-        final_shape = []
-        active_sets = []
-
-        for i in arr_shape:
-            if i == nocc:
-                final_shape.append(nao)
-                active_sets.append(aocc)
-            elif i == nvirt:
-                final_shape.append(nav)
-                active_sets.append(avir)
-            else:
-                assert i == nocc + nvirt
-                final_shape.append(nao + nav)
-                active_sets.append(aocc + avir)
-
-        final_shape = tuple(final_shape)
-
-        def func(*args):
-            result = 1
-            for i in range(len(args)):
-                result *= args[i] in active_sets[i]
-            return result
-
-        c = numpy.fromfunction(function=numpy.vectorize(func), shape=arr_shape, dtype=numpy.int)
-
-        return numpy.extract(condition=c, arr=arr).reshape(final_shape)
-
     # def compute_mp2_amplitudes(self, active_orbitals=None, *args, **kwargs) -> ClosedShellAmplitudes:
     #    return self._extract_active_space(super().compute_mp2_amplitudes(*args, **kwargs))
 
@@ -543,15 +484,16 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
                 point_group="c1",
                 ref_wfn=self.ref_wfn.c1_deep_copy(self.ref_wfn.basisset()),
                 filename=filename,
+                ignore_active_space=not self.integral_manager.active_space_is_trivial(),
                 *args,
                 **kwargs,
             )
             all_amplitudes = wfn.get_amplitudes()
+            all_amplitudes["tIA"].scale(-1)
+            all_amplitudes["tIjAb"].scale(-1)
             closed_shell = isinstance(wfn.reference_wavefunction(), psi4.core.RHF)
             if closed_shell:
-                return self._extract_active_space(
-                    ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
-                )
+                return ClosedShellAmplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})
             else:
                 assert self.integral_manager.trivial_active_space()  # only for closed-shell currently
                 return Amplitudes(**{k: v.to_array() for k, v in all_amplitudes.items()})

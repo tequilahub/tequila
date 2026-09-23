@@ -57,8 +57,7 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
         self.indices = indices
         if not hasattr(indices[0], "__len__"):
             self.indices = [(indices[2 * i], indices[2 * i + 1]) for i in range(len(indices) // 2)]
-        self.sign = self.format_excitation_variables(self.indices)
-        self.indices = self.format_excitation_indices(self.indices)
+        self.indices, self.sign = self.__get_perm_factor(self.indices)
 
     def compile(self, *args, **kwargs):
         if self.is_convertable_to_qubit_excitation():
@@ -75,35 +74,31 @@ class FermionicGateImpl(gates.QubitExcitationImpl):
             else:
                 return gates.Trotterized(generator=self.generator, control=self.control, angle=self.parameter, steps=1)
 
-    def format_excitation_indices(self, idx):
-        """
-        Consistent formatting of excitation indices
-        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
-        sorted as: p0<p1<pn and pi<qi
-        :param idx: list of index tuples describing a single(!) fermionic excitation
-        :return: list of index tuples
-        """
+    def __merge_and_count(self, indices):
+        if len(indices) <= 1:
+            return indices, 0
+        mid = len(indices) // 2
+        left, left_inv = self.__merge_and_count(indices[:mid])
+        right, right_inv = self.__merge_and_count(indices[mid:])
+        merged = []
+        i = j = 0
+        split_inv = 0
+        while i < len(left) and j < len(right):
+            if left[i][0] <= right[j][0]:
+                merged.append(left[i])
+                i += 1
+            else:
+                merged.append(right[j])
+                split_inv += len(left) - i
+                j += 1
+        merged.extend(left[i:])
+        merged.extend(right[j:])
+        return merged, left_inv + right_inv + split_inv
 
-        idx = [tuple(sorted(x)) for x in idx]
-        idx = sorted(idx, key=lambda x: x[0])
-        return list(idx)
-
-    def format_excitation_variables(self, idx):
-        """
-        Consistent formatting of excitation variable
-        idx = [(p0,q0),(p1,q1),...,(pn,qn)]
-        sorted as: pi<qi and p0 < p1 < p2
-        :param idx: list of index tuples describing a single(!) fermionic excitation
-        :return: sign of the variable with re-ordered indices
-        """
-        sig = 1
-        for pair in idx:
-            if pair[1] > pair[0]:
-                sig *= -1
-        for pair in range(len(idx) - 1):
-            if idx[pair + 1][0] > idx[pair][0]:
-                sig *= -1
-        return sig
+    def __get_perm_factor(self, indices):
+        sorted_indices, total_swaps = self.__merge_and_count(indices)
+        factor = -1 if total_swaps % 2 == 0 else 1
+        return sorted_indices, factor
 
     def cCRy(
         self,
