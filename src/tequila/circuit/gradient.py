@@ -317,7 +317,7 @@ def __grad_braKet(objective: BraKetImpl, variable: Variable = None) -> Objective
                     shape=objective._shape,
                     samples=objective.samples,
                     *objective._args,
-                    **objective._kwargs
+                    **objective._kwargs,
                 )
             ]
         )
@@ -333,7 +333,7 @@ def __grad_braKet(objective: BraKetImpl, variable: Variable = None) -> Objective
                     shifted = g.shifted_gates()
                 g.assume_real = False
                 inner = __grad_inner(g.parameter, variable)
-                if isinstance(inner, float) and isclose(inner, 0, atol=1.e-6):
+                if isinstance(inner, float) and isclose(inner, 0, atol=1.0e-6):
                     continue
                 for x in shifted:
                     w, g = x
