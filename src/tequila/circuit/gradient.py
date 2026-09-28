@@ -17,6 +17,7 @@ from copy import deepcopy
 from tequila.autograd_imports import jax, __AUTOGRAD__BACKEND__
 from tequila.circuit._gates_impl import DifferentiableGateImpl
 
+
 def grad(objective: typing.Union[Objective, QTensor], variable: Variable = None, no_compile=False, *args, **kwargs):
     """
     wrapper function for getting the gradients of Objectives,ExpectationValues, Unitaries (including single gates), and Transforms.
@@ -284,6 +285,7 @@ def __grad_shift_rule(unitary, g, i, variable, hamiltonian):
     else:
         raise TequilaException("No shift found for gate {}\nWas the compiler called?".format(g))
 
+
 def __grad_braKet(objective: BraKetImpl, variable: Variable = None) -> Objective:
     r"""
     Gradient of <bra|H|ket> by differentiating the amplitudes of bra and ket directly,
@@ -305,9 +307,20 @@ def __grad_braKet(objective: BraKetImpl, variable: Variable = None) -> Objective
         raise TequilaException("error in grad_braket unitary is {}".format(objective.ket))
 
     def make_braket(bra, ket):
-        return Objective(args=[BraKetImpl(ket=ket, bra=bra, operator=objective.operator,
-                                          contraction=objective._contraction, shape=objective._shape,
-                                          samples=objective.samples, *objective._args, **objective._kwargs)])
+        return Objective(
+            args=[
+                BraKetImpl(
+                    ket=ket,
+                    bra=bra,
+                    operator=objective.operator,
+                    contraction=objective._contraction,
+                    shape=objective._shape,
+                    samples=objective.samples,
+                    *objective._args,
+                    **objective._kwargs
+                )
+            ]
+        )
 
     dO = Objective()
     for is_bra, U in [(False, deepcopy(objective.ket)), (True, deepcopy(objective.bra))]:
@@ -320,7 +333,7 @@ def __grad_braKet(objective: BraKetImpl, variable: Variable = None) -> Objective
                     shifted = g.shifted_gates()
                 g.assume_real = False
                 inner = __grad_inner(g.parameter, variable)
-                if isinstance(inner, float) and isclose(inner,0,atol=1.e-6):
+                if isinstance(inner, float) and isclose(inner, 0, atol=1.e-6):
                     continue
                 for x in shifted:
                     w, g = x
@@ -330,7 +343,7 @@ def __grad_braKet(objective: BraKetImpl, variable: Variable = None) -> Objective
                         dO += w.conjugate() * inner * make_braket(bra=Ux, ket=objective.ket)
                     else:
                         dO += w * inner * make_braket(bra=objective.bra, ket=Ux)
-            else: 
+            else:
                 raise TequilaException("No shift found for gate {}\nWas the compiler called?".format(g))
     assert dO is not None
     return dO
