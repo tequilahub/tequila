@@ -128,7 +128,11 @@ class BraKetImpl(QuantumArg):
 
     @property
     def is_self_overlap(self) -> bool:
-        return self.is_overlap and self.bra is self.ket
+        return self.is_overlap and self.is_diagonal
+
+    @property
+    def is_diagonal(self) -> bool:
+        return self.bra is self.ket
 
     @property
     def qubits(self):
@@ -187,7 +191,7 @@ class BraKetImpl(QuantumArg):
         if self.bra is self.ket and self.operator is None:
             return Objective() + 1.0, Objective()
 
-        if self.bra is self.ket and self.operator is not None:
+        if self.is_diagonal and self.operator is not None:
             return (ExpectationValue(H=self.operator, U=self.ket, *self._args, **kwargs), Objective())
 
         if self.operator is None:
@@ -216,7 +220,7 @@ class BraKetImpl(QuantumArg):
 
 
 def Fidelity(bra, ket, *args, **kwargs):
-    """
+    r"""
 
     Convenience initialization of an tq.Objective that corresponds to the fidelity |<bra|ket>|^2 between two quantum states
     initialized by the circuits bra and ket
