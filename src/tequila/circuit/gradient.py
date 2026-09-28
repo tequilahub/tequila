@@ -330,6 +330,7 @@ def __grad_braKet(objective: BraKetImpl, variable: Variable = None) -> Objective
                         dO += w.conjugate() * inner * make_braket(bra=Ux, ket=objective.ket)
                     else:
                         dO += w * inner * make_braket(bra=objective.bra, ket=Ux)
-            else: raise TequilaException("No shift found for gate {}\nWas the compiler called?".format(g))
+            else: 
+                raise TequilaException("No shift found for gate {}\nWas the compiler called?".format(g))
     assert dO is not None
     return dO
