@@ -116,6 +116,7 @@ def show_available_modules():
 def show_supported_modules():
     try:
         from sunrise.molecules.qubit_base import show_supported_modules as _show_supported_modules
+
         _show_supported_modules()
     except ImportError:
         warnings.warn(

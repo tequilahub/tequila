@@ -379,7 +379,7 @@ def PseudoSingletMolecularPool(*args, **kwargs):
 def ObjectiveFactorySequentialExcitedState(H, circuits: list, factors: list, *args, **kwargs):
     try:
         from sunrise.ADAPT.adapt import (
-            ObjectiveFactorySequentialExcitedState as _ObjectiveFactorySequentialExcitedState
+            ObjectiveFactorySequentialExcitedState as _ObjectiveFactorySequentialExcitedState,
         )
     except ImportError:
         raise TequilaException(
