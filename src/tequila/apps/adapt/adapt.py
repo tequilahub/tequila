@@ -18,6 +18,7 @@ import dataclasses
 import warnings
 from itertools import combinations
 
+
 @dataclasses.dataclass
 class AdaptParameters:
     optimizer_args: dict = dataclasses.field(
@@ -377,7 +378,9 @@ def PseudoSingletMolecularPool(*args, **kwargs):
 
 def ObjectiveFactorySequentialExcitedState(H, circuits: list, factors: list, *args, **kwargs):
     try:
-        from sunrise.ADAPT.adapt import ObjectiveFactorySequentialExcitedState as _ObjectiveFactorySequentialExcitedState
+        from sunrise.ADAPT.adapt import (
+            ObjectiveFactorySequentialExcitedState as _ObjectiveFactorySequentialExcitedState
+        )
     except ImportError:
         raise TequilaException(
             "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."

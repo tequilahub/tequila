@@ -26,7 +26,7 @@ def build_toymol():
 
     # Hferm = mol.make_molecular_hamiltonian()
     objects = []
-    with (open("data/H2_tqham.data", "rb")) as openfile:
+    with open("data/H2_tqham.data", "rb") as openfile:
         while True:
             try:
                 objects.append(pickle.load(openfile))
@@ -34,7 +34,7 @@ def build_toymol():
                 break
     H: tq.QubitHamiltonian = objects[0]
     objects = []
-    with (open("data/H2_ofham.data", "rb")) as openfile:
+    with open("data/H2_ofham.data", "rb") as openfile:
         while True:
             try:
                 objects.append(pickle.load(openfile))

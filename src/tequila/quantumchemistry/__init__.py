@@ -104,11 +104,12 @@ def MoleculeFromOpenFermion(
 def show_available_modules():
     try:
         from sunrise.molecules.qubit_base import show_available_modules as _show_available_modules
+
         _show_available_modules()
     except ImportError:
         warnings.warn(
             "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
-            )
+        )
         print("Available QuantumChemistry Modules:")
 
 
@@ -119,7 +120,7 @@ def show_supported_modules():
     except ImportError:
         warnings.warn(
             "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
-            )
+        )
         print("\n")
 
 
@@ -192,5 +193,5 @@ def optimize_orbitals(
         read_chkfile=read_chkfile,
         save_chkfile=save_chkfile,
         *args,
-        **kwargs
+        **kwargs,
     )
