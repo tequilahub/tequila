@@ -1,42 +1,22 @@
+from __future__ import annotations
+from tequila import TequilaException
 import typing
-import warnings
-
-from tequila import TequilaWarning
-from .qc_base import QuantumChemistryBase
-from .chemistry_tools import ParametersQC, NBodyTensor
-from .madness_interface import QuantumChemistryMadness
-
-# needs pyscf (handeled in call)
-from .orbital_optimizer import optimize_orbitals
-
-
-SUPPORTED_QCHEMISTRY_BACKENDS = ["base", "psi4", "madness", "pyscf"]
-INSTALLED_QCHEMISTRY_BACKENDS = {"base": QuantumChemistryBase, "madness": QuantumChemistryMadness}
 
 try:
-    from .psi4_interface import QuantumChemistryPsi4
-
-    INSTALLED_QCHEMISTRY_BACKENDS["psi4"] = QuantumChemistryPsi4
+    from sunrise.molecules.qubit_base.qc_base import QuantumChemistryBase
+    from sunrise.expval.orbital_optimizer import OptimizeOrbitalsResult
 except ImportError:
     pass
 
 try:
-    from .pyscf_interface import QuantumChemistryPySCF
-
-    INSTALLED_QCHEMISTRY_BACKENDS["pyscf"] = QuantumChemistryPySCF
+    from sunrise.molecules.qubit_base import SUPPORTED_QCHEMISTRY_BACKENDS
 except ImportError:
-    pass
+    SUPPORTED_QCHEMISTRY_BACKENDS = {}
 
-
-def show_available_modules():
-    print("Available QuantumChemistry Modules:")
-    for k in INSTALLED_QCHEMISTRY_BACKENDS.keys():
-        print(k)
-
-
-def show_supported_modules():
-    print(SUPPORTED_QCHEMISTRY_BACKENDS)
-
+try:
+    from sunrise.molecules.qubit_base import INSTALLED_QCHEMISTRY_BACKENDS
+except ImportError:
+    INSTALLED_QCHEMISTRY_BACKENDS = {}
 
 def Molecule(
     geometry: str = None,
@@ -48,7 +28,7 @@ def Molecule(
     name: str = None,
     *args,
     **kwargs,
-) -> QuantumChemistryBase:
+) -> "QuantumChemistryBase":
     """
 
     Parameters
@@ -74,120 +54,18 @@ def Molecule(
     -------
         The Fermion to Qubit Transformation (jordan-wigner, bravyi-kitaev, bravyi-kitaev-tree and whatever OpenFermion supports)
     """
+    try:
+        from sunrise.molecules.qubit_base import Molecule as _Molecule
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _Molecule(geometry, basis_set, transformation, orbital_type, backend, guess_wfn, name, *args, **kwargs)
 
-    # failsafe for common mistake
-    if "basis" in kwargs:
-        warnings.warn(
-            'called molecule with keyword "basis={0}" converting it to "basis_set={0}"'.format(kwargs["basis"]),
-            TequilaWarning,
-        )
-        if basis_set is not None:
-            warnings.warn('did not convert as "basis_set={}" was already given'.format(basis_set), TequilaWarning)
-        basis_set = kwargs["basis"]
-
-    keyvals = {}
-    for k, v in kwargs.items():
-        if k in ParametersQC.__dict__.keys():
-            keyvals[k] = v
-
-    if "parameters" in kwargs:
-        parameters = kwargs["parameters"]
-        kwargs.pop("parameters")
-    else:
-        parameters = ParametersQC(name=name, geometry=geometry, basis_set=basis_set, multiplicity=1, **keyvals)
-
-    integrals_provided = all([key in kwargs for key in ["one_body_integrals", "two_body_integrals"]])
-    if integrals_provided and backend is None:
-        backend = "base"
-
-    if backend is None:
-        if basis_set is None or basis_set.lower() in ["madness", "mra", "pno"]:
-            backend = "madness"
-            basis_set = "mra"
-            parameters.basis_set = basis_set
-            if orbital_type is not None and orbital_type.lower() not in ["pno", "mra-pno"]:
-                warnings.warn(
-                    "only PNOs supported as orbital_type without basis set. Setting to pno - You gave={}".format(
-                        orbital_type
-                    ),
-                    TequilaWarning,
-                )
-            orbital_type = "pno"
-        else:
-            if orbital_type is not None and orbital_type.lower() not in ["hf", "native"]:
-                warnings.warn(
-                    "only hf and native supported as orbital_type with basis-set. Setting to hf - You gave={}".format(
-                        orbital_type
-                    ),
-                    TequilaWarning,
-                )
-                orbital_type = "hf"
-            if orbital_type is None:
-                orbital_type = "hf"
-
-            if "psi4" in INSTALLED_QCHEMISTRY_BACKENDS:
-                backend = "psi4"
-            elif "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
-                backend = "pyscf"
-            else:
-                raise Exception("No quantum chemistry backends installed on your system")
-
-    elif backend == "base":
-        if not integrals_provided:
-            raise Exception(
-                "No quantum chemistry backends installed on your system\n"
-                "To use the base functionality you need to pass the following tensors via keyword\n"
-                "one_body_integrals, two_body_integrals\n"
-            )
-        else:
-            backend = "base"
-
-    if backend not in SUPPORTED_QCHEMISTRY_BACKENDS:
-        raise Exception(str(backend) + " is not (yet) supported by tequila")
-
-    if backend not in INSTALLED_QCHEMISTRY_BACKENDS:
-        raise Exception(str(backend) + " was not found on your system")
-
-    if guess_wfn is not None and backend != "psi4":
-        raise Exception("guess_wfn only works for psi4")
-
-    if basis_set is None and backend.lower() not in ["base", "madness"] and not integrals_provided:
-        raise Exception("no basis_set or integrals provided for backend={}".format(backend))
-    elif basis_set is None:
-        basis_set = "custom"
-        parameters.basis_set = basis_set
-
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](
-        parameters=parameters,
-        transformation=transformation,
-        orbital_type=orbital_type,
-        guess_wfn=guess_wfn,
-        *args,
-        **kwargs,
-    )
-
-
-def MoleculeFromTequila(mol, transformation=None, backend=None, *args, **kwargs):
-    c, h, g = mol.get_integrals()
-    parameters = mol.parameters
-    if backend is None:
-        if "pyscf" in INSTALLED_QCHEMISTRY_BACKENDS:
-            backend = "pyscf"
-        else:
-            backend = "base"
-    if transformation is None:
-        transformation = mol.transformation
-    return INSTALLED_QCHEMISTRY_BACKENDS[backend.lower()](
-        parameters=parameters,
-        transformation=transformation,
-        n_electrons=mol.n_electrons,
-        one_body_integrals=h,
-        two_body_integrals=g,
-        nuclear_repulsion=c,
-        *args,
-        **kwargs,
-    )
-
+def MoleculeFromTequila(mol, transformation=None, backend=None, *args, **kwargs) -> "QuantumChemistryBase":
+    try:
+        from sunrise.molecules.qubit_base import MoleculeFromTequila as _MoleculeFromTequila
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _MoleculeFromTequila(mol, transformation, backend, *args, **kwargs)
 
 def MoleculeFromOpenFermion(
     molecule, transformation: typing.Union[str, typing.Callable] = None, backend: str = None, *args, **kwargs
@@ -204,11 +82,78 @@ def MoleculeFromOpenFermion(
         The quantum chemistry backend, can be None in this case
     Returns
     -------
-        The tequila molecule
+        The sunrise molecule
     """
-    if backend is None:
-        return QuantumChemistryBase.from_openfermion(molecule=molecule, transformation=transformation, *args, **kwargs)
-    else:
-        INSTALLED_QCHEMISTRY_BACKENDS[backend].from_openfermion(
-            molecule=molecule, transformation=transformation, *args, **kwargs
-        )
+    try:
+        from sunrise.molecules.qubit_base import MoleculeFromOpenFermion as _MoleculeFromOpenFermion
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _MoleculeFromOpenFermion(molecule, transformation, backend, *args, **kwargs)
+
+def show_available_modules():
+    try:
+        from sunrise.molecules.qubit_base import show_available_modules as _show_available_modules
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _show_available_modules()
+
+def show_supported_modules():
+    try:
+        from sunrise.molecules.qubit_base import show_supported_modules as _show_supported_modules
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _show_supported_modules()
+
+def optimize_orbitals(
+    molecule,
+    circuit=None,
+    vqe_solver=None,
+    pyscf_arguments=None,
+    silent=False,
+    vqe_solver_arguments=None,
+    initial_guess=None,
+    return_mcscf=False,
+    use_hcb=False,
+    molecule_factory=None,
+    molecule_arguments=None,
+    restrict_to_active_space=True,
+    read_chkfile: str = None,
+    save_chkfile: str = None,
+    *args,
+    **kwargs,
+)->OptimizeOrbitalsResult:
+    """
+
+    Parameters
+    ----------
+    molecule: The molecule whose orbitals are to be optimized
+    circuit: The circuit that defines the ansatz to the wavefunction in the VQE
+             can be None, if a customized vqe_solver is passed that can construct a circuit
+    vqe_solver: The VQE solver (the default - vqe_solver=None - will take the given circuit and construct an expectationvalue out of molecule.make_hamiltonian and the given circuit)
+                A customized object can be passed that needs to be callable with the following signature: vqe_solver(H=H, circuit=self.circuit, molecule=molecule, **self.vqe_solver_arguments)
+    pyscf_arguments: Arguments for the MCSCF structure of PySCF, if None, the defaults are {"max_cycle_macro":10, "max_cycle_micro":3} (see here https://pyscf.org/pyscf_api_docs/pyscf.mcscf.html)
+    silent: silence printout
+    use_hcb: indicate if the circuit is in hardcore Boson encoding
+    vqe_solver_arguments: Optional arguments for a customized vqe_solver or the default solver
+                          for the default solver: vqe_solver_arguments={"optimizer_arguments":A, "restrict_to_hcb":False} where A holds the kwargs for tq.minimize
+                          restrict_to_hcb keyword controls if the standard (in whatever encoding the molecule structure has) Hamiltonian is constructed or the hardcore_boson hamiltonian
+    initial_guess: Initial guess for the MCSCF module of PySCF (Matrix of orbital rotation coefficients)
+                   The default (None) is a unit matrix
+                   predefined commands are
+                        initial_guess="random"
+                        initial_guess="random_loc=X_scale=Y" with X and Y being floats
+                        This initialized a random guess using numpy.random.normal(loc=X, scale=Y) with X=0.0 and Y=0.1 as defaults
+    return_mcscf: return the PySCF MCSCF structure after optimization
+    molecule_arguments: arguments to pass to molecule_factory or default molecule constructor | only change if you know what you are doing
+    read_chkfile: checkpoint file to read the initial orbitals during the CASSCF optimization. For more info see https://pyscf.org/_modules/pyscf/mcscf/chkfile.html#load_mcscf
+    save_chkfile: checkpoint file to save the intermediate orbitals during the CASSCF optimization.
+    args: just here for convenience
+    kwargs: just here for conveniece
+    """
+
+    try:
+        from sunrise.expval.orbital_optimizer import optimize_orbitals as _optimize_orbitals
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _optimize_orbitals(molecule, circuit, vqe_solver, pyscf_arguments, silent, vqe_solver_arguments, initial_guess, return_mcscf, use_hcb, molecule_factory,
+                              molecule_arguments, restrict_to_active_space, read_chkfile, save_chkfile, *args, **kwargs)

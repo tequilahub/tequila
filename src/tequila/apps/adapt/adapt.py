@@ -18,7 +18,6 @@ import dataclasses
 import warnings
 from itertools import combinations
 
-
 @dataclasses.dataclass
 class AdaptParameters:
     optimizer_args: dict = dataclasses.field(
@@ -356,171 +355,33 @@ class Adapt:
         return result
 
 
-class MolecularPool(AdaptPoolBase):
-    def __init__(self, molecule, indices: str):
-        """
-
-        Parameters
-        ----------
-        molecule:
-            a tequila molecule object
-        indices
-            a list of indices defining UCC operations
-            indices refer to spin-orbitals
-            e.g. indices = [[(0,2),(1,3)], [(0,2)], [(1,3)]]
-            can be a string for predefined pools supported are UpCCD, UpCCSD, UpCCGD, and UpCCGSD
-        """
-        self.molecule = molecule
-
-        if isinstance(indices, str):
-            if "CC" not in indices.upper():
-                raise TequilaException(
-                    "Pool of type {} not yet supported.\nCreate your own by passing the initialized indices".format(
-                        indices
-                    )
-                )
-
-            generalized = True if "G" in indices.upper() else False
-            paired = True if "P" in indices.upper() else False
-            singles = True if "S" in indices.upper() else False
-            doubles = True if "D" in indices.upper() else False
-
-            indices = []
-            if doubles:
-                indices += self.make_indices_doubles(generalized=generalized, paired=paired)
-            if singles:
-                indices += self.make_indices_singles(generalized=generalized)
-
-        indices = [tuple(k) for k in indices]
-        super().__init__(generators=indices)
-
-    def make_indices_singles(self, generalized=False):
-        indices = []
-        for p in range(self.molecule.n_electrons // 2):
-            for q in range(self.molecule.n_electrons // 2, self.molecule.n_orbitals):
-                indices.append([(2 * p, 2 * q)])
-                indices.append([(2 * p + 1, 2 * q + 1)])
-        if not generalized:
-            return indices
-
-        for p in range(self.molecule.n_orbitals):
-            for q in range(p + 1, self.molecule.n_orbitals):
-                if [(2 * p, 2 * q)] in indices:
-                    continue
-                indices.append([(2 * p, 2 * q)])
-                indices.append([(2 * p + 1, 2 * q + 1)])
-        return self.sort_and_filter_unique_indices(indices)
-
-    def make_indices_doubles(self, generalized=False, paired=True):
-        indices = []
-        for p in range(self.molecule.n_electrons // 2):
-            for q in range(self.molecule.n_electrons // 2, self.molecule.n_orbitals):
-                indices.append([(2 * p, 2 * q), (2 * p + 1, 2 * q + 1)])
-
-        if not generalized:
-            return indices
-
-        for p in range(self.molecule.n_orbitals):
-            for q in range(p + 1, self.molecule.n_orbitals):
-                idx = [(2 * p, 2 * q), (2 * p + 1, 2 * q + 1)]
-                if idx in indices:
-                    continue
-                indices.append(idx)
-
-        if not paired:
-            indices += self.make_indices_doubles_all(generalized=generalized)
-
-        return self.sort_and_filter_unique_indices(indices)
-
-    def make_indices_doubles_all(self, generalized=False):
-        singles = self.make_indices_singles(generalized=generalized)
-        unwrapped = [x[0] for x in singles]
-        # now make all combinations of singles
-        indices = [x for x in combinations(unwrapped, 2)]
-        return self.sort_and_filter_unique_indices(indices)
-
-    def sort_and_filter_unique_indices(self, indices):
-        # sort as: [[(a,b),(c,d),(e,f)...],...]with a<c, a<b, c<d
-        sorted_indices = []
-        for idx in indices:
-            idx = tuple([tuple(sorted(pair)) for pair in idx])  # sort internal pairs (a<b, c<d, etc)
-            # avoid having orbitals show up multiple times in excitatin strings
-            idx = tuple(
-                [pair for pair in idx if sum([1 for pair2 in idx if pair[0] in pair2 or pair[1] in pair2]) == 1]
-            )
-            if len(idx) == 0:
-                continue
-            idx = tuple(list(set(idx)))  # avoid repetitions (like ((0,2),(0,2)))
-            idx = tuple(sorted(idx, key=lambda x: x[0]))  # sort pairs by first entry (a<c)
-            sorted_indices.append(idx)
-        return list(set(sorted_indices))
-
-    def make_unitary(self, k, label):
-        return self.molecule.make_excitation_gate(
-            indices=self.generators[k], angle=(self.generators[k], label), assume_real=True
-        )
+def MolecularPool(molecule, indices: str, *args, **kwargs):
+    try:
+        from sunrise.ADAPT.adapt import MolecularPool as _MolecularPool
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _MolecularPool(molecule, indices, *args, **kwargs)
 
 
-class PseudoSingletMolecularPool(MolecularPool):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        indices = []
-        for idx in self.generators:
-            if len(idx) == 1:
-                combined = (
-                    ((idx[0][0] // 2 * 2, idx[0][1] // 2 * 2)),
-                    ((idx[0][0] // 2 * 2 + 1, idx[0][1] // 2 * 2 + 1)),
-                )
-                if combined not in indices:
-                    indices.append(combined)
-            else:
-                indices.append(tuple([idx]))
-
-        self.generators = list(set(indices))
-
-    def make_unitary(self, k, label):
-        U = QCircuit()
-        for idx in self.generators[k]:
-            combined_variable = self.generators[k][0]
-            U += self.molecule.make_excitation_gate(indices=idx, angle=(combined_variable, label))
-        return U
+def PseudoSingletMolecularPool(*args, **kwargs):
+    try:
+        from sunrise.ADAPT.adapt import PseudoSingletMolecularPool as _PseudoSingletMolecularPool
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _PseudoSingletMolecularPool(*args, **kwargs)
 
 
-class ObjectiveFactorySequentialExcitedState(ObjectiveFactoryBase):
-    def __init__(self, H, circuits: list, factors: list, *args, **kwargs):
-        self.circuits = circuits
-        self.factors = factors
-        super().__init__(H=H, *args, **kwargs)
-
-    def __call__(self, U, *args, **kwargs):
-        circuit = self.Upre + U + self.Upost
-        objective = ExpectationValue(H=self.H, U=circuit)
-        Qp = paulis.Qp(U.qubits)
-        # get all overlaps
-        for i, Ux in enumerate(self.circuits):
-            S2 = ExpectationValue(H=Qp, U=circuit + Ux.dagger())
-            objective += numpy.abs(self.factors[i]) * S2
-        return objective
+def ObjectiveFactorySequentialExcitedState(H, circuits: list, factors: list, *args, **kwargs):
+    try:
+        from sunrise.ADAPT.adapt import ObjectiveFactorySequentialExcitedState as _ObjectiveFactorySequentialExcitedState
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _ObjectiveFactorySequentialExcitedState(H, circuits, factors, *args, **kwargs)
 
 
-def run_molecular_adapt(molecule, operator_pool: str = None, Upre=None, Upost=None, *args, **kwargs):
-    if operator_pool is None:
-        operator_pool = "UCCGSD"
-
-    # auto-detect if we have an molecular pool
-    # initialized by keyword
-    # e.g. U(p)CC(G)(S)(D)
-    ucc_signals = ["u", "cc", "s", "d", "g"]
-    if hasattr(operator_pool, "lower"):
-        if any([s in operator_pool.lower() for s in ucc_signals]):
-            operator_pool = MolecularPool(molecule=molecule, indices=operator_pool)
-
-    if Upre is None:
-        Upre = molecule.prepare_reference()
-
-    H = molecule.make_hamiltonian()
-    solver = Adapt(operator_pool=operator_pool, H=H, Upre=Upre, Upost=Upost, *args, **kwargs)
-
-    result = solver()
-
-    return result
+def run_molecular_adapt(molecule, operator_pool: str = None, Upre=None, Upost=None, backend=None, *args, **kwargs):
+    try:
+        from sunrise.ADAPT.adapt import run_molecular_adapt as _run_molecular_adapt
+    except ImportError:
+        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+    return _run_molecular_adapt(molecule, operator_pool, Upre, Upost, backend, *args, **kwargs)
