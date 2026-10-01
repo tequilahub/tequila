@@ -10,10 +10,11 @@ import openfermion
 import pytest
 import pickle
 
+
 def build_toymol():
     """
     Build the qubit Hamiltonian with Jordan Wigner encoding for H2 at a particular geometry.
-    To avoid sunrise dependency, hamiltonians have been provided as binary. Original code 
+    To avoid sunrise dependency, hamiltonians have been provided as binary. Original code
     has been kept here comented just for ilustrative reasons.
     """
 
@@ -25,21 +26,21 @@ def build_toymol():
 
     # Hferm = mol.make_molecular_hamiltonian()
     objects = []
-    with (open('data/H2_tqham.data', "rb")) as openfile:
+    with (open("data/H2_tqham.data", "rb")) as openfile:
         while True:
             try:
                 objects.append(pickle.load(openfile))
             except EOFError:
                 break
-    H:tq.QubitHamiltonian = objects[0]
+    H: tq.QubitHamiltonian = objects[0]
     objects = []
-    with (open('data/H2_ofham.data', "rb")) as openfile:
+    with (open("data/H2_ofham.data", "rb")) as openfile:
         while True:
             try:
                 objects.append(pickle.load(openfile))
             except EOFError:
                 break
-    Hferm:openfermion.InteractionOperator = objects[0]
+    Hferm: openfermion.InteractionOperator = objects[0]
     return H, openfermion.get_fermion_operator(Hferm)
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from tequila import TequilaException
+import warnings
 import typing
 
 try:
@@ -17,6 +18,7 @@ try:
     from sunrise.molecules.qubit_base import INSTALLED_QCHEMISTRY_BACKENDS
 except ImportError:
     INSTALLED_QCHEMISTRY_BACKENDS = {}
+
 
 def Molecule(
     geometry: str = None,
@@ -57,15 +59,21 @@ def Molecule(
     try:
         from sunrise.molecules.qubit_base import Molecule as _Molecule
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+        raise TequilaException(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+        )
     return _Molecule(geometry, basis_set, transformation, orbital_type, backend, guess_wfn, name, *args, **kwargs)
+
 
 def MoleculeFromTequila(mol, transformation=None, backend=None, *args, **kwargs) -> "QuantumChemistryBase":
     try:
         from sunrise.molecules.qubit_base import MoleculeFromTequila as _MoleculeFromTequila
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+        raise TequilaException(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+        )
     return _MoleculeFromTequila(mol, transformation, backend, *args, **kwargs)
+
 
 def MoleculeFromOpenFermion(
     molecule, transformation: typing.Union[str, typing.Callable] = None, backend: str = None, *args, **kwargs
@@ -87,22 +95,33 @@ def MoleculeFromOpenFermion(
     try:
         from sunrise.molecules.qubit_base import MoleculeFromOpenFermion as _MoleculeFromOpenFermion
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+        raise TequilaException(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+        )
     return _MoleculeFromOpenFermion(molecule, transformation, backend, *args, **kwargs)
+
 
 def show_available_modules():
     try:
         from sunrise.molecules.qubit_base import show_available_modules as _show_available_modules
+        _show_available_modules()
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
-    return _show_available_modules()
+        warnings.warn(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+            )
+        print("Available QuantumChemistry Modules:")
+
 
 def show_supported_modules():
     try:
         from sunrise.molecules.qubit_base import show_supported_modules as _show_supported_modules
+        _show_supported_modules()
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
-    return _show_supported_modules()
+        warnings.warn(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+            )
+        print("\n")
+
 
 def optimize_orbitals(
     molecule,
@@ -121,7 +140,7 @@ def optimize_orbitals(
     save_chkfile: str = None,
     *args,
     **kwargs,
-)->OptimizeOrbitalsResult:
+) -> OptimizeOrbitalsResult:
     """
 
     Parameters
@@ -154,6 +173,24 @@ def optimize_orbitals(
     try:
         from sunrise.expval.orbital_optimizer import optimize_orbitals as _optimize_orbitals
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
-    return _optimize_orbitals(molecule, circuit, vqe_solver, pyscf_arguments, silent, vqe_solver_arguments, initial_guess, return_mcscf, use_hcb, molecule_factory,
-                              molecule_arguments, restrict_to_active_space, read_chkfile, save_chkfile, *args, **kwargs)
+        raise TequilaException(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+        )
+    return _optimize_orbitals(
+        molecule=molecule,
+        circuit=circuit,
+        vqe_solver=vqe_solver,
+        pyscf_arguments=pyscf_arguments,
+        silent=silent,
+        vqe_solver_arguments=vqe_solver_arguments,
+        initial_guess=initial_guess,
+        return_mcscf=return_mcscf,
+        use_hcb=use_hcb,
+        molecule_factory=molecule_factory,
+        molecule_arguments=molecule_arguments,
+        restrict_to_active_space=restrict_to_active_space,
+        read_chkfile=read_chkfile,
+        save_chkfile=save_chkfile,
+        *args,
+        **kwargs
+    )

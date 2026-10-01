@@ -359,7 +359,9 @@ def MolecularPool(molecule, indices: str, *args, **kwargs):
     try:
         from sunrise.ADAPT.adapt import MolecularPool as _MolecularPool
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+        raise TequilaException(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+        )
     return _MolecularPool(molecule, indices, *args, **kwargs)
 
 
@@ -367,7 +369,9 @@ def PseudoSingletMolecularPool(*args, **kwargs):
     try:
         from sunrise.ADAPT.adapt import PseudoSingletMolecularPool as _PseudoSingletMolecularPool
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+        raise TequilaException(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+        )
     return _PseudoSingletMolecularPool(*args, **kwargs)
 
 
@@ -375,7 +379,9 @@ def ObjectiveFactorySequentialExcitedState(H, circuits: list, factors: list, *ar
     try:
         from sunrise.ADAPT.adapt import ObjectiveFactorySequentialExcitedState as _ObjectiveFactorySequentialExcitedState
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+        raise TequilaException(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+        )
     return _ObjectiveFactorySequentialExcitedState(H, circuits, factors, *args, **kwargs)
 
 
@@ -383,5 +389,7 @@ def run_molecular_adapt(molecule, operator_pool: str = None, Upre=None, Upost=No
     try:
         from sunrise.ADAPT.adapt import run_molecular_adapt as _run_molecular_adapt
     except ImportError:
-        raise TequilaException("Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features.")
+        raise TequilaException(
+            "Project Sunrise not installed. Tequila Chemistry module has been outsourced there, keeping Tequila commands.\n Please install project-sunrise (pip install project-sunrise) to keep using these features."
+        )
     return _run_molecular_adapt(molecule, operator_pool, Upre, Upost, backend, *args, **kwargs)
