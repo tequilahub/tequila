@@ -26,6 +26,4 @@ excitationsolve
 
 #optional third party libraries
 #pyzx
-#pyscf # if used also restrict h5py version untill the issue is fixed upstream in pyscf
-#h5py <= 3.1 # version 3.3.0 leads to crashes when pyscf is imported
 #pygridsynth # used to compile Pauli rotations into Clifford + T gates
