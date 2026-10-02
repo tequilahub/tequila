@@ -486,8 +486,9 @@ class QCircuit:
 
         quimb_circuit = qtn.Circuit(self.n_qubits)
 
-        # quimb uses MSB convention, so we need to modify the qubit indices
-        # to LSB
+        # quimb uses LSB convention (qubit 0 = LSB), tequila uses MSB convention (qubit 0 = MSB).
+        # We reverse qubit indices when sending to quimb, then convert the resulting
+        # unitary back to MSB convention via bit-reversal permutation.
         for g in compiled_circuit.gates:
             if g.name not in gate_mapping:
                 raise TequilaException(
@@ -499,23 +500,37 @@ class QCircuit:
                 quimb_circuit.apply_gate(
                     gate_mapping[g.name],
                     params=[float(g.parameter())],
-                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                    qubits=[self.n_qubits - 1 - t for t in list(g.target)],
                     parameterize=True,
                 )
             elif g.is_controlled():
                 quimb_circuit.apply_gate(
                     gate_mapping[g.name],
-                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
-                    controls=[abs(c - self.n_qubits + 1) for c in list(g.control)],
+                    qubits=[self.n_qubits - 1 - t for t in list(g.target)],
+                    controls=[self.n_qubits - 1 - c for c in list(g.control)],
                 )
             else:
                 quimb_circuit.apply_gate(
                     gate_mapping[g.name],
-                    qubits=[abs(t - self.n_qubits + 1) for t in list(g.target)],
+                    qubits=[self.n_qubits - 1 - t for t in list(g.target)],
                 )
 
         uni = quimb_circuit.get_uni()
         unitary = np.array(uni.to_dense())
+
+        # Convert from quimb's LSB convention to tequila's MSB convention
+        # by applying bit-reversal permutation to the unitary matrix
+        if self.n_qubits > 1:
+            dim = 2 ** self.n_qubits
+            # Generate bit-reversal permutation
+            perm = [0] * dim
+            for i in range(dim):
+                rev = 0
+                for b in range(self.n_qubits):
+                    rev = (rev << 1) | ((i >> b) & 1)
+                perm[i] = rev
+            # Apply permutation: U_MSB = P @ U_LSB @ P.T
+            unitary = unitary[np.ix_(perm, perm)]
 
         return unitary
 
