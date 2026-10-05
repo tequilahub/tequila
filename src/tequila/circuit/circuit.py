@@ -1,7 +1,7 @@
 from __future__ import annotations
 from tequila.circuit._gates_impl import QGateImpl, assign_variable, list_assignment, GlobalPhaseGateImpl, PhaseGateImpl
 from tequila.utils.exceptions import TequilaException, TequilaWarning
-from tequila.utils.bitstrings import BitNumbering
+from tequila.utils.bitstrings import BitNumbering, reverse_int_bits
 import typing
 import copy
 from collections import defaultdict
@@ -486,9 +486,11 @@ class QCircuit:
 
         quimb_circuit = qtn.Circuit(self.n_qubits)
 
-        # quimb uses LSB convention (qubit 0 = LSB), tequila uses MSB convention (qubit 0 = MSB).
-        # We reverse qubit indices when sending to quimb, then convert the resulting
-        # unitary back to MSB convention via bit-reversal permutation.
+        # quimb uses the little endian convention (qubit 0 is the least significant bit), while
+        # tequila uses the big endian convention (qubit 0 is the most significant bit). We therefore
+        # map tequila qubit t onto quimb qubit n_qubits - 1 - t and convert the resulting unitary
+        # back to tequila's convention with a bit reversal permutation (see below).
+        quimb_qubits = set()
         for g in compiled_circuit.gates:
             if g.name not in gate_mapping:
                 raise TequilaException(
@@ -515,22 +517,22 @@ class QCircuit:
                     qubits=[self.n_qubits - 1 - t for t in list(g.target)],
                 )
 
+            quimb_qubits.update(self.n_qubits - 1 - t for t in g.qubits)
+
+        # quimb only contracts qubits which carry a gate, so an idle qubit would silently drop the
+        # matrix dimension. Place identities on all remaining qubits to get a 2**n_qubits unitary.
+        for q in range(self.n_qubits):
+            if q not in quimb_qubits:
+                quimb_circuit.apply_gate(np.eye(2, dtype=complex), q)
+
         uni = quimb_circuit.get_uni()
         unitary = np.array(uni.to_dense())
 
-        # Convert from quimb's LSB convention to tequila's MSB convention
-        # by applying bit-reversal permutation to the unitary matrix
-        if self.n_qubits > 1:
-            dim = 2 ** self.n_qubits
-            # Generate bit-reversal permutation
-            perm = [0] * dim
-            for i in range(dim):
-                rev = 0
-                for b in range(self.n_qubits):
-                    rev = (rev << 1) | ((i >> b) & 1)
-                perm[i] = rev
-            # Apply permutation: U_MSB = P @ U_LSB @ P.T
-            unitary = unitary[np.ix_(perm, perm)]
+        # Convert the unitary from quimb's little endian to tequila's big endian convention by
+        # applying the bit reversal permutation to both rows and columns: U = P @ U_quimb @ P.T
+        dim = 2**self.n_qubits
+        perm = [reverse_int_bits(i, nbits=self.n_qubits) for i in range(dim)]
+        unitary = unitary[np.ix_(perm, perm)]
 
         return unitary
 
