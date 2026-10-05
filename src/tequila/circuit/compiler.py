@@ -15,7 +15,7 @@ from tequila.circuit._gates_impl import (
 from tequila.utils import to_float
 from tequila.objective.objective import Variable, FixedVariable
 from tequila.objective.objective import Objective
-from tequila.objective.objective import ExpectationValueImpl
+from tequila.objective.objective import BraKetImpl, ExpectationValueImpl
 import numpy
 from numpy import pi as pi
 
@@ -268,7 +268,21 @@ class CircuitCompiler:
         the arg, compiled
         """
 
-        if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
+        if isinstance(arg, BraKetImpl):
+            # a braket has U and H as well, but its U is only the ket: compiling it like an
+            # expectation value below would silently drop the bra
+            ket = self.compile_circuit(abstract_circuit=arg.ket, *args, **kwargs)
+            return BraKetImpl(
+                ket=ket,
+                bra=ket if arg.bra is arg.ket else self.compile_circuit(abstract_circuit=arg.bra, *args, **kwargs),
+                operator=arg.operator,
+                contraction=arg._contraction,
+                shape=arg._shape,
+                samples=arg.samples,
+                *arg._args,
+                **arg._kwargs,
+            )
+        elif isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
             return ExpectationValueImpl(H=arg.H, U=self.compile_circuit(abstract_circuit=arg.U, *args, **kwargs))
         elif hasattr(arg, "abstract_expectationvalue"):
             E = arg.abstract_expectationvalue
