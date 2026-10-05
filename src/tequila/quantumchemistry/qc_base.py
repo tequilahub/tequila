@@ -2023,6 +2023,8 @@ class QuantumChemistryBase:
             / (ei.reshape(1, 1, -1, 1) + ei.reshape(1, 1, 1, -1) - ai.reshape(-1, 1, 1, 1) - ai.reshape(1, -1, 1, 1))
         )
 
+        amplitudes *= -1
+
         result = ClosedShellAmplitudes(tIjAb=numpy.einsum("abij -> ijab", amplitudes, optimize="greedy"))
 
         if return_energy:
