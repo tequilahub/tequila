@@ -5,92 +5,6 @@ import tequila as tq
 import pytest
 import importlib
 
-
-test_case = np.array(
-    [
-        [
-            0.70710678 + 0.0j,
-            0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            -0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            0.70710678 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            -0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            -0.70710678 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.70710678 + 0.0j,
-            -0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-    ]
-)
-
 # Check if quimb is installed
 HAS_QUIMB = importlib.util.find_spec("quimb") is not None
 
@@ -101,17 +15,24 @@ def test_circuit_to_matrix():
     Test the conversion of a 3-qubit circuit to a unitary matrix.
     """
     circuit = tq.gates.H(target=0) + tq.gates.CNOT(target=1, control=0) + tq.gates.CNOT(target=2, control=1)
-
+    
     # Convert the circuit to a unitary matrix
     unitary_matrix = circuit.to_matrix()
 
+    # internal test case
+    HH = 1.0/np.sqrt(2)*(tq.paulis.X(0) + tq.paulis.Z(0))
+    CNOT1 = tq.paulis.X(1) * (1-tq.paulis.Z(0)) * 0.5 + 0.5*(1+tq.paulis.Z(0))
+    CNOT2 = tq.paulis.X(2) * (1-tq.paulis.Z(1)) * 0.5 + 0.5*(1+tq.paulis.Z(1))
+
+    M = (CNOT2*CNOT1*HH).to_matrix()
+        
     # Compare with the expected result
-    assert_almost_equal(unitary_matrix, test_case, decimal=8)
+    assert_almost_equal(unitary_matrix, M, decimal=8)
 
 
 @pytest.mark.skipif(condition=not HAS_QUIMB, reason="quimb not installed")
 def test_circuit_to_matrix_with_params():
-    PM = np.kron(tq.paulis.Y(0).to_matrix(), tq.paulis.X(0).to_matrix())
+    PM = (tq.paulis.Y(0)*tq.paulis.X(1)).to_matrix()
     U = tq.gates.ExpPauli(paulistring="X(0)Y(1)", angle="a")
 
     N = 2**2
