@@ -18,7 +18,7 @@ Further sources:
 - [talks and slides](https://kottmanj.github.io/talks_and_material/)  
 
 # Installation
-Recommended Python version is 3.10 (3.11).   
+Recommended Python version is 3.11 (3.10 or 3.12 shouldn't be a problem either).   
 Tequila supports linux, osx and windows. However, not all optional dependencies (especially chemistry) are supported on windows.  
 
 ## Install from PyPi

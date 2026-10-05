@@ -1105,3 +1105,133 @@ class BackendExpectationValue:
             final_E += density.QubitHamiltonian_expectation(hamiltonian=H)
             result.append(to_float(final_E))
         return numpy.asarray(result)
+
+    def simulate_density(self, variables, noise_model=None, *args, **kwargs):
+        """
+        Simulate the expectationvalue, using densities with noise
+
+        """
+        self.update_variables(variables)
+        result = []
+        for H in self.H:
+            final_E = 0.0
+            density = self.U.simulate_density(variables=variables, noise_model=noise_model, *args, **kwargs)
+            final_E += density.QubitHamiltonian_expectation(hamiltonian=H)
+            result.append(to_float(final_E))
+        return numpy.asarray(result)
+
+
+class BackendBraKet:
+    BackendCircuitType = BackendCircuit
+
+    @property
+    def n_qubits(self) -> int:
+        return self.U_ket.n_qubits
+
+    def __init__(self, braket, variables, noise=None, device=None, *args, **kwargs):
+        self.abstract_braket = braket
+        self._input_args = {"variables": variables, "noise": noise, "device": device, **kwargs}
+        self._variables = braket.extract_variables()
+
+        # bra, ket and operator have to live in the same register: the two wavefunctions are
+        # combined by an inner product, and a backend circuit only spans the qubits it touches.
+        # circuits acting on different qubits would otherwise be simulated in registers that do
+        # not line up, and operator qubits outside both circuits would be dropped entirely.
+        # identity gates extend a circuit to the shared register without changing the state.
+        from tequila.circuit.gates import I
+
+        shared_qubits = set(braket.ket.qubits) | set(braket.bra.qubits)
+        if braket.operator is not None:
+            shared_qubits |= set(braket.operator.qubits)
+
+        ket = braket.ket
+        for q in sorted(shared_qubits - set(ket.qubits)):
+            ket = ket + I(target=q)
+
+        if braket.bra is braket.ket:
+            bra = ket
+        else:
+            bra = braket.bra
+            for q in sorted(shared_qubits - set(bra.qubits)):
+                bra = bra + I(target=q)
+
+        self.U_ket = self.BackendCircuitType(
+            abstract_circuit=ket, variables=variables, noise=noise, device=device, *args, **kwargs
+        )
+
+        if bra is ket:
+            self.U_bra = self.U_ket
+        else:
+            self.U_bra = self.BackendCircuitType(
+                abstract_circuit=bra, variables=variables, noise=noise, device=device, *args, **kwargs
+            )
+
+        self.operator = braket.operator
+
+    def __call__(
+        self, variables, samples: int = None, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs
+    ) -> complex:
+        variables = format_variable_dictionary(variables)
+
+        if self._variables:
+            missing = set(self._variables) - set(variables.keys())
+            if missing:
+                raise TequilaException("BackendBraKet missing variables: {}".format(missing))
+
+        if samples is None:
+            return self.simulate(variables=variables, initial_state=initial_state, *args, **kwargs)
+        else:
+            return self.sample(variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs)
+
+    def update_variables(self, variables):
+        self.U_ket.update_variables(variables)
+        if self.U_bra is not self.U_ket:
+            self.U_bra.update_variables(variables)
+
+    def simulate_wfn(
+        self, backend_circuit: BackendCircuit, variables, initial_state: Union[int, QubitWaveFunction] = 0
+    ) -> QubitWaveFunction:
+        return backend_circuit.simulate(variables=variables, initial_state=initial_state)
+
+    def simulate(self, variables, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs) -> complex:
+        self.update_variables(variables)
+
+        wfn_ket = self.simulate_wfn(self.U_ket, variables=variables, initial_state=initial_state)
+        wfn_bra = self.simulate_wfn(self.U_bra, variables=variables, initial_state=initial_state)
+
+        if self.operator is None:
+            return complex(wfn_bra.inner(wfn_ket))
+
+        result = 0.0 + 0.0j
+        for ps in self.operator.paulistrings:
+            coeff = ps.coeff
+            if abs(coeff) < 1e-14:
+                continue
+            wfn_p_ket = wfn_ket.apply_paulistring(ps)
+            result += coeff * wfn_bra.inner(wfn_p_ket)
+
+        return complex(result)
+
+    def sample(self, variables, samples: int, initial_state: Union[int, QubitWaveFunction] = 0, *args, **kwargs):
+        # compile() hands back abstract objectives, which can not be called directly
+        from tequila.simulators.simulator_api import simulate
+
+        real_obj, imag_obj = self.abstract_braket.compile()
+
+        real_val = simulate(
+            real_obj, variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
+        imag_val = simulate(
+            imag_obj, variables=variables, samples=samples, initial_state=initial_state, *args, **kwargs
+        )
+
+        if imag_val == 0.0:
+            return float(real_val)
+
+        return complex(real_val, imag_val)
+
+    def count_measurements(self):
+        return self.abstract_braket.count_measurements()
+
+    def extract_variables(self) -> typing.List[Variable]:
+        return list(self._variables)

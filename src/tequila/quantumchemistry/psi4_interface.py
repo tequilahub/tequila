@@ -182,7 +182,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
         psi4.core.clean_options()
         psi4.core.clean_variables()
 
-        self.psi4_mol = psi4.geometry(parameters.get_geometry_string())
+        self.psi4_mol = psi4.geometry(parameters.get_geometry_string(ghost="psi4"))
         psi4.activate(self.psi4_mol)
         self._point_group = self.psi4_mol.point_group().symbol()
         if "point_group" in kwargs:
@@ -430,7 +430,7 @@ class QuantumChemistryPsi4(QuantumChemistryBase):
             # this can not be determined here
             # better pass down a guess_wfn
 
-        mol = psi4.geometry(self.parameters.get_geometry_string())
+        mol = psi4.geometry(self.parameters.get_geometry_string(ghost="psi4"))
         mol.set_multiplicity(self.parameters.multiplicity)
         if self.parameters.multiplicity != 1:
             raise TequilaPsi4Exception("Multiplicity != 1 no yet supported")
