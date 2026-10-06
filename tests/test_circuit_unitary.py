@@ -7,125 +7,63 @@ import importlib
 
 # Check if quimb is installed
 HAS_QUIMB = importlib.util.find_spec("quimb") is not None
-from tequila import BitNumbering
-
-test_case = np.array(
-    [
-        [
-            0.70710678 + 0.0j,
-            0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            -0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            0.70710678 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            -0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            -0.70710678 + 0.0j,
-        ],
-        [
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.70710678 + 0.0j,
-            0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-        [
-            0.70710678 + 0.0j,
-            -0.70710678 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-            0.0 + 0.0j,
-        ],
-    ]
-)
 
 
+def controlled_x_matrix(control, target, n_qubits):
+    """Build a CNOT matrix using tequila's MSB-first basis convention."""
+    dim = 2**n_qubits
+    matrix = np.zeros((dim, dim), dtype=complex)
+    for column in range(dim):
+        control_bit = (column >> (n_qubits - 1 - control)) & 1
+        row = column
+        if control_bit:
+            row ^= 1 << (n_qubits - 1 - target)
+        matrix[row, column] = 1
+    return matrix
+
+
+@pytest.mark.skipif(condition=not HAS_QUIMB, reason="quimb not installed")
 def test_circuit_to_matrix():
-    """
-    Test the conversion of a 3-qubit circuit to a unitary matrix.
-    """
+    """Test the conversion of a 3-qubit circuit to a unitary matrix."""
     circuit = tq.gates.H(target=0) + tq.gates.CNOT(target=1, control=0) + tq.gates.CNOT(target=2, control=1)
+    unitary_matrix = circuit.to_matrix()
 
-    # Convert the circuit to a unitary matrix
-    unitary_matrix = circuit.to_matrix(numbering=BitNumbering.LSB)
+    h = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+    identity = np.eye(2, dtype=complex)
+    expected = (
+        controlled_x_matrix(control=1, target=2, n_qubits=3)
+        @ controlled_x_matrix(control=0, target=1, n_qubits=3)
+        @ np.kron(np.kron(h, identity), identity)
+    )
 
-    # internal test case
-    HH = 1.0 / np.sqrt(2) * (tq.paulis.X(0) + tq.paulis.Z(0))
-    CNOT1 = tq.paulis.X(1) * (1 - tq.paulis.Z(0)) * 0.5 + 0.5 * (1 + tq.paulis.Z(0))
-    CNOT2 = tq.paulis.X(2) * (1 - tq.paulis.Z(1)) * 0.5 + 0.5 * (1 + tq.paulis.Z(1))
-
-    M = (CNOT2 * CNOT1 * HH).to_matrix()
-
-    # Compare with the expected result
-    assert_almost_equal(unitary_matrix, M, decimal=8)
+    assert_almost_equal(unitary_matrix, expected, decimal=8)
 
 
+@pytest.mark.skipif(condition=not HAS_QUIMB, reason="quimb not installed")
+@pytest.mark.parametrize(
+    ("target", "n_qubits", "expected"),
+    [
+        (1, 2, np.kron(np.eye(2), np.array([[0, 1], [1, 0]]))),
+        (2, 3, np.kron(np.eye(4), np.array([[0, 1], [1, 0]]))),
+    ],
+)
+def test_circuit_to_matrix_with_idle_qubits(target, n_qubits, expected):
+    circuit = tq.gates.X(target=target)
+    circuit.n_qubits = n_qubits
+
+    assert_almost_equal(circuit.to_matrix(), expected)
+
+
+@pytest.mark.skipif(condition=not HAS_QUIMB, reason="quimb not installed")
 def test_circuit_to_matrix_with_params():
-    # X(0)Y(1) is X on qubit 0 and Y on qubit 1. Tequila's matrix convention is big endian,
-    # so this is kron(X, Y) and not kron(Y, X).
-    PM = (tq.paulis.X(0) * tq.paulis.Y(1)).to_matrix()
-    U = tq.gates.ExpPauli(paulistring="X(0)Y(1)", angle="a")
+    # X(0)Y(1) is X on qubit 0 and Y on qubit 1; qubit 0 is the MSB.
+    x = np.array([[0, 1], [1, 0]], dtype=complex)
+    y = np.array([[0, -1.0j], [1.0j, 0]], dtype=complex)
+    pauli_matrix = np.kron(x, y)
+    unitary = tq.gates.ExpPauli(paulistring="X(0)Y(1)", angle="a")
+    n = 2**2
 
-    N = 2**2
-
-    for a in [1.0, 2.0, -1.0]:
-        UM1 = U.to_matrix({"a": a})
-        UM2 = np.cos(a / 2) * np.eye(N) - 1.0j * np.sin(a / 2) * PM
-        UM1 = U.to_matrix({"a": a}, numbering=BitNumbering.LSB)
-        UM2 = np.cos(-a / 2) * np.eye(N) + 1.0j * np.sin(-a / 2) * PM
-        assert_almost_equal(UM1, UM2)
+    for angle in [1.0, 2.0, -1.0]:
+        actual = unitary.to_matrix({"a": angle})
+        expected = np.cos(angle / 2) * np.eye(n) - 1.0j * np.sin(angle / 2) * pauli_matrix
+        assert_almost_equal(actual, expected)
