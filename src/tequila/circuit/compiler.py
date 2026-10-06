@@ -1,6 +1,9 @@
+import numbers
+import warnings
+
 from tequila import TequilaException
 from tequila.circuit.circuit import QCircuit
-from tequila.circuit.gates import Rx, Ry, H, X, Rz, ExpPauli, CNOT, Phase, T, Z, GlobalPhase
+from tequila.circuit.gates import Rx, Ry, H, X, S, Rz, ExpPauli, CNOT, Phase, T, Z, GlobalPhase
 from tequila.circuit._gates_impl import (
     RotationGateImpl,
     PhaseGateImpl,
@@ -12,7 +15,7 @@ from tequila.circuit._gates_impl import (
 from tequila.utils import to_float
 from tequila.objective.objective import Variable, FixedVariable
 from tequila.objective.objective import Objective
-from tequila.objective.objective import ExpectationValueImpl
+from tequila.objective.objective import BraKetImpl, ExpectationValueImpl
 import numpy
 from numpy import pi as pi
 
@@ -70,6 +73,7 @@ class CircuitCompiler:
         c.gradient_mode = False
         c.y_gate = False
         c.ry_gate = False
+        c.pauli_rotations = False
 
         for k, v in kwargs.items():
             if k in c.__dict__:
@@ -77,6 +81,13 @@ class CircuitCompiler:
 
         if not c.multicontrol:
             c.cc_max = False
+        return c
+
+    @classmethod
+    def error_correctable_gate_set(cls, epsilon, *args, **kwargs):
+        c = cls.all_flags_true(args, kwargs)
+        c.pauli_rotations = True
+        c.epsilon = epsilon
         return c
 
     def __init__(
@@ -102,9 +113,10 @@ class CircuitCompiler:
         y_gate=False,
         ch_gate=False,
         hadamard=False,
+        pauli_rotations=False,
+        epsilon=1e-6,
     ):
         """
-        all parameters are booleans.
         Parameters
         ----------
         multitarget:
@@ -145,6 +157,11 @@ class CircuitCompiler:
             whether or not to break down all y gates
         ch_gate:
             whether or not to break down all controlled-H gates
+        pauli_rotations:
+            whether or not to approximate rotations with Clifford and T gates
+        epsilon:
+            The maximum absolute error when compilations are not exact.
+            Currently only applies to the rotations compilation.
         """
         self.multitarget = multitarget
         self.multicontrol = multicontrol
@@ -167,6 +184,8 @@ class CircuitCompiler:
         self.ry_gate = ry_gate
         self.y_gate = y_gate
         self.ch_gate = ch_gate
+        self.pauli_rotations = pauli_rotations
+        self.epsilon = epsilon
 
     def __call__(
         self, objective: typing.Union[Objective, QCircuit, ExpectationValueImpl], variables=None, *args, **kwargs
@@ -249,7 +268,21 @@ class CircuitCompiler:
         the arg, compiled
         """
 
-        if isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
+        if isinstance(arg, BraKetImpl):
+            # a braket has U and H as well, but its U is only the ket: compiling it like an
+            # expectation value below would silently drop the bra
+            ket = self.compile_circuit(abstract_circuit=arg.ket, *args, **kwargs)
+            return BraKetImpl(
+                ket=ket,
+                bra=ket if arg.bra is arg.ket else self.compile_circuit(abstract_circuit=arg.bra, *args, **kwargs),
+                operator=arg.operator,
+                contraction=arg._contraction,
+                shape=arg._shape,
+                samples=arg.samples,
+                *arg._args,
+                **arg._kwargs,
+            )
+        elif isinstance(arg, ExpectationValueImpl) or (hasattr(arg, "U") and hasattr(arg, "H")):
             return ExpectationValueImpl(H=arg.H, U=self.compile_circuit(abstract_circuit=arg.U, *args, **kwargs))
         elif hasattr(arg, "abstract_expectationvalue"):
             E = arg.abstract_expectationvalue
@@ -296,6 +329,9 @@ class CircuitCompiler:
 
         compiled_gates = []
 
+        # Keep a dicitionary of compiled pauli_rotations
+        pauli_dict = {}
+
         for idx, gate in gatelist:
             cg = gate
             controlled = gate.is_controlled()
@@ -333,6 +369,10 @@ class CircuitCompiler:
             if self.ry_gate:
                 cg = compile_ry(gate=cg, controlled_rotation=self.controlled_rotation)
             if controlled:
+                if self.toffoli:
+                    cg = compile_toffoli(gate=cg)
+                    if self.phase:
+                        cg = compile_phase(gate=cg)
                 if self.cc_max or self.multicontrol:
                     cg = compile_to_single_control(gate=cg)
                 if self.controlled_exponential_pauli:
@@ -343,12 +383,10 @@ class CircuitCompiler:
                     cg = compile_controlled_phase(gate=cg)
                     if self.phase:
                         cg = compile_phase(gate=cg)
-                if self.toffoli:
-                    cg = compile_toffoli(gate=cg)
-                    if self.phase:
-                        cg = compile_phase(gate=cg)
                 if self.controlled_rotation:
                     cg = compile_controlled_rotation(gate=cg)
+            if self.pauli_rotations:
+                cg = compile_pauli_rotations(gate=cg, epsilon=self.epsilon, pauli_dict=pauli_dict)
 
             compiled_gates.append((idx, cg))
 
@@ -586,7 +624,7 @@ def compile_toffoli(gate) -> QCircuit:
         A QCircuit; the result of compilation.
     """
 
-    if gate.name.lower != "x":
+    if not (gate.name.lower() == "x" and len(gate.control) == 2):
         return QCircuit.wrap_gate(gate)
     control = gate.control
     c1 = control[1]
@@ -1037,5 +1075,84 @@ def compile_ch(gate: QGateImpl) -> QCircuit:
             + Z(target=gate.target, control=gate.control, power=gate.power if gate.is_parameterized() else None)
             + Ry(target=gate.target, control=None, angle=numpy.pi / 4)
         )
+    else:
+        return QCircuit.wrap_gate(gate)
+
+
+@compiler
+def compile_pauli_rotations(gate: QGateImpl, epsilon: float, pauli_dict: dict) -> QCircuit:
+    """
+    Compile uncontrolled Pauli rotations gates into Clifford + T gates.
+
+    Parameters
+    ----------
+    gate:
+        the gate.
+    epsilon:
+        the maximum absolute error of the compilation.
+
+    Returns
+    -------
+    QCircuit, the result of compilation.
+    """
+    from pygridsynth import gridsynth_gates
+
+    # In principle, we could compile controlled Pauli rotations with the same method by making all
+    # the resulting gates controlled, but then this compilation makes no sense, since its point is
+    # to compile to a Clifford + T gateset. Compiling controlled rotations to uncontrolled ones
+    # should be handled by other compiler passes.
+    if gate.name.lower() in ["rx", "ry", "rz"] and not gate.is_controlled():
+        if not isinstance(gate.parameter, numbers.Number):
+            raise TequilaCompilerException("Can't compile parametrized rotations to Clifford + T gates")
+
+        # Compute bucket by rounding to the next multiple of epsilon
+        bucket = int(numpy.round(gate.parameter / (2 * epsilon)))
+        rounded_parameter = bucket * (2 * epsilon)
+        if bucket in pauli_dict:
+            result = pauli_dict[bucket]
+        elif bucket == 0:
+            result = QCircuit()
+        else:
+            with warnings.catch_warnings():
+                # Silence warning about using floats
+                warnings.simplefilter(action="ignore", category=UserWarning, lineno=362)
+                gates = gridsynth_gates(theta=rounded_parameter, epsilon=epsilon, up_to_phase=True)
+
+            result = QCircuit()
+            v = numpy.array([1, 0], dtype=complex)
+            H_mat = numpy.array([[1, 1], [1, -1]]) / numpy.sqrt(2)
+            T_val = numpy.exp(pi / 4 * 1j)
+            for g in reversed(gates):
+                match g:
+                    case "X":
+                        result += X(target=0)
+                        v = v[::-1]
+                    case "H":
+                        result += H(target=0)
+                        v = H_mat @ v
+                    case "S":
+                        result += S(target=0)
+                        v[1] *= 1j
+                    case "T":
+                        result += T(target=0)
+                        v[1] *= T_val
+                    case c:
+                        raise ValueError(f"Got unexpected gate {c}")
+
+            global_phase = -rounded_parameter / 2 - numpy.angle(v[0])
+            result += GlobalPhase(angle=global_phase)
+            pauli_dict[bucket] = result
+
+        result = result.map_qubits({0: gate.target[0]})
+
+        if gate.name.lower() in ["rx", "ry"]:
+            result = H(target=gate.target) + result + H(target=gate.target)
+
+        if gate.name.lower() == "ry":
+            result = (
+                S(target=gate.target) + S(target=gate.target) + S(target=gate.target) + result + S(target=gate.target)
+            )
+
+        return result
     else:
         return QCircuit.wrap_gate(gate)

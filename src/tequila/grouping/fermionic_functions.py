@@ -586,11 +586,11 @@ def find_index(basis_state):
     Returns:
         index (int): Index of the basis in total Qubit space.
     """
+    arr = np.asarray(basis_state, dtype=int).ravel()
+    n_qubits = arr.size
     index = 0
-    n_qubits = len(basis_state)
     for j in range(n_qubits):
-        index += int(basis_state[j]) * 2 ** (n_qubits - j - 1)
-
+        index += int(arr[j].item()) * 2 ** (n_qubits - j - 1)
     return index
 
 

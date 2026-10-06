@@ -449,7 +449,7 @@ class QCircuit:
         else:
             return QCircuit(gates=[gate])
 
-    def to_matrix(self, variables=None):
+    def to_matrix(self, variables=None, numbering: BitNumbering = BitNumbering.MSB, backend: str = None):
         """
         take the circuit and return the unitary matrix corresponding to it.
         Parameters
@@ -464,21 +464,22 @@ class QCircuit:
         np.ndarray:
             the unitary matrix corresponding to the circuit.
         """
-        import quimb.gates
-        import quimb.tensor as qtn
-        from tequila import compile_circuit
+        from tequila import format_variable_dictionary
+        from tequila.simulators.simulator_api import compile_circuit
 
-        num_variables = len(self.extract_variables())
+        variables = format_variable_dictionary(variables)
 
-        if num_variables == 0:
-            variables = {}
-        elif variables is None:
+        if variables is None and not (len(self.extract_variables()) == 0):
             raise TequilaException(
-                f"QCircuit.to_matrix(): no variables provided, but the circuit has {num_variables} variables"
+                "You called simulate for a parametrized type but forgot to pass down the variables: {}".format(
+                    self.extract_variables()
+                )
             )
 
-        compiled_circuit = compile_circuit(
-            self,
+        compiled = compile_circuit(
+            abstract_circuit=self,
+            variables=variables,
+            backend=backend,
         )
         compiled_circuit = compiled_circuit.map_variables(variables)
 
@@ -535,6 +536,14 @@ class QCircuit:
         unitary = unitary[np.ix_(perm, perm)]
 
         return unitary
+
+        columns = []
+        for i in range(2**self.n_qubits):
+            initial_state = reverse_int_bits(i, nbits=self.n_qubits) if numbering == BitNumbering.LSB else i
+            output = compiled.simulate(variables=variables, initial_state=initial_state).to_array(numbering, copy=False)
+            columns.append(output)
+
+        return np.column_stack(columns)
 
     def to_networkx(self):
         """
