@@ -476,7 +476,7 @@ class QCircuit:
                 )
             )
 
-        compiled = compile_circuit(
+        compiled_circuit = compile_circuit(
             abstract_circuit=self,
             variables=variables,
             backend=backend,
