@@ -252,6 +252,130 @@ P.W.K. Jensen, E.R. Kjellgren, P. Reinholdt, K.M. Ziems, S. Coriani, J. Kongsted
 Quantum Equation of Motion with Orbital Optimization for Computing Molecular Properties in Near-Term Quantum Computing  
 [arxiv:2312.12386](https://arxiv.org/abs/2312.12386)  
 
+L.A. Martínez-Martínez, T.-C. Yen, A.F. Izmaylov  
+Assessment of various Hamiltonian partitionings for the electronic structure problem on a quantum computer using the Trotter approximation  
+Quantum, 2023  
+[arxiv:2210.10189](https://arxiv.org/abs/2210.10189)  
+[code (tequila developer version)](https://github.com/lamq317/tequila)  
+
+R. Lifshitz  
+Quantum Deep Dreaming: A Novel Approach for Quantum Circuit Design  
+[arxiv:2211.04343](https://arxiv.org/abs/2211.04343)  
+
+A. Anand, L. Bjørn Kristensen, F. Frohnert, et al.  
+Information flow in parameterized quantum circuits  
+Quantum Science and Technology, 2024  
+[arxiv:2207.05149](https://arxiv.org/abs/2207.05149)  
+
+E. Dimitrov, G. Sanchez-Sanz, J. Nelson, et al.  
+Pushing the Limits of Quantum Computing for Simulating PFAS Chemistry  
+[arxiv:2311.01242](https://arxiv.org/abs/2311.01242)  
+
+A. Anand, K.R. Brown  
+Leveraging commuting groups for an efficient variational Hamiltonian ansatz  
+Quantum Science and Technology, 2025  
+[arxiv:2312.08502](https://arxiv.org/abs/2312.08502)  
+
+A. Anand, K.R. Brown  
+Stabilizer configuration interaction: Finding molecular subspaces with error detection properties  
+Physical Review A, 2025  
+[arxiv:2410.21125](https://arxiv.org/abs/2410.21125)  
+
+G.M. Jones, H.-A. Jacobsen  
+Analyzing common electronic structure theory algorithms for distributed quantum computing  
+IEEE International Conference on Quantum Computing and Engineering (QCE), 2025  
+[arxiv:2507.01902](https://arxiv.org/abs/2507.01902)  
+
+I.L. Huidobro-Meezs, J. Dai, R.A. Vargas-Hernández  
+Discrete flow-based generative models for measurement optimization in quantum computing  
+Digital Discovery, 2026  
+[arxiv:2509.15486](https://arxiv.org/abs/2509.15486)  
+
+M. Krumtünger, A. Wilms, P.K. Faehrmann, J. Eisert, J.S. Kottmann, P.A. Erdman, et al.  
+Reinforcement learning of quantum circuit architectures for molecular potential energy curves  
+[arxiv:2511.16559](https://arxiv.org/abs/2511.16559)  
+
+I. Gustin, L. Mantilla Calderón, J.B. Pérez-Sánchez, C. Crebolder, J.F. Gonthier, M. Ghazi Vakili, Y. Nakamura, K. Panicker, M. Ramprasad, Z. Zhang, Y. Zou, V. Bernales, A. Aspuru-Guzik  
+El Agente Cuántico: Automating quantum simulations  
+Reports on Progress in Physics, 2026  
+[arxiv:2512.18847](https://arxiv.org/abs/2512.18847)  
+
+Z.-J. Zhang, T.-H. Kyaw, J.S. Kottmann, M. Degroote, A. Aspuru-Guzik  
+Mutual information-assisted adaptive variational quantum eigensolver  
+Quantum Science and Technology, 2021  
+[arxiv:2008.07553](https://arxiv.org/abs/2008.07553)  
+
+P. Schleich, J. Boen, L. Cincio, A. Anand, J.S. Kottmann, S. Tretiak, P.A. Dub, et al.  
+Partitioning quantum chemistry simulations with Clifford circuits  
+Journal of Chemical Theory and Computation, 2023  
+[arxiv:2303.01221](https://arxiv.org/abs/2303.01221)  
+
+J.S. Kottmann, F. Scala  
+Quantum algorithmic approach to multiconfigurational valence bond theory: Insights from interpretable circuit design  
+Journal of Chemical Theory and Computation, 2024  
+[arxiv:2302.10660](https://arxiv.org/abs/2302.10660)  
+
+T. Parella-Dilmé, K. Kottmann, L. Zambrano, L. Mortimer, J.S. Kottmann, A. Acín  
+Reducing entanglement with physically inspired fermion-to-qubit mappings  
+PRX Quantum 5, 030333 (2024), [doi.org/10.1103/PRXQuantum.5.030333](https://doi.org/10.1103/PRXQuantum.5.030333)  
+[arxiv:2311.07409](https://arxiv.org/abs/2311.07409)  
+
+N. Poirier, J.S. Kottmann, A. Aspuru-Guzik, L. Mongeau, A. Najafi-Yazdi  
+Range-separated density functional theory using multiresolution analysis and quantum computing  
+Journal of Computational Chemistry 45, 1987 (2024)  
+[open access version](https://opus.bibliothek.uni-augsburg.de/opus4/113131)  
+
+E. Sangiogo Gil, M. Oppel, J.S. Kottmann, L. González  
+SHARC meets TEQUILA: mixed quantum-classical dynamics on a quantum computer using a hybrid quantum-classical algorithm  
+Chemical Science 16, 596 (2025), [doi.org/10.1039/D4SC04987J](https://doi.org/10.1039/D4SC04987J)  
+
+F.J. del Arco Santos, J.S. Kottmann  
+A hybrid qubit encoding: splitting Fock space into fermionic and bosonic subspaces  
+Quantum Science and Technology, 2025  
+[arxiv:2411.14096](https://arxiv.org/abs/2411.14096)  
+
+O. Hüttenhofer, J.S. Kottmann  
+An explicit ancilla-free quantum circuit construction for Gaussian convolutions  
+INFORMATIK 2025  
+
+D. Bincoletto, J.S. Kottmann  
+State Specific Measurement Protocols for the Variational Quantum Eigensolver  
+[arxiv:2504.03019](https://arxiv.org/abs/2504.03019)  
+
+F. Langkabel, S. Knecht, J.S. Kottmann  
+The advent of fully variational quantum eigensolvers using a hybrid multiresolution approach  
+APL Computational Physics, 2026  
+[arxiv:2410.19116](https://arxiv.org/abs/2410.19116)  
+
+D. Bincoletto, J.S. Kottmann  
+A physics-informed measurement protocol for expectation values of fermionic observables  
+Digital Discovery 5, 1257 (2026), [doi.org/10.1039/d5dd00251f](https://doi.org/10.1039/d5dd00251f)  
+
+D. Bincoletto, K. Stein, J. Motyl, J.S. Kottmann  
+A transferable machine learning approach to predict quantum circuit parameters for electronic structure problems  
+Machine Learning: Science and Technology, 2026  
+[arxiv:2511.03726](https://arxiv.org/abs/2511.03726)  
+
+T. Parella-Dilmé, J.S. Kottmann, A. Acín  
+Swap Network Augmented Ansätze on Arbitrary Connectivity  
+Quantum 10, 2062 (2026)  
+
+L. van der Horst, M. Periyasamy, A.Y. Dubey, D. Bincoletto, J.S. Kottmann, et al.  
+A Transferable Machine Learning Approach to Predict Optimized Orbitals for Electronic Structure Problems  
+[arxiv:2605.04174](https://arxiv.org/abs/2605.04174)  
+
+M. Deiml, O. Hüttenhofer, R. Mosco, J.S. Kottmann, D. Peterseim  
+Unitaria: Quantum Linear Algebra via Block Encodings  
+[arxiv:2605.10768](https://arxiv.org/abs/2605.10768)  
+
+L. Barta, J.S. Kottmann  
+Consistent Initial States with Constant Circuit Depth for Quantum Computational Chemistry  
+[arxiv:2606.26393](https://arxiv.org/abs/2606.26393)  
+
+F.J. del Arco Santos, J.S. Kottmann  
+Shallow Quantum Circuits for Deep Chemistry via Valence Bond Embeddings  
+[arxiv:2606.26882](https://arxiv.org/abs/2606.26882)  
+
 Let us know, if you want your research project and/or tutorial to be included in this list!
 
 # Dependencies
