@@ -8,23 +8,39 @@ from tequila.grouping.fermionic_functions import obt_to_ferm, convert_tbts_to_fr
 from tequila.grouping.fermionic_functions import n_elec
 import openfermion
 import pytest
-
-HAS_PYSCF = "pyscf" in tq.quantumchemistry.INSTALLED_QCHEMISTRY_BACKENDS
+import pickle
 
 
 def build_toymol():
     """
     Build the qubit Hamiltonian with Jordan Wigner encoding for H2 at a particular geometry.
+    To avoid sunrise dependency, hamiltonians have been provided as binary. Original code
+    has been kept here comented just for ilustrative reasons.
     """
 
-    trafo = "JordanWigner"
-    mol = tq.chemistry.Molecule(
-        geometry="H 0.0 0.0 0.0 \n H 0.0 0.0 1.0", basis_set="sto3g", transformation=trafo, backend="pyscf"
-    )
-    H = mol.make_hamiltonian()
+    # trafo = "JordanWigner"
+    # mol = tq.chemistry.Molecule(
+    #     geometry="H 0.0 0.0 0.0 \n H 0.0 0.0 1.0", basis_set="sto3g", transformation=trafo, backend="pyscf"
+    # )
+    # H = mol.make_hamiltonian()
 
-    Hferm = mol.make_molecular_hamiltonian()
-
+    # Hferm = mol.make_molecular_hamiltonian()
+    objects = []
+    with open("data/H2_tqham.data", "rb") as openfile:
+        while True:
+            try:
+                objects.append(pickle.load(openfile))
+            except EOFError:
+                break
+    H: tq.QubitHamiltonian = objects[0]
+    objects = []
+    with open("data/H2_ofham.data", "rb") as openfile:
+        while True:
+            try:
+                objects.append(pickle.load(openfile))
+            except EOFError:
+                break
+    Hferm: openfermion.InteractionOperator = objects[0]
     return H, openfermion.get_fermion_operator(Hferm)
 
 
@@ -92,7 +108,6 @@ def get_LR(Hferm, name="h2"):
 
 
 #####Testing functions.....
-@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
 def test_FCLF():
     Hq, Hferm = build_toymol()
     FCLFFrags = get_fclf(Hq)
@@ -102,7 +117,6 @@ def test_FCLF():
     assert np.isclose(alpha, 0.42117695296, atol=1.0e-4)
 
 
-@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
 def test_FCSI():
     Hq, Hferm = build_toymol()
     FCSIFrags = get_fcsi(Hq)
@@ -112,7 +126,6 @@ def test_FCSI():
     assert np.isclose(alpha, 0.42117695296, atol=1.0e-4)
 
 
-@pytest.mark.skipif(condition=not HAS_PYSCF, reason="you don't have pyscf")
 def test_LR():
     Hq, Hferm = build_toymol()
     LRFrags = get_LR(Hferm)
