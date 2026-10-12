@@ -32,10 +32,7 @@ def _to_expression(value):
 
 def _terms_to_pe(terms):
     if any(isinstance(v, (Expression, str)) for v in terms.values()):
-        ps = [
-            PauliStringSymbolic(_to_expression(v), {q: p.upper() for q, p in k})
-            for k, v in terms.items()
-        ]
+        ps = [PauliStringSymbolic(_to_expression(v), {q: p.upper() for q, p in k}) for k, v in terms.items()]
         if not ps:
             return QubitHamiltonianComplex.zero()
         return QubitHamiltonianSymbolic(ps)
@@ -45,11 +42,23 @@ def _terms_to_pe(terms):
     return pauliengine.QubitHamiltonian(ps)
 
 
+def _real_if_possible(coeff):
+    """
+    pauliengine always hands out complex coefficients, while openfermion keeps
+    real ones as floats. Downstream consumers rely on that (the spex backend for
+    instance feeds coefficients into pybind11 signatures that only accept floats),
+    so mirror the openfermion behaviour here.
+    """
+    if isinstance(coeff, complex) and coeff.imag == 0.0:
+        return coeff.real
+    return coeff
+
+
 def _pe_to_terms(pe_hamiltonian):
     terms = {}
     for coeff, ops in pe_hamiltonian.to_dictionary():
         key = tuple(sorted((q, p.upper()) for q, p in ops.items()))
-        terms[key] = coeff
+        terms[key] = _real_if_possible(coeff)
     return terms
 
 
@@ -83,7 +92,7 @@ class QubitHamiltonian:
             self._pe = other._pe
             self._terms = other._terms
         elif isinstance(qubit_operator, numbers.Number):
-            self._terms = {tuple(): complex(qubit_operator)}
+            self._terms = {tuple(): qubit_operator}
         elif isinstance(qubit_operator, QubitHamiltonian):
             self._pe = qubit_operator._pe
             self._terms = dict(qubit_operator._terms) if qubit_operator._terms is not None else None
@@ -144,7 +153,7 @@ class QubitHamiltonian:
         result = self._get_pe().subs(sub_map)
         terms = _pe_to_terms(result)
         try:
-            terms = {k: PauliStringSymbolic.to_complex(v) for k, v in terms.items()}
+            terms = {k: _real_if_possible(PauliStringSymbolic.to_complex(v)) for k, v in terms.items()}
         except RuntimeError:
             pass
         return self._from_terms(terms)
@@ -328,11 +337,11 @@ class QubitHamiltonian:
                 complex(coeff)
                 key = tuple(sorted((q, p.upper()) for q, p in x.items()))
                 terms[key] = terms.get(key, 0.0) + coeff
+            terms = {k: _real_if_possible(v) for k, v in terms.items()}
             return cls._from_terms(terms).simplify()
         except (TypeError, ValueError):
             pauli_strings = [
-                PauliStringSymbolic(_to_expression(x.coeff), {q: p.upper() for q, p in x.items()})
-                for x in ps
+                PauliStringSymbolic(_to_expression(x.coeff), {q: p.upper() for q, p in x.items()}) for x in ps
             ]
             return cls._from_pe(QubitHamiltonianSymbolic(pauli_strings))
 
@@ -457,9 +466,7 @@ class QubitHamiltonian:
 
     def split(self, *args, **kwargs) -> tuple:
         if self.is_symbolic():
-            raise TequilaException(
-                "split() is not supported for symbolic Hamiltonians, evaluate with subs(...) first"
-            )
+            raise TequilaException("split() is not supported for symbolic Hamiltonians, evaluate with subs(...) first")
         hermitian = {}
         anti_hermitian = {}
         for k, v in self._get_terms().items():
@@ -489,7 +496,7 @@ class QubitHamiltonian:
             for term in key:
                 if self.pauli(term).lower() == "y":
                     sign *= -1
-            terms[key] = sign * complex(value).conjugate()
+            terms[key] = sign * value.conjugate()
         return self._from_terms(terms)
 
     def transpose(self):
@@ -509,7 +516,7 @@ class QubitHamiltonian:
             return self._from_pe(self._get_pe().dagger())
         terms = {}
         for key, value in self._get_terms().items():
-            terms[key] = complex(value).conjugate()
+            terms[key] = value.conjugate()
         return self._from_terms(terms)
 
     def normalize(self):
@@ -527,9 +534,7 @@ class QubitHamiltonian:
             raise TequilaException(
                 "to_matrix() is not supported for symbolic Hamiltonians, evaluate with subs(...) first"
             )
-        return np.asarray(
-            self._get_pe().to_matrix(ignore_unused_qubits=ignore_unused_qubits), dtype=complex
-        )
+        return np.asarray(self._get_pe().to_matrix(ignore_unused_qubits=ignore_unused_qubits), dtype=complex)
 
     @property
     def n_qubits(self):

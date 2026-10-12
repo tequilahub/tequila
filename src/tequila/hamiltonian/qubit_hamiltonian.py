@@ -5,6 +5,7 @@ get the openfermion object with hamiltonian.hamiltonian
 """
 
 import numbers
+import os
 import typing
 import warnings
 

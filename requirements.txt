@@ -29,3 +29,4 @@ excitationsolve
 #pyscf # if used also restrict h5py version untill the issue is fixed upstream in pyscf
 #h5py <= 3.1 # version 3.3.0 leads to crashes when pyscf is imported
 #pygridsynth # used to compile Pauli rotations into Clifford + T gates
+#pauliengine # faster QubitHamiltonian arithmetics, used automatically when installed (disable with TEQUILA_DISABLE_PAULIENGINE=1)
