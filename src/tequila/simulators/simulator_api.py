@@ -640,8 +640,10 @@ def _compile_arg(arg, ExpValueType, BraKetType, variables, noise, device, cache,
     if isinstance(arg, BraKetImpl) and not isinstance(arg, BackendBraKet):
         if BraKetType is None:
             arg_real, arg_imag = arg.compile()
-            res = _compile_arg(arg_real,ExpValueType, BraKetType, variables, noise, device, cache, *args, **kwargs)
-            res += 1j*_compile_arg(arg_imag,ExpValueType, BraKetType, variables, noise, device, cache, *args, **kwargs)
+            res = _compile_arg(arg_real, ExpValueType, BraKetType, variables, noise, device, cache, *args, **kwargs)
+            res += 1j * _compile_arg(
+                arg_imag, ExpValueType, BraKetType, variables, noise, device, cache, *args, **kwargs
+            )
             return res
         else:
             compiled = BraKetType(arg, variables=variables, noise=noise, device=device, *args, **kwargs)
