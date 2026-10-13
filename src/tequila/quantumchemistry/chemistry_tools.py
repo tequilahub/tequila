@@ -295,7 +295,7 @@ class ParametersQC:
 
     def get_number_of_core_electrons(self):
         result = 0
-        for atom in self.get_atoms():
+        for atom in self.get_atoms(ghost="pyscf"):
             n = self.get_atom_number(atom)
             if n > 2:
                 result += 2
@@ -316,7 +316,7 @@ class ParametersQC:
         return self.get_nuc_charge() - self.charge
 
     def get_nuc_charge(self):
-        return sum(self.get_atom_number(name=atom) for atom in self.get_atoms())
+        return sum(self.get_atom_number(name=atom) for atom in self.get_atoms(ghost="pyscf"))
 
     def get_atom_number(self, name):
         atom_numbers = {
@@ -339,6 +339,8 @@ class ParametersQC:
             "cl": 17,
             "ar": 18,
         }
+        if any(g in name.lower() for g in ["ghost:", "ghost-", "ghost_", "ghost", "x:", "x-", "x_", "gh(", "@"]):
+            return 0
         if name.lower() in atom_numbers:
             return atom_numbers[name.lower()]
         try:
@@ -354,8 +356,8 @@ class ParametersQC:
                 "can not assign atomic number to element {}\npip install periodictable will fix it".format(atom)
             )
 
-    def get_atoms(self):
-        return [x[0] for x in self.get_geometry()]
+    def get_atoms(self, ghost="of"):
+        return [x[0] for x in self.get_geometry(ghost=ghost)]
 
     def __post_init__(self, *args, **kwargs):
         if self.name is None and self.geometry is None:
@@ -409,7 +411,7 @@ class ParametersQC:
         """:return: Give back all parameters for the MolecularData format from openfermion as dictionary"""
         return {
             "basis": self.basis_set,
-            "geometry": self.get_geometry(desired_units="angstrom"),
+            "geometry": self.get_geometry(desired_units="angstrom", ghost="of"),
             "description": self.description,
             "charge": self.charge,
             "multiplicity": self.multiplicity,
@@ -417,10 +419,11 @@ class ParametersQC:
         }
 
     @staticmethod
-    def format_element_name(string):
+    def format_element_name(string, ghost="of"):
         """OpenFermion uses case sensitive hash tables for chemical elements
         I.e. you need to name Lithium: 'Li' and 'li' or 'LI' will not work
         this convenience function does the naming
+        Also format the ghost atom input to the desired 'ghost' format. Openfermion just accepts the atom name
         :return: first letter converted to upper rest to lower
 
         Parameters
@@ -432,13 +435,63 @@ class ParametersQC:
         -------
 
         """
+
+        def format_ghost(string: str, ghost: str = "of") -> str:
+            prefixes = ["ghost:", "ghost-", "ghost_", "ghost", "x:", "x-", "x_", "gh(", "@"]
+
+            detected_prefix = None
+            atom_name = string
+
+            for p in prefixes:
+                if string.lower().startswith(p):
+                    detected_prefix = p
+                    atom_name = string[len(p) :]
+                    break
+
+            # Ensure the atom name is always correctly capitalized (e.g., 'h' -> 'H', 'he' -> 'He')
+            atom_name = atom_name.capitalize()
+            ghost_backend = ghost.lower()
+
+            if ghost_backend in ["openfermion", "of"]:
+                # OpenFermion supports the pure atom name, since we provide the integrals it doesn't matter
+                if ")" in atom_name:
+                    atom_name = atom_name[: atom_name.find(")")]
+                return atom_name
+            elif ghost_backend == "pyscf":
+                pyscf_valid = ["ghost:", "ghost-", "ghost_", "ghost", "x:", "x-", "x_", "gh(", "@"]
+                if detected_prefix in pyscf_valid:
+                    orig_prefix = string[: len(detected_prefix)]
+                    return orig_prefix + atom_name
+                else:
+                    if ")" in atom_name:
+                        atom_name = atom_name[: atom_name.find(")")]
+                    return f"ghost:{atom_name}"
+
+            elif ghost_backend == "psi4":
+                psi4_valid = ["gh(", "@"]  # gh(atom_name) or @atom_name
+                if detected_prefix in psi4_valid:
+                    # Keep the original valid prefix
+                    orig_prefix = string[: len(detected_prefix)]
+                    return orig_prefix + atom_name
+                else:
+                    if ")" in atom_name:
+                        atom_name = atom_name[: atom_name.find(")")]
+                    return f"@{atom_name}"
+
+            else:
+                raise NotImplementedError(
+                    f"ghost format '{ghost}' not implemented (yet). Supported: ['openfermion', 'pyscf', 'psi4']"
+                )
+
         assert len(string) > 0
         assert isinstance(string, str)
+        if any(g in string.lower() for g in ["ghost", "x:", "x-", "x_", "gh(", "@"]):  # Care with Xe
+            return format_ghost(string=string, ghost=ghost)
         fstring = string[0].upper() + string[1:].lower()
         return fstring
 
     @staticmethod
-    def convert_to_list(geometry, initial_units, desired_units):
+    def convert_to_list(geometry, initial_units, desired_units, ghost="of"):
         """Convert a molecular structure given as a string into a list suitable for openfermion
 
         Parameters
@@ -449,6 +502,8 @@ class ParametersQC:
             the units of the input geometry
         desired_units :
             the units of the output coordinates
+        ghost :
+            ghost atom format if required. For openfermion just removes the atom name.
         Returns
         -------
         type
@@ -470,17 +525,17 @@ class ParametersQC:
             try:
                 if initial_units == desired_units:
                     tmp = (
-                        ParametersQC.format_element_name(words[0]),
+                        ParametersQC.format_element_name(words[0], ghost),
                         (float(words[1]), float(words[2]), float(words[3])),
                     )
                 elif initial_units == "angstrom":
                     tmp = (
-                        ParametersQC.format_element_name(words[0]),
+                        ParametersQC.format_element_name(words[0], ghost),
                         (float(words[1]) / c_bohrtoang, float(words[2]) / c_bohrtoang, float(words[3]) / c_bohrtoang),
                     )
                 elif initial_units == "bohr":
                     tmp = (
-                        ParametersQC.format_element_name(words[0]),
+                        ParametersQC.format_element_name(words[0], ghost),
                         (float(words[1]) * c_bohrtoang, float(words[2]) * c_bohrtoang, float(words[3]) * c_bohrtoang),
                     )
                 result.append(tmp)
@@ -488,22 +543,23 @@ class ParametersQC:
                 print("get_geometry list unknown line:\n ", line, "\n proceed with caution!")
         return result
 
-    def get_geometry_string(self, desired_units="angstrom") -> str:
+    def get_geometry_string(self, desired_units="angstrom", ghost="of") -> str:
         """returns the geometry as a string
         :return: geometry string, if desired_units is not equal to self.units, the coordinates will be transformed to "desired_units"
-
+                ghost atoms are formated acordingly to "ghost"
         """
-        geom = self.get_geometry(desired_units=desired_units)
+        geom = self.get_geometry(desired_units=desired_units, ghost=ghost)
         f = ""
         for at in geom:
             f += f"{at[0]} {at[1][0]} {at[1][1]} {at[1][2]}\n"
         return f
 
-    def get_geometry(self, desired_units="angstrom"):
+    def get_geometry(self, desired_units="angstrom", ghost="of"):
         """Returns the geometry
         If a xyz filename was given the file is read out
         otherwise it is assumed that the geometry was given as string
-        which is then reformatted as a list usable as input for openfermion
+        which is then reformatted as a list usable as input for openfermion.
+        ghost: how to threat ghost atoms if pressent, in openfermion they will be left as the non-ghost atom.
         :return: geometry as list
         e.g. [(h,(0.0,0.0,0.35)),(h,(0.0,0.0,-0.35))]
         Coordinates are transformed into the "desired_units", note that openfermion requires coordinates in Angstrom!
@@ -524,9 +580,11 @@ class ParametersQC:
             geomstring, comment = self.read_xyz_from_file(self.geometry)
             if self.description == "":
                 self.description = comment
-            return self.convert_to_list(geomstring, initial_units=self.units, desired_units=desired_units)
+            return self.convert_to_list(geomstring, initial_units=self.units, desired_units=desired_units, ghost=ghost)
         elif self.geometry is not None:
-            return self.convert_to_list(self.geometry, initial_units=self.units, desired_units=desired_units)
+            return self.convert_to_list(
+                self.geometry, initial_units=self.units, desired_units=desired_units, ghost=ghost
+            )
         else:
             raise Exception("Parameters.qc.geometry is None")
 
@@ -550,9 +608,9 @@ class ParametersQC:
                 coord += content[2 + i]
             return coord, comment
 
-    def get_xyz(self, desired_units="angstrom") -> str:
+    def get_xyz(self, desired_units="angstrom", ghost="of") -> str:
         """Returns string for a .xyz file with the coordinates in the "desired_units" """
-        geom = self.get_geometry(desired_units=desired_units)
+        geom = self.get_geometry(desired_units=desired_units, ghost=ghost)
         f = ""
         f += f"{len(geom)}\n"
         f += f"{self.name}\n"

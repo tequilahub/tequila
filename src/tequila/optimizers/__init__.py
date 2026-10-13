@@ -137,7 +137,7 @@ def minimize(
     fast_return = False
     if ovtmp is None or len(ovtmp) == 0:
         return OptimizerResults(
-            energy=float(simulate(objective, *args, **kwargs)), variables={}, history=OptimizerHistory()
+            energy=simulate(objective.to_float(), *args, **kwargs), variables={}, history=OptimizerHistory()
         )
 
     for k, v in INSTALLED_OPTIMIZERS.items():

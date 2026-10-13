@@ -488,8 +488,12 @@ class Optimizer:
         Objective:
             a compiled Objective. Types vary.
         """
+        # objectives holding transition elements (tq.BraKet) are complex valued; optimizers
+        # need a real scalar, and to_float raises if the imaginary part does not vanish.
+        # gradients are differentiated before they are compiled, so this never differentiates
+        # through the cast.
         return compile(
-            objective=objective,
+            objective=objective.to_float(),
             samples=self.samples,
             backend=self.backend,
             device=self.device,

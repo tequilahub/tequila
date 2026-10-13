@@ -85,19 +85,16 @@ def Phase(
     return QCircuit.wrap_gate(gates)
 
 
-def I(
-    target: typing.Union[list, int], control: typing.Union[list, int] = None, power=None, angle=None, *args, **kwargs
-) -> QCircuit:
+def I(target: typing.Union[list, int], control: typing.Union[list, int] = None, *args, **kwargs) -> QCircuit:
     """
     A gate that has no effect, but can be used to mark a qubit as being used.
     This can for example be useful if a qubit is only being used in some variants
     of a circuit, but you want to prevent the output format from changing.
     """
-    # Ugly workaround, we can't simply use paulis.Zero() because this wouldn't mark the qubit as being used.
-    generator = lambda q: 0 * paulis.X(q)
-    return _initialize_power_gate(
-        name="I", power=power, angle=angle, target=target, control=control, generator=generator, *args, **kwargs
-    )
+    target = list_assignment(target)
+    control = list_assignment(control) if control is not None else None
+    gates = [impl.QGateImpl(name="I", target=q, control=control) for q in target]
+    return QCircuit.wrap_gate(gates)
 
 
 def S(target: typing.Union[list, int], control: typing.Union[list, int] = None) -> QCircuit:

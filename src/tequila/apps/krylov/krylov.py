@@ -1,6 +1,7 @@
 import copy
 import scipy
-from tequila import BraKet, QTensor, simulate
+from tequila import QTensor, simulate
+from tequila.objective import BraKetImpl, RealBraKet
 from tequila.hamiltonian.qubit_hamiltonian import QubitHamiltonian
 
 
@@ -37,13 +38,13 @@ def krylov_method(
     for i in range(n_krylov_states):
         for j in range(i, n_krylov_states):
             if assume_real:
-                h_real = BraKet(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H)[0]
+                h_real = BraKetImpl(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H).compile()[0]
                 h_im = 0
             else:
-                h_real, h_im = BraKet(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H)
+                h_real, h_im = BraKetImpl(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H).compile()
             HM[i, j] = h_real + 1j * h_im
             HM[j, i] = h_real - 1j * h_im
-            s_real, s_im = BraKet(bra=krylov_circs_x[i], ket=krylov_circs_x[j])
+            s_real, s_im = BraKetImpl(bra=krylov_circs_x[i], ket=krylov_circs_x[j]).compile()
             SM[i, j] = s_real + 1j * s_im
             SM[j, i] = s_real - 1j * s_im
 
@@ -53,3 +54,39 @@ def krylov_method(
     v, vv = scipy.linalg.eigh(h, s)
 
     return v, vv
+
+
+# Improved version
+
+# def krylov_method(
+#     krylov_circs: list, H: QubitHamiltonian, variables: dict = None, assume_real: bool = False, *args, **kwargs
+# ) -> tuple:
+#     n_krylov_states = len(krylov_circs)
+
+#     if variables is not None:
+#         krylov_circs_x = [U.map_variables(variables) for U in krylov_circs]
+#     else:
+#         krylov_circs_x = copy.deepcopy(krylov_circs)
+
+#     HM = numpy.zeros((n_krylov_states, n_krylov_states), dtype=complex)
+#     SM = numpy.zeros((n_krylov_states, n_krylov_states), dtype=complex)
+
+#     for i in range(n_krylov_states):
+#         for j in range(i, n_krylov_states):
+#             h_bk = BraKetImpl(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=H)
+#             s_bk = BraKetImpl(bra=krylov_circs_x[i], ket=krylov_circs_x[j], operator=None)
+
+#             h_val = simulate(h_bk, *args, **kwargs)
+#             s_val = simulate(s_bk, *args, **kwargs)
+
+#             if assume_real:
+#                 h_val = h_val.real
+
+#             HM[i, j] = h_val
+#             HM[j, i] = h_val.conjugate()
+
+#             SM[i, j] = s_val
+#             SM[j, i] = s_val.conjugate()
+
+#     v, vv = scipy.linalg.eigh(HM, SM)
+#     return v, vv
