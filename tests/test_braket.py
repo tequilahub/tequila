@@ -522,3 +522,31 @@ def test_braket_non_hermitian_operator():
     assert np.isclose(value.imag, np.cos((a + b) / 2), atol=1.0e-4)
 
     return
+
+
+@pytest.mark.parametrize("backend", list(tq.INSTALLED_SIMULATORS.keys()))
+@pytest.mark.parametrize("seed", range(3))
+def test_random_braket_all_backends(backend, seed):
+    np.random.seed(seed)
+    n_qubits = np.random.randint(1, high=4)
+
+    # a random layer on every qubit ensures both circuits act on the full register
+    def random_state():
+        layer = tq.QCircuit()
+        for q in range(n_qubits):
+            layer += tq.gates.Ry(angle=2 * np.pi * np.random.rand(), target=q)
+        return layer + make_random_circuit(n_qubits)
+
+    bra = random_state()
+    ket = random_state()
+    n_ps = np.random.randint(1, high=2 * n_qubits + 1)
+    H = make_random_hamiltonian(n_qubits, paulis=["X", "Y", "Z"], n_ps=n_ps)
+
+    wfn_bra = tq.simulate(bra)
+    wfn_ket = tq.simulate(ket)
+    reference = wfn_bra.inner(wfn_ket.apply_qubitoperator(H))
+
+    E = tq.BraKet(ket=ket, bra=bra, operator=H)
+    value = complex(tq.simulate(E, backend=backend))
+
+    assert np.isclose(value, reference, atol=1.0e-4)
