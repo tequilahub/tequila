@@ -690,7 +690,7 @@ HAS_PAULIENGINE = False
 
 if os.environ.get("TEQUILA_DISABLE_PAULIENGINE", "").lower() not in ("1", "true", "yes"):
     try:
-        import pauliengine 
+        import pauliengine
     except ImportError:
         pass
     else:
