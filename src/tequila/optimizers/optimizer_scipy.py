@@ -141,12 +141,14 @@ class OptimizerSciPy(Optimizer):
             the results of optimization.
         """
         objective = objective.contract()
-        infostring = "{:15} : {}\n".format("Method", self.method)
-        infostring += "{:15} : {} expectationvalues\n".format("Objective", objective.count_expectationvalues())
+        infostring = ""
+        if self.print_level > 0:
+            infostring = "{:15} : {}\n".format("Method", self.method)
+            infostring += "{:15} : {} expectationvalues\n".format("Objective", objective.count_expectationvalues())
 
-        if gradient is not None:
+        if gradient is not None and self.print_level > 0:
             infostring += "{:15} : {}\n".format("grad instr", gradient)
-        if hessian is not None:
+        if hessian is not None and self.print_level > 0:
             infostring += "{:15} : {}\n".format("hess_instr", hessian)
 
         if self.save_history and reset_history:
@@ -165,7 +167,8 @@ class OptimizerSciPy(Optimizer):
             for k, v in self.method_bounds.items():
                 if k in bounds:
                     bounds[k] = v
-            infostring += "{:15} : {}\n".format("bounds", self.method_bounds)
+            if self.print_level > 0:
+                infostring += "{:15} : {}\n".format("bounds", self.method_bounds)
             names, bounds = zip(*bounds.items())
             assert names == param_keys  # make sure the bounds are not shuffled
 
@@ -201,7 +204,8 @@ class OptimizerSciPy(Optimizer):
                     noise=self.noise,
                 )
                 dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
-                infostring += "{:15} : QNG {}\n".format("gradient", dE)
+                if self.print_level > 0:
+                    infostring += "{:15} : QNG {}\n".format("gradient", dE)
             else:
                 dE = gradient
                 compile_gradient = False
@@ -209,8 +213,9 @@ class OptimizerSciPy(Optimizer):
                     compile_hessian = False
                     if hessian is None:
                         hessian = gradient
-                infostring += "{:15} : scipy numerical {}\n".format("gradient", dE)
-                infostring += "{:15} : scipy numerical {}\n".format("hessian", ddE)
+                if self.print_level > 0:
+                    infostring += "{:15} : scipy numerical {}\n".format("gradient", dE)
+                    infostring += "{:15} : scipy numerical {}\n".format("hessian", ddE)
 
         if isinstance(gradient, dict) and "method" in gradient:
             if gradient["method"] == "qng":
@@ -228,7 +233,8 @@ class OptimizerSciPy(Optimizer):
                     noise=self.noise,
                 )
                 dE = _QngContainer(combos=combos, param_keys=param_keys, passive_angles=passive_angles)
-                infostring += "{:15} : QNG {}\n".format("gradient", dE)
+                if self.print_level > 0:
+                    infostring += "{:15} : QNG {}\n".format("gradient", dE)
 
         if isinstance(hessian, str):
             ddE = hessian
@@ -239,7 +245,8 @@ class OptimizerSciPy(Optimizer):
                 objective=objective, variables=variables, gradient=gradient, *args, **kwargs
             )
             expvals = sum([o.count_expectationvalues() for o in comp_grad_obj.values()])
-            infostring += "{:15} : {} expectationvalues\n".format("gradient", expvals)
+            if self.print_level > 0:
+                infostring += "{:15} : {} expectationvalues\n".format("gradient", expvals)
             dE = _GradContainer(
                 objective=comp_grad_obj,
                 param_keys=param_keys,
@@ -253,7 +260,8 @@ class OptimizerSciPy(Optimizer):
                 variables=variables, hessian=hessian, grad_obj=grad_obj, comp_grad_obj=comp_grad_obj, *args, **kwargs
             )
             expvals = sum([o.count_expectationvalues() for o in comp_hess_obj.values()])
-            infostring += "{:15} : {} expectationvalues\n".format("hessian", expvals)
+            if self.print_level > 0:
+                infostring += "{:15} : {} expectationvalues\n".format("hessian", expvals)
             ddE = _HessContainer(
                 objective=comp_hess_obj,
                 param_keys=param_keys,
