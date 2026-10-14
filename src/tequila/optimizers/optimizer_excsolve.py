@@ -85,8 +85,6 @@ class OptimizerExcitationSolve(Optimizer):
         **kwargs,
     ) -> SciPyResults:
         objective = objective.contract()
-        infostring = "{:15} : {}\n".format("Method", "ExcitationSolve")
-        infostring += "{:15} : {} expectationvalues\n".format("Objective", objective.count_expectationvalues())
 
         # if self.save_history and reset_history:
         #     self.reset_history()
