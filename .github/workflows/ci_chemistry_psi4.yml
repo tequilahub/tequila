@@ -34,13 +34,13 @@ jobs:
           
       - name: Create Conda environment and install Psi4
         run: |
-          # Create Conda environment with Python 3.10
-          conda create --name psi4_env python=3.10 -y
-          # Install Psi4 via Conda
+          # Create Conda environment with Psi4, only from conda-forge
           # some issue with qcelemental where imports fail for pydantic>2
           #conda install -n psi4_env -c conda-forge pydantic=1.*
           #conda install -n psi4_env -c psi4 psi4 -y
-          conda install -n psi4_env psi4 python=3.10 -c conda-forge 
+          # conda-forge stopped building psi4 for python 3.10 (only an outdated build is left),
+          # and einsums 1.1.6 breaks psi4 1.11 (undefined symbol einsums::random_engine)
+          conda create --name psi4_env -c conda-forge --override-channels python=3.11 psi4=1.11 "einsums=1.1.5" -y
       - name: Verify Python version with conda run
         run: |
           # Verify Python version inside the environment

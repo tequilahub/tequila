@@ -441,21 +441,33 @@ def test_braket_sampling():
     return
 
 
-def test_braket_count_measurements():
+@pytest.mark.parametrize("diagonal", [False, True])
+@pytest.mark.parametrize(
+    "H",
+    [
+        None,
+        tq.paulis.Z(0),
+        tq.paulis.Z(0) * tq.paulis.Z(1) + 0.5 * tq.paulis.Z(1),
+        tq.paulis.Z(0) + tq.paulis.X(0),
+        0.3 + tq.paulis.X(0) * tq.paulis.Y(1) + 1j * tq.paulis.Z(1) - 2.0 * tq.paulis.Y(0),
+    ],
+)
+def test_braket_count_measurements(H, diagonal):
     """
     Function that tests that a braket reports the measurements its decomposition needs.
 
     Real and imaginary part are measured separately, each with one Hadamard test per
     Pauli string, so counting the Pauli strings alone underestimates the effort.
+    The count is computed without compiling, so it is checked against the compiled parts
+    for overlaps, expectation values and transition elements.
 
     Returns
     -------
     None.
 
     """
-    U0 = tq.gates.Ry(angle=0.7, target=0)
-    U1 = tq.gates.Ry(angle=1.3, target=0)
-    H = tq.paulis.Z(0) + tq.paulis.X(0)
+    U0 = tq.gates.Ry(angle=0.7, target=0) + tq.gates.CNOT(0, 1)
+    U1 = U0 if diagonal else tq.gates.Ry(angle=1.3, target=0) + tq.gates.Rx(angle=0.2, target=1)
 
     braket = tq.BraKet(ket=U0, bra=U1, operator=H).args[-1]
     real, imaginary = braket.compile()
