@@ -639,10 +639,16 @@ def _compile_arg(arg, ExpValueType, BraKetType, variables, noise, device, cache,
 
     if isinstance(arg, BraKetImpl) and not isinstance(arg, BackendBraKet):
         if BraKetType is None:
-            raise TequilaException("Backend does not support BraKet. Use a backend with BraKetType (e.g. qulacs).")
-        compiled = BraKetType(arg, variables=variables, noise=noise, device=device, *args, **kwargs)
-        cache[id(arg)] = compiled
-        return compiled
+            arg_real, arg_imag = arg.compile()
+            res = _compile_arg(arg_real, ExpValueType, BraKetType, variables, noise, device, cache, *args, **kwargs)
+            res += 1j * _compile_arg(
+                arg_imag, ExpValueType, BraKetType, variables, noise, device, cache, *args, **kwargs
+            )
+            return res
+        else:
+            compiled = BraKetType(arg, variables=variables, noise=noise, device=device, *args, **kwargs)
+            cache[id(arg)] = compiled
+            return compiled
 
     if hasattr(arg, "H") and hasattr(arg, "U") and not isinstance(arg, BackendExpectationValue):
         key = id(arg)
