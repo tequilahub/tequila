@@ -200,9 +200,14 @@ class BraKetImpl(QuantumArg):
         return make_transition(U0=self.bra, U1=self.ket, H=self.operator, *self._args, **kwargs)
 
     def count_measurements(self) -> int:
-        # a transition element is measured through its real and imaginary parts, each of which
-        # needs one Hadamard test per Pauli string, so count what compile() actually produces
-        return sum(part.count_measurements() for part in self.compile())
+        # count what compile() produces without building its circuits, which is expensive for large operators:
+        # an overlap is measured by two Hadamard tests (X and Y on the ancilla), a transition element by one
+        # overlap per Pauli string, and its real and imaginary parts each hold all of them
+        if self.operator is None:
+            return 0 if self.is_diagonal else 2
+        if self.is_diagonal:
+            return self.operator.count_measurements()
+        return 4 * len(self.operator.paulistrings)
 
     def __call__(self, *args, **kwargs):
         raise TequilaException(
