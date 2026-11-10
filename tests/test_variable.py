@@ -98,3 +98,15 @@ def test_exotic_gradients(gradvar):
             + np.cos(np.pi * f(variables)) / f(variables)
             - np.sin(np.pi * f(variables)) / (np.pi * f(variables) ** 2.0),
         )
+
+
+def test_variables_save_load(tmp_path):
+    # tuple names (e.g. from chemistry ansatzes) have to survive the round trip
+    from tequila import TequilaException, Variables
+
+    variables = Variables({"a": 0.1, ((0, 1), "D"): -0.2, Variable(("b", 3)): 0.3})
+    variables.save(tmp_path / "variables.json")
+    loaded = Variables.load(tmp_path / "variables.json")
+    assert loaded == variables
+    with pytest.raises(TequilaException):
+        Variables({object(): 1.0}).save(tmp_path / "bad.json")
