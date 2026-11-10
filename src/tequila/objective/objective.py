@@ -1,6 +1,8 @@
 import typing
 import copy
+import json
 import numbers
+from ast import literal_eval
 from tequila.grouping.compile_groups import compile_commuting_parts
 from tequila import TequilaException
 from tequila.utils import JoinedTransformation, to_float
@@ -1405,3 +1407,44 @@ class Variables(collections.abc.MutableMapping):
     def __repr__(self):
         xdict = {k: v for k, v in self.items()}
         return xdict.__repr__()
+
+    def save(self, filename):
+        """
+        Save the variables in a json file, without pickle.
+        Names are stored with repr, so tuple names like ((0, 1), "D") survive. Load with Variables.load
+
+        Parameters
+        ----------
+        filename:
+            the json file
+        """
+        data = {}
+        for k, v in self.items():
+            name = repr(k.name)
+            try:
+                assert literal_eval(name) == k.name
+            except Exception as E:
+                raise TequilaException(
+                    "can not save variable {}, names need to be python literals (str, int, tuple, ...)".format(k.name)
+                ) from E
+            data[name] = float(v)
+        with open(filename, "w") as f:
+            json.dump(data, f, indent=2)
+
+    @classmethod
+    def load(cls, filename):
+        """
+        Load variables saved with Variables.save
+
+        Parameters
+        ----------
+        filename:
+            the json file
+
+        Returns
+        -------
+        Variables
+        """
+        with open(filename) as f:
+            data = json.load(f)
+        return cls({Variable(literal_eval(k)): v for k, v in data.items()})
