@@ -72,8 +72,7 @@ class QGateImpl:
         self._target = tuple(list_assignment(target))
         self._control = tuple(list_assignment(control))
         self.finalize()
-        if generator:
-            self.generator = generator
+        self.generator = generator
 
     def copy(self):
         return copy.deepcopy(self)
