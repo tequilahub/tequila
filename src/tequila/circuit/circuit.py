@@ -1074,9 +1074,29 @@ class SubcircuitGate(QGateImpl):
     example, this is useful when building QSVT circuits.
     """
 
-    def __init__(self, circuit: QCircuit):
+    def __init__(self, circuit: QCircuit, qubit_map: dict | None = None, inverted=False):
         super().__init__(name="CachedSubcircuit", target=tuple(range(circuit.n_qubits)))
-        self.circuit = circuit
+        self.base_circuit = circuit
+        self.qubit_map = qubit_map
+        self.inverted = inverted
+
+    @property
+    def circuit(self) -> QCircuit:
+        circuit = self.base_circuit
+        if self.inverted:
+            circuit = circuit.dagger()
+        if self.qubit_map is not None:
+            circuit = circuit.map_qubits(self.qubit_map)
+        return circuit
+
+    def map_qubits(self, qubit_map: dict):
+        if self.qubit_map is None:
+            return SubcircuitGate(self.base_circuit, qubit_map, self.inverted)
+
+        new_map = {}
+        for i in self.qubit_map.keys():
+            new_map[i] = qubit_map[self.qubit_map[i]]
+        return SubcircuitGate(self.base_circuit, new_map, self.inverted)
 
     def dagger(self):
-        return SubcircuitGate(self.circuit.dagger())
+        return SubcircuitGate(self.base_circuit, self.qubit_map, not self.inverted)

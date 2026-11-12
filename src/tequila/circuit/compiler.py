@@ -336,9 +336,13 @@ class CircuitCompiler:
 
         for idx, gate in gatelist:
             if isinstance(gate, SubcircuitGate):
-                if id(gate.circuit) not in compiled_subcircuits:
-                    compiled_subcircuits[id(gate.circuit)] = self.compile_circuit(gate.circuit)
-                cg = compiled_subcircuits[id(gate.circuit)]
+                if id(gate.base_circuit) not in compiled_subcircuits:
+                    compiled_subcircuits[id(gate.base_circuit)] = self.compile_circuit(gate.base_circuit)
+                cg = compiled_subcircuits[id(gate.base_circuit)]
+                if gate.inverted:
+                    cg = cg.dagger()
+                if gate.qubit_map is not None:
+                    cg = cg.map_qubits(gate.qubit_map)
                 compiled_gates.append((idx, cg))
                 continue
 
