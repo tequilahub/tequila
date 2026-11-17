@@ -339,13 +339,13 @@ class QuantumChemistryBase:
         # remove constant terms
         # they have no effect in the unitary (if not controlled)
         if remove_constant_term:
-            qop.qubit_operator.terms[tuple()] = 0.0
+            qop[tuple()] = 0.0
 
         # check if the operator is hermitian and cast coefficients to floats
         # in order to avoid trouble with the simulation backends
         assert qop.is_hermitian()
-        for k, v in qop.qubit_operator.terms.items():
-            qop.qubit_operator.terms[k] = to_float(v)
+        for k, v in list(qop.items()):
+            qop[k] = to_float(v)
 
         qop = qop.simplify()
 
