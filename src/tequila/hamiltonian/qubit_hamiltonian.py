@@ -5,11 +5,14 @@ get the openfermion object with hamiltonian.hamiltonian
 """
 
 import numbers
+import os
 import typing
+import warnings
 
 from tequila.tools import number_to_string
 from tequila.utils import to_float
 from tequila import TequilaException
+from tequila.utils.exceptions import TequilaWarning
 
 from openfermion import QubitOperator
 from functools import reduce
@@ -679,3 +682,27 @@ class QubitHamiltonian:
 
     def constant(self):
         return self._qubit_operator.constant
+
+
+# Use the pauliengine backend when it is available, otherwise stay on openfermion.
+# Set TEQUILA_DISABLE_PAULIENGINE=1 to force the openfermion implementation.
+HAS_PAULIENGINE = False
+
+if os.environ.get("TEQUILA_DISABLE_PAULIENGINE", "").lower() not in ("1", "true", "yes"):
+    try:
+        import pauliengine
+    except ImportError:
+        pass
+    else:
+        # pauliengine is present, so a failure below is a real integration problem
+        # and must not be silently downgraded to the openfermion fallback.
+        try:
+            from tequila.hamiltonian.qubit_hamiltonian_pauliengine import QubitHamiltonian
+
+            HAS_PAULIENGINE = True
+        except ImportError as exc:
+            warnings.warn(
+                "pauliengine is installed but the tequila integration failed to load ({}). "
+                "Falling back to openfermion.".format(exc),
+                TequilaWarning,
+            )
