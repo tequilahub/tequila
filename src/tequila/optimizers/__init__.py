@@ -6,6 +6,7 @@ from tequila.optimizers.optimizer_scipy import minimize as minimize_scipy
 from tequila.optimizers.optimizer_gd import minimize as minimize_gd
 from tequila.optimizers.optimizer_excsolve import minimize as minimize_excsolve
 from tequila.simulators.simulator_api import simulate
+from tequila.objective.objective import Variables
 from dataclasses import dataclass
 
 import typing
@@ -88,6 +89,7 @@ def minimize(
     initial_values: typing.Union[dict, numbers.Number, typing.Callable] = 0.0,
     maxiter: int = None,
     *args,
+    save_to: str = None,
     **kwargs,
 ):
     """
@@ -108,6 +110,9 @@ def minimize(
        Alternatively `zero`, `random` or a single number are accepted
     maxiter:
        maximum number of iterations
+    save_to: str:
+       if given, write the history to save_to + "_history.txt" (readable table)
+       and the final variables to save_to + "_variables.json" (load with tq.Variables.load)
     kwargs:
        further keyword arguments for the actual minimization functions
        can also be called directly as tq.minimize_modulename
@@ -142,7 +147,7 @@ def minimize(
 
     for k, v in INSTALLED_OPTIMIZERS.items():
         if method.lower() in v.methods or method.upper() in v.methods:
-            return v.minimize(
+            result = v.minimize(
                 objective=objective,
                 method=method,
                 variables=variables,
@@ -151,6 +156,10 @@ def minimize(
                 *args,
                 **kwargs,
             )
+            if save_to is not None:
+                result.history.save(save_to + "_history.txt")
+                Variables(result.variables).save(save_to + "_variables.json")
+            return result
 
     raise TequilaOptimizerException(
         f"Could not find optimization method {method} in tequila optimizers. You might miss dependencies"

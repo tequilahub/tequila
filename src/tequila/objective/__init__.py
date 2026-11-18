@@ -6,6 +6,7 @@ from tequila.objective.objective import (
     RealBraKet,
     ImagBraKet,
     Variable,
+    Variables,
     assign_variable,
     format_variable_list,
     format_variable_dictionary,

@@ -9,6 +9,7 @@ from tequila.objective import (
     RealBraKet,
     ImagBraKet,
     Variable,
+    Variables,
     assign_variable,
     format_variable_dictionary,
     vectorize,
