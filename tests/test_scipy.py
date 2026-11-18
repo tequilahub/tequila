@@ -146,3 +146,16 @@ def test_hessian_based_methods(simulator, method, use_hessian):
         silent=True,
     )
     assert numpy.isclose(result.energy, -1.0, atol=1.0e-1)
+
+
+def test_minimize_save_to(tmp_path):
+    # the saved variables have to load back into a new circuit with the same energy
+    U = tq.gates.Ry(angle="a", target=0)
+    E = tq.ExpectationValue(H=tq.paulis.X(0), U=U)
+    result = tq.minimize(E, method="bfgs", initial_values={"a": 0.1}, silent=True, save_to=str(tmp_path / "run"))
+    history = (tmp_path / "run_history.txt").read_text().splitlines()
+    assert history[0] == "iteration\tenergy\ta"
+    assert len(history) == result.history.iterations + 1
+    variables = tq.Variables.load(tmp_path / "run_variables.json")
+    U2 = tq.gates.Ry(angle="a", target=0)
+    assert numpy.isclose(tq.simulate(tq.ExpectationValue(H=tq.paulis.X(0), U=U2), variables=variables), result.energy)

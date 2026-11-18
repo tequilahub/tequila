@@ -224,6 +224,23 @@ class OptimizerHistory:
             pickle.dump(fig, open(filename + ".pickle", "wb"))
             plt.savefig(fname=filename + ".pdf", **kwargs)
 
+    def save(self, filename):
+        """
+        Save the history as a readable text table: one line per iteration with the energy and the variables.
+
+        Parameters
+        ----------
+        filename:
+            the text file
+        """
+        keys = list(self.angles[-1].keys()) if self.angles else []
+        with open(filename, "w") as f:
+            f.write("\t".join(["iteration", "energy"] + [str(k) for k in keys]) + "\n")
+            for i, energy in enumerate(self.energies):
+                angles = self.angles[i] if i < len(self.angles) else {}
+                values = [str(float(angles[k])) if k in angles else "" for k in keys]
+                f.write("\t".join([str(i), str(float(energy))] + values) + "\n")
+
 
 @dataclass
 class OptimizerResults:
