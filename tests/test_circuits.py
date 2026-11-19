@@ -466,3 +466,12 @@ def test_qasm_export_import_equivalence():
     wfn2 = tq.simulate(U2, variables=variables)
     F = abs(wfn1.inner(wfn2)) ** 2
     assert numpy.isclose(F, 1.0)
+
+
+def test_subcircuit():
+    U = (CNOT(control=0, target=1) + Ry(angle=1.23, target=2)).as_subcircuit_gate()
+    V = U.map_qubits({0: 1, 1: 0, 2: 2}) + U.dagger() + CNOT(control=1, target=0) + SWAP(0, 1)
+    # U = (QCircuit.wrap_gate(CNOT(control=0, target=1))).as_subcircuit_gate()
+    # V = U.map_qubits({0: 1, 1: 0}) + U.dagger() + CNOT(control=1, target=0) + SWAP(0, 1)
+
+    numpy.testing.assert_allclose(V.to_matrix(), numpy.eye(8))

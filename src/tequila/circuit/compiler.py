@@ -2,7 +2,7 @@ import numbers
 import warnings
 
 from tequila import TequilaException
-from tequila.circuit.circuit import QCircuit
+from tequila.circuit.circuit import QCircuit, SubcircuitGate
 from tequila.circuit.gates import Rx, Ry, H, X, S, Rz, ExpPauli, CNOT, Phase, T, Z, GlobalPhase
 from tequila.circuit._gates_impl import (
     RotationGateImpl,
@@ -332,7 +332,20 @@ class CircuitCompiler:
         # Keep a dicitionary of compiled pauli_rotations
         pauli_dict = {}
 
+        compiled_subcircuits = {}
+
         for idx, gate in gatelist:
+            if isinstance(gate, SubcircuitGate):
+                if id(gate.base_circuit) not in compiled_subcircuits:
+                    compiled_subcircuits[id(gate.base_circuit)] = self.compile_circuit(gate.base_circuit)
+                cg = compiled_subcircuits[id(gate.base_circuit)]
+                if gate.inverted:
+                    cg = cg.dagger()
+                if gate.qubit_map is not None:
+                    cg = cg.map_qubits(gate.qubit_map)
+                compiled_gates.append((idx, cg))
+                continue
+
             cg = gate
             controlled = gate.is_controlled()
 

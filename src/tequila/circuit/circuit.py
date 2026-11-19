@@ -718,6 +718,9 @@ class QCircuit:
 
         return QCircuit(gates=new_gates)
 
+    def as_subcircuit_gate(self) -> QCircuit:
+        return QCircuit.wrap_gate(SubcircuitGate(self))
+
 
 class Moment(QCircuit):
     """
@@ -1060,3 +1063,40 @@ def find_unused_qubit(U0: QCircuit = None, U1: QCircuit = None) -> int:
     assert free_qubit not in active_qubits
 
     return free_qubit
+
+
+class SubcircuitGate(QGateImpl):
+    """
+    Wraps a QCircuit object. When this is added to another circuit,
+    the structure of this subcircuit is kept (instead of flattening
+    it to a list of basic gates). This allows reusing this subcircuit
+    and e.g. compilation results while only storing it once. For
+    example, this is useful when building QSVT circuits.
+    """
+
+    def __init__(self, circuit: QCircuit, qubit_map: dict | None = None, inverted=False):
+        super().__init__(name="CachedSubcircuit", target=tuple(range(circuit.n_qubits)))
+        self.base_circuit = circuit
+        self.qubit_map = qubit_map
+        self.inverted = inverted
+
+    @property
+    def circuit(self) -> QCircuit:
+        circuit = self.base_circuit
+        if self.inverted:
+            circuit = circuit.dagger()
+        if self.qubit_map is not None:
+            circuit = circuit.map_qubits(self.qubit_map)
+        return circuit
+
+    def map_qubits(self, qubit_map: dict):
+        if self.qubit_map is None:
+            return SubcircuitGate(self.base_circuit, qubit_map, self.inverted)
+
+        new_map = {}
+        for i in self.qubit_map.keys():
+            new_map[i] = qubit_map[self.qubit_map[i]]
+        return SubcircuitGate(self.base_circuit, new_map, self.inverted)
+
+    def dagger(self):
+        return SubcircuitGate(self.base_circuit, self.qubit_map, not self.inverted)
