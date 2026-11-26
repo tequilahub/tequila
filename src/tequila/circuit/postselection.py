@@ -35,6 +35,9 @@ class Postselection:
     def add_controls(self, new_controls: list[int]):
         self._controls += new_controls
 
+    def dagger(self):
+        return deepcopy(self)
+
     def postselection_mask(self, nbits: int, numbering: BitNumbering) -> int:
         """
         Returns a bitmask for the postselected qubits.
@@ -128,6 +131,12 @@ class PostselectionCircuit:
     def __add__(self, other: Union[QCircuit, Postselection, "PostselectionCircuit"]):
         result = deepcopy(self)
         result += other
+        return result
+
+    def dagger(self):
+        result = PostselectionCircuit()
+        for fragment in reversed(self._fragments):
+            result += fragment.dagger()
         return result
 
     def add_fragment(self, fragment: Union[QCircuit, Postselection]):
